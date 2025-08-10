@@ -117,7 +117,7 @@ class RunTimer(Thread):
 
 
 # --------------------------------------------------------------------------
-#  A timer for running repeated actions
+# A timer for running repeated actions
 # --------------------------------------------------------------------------
 class IntervalTimer(RunTimer):
     RESOLUTION = 0.05
@@ -276,6 +276,10 @@ class ModeHandlerBase:
         self._is_shifted = False
         self._is_active = False
 
+    @property
+    def name(self):
+        return self.__class__.__name__
+
     def refresh(self):
         """Overwrite in derived class if needed."""
 
@@ -319,14 +323,16 @@ class ModeHandlerBase:
             return None
         return self._pending_actions.pop(0)
 
-    def run_action(self, action, args, kwargs):
-        action = "_action_" + action.replace("-", "_")
-        action = getattr(self, action, None)
+    def run_action(self, action_name, args, kwargs):
+        action_name = "_action_" + action_name.replace("-", "_")
+        action = getattr(self, action_name, None)
         if callable(action):
             try:
                 action(*args, **kwargs)
             except Exception as ex:
-                logging.error(f" error in handler: {ex}")
+                logging.error(f"error in handler: {ex}")
+        else:
+            logging.warning(f"missing action '{action_name}' in handler '{self.name}'")
 
     def _request_action(self, receiver, action, *args, **kwargs):
         self._pending_actions.append((receiver, action, args, kwargs))

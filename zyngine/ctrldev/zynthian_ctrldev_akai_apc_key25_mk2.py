@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Akai APC Key 25 mk2"
 #
-# Copyright (C) 2023,2024 Oscar Aceña <oscaracena@gmail.com>
+# Copyright (C) 2023-2025 Oscar Aceña <oscaracena@gmail.com>
 #
 # ******************************************************************************
 #
@@ -241,6 +241,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 receiver, action, args, kwargs = action
                 if receiver == "stepseq":
                     self._stepseq_handler.run_action(action, args, kwargs)
+                elif receiver == "mixpad":
+                    self._padmatrix_handler.run_action(action, args, kwargs)
         return False
 
     def _on_midi_event(self, ev):
@@ -880,7 +882,7 @@ class MixerHandler(ModeHandlerBase):
 
 
 # --------------------------------------------------------------------------
-#  Handle pad matrix for Zynseq (in Mixpad mode)
+# Handle pad matrix for Zynseq (in Mixpad mode)
 # --------------------------------------------------------------------------
 class PadMatrixHandler(ModeHandlerBase):
 
@@ -915,6 +917,7 @@ class PadMatrixHandler(ModeHandlerBase):
         self._track_btn_pressed = None
         self._playing_seqs = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
+        self._pattern_template = None
 
         # Seqman sub-mode
         self._seqman_func = None
@@ -1264,6 +1267,9 @@ class PadMatrixHandler(ModeHandlerBase):
             self._libseq.addPattern(scene, seq, 0, 0, pattern)
             self._libseq.selectPattern(pattern)
 
+            if self._pattern_template is not None:
+                self._action_apply_pattern_template(pattern)
+
     def _copy_sequence(self, src_scene, src_seq, dst_scene, dst_seq):
         self._clear_sequence(dst_scene, dst_seq, create_empty=False)
 
@@ -1295,6 +1301,14 @@ class PadMatrixHandler(ModeHandlerBase):
         # Also copy StepSeq instrument pages
         self._request_action("stepseq", "sync-sequences",
             src_scene, src_seq, dst_scene, dst_seq)
+
+    def _action_set_pattern_template(self, pattern):
+        self._pattern_template = pattern
+
+    def _action_apply_pattern_template(self, dst_pattern, callback=None):
+        self._libseq.copyPattern(self._pattern_template, dst_pattern)
+        if callback is not None and callable(callback):
+            callback()
 
 
 # --------------------------------------------------------------------------
@@ -1392,7 +1406,7 @@ class StepSyncProvider(mp.Process):
 
 
 # --------------------------------------------------------------------------
-#  Step Sequencer clock sync
+# Step Sequencer clock sync
 # --------------------------------------------------------------------------
 class StepSyncConsumer(Thread):
     def __init__(self, event_queue, callback):
@@ -1410,8 +1424,8 @@ class StepSyncConsumer(Thread):
 
 
 # --------------------------------------------------------------------------
-#  Class to hold instrument pads for StepSeq (a.k.a. note-pads)
-#  Note: it inherits from dict to be json-serializable and easily comparable
+# Class to hold instrument pads for StepSeq (a.k.a. note-pads)
+# Note: it inherits from dict to be json-serializable and easily comparable
 # --------------------------------------------------------------------------
 class NotePad(dict):
     def __init__(self, note, velocity, duration=1, stutter_count=0, stutter_duration=1):
@@ -1435,19 +1449,24 @@ class NotePad(dict):
 
 
 # --------------------------------------------------------------------------
-#  Class to marshall/un-marshall saved state of StepSeq
-#  FIXME: add support for scenes too!
+# Class to marshall/un-marshall saved state of StepSeq
+# FIXME: add support for scenes too!
 # --------------------------------------------------------------------------
 class StepSeqState:
     def __init__(self):
         self._seqs = {}
         self._chains = {}
 
+        # Public properties
+        self.pattern_template = None
+
     def load(self, state):
         state = deepcopy(state)
 
         # Convert JSON stringfied key ints as real ints, and note-pad's dicts to NotePad
         self._chains = state.get("chains", {})
+        self.pattern_template = state.get("pattern_template", None)
+
         for c in self._chains.values():
             src_pages = c.get("pages", [])
             dst_pages = []
@@ -1459,7 +1478,11 @@ class StepSeqState:
             self._seqs[int(seq)] = value
 
     def save(self):
-        return {"seqs": self._seqs, "chains": self._chains}
+        return {
+            "seqs": self._seqs,
+            "chains": self._chains,
+            "pattern_template": self.pattern_template,
+        }
 
     def get_chain_by_id(self, chain_id):
         chain_id = str(chain_id) if chain_id is not None else "default"
@@ -1477,7 +1500,7 @@ class StepSeqState:
 
 
 # --------------------------------------------------------------------------
-#  Note objects used in NotePlayer's event queue
+# Note objects used in NotePlayer's event queue
 # --------------------------------------------------------------------------
 class Note:
     def __init__(self, note, velocity, duration_cycles, channel, stutt_count, stutt_duration):
@@ -1541,8 +1564,8 @@ class Note:
 
 
 # --------------------------------------------------------------------------
-#  Note player (adds support for stutter, is also quantized)
-#  FIXME: if jack is playing, synchronize with it
+# Note player (adds support for stutter, is also quantized)
+# FIXME: if jack is playing, synchronize with it
 # --------------------------------------------------------------------------
 class NotePlayer(Thread):
     def __init__(self, libseq):
@@ -1618,7 +1641,7 @@ class NotePlayer(Thread):
 
 
 # --------------------------------------------------------------------------
-#  Step Sequencer mode (StepSeq)
+# Step Sequencer mode (StepSeq)
 # --------------------------------------------------------------------------
 class StepSeqHandler(ModeHandlerBase):
     PAD_COLS = 8
@@ -1684,6 +1707,10 @@ class StepSeqHandler(ModeHandlerBase):
             return
         self._saved_state.load(state)
 
+        if self._saved_state.pattern_template is not None:
+            self._request_action(
+                "mixpad", "set-pattern-template", self._saved_state.pattern_template)
+
     def get_state(self):
         return {"stepseq": self._saved_state.save()}
 
@@ -1714,6 +1741,9 @@ class StepSeqHandler(ModeHandlerBase):
 
         if self._is_arranger_mode:
             self._leds.led_blink(BTN_SOFT_KEY_SELECT)
+
+        if self._selected_pattern == self._saved_state.pattern_template:
+            self._leds.led_blink(BTN_SOFT_KEY_REC_ARM)
 
     def _refresh_note_pads(self):
         # If there is a note config controller, it will handle all pads, nothing to do here
@@ -1807,7 +1837,7 @@ class StepSeqHandler(ModeHandlerBase):
                 if BTN_PAD_START <= note <= BTN_PAD_END:
                     return self._note_config.note_on(note, velocity, self._is_shifted)
             elif BTN_PAD_START <= note <= BTN_PAD_START + 7:
-                if not self._is_arranger_mode and self._note_config is None:
+                if not self._is_arranger_mode:
                     self._change_instrument(note)
             elif note == BTN_LEFT:
                 self._change_to_previous_pattern()
@@ -1816,6 +1846,15 @@ class StepSeqHandler(ModeHandlerBase):
             elif note == BTN_SOFT_KEY_SELECT:
                 self._is_select_pressed = True
                 self._enable_arranger_mode(True)
+
+            elif note == BTN_SOFT_KEY_REC_ARM:
+                new_template = self._selected_pattern
+                if new_template == self._saved_state.pattern_template:
+                    new_template = None
+                self._saved_state.pattern_template = new_template
+                self._request_action(
+                    "mixpad", "set-pattern-template", new_template)
+
             elif note == BTN_PLAY:
                 self._libseq.togglePlayState(
                     self._zynseq.bank, self._selected_seq)
@@ -1824,6 +1863,7 @@ class StepSeqHandler(ModeHandlerBase):
                 if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING):
                     self._is_stage_play = True
                     self.refresh()
+
             elif note == BTN_UP:
                 self._state_manager.send_cuia("BACK")
             elif note == BTN_DOWN:
@@ -2144,9 +2184,9 @@ class StepSeqHandler(ModeHandlerBase):
             if self._is_arranger_mode and len(self._pressed_pads) == 2:
                 src_idx = next(
                     pad for pad in self._pressed_pads if pad != dst_idx)
-                self._copy_pattern(src_idx, dst_idx)
-                self._leds.led_on(note, COLOR_LIME,
-                                  LED_BLINKING_16, overlay=True)
+                if self._copy_pattern(src_idx, dst_idx):
+                    self._leds.led_on(note, COLOR_LIME,
+                        LED_BLINKING_16, overlay=True)
                 self._leds.delayed("remove_overlay", 1000, note)
             elif self._note_pads_function == FN_SELECT_PATTERN:
                 if dst_idx < len(self._sequence_patterns):
@@ -2371,6 +2411,7 @@ class StepSeqHandler(ModeHandlerBase):
         track = 0
 
         if self._selected_pattern_idx < 7:
+            roll_pattern = self._is_select_pressed
             if self._selected_pattern_idx >= len(self._sequence_patterns) - 1:
                 # Create a new pattern only if SHIFT is pressed
                 if not self._is_shifted:
@@ -2380,18 +2421,26 @@ class StepSeqHandler(ModeHandlerBase):
                     logging.error(" could not add a new pattern!")
                     return
                 self._sequence_patterns.append(pattern)
+                if self._saved_state.pattern_template is not None and not roll_pattern:
+                    self._request_action(
+                        "mixpad", "apply-pattern-template", pattern,
+                        callback=partial(self.refresh, only_steps=True))
 
             self._change_to_pattern_index(
                 self._selected_pattern_idx,
                 self._selected_pattern_idx + 1,
-                self._is_select_pressed)
+                roll_pattern)
         self._show_patterns_bar()
 
     def _copy_pattern(self, from_idx, to_idx):
+        if to_idx >= len(self._sequence_patterns):
+            return False
+
         self._libseq.copyPattern(
             self._sequence_patterns[from_idx],
             self._sequence_patterns[to_idx])
         self._libseq.updateSequenceInfo()
+        return True
 
     def _clear_pattern(self, index):
         current = self._libseq.getPatternIndex()
@@ -2535,8 +2584,8 @@ class StepSeqHandler(ModeHandlerBase):
 
 
 # --------------------------------------------------------------------------
-#  Class to access individual steps using the same interface that pads uses,
-#  to be used by StepSeq's PropertyControls
+# Class to access individual steps using the same interface that pads uses,
+# to be used by StepSeq's PropertyControls
 # --------------------------------------------------------------------------
 class StepProxy:
     def __init__(self, libseq, note, step):
@@ -2576,7 +2625,7 @@ class StepProxy:
 
 
 # --------------------------------------------------------------------------
-#  Base of controller utilities to change some property of a NotePad/Step
+# Base of controller utilities to change some property of a NotePad/Step
 # --------------------------------------------------------------------------
 class BaseControl:
     KIND = "undefined"
@@ -2677,7 +2726,7 @@ class BaseControl:
 
 
 # --------------------------------------------------------------------------
-#  A controller utility to change velocity of a NotePad/Step
+# A controller utility to change velocity of a NotePad/Step
 # --------------------------------------------------------------------------
 class VelocityControl(BaseControl):
     KIND = "velocity"
@@ -2695,7 +2744,7 @@ class VelocityControl(BaseControl):
 
 
 # --------------------------------------------------------------------------
-#  A controller utility to change stutter count of a NotePad/Step
+# A controller utility to change stutter count of a NotePad/Step
 # --------------------------------------------------------------------------
 class StutterCountControl(BaseControl):
     KIND = "stutter-count"
@@ -2713,7 +2762,7 @@ class StutterCountControl(BaseControl):
 
 
 # --------------------------------------------------------------------------
-#  A controller utility to change stutter duration of a NotePad/Step
+# A controller utility to change stutter duration of a NotePad/Step
 # --------------------------------------------------------------------------
 class StutterDurationControl(BaseControl):
     KIND = "stutter-duration"

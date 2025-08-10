@@ -126,7 +126,6 @@ class zynthian_engine_inet_radio(zynthian_engine):
                                   text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
                 sleep(1)
                 self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.client.setblocking(False)
                 self.client.settimeout(1)
                 self.client.connect(("localhost", 4212)) #TODO Assign port in config
                 self.client.recv(4096)
@@ -177,7 +176,10 @@ class zynthian_engine_inet_radio(zynthian_engine):
             buffer = bytes()
             while True:
                 try:
-                    buffer += self.client.recv(1024)
+                    response = self.client.recv(1024)
+                    buffer += response
+                    if response == b'':
+                        break
                 except TimeoutError:
                     break
             if buffer:
@@ -401,67 +403,77 @@ class zynthian_engine_inet_radio(zynthian_engine):
                 ],
                 "BBC": [
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=96000",
                         0,
                         "BBC Radio 1"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_1xtra&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_1xtra&bitrate=96000",
                         0,
                         "BBC Radio 1Xtra"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_one_dance&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_one_dance&bitrate=96000",
                         0,
                         "BBC Radio 1 Dance"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_one_anthems&bitrate=96000&uk=1",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_one_anthems&bitrate=96000&uk=1",
                         0,
                         "BBC Radio 1 Anthems (UK Only)"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000",
                         0,
                         "BBC Radio 2"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_three&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_three&bitrate=96000",
                         0,
                         "BBC Radio 3"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_three_unwind&bitrate=96000&uk=1",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_three_unwind&bitrate=96000&uk=1",
                         0,
                         "BBC Radio 3 Unwind (UK Only)"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000",
                         0,
                         "BBC Radio 4"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_four_extra&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_four_extra&bitrate=96000",
                         0,
                         "BBC Radio 4 Extra"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_five_live&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_five_live&bitrate=96000",
                         0,
                         "BBC Radio 5 Live"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_6music&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_6music&bitrate=96000",
                         0,
                         "BBC Radio 6 Music"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_five_live_sports_extra&bitrate=96000&uk=1",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_five_live_sports_extra&bitrate=96000&uk=1",
                         0,
                         "BBC Radio Sports Extra (UK Only)"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_asian_network&bitrate=96000",
+                        "https://as-hls-uk.live.cf.md.bbci.co.uk/pool_24041977/live/uk/bbc_radio_five_sports_extra_2/bbc_radio_five_sports_extra_2.isml/bbc_radio_five_sports_extra_2-audio%3d320000.norewind.m3u8",
+                        0,
+                        "BBC Radio Sports Extra 2 (UK Only)"
+                    ],
+                    [
+                        "https://as-hls-uk.live.cf.md.bbci.co.uk/pool_02012018/live/uk/bbc_radio_five_sports_extra_3/bbc_radio_five_sports_extra_3.isml/bbc_radio_five_sports_extra_3-audio%3d320000.norewind.m3u8",
+                        0,
+                        "BBC Radio Sports Extra 3 (UK Only)"
+                    ],
+                    [
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_asian_network&bitrate=96000",
                         0,
                         "BBC Asian Network"
                     ],
@@ -471,252 +483,252 @@ class zynthian_engine_inet_radio(zynthian_engine):
                         "BBC World Service (English)"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_coventry_warwickshire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_coventry_warwickshire&bitrate=96000",
                         0,
                         "BBC CWR"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_essex&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_essex&bitrate=96000",
                         0,
                         "BBC Essex"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_hereford_worcester&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_hereford_worcester&bitrate=96000",
                         0,
                         "BBC Hereford & Worcester"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_berkshire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_berkshire&bitrate=96000",
                         0,
                         "BBC Radio Berkshire"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_bristol&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_bristol&bitrate=96000",
                         0,
                         "BBC Radio Britsol"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_cambridge&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_cambridge&bitrate=96000",
                         0,
                         "BBC Radio Cambridge"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_cornwall&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_cornwall&bitrate=96000",
                         0,
                         "BBC Radio Cornwall"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_cumbria&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_cumbria&bitrate=96000",
                         0,
                         "BBC Radio Cumbria"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_cymru&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_cymru&bitrate=96000",
                         0,
                         "BBC Radio Cymru"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_cymru_2&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_cymru_2&bitrate=96000",
                         0,
                         "BBC Radio Cymru 2"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_derby&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_derby&bitrate=96000",
                         0,
                         "BBC Radio Derby"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_devon&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_devon&bitrate=96000",
                         0,
                         "BBC Radio Devon"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_foyle&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_foyle&bitrate=96000",
                         0,
                         "BBC Radio Foyle"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_gloucestershire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_gloucestershire&bitrate=96000",
                         0,
                         "BBC Radio Gloucestershire"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_guernsey&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_guernsey&bitrate=96000",
                         0,
                         "BBC Radio Guernsey"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_humberside&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_humberside&bitrate=96000",
                         0,
                         "BBC Radio Humberside"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_jersey&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_jersey&bitrate=96000",
                         0,
                         "BBC Radio Jersey"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_kent&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_kent&bitrate=96000",
                         0,
                         "BBC Radio Kent"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_lancashire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_lancashire&bitrate=96000",
                         0,
                         "BBC Radio Lancashire"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_leeds&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_leeds&bitrate=96000",
                         0,
                         "BBC Radio Leeds"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_leicester&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_leicester&bitrate=96000",
                         0,
                         "BBC Radio Leicester"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_lincolnshire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_lincolnshire&bitrate=96000",
                         0,
                         "BBC Radio Lincolnshire"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_london&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_london&bitrate=96000",
                         0,
                         "BBC Radio London"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_manchester&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_manchester&bitrate=96000",
                         0,
                         "BBC Radio Manchester"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_merseyside&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_merseyside&bitrate=96000",
                         0,
                         "BBC Radio Merseyside"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_nan_gaidheal&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_nan_gaidheal&bitrate=96000",
                         0,
                         "BBC Radio nan G\u00e0idheal"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_newcastle&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_newcastle&bitrate=96000",
                         0,
                         "BBC Radio Newcastle"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_norfolk&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_norfolk&bitrate=96000",
                         0,
                         "BBC Radio Norfolk"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_northampton&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_northampton&bitrate=96000",
                         0,
                         "BBC Radio Northampton"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_nottingham&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_nottingham&bitrate=96000",
                         0,
                         "BBC Radio Nottingham"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_orkney&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_orkney&bitrate=96000",
                         0,
                         "BBC Radio Orkney"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_oxford&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_oxford&bitrate=96000",
                         0,
                         "BBC Radio Oxford"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_scotland_fm&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_scotland_fm&bitrate=96000",
                         0,
                         "BBC Radio Scotland FM"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_scotland_mw&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_scotland_mw&bitrate=96000",
                         0,
                         "BBC Radio Scotland MW"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_sheffield&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_sheffield&bitrate=96000",
                         0,
                         "BBC Radio Sheffield"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_shropshire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_shropshire&bitrate=96000",
                         0,
                         "BBC Radio Shropshire"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_solent&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_solent&bitrate=96000",
                         0,
                         "BBC Radio Solent"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_solent_west_dorset&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_solent_west_dorset&bitrate=96000",
                         0,
                         "BBC Radio Solent West Dorset"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_somerset_sound&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_somerset_sound&bitrate=96000",
                         0,
                         "BBC Radio Somerset Sound"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_stoke&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_stoke&bitrate=96000",
                         0,
                         "BBC Radio Stoke"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_suffolk&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_suffolk&bitrate=96000",
                         0,
                         "BBC Radio Suffolk"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_surrey&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_surrey&bitrate=96000",
                         0,
                         "BBC Radio Surrey"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_sussex&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_sussex&bitrate=96000",
                         0,
                         "BBC Radio Sussex"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_tees&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_tees&bitrate=96000",
                         0,
                         "BBC Radio Tees"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_ulster&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_ulster&bitrate=96000",
                         0,
                         "BBC Radio Ulster"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_wales_fm&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_wales_fm&bitrate=96000",
                         0,
                         "BBC Radio Wales"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_wiltshire&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_wiltshire&bitrate=96000",
                         0,
                         "BBC Radio Wiltshire"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_wm&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_wm&bitrate=96000",
                         0,
                         "BBC Radio WM"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_radio_york&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_york&bitrate=96000",
                         0,
                         "BBC Radio York"
                     ],
                     [
-                        "http://lstn.lv/bbcradio.m3u8?station=bbc_three_counties_radio&bitrate=96000",
+                        "http://lsn.lv/bbcradio.m3u8?station=bbc_three_counties_radio&bitrate=96000",
                         0,
                         "BBC Three Counties Radio"
                     ]
