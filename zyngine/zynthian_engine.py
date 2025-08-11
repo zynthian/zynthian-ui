@@ -440,7 +440,7 @@ class zynthian_engine(zynthian_basic_engine):
             walk[1].sort()
             for dir in walk[1]:
                 dpath = walk[0] + "/" + dir
-                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion):
+                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion + 1):
                     title = dir_marker + dir
                     sres.append([dpath, None, title, None, dir])
 
