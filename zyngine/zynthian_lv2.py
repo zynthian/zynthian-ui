@@ -468,7 +468,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
             'ENABLED': is_engine_enabled(key, False),
             'INDEX': engine_index,
             'URL': engine_uri,
-            'UI': is_plugin_ui(plugin),
+            'UI': get_plugin_ui(plugin),
             'DESCR': engine_descr,
             "QUALITY": engine_quality,
             "COMPLEX": engine_complex,
@@ -508,7 +508,7 @@ def get_engines_by_type():
 # ------------------------------------------------------------------------------
 
 
-def is_plugin_ui(plugin):
+def get_plugin_ui(plugin):
     for uri in plugin.get_data_uris():
         try:
             with open(urllib.parse.unquote(str(uri)[7:])) as f:
@@ -664,7 +664,7 @@ def _generate_plugin_presets_cache(plugin):
 
         label = world.get(preset, world.ns.rdfs.label, None)
         if label is None:
-            label = preset.split('#')[-1]
+            label = str(preset).split('#')[-1]
             logging.debug(f"Preset <{preset}> has no label! Using '{label}'")
         else:
             label = str(label)
