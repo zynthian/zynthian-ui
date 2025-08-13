@@ -716,8 +716,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                     continue
                 duration = int(duration * ticks_per_step)
                 velocity = self.zynseq.libseq.getNoteVelocity(step, note)
-                zynsmf.libsmf.addNote(
-                    smf, 0, time, duration, self.channel, note, velocity)
+                zynsmf.libsmf.addNote(smf, 0, time, duration, self.channel, note, velocity)
         zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.n_steps * ticks_per_step))
         zynsmf.save(smf, "{}/{}.mid".format(self.my_captures_dpath, fname))
 

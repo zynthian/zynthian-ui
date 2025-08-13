@@ -93,6 +93,7 @@ class zynthian_controller:
         self.display_priority = 0  # Hint of order in which to display control (higher comes first)
 
         self.is_dirty = True  # True if control value changed since last UI update
+        self.ignore_engine_fb_ts = None  # Ignore next feedback value from the engine until this timestamp is over
 
         # Parameters to send values if engine-specific send method not available
         self.midi_chan = None  # MIDI channel to send CC messages from control
@@ -328,6 +329,21 @@ class zynthian_controller:
         if flag != self.readonly:
             self.readonly = flag
             self.is_dirty = True
+
+    def set_ignore_engine_fb(self, timeout=2.0):
+        # Ignore FB from engine for 2.0 seconds
+        self.ignore_engine_fb_ts = monotonic() + timeout
+
+    def get_ignore_engine_fb(self):
+        if self.ignore_engine_fb_ts:
+            if self.ignore_engine_fb_ts > monotonic():
+                self.ignore_engine_fb_ts = None
+                return True
+            else:
+                self.ignore_engine_fb_ts = None
+                return False
+        else:
+            return False
 
     def get_path(self):
         if self.osc_path:
