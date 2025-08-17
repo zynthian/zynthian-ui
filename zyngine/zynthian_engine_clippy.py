@@ -661,7 +661,7 @@ class zynthian_engine_clippy(zynthian_engine):
     # Preset Management
     # ---------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         return []
     #    return self._get_preset_list(bank)
 

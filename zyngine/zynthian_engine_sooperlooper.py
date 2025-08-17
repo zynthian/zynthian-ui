@@ -500,7 +500,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
-	def get_preset_list(self, bank):
+	def get_preset_list(self, bank, processor=None):
 		presets = self.get_filelist(f"{self.data_dir}/presets/sooperlooper", "slsess")
 		presets += self.get_filelist(f"{self.my_data_dir}/presets/sooperlooper", "slsess")
 		return presets

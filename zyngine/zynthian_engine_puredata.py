@@ -208,7 +208,7 @@ class zynthian_engine_puredata(zynthian_engine):
     # Preset Managament
     # ----------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         return self.get_dirlist(bank[0])
 
     def set_preset(self, processor, preset, preload=False):

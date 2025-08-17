@@ -779,7 +779,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
         else:
             return preset_name
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         # [uri/uid, pt bank, display name,zyn bank (pt instr)]
         presets = []
         result = self.get_presets(bank[2])

@@ -231,7 +231,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
                 preset_list.append([preset_fpath, [bank_msb, bank_lsb, prg], title, ext, f])
         return preset_list
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         return self._get_preset_list(bank)
 
     def set_preset(self, processor, preset, preload=False):

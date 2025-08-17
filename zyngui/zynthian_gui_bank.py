@@ -74,6 +74,14 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
             return True
         return False
 
+    def browse_back(self):
+        if self.processor and self.processor.bank_subdir_info:
+            self.index = self.processor.bank_subdir_info[1]
+            self.processor.bank_subdir_info = self.processor.bank_subdir_info[3]
+            self.update_list()
+            return True
+        return False
+
     def select_action(self, i, t='S'):
         if self.list_data and self.list_data[i][0] == '*FAVS*':
             self.processor.set_show_fav_presets(True)

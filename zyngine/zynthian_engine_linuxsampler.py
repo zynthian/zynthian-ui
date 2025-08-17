@@ -306,7 +306,7 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
         preset_list.sort(key=lambda x: x[2].casefold())
         return preset_list
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         return self._get_preset_list(bank)
 
     def set_preset(self, processor, preset, preload=False):

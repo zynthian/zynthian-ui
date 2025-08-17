@@ -512,15 +512,14 @@ class zynthian_engine(zynthian_basic_engine):
         return self.get_bank_dirlist()
 
     def set_bank(self, processor, bank):
-        self.state_manager.zynmidi.set_midi_bank_msb(
-            processor.get_midi_chan(), bank[1])
+        self.state_manager.zynmidi.set_midi_bank_msb(processor.get_midi_chan(), bank[1])
         return True
 
     # ---------------------------------------------------------------------------
     # Preset Management
     # ---------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
     def set_preset(self, processor, preset, preload=False):

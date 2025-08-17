@@ -202,7 +202,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
             bank_dpath = processor.bank_subdir_info[0]
             if bank_dpath and os.path.isdir(bank_dpath):
                 logging.debug(f"BANK SUBDIR => {bank_dpath}")
-                return self.get_filelist(bank_dpath, self.preset_fexts, include_dirs=False, exclude_empty_dirs=True)
+                return self.get_filelist(bank_dpath, self.preset_fexts, include_dirs=True, exclude_empty_dirs=True)
 
         return self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
                                       internal_include_empty=False, dirs_only=False)
@@ -210,8 +210,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
     def set_bank(self, processor, bank):
         if os.path.isdir(bank[0]):
+            if processor.bank_subdir_info:
+                back_subdir_info = processor.bank_subdir_info
+            else:
+                back_subdir_info = None
             processor.bank_subdir_info = copy.copy(bank)
             processor.bank_subdir_info[1] = processor.bank_index
+            processor.bank_subdir_info[3] = back_subdir_info
             return None
         elif self.load_bank(bank[0]):
             processor.refresh_controllers()
@@ -251,7 +256,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
     # Preset Management
     # ---------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         logging.info("Getting Preset List for {}".format(bank[2]))
         preset_list = []
         try:

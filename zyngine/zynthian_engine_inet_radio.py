@@ -762,7 +762,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
     # Preset Management
     # ---------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         presets = []
         for preset in self.presets[bank[0]]:
             presets.append(preset)

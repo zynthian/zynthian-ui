@@ -121,7 +121,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
     # Preset Managament
     # ----------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         return [("", None, "", None)]
 
     def set_preset(self, processor, preset, preload=False):

@@ -236,7 +236,7 @@ class zynthian_engine_midi_control(zynthian_engine):
 	# Preset Managament
 	# ----------------------------------------------------------------------------
 
-	def get_preset_list(self, bank):
+	def get_preset_list(self, bank, processor=None):
 		preset_list = []
 		preset_list.append([-1, None, "None", None, "None"])
 		for i in range(128):

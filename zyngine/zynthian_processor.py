@@ -82,6 +82,7 @@ class zynthian_processor:
         self.preset_index = 0
         self.preset_name = None
         self.preset_info = None
+        self.preset_subdir_info = None
         self.preset_bank_index = None
         self.preset_loaded = None
 
@@ -320,7 +321,7 @@ class zynthian_processor:
             for v in self.get_preset_favs().values():
                 preset_list.append(v[1])
         elif self.bank_info:
-            for preset in self.engine.get_preset_list(self.bank_info):
+            for preset in self.engine.get_preset_list(self.bank_info, self):
                 if self.engine.is_preset_fav(preset):
                     preset[2] = "❤" + preset[2]
                 preset_list.append(preset)
@@ -336,7 +337,6 @@ class zynthian_processor:
         self.preset_index = 0
         self.preset_name = None
         self.preset_info = None
-
 
     def set_preset(self, preset_index, set_engine=True, force_set_engine=True):
         """Set the processor's engine preset
@@ -724,6 +724,7 @@ class zynthian_processor:
             "bank_info": self.bank_info,
             "bank_subdir_info": self.bank_subdir_info,
             "preset_info": self.preset_info,
+            "preset_subdir_info": self.preset_subdir_info,
             "show_fav_presets": self.show_fav_presets,  # TODO: GUI
             "controllers": {},
             "current_screen_index": self.current_screen_index  # TODO: GUI
@@ -741,6 +742,9 @@ class zynthian_processor:
 
         if "bank_subdir_info" in state and state["bank_subdir_info"]:
             self.bank_subdir_info = state["bank_subdir_info"]
+        if "preset_subdir_info" in state and state["preset_subdir_info"]:
+            self.preset_subdir_info = state["preset_subdir_info"]
+
         try:
             self.get_bank_list()
         except:
@@ -841,7 +845,7 @@ class zynthian_processor:
         # TODO: UI
         path = self.get_basepath()
         if self.bank_name and self.bank_name != "None" and not path.endswith(self.bank_name):
-            path += " > " + self.bank_name
+            path += " > " + self.bank_name.replace("> ", "")
         return path
 
     def get_presetpath(self):
@@ -858,7 +862,7 @@ class zynthian_processor:
         elif self.preset_name:
             subpath = self.preset_name
         if subpath:
-            path += " > " + subpath
+            path += " > " + subpath.replace("> ", "")
         return path
 
 # -----------------------------------------------------------------------------

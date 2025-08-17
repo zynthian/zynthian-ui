@@ -537,7 +537,7 @@ class zynthian_engine_aeolus(zynthian_engine):
     # Preset Managament
     # ----------------------------------------------------------------------------
 
-    def get_preset_list(self, bank_info):
+    def get_preset_list(self, bank_info, processor=None):
         res = []
         for index, preset_name in enumerate(self.presets):
             res.append([preset_name, bank_info[0], preset_name, index])

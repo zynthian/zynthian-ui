@@ -524,7 +524,7 @@ class zynthian_engine_setbfree(zynthian_engine):
     # Preset Managament
     # ----------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         logging.debug(f"Preset List for Bank {bank[0]}")
         return self.load_program_list(bank[0])
 
