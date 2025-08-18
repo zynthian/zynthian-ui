@@ -70,6 +70,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         if self.processor and self.processor.bank_subdir_info:
             self.index = self.processor.bank_subdir_info[1]
             self.processor.bank_subdir_info = None
+            self.set_select_path()
             self.update_list()
             return True
         return False
@@ -78,6 +79,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         if self.processor and self.processor.bank_subdir_info:
             self.index = self.processor.bank_subdir_info[1]
             self.processor.bank_subdir_info = self.processor.bank_subdir_info[3]
+            self.set_select_path()
             self.update_list()
             return True
         return False
@@ -88,6 +90,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         else:
             if self.processor.set_bank(i) is None:
                 # More setup stages to progress
+                self.set_select_path()
                 self.build_view()
                 return
             self.processor.set_show_fav_presets(False)
@@ -180,6 +183,6 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
 
     def set_select_path(self):
         if self.processor:
-            self.select_path.set(self.processor.get_basepath())
+            self.select_path.set(self.processor.get_basepath_subdir())
 
 # -------------------------------------------------------------------------------

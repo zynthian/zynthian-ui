@@ -201,7 +201,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         if processor.bank_subdir_info:
             bank_dpath = processor.bank_subdir_info[0]
             if bank_dpath and os.path.isdir(bank_dpath):
-                logging.debug(f"BANK SUBDIR => {bank_dpath}")
+                logging.debug(f"BANK SUBDIR => {bank_dpath} ({processor.bank_subdir_info[2]})")
                 return self.get_filelist(bank_dpath, self.preset_fexts, include_dirs=True, exclude_empty_dirs=True)
 
         return self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
@@ -217,6 +217,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
             processor.bank_subdir_info = copy.copy(bank)
             processor.bank_subdir_info[1] = processor.bank_index
             processor.bank_subdir_info[3] = back_subdir_info
+            processor.bank_index = 0
+            processor.bank_name = None
+            processor.bank_info = None
             return None
         elif self.load_bank(bank[0]):
             processor.refresh_controllers()

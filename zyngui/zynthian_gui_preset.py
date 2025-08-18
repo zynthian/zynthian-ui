@@ -64,6 +64,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if self.processor and self.processor.preset_subdir_info:
             self.index = self.processor.preset_subdir_info[1]
             self.processor.preset_subdir_info = None
+            self.set_select_path()
             self.update_list()
             return True
         return False
@@ -72,6 +73,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if self.processor and self.processor.preset_subdir_info:
             self.index = self.processor.preset_subdir_info[1]
             self.processor.preset_subdir_info = self.processor.preset_subdir_info[3]
+            self.set_select_path()
             self.update_list()
             return True
         return False
@@ -105,6 +107,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
                 self.zyngui.purge_screen_history("bank")
                 self.zyngui.replace_screen("control")
             else:
+                self.set_select_path()
                 self.update_list()
 
     def show_preset_options(self):

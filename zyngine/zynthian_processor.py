@@ -430,6 +430,7 @@ class zynthian_processor:
         """
 
         for i in range(len(self.preset_list)):
+            logging.debug(f"{preset_id} == {self.preset_list[i][0]}")
             if preset_id == self.preset_list[i][0]:
                 return self.set_preset(i, set_engine, force_set_engine)
         return False
@@ -483,7 +484,7 @@ class zynthian_processor:
     def get_preset_bank_name(self):
         """Get current preset's bank name"""
         try:
-            return self.bank_list[self.preset_bank_index][2]
+            return self.bank_list[self.preset_bank_index][2].replace("> ", "")
         except:
             return None
 
@@ -742,9 +743,6 @@ class zynthian_processor:
 
         if "bank_subdir_info" in state and state["bank_subdir_info"]:
             self.bank_subdir_info = state["bank_subdir_info"]
-        if "preset_subdir_info" in state and state["preset_subdir_info"]:
-            self.preset_subdir_info = state["preset_subdir_info"]
-
         try:
             self.get_bank_list()
         except:
@@ -754,6 +752,10 @@ class zynthian_processor:
                 self.set_bank_by_info(state["bank_info"])
             except:
                 logging.exception(traceback.format_exc())
+
+        if "preset_subdir_info" in state and state["preset_subdir_info"]:
+            self.preset_subdir_info = state["preset_subdir_info"]
+            logging.debug(f"PRESET SUBDIR => {self.preset_subdir_info}")
         try:
             self.load_preset_list()
         except:
@@ -814,7 +816,6 @@ class zynthian_processor:
     def get_path(self):
         """Get path (breadcrumb) string"""
 
-        # TODO: UI
         if self.preset_name:
             bank_name = self.get_preset_bank_name()
             if not bank_name:
@@ -826,7 +827,6 @@ class zynthian_processor:
 
     def get_basepath(self):
         """Get base path string"""
-        # TODO: UI
 
         if self.engine:
             path = self.engine.get_path(self)
@@ -839,30 +839,81 @@ class zynthian_processor:
                 path = f"ALL#{path}"
         return path
 
+    def get_basepath_subdir(self):
+        """Get base bank path string"""
+
+        path = self.get_basepath()
+        # Get bank subdir path
+        if self.bank_subdir_info:
+            subpath = self.bank_subdir_info[2].replace("> ", "")
+            sdi = self.bank_subdir_info[3]
+            while sdi:
+                subpath = sdi[2].replace("> ", "") + "/" + subpath
+                sdi = sdi[3]
+            path += " > " + subpath
+        return path
+
     def get_bankpath(self):
         """Get bank path string"""
 
-        # TODO: UI
         path = self.get_basepath()
-        if self.bank_name and self.bank_name != "None" and not path.endswith(self.bank_name):
-            path += " > " + self.bank_name.replace("> ", "")
+        subpath = self.get_subdir_path()
+        if subpath:
+            path += " > " + subpath
         return path
 
     def get_presetpath(self):
         """Get preset path string"""
 
-        # TODO: UI
         path = self.get_basepath()
-        subpath = None
-        bank_name = self.get_preset_bank_name()
-        if bank_name and bank_name != "None" and not path.endswith(bank_name):
-            subpath = bank_name
-            if self.preset_name:
-                subpath += "/" + self.preset_name
-        elif self.preset_name:
-            subpath = self.preset_name
+        subpath = self.get_subdir_path()
+        if self.preset_name:
+            preset_name = self.preset_name.replace("> ", "")
+            if subpath:
+                subpath += "/" + preset_name
+            else:
+                subpath = preset_name
         if subpath:
-            path += " > " + subpath.replace("> ", "")
+            path += " > " + subpath
         return path
 
-# -----------------------------------------------------------------------------
+    def get_bank_subdir_path(self):
+        if self.bank_subdir_info:
+            subpath = self.bank_subdir_info[2].replace("> ", "")
+            sdi = self.bank_subdir_info[3]
+            while sdi:
+                subpath = sdi[2].replace("> ", "") + "/" + subpath
+                sdi = sdi[3]
+        else:
+            subpath = ""
+        return subpath
+
+    def get_preset_subdir_path(self):
+        if self.preset_subdir_info:
+            subpath = self.preset_subdir_info[2].replace("> ", "")
+            sdi = self.preset_subdir_info[3]
+            while sdi:
+                subpath = sdi[2].replace("> ", "") + "/" + subpath
+                sdi = sdi[3]
+        else:
+            subpath = ""
+        return subpath
+
+    def get_subdir_path(self):
+        subdir_path = self.get_bank_subdir_path()
+        if self.bank_name:
+            bank_name = self.bank_name.replace("> ", "")
+            if bank_name != "None" and not subdir_path.endswith(bank_name):
+                if subdir_path:
+                    subdir_path += "/" + bank_name
+                else:
+                    subdir_path = bank_name
+        preset_subdir_path = self.get_preset_subdir_path()
+        if preset_subdir_path:
+            if subdir_path:
+                subdir_path += "/" + preset_subdir_path
+            else:
+                subdir_path = preset_subdir_path
+        return subdir_path
+
+        # -----------------------------------------------------------------------------

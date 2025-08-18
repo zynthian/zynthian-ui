@@ -224,6 +224,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             else:
                 back_subdir_info = None
             processor.preset_subdir_info = copy.copy(preset)
+            processor.preset_subdir_info[1] = processor.preset_index
             processor.preset_subdir_info[3] = back_subdir_info
             processor.preset_index = 0
             processor.preset_name = None

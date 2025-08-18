@@ -1637,6 +1637,7 @@ class zynthian_state_manager:
                 "bank_info": processor.bank_info,
                 "bank_subdir_info": processor.bank_subdir_info,
                 "preset_info": processor.preset_info,
+                "preset_subdir_info": processor.preset_subdir_info,
                 "controllers": {}
             }
             # Add controllers
