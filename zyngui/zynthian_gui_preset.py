@@ -102,13 +102,14 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             # Stop animation and restore icon canvas
             self.loading_canvas.grid_remove()
             self.icon_canvas.grid()
-            # If success => open control screen
-            if result:
-                self.zyngui.purge_screen_history("bank")
-                self.zyngui.replace_screen("control")
-            else:
+            # If result is None (still browsing) => refresh preset list
+            if result is None:
                 self.set_select_path()
                 self.update_list()
+            # If success or already loaded => open control screen
+            else:
+                self.zyngui.purge_screen_history("bank")
+                self.zyngui.replace_screen("control")
 
     def show_preset_options(self):
         options = {}

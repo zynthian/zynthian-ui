@@ -341,17 +341,23 @@ class zynthian_processor:
     def set_preset(self, preset_index, set_engine=True, force_set_engine=True):
         """Set the processor's engine preset
 
-        preset_index : Index of preset
+        preset_index : Index of preset or preset_info
         set_engine : True to set the engine preset???
         force_set_engine : True to force engine set???
         Returns : True on success
         """
 
-        if not isinstance(preset_index, int) or preset_index >= len(self.preset_list):
+        if isinstance(preset_index, int) and preset_index < len(self.preset_list):
+            preset_id = str(self.preset_list[preset_index][0])
+            preset_name = self.preset_list[preset_index][2]
+            preset_info = copy.deepcopy(self.preset_list[preset_index])
+        elif isinstance(preset_index, list):
+            preset_info = copy.deepcopy(preset_index)
+            preset_id = preset_info[0]
+            preset_name = preset_info[2]
+            preset_index = None
+        else:
             return False
-        preset_id = str(self.preset_list[preset_index][0])
-        preset_name = self.preset_list[preset_index][2]
-        preset_info = copy.deepcopy(self.preset_list[preset_index])
 
         if not preset_name:
             return False
@@ -378,7 +384,8 @@ class zynthian_processor:
             set_engine_needed = True
             logging.info(f"Preset selected: {preset_name} ({preset_index})")
 
-        self.preset_index = preset_index
+        if preset_index is not None:
+            self.preset_index = preset_index
         self.preset_name = preset_name
         self.preset_info = preset_info
         self.preset_bank_index = self.bank_index
@@ -396,6 +403,9 @@ class zynthian_processor:
                 return False
 
         return True
+
+    def set_preset_by_info(self, preset_info, set_engine=True, force_set_engine=True):
+        return self.set_preset(preset_info, set_engine, force_set_engine)
 
     def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by name
@@ -764,10 +774,9 @@ class zynthian_processor:
         # Set preset
         if "preset_info" in state:
             try:
-                res = self.set_preset_by_id(state["preset_info"][0], force_set_engine=False)
-            except:
-                # Legacy snapshots without preset_info
                 res = self.set_preset(state["preset_info"], force_set_engine=False)
+            except:
+                logging.exception(traceback.format_exc())
         else:
             res = False
 
