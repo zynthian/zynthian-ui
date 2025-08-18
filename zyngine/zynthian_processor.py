@@ -780,6 +780,7 @@ class zynthian_processor:
         else:
             res = False
 
+        # Set controller values
         if "controllers" in state:
             # Flag controllers to avoid collisions from preset feedback values
             # It should be do it before setting the preset, but i need to know if preset has been changed,
