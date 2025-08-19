@@ -833,7 +833,7 @@ class zynthian_gui_base(tkinter.Frame):
             if self.dscroll_select_path():
                 zynthian_gui_config.top.after(1000, self.cb_scroll_select_path)
                 return
-        zynthian_gui_config.top.after(100, self.cb_scroll_select_path)
+        zynthian_gui_config.top.after(50, self.cb_scroll_select_path)
 
     def dscroll_select_path(self):
         if self.shown:
