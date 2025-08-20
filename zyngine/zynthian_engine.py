@@ -387,51 +387,26 @@ class zynthian_engine(zynthian_basic_engine):
     # Get dir & file list
     @classmethod
     def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False):
-        res = []
-
         if not dirs_only:
             dir_marker = "> "
         else:
             dir_marker = ""
 
-        # External storage banks
+        # Don't overwrite original root_dirs variable!
+        root_dirs = copy.copy(root_dirs)
+        # Add source marker (SD)
+        for i, rd in enumerate(root_dirs):
+            root_dirs[i] = ("SD> " + rd[0], rd[1])
+        # Add external storage to root_dirs
         for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
             if not os.path.isdir(exd):
                 continue
-            sres = []
-            # Add root directory in external storage
-            if not exclude_empty or cls.find_some_preset_file(exd, fexts, 0):
-                sres.append([exd, None, "/", None, "/"])
-            # Walk directories inside root
-            walk = next(os.walk(exd))
-            walk[1].sort()
-            for root_dir in walk[1]:
-                root_path = walk[0] + "/" + root_dir
-                if not exclude_empty or cls.find_some_preset_file(root_path, fexts, recursion + 1):
-                    walk = next(os.walk(root_path))
-                    walk[1].sort()
-                    count = 0
-                    for dir in walk[1]:
-                        dpath = walk[0] + "/" + dir
-                        if not exclude_empty or cls.find_some_preset_file(dpath, fexts, recursion):
-                            title = dir_marker + root_dir + "/" + dir
-                            sres.append([dpath, None, title, None, dir])
-                            count += 1
-                    # If there is no banks inside, the root is the bank
-                    if count == 0:
-                        title = dir_marker + root_dir
-                        sres.append([root_path, None, title, None, root_dir])
+            if not exclude_empty or cls.find_some_preset_file(exd, fexts, recursion + 1):
+                title = f"USB> {os.path.basename(exd)}"
+                root_dirs.insert(0, (title, exd))
 
-            # Add files in root dir
-            if not dirs_only:
-                sres += cls.get_filelist(exd, fexts)
-
-            # Add root's header and items
-            if len(sres):
-                res.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
-                res += sres
-
-        # Internal storage
+        # Generate list
+        res = []
         for root_dir in root_dirs:
             if not os.path.isdir(root_dir[1]):
                 continue
@@ -440,7 +415,7 @@ class zynthian_engine(zynthian_basic_engine):
             walk[1].sort()
             for dir in walk[1]:
                 dpath = walk[0] + "/" + dir
-                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion + 1):
+                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion):
                     title = dir_marker + dir
                     sres.append([dpath, None, title, None, dir])
 
@@ -449,7 +424,7 @@ class zynthian_engine(zynthian_basic_engine):
                 sres += cls.get_filelist(root_dir[1], fexts)
 
             if len(sres):
-                res.append([None, None, "SD> " + root_dir[0], None, None])
+                res.append([None, None, root_dir[0], None, None])
                 res += sres
 
         return res

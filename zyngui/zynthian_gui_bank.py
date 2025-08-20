@@ -72,6 +72,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
             self.processor.bank_subdir_info = None
             self.set_select_path()
             self.update_list()
+            self.select_listbox(self.index)
             return True
         return False
 
@@ -81,6 +82,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
             self.processor.bank_subdir_info = self.processor.bank_subdir_info[3]
             self.set_select_path()
             self.update_list()
+            self.select_listbox(self.index)
             return True
         return False
 

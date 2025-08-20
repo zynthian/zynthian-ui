@@ -66,6 +66,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             self.processor.preset_subdir_info = None
             self.set_select_path()
             self.update_list()
+            self.select_listbox(self.index)
             return True
         return False
 
@@ -75,6 +76,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             self.processor.preset_subdir_info = self.processor.preset_subdir_info[3]
             self.set_select_path()
             self.update_list()
+            self.select_listbox(self.index)
             return True
         return False
 
