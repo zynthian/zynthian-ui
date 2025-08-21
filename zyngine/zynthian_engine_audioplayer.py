@@ -176,7 +176,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
     def delete_user_bank(self, bank):
         if self.is_preset_user(bank):
-            shutil.rmtree(bank[0])
+            if os.path.isdir(bank[0]):
+                shutil.rmtree(bank[0])
+            else:
+                os.remove(bank[0])
 
     # ---------------------------------------------------------------------------
     # Preset Management
@@ -413,9 +416,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
             latest_fpath = max(wav_fpaths, key=os.path.getctime)
             bank_fpath = os.path.dirname(latest_fpath)
             processor.get_bank_list()
-            processor.set_bank_by_id(bank_fpath)
-            processor.load_preset_list()
-            processor.set_preset_by_id(latest_fpath)
+            if processor.set_bank_by_id(bank_fpath):
+                processor.load_preset_list()
+                processor.set_preset_by_id(latest_fpath)
+            else:
+                parts = os.path.split(latest_fpath)
+                parts = os.path.splitext(parts[1])
+                title = str.replace(parts[0], '_', ' ')
+                processor.set_preset([latest_fpath, None, title, None, bank_fpath])
         self.processor = processor
 
     # ----------------------------------------------------------------------------
