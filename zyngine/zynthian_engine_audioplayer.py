@@ -160,8 +160,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
     def set_bank(self, processor, bank):
         if os.path.isdir(bank[0]):
             return True
-        else:
-            return False
+        elif os.path.isfile(bank[0]):
+            processor.bank_index = 0
+            processor.bank_name = None
+            processor.bank_info = None
+            processor.set_preset(bank)
+            return True
 
     def create_user_bank(self, bank_name):
         base_path = self.root_bank_dirs[0][1]
