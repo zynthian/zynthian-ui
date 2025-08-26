@@ -56,16 +56,23 @@ class zynthian_audio_recorder:
 
     def get_new_filename(self):
         exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+        filename = None
         if exdirs:
-            path = exdirs[0]
-            filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        else:
+            for path in exdirs:
+                if not self.check_mount_readonly(path):
+                    filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+                    break
+        if not filename:
             path = self.capture_dir_sdc
             filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         if self.state_manager.last_snapshot_fpath and len(self.state_manager.last_snapshot_fpath) > 4:
             filename += "_" + os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
         filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
         return "{}/{}.wav".format(path, filename)
+
+    def check_mount_readonly(self, path):
+        stat = os.statvfs(path)
+        return bool(stat.f_flag & os.ST_RDONLY)
 
     def arm(self, channel):
         self.armed.add(channel)
