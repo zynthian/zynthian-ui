@@ -54,26 +54,6 @@ class zynthian_audio_recorder:
         self.state_manager = state_manager
         self.filename = None
 
-    def get_new_filename(self):
-        exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-        filename = None
-        if exdirs:
-            for path in exdirs:
-                if not self.check_mount_readonly(path):
-                    filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-                    break
-        if not filename:
-            path = self.capture_dir_sdc
-            filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        if self.state_manager.last_snapshot_fpath and len(self.state_manager.last_snapshot_fpath) > 4:
-            filename += "_" + os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
-        filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
-        return "{}/{}.wav".format(path, filename)
-
-    def check_mount_readonly(self, path):
-        stat = os.statvfs(path)
-        return bool(stat.f_flag & os.ST_RDONLY)
-
     def arm(self, channel):
         self.armed.add(channel)
         zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_ARM, chan=channel, value=True)
@@ -112,7 +92,7 @@ class zynthian_audio_recorder:
             cmd.append("--port")
             cmd.append("zynmixer:output_17b")
 
-        self.filename = self.get_new_filename()
+        self.filename = self.state_manager.get_new_capture_fpath("wav")
         cmd.append(self.filename)
 
         logging.info(f"STARTING NEW AUDIO RECORD '{self.filename}'...")

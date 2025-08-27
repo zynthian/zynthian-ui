@@ -2187,23 +2187,26 @@ class zynthian_state_manager:
     # Global MIDI Player
     # ---------------------------------------------------------------------------
 
-    def get_new_midi_record_fpath(self):
+    def get_new_capture_fpath(self, ext="mid"):
         exdirs = zynthian_gui_config.get_external_storage_dirs(ex_data_dir)
+        path = None
+        filename = None
         if exdirs:
-            path = exdirs[0]
-        else:
+            for path in exdirs:
+                if not self.check_mount_readonly(path):
+                    filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+                    break
+        if not filename:
             path = capture_dir_sdc
-        filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+            filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         if self.last_snapshot_fpath and len(self.last_snapshot_fpath) > 4:
             filename += "_" + os.path.basename(self.last_snapshot_fpath[:-4])
+        filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
+        return f"{path}/{filename}.{ext}"
 
-        filename = filename.replace(
-            "/", ";").replace(">", ";").replace(" ; ", ";")
-        # Append index to file to make unique
-        index = 1
-        while "{}.{:03d}.mid".format(filename, index) in os.listdir(path):
-            index += 1
-        return "{}/{}.{:03d}.mid".format(path, filename, index)
+    def check_mount_readonly(self, path):
+        stat = os.statvfs(path)
+        return bool(stat.f_flag & os.ST_RDONLY)
 
     def start_midi_record(self):
         if not libsmf.isRecording():
@@ -2220,7 +2223,7 @@ class zynthian_state_manager:
             logging.info("STOPPING MIDI RECORDING ...")
             libsmf.stopRecording()
 
-            fpath = self.get_new_midi_record_fpath()
+            fpath = self.get_new_capture_fpath("mid")
             if zynsmf.save(self.smf_recorder, fpath):
                 self.sync = True
                 self.last_midi_file = fpath
