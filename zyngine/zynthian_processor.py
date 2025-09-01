@@ -355,7 +355,7 @@ class zynthian_processor:
             preset_info = copy.deepcopy(preset_index)
             preset_id = preset_info[0]
             preset_name = preset_info[2]
-            preset_index = None
+            preset_index = self.find_preset_index_by_id(preset_id)
         else:
             return False
 
@@ -429,21 +429,33 @@ class zynthian_processor:
 
         return False
 
-    # TODO Optimize search!!
     def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by ID
 
         preset_id : ID of preset to select
         set_engine : True to set engine's preset???
         force_set_engine : True to force setting engine's preset???
+        """
+
+        index = self.find_preset_index_by_id(preset_id)
+        if index is not None:
+            return self.set_preset(index, set_engine, force_set_engine)
+        else:
+            return False
+
+    # TODO Optimize search!!
+    def find_preset_index_by_id(self, preset_id):
+        """Returns preset index by ID
+
+        preset_id : ID of preset to select
         TODO: Optimize search!!
         """
 
         for i in range(len(self.preset_list)):
-            logging.debug(f"{preset_id} == {self.preset_list[i][0]}")
+            #logging.debug(f"{preset_id} == {self.preset_list[i][0]}")
             if preset_id == self.preset_list[i][0]:
-                return self.set_preset(i, set_engine, force_set_engine)
-        return False
+                return i
+        return None
 
     def preload_preset(self, preset_index):
         """Preload processor's engine preset by index

@@ -105,6 +105,8 @@ class zynthian_engine_jalv(zynthian_engine):
         # "Helm": "helm"
     }
 
+    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia"]
+
     # ---------------------------------------------------------------------------
     # Custom controller pages
     # ---------------------------------------------------------------------------
@@ -459,7 +461,7 @@ class zynthian_engine_jalv(zynthian_engine):
             self.lv2_zctrl_dict["midi_channel"].set_value(processor.midi_chan + 1.5)
         elif self.plugin_name.startswith("SO-"):
             self.lv2_zctrl_dict["channel"].set_value(processor.midi_chan)
-        elif self.plugin_name in ("Osirus", "OsTIrus"):
+        elif self.plugin_name in self.dsp56300_plugins:
             processor.midi_chan_engine = 0
             lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
                                                  processor.midi_chan,
@@ -685,6 +687,16 @@ class zynthian_engine_jalv(zynthian_engine):
         zctrls = {}
         for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
             symbol = info['symbol']
+
+            # Restrict to Channel 1 for DSP56300 plugins
+            if self.plugin_name in self.dsp56300_plugins:
+                parts = info['name'].split(" ")
+                if parts[0] == "Ch":
+                    if parts[1] == "1":
+                        info['name'] = info['name'][5:]
+                    else:
+                        continue
+
             # logging.debug("Controller {} info =>\n{}!".format(symbol, info))
             try:
                 display_priority = info['display_priority']
