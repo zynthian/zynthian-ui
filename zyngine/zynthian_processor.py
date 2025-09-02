@@ -257,7 +257,6 @@ class zynthian_processor:
     def set_bank_by_info(self, bank_info, set_engine=True):
         try:
             self.bank_name = bank_info[2]
-            self.bank_id = bank_info[0]
             self.bank_info = copy.deepcopy(bank_info)
             for i in range(len(self.bank_list)):
                 if self.bank_name == self.bank_list[i][2]:
@@ -892,7 +891,9 @@ class zynthian_processor:
         if self.preset_name:
             preset_name = self.preset_name.replace("> ", "")
             if subpath:
-                subpath += "/" + preset_name
+                # Avoid boring repetition in breadcrumbs
+                if not subpath.endswith(preset_name):
+                    subpath += "/" + preset_name
             else:
                 subpath = preset_name
         if subpath:

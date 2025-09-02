@@ -152,8 +152,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def get_bank_list(self, processor=None):
-        return self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
+        banks = self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
                                       internal_include_empty=False, dirs_only=False)
+        self.presets_add_audio_info(banks)
+        return banks
 
         #return self.get_bank_dirlist(recursion=1, internal_include_empty=True)
 
@@ -161,10 +163,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
         if os.path.isdir(bank[0]):
             return True
         elif os.path.isfile(bank[0]):
-            processor.bank_index = 0
-            processor.bank_name = None
-            processor.bank_info = None
             processor.set_preset(bank)
+            processor.preset_subdir_info = None
             return True
 
     def create_user_bank(self, bank_name):
@@ -200,21 +200,26 @@ class zynthian_engine_audioplayer(zynthian_engine):
         #for ext in self.preset_fexts:
         #    file_presets += self.get_filelist(bank[0], ext)
 
-        if processor and processor.preset_subdir_info:
-            dpath = processor.preset_subdir_info[0]
+        if os.path.isfile(bank[0]):
+            return []
         else:
-            dpath = bank[0]
+            if processor and processor.preset_subdir_info:
+                dpath = processor.preset_subdir_info[0]
+            else:
+                dpath = bank[0]
+            presets = self.get_filelist(dpath, self.preset_fexts, include_dirs=True, exclude_empty_dirs=True)
 
-        presets = self.get_filelist(dpath, self.preset_fexts, include_dirs=True, exclude_empty_dirs=True)
+            self.presets_add_audio_info(presets)
+            return presets
 
+    def presets_add_audio_info(self, presets):
         for preset in presets:
-            if not os.path.isdir(preset[0]):
+            if preset[0] and not os.path.isdir(preset[0]):
                 fparts = os.path.splitext(preset[4])
                 duration = zynaudioplayer.get_file_duration(preset[0])
                 fduration = f"{int(duration/60):02d}:{round(duration)%60:02d}"
                 preset[2] += f"{fparts[1]} ({fduration})"
                 preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", "file_audio.png"])
-        return presets
 
     def preset_exists(self, bank_info, preset_name):
         if not bank_info or bank_info[0] is None:
