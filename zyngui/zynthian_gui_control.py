@@ -429,6 +429,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zgui_controllers[i].enable()
         self.set_select_path()
         self.set_button_status(2, False)
+        self.select()
 
     def previous_page(self, wrap=False):
         i = self.index - 1

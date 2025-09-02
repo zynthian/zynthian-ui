@@ -23,8 +23,6 @@
 #include "track.h"
 #include <map>
 
-#define DEFAULT_TRACK_COUNT 4
-
 /** SequenceManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk)
  * storage. SequenceManager is implemented as a singleton ensuring a single instance is available to all callers.
 */
@@ -79,11 +77,6 @@ class SequenceManager {
     */
     void setPatternModified(Pattern* pPattern);
 
-    /** @brief  Update sequence length
-        @param  sequence Index of sequence
-    */
-    void updateSequenceLength(uint32_t sequence);
-
     /** @brief  Update all sequence lengths
         @note   Blunt tool to update each sequence after any pattern length changes
     */
@@ -94,84 +87,57 @@ class SequenceManager {
         @param  pSchedule Pointer to the schedule to populate with events
         @param  bSync True indicates a sync pulse
         @param  dSamplesPerClock Quantity of samples in each clock cycle
-        @retval size_t Quantity of playing sequences
+        @retval bool True if sequences or scene playing
     */
-    size_t clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync);
+    bool clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync);
 
     /** @brief  Get pointer to sequence
-        @param  sequence Index of sequence
-        @param  create_pattern True to create pattern when creating new sequence
-        @retval Sequence* Pointer to sequence
-        @note   Creates new bank and/or sequence if not existing
+        @param  scene Index of scene
+        @param  sequence Index of sequence within scene or 0xffff to get scene launcher's sequence
+        @retval Sequence* Pointer to sequence or nullptr if not existing
     */
-    Sequence* getSequence(uint32_t sequence, bool create_pattern = false);
-
-    /** @brief  Get follow action for a sequence
-        @param  sequence Index of sequence
-        @retval uint8_t Follow action
-    */
-    uint8_t getFollowAction(uint32_t sequence);
-
-    /** @brief  Get follow action parameter, e.g. next sequence
-        @param  sequence Index of sequence
-        @retval uint32_t Follow action parameter
-    */
-    uint32_t getFollowActionParam(uint32_t sequence);
+    Sequence* getSequence(uint8_t scene, uint8_t sequence);
 
     /** @brief  Add pattern to sequence
-        @param  sequence Index of sequence
+        @param  pSequence Pointer to sequence
         @param  track Index of track
         @param  position Quantity of clock cycles from start of track at which to add pattern
         @param  pattern Index of pattern
         @param  force True to remove overlapping patterns, false to fail if overlapping patterns
         @retval True if pattern inserted
     */
-    bool addPattern(uint32_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force);
+    bool addPattern(Sequence* pSequence, uint32_t track, uint32_t position, uint32_t pattern, bool force=false);
 
     /** @brief  Remove pattern from track
-        @param  sequence Index of sequence
+        @param  pSequence Pointer to sequence
         @param  track Index of track
         @param  position Quantity of clock cycles from start of track from which to remove pattern
     */
-    void removePattern(uint32_t sequence, uint32_t track, uint32_t position);
+    void removePattern(Sequence* pSequence, uint32_t track, uint32_t position);
 
     /** @brief  Set sequence play state
-        @param  sequence Index of sequence
+        @param  pSequence Pointer to sequence
         @param  state Play state
         @note   Stops other sequences in group
     */
-    void setSequencePlayState(uint32_t sequence, uint8_t state);
+    void setPlayState(Sequence* pSequence, uint8_t state);
 
-    /** @brief  Handle change of scene launcher state
-        @param  sequence Index of scene launcher sequence
-        @param  state Scene launcher play state
+    /** @brief  Stop all sequences in group
+        @param  group Group ID
     */
-    void onSceneLauncherState(uint32_t sequence, uint8_t state);
-
-    /** @brief  Move sequence
-        @param  sequence Index of sequence
-        @param  newSeq Index of new sequence
-        @note   Existing sequence with id newSeq will be replace and old sequence will be deleted.
-    */
-    void moveSequence(uint32_t sequence, uint32_t newSeq);
-
-    /** @brief  Swap two sequences within a bank
-        @param  seqence1 Index of first sequence
-        @param  seqence2 Index of second sequence
-    */
-    void swapSequence(uint32_t sequence1, uint32_t sequence2);
+    void stopGroup(uint8_t group);
 
     /** @brief  Get MIDI note number used to trigger sequence
-        @param  offset Index (offset) of sequence within bank
+        @param  sceneSeq Scene and sequence encoded into 32-bit word
         @retval uint8_t MIDI note number [0xFF for none]
     */
-    uint8_t getTriggerNote(uint32_t sequence);
+    uint8_t getTriggerNote(uint32_t sceneSeq);
 
     /** @brief  Set MIDI note number used to trigger sequence
-        @param  offset Index (offset) of sequence within bank
+        @param  sceneSeq Scene and sequence encoded into 32-bit word
         @param  note MIDI note number [0xFF for none]
     */
-    void setTriggerNote(uint32_t sequence, uint8_t note);
+    void setTriggerNote(uint16_t sceneSeq, uint8_t note);
 
     /** @brief  Get MIDI trigger channel
         @retval uint8_t MIDI channel
@@ -195,7 +161,7 @@ class SequenceManager {
 
     /** @brief  Get sequence triggered by MIDI note
         @param  note MIDI note number
-        @retval uint32_t Sequence 0 if not configured
+        @retval uint32_t Scene and sequence encoded into 32-bit word 0xffffffff if not set
     */
     uint32_t getTriggerSequence(uint8_t note);
 
@@ -207,31 +173,6 @@ class SequenceManager {
     /** @brief  Stop all collections / sequences
     */
     void stop();
-
-    /** @brief  Remove all unused empty patterns
-    */
-    void cleanPatterns();
-
-    /** @brief  Get quantity of sequences in a bank
-        @param  bank Index of bank
-    */
-    uint32_t getSequencesInBank(uint8_t bank);
-
-    /** @brief  Remove sequence
-        @param  sequence Index of sequence to remove
-        @note   Sequences within same bank after remove point are moved down by one. Bank grows if sequence is higher than size of bank
-    */
-    void removeSequence(uint32_t sequence);
-
-    /** @brief  Remove all sequences from bank
-        @param  bank Index of bank
-    */
-    void clearBank(uint32_t bank);
-
-    /** @brief  Get quantity of banks
-        @retval uint32_t Quantity of populated banks
-    */
-    uint32_t getBanks();
 
     /** @brief  Check if tempo has changed
         @retval bool True if tempo has changed
@@ -251,49 +192,94 @@ class SequenceManager {
 
     /** @brief  Get current time signature (beats in bar)
         @param  clear True to clear current sig changed flag (default: true)
-        @retval uint16_t Current time signature
+        @retval uint8_t Current time signature
     */
-    uint16_t getTimeSig(bool clear = true);
+    uint8_t getTimeSig(bool clear = true);
 
     /** @brief  Set current time signature (beats in bar)
-        @param  sig Current time signature
+        @param  sig Current time signature (in quarter notes)
     */
     void setTimeSig(uint8_t sig);
 
-    /** @brief  Get playback progress percentage of a group
-        @param  group Index of group
-        @retval uint8_t Progress as a percentage of sequence length
-        @note   Group 16 (scene launchers) is a percentage of the current time signature (beats per bar)
+    /** @brief  Get playback progress percentage
+        @param   uint8_t* Pointer to 17 element array containing progress as a percentage of sequence length
+        @note   Element 16 (scene launchers) is a percentage of the current time signature (beats per bar)
     */
-    uint8_t getProgress(uint8_t group);
+    uint8_t* getProgress();
 
-    /** @brief  Set time signature
-        @param  beats Beats per bar
+    /** @brief  Set MIDI channel type
+        @param  channel MIDI channel
+        @param  type MIDI channel type
     */
-    void setBeatsPerBar(uint8_t beats);
+    void setChannelType(uint8_t channel, uint8_t type);
 
-  private:
+    /** @brief  Get MIDI channel type
+        @param  channel MIDI channel
+        @retval uint8_t MIDI channel type
+    */
+    uint8_t getChannelType(uint8_t channel);
+
+    // Scene handling
+
+    /** @brief  Get quantity of scenes
+        @retval uint8_t Quantity of scenes
+    */
+    uint8_t getNumScenes();
+
+    /** @brief  Add scene
+        @param  scene Index of scene to insert before
+    */
+    void insertScene(uint8_t scene);
+
+    /** @brief  Remove scene
+        @param  scene Index of scene to remove
+    */
+    void removeScene(uint8_t scene);
+
+    /** @brief  Swap position of two scenes
+        @param  scene1 Index of first scene
+        @param  scene2 Index of second scene
+    */
+    void swapScene(uint8_t scene1, uint8_t scene2);
+
+    /** @brief  Set follow action
+        @param  scene Index of scene
+        @param  sequence Index of sequence
+        @param  action Follow action @see FOLLOW_ACTION enum
+        @param  param Optional parameter of action, e.g. offset
+        @retval bool True on success
+    */
+    bool setFollowAction(uint8_t scene, uint8_t sequence, uint8_t action, int16_t param=0);
+
+    /** @brief  Get sequence follow action parameter
+        @param  scene Index of scene
+        @param  sequence Index of sequence
+        @retval uint16_t Follow action parameter
+    */
+    int16_t getFollowActionParam(uint8_t scene, uint8_t sequence);
+
+    private:
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
     int fileWrite8(uint8_t value, FILE* pFile);
     uint32_t fileRead32(FILE* pFile);
     uint16_t fileRead16(FILE* pFile);
     uint8_t fileRead8(FILE* pFile);
-    bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize);
-    void updateFollowAction(uint32_t sequence, uint32_t newSeq);
 
     bool m_bTempoChanged = false;     // True if tempo changed by sequence
     float m_fTempo = DEFAULT_TEMPO;   // Current tempo
     bool m_bTimeSigChanged = false;   // True if time signature changed by sequence
-    uint8_t m_nTimeSig = 4;           // Current time signature
+    uint8_t m_nTimeSig = 4;           // Current time signature in beats (1/4 notes) per bar
     uint8_t m_nTriggerDevice = 0xFF;  // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
     uint8_t m_aGroupProgress[17];     // Array of group playback progress percentage
     uint8_t m_nBeatsPerBar = 4;       // Time signature in beats
+    bool m_bClippy[16];               // Array of flags indicating if clippy is active on each channel
+    uint8_t m_nType[16];              // Array indicating channel type (see CHANNEL_TYPE enum)
+    std::vector<Sequence*> m_vScenes; // Vector of pointers to scene sequences, ordered by scene index
 
     // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
     std::map<uint32_t, Pattern*> m_mPatterns;  // Map of pattern pointers indexed by pattern number
-    std::vector<uint32_t> m_vPlayingSequences; // Vector of <sequence> for currently playing sequences (used to optimise play control)
-    std::map<uint8_t, uint32_t> m_mTriggers;   // Map of sequence indexed by MIDI note triggers
-    std::map<uint32_t, Sequence> m_mSequences; // Map of sequences, indexed by sequence number.
+    std::vector<Sequence*> m_vPlayingSequences; // Vector of pointers to currently playing sequences (used to optimise play control)
+    std::map<uint8_t, uint16_t> m_mTriggers;   // Map of scene,sequence indexed by MIDI note triggers
 };

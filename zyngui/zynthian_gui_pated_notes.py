@@ -173,7 +173,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         return chord
 
     def play_note(self, note):
-        if self.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_STOPPED:
+        if self.zynseq.libseq.getPlayState(self.scene, self.sequence) == zynseq.SEQ_STOPPED:
             self.zynseq.libseq.playNote(note, self.velocity, self.channel, int(200 * self.duration))
 
     # -------------------------------------------------------------------------
@@ -314,9 +314,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
         if not self.seq_info:
             # Populate editor sequence
-            self.zynseq.libseq.clearSequence(self.bank, self.sequence)
-            self.zynseq.libseq.addPattern(self.bank, self.sequence, 0, 0, index, True)
-            self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
+            self.zynseq.libseq.clearSequence(self.scene, self.sequence)
+            self.zynseq.libseq.addPattern(self.scene, self.sequence, 0, 0, index, True)
+            self.zynseq.libseq.setChannel(self.scene, self.sequence, 0, self.channel)
 
     # Function to clear Note events on pattern
     def clear_pattern_notes(self, params=None):
@@ -1035,7 +1035,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Function to refresh status
     def refresh_status(self):
         super().refresh_status()
-        self.playstate = self.zynseq.libseq.getSequenceState(self.bank, self.sequence) & 0xff
+        self.playstate = self.zynseq.libseq.getSequenceState(self.scene, self.sequence) & 0xff
         step = self.zynseq.libseq.getPatternPlayhead()
         if self.playhead != step:
             self.playhead = step

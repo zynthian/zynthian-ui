@@ -52,11 +52,11 @@ class Timebase {
     /** @brief  Get tempo at specified time
         @param  bar Bar at which to get tempo
         @param  clock Clock cycle within bar at which to get tempo
-        @retval uint16_t Tempo in beats per minute
+        @retval float Tempo in beats per minute or 0.0 if no tempo in timebase
     */
-    uint16_t getTempo(uint16_t bar, uint16_t clock);
+    float getTempo(uint16_t bar, uint16_t clock);
 
-    /** @brief  Get t at specified time
+    /** @brief  Get time signature at specified time
         @param  bar Bar at which to get time signature
         @param  clock Clock cycle within bar at which to get time signature
         @retval uint16_t Time signature in beats per bar

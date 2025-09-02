@@ -168,15 +168,14 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """
         pass
 
-    def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
+    def update_seq_state(self, scene, chan, state=None, mode=None):
         """Update hardware indicators for a sequence (pad): playing state etc.
         *SHOULD* be implemented by child class
 
-        bank - bank
+        scene - scene index
         seq - sequence index
         state - sequence's state
         mode - sequence's mode
-        group - sequence's group
         """
         logging.debug("Update sequence playing state for {}: NOT IMPLEMENTED!".format(
             type(self).__name__))
@@ -200,12 +199,12 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
                 if info is None or info["mode"] == 0:
                     self.pad_off(col, row)
                 else:
-                    seq = info["sequence"]
+                    scene = info["scene"]
                     state = info["state"]
                     mode = info["mode"]
-                    group = info["group"]
+                    chan = info["chan"]
                     self.update_seq_state(
-                        bank=self.zynseq.bank, seq=seq, state=state, mode=mode, group=group)
+                        scene=scene, chan=chan, state=state, mode=mode)
 
 
 # ------------------------------------------------------------------------------------------------------------------

@@ -67,8 +67,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.offset = 0  # Frames from start of file that waveform display starts
         self.channels = 0  # Quantity of channels in audio
         self.frames = 0  # Quantity of frames in audio
-        self.slot = 0
-        self.sequence = 0
+        self.scene = None
         self.info = None
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
         self.widget_canvas = tkinter.Canvas(self,
@@ -194,7 +193,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         pos = event.x / f + self.offset
         max_delta = 0.02 * self.frames / self.zoom
         self.drag_marker = None
-        for symbol in [f"crop_start {self.slot}", f"crop_end {self.slot}"]:
+        for symbol in [f"crop_start {self.processor.engine.pattern}", f"crop_end {self.processor.engine.pattern}"]:
             if abs(pos - self.processor.controllers_dict[symbol].value) < max_delta:
                 self.drag_marker = symbol
                 self.drag_value = self.processor.controllers_dict[symbol].value
@@ -224,7 +223,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
     def set_processor(self, processor):
         self.processor = processor
-        self.sequence = self.processor.midi_chan + self.slot * zynseq.LAUNCHER_COLS
 
     def load_file(self):
         # Run as background thread
@@ -352,6 +350,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.tag_lower(self.loading_text)
         # TODO: Enable when crop is working self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
         self.widget_canvas.tag_raise("overlay")
+        self.widget_canvas.itemconfig(f"overlay", state=tkinter.NORMAL)
 
     def refresh_gui(self):
         if self.refreshing:
@@ -359,14 +358,12 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.refreshing = True
         load_waveform = False
         update_markers = False
+        if self.scene != self.processor.engine.scene:
+            self.scene = self.processor.engine.scene
+            load_waveform = True
         try:
-            slot = self.processor.controllers_dict[f"slot"].value - 1
-            if slot != self.slot:
-                self.slot = slot
-                self.sequence = self.processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-                load_waveform = True
-            if self.processor.controllers_dict[f"file {self.slot}"].value:
-                path = self.processor.controllers_dict[f"file {self.slot}"].path
+            if self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].value:
+                path = self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].path
             else:
                 path = ""
             if path != self.path:
@@ -379,11 +376,11 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 waveform_thread.start()
                 return
 
-            crop_start = self.processor.controllers_dict[f"crop_start {self.slot}"].value
+            crop_start = self.processor.controllers_dict[f"crop_start {self.processor.engine.pattern}"].value
             if crop_start != self.crop_start:
                 self.crop_start = crop_start
                 update_markers = True
-            crop_end = self.processor.controllers_dict[f"crop_end {self.slot}"].value
+            crop_end = self.processor.controllers_dict[f"crop_end {self.processor.engine.pattern}"].value
             if crop_end != self.crop_end:
                 self.crop_end = crop_end
                 update_markers = True
@@ -409,58 +406,15 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
     # -------------------------------------------------------------------------
 
     def cuia_stop(self, param=None):
-        #if self.zyngui.alt_mode:
-        #    return False
-        #seq_bank = zynseq.bank
-        seq_bank = 1
-        self.zyngui.state_manager.zynseq.libseq.setPlayState(seq_bank, self.sequence, zynseq.SEQ_STOPPED)
-        self.processor.engine.stop_slot(self.processor, self.slot)
-        return True
+        #TODO: Handle transport
+        return False
 
     def cuia_toggle_play(self, param=None):
-        #if self.zyngui.alt_mode:
-        #    return False
-        #seq_bank = zynseq.bank
-        seq_bank = 1
-        #self.zyngui.state_manager.zynseq.libseq.togglePlayState(seq_bank, self.sequence)
-        play_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(seq_bank, self.sequence)
-        if play_state != zynseq.SEQ_STOPPED:
-            self.zyngui.state_manager.zynseq.libseq.setPlayState(seq_bank, self.sequence, zynseq.SEQ_STOPPED)
-            self.processor.engine.stop_slot(self.processor, self.slot)
-        else:
-            self.zyngui.state_manager.zynseq.libseq.setPlayState(seq_bank, self.sequence, zynseq.SEQ_STARTING)
-        return True
+        #TODO: Handle transport
+        return False
 
     def update_wsleds(self, leds):
-        #if self.zyngui.alt_mode:
-        #    return
-        wsl = self.zyngui.wsleds
-
-        color_default = wsl.wscolor_active2
-        #color_default = wsl.wscolor_default
-
-        # REC Button
-        #if self.zyngui.state_manager.audio_recorder.status:
-        #    wsl.set_led(leds[1], wsl.wscolor_red)
-        #else:
-        #    wsl.set_led(leds[1], color_default)
-
-        # STOP button
-        wsl.set_led(leds[2], color_default)
-        # PLAY button:
-        match self.zyngui.state_manager.zynseq.libseq.getPlayState(1, self.sequence):
-            case zynseq.SEQ_PLAYING:
-                wsl.set_led(leds[3], wsl.wscolor_green)
-            case zynseq.SEQ_STARTING:
-                #wsl.blink(leds[3], wsl.wscolor_green)
-                wsl.set_led(leds[3], wsl.wscolor_yellow)
-            case zynseq.SEQ_STOPPING:
-                wsl.set_led(leds[3], wsl.wscolor_red)
-            case zynseq.SEQ_STOPPINGSYNC:
-                wsl.set_led(leds[3], wsl.wscolor_red)
-            case zynseq.SEQ_STOPPED:
-                wsl.set_led(leds[3], color_default)
-            case _:
-                wsl.set_led(leds[3], color_default)
+        #TODO: Handle LEDs
+        return
 
 # ------------------------------------------------------------------------------

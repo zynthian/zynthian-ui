@@ -90,12 +90,12 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         lib_zyncore.dev_send_ccontrol_change(
             self.idev_out, 0, 19, self.STOP_ALL_COLOUR)
 
-    def update_seq_state(self, bank, seq, state, mode, group):
-        if self.idev_out is None or bank != self.zynseq.bank or group > 15:
+    def update_seq_state(self, scene, chan, state, mode):
+        if self.idev_out is None or chan > 15:
             return
-        # logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
+        # logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {chan} => state {state}, mode {mode}")
         try:
-            col, row = self.zynseq.get_pad_coords(seq)
+            col, row = self.zynseq.get_pad_coords(chan)
         except:
             return
         note = 10 * (8 - row) + col + 1
@@ -105,10 +105,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 chan = 0
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
             elif state == zynseq.SEQ_PLAYING:
                 chan = 2
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
             elif state == zynseq.SEQ_STOPPING:
                 chan = 1
                 vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
@@ -121,7 +121,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         except:
             chan = 0
             vel = 0
-        # logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(seq, group, chan, note, vel))
+        # logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(chan, group, chan, note, vel))
         lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
     # Light-Off the pad specified with column & row

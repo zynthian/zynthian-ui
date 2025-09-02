@@ -27,7 +27,7 @@
     Pattern operations apply the currently selected pattern.
     Selecting a pattern that does not exist will create it.
     Empty patterns do not get saved to file.
-    Sequence operations act on the sequence indexed by the request.
+    Sequence operations act on the Index of sequenceed by the request.
     Acting on a sequence that does not exist will create it.
     The methods exposed here provide a simplified interface to the hierchical step sequencer classes.
     Those modules are:
@@ -41,8 +41,10 @@
             Organises patterns into relative time
         Sequence:
             A collection of tracks which will play synchronously
-        Bank:
+        Scene:
             A collection of sequences
+        Bank:
+            A collection of scenes
 */
 
 #include <cstdint>
@@ -230,24 +232,24 @@ uint8_t getTriggerChannel();
 void setTriggerChannel(uint8_t channel);
 
 /** @brief  Get MIDI note number used to trigger sequence
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @retval uint8_t MIDI note number [0xFF for none]
 */
-uint8_t getTriggerNote(uint8_t bank, uint32_t sequence);
+uint8_t getTriggerNote(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set MIDI note number used to trigger sequence
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @param  note MIDI note number [0xFF for none]
 */
-void setTriggerNote(uint8_t bank, uint32_t sequence, uint8_t note);
+void setTriggerNote(uint8_t scene, uint8_t sequence, uint8_t note);
 
 /** @brief  Get the sequence triggered by a MIDI note
     @param  note MIDI note number
-    @retval uint16_t Bank and sequence id encoded as 16-bit
+    @retval uint32_t Scene and sequence id encoded as 32-bit
 */
-uint16_t getTriggerSequence(uint8_t note);
+uint32_t getTriggerSequence(uint8_t note);
 
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the
@@ -259,30 +261,30 @@ uint16_t getTriggerSequence(uint8_t note);
 uint32_t createPattern();
 
 /** @brief  Get quantity of patterns in a track
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @retval uint32_t quantity of patterns in track
 */
-uint32_t getPatternsInTrack(uint8_t bank, uint32_t sequence, uint32_t track);
+uint32_t getPatternsInTrack(uint8_t scene, uint8_t sequence, uint32_t track);
 
 /** @brief  Get index of pattern within a track starting at position
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  sequence Index of sequence of sequence
     @param  track Index of track
     @param  position Quantity of clock cycles from start of sequence where pattern starts
     @retval uint32_t Pattern index or -1 if not found
 */
-uint32_t getPattern(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position);
+uint32_t getPattern(uint8_t scene, uint8_t sequence, uint32_t track, uint32_t position);
 
 /** @brief  Get index of pattern within a track spanning position
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @param  position Quantity of clock cycles from start of sequence that pattern spans
     @retval uint32_t Pattern index or -1 if not found
 */
-uint32_t getPatternAt(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position);
+uint32_t getPatternAt(uint8_t scene, uint8_t sequence, uint32_t track, uint32_t position);
 
 /** @brief  Copy pattern
     @param  source Index of pattern from which to copy
@@ -500,7 +502,7 @@ bool addProgramChange(uint32_t step, uint8_t program);
 /** @brief  Removes program change from selected pattern
     @param  step Index of step at which to remove program change
 */
-void removeProgramChange(uint32_t step, uint8_t program);
+void removeProgramChange(uint32_t );
 
 /** @brief  Get program change in selected pattern
     @param  step Index of step at which program change resides
@@ -737,212 +739,206 @@ void setInterpolateCCDefaults();
 // ** Track management functions **
 
 /** @brief  Add pattern to a track
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @param  position Quantity of clock cycles from start of track at which to add pattern
     @param  pattern Index of pattern
     @param  force True to remove overlapping patterns, false to fail if overlapping patterns
     @retval True if pattern inserted
 */
-bool addPattern(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force);
+bool addPattern(uint8_t scene, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force);
 
 /** @brief  Remove pattern from track
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @param  position Quantity of clock cycles from start of track from which to remove pattern
 */
-void removePattern(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position);
-
-/** @brief  Removes unused empty patterns
-*/
-void cleanPatterns();
+void removePattern(uint8_t scene, uint8_t sequence, uint32_t track, uint32_t position);
 
 /** @brief  Toggle mute of track
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
 */
-void toggleMute(uint8_t bank, uint32_t sequence, uint32_t track);
+void toggleMute(uint8_t scene, uint8_t sequence, uint32_t track);
 
 /** @brief  Get track mute state
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @retval bool True if muted
 */
-bool isMuted(uint8_t bank, uint32_t sequence, uint32_t track);
+bool isMuted(uint8_t scene, uint8_t sequence, uint32_t track);
 
 // ** Sequence & Track management functions **
 
 /** @brief  Set track type
-    @param  bank Index of bank
+    @param  scene Index of scene
     @param  sequence Sequence ID
     @param  track Index of track
     @param  type Track type: 0 = MIDI Track, 1 = Audio, 2 = MIDI Program
 */
-void setTrackType(uint8_t bank, uint32_t sequence, uint32_t track, uint8_t type);
+void setTrackType(uint8_t scene, uint8_t sequence, uint32_t track, uint8_t type);
 
 /** @brief  Get track type
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @retval uint8_t Track type
 */
-uint8_t getTrackType(uint8_t bank, uint32_t sequence, uint32_t track);
+uint8_t getTrackType(uint8_t scene, uint8_t sequence, uint32_t track);
 
 /** @brief  Set track's associated chain ID
-    @param  bank Index of bank
+    @param  scene Index of scene
     @param  sequence Sequence ID
     @param  track Index of track
     @param  chain_id Chain ID
 */
-void setChainID(uint8_t bank, uint32_t sequence, uint32_t track, uint8_t chain_id);
+void setChainID(uint8_t scene, uint8_t sequence, uint32_t track, uint8_t chain_id);
 
 /** @brief  Get track's associated chain ID
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @retval uint8_t Chain ID
 */
-uint8_t getChainID(uint8_t bank, uint32_t sequence, uint32_t track);
+uint8_t getChainID(uint8_t scene, uint8_t sequence, uint32_t track);
 
 /** @brief  Set track MIDI channel
-    @param  bank Index of bank
+    @param  scene Index of scene
     @param  sequence Sequence ID
     @param  track Index of track
     @param  channel MIDI channel
 */
-void setChannel(uint8_t bank, uint32_t sequence, uint32_t track, uint8_t channel);
+void setChannel(uint8_t scene, uint8_t sequence, uint32_t track, uint8_t channel);
 
 /** @brief  Get track MIDI channel
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @retval uint8_t MIDI channel
 */
-uint8_t getChannel(uint8_t bank, uint32_t sequence, uint32_t track);
+uint8_t getChannel(uint8_t scene, uint8_t sequence, uint32_t track);
 
 /** @brief  Get current play mode for a sequence
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @retval uint16_t Stop mode (bits 0..1). Start mode (bit 2) modes.Repeat (bits 8..15).
 */
-uint16_t getPlayMode(uint8_t bank, uint32_t sequence);
+uint16_t getPlayMode(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set play mode of a sequence
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @param  mode Stop mode (bits 0..1). Start mode (bit 2) modes. Repeat (bits 8..15).
 */
-void setPlayMode(uint8_t bank, uint32_t sequence, uint16_t mode);
+void setPlayMode(uint8_t scene, uint8_t sequence, uint16_t mode);
 
 /** @brief  Get play state
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | STOPPING_SYNC]
 */
-uint8_t getPlayState(uint8_t bank, uint32_t sequence);
+uint8_t getPlayState(uint8_t scene, uint8_t sequence);
 
 /** @brief  Check if sequence is empty (all patterns have no events)
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @retval bool True if sequence empty else false if any pattern in sequence has any events
 */
-bool isEmpty(uint8_t bank, uint32_t sequence);
+bool isEmpty(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set play state
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @param  state Play state [STOPPED | STARTING | PLAYING | STOPPING]
     @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
     @note   If all sequences have stopped and no external clients have registered for transport then transport is stopped.
 */
-void setPlayState(uint8_t bank, uint32_t sequence, uint8_t state);
+void setPlayState(uint8_t scene, uint8_t sequence, uint8_t state);
 
 /** @brief  Toggles starting / stopping
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
 */
-void togglePlayState(uint8_t bank, uint32_t sequence);
+void togglePlayState(uint8_t scene, uint8_t sequence);
 
 /** @brief  Get sequence states encoded as 32-bit word
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence (sequence) of sequence within scene
     @retval uint32_t State encode as 4 bytes: [repeat, group, mode, play state]
 */
-uint32_t getSequenceState(uint8_t bank, uint32_t sequence);
+uint32_t getSequenceState(uint8_t scene, uint8_t sequence);
 
 /** @brief  Get state of changed sequences in bank
-    @param  bank Index of bank
-    @param  start Index of first sequence to check
-    @param  start Index of last sequence to check
     @param  states Pointer to array of uint32_t to hold results
-    @retval uint8_t Quantity of changed sequences
-    @note   State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
+    @param  max Maximum number of states to return
+    @retval uint32_t Quantity of changed sequences
+    @note   State is represented as 4 bytes encoded as single 32-bit word: [scene, sequence, mode, play state]
     @note   mode bits: [0..1] stop mode. [2] start mode. [7] enabled
 */
-uint8_t getStateChange(uint8_t bank, uint32_t start, uint32_t end, uint32_t* states);
+uint32_t getStateChange(uint32_t* states, uint32_t max);
 
 /** @brief  Get progress of each group
-    @param  progress Pointer to array of uint8_t to hold results in percentage played
+    @retval uint8_t* Pointer to array of uint8_t holding results in percentage played
 */
-void getProgress(uint8_t* progress);
+uint8_t* getProgress();
 
 /** @brief  Get quantity of tracks in a sequence
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @retval uint32_t Quantity of tracks in sequence
 */
-uint32_t getTracksInSequence(uint8_t bank, uint32_t sequence);
+uint32_t getTracksInSequence(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set the times sequence will play
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  repeat Quantity of repeats (0 to disable, 1 for play once, etc.)
     @note   This is actually the number of times the sequence will play, not repeat.
 */
-void setRepeat(uint8_t bank, uint32_t sequence, uint8_t repeat);
+void setRepeat(uint8_t scene, uint8_t sequence, uint8_t repeat);
 
 /** @brief  get the times sequence will play
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @retval uint8_t Quantity of repeats (0 if disabled, 1 for play once, etc.)
     @note   This is actually the number of times the sequence will play, not repeat.
 */
-uint8_t getRepeat(uint8_t bank, uint32_t sequence);
+uint8_t getRepeat(uint8_t scene, uint8_t sequence);
 
 /** @brief  Stops all sequences
 */
 void stop();
 
 /** @brief  Get the currently playing clock cycle
-    @param  bank Index of bank
-    @param  Sequence ID
+    @param  scene Index of scene
+    @param  Index of sequence of sequence within scene
     @retval uint32_t Playhead position in clock cycles
 */
-uint32_t getPlayPosition(uint8_t bank, uint32_t sequence);
+uint32_t getPlayPosition(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set the currently playing clock cycle
-    @param  bank Index of bank containing sequence
-    @param  sequence Index (sequence) of sequence within bank
+    @param  scene Index of scene containing sequence
+    @param  Index of sequence of sequence within scene
     @param  clock Clock cycle to position play head
 */
-void setPlayPosition(uint8_t bank, uint32_t sequence, uint32_t clock);
+void setPlayPosition(uint8_t scene, uint8_t sequence, uint32_t clock);
 
 /** @brief  Get length of sequence in clock cycles
-    @param  bank Index of bank
-    @param  sequence Sequence ID
+    @param  scene Index of scene
+    @param  Index of sequence of sequence within scene
     @retval uint32_t Quantity of clock cycles in sequence
 */
-uint32_t getSequenceLength(uint8_t bank, uint32_t sequence);
+uint32_t getSequenceLength(uint8_t scene, uint8_t sequence);
 
 /** @brief  Remove all patterns from sequence
-    @param  bank Index of bank
+    @param  scene Index of scene
     @param  sequence Sequence number
 */
-void clearSequence(uint8_t bank, uint32_t sequence);
+void clearSequence(uint8_t scene, uint8_t sequence);
 
 /** @brief  Get the quantity of playing sequences
     @retval size_t Quantity of playing sequences
@@ -950,92 +946,89 @@ void clearSequence(uint8_t bank, uint32_t sequence);
 size_t getPlayingSequences();
 
 /** @brief  Get sequence group
-    @param  bank Index of bank
+    @param  scene Index of scene
     @param  sequence Sequence number
     @retval uint8_t Group
 */
-uint8_t getGroup(uint8_t bank, uint32_t sequence);
+uint8_t getGroup(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set sequence group
-    @param  bank Index of bank
+    @param  scene Index of scene
     @param  sequence Sequence number
     @param  group Group index
 */
-void setGroup(uint8_t bank, uint32_t sequence, uint8_t group);
+void setGroup(uint8_t scene, uint8_t sequence, uint8_t group);
 
 /** @brief  Check if a sequence play state, group or mode has changed since last checked
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @retval bool True if changed
 */
-bool hasSequenceChanged(uint8_t bank, uint32_t sequence);
+bool hasSequenceChanged(uint8_t scene, uint8_t sequence);
 
 /** @brief  Adds a track to a sequence
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track to add new track after (Optional - default: add to end of sequence)
     @retval uint32_t Index of track added
 */
-uint32_t addTrackToSequence(uint8_t bank, uint32_t sequence, uint32_t track = -1);
+uint32_t addTrackToSequence(uint8_t scene, uint8_t sequence, uint32_t track = -1);
 
 /** @brief  Removes a track from a sequence
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
 */
-void removeTrackFromSequence(uint8_t bank, uint32_t sequence, uint32_t track);
+void removeTrackFromSequence(uint8_t scene, uint8_t sequence, uint32_t track);
 
 /** @brief  Add tempo to sequence timebase track
-    @param  bank Index of bank
-    @param  sequence  Sequence index
+    @param  scene Index of scene
+    @param  sequence  Index of sequence
     @param  tempo Tempo in BPM
     @param  bar Bar of sequence at which to add tempo change [Optional - default: 1]
     @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
 */
-void addTempoEvent(uint8_t bank, uint32_t sequence, float tempo, uint16_t bar = 1, uint16_t tick = 0);
+void addTempoEvent(uint8_t scene, uint8_t sequence, float tempo, uint16_t bar = 1, uint16_t tick = 0);
 
 /** @brief  Remove tempo from sequence timebase track
-    @param  bank Index of bank
-    @param  sequence  Sequence index
+    @param  scene Index of scene
+    @param  sequence  Index of sequence
     @param  bar Bar of sequence at which to add tempo change [Optional - default: 1]
     @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
 */
-void removeTempoEvent(uint8_t bank, uint32_t sequence, uint16_t bar = 1, uint16_t tick = 0);
+void removeTempoEvent(uint8_t scene, uint8_t sequence, uint16_t bar = 1, uint16_t tick = 0);
 
 /** @brief  Get tempo at position within sequence
-    @param  bank Index of bank
-    @param  sequence Sequence index
+    @param  scene Index of scene
+    @param  sequence Index of sequence
     @param  bar Bar at which to get tempo [Optional - default: 1]
     @param  tick Tick within bar at which to get tempo [Optional - default: 0]
-'   @todo   getTempo without time parameter should get time at current play position???
-    @retval float Tempo in BPM
+    @retval float Tempo in BPM or 0.0 if no tempo in timebase
 */
-float getTempoAt(uint8_t bank, uint32_t sequence, uint16_t bar = 1, uint16_t tick = 0);
+float getTempoAt(uint8_t scene, uint8_t sequence, uint16_t bar = 1, uint16_t tick = 0);
 
 /** @brief  Add time signature to sequence
-    @param  bank Index of bank
-    @param  sequence Sequence index
-    @param  beats Beats per bar (numerator)
-    @param  type Beat type (denominator)
+    @param  scene Index of scene
+    @param  sequence Index of sequence
     @param  bar Bar at which to add time signature change
+    @param  timeSig Beats per bar
 */
-void addTimeSigEvent(uint8_t bank, uint32_t sequence, uint8_t beats, uint8_t type, uint16_t bar);
+void addTimeSigEvent(uint8_t scene, uint8_t sequence, uint16_t bar, uint8_t timeSig);
+
+/** @brief  Remove time signature from sequence
+    @param  scene Index of scene
+    @param  sequence Index of sequence
+    @param  bar Bar at which to remove time signature change
+*/
+void removeTimeSigEvent(uint8_t scene, uint8_t sequence, uint16_t bar);
 
 /** @brief  Get time signature at position
-    @param  bank Index of bank
-    @param  sequence Sequence index
+    @param  scene Index of scene
+    @param  sequence Index of sequence
     @param  bar Bar at which to get time signature
-    @retval uint16_t Time signature - MSB numerator, LSB denominator
+    @retval uint8_t Time signature in quarter notes (beats per bar)
 */
-uint16_t getTimeSigAt(uint8_t bank, uint32_t sequence, uint16_t bar);
-
-/** @brief  Get beats per bar at position
-    @param  bank Index of bank
-    @param  sequence Sequence index
-    @param  bar Bar at which to get time signature
-    @retval uint8_t Beats per bar
-*/
-uint8_t getBeatsPerBarAt(uint8_t bank, uint32_t sequence, uint16_t bar);
+uint8_t getTimeSigAt(uint8_t scene, uint8_t sequence, uint16_t bar);
 
 /** @brief  Get bank currently in MIDI learn mode
     @retval uint8_t Bank index or 0 if disabled
@@ -1043,112 +1036,76 @@ uint8_t getBeatsPerBarAt(uint8_t bank, uint32_t sequence, uint16_t bar);
 uint8_t getMidiLearnBank();
 
 /** @brief  Get sequence currently in MIDI learn mode
-    @retval uint32_t sequence index
+    @retval uint32_t Index of sequence
 */
 uint8_t getMidiLearnSequence();
 
 /** @brief  Set the pattern editor sequence
-    @param  bank Bank index
-    @param  sequence Sequence index
+    @param  scene Scene index
+    @param  sequence Index of sequence
+    @retval bool True on sucess (if sequence exists)
 */
-void selectSequence(uint8_t bank, uint32_t sequence);
+bool selectSequence(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set sequence name
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  name Sequence name (truncated at 16 characters)
 */
-void setSequenceName(uint8_t bank, uint32_t sequence, const char* name);
+void setSequenceName(uint8_t scene, uint8_t sequence, const char* name);
 
 /** @brief  Get sequence name
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @retval const char* Pointer to sequence name
 */
-const char* getSequenceName(uint8_t bank, uint32_t sequence);
+const char* getSequenceName(uint8_t scene, uint8_t sequence);
 
 /** @brief  Set the sequence to play when one-shot ends
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  action Follow action @see FOLLOW_ACTION enum
     @param  param Optional parameter of action, e.g. offset
 */
-void setFollowAction(uint8_t bank, uint32_t sequence, uint8_t action, uint32_t param);
+void setFollowAction(uint8_t scene, uint8_t sequence, uint8_t action, int16_t param);
 
 /** @brief  Get the action to perform when sequence ends
-    @param  sequence Index of sequence
-    @param  bank Index of bank
+    @param  Index of sequence of sequence
+    @param  scene Index of scene
     @retval uint8_t Follow action
 */
-uint8_t getFollowAction(uint8_t bank, uint32_t sequence);
+uint8_t getFollowAction(uint8_t scene, uint8_t sequence);
 
-/** @brief  Get the parameter of follow action, e.g. next sequence
-    @param  bank Index of bank
-    @param  sequence Index of sequence
-    @retval uint32_t Follow action parameter
+/** @brief  Get the parameter of follow action, e.g. offset
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
+    @retval int16_t Follow action parameter
 */
-uint32_t getFollowActionParam(uint8_t bank, uint32_t sequence);
-
-/** @brief  Remove sequence from bank
-    @param  bank Index of bank
-    @param  sequence Index of sequence to remove
-    @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
-*/
-void removeSequence(uint8_t bank, uint32_t sequence);
-
-/** @brief  Move a sequence within a bank (change its id)
-    @param  bank Index of bank
-    @param  sequence Index of sequence
-    @param  newBank New index of bank
-    @param  newSeq New index of sequence
-    @note   Existing sequence with id newSeq will be replace and old sequence will be deleted.
-*/
-void moveSequence(uint8_t bank, uint32_t sequence, uint8_t newBank, uint32_t newSeq);
-
-/** @brief  Swap two sequences within a bank
-    @param  bank Index of bank
-    @param  seqence1 Index of first sequence
-    @param  bank2 Index of second bank
-    @param  seqence2 Index of second sequence
-*/
-void swapSequence(uint8_t bank, uint32_t sequence1, uint8_t bank2, uint32_t sequence2);
+int16_t getFollowActionParam(uint8_t scene, uint8_t sequence);
 
 /** @brief  Update all sequence lengths and empty status
 */
 void updateSequenceInfo();
 
-// ** Bank management functions **
-
-/** @brief  Get quantity of sequences in bank
-    @param  bank Bank index
-    @retval uint32_t Quantity of sequences
-*/
-uint32_t getSequencesInBank(uint32_t bank);
-
-/** @brief  Clear bank
-    @param  bank Bank index
-*/
-void clearBank(uint32_t bank);
-
 /** @brief  Sets the transport to start of the current bar
 */
 void setTransportToStartOfBar();
 
-/** @brief  Selects a track to solo, muting other tracks in bank
-    @param  bank Index of bank
-    @param  sequence Index of sequence
+/** @brief  Selects a track to solo, muting other tracks in scene
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track (sequence) within sequence
     @param  solo True to solo, false to clear solo
 */
-void solo(uint8_t bank, uint32_t sequence, uint32_t track, bool solo);
+void solo(uint8_t scene, uint8_t sequence, uint16_t track, bool solo);
 
 /** @brief  Check if track is soloed
-    @param  bank Index of bank
-    @param  seqeunce Index of sequence
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
     @param  track Index of track
     @retval bool True if solo
 */
-bool isSolo(uint8_t bank, uint32_t sequence, uint32_t track);
+bool isSolo(uint8_t scene, uint8_t sequence, uint16_t track);
 
 // ** Transport control **
 /** @brief  Locate transport to frame
@@ -1208,12 +1165,12 @@ double getTempo();
 /** @brief  Set beats per bar
     @retval uint8_t beats Beats per bar
 */
-void setBeatsPerBar(uint8_t beats);
+void setTimeSig(uint8_t beats);
 
 /** @brief  Get Beats per bar
     @retval uint8_t Beats per bar
 */
-uint8_t getBeatsPerBar();
+uint8_t getTimeSig();
 
 /** @brief  Set sync timeout
     @param  timeout Quantity of microseconds to wait for slow sync clients at start of play
@@ -1250,10 +1207,46 @@ uint8_t getClockSource();
 */
 void setClockSource(uint8_t source);
 
+/** @brief  Set MIDI channel type
+    @param  channel MIDI channel
+    @param  type MIDI channel type
+*/
+void setChannelType(uint8_t channel, uint8_t type);
+
+/** @brief  Get MIDI channel type
+    @param  channel MIDI channel
+    @retval uint8_t MIDI channel type
+*/
+uint8_t getChannelType(uint8_t channel);
+
 /** @brief  Get quantity of frames in each clock cycle
     @retval double Quantity of frames
 */
 double getFramesPerClock(double dTempo);
+
+/* Scene handling */
+
+/** @brief  Get quantity of scenes
+    @retval uint8_t Quantity of scenes
+*/
+uint8_t getNumScenes();
+
+/** @brief  Add scene
+    @param  scene Index of scene to insert before
+    @note   Provide scene higher than current quantity of scenes to append
+*/
+void insertScene(uint8_t scene);
+
+/** @brief  Remove scene
+    @param  scene Index of scene to remove
+*/
+void removeScene(uint8_t scene);
+
+/** @brief  Swap position of two scenes
+    @param  scene1 Index of first scene
+    @param  scene2 Index of second scene
+*/
+void swapScene(uint8_t scene1, uint8_t scene2);
 
 #ifdef __cplusplus
 }
