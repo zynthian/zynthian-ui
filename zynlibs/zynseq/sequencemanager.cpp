@@ -20,6 +20,7 @@
 #include "sequencemanager.h"
 #include <cstring>
 #include <stdio.h>
+#include <algorithm> // provides remove_if
 
 /** SequenceManager class methods implementation **/
 
@@ -31,59 +32,15 @@ void SequenceManager::init() {
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
         delete (it->second);
     m_mPatterns.clear();
-    m_mSequences.clear();
-}
-
-int SequenceManager::fileWrite32(uint32_t value, FILE* pFile) {
-    for (int i = 3; i >= 0; --i)
-        fileWrite8((value >> i * 8), pFile);
-    return 4;
-}
-
-int SequenceManager::fileWrite16(uint16_t value, FILE* pFile) {
-    for (int i = 1; i >= 0; --i)
-        fileWrite8((value >> i * 8), pFile);
-    return 2;
-}
-
-int SequenceManager::fileWrite8(uint8_t value, FILE* pFile) {
-    int nResult = fwrite(&value, 1, 1, pFile);
-    return 1;
-}
-
-uint8_t SequenceManager::fileRead8(FILE* pFile) {
-    uint8_t nResult = 0;
-    fread(&nResult, 1, 1, pFile);
-    return nResult;
-}
-
-uint16_t SequenceManager::fileRead16(FILE* pFile) {
-    uint16_t nResult = 0;
-    for (int i = 1; i >= 0; --i) {
-        uint8_t nValue;
-        fread(&nValue, 1, 1, pFile);
-        nResult |= nValue << (i * 8);
+    for (auto scene: m_vScenes) {
+        for (auto seq: scene->m_vChildSequences) {
+            delete seq;
+        }
+        delete scene;
     }
-    return nResult;
-}
-
-uint32_t SequenceManager::fileRead32(FILE* pFile) {
-    uint32_t nResult = 0;
-    for (int i = 3; i >= 0; --i) {
-        uint8_t nValue;
-        fread(&nValue, 1, 1, pFile);
-        nResult |= nValue << (i * 8);
-    }
-    return nResult;
-}
-
-bool SequenceManager::checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize) {
-    if (nActualSize < nExpectedSize) {
-        for (size_t i = 0; i < nActualSize; ++i)
-            fileRead8(pFile);
-        return true;
-    }
-    return false;
+    m_vScenes.clear();
+    for (uint8_t channel = 0; channel < 16; ++channel)
+        m_nType[channel] = CHANNEL_TYPE_DISABLED;
 }
 
 Pattern* SequenceManager::getPattern(uint32_t index) {
@@ -129,82 +86,101 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination) {
 }
 
 void SequenceManager::setPatternModified(Pattern* pPattern) {
-    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it) {
-        Sequence sequence = it->second;
-        bool bFound = false;
-        for (uint32_t nTrack = 0; nTrack < sequence.getTracks() && !bFound; ++nTrack) {
-            Track* pTrack = sequence.getTrack(nTrack);
-            for (uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern) {
-                if (pTrack->getPatternByIndex(nPattern) == pPattern)
-                    bFound = true;
-            }
-            if (bFound) {
-                pTrack->setModified();
-                sequence.setModified();
+    for (auto scene: m_vScenes) {
+        for (auto pSequence: scene->m_vChildSequences) {
+            bool bFound = false;
+            for (uint32_t nTrack = 0; nTrack < pSequence->getTracks() && !bFound; ++nTrack) {
+                Track* pTrack = pSequence->getTrack(nTrack);
+                for (uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern) {
+                    if (pTrack->getPatternByIndex(nPattern) == pPattern)
+                        bFound = true;
+                }
+                if (bFound) {
+                    pTrack->setModified();
+                    pSequence->setModified();
+                }
             }
         }
     }
 }
 
-Sequence* SequenceManager::getSequence(uint32_t sequence, bool create_pattern) {
-    if (m_mSequences.find(sequence) == m_mSequences.end()) {
-        // Sequence does not exist so create and configure
-        if (create_pattern) {
-            uint32_t pattern = createPattern();
-            addPattern(sequence, 0, 0, pattern, true);
-        }
-        m_mSequences[sequence].setSequenceId(sequence);
-    }
-    return &(m_mSequences[sequence]);
+Sequence* SequenceManager::getSequence(uint8_t scene, uint8_t sequence) {
+    if (sequence == SCENE_CHANNEL && scene < m_vScenes.size())
+        return m_vScenes[scene];
+    if (scene >= m_vScenes.size() || sequence >= m_vScenes[scene]->m_vChildSequences.size())
+        return nullptr;
+    return m_vScenes[scene]->m_vChildSequences[sequence];
 }
 
-bool SequenceManager::addPattern(uint32_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
-    Track* pTrack = m_mSequences[sequence].getTrack(track);
+bool SequenceManager::addPattern(Sequence* pSequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
+    Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return false;
     bool bUpdated = pTrack->addPattern(position, getPattern(pattern), force);
-    updateSequenceLength(sequence);
+    pSequence->updateLength();
     return bUpdated;
 }
 
-void SequenceManager::removePattern(uint32_t sequence, uint32_t track, uint32_t position) {
-    Sequence* pSequence = getSequence(sequence);
+void SequenceManager::removePattern(Sequence* pSequence, uint32_t track, uint32_t position) {
+    if (!pSequence)
+        return;
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
     pTrack->removePattern(position);
-    updateSequenceLength(sequence);
-}
-
-void SequenceManager::updateSequenceLength(uint32_t sequence) {
-    getSequence(sequence)->updateLength();
+    pSequence->updateLength();
 }
 
 void SequenceManager::updateAllSequenceLengths() {
-    for (auto itSeq = m_mSequences.begin(); itSeq != m_mSequences.end(); ++itSeq)
-        itSeq->second.updateLength();
+    for (auto scene: m_vScenes) {
+        // Update all sequences in scene
+        for (auto pSequence: scene->m_vChildSequences) {
+            if (pSequence)
+                pSequence->updateLength();
+        }
+    }
 }
 
-size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
+bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
+    static uint32_t barPos = 0;
     uint32_t nTime = timeinfo.first;
     double dSamplesPerClock = timeinfo.second;
-    std::vector<uint32_t> vNext;
-    std::vector<uint32_t> vScene;
-    for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
-        uint32_t sequence = *it;
-        Sequence* pSequence = getSequence(sequence);
+    ++barPos;
+    if(bSync)
+        barPos = 0;
+    size_t nSequence = 0;
+    while (nSequence < m_vPlayingSequences.size()) {
+        uint8_t nInc = 1;
+        Sequence* pSequence = m_vPlayingSequences[nSequence];
         uint8_t nGroup = pSequence->getGroup();
-        if (pSequence->getPlayState() == STOPPED) {
-            it = m_vPlayingSequences.erase(it);
-            if (nGroup < 17)
+        if (pSequence->getPlayState() == STOPPED || pSequence->getPlayState() == CHILD_PLAYING) {
+            if (nGroup < 17) {
                 m_aGroupProgress[nGroup] = 0;
+                // Stop clippy if no other clippy sequences in same group are running
+                if (nGroup < 16 && m_nType[nGroup] == CHANNEL_TYPE_CLIPPY) {
+                    bool bStopClippy = true;
+                    for (auto seq: m_vPlayingSequences) {
+                        if (seq != pSequence && seq->getGroup() == nGroup) {
+                            bStopClippy = false;
+                            break;
+                        }
+                    }
+                    if (bStopClippy) {
+                        // Send clippy stop event
+                        pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nGroup), 0, 100}));
+                        pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime + 1, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_OFF | nGroup), 0, 0}));
+                    }
+                }
+            }
+            m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
             continue;
         }
-        uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock);
-        if (nEventType & 1) {
+        uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock, m_nTimeSig);
+
+        if (nEventType & CLOCK_TRIG_MIDI) {
             // A step event
             while (SEQ_EVENT* pEvent = pSequence->getEvent()) {
                 uint32_t nEventTime = pEvent->time;
@@ -212,162 +188,104 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                 pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nEventTime, pNewEvent));
             }
         }
-        if (nEventType & 4) {
+        if (nEventType & CLOCK_TRIG_TEMPO) {
             // Tempo change
-            m_fTempo = pSequence->getTempo();
-            m_bTempoChanged = true;
+            float tempo = pSequence->getTempo();
+            m_bTempoChanged |= m_fTempo != tempo;
+            m_fTempo = tempo;
         }
-        if (nEventType & 8) {
-            // Reached end of sequence repeats
-            if (nEventType & 2 && pSequence->getFollowAction() != FOLLOW_ACTION_NONE)
-                // Scene launcher reached end
-                vScene.push_back(sequence);
-
-            switch (pSequence->getFollowAction()) {
-                case FOLLOW_ACTION_LOOP:
-                    vNext.push_back(sequence);
-                    break;
-                case FOLLOW_ACTION_PREV:
-                    if (sequence > 16)
-                        vNext.push_back(sequence - 17);
-                    break;
-                case FOLLOW_ACTION_NEXT:
-                    vNext.push_back(sequence + 17);
-                    break;
-                case FOLLOW_ACTION_JUMP:
-                    vNext.push_back(pSequence->getFollowActionParam());
-                    break;
+        if (nEventType & CLOCK_TRIG_TIMESIG) {
+            // Time signature change
+            uint8_t nTimeSig = pSequence->getTimeSig();
+            if (nTimeSig > 1) {
+                m_bTimeSigChanged |= m_nTimeSig != nTimeSig;
+                m_nTimeSig = nTimeSig;
             }
-        } else if (nEventType & 2) {
-            // Scene launcher start
-            vScene.push_back(sequence);
         }
-
-        if (nGroup == 16)
-            m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / (m_nBeatsPerBar * 24));
-        else if (nGroup < 16 && pSequence->getLength())
-            m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
-        ++it;
-    }
-    // Start pending follow-on sequences
-    for (auto it = vNext.begin(); it != vNext.end(); ++it) {
-        setSequencePlayState(*it, PLAYING);
-    }
-    // Process pending scene launchers
-    for (auto it = vScene.begin(); it != vScene.end(); ++it) {
-        uint32_t sequence = *it;
-        Sequence* pSequence = getSequence(sequence);
-        uint8_t state = pSequence->getPlayState(); 
-        if (state == PLAYING) {
-            // Scene started - Check for change of time signature
-            Track* pTrack = pSequence->getTrack(0);
-            if (pTrack) {
-                Pattern* pPattern = pTrack->getPattern(0);
-                if (pPattern) {
-                    uint8_t timeSig = pPattern->getBeatsInPattern();
-                    if (timeSig > 1 && timeSig != m_nTimeSig) {
-                        m_nTimeSig = timeSig;
-                        m_bTimeSigChanged = true;
-                    }
+        if (nEventType & CLOCK_TRIG_SCENE) {
+            // Scene change
+            if (pSequence->getPlayState() == PLAYING) {
+                for (Sequence* pChildSeq: pSequence->m_vChildSequences) {
+                    if (pChildSeq && pChildSeq->getRepeat())
+                        setPlayState(pChildSeq, PLAYING);
                 }
             }
         }
-        onSceneLauncherState(sequence, state);
+        if (nEventType & CLOCK_TRIG_SEQEND) {
+            // Reached end of sequence repeats
+            Sequence* pFollowSequence = pSequence->getFollowSequence();
+            if (pFollowSequence && pFollowSequence->getRepeat())
+                setPlayState(pFollowSequence, PLAYING);
+        }
+        if (nGroup < 16 && pSequence->getLength())
+            m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength()); //!@todo This can div by zero
+        else if (nGroup == 16)
+            m_aGroupProgress[16] = (100 * barPos / 24 / m_nTimeSig);
+        ++nSequence;
     }
-    return m_vPlayingSequences.size();
+
+    return m_vPlayingSequences.size() > 0;
 }
 
-void SequenceManager::setSequencePlayState(uint32_t sequence, uint8_t state) {
-    Sequence* pSequence = getSequence(sequence);
+void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
+    if (!pSequence)
+        return;
+    uint8_t nGroup = pSequence->getGroup();
     if (state == STARTING || state == PLAYING) {
         bool bAddToList = true;
         // Stop other sequences in same group
         for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
-            Sequence* pPlayingSequence = getSequence(*it);
+            Sequence* pPlayingSequence = *it;
             if (pSequence == pPlayingSequence)
                 bAddToList = false;
             else if (pPlayingSequence->getGroup() == pSequence->getGroup()) {
                 if (pPlayingSequence->getPlayState() == STARTING)
                     pPlayingSequence->setPlayState(STOPPED);
                 else if (pPlayingSequence->getPlayState() != STOPPED) {
-                    pPlayingSequence->setPlayState(STOPPING_SYNC);
+                    pPlayingSequence->setPlayState(state == STARTING?STOPPING:STOPPED);
                 }
             }
         }
-        if (bAddToList)
-            m_vPlayingSequences.push_back(sequence);
+        if (bAddToList) {
+            if (pSequence->getGroup() == 16)
+                // Need scene launchers to be at head of queue to act before child sequences
+                m_vPlayingSequences.insert(m_vPlayingSequences.begin(), pSequence);
+            else
+                m_vPlayingSequences.push_back(pSequence);
+        }
     }
     pSequence->setPlayState(state);
 
-    if (state == STOPPING && pSequence->getGroup() == 16)
-        // Stop running sequences if scene requested to stop
-        onSceneLauncherState(sequence, state);
+    // Start child sequences
+    if (state == STARTING && pSequence->m_vChildSequences.size() > 0) {
+        // Child sequences
+        for (auto pChildSequence: pSequence->m_vChildSequences) {
+            if (pChildSequence->getRepeat()) {
+                pChildSequence->setPlayState(STARTING);
+            }
+        }
+    }   
 }
 
-void SequenceManager::onSceneLauncherState(uint32_t sequence, uint8_t state) {
-    uint32_t base_seq = sequence - 16;
-    if (state == PLAYING) {
-        for (uint8_t chan = 0; chan < 16; ++chan) {
-            uint32_t nSlaveSeq = base_seq + chan;
-            Sequence* pSlaveSeq = getSequence(nSlaveSeq);
-            if (pSlaveSeq->getRepeat() == 0)// || pSlaveSeq->getPlayState() == PLAYING)
-                continue;
-            setSequencePlayState(nSlaveSeq, PLAYING);
-        }
-    } else if (state == STOPPING) {
-        for (uint8_t chan = 0; chan < 16; ++chan) {
-            uint32_t nSlaveSeq = base_seq + chan;
-            if (getSequence(nSlaveSeq)->getPlayState() == STOPPED)
-                continue;
-            setSequencePlayState(nSlaveSeq, STOPPING);
-        }
-    } else if (state == STOPPED) {
-        for (uint8_t chan = 0; chan < 16; ++chan) {
-            uint32_t nSlaveSeq = base_seq + chan;
-            if (getSequence(nSlaveSeq)->getPlayState() != STOPPED)
-                setSequencePlayState(nSlaveSeq, STOPPED);
+void SequenceManager::stopGroup(uint8_t group) {
+    for (auto pSequence: m_vPlayingSequences) {
+        if (pSequence->getGroup() == group) {
+            pSequence->setPlayState(STOPPED);
         }
     }
 }
 
-void SequenceManager::updateFollowAction(uint32_t sequence, uint32_t newSeq) {
-    // Search all sequences for jump to this sequence and change it to the new sequence number
-    for (auto itSeq = m_mSequences.begin(); itSeq != m_mSequences.end(); ++itSeq) {
-        uint8_t action = itSeq->second.getFollowAction();
-        uint32_t param = itSeq->second.getFollowActionParam();
-        if (action == FOLLOW_ACTION_JUMP && param == sequence)
-            itSeq->second.setFollowAction(FOLLOW_ACTION_JUMP, newSeq);
-    }
-}
-
-void SequenceManager::moveSequence(uint32_t sequence, uint32_t newSeq) {
-    auto node = m_mSequences.extract(sequence);
-    if (!node.empty()) {
-        node.key() = newSeq;
-        node.mapped().setSequenceId(newSeq);
-        m_mSequences.erase(newSeq);
-        m_mSequences.insert(std::move(node));
-    }
-    updateFollowAction(sequence, newSeq);
-}
-
-void SequenceManager::swapSequence(uint32_t sequence1, uint32_t sequence2) {
-    std::swap(m_mSequences[sequence1], m_mSequences[sequence2]);
-    updateFollowAction(sequence1, sequence2);
-    updateFollowAction(sequence2, sequence1);
-}
-
-uint8_t SequenceManager::getTriggerNote(uint32_t sequence) {
+uint8_t SequenceManager::getTriggerNote(uint32_t sceneSeq) {
     for (auto it = m_mTriggers.begin(); it != m_mTriggers.end(); ++it)
-        if (it->second == sequence)
+        if (it->second == sceneSeq)
             return it->first;
     return 0xFF;
 }
 
-void SequenceManager::setTriggerNote(uint32_t sequence, uint8_t note) {
-    m_mTriggers.erase(getTriggerNote(sequence));
+void SequenceManager::setTriggerNote(uint16_t sceneSeq, uint8_t note) {
+    m_mTriggers.erase(getTriggerNote(sceneSeq));
     if (note < 128)
-        m_mTriggers[note] = sequence;
+        m_mTriggers[note] = sceneSeq;
 }
 
 uint8_t SequenceManager::getTriggerChannel() { 
@@ -396,67 +314,10 @@ uint32_t SequenceManager::getTriggerSequence(uint8_t note) {
 size_t SequenceManager::getPlayingSequencesCount() { return m_vPlayingSequences.size(); }
 
 void SequenceManager::stop() {
-    for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
-        getSequence(*it)->setPlayState(STOPPED);
+    for (auto pSequence: m_vPlayingSequences) {
+        pSequence->setPlayState(STOPPED);
     }
     m_vPlayingSequences.clear();
-}
-
-void SequenceManager::cleanPatterns() {
-    // Create copy of patterns map
-    std::map<uint32_t, Pattern*> mPatterns;
-    for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
-        mPatterns[it->first] = it->second;
-
-    // Remove all patterns that are used by tracks
-    for (auto itSeq = m_mSequences.begin(); itSeq != m_mSequences.end(); ++itSeq) {
-        uint32_t nTrack = 0;
-        while (Track* pTrack = itSeq->second.getTrack(nTrack++)) {
-            uint32_t nIndex = 0;
-            while (Pattern* pPattern = pTrack->getPatternByIndex(nIndex++))
-                mPatterns.erase(getPatternIndex(pPattern));
-        }
-    }
-
-    // Remove patterns in main map that are in search map and empty
-    for (auto it = mPatterns.begin(); it != mPatterns.end(); ++it) {
-        if (it->second->getEvents() == 0) {
-            delete (it->second);
-            m_mPatterns.erase(it->first);
-        }
-    }
-}
-
-uint32_t SequenceManager::getSequencesInBank(uint8_t bank) {
-    //!@todo Try to factor out.
-    std::map <uint32_t, bool> m;
-    uint32_t bk = bank << 24;
-    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it) {
-        if ((it->first & bk) == bk)
-            m[it->first] = true;
-    }
-    return m.size();
-}
-
-void SequenceManager::removeSequence(uint32_t sequence) {
-    m_mSequences.erase(sequence);
-}
-
-void SequenceManager::clearBank(uint32_t bank) {
-    //!@todo Optimse
-    uint32_t bk = bank << 24;
-    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it) {
-        if ((it->first & bk) == bk)
-            it = m_mSequences.erase(it);
-    }
-}
-
-uint32_t SequenceManager::getBanks() {
-    //!@todo Try to factor out.
-    std::map <uint8_t, bool> m;
-    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
-        m[it->first >> 24] = true;
-    return m.size();
 }
 
 bool SequenceManager::isTempoChanged() { return m_bTempoChanged; }
@@ -469,7 +330,7 @@ float SequenceManager::getTempo(bool clear) {
 
 bool SequenceManager::isTimeSigChanged() { return m_bTimeSigChanged; }
 
-uint16_t SequenceManager::getTimeSig(bool clear) {
+uint8_t SequenceManager::getTimeSig(bool clear) {
     if (clear)
         m_bTimeSigChanged = false;
     return m_nTimeSig;
@@ -479,12 +340,156 @@ void SequenceManager::setTimeSig(uint8_t sig) {
     m_nTimeSig = sig;
 }
 
-uint8_t SequenceManager::getProgress(uint8_t group) {
-    if (group < 17)
-        return m_aGroupProgress[group];
-    return 0;
+uint8_t* SequenceManager::getProgress() {
+    return m_aGroupProgress;
 }
 
-void SequenceManager::setBeatsPerBar(uint8_t beats) {
-    m_nBeatsPerBar = beats;
+void SequenceManager::setChannelType(uint8_t channel, uint8_t type) {
+    if (channel >= 16)
+        return;
+    m_nType[channel] = type;
+    for (uint8_t nScene = 0; nScene < m_vScenes.size(); ++nScene) {
+        Sequence* pSequence = getSequence(nScene, channel);
+        if (pSequence) {
+            pSequence->setRepeat(type == CHANNEL_TYPE_DISABLED ? 0 : 1);
+            pSequence->setPlayState(STOPPED);
+        }
+    }
+}
+
+uint8_t SequenceManager::getChannelType(uint8_t channel) {
+    if (channel < 16)
+        return m_nType[channel];
+    return CHANNEL_TYPE_DISABLED;
+}
+
+// Scene handling
+
+uint8_t SequenceManager::getNumScenes() {
+    return m_vScenes.size();
+}
+
+void SequenceManager::insertScene(uint8_t scene) {
+    Sequence* pScene = new Sequence(nullptr);
+    if (!pScene)
+        return;
+    if (scene > m_vScenes.size()) {
+        scene = m_vScenes.size();
+        m_vScenes.push_back(pScene);
+    } else {
+        m_vScenes.insert(m_vScenes.begin() + scene, pScene);
+    }
+    std::string s;
+    s = 'A' + scene;
+    pScene->setName(s);
+    pScene->setGroup(16);
+    pScene->setRepeat(1);
+    uint32_t nPattern = createPattern();
+    m_mPatterns[nPattern]->setBeatsInPattern(1); //!@todo Is it necessary to make scene pattern one beat long?
+    addPattern(pScene, 0, 0, nPattern);
+    for (uint8_t chan = 0; chan < 16; ++chan) {
+        Sequence* pSequence = new Sequence(pScene);
+        pSequence->setGroup(chan);
+        Track* pTrack = pSequence->getTrack(0);
+        if (pTrack)
+            pTrack->setChannel(chan);
+        pSequence->setName(s  + std::to_string(chan + 1));
+        addPattern(pSequence, 0, 0, createPattern());
+        pScene->m_vChildSequences.push_back(pSequence);
+        setFollowAction(scene, chan, FOLLOW_ACTION_RELATIVE, 0); // Loop
+        if (m_nType[chan] != CHANNEL_TYPE_DISABLED)
+            pSequence->setRepeat(1);
+    }
+}
+
+void SequenceManager::removeScene(uint8_t scene) {
+    if (scene >= m_vScenes.size())
+        return;
+    for (auto it = m_vScenes[scene]->m_vChildSequences.begin(); it != m_vScenes[scene]->m_vChildSequences.end(); ++it) {
+        for (auto it_playing = m_vPlayingSequences.begin(); it_playing != m_vPlayingSequences.end(); ++it_playing) {
+            if (*it == *it_playing) {
+                m_vPlayingSequences.erase(it_playing);
+                break;
+            }
+        }
+        delete *it;
+        it = m_vScenes[scene]->m_vChildSequences.erase(it);
+    }
+    Track* pTrack = m_vScenes[scene]->getTrack(0);
+    if (pTrack) {
+       Pattern* pPattern = pTrack->getPattern(0);
+       if (pPattern) {
+           deletePattern(getPatternIndex(pPattern));
+       }
+    }
+    delete m_vScenes[scene];
+    m_vScenes.erase(m_vScenes.begin() + scene);
+}
+
+void SequenceManager::swapScene(uint8_t scene1, uint8_t scene2) {
+    if (scene1 == scene2 || scene1 >= m_vScenes.size() || scene2 >= m_vScenes.size())
+        return;
+    std::iter_swap(m_vScenes[scene1], m_vScenes[scene2]);
+}
+
+bool SequenceManager::setFollowAction(uint8_t scene, uint8_t sequence, uint8_t action, int16_t param) {
+    Sequence* pSequence = getSequence(scene, sequence);
+    if (pSequence) {
+        switch (action) {
+            case FOLLOW_ACTION_ABSOLUTE:
+                if (param < 0 || param > m_vScenes.size())
+                    return false;
+                pSequence->setFollowSequence(m_vScenes[param], action);
+                return true;
+                break;
+            case FOLLOW_ACTION_RELATIVE:
+                if (param == 0) {
+                    // Loop
+                    pSequence->setFollowSequence(pSequence, action);
+                    return true;
+                } else {
+                    // Find index of sequence
+                    for (uint32_t i = 0; i < m_vScenes.size(); ++i) {
+                        if (m_vScenes[i] == pSequence) {
+                            uint16_t offset = param + i;
+                            if (offset >= 0 && offset < m_vScenes.size()) {
+                                pSequence->setFollowSequence(m_vScenes[offset], action);
+                                return true;
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+            default:
+                pSequence->setFollowSequence(nullptr, 0);
+        }
+    }
+    return false;
+}
+
+int16_t SequenceManager::getFollowActionParam(uint8_t scene, uint8_t sequence) {
+    Sequence* pSequence = getSequence(scene, sequence);
+    if (pSequence) {
+        uint8_t nAction = pSequence->getFollowAction();
+        if (nAction == FOLLOW_ACTION_NONE)
+            return 0;
+        Sequence* pFollowSequence = pSequence->getFollowSequence();
+        uint8_t sceneIndex = 0xff;
+        uint8_t nextSceneIndex = 0xff;
+        for (uint32_t i = 0; i < m_vScenes.size(); ++i) {
+            if (m_vScenes[i] == pSequence)
+                sceneIndex = i;
+            if (m_vScenes[i] && m_vScenes[i] == pFollowSequence) {
+                if (nAction == FOLLOW_ACTION_ABSOLUTE)
+                    return i;
+                nextSceneIndex = i;
+            }
+        }
+        if (sceneIndex == 0xff || nextSceneIndex == 0xff)
+            return 0;
+        if (nAction == FOLLOW_ACTION_RELATIVE)
+            return nextSceneIndex - sceneIndex;
+    }
+    return 0;
 }

@@ -78,7 +78,9 @@ class zynthian_engine_clippy(zynthian_engine):
         self.type = "MIDI Synth"
         self.options["replace"] = False
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_clippy.py"
-        
+        self.pattern = None
+        self.processor = None
+
         if jackname:
             self.jackname = jackname
         else:
@@ -117,14 +119,14 @@ class zynthian_engine_clippy(zynthian_engine):
             # cwd when PWD has been set.
             processor.proc = Popen(processor.command, env=self.command_env, cwd=self.command_cwd, shell=False,
                                 text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_bg_task)
 
         except Exception as err:
             logging.error(f"Can't start engine {self.name} => {err}")
 
     def stop(self):
         logging.info("Stopping Engine " + self.name)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_bg_task)
         for processor in list(self.processors):
             self.remove_processor
 
@@ -182,155 +184,22 @@ class zynthian_engine_clippy(zynthian_engine):
             raise zyngine_lscp_warning(
                 "{} ({} {})".format(parts[2], parts[0], parts[1]))
 
-    def insert_slot(self, slot):
-        for processor in self.processors:
-            self.insert_proc_slot(processor, slot)
-
-    def insert_proc_slot(self, processor, slot):
-        # Create new zctrls
-        zctrls = {
-            f"file {slot}": zynthian_controller(self, f"file {slot}", {
-                "name": "file",
-                "is_path": True,
-                "value_default": "",
-                "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
-                "processor": processor
-            }),
-            f"warp {slot}": zynthian_controller(self, f"warp {slot}", {
-                "name": "warp",
-                "processor": processor,
-                "is_toggle": True,
-                "labels": ["off", "on"],
-                "value": "on"
-            }),
-            f"beats {slot}": zynthian_controller(self, f"beats {slot}", {
-                "name": "beats",
-                "processor": processor,
-                "is_integer": True,
-                "value": 0,
-                "value_min": 0,
-                "value_max": MAX_BEATS
-            }),
-            f"mode {slot}": zynthian_controller(self, f"mode {slot}", {
-                "name": "mode",
-                "processor": processor,
-                "is_integer": True,
-                "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
-                "value_min": 0,
-                "value_max": 25,
-                "value": 0
-            }),
-            f"gain {slot}": zynthian_controller(self, f"gain {slot}", {
-                "name": "gain (dB)",
-                "processor": processor,
-                "value_min": -12.0,
-                "value_max": 6.0,
-                "value": 0.0,
-            }),
-            f"crop_start {slot}": zynthian_controller(self, f"crop_start {slot}", {
-                "name": "crop start",
-                "processor": processor,
-                "is_integer": True
-            }),
-            f"crop_end {slot}": zynthian_controller(self, f"crop_end {slot}", {
-                "name": "crop end",
-                "processor": processor,
-                "is_integer": True
-            })
-        }
-        sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-        self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
-
-        # Move zctrls
-        for i in range(slot, self.zynseq.slots):
-            for name in self.SYMBOLS:
-                try:
-                    zctrl = processor.controllers_dict.pop(f"{name} {i}")
-                    zctrl.symbol = f"{name} {i + 1}"
-                    zctrls[zctrl.symbol] = zctrl
-                except:
-                    break #TODO: Optimise by breaking out of outer loop
-
-        # Merge controller dict
-        processor.controllers_dict.update(zctrls)
-        processor.controllers_dict["slot"].value_max = self.zynseq.slots
-
-    def set_slot(self, processor, slot):
-        processor.controllers_dict["slot"].set_value(slot + 1)
-
-    def remove_slot(self, slot):
-        slot += 1
-        for processor in self.processors:
-            try:
-                for symbol in ("file", "gain", "mode", "warp", "beats", "crop_start", "crop_end"):
-                    del processor.controllers_dict[f"{symbol} {slot}"]
-            except:
-                pass # We expect warp and beats to fail sometimes.
-
-            symbols = []
-            for symbol in processor.controllers_dict.keys():
-                if symbol == "slot":
-                    continue
-                idx = int(symbol[-2:])
-                if idx >= slot:
-                    symbols.append(symbol)
-
-            # Move zctrls
-            zctrls = {}
-            for symbol in symbols:
-                zctrl = processor.controllers_dict.pop(symbol)
-                idx = int(symbol[-2:])
-                new_symbol = f"{symbol[:-2]}{idx - 1}"
-                zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
-                zctrls[new_symbol] = zctrl
-            processor.controllers_dict.update(zctrls)
-            processor.controllers_dict["slot"].value_max = self.zynseq.slots
-
-    def move_slot(self, slot, offset):
-        """
-        Move slot to +offset
-        Nudge slots between slot & offset
-        """
-
-        slot += 1
-        new_slot = slot + offset
-        if offset == 0 or self.zynseq.slots < new_slot < 0:
+    def set_scene(self, processor, scene):
+        self.processor = processor
+        self.scene = scene
+        self.pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+        if self.pattern == 4294967295:
             return
-        for processor in self.processors:
-            zctrls = {}
-            for symbol in ("file", "gain", "mode", "warp", "beats", "crop_start", "crop_end"):
-                try:
-                    zctrl = processor.controllers_dict[f"{symbol} {slot}"]
-                    new_symbol = f"{symbol} {slot + offset}"
-                    zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
-                    zctrls[new_symbol] = zctrl
-                except:
-                    pass
-            if offset > 0:
-                for i in range(slot + 1, slot + 1 + offset):
-                    for symbol in ("file", "gain", "mode", "warp", "beats", "crop_start", "crop_end"):
-                        try:
-                            zctrl = processor.controllers_dict[f"{symbol} {i}"]
-                            new_symbol = f"{symbol} {i - 1}"
-                            zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
-                            zctrls[new_symbol] = zctrl
-                        except:
-                            pass
-            else:
-                for i in range(slot + offset, slot):
-                    for symbol in ("file", "gain", "mode", "warp", "beats", "crop_start", "crop_end"):
-                        try:
-                            zctrl = processor.controllers_dict[f"{symbol} {i}"]
-                            new_symbol = f"{symbol} {i + 1}"
-                            zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
-                            zctrls[new_symbol] = zctrl
-                        except:
-                            pass
-            processor.controllers_dict.update(zctrls)
-
-    # ---------------------------------------------------------------------------
-    # Controller Management
-    # ---------------------------------------------------------------------------
+        self._ctrl_screens = [["File", [f"file {self.pattern}"]]]
+        try:
+            if processor.controllers_dict[f"file {self.pattern}"].path:
+                self._ctrl_screens = [
+                    [f"File", [f"file {self.pattern}", f"warp {self.pattern}", f"beats {self.pattern}", f"mode {self.pattern}"]],
+                    [f"Waveform", [f"gain {self.pattern}", f"crop_start {self.pattern}", f"crop_end {self.pattern}"]]
+                ]
+        except:
+            pass
+        processor.init_ctrl_screens()
 
     def write_sfz(self, processor):
         filename = f"/tmp/clippy_{processor.midi_chan}.sfz"
@@ -342,41 +211,36 @@ class zynthian_engine_clippy(zynthian_engine):
             file.write(f"sample=/tmp/silence.wav\n")
             file.write(f"key=0\n")
             file.write(f"\n")
-            for slot in range(self.zynseq.slots):
-                file_zctrl = processor.controllers_dict[f"file {slot}"]
-                beats_zctrl = processor.controllers_dict[f"beats {slot}"]
-                gain_zctrl = processor.controllers_dict[f"gain {slot}"]
-                crop_start_zctrl = processor.controllers_dict[f"crop_start {slot}"]
-                crop_end_zctrl = processor.controllers_dict[f"crop_end {slot}"]
+            for scene in range(self.zynseq.scenes):
+                pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+                file_zctrl = processor.controllers_dict[f"file {pattern}"]
+                beats_zctrl = processor.controllers_dict[f"beats {pattern}"]
+                gain_zctrl = processor.controllers_dict[f"gain {pattern}"]
+                crop_start_zctrl = processor.controllers_dict[f"crop_start {pattern}"]
+                crop_end_zctrl = processor.controllers_dict[f"crop_end {pattern}"]
                 if file_zctrl.value:
                     file.write("<region>\n")
                     file.write(f"sample={file_zctrl.path}\n")
-                    file.write(f"key={slot + 1}\n")
+                    file.write(f"key={scene + 1}\n") #TODO: Fixme
                     file.write(f"volume={gain_zctrl.value}\n")
-                    #file.write(f"offset={crop_start_zctrl.value}\n")
-                    #file.write(f"end={crop_end_zctrl.value}\n")
+                    file.write(f"offset={crop_start_zctrl.value}\n")
+                    file.write(f"end={crop_end_zctrl.value}\n")
                     file.write(f"\n")
         self.lscp_send_single(processor, f"LOAD INSTRUMENT '{filename}' 0 0")
 
+    def get_scene(self, processor, pattern):
+        scene = None
+        for s in range(self.zynseq.scenes):
+            if self.zynseq.libseq.getPattern(s, processor.midi_chan, 0, 0) == pattern:
+                scene = s
+                break
+        return scene
+
     def send_controller_value(self, zctrl):
-        if zctrl.symbol == "slot":
-            slot = zctrl.value - 1
-            filename = zctrl.processor.controllers_dict[f"file {slot}"].value
-            if filename:
-                # Sample file loaded so populate sample maniluation controls
-                self._ctrl_screens = [
-                    [f"sample {slot + 1}", [f"slot", f"file {slot}", f"gain {slot}", f"warp {slot}"]],
-                    [f"waveform {slot + 1}", [f"beats {slot}", f"mode {slot}"]] #, f"crop_start {slot}", f"crop_end {slot}"]]
-                ]
-            else:
-                self._ctrl_screens = [[f"sample {slot + 1}", [f"slot", f"file {slot}"]]]
-            zctrl.processor.init_ctrl_screens()
-            zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, mode='control')
-            return
         try:
-            slot = int(zctrl.symbol.split(" ")[1])
-            beats_zctrl = zctrl.processor.controllers_dict[f"beats {slot}"]
-            mode_zctrl = zctrl.processor.controllers_dict[f"mode {slot}"]
+            pattern = int(zctrl.symbol.split(" ")[1])
+            beats_zctrl = zctrl.processor.controllers_dict[f"beats {pattern}"]
+            mode_zctrl = zctrl.processor.controllers_dict[f"mode {pattern}"]
         except Exception as e:
             logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
             return
@@ -387,39 +251,43 @@ class zynthian_engine_clippy(zynthian_engine):
             else:
                 mode_zctrl.set_value(1)
             beats_zctrl.value = 0
-            self.set_file(zctrl.processor, slot, True)
-            self.send_controller_value(zctrl.processor.controllers_dict["slot"])
-            sequence = zctrl.processor.midi_chan + zynseq.LAUNCHER_COLS * slot
-            self.zynseq.rebuild_launcher_info(sequence)
+            self.set_file(zctrl.processor, pattern, True)
+            self.zynseq.rebuild_all_launcher_info()
         elif zctrl.symbol.startswith("warp"):
-            self.set_file(zctrl.processor, slot)
+            self.set_file(zctrl.processor, pattern)
         elif zctrl.symbol.startswith("mode"):
-            self.set_mode(zctrl.processor, slot, zctrl.value)
+            self.set_mode(zctrl.processor, pattern, zctrl.value)
         elif zctrl.symbol.startswith("crop"):
-            self.set_file(zctrl.processor, slot)
+            self.start_bg_task()
+            return
+            #self.set_file(zctrl.processor, pattern)
 
         self.write_sfz(zctrl.processor)
 
-    def set_mode(self, processor, slot, mode):
+    def set_mode(self, processor, pattern, mode):
         # mode: 0=disabled. 1=loop. 2..25=play 1..24
-        sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
+        scene = self.get_scene(processor, pattern)
         match mode:
             case 0:
-                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
+                self.libseq.setPlayMode(scene, processor.midi_chan, 0x0001)
 
             case 1:
-                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
-                self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_LOOP, 0)
+                self.libseq.setPlayMode(scene, processor.midi_chan, 0x0101)
+                self.libseq.setFollowAction(scene, processor.midi_chan, zynseq.FOLLOW_ACTION_RELATIVE, 0)
             case _:
-                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x01 | ((mode - 1) << 8))
-                self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
-        self.zynseq.rebuild_launcher_info(sequence)
+                self.libseq.setPlayMode(scene, processor.midi_chan, 0x01 | ((mode - 1) << 8))
+                self.libseq.setFollowAction(scene, processor.midi_chan, zynseq.FOLLOW_ACTION_NONE, 0)
+        self.zynseq.rebuild_launcher_info(processor.midi_chan)
 
-    def set_file(self, processor, slot, reset=False):
-        file_zctrl = processor.controllers_dict[f"file {slot}"]
-        warp_zctrl = processor.controllers_dict[f"warp {slot}"]
-        beats_zctrl = processor.controllers_dict[f"beats {slot}"]
-        sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
+    def set_file(self, processor, pattern, reset=False):
+        file_zctrl = processor.controllers_dict[f"file {pattern}"]
+        warp_zctrl = processor.controllers_dict[f"warp {pattern}"]
+        beats_zctrl = processor.controllers_dict[f"beats {pattern}"]
+        # Find what scene this pattern is in...
+        scene = self.get_scene(processor, pattern)
+        if scene is None:
+            logging.error(f"Pattern {pattern} not found in any scene")
+            return
         path = file_zctrl.value
 
         if path:
@@ -430,9 +298,9 @@ class zynthian_engine_clippy(zynthian_engine):
             frames = len(data)
             # Try to determine tempo from filename
             filename = os.path.basename(path)
-            tempo = self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["tempo"]
+            tempo = self.zynseq.libseq.getTempoAt(scene, zynseq.SCENE_CHANNEL, 1, 0)
             if not tempo:
-                tempo = self.zynseq.get_tempo()
+                tempo = self.zynseq.libseq.getTempo()
             regptn = r"(\d+)\s*(?=bpm|BPM)"
             matches = re.findall(regptn, filename)
             try:
@@ -440,8 +308,8 @@ class zynthian_engine_clippy(zynthian_engine):
             except:
                 file_tempo = tempo
             
-            zctrl_crop_start = processor.controllers_dict[f"crop_start {slot}"]
-            zctrl_crop_end = processor.controllers_dict[f"crop_end {slot}"]
+            zctrl_crop_start = processor.controllers_dict[f"crop_start {pattern}"]
+            zctrl_crop_end = processor.controllers_dict[f"crop_end {pattern}"]
             if reset:
                 # Use full file duration
                 nudge_factor = frames / 1000
@@ -456,8 +324,10 @@ class zynthian_engine_clippy(zynthian_engine):
             # Configure pattern with required beats to play whole file at this tempo
             try:
                 reconnect = False
-                #beats_per_bar = self.libseq.getBeatsPerBar()
-                beats_per_bar = self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["bpb"]
+                #beats_per_bar = self.libseq.getTimeSig()
+                beats_per_bar = self.zynseq.libseq.getTimeSigAt(scene, zynseq.SCENE_CHANNEL, 0)
+                if beats_per_bar < 1:
+                    beats_per_bar = 4
                 beats = duration * file_tempo / 60
                 bars = round(beats / beats_per_bar)
                 if beats_zctrl.value:
@@ -476,23 +346,27 @@ class zynthian_engine_clippy(zynthian_engine):
                 if warp_zctrl.value and not bpm_match and can_warp:
                     # Warp audio to fit pattern length, only if short enough to avoid slow warp
                     # Disconnect MIDI to avoid retrigger during warping
-                    if self.libseq.getPlayState(self.zynseq.bank, sequence):
+                    if self.libseq.getPlayState(scene, processor.midi_chan):
                         reconnect = True
                         self.lscp_send_single(processor, "REMOVE CHANNEL MIDI_INPUT 0 0 0")
                         # Silence existing audio
-                        if self.libseq.getPlayState(self.zynseq.bank, processor.midi_chan + slot * zynseq.LAUNCHER_COLS):
+                        if self.libseq.getPlayState(scene, processor.midi_chan):
                             self.lscp_send_single(processor, "SEND CHANNEL MIDI_DATA CC 0 120 0")
                     # Do warp
                     data, sr = soundfile.read(path)
                     data = pyrubberband.time_stretch(data, sr, factor)
-                    path = f"/tmp/clippy_{processor.midi_chan}_{sequence}.flac"
+                    path = f"/tmp/clippy_{processor.midi_chan}_{pattern}.flac"
                     soundfile.write(path, data, sr)
+                    zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
                 else:
                     try:
                         data, sr = soundfile.read(path)
-                        os.remove(f"/tmp/clippy{processor.midi_chan}_{sequence}.flac")
+                        os.remove(f"/tmp/clippy_{processor.midi_chan}_{pattern}.flac")
+                        zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
                     except:
                         pass
+                #TODO: Reset markers if warp changes, or calculate based on change.
+                zctrl_crop_end.set_value(min(zctrl_crop_end.value, zctrl_crop_end.value_max))
                 if bpm_match:
                     #TODO: Remove this when finished design - don't need to show user that warp is not changing file
                     warp_zctrl.labels = ["off", f"{tempo:.1f}*\nBPM"]
@@ -506,48 +380,60 @@ class zynthian_engine_clippy(zynthian_engine):
                     warp_zctrl.value = 0
 
                 # Setup zynseq pattern & sequence
-                pattern = self.libseq.getPattern(self.zynseq.bank, sequence, 0, 0)
-                self.libseq.selectPattern(pattern)
-                self.libseq.clearPattern(pattern)
-                self.libseq.setStepsPerBeat(1)
-                self.libseq.setBeatsInPattern(pattern, whole_beats)
-                self.libseq.addNote(0, slot + 1, 100, 1, 0.0)
-                #self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0100)
-                state = self.libseq.getPlayState(self.zynseq.bank, sequence)
+                pattern = self.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+                if pattern == 4294967295:
+                    logging.warning(f"Can't find pattern for scene {scene} chan {processor.midi_chan}")
+                else:
+                    self.libseq.selectPattern(pattern)
+                    self.libseq.clearPattern(pattern)
+                    self.libseq.setStepsPerBeat(1)
+                    self.libseq.setBeatsInPattern(pattern, whole_beats)
+                    #TODO: Need to add notes based on scenes
+                    self.libseq.addNote(0, scene + 1, 100, 1, 0.0)
                 self.libseq.updateSequenceInfo()
-                self.libseq.setChannel(self.zynseq.bank, sequence, 0, processor.midi_chan)
-                self.zynseq.set_sequence_name(self.zynseq.bank, sequence, os.path.splitext(filename)[0])
+                self.zynseq.set_sequence_name(scene, processor.midi_chan, os.path.splitext(filename)[0])
                 if reconnect:
                     # Reconnect MIDI
                     self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
             except Exception as e:
-                logging.error(f"Can't setup sequencer for clip {slot} => {e}")
+                logging.error(f"Can't setup sequencer for clip {pattern} => {e}")
         else:
-            self.libseq.setPlayState(self.zynseq.bank, sequence, zynseq.SEQ_STOPPED)
-            state = zynseq.SEQ_STOPPED
-            self.reset_pattern(processor, slot)
+            self.libseq.setPlayState(scene, processor.midi_chan, zynseq.SEQ_STOPPED)
+            self.reset_pattern(processor, scene)
 
         file_zctrl.path = path
-        self.zynseq.rebuild_launcher_info(sequence)
+        self.zynseq.rebuild_launcher_info(scene, processor.midi_chan)
+        if path:
+            self._ctrl_screens = [
+                [f"File", [f"file {pattern}", f"warp {pattern}", f"beats {pattern}", f"mode {pattern}"]],
+                [f"Waveform", [f"gain {pattern}", f"crop_start {pattern}", f"crop_end {pattern}"]]
+            ]
+        else:
+            self._ctrl_screens = [["File", [f"file {pattern}"]]]
+
         processor.init_ctrl_screens()
 
-    def on_tempo(self, tempo):
+    def start_bg_task(self, param=None):
+        #TODO: This crashes with double free at high tempo
         if self.tempo_cb_timer:
             self.tempo_cb_timer.cancel()
-        self.tempo_cb_timer = Timer(0.5, self.on_tempo_cb)
+        self.tempo_cb_timer = Timer(0.5, self.start_bg_task_cb)
         self.tempo_cb_timer.start()
 
-    def on_tempo_cb(self):
+    def start_bg_task_cb(self):
         if self.tempo_cb_timer:
             self.tempo_cb_timer.cancel()
         self.tempo_cb_timer = None
         do_warp = False
         for processor in self.processors:
-            for slot in range(self.zynseq.slots):
-                warp_zctrl = processor.controllers_dict[f"warp {slot}"]
-                if warp_zctrl.value:
-                    self.set_file(processor, slot)
+            for scene in range(self.zynseq.scenes):
+                pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+                if pattern == 4294967295:
+                    continue
+                symbol = f"warp {pattern}"
+                if processor.controllers_dict.get(symbol).value:
+                    self.set_file(processor, pattern)
                     do_warp = True
         if do_warp:
             self.write_sfz(processor)
@@ -565,9 +451,85 @@ class zynthian_engine_clippy(zynthian_engine):
             self.lscp_send_single(processor, f"SEND CHANNEL MIDI_DATA NOTE_OFF {ls_chan_id} {note} 0")
             #logging.warning(f"TODO: Send MIDI note off to chan: {chan} note: {note}")
 
-    def stop_slot(self, processor, slot):
-        #self.lscp_send_single(processor, f"SEND CHANNEL MIDI_DATA NOTE_OFF {ls_chan_id} {slot + 1} 0")
-        self.lscp_send_single(processor, "SEND CHANNEL MIDI_DATA CC 0 120 0")
+    def update_controllers(self, processor):
+        patterns = []
+        for scene in range(self.zynseq.scenes):
+            pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+            if pattern == 4294967295:
+                continue
+            patterns.append(pattern)
+            # Add missing controllers
+            zctrls = {}
+            if f"file {pattern}" not in processor.controllers_dict:
+                zctrls[f"file {pattern}"] = zynthian_controller(self, f"file {pattern}", {
+                        "name": "file",
+                        "is_path": True,
+                        "value_default": "",
+                        "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
+                        "processor": processor
+                    })
+                zctrls[f"warp {pattern}"] = zynthian_controller(self, f"warp {pattern}", {
+                        "name": "warp",
+                        "processor": processor,
+                        "is_toggle": True,
+                        "labels": ["off", "on"],
+                        "value": "on"
+                    })
+                zctrls[f"beats {pattern}"] = zynthian_controller(self, f"beats {pattern}", {
+                    "name": "beats",
+                    "processor": processor,
+                    "is_integer": True,
+                    "value": 0,
+                    "value_min": 0,
+                    "value_max": MAX_BEATS
+                })
+                zctrls[f"mode {pattern}"] = zynthian_controller(self, f"mode {pattern}", {
+                    "name": "mode",
+                    "processor": processor,
+                    "is_integer": True,
+                    "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
+                    "value_min": 0,
+                    "value_max": 25,
+                    "value": 0
+                })
+                zctrls[f"gain {pattern}"] = zynthian_controller(self, f"gain {pattern}", {
+                    "name": "gain (dB)",
+                    "processor": processor,
+                    "value_min": -12.0,
+                    "value_max": 6.0,
+                    "value": 0.0,
+                })
+                zctrls[f"crop_start {pattern}"] = zynthian_controller(self, f"crop_start {pattern}", {
+                    "name": "crop start",
+                    "processor": processor,
+                    "is_integer": True
+                })
+                zctrls[f"crop_end {pattern}"] = zynthian_controller(self, f"crop_end {pattern}", {
+                    "name": "crop end",
+                    "processor": processor,
+                    "is_integer": True
+                })
+                self.libseq.setPlayMode(scene, processor.midi_chan, 0x0001)
+                self.reset_pattern(processor, scene)
+            processor.controllers_dict.update(zctrls)
+
+        # Remove controllers for non-existing patterns
+        for zctrl in processor.controllers_dict.values():
+            if not zctrl.name.startswith("file "):
+                continue
+            pattern = int(zctrl.symbol.split(" ")[1])
+            if pattern in patterns:
+                continue
+            try:
+                processor.controllers_dict.pop(f"file {pattern}", None)
+                processor.controllers_dict.pop(f"warp {pattern}", None)
+                processor.controllers_dict.pop(f"beats {pattern}", None)
+                processor.controllers_dict.pop(f"mode {pattern}", None)
+                processor.controllers_dict.pop(f"gain {pattern}", None)
+                processor.controllers_dict.pop(f"crop_start {pattern}", None)
+                processor.controllers_dict.pop(f"crop_end {pattern}", None)
+            except Exception as e:
+                logging.warning("Failed to remove controller for pattern %d: %s", pattern, e)
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -587,38 +549,13 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
         self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
-        processor.controllers_dict = {f"slot": zynthian_controller(self, f"slot", {
-                    "is_integer": True,
-                    "value": 2, #TODO: This lets subsequence set_slot work, unless there are only 1 slots
-                    "value_min": 1,
-                    "value_max": self.zynseq.slots,
-                    "processor": processor
-                })}
+        processor.controllers_dict = {}
+        self.update_controllers(processor)
 
-        for slot in range(self.zynseq.slots):
-            self.insert_proc_slot(processor, slot)
-            self.reset_pattern(processor, slot)
-        self.set_slot(processor, 0)
-
-        # Create a stop sequence that runs if playing pattern toggled.
-        sequence = processor.midi_chan + 1
-        pattern = self.libseq.getPattern(0, sequence, 0, 0)
-        if pattern == 4294967295:
-            pattern = self.libseq.createPattern()
-            self.libseq.addPattern(0, sequence, 0, 0, pattern, True)
-        self.libseq.selectPattern(pattern)
-        self.libseq.clearPattern(pattern)
-        self.libseq.setStepsPerBeat(1)
-        self.libseq.setBeatsInPattern(pattern, 1)
-        self.libseq.addNote(0, 0, 100, 1, 0.0)
-        self.libseq.updateSequenceInfo()
-        self.libseq.setChannel(0, sequence, 0, processor.midi_chan)
-        self.libseq.setPlayMode(0, sequence, 0x0100)
-        self.libseq.setFollowAction(0, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
-        self.zynseq.set_sequence_name(0, sequence, "silence")
-        processor.stop_seq = sequence
-
-        self.zynseq.rebuild_all_launcher_info() # Need to do this (again!!!) here because called too early when adding chain (before processor is added)
+        self.set_scene(processor, 0)
+        self.zynseq.libseq.setChannelType(processor.midi_chan, zynseq.CHANNEL_TYPE_CLIPPY)
+        for scene in range(self.zynseq.scenes):
+            self.zynseq.libseq.setRepeat(scene, processor.midi_chan, 0)
 
     def remove_processor(self, processor):
         try:
@@ -629,19 +566,18 @@ class zynthian_engine_clippy(zynthian_engine):
         except Exception as err:
             logging.error("Can't stop processor")
 
-    def reset_pattern(self, processor, slot):
-            sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-            self.libseq.clearSequence(self.zynseq.bank, sequence)
-            #pattern = self.libseq.getPatternAt(self.zynseq.bank, sequence, 0, 0)
+    def reset_pattern(self, processor, scene):
+            #self.libseq.clearSequence(scene, processor.midi_chan)
+            #pattern = self.libseq.getPatternAt(scene, processor.midi_chan, 0, 0)
             #if pattern == 4294967295:
             #    pattern = self.libseq.createPattern()
-            #    self.libseq.addPattern(self.zynseq.bank, sequence, 0, 0, pattern, True)
+            #    self.libseq.addPattern(scene, processor.midi_chan, 0, 0, pattern, True)
             #self.libseq.clearPattern(pattern)
             #self.libseq.setStepsPerBeat(1)
             #self.libseq.setBeatsInPattern(pattern, 1)
-            self.libseq.setRepeat(self.zynseq.bank, sequence, 0)
+            self.libseq.setRepeat(scene, processor.midi_chan, 0)
             self.libseq.updateSequenceInfo()
-            self.zynseq.set_sequence_name(self.zynseq.bank, sequence, "")
+            self.zynseq.set_sequence_name(scene, processor.midi_chan, "")
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management

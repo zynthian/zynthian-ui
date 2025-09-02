@@ -960,7 +960,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 break
 
         stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
-                       zynseq.SEQ_STOPPINGSYNC)
+                       zynseq.SEQ_STOPPING_SYNC)
         play_states = (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
         for col in range(self._zynseq.LAUNCHER_COLS):
             seq = col * self._zynseq.LAUNCHER_COLS + row
@@ -1067,9 +1067,9 @@ class PadMatrixHandler(ModeHandlerBase):
         index = col * self._rows + row
         self._leds.led_off(self._pads[index])
 
-    def update_seq_state(self, bank, seq, state=None, mode=None, group=None, refresh=True):
+    def update_seq_state(self, scene, chan, state=None, mode=None, refresh=True):
         try:
-            col, row = self._zynseq.get_pad_coords(seq)
+            col, row = self._zynseq.get_pad_coords(chan)
         except:
             return
         idx = col * self._rows + row
@@ -1079,8 +1079,8 @@ class PadMatrixHandler(ModeHandlerBase):
 
         is_empty = all(
             self._zynseq.is_pattern_empty(pattern)
-            for pattern in self._get_sequence_patterns(bank, seq))
-        color = self.GROUP_COLORS[group]
+            for pattern in self._get_sequence_patterns(scene, chan))
+        color = self.GROUP_COLORS[chan]
 
         # If seqman is enabled, update according to it's function
         if self._seqman_func is not None:
@@ -1088,21 +1088,21 @@ class PadMatrixHandler(ModeHandlerBase):
             if (self._seqman_func in (FN_COPY_SEQUENCE, FN_MOVE_SEQUENCE)
                     and self._seqman_src_seq is not None):
                 src_scene, src_seq = self._seqman_src_seq
-                if src_scene == self._zynseq.bank and src_seq == seq:
+                if src_scene == self._zynseq.bank and src_seq == chan:
                     led_mode = LED_BLINKING_24
 
         # Otherwise, update according to sequence state
         else:
-            if self._recording_seq == seq:
+            if self._recording_seq == chan:
                 led_mode = LED_BLINKING_16
             elif state == zynseq.SEQ_PLAYING:
                 led_mode = LED_BLINKING_8
-                self._playing_seqs.add(seq)
+                self._playing_seqs.add(chan)
             elif state in (zynseq.SEQ_STOPPING, zynseq.SEQ_STARTING):
                 led_mode = LED_PULSING_2
             else:
                 led_mode = LED_BRIGHT_25 if is_empty else LED_BRIGHT_100
-                self._playing_seqs.discard(seq)
+                self._playing_seqs.discard(chan)
 
         self._leds.led_on(btn, color, led_mode)
 
@@ -1169,12 +1169,15 @@ class PadMatrixHandler(ModeHandlerBase):
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
 
     def _update_pad(self, seq, refresh=True):
-        state = self._libseq.getSequenceState(self._zynseq.bank, seq)
+        scene = int(seq / 17)
+        chan = seq % 17
+        if chan > 15:
+            chan = 0xff
+        state = self._libseq.getSequenceState(scene, seq)
         mode = (state >> 8) & 0xFF
-        group = (state >> 16) & 0xFF
         state &= 0xFF
         self.update_seq_state(
-            bank=self._zynseq.bank, seq=seq, state=state, mode=mode, group=group,
+            scene=scene, chan=chan, state=state, mode=mode,
             refresh=refresh)
 
     def _refresh_tool_buttons(self):
@@ -1225,7 +1228,7 @@ class PadMatrixHandler(ModeHandlerBase):
             seq_num = self._libseq.getSequencesInBank(bank)
             for seq in range(seq_num):
                 state = self._libseq.getPlayState(bank, seq)
-                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
+                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
                     self._libseq.togglePlayState(bank, seq)
             if not in_all_banks:
                 break
@@ -2051,7 +2054,7 @@ class StepSeqHandler(ModeHandlerBase):
                     0, min(100, self._zynmixer.get_level(mixer_chan) * 100 + delta))
                 self._zynmixer.set_level(mixer_chan, level / 100)
 
-    def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
+    def update_seq_state(self, scene, chan, state=None, mode=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
         if state == zynseq.SEQ_STOPPED and self._cursor < self._used_pads:
             self._leds.remove_overlay(self._pads[self._cursor])

@@ -28,7 +28,8 @@
 #pragma once
 #include <cstdint>
 
-#define DEFAULT_TEMPO 120 // March time (120 BPM)
+#define DEFAULT_TEMPO 120.0 // March time (120 BPM)
+#define SCENE_CHANNEL 16 // Scene launcher channel
 
 // Play modes START & END are OR'd to provide mode
 // Bits 0..1 Stop mode
@@ -39,42 +40,57 @@
 #define MODE_START_SYNC 0      // Start at next sync
 #define MODE_START_IMMEDIATE 4 // Start immediately
 
-// Play status
+// Clock trigger flags
+#define CLOCK_TRIG_MIDI 1    // Clock has triggered a MIDI event
+#define CLOCK_TRIG_TEMPO 2   // Clock has triggered a tempo change
+#define CLOCK_TRIG_TIMESIG 4 // Clock has triggered a time signature change
+#define CLOCK_TRIG_SEQEND 8  // Clock has triggered a time signature change
+#define CLOCK_TRIG_SCENE 16  // Clock has triggered a scene change
+
+// Play status (bit 0 = playing)
 #define STOPPED 0       // Sequence is stopped
 #define PLAYING 1       // Sequence is playing
-#define STOPPING 2      // Sequence is playing waiting to stop
-#define STARTING 3      // Sequence is paused waiting to start
-#define STOPPING_SYNC 4 // Sequence is playing waiting to stop at next sync point
+#define STARTING 2      // Sequence is paused waiting to start
+#define STOPPING 3      // Sequence is playing waiting to stop
+#define FORCED_STOP 4   // Sequence is stopped immediately
+#define STOPPING_SYNC 5 // Sequence is playing waiting to stop at next sync point
+#define CHILD_PLAYING 6 // Child (of scene launcher) sequence is playing
+#define CHILD_STOPPING 7 // Child (of scene launcher) sequence is stopping
+
+// Channel types
+enum CHANNEL_TYPE {
+    CHANNEL_TYPE_DISABLED,
+    CHANNEL_TYPE_MIDI,
+    CHANNEL_TYPE_CLIPPY
+};
 
 // Follow action
 enum FOLLOW_ACTION {
     FOLLOW_ACTION_NONE,
-    FOLLOW_ACTION_LOOP,
-    FOLLOW_ACTION_NEXT,
-    FOLLOW_ACTION_PREV,
-    FOLLOW_ACTION_JUMP
+    FOLLOW_ACTION_RELATIVE,
+    FOLLOW_ACTION_ABSOLUTE
 };
 
 // MIDI commands
-#define MIDI_NOTE_OFF 0x80
-#define MIDI_NOTE_ON 0x90
-#define MIDI_POLY_PRESSURE 0xA0
-#define MIDI_CONTROL 0xB0
-#define MIDI_PROGRAM 0xC0
-#define MIDI_CHAN_PRESSURE 0xD0
-#define MIDI_PITCHBEND 0xE0
-#define MIDI_SYSEX_START 0xF0
-#define MIDI_TIMECODE 0xF1
-#define MIDI_POSITION 0xF2
-#define MIDI_SONG 0xF3
-#define MIDI_TUNE 0xF6
-#define MIDI_SYSEX_END 0xF7
-#define MIDI_CLOCK 0xF8
-#define MIDI_START 0xFA
-#define MIDI_CONTINUE 0xFB
-#define MIDI_STOP 0xFC
-#define MIDI_ACTIVE_SENSE 0xFE
-#define MIDI_RESET 0xFF
+static const uint8_t MIDI_NOTE_OFF = 0x80;
+static const uint8_t MIDI_NOTE_ON = 0x90;
+static const uint8_t MIDI_POLY_PRESSURE = 0xA0;
+static const uint8_t MIDI_CONTROL = 0xB0;
+static const uint8_t MIDI_PROGRAM = 0xC0;
+static const uint8_t MIDI_CHAN_PRESSURE = 0xD0;
+static const uint8_t MIDI_PITCHBEND = 0xE0;
+static const uint8_t MIDI_SYSEX_START = 0xF0;
+static const uint8_t MIDI_TIMECODE = 0xF1;
+static const uint8_t MIDI_POSITION = 0xF2;
+static const uint8_t MIDI_SONG = 0xF3;
+static const uint8_t MIDI_TUNE = 0xF6;
+static const uint8_t MIDI_SYSEX_END = 0xF7;
+static const uint8_t MIDI_CLOCK = 0xF8;
+static const uint8_t MIDI_START = 0xFA;
+static const uint8_t MIDI_CONTINUE = 0xFB;
+static const uint8_t MIDI_STOP = 0xFC;
+static const uint8_t MIDI_ACTIVE_SENSE = 0xFE;
+static const uint8_t MIDI_RESET = 0xFF;
 
 struct MIDI_MESSAGE {
     uint8_t command = 0;

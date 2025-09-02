@@ -51,11 +51,11 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
             lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
         super().end()
 
-    def update_seq_state(self, bank, seq, state, mode, group):
-        if self.idev_out is None or bank != self.zynseq.bank:
+    def update_seq_state(self, scene, chan, state, mode):
+        if self.idev_out is None:
             return
         try:
-            col, row = self.zynseq.get_pad_coords(seq)
+            col, row = self.zynseq.get_pad_coords(chan)
         except:
             return
         if row > 3 or col > 3:
@@ -64,13 +64,13 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
         if note > 15:
             return
         try:
-            if mode == 0 or group > 15:
+            if mode == 0 or chan > 15:
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
-                vel = 4 + group
+                vel = 4 + chan
             elif state == zynseq.SEQ_PLAYING:
-                vel = 64 + group
-            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
+                vel = 64 + chan
+            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
                 vel = 33
             elif state == zynseq.SEQ_STARTING:
                 vel = 31

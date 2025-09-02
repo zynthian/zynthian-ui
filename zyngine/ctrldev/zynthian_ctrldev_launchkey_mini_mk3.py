@@ -61,11 +61,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
-    def update_seq_state(self, bank, seq, state, mode, group):
-        if self.idev_out is None or bank != self.zynseq.bank:
+    def update_seq_state(self, scene, chan, state, mode):
+        if self.idev_out is None :
             return
         try:
-            col, row = self.zynseq.get_pad_coords(seq)
+            col, row = self.zynseq.get_pad_coords(chan)
         except:
             return
         if self.scroll:
@@ -75,16 +75,16 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         note = 96 + row * 16 + col
         # chan: 0=static, 1=flashing, 2=pulsing
         try:
-            if mode == 0 or group > 15: #TODO: Handle groups > 15
+            if mode == 0 or chan > 15: #TODO: Handle groups > 15
                 chan = 0
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 chan = 0
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
             elif state == zynseq.SEQ_PLAYING:
                 chan = 2
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
-            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
                 chan = 1
                 vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
             elif state == zynseq.SEQ_STARTING:
@@ -92,7 +92,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
                 lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
                 chan = 1
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
             else:
                 chan = 0
                 vel = 0

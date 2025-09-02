@@ -34,12 +34,7 @@ class Sequence {
   public:
     /** @brief  Create Sequence object
     */
-    Sequence();
-
-    /** @brief  Set sequence id
-        @param sequence Sequence number
-    */
-    void setSequenceId(uint32_t sequence);
+    Sequence(Sequence* sceneSequence);
 
     /** @brief  Get sequence's mutually excusive group
         @retval uint32_t sequence's group
@@ -75,6 +70,10 @@ class Sequence {
         @retval uint32_t Sequence state as 32-bit word [repeat, group, mode, play state]
     */
     uint32_t getState();
+
+    /** @brief  Updates the play state of a scene
+    */
+    void updateSceneState();
 
     /** @brief  Add new track to sequence
         @param  track Index of track afterwhich to add new track (Optional - default: add to end of sequence)
@@ -120,7 +119,7 @@ class Sequence {
     /** @brief  Get tempo from timebase track
         @param  bar Bar (measure) at which to get tempo
         @param  beat Tick at which to get tempo [Optional - default: 0]
-        @retval float Tempo in BPM
+        @retval float Tempo in BPM or 0.0 if no tempo in timebase
     */
     float getTempoAt(uint16_t bar, uint16_t tick = 0);
 
@@ -130,22 +129,28 @@ class Sequence {
     float getTempo();
 
     /** @brief  Add time signature to timebase track
-        @param  beatsPerBar Beats per bar
         @param  bar Bar (measure) at which to set time signature
+        @param  timeSig Beats per bar
         @note   Removes time signature if same as previous time signature
     */
-    void addTimeSig(uint16_t beatsPerBar, uint16_t bar);
+    void addTimeSig(uint16_t bar, uint8_t timeSig);
+
+    /** @brief  Remove time signature from timebase track
+        @param  bar Bar (measure) at which to remove time signature
+        @param  timeSig Beats per bar
+    */
+    void removeTimeSig(uint16_t bar);
 
     /** @brief  Get time signature from timebase track
         @param  bar Bar (measure) at which to get time signature
         @retval uint16_t Beats per bar
     */
-    uint16_t getTimeSigAt(uint16_t bar);
+    uint8_t getTimeSigAt(uint16_t bar);
 
     /** @brief  Get current time signature
-        @retval uint16_t Beats per bar
+        @retval uint8_t Beats per bar
     */
-    uint16_t getTimeSig();
+    uint8_t getTimeSig();
 
     /** @brief  Get pointer to timebase track
         @retval Timebase* Pointer to timebase map
@@ -156,11 +161,12 @@ class Sequence {
         @param  nTime Time (quantity of samples since JACK epoch)
         @param  bSync True to indicate sync pulse, e.g. to sync tracks
         @param  dSamplesPerClock Samples per clock
-        @retval uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state | 4=tempo change | 8=end of sequence repeat | 16=end of scene launcher]
+        @param  nTimeSig Beats per bar
+        @retval uint8_t Bitwise flag of what clock triggers (See CLOCK_TRIG_ constants)
         @note   Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
         @note   Will clock each track
     */
-    uint8_t clock(uint32_t nTime, bool bSync, double dSamplesPerClock);
+    uint8_t clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uint8_t nTimeSig);
 
     /** @brief  Gets next event at current clock cycle
         @retval SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
@@ -212,21 +218,21 @@ class Sequence {
     */
     std::string getName();
 
-    /** @brief  Set seqeuence follow action
+    /** @brief  Set follow sequence
+        @param  sequence Pointer to follow sequence
         @param  action Follow action @see FOLLOW_ACTION enum
-        @param  param Optional parameter of action, e.g. offset
     */
-    void setFollowAction(uint8_t action, uint32_t param);
+    void setFollowSequence(Sequence* pSequence, uint8_t action);
 
-    /** @brief  Get sequence follow action
+    /** @brief  Get follow sequence
+        @retval Sequence* Pointer to follow sequence
+    */
+    Sequence* getFollowSequence();
+
+    /** @brief  Get follow action
         @retval uint8_t Follow action
     */
     uint8_t getFollowAction();
-
-    /** @brief  Get sequence follow action parameter, e.g. next sequence
-        @retval uint8_t Follow action parameter
-    */
-    uint32_t getFollowActionParam();
 
     /** @brief  Set times to play
         @param  repeat Quantity of times to play (0 to disable)
@@ -238,6 +244,8 @@ class Sequence {
     */
     uint8_t getRepeat();
 
+    std::vector<Sequence*> m_vChildSequences;   // List of pointers to sequences in scene
+
   private:
     std::vector<Track> m_vTracks;               // Vector of tracks within sequence
     Timebase m_timebase;                        // Timebase map
@@ -246,17 +254,17 @@ class Sequence {
     uint32_t m_nPosition = 0;                   // Play position in clock cycles
     uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
     float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
-    uint16_t m_nTimeSig = 4;                    // Current time signature (beats in bar)
-    uint32_t m_nId;                             // Sequence id (sequence number)
-    uint8_t m_nFollowAction = FOLLOW_ACTION_LOOP; // Sequence follow action
-    uint32_t m_nFollowParam = 0;                // Parameter for follow action, e.g. jump offset
+    uint8_t m_nTimeSig = 0;                     // Current time signature in ticks per bar (24 ticks per beat)
     uint8_t m_nState = STOPPED;                 // Play state of sequence
     uint8_t m_nMode = 1;                        // Bitwise flags: stop mode (bits 0..1), start mode (bit 2).
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat = 1;                      // Quantity of times to play sequence/ Added v11.
+    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
     bool m_bChanged = false;                    // True if sequence content changed
     bool m_bStateChanged = false;               // True if state changed since last clock cycle
     bool m_bEmpty = true;                       // True if all patterns are emtpy (no events)
     std::string m_sName;                        // Sequence name
+    uint8_t m_nFollowAction = FOLLOW_ACTION_NONE; // Follow action to perform when sequence ends
+    Sequence* m_pFollowSequence = nullptr;      // Pointer to follow sequence (null for no follow action)
+    Sequence* m_pSceneSequence = nullptr;       // Pointer to scene sequence (null if not in a scene, e.g. is a scene)
 };

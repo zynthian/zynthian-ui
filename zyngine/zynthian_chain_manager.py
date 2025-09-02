@@ -36,6 +36,7 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_processor import zynthian_processor
+from zynlibs.zynseq.zynseq import CHANNEL_TYPE_DISABLED, CHANNEL_TYPE_MIDI
 from zyngui import zynthian_gui_config
 
 # ----------------------------------------------------------------------------
@@ -205,6 +206,16 @@ class zynthian_chain_manager:
             self.state_manager.end_busy("add_chain")
             return chain_id
 
+        # Enable launcher sequences if not used by other chain
+        if midi_chan is not None:
+            enable_sequences = True
+            for chain in self.chains.values():
+                if chain.midi_chan == midi_chan:
+                    enable_sequences = False
+                    break
+            if enable_sequences:
+                self.state_manager.zynseq.libseq.setChannelType(midi_chan, CHANNEL_TYPE_MIDI)
+
         # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
         if not chain:
@@ -258,14 +269,9 @@ class zynthian_chain_manager:
             for ccnum in (64, 66, 67, 69):
                 cc_route_ct[ccnum] = 1
             lib_zyncore.zmop_set_cc_route(zmop_index, cc_route_ct)
-            # Configure launchers
-            existing_midi_chan = False
-            for chain in self.chains.values():
-                if chain_id != chain.chain_id and chain.midi_chan == midi_chan:
-                    existing_midi_chan = True
-                    break
-            if not existing_midi_chan:
-                self.state_manager.zynseq.add_channel(midi_chan)
+
+        self.state_manager.zynseq.rebuild_all_launcher_info()
+
 
         chain.rebuild_graph()
         zynautoconnect.request_audio_connect(fast_refresh)
@@ -383,6 +389,7 @@ class zynthian_chain_manager:
             if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
+
         # Disable launcher sequences if not used by other chain
         if midi_chan is not None:
             disable_sequences = True
@@ -391,7 +398,7 @@ class zynthian_chain_manager:
                     disable_sequences = False
                     break
             if disable_sequences:
-                self.state_manager.zynseq.disable_channel(midi_chan)
+                self.state_manager.zynseq.libseq.setChannelType(midi_chan, CHANNEL_TYPE_DISABLED)
         self.state_manager.zynseq.rebuild_all_launcher_info()
 
         self.state_manager.purge_zs3()
