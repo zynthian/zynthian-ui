@@ -234,13 +234,12 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
         // End of sequence or scene
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
-            nReturn |= CLOCK_TRIG_SEQEND;
             m_nPosition = 0;
             if (m_nCount >= m_nRepeat) {
                 // Follow action
-                if (m_pFollowSequence != this) {
+                nReturn |= CLOCK_TRIG_SEQEND;
+                if (m_pFollowSequence != this)
                     setPlayState(STOPPED);
-                }
             }
         } else {
             setPlayState(STOPPED);
