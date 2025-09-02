@@ -52,6 +52,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
     def build_view(self):
         self.processor = self.zyngui.get_current_processor()
         if self.processor:
+            self.processor.preset_subdir_info = None
             self.index = self.processor.get_bank_index()
             if self.processor.get_show_fav_presets():
                 if len(self.processor.get_preset_favs()) > 0:
@@ -70,6 +71,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         if self.processor and self.processor.bank_subdir_info:
             self.index = self.processor.bank_subdir_info[1]
             self.processor.bank_subdir_info = None
+            self.processor.preset_subdir_info = None
             self.set_select_path()
             self.update_list()
             self.select_listbox(self.index)
@@ -80,6 +82,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         if self.processor and self.processor.bank_subdir_info:
             self.index = self.processor.bank_subdir_info[1]
             self.processor.bank_subdir_info = self.processor.bank_subdir_info[3]
+            self.processor.preset_subdir_info = None
             self.set_select_path()
             self.update_list()
             self.select_listbox(self.index)
