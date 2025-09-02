@@ -1251,7 +1251,7 @@ bool load(const char* filename) {
     fclose(pFile);
     g_seqMan.setTimeSig(g_nTimeSig);
     g_bDirty = false;
-    selectPattern(1);
+    selectPattern(1); //!@todo Why do we do this?
     return true;
 }
 
