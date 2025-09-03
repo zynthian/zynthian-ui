@@ -352,7 +352,6 @@ class zynthian_engine_jalv(zynthian_engine):
             self.set_preset(self.processors[0], self.processors[0].preset_info)
         except Exception as e:
             logging.error(f"Can't execute jalv command '{cmd}' => {e}")
-
         #tdus = (datetime.now() - a).microseconds
         #logging.debug(f"COMMAND ({tdus}): {cmd}")
 

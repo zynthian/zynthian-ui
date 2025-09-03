@@ -194,6 +194,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2_sooperlooper(zynthian_ctrldev_akai_apc
 
     driver_name = 'AKAI APC Key25 MK2 + SL'
 
+    @classmethod
+    def get_autoload_flag(cls):
+        return False
+
     def __init__(self, state_manager, idev_in, idev_out=None):
         super().__init__(state_manager, idev_in, idev_out)
         self._sooperlooper_handler = looper_handler(
