@@ -34,6 +34,7 @@ from time import sleep
 from threading import Thread
 from subprocess import Popen, check_output, STDOUT, PIPE
 
+import zynautoconnect
 from . import zynthian_lv2
 from . import zynthian_engine
 from . import zynthian_controller
@@ -335,8 +336,23 @@ class zynthian_engine_jalv(zynthian_engine):
 
     def proc_cmd(self, cmd):
         #a = datetime.now()
-        self.proc.stdin.writelines([cmd + "\n"])
-        logging.debug(f"{cmd}")
+        try:
+            self.proc.stdin.writelines([cmd + "\n"])
+            logging.debug(f"Executed jalv command '{cmd}'")
+        except BrokenPipeError:
+            logging.error(f"Broken pipe when executing jalv command '{cmd}'. Restarting engine ...")
+            self.proc_exit = True
+            self.proc.kill()
+            self.proc = None
+            self.start()
+            # Reconnect jack
+            zynautoconnect.request_audio_connect()
+            zynautoconnect.request_midi_connect()
+            # Restore processor status
+            self.set_preset(self.processors[0], self.processors[0].preset_info)
+        except Exception as e:
+            logging.error(f"Can't execute jalv command '{cmd}' => {e}")
+
         #tdus = (datetime.now() - a).microseconds
         #logging.debug(f"COMMAND ({tdus}): {cmd}")
 
