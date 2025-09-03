@@ -372,7 +372,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         menu_options['PATTERN OPTIONS'] = options
         # Pattern Edit
         options = {}
-        # options['Add program change'] = 'Add program change'
+        program_change = self.zynseq.libseq.getProgramChange(0)
+        if program_change > 127:
+            program_change = "None"
+        options[f"Program Change ({program_change})"] = 'Program change'
         if extra_options:
             if self.zynseq.libseq.isMidiRecord():
                 options['\u2612 Record from MIDI'] = 'Record MIDI'
@@ -443,10 +446,21 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100,
                                                               'value': int(100.0 * self.zynseq.libseq.getHumanTime()),
                                                               'value_default': 0})
-            case 'Add program change':
-                self.enable_param_editor(self, 'prog_change', {'name': 'Program', 'value_max': 128,
-                                                               'value': self.get_program_change()},
-                                         self.add_program_change)
+            case 'Program change':
+                program = self.zynseq.libseq.getProgramChange(0) + 1
+                if program > 128:
+                    program = 0
+                labels = ["None"]
+                for i in range(128):
+                    labels.append(f"{i}")
+                self.enable_param_editor(
+                    self,
+                    'prog_change',
+                    {
+                        'name': 'Program',
+                        'labels': labels,
+                        'value': program
+                    }, self.add_program_change)
             case 'Record MIDI':
                 self.toggle_midi_record()
             case 'Quantized recording':
@@ -725,17 +739,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.n_steps * ticks_per_step))
         zynsmf.save(smf, "{}/{}.mid".format(self.my_captures_dpath, fname))
 
-    # Function to get program change at start of pattern
-    # returns: Program change number (1..128) or 0 for none
-    def get_program_change(self):
-        program = self.zynseq.libseq.getProgramChange(0) + 1
-        if program > 128:
-            program = 0
-        return program
-
     # Function to add program change at start of pattern
     def add_program_change(self, value):
-        self.zynseq.libseq.addProgramChange(0, value)
+        value -= 1
+        if value < 0 or value > 127:
+            self.zynseq.libseq.removeProgramChange(0, value)
+        else:
+            self.zynseq.libseq.addProgramChange(0, value)
 
     def toggle_midi_record(self, midi_record=None):
         if midi_record is None:

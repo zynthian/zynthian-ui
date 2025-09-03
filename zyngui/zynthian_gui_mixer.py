@@ -1492,7 +1492,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         follow_scene = info["follow_param"]
         pattern = self.zynseq.libseq.getPattern(scene, zynseq.SCENE_CHANNEL, 0, 0)
         self.zynseq.libseq.selectPattern(pattern)
-        program_change = self.zynseq.libseq.getProgramChange(0)
         title = f"Scene options ({name})"
         repeat = info["repeat"]
         if repeat == 0:
@@ -1522,10 +1521,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 options[f"Time signature ({sig}/4)"] = sig
             else:
                 options[f"Time signature (None)"] = sig
-            if program_change < 128:
-                options[f"Program change ({program_change})"] = program_change + 1
-            else:
-                options["Program change (None)"] = 0
         options[f"Edit name ({name})"] = name
         options["Append scene"] = None
         options["Insert scene"] = scene
@@ -1589,15 +1584,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value_max': 24,
                 'labels': labels,
                 'value': params
-            }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("Program change"):
-            labels = ["None"]
-            for i in range(128):
-                labels.append(f"{i}")
-            option_screen.enable_param_editor(option_screen, "progchange", {
-                "name": "Program change",
-                "labels": labels,
-                "value": params
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
             labels = ["NONE", "LOOP", "NEXT", "PREV"]
@@ -1685,14 +1671,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         scene = self.launcher_select_info["scene"]
         chan = self.launcher_select_info["chan"]
         match zctrl.symbol:
-            case "progchange":
-                pattern = self.zynseq.libseq.getPattern(scene, zynseq.SCENE_CHANNEL, 0, 0)
-                self.zynseq.libseq.selectPattern(pattern)
-                #TODO: Need to add pattern to scene sequence to allow adding prog change
-                if zctrl.value == 0:
-                    self.zynseq.libseq.removeProgramChange(0)
-                elif zctrl.value < 129:
-                    self.zynseq.libseq.addProgramChange(0, zctrl.value - 1)
             case "tempo":
                 self.set_scene_tempo(zctrl.value)
             case "timesig":
