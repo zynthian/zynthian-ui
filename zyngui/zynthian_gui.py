@@ -2176,7 +2176,6 @@ class zynthian_gui:
         zynsigman.register_queued(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
 
-
     def unregister_signals(self):
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
@@ -2198,11 +2197,12 @@ class zynthian_gui:
             if self.state_manager.zynseq.libseq.isMidiRecord():
                 self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
-        elif self.current_screen == 'preset':
-            if zynthian_gui_config.preset_preload_noteon:
-                curproc = self.get_current_processor()
-                if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
-                    self.screens['preset'].preselect_action()
+        # => Now using delayed pre-load (see zynthian_gui_preset.py)
+        #elif self.current_screen == 'preset':
+        #    if zynthian_gui_config.preset_preload_noteon:
+        #        curproc = self.get_current_processor()
+        #        if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
+        #            self.screens['preset'].preselect_action()
         # Note Range Learn
         elif self.current_screen == 'midi_key_range':
             if self.state_manager.midi_learn_state:

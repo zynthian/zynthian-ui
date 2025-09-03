@@ -27,6 +27,7 @@ import copy
 import logging
 
 # Zynthian specific modules
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 
@@ -38,6 +39,8 @@ from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def __init__(self):
+        self.preload_timer_id = None
+        self.preload_timer_ms = 300
         self.processor = None
         super().__init__('Preset', default_icon="preset.png")
 
@@ -235,11 +238,21 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
     def set_selector(self, zs_hidden=False):
         super().set_selector(zs_hidden)
 
-    def preselect_action(self):
-        self.zyngui.state_manager.start_busy("preselect preset")
-        res = self.processor.preload_preset(self.index)
-        self.zyngui.state_manager.end_busy("preselect preset")
-        return res
+    def select_listbox(self, index, see=True):
+        super().select_listbox(index, see=True)
+        if zynthian_gui_config.preset_preload_noteon:
+            try:
+                zynthian_gui_config.top.after_cancel(self.preload_timer_id)
+            except:
+                pass
+            self.preload_timer_id = zynthian_gui_config.top.after(self.preload_timer_ms, self.preload_action)
+
+    def preload_action(self):
+        self.preload_timer_id = None
+        if self.list_data and self.index < len(self.list_data):
+            self.zyngui.state_manager.start_busy("preload preset")
+            self.processor.preload_preset(self.index)
+            self.zyngui.state_manager.end_busy("preload preset")
 
     def restore_preset(self):
         return self.processor.restore_preset()
