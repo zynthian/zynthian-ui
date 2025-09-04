@@ -2636,7 +2636,7 @@ class zynthian_gui:
                     except:
                         pass
 
-            if not self.osc_clients and self.current_screen != "audio_mixer":
+            if not self.osc_clients and self.current_screen not in ("audio_mixer", "launcher"):
                 self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 2, False)
 
             # Poll
