@@ -1994,7 +1994,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.midi_unlearn_action()
         elif params == 'enable':
             self.enter_midi_learn()
-            self.zyngui.show_screen("audio_mixer")
+            self.zyngui.show_screen("root")
         elif params == "latched":
             self.zynmixer.midi_learn_zctrl.midi_cc_momentary_switch = 0
         elif params == "momentary":

@@ -63,8 +63,6 @@ MAX_DURATION = 30 # Maximum audio duration to warp, in seconds
 
 class zynthian_engine_clippy(zynthian_engine):
 
-    SYMBOLS = ("file", "warp", "beats", "mode", "gain", "crop_start", "crop_end")
-
     # ---------------------------------------------------------------------------
     # Initialization
     # ---------------------------------------------------------------------------
@@ -499,6 +497,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     "value_max": 6.0,
                     "value": 0.0,
                 })
+                """
                 zctrls[f"crop_start {pattern}"] = zynthian_controller(self, f"crop_start {pattern}", {
                     "name": "crop start",
                     "processor": processor,
@@ -509,13 +508,14 @@ class zynthian_engine_clippy(zynthian_engine):
                     "processor": processor,
                     "is_integer": True
                 })
+                """
                 self.libseq.setPlayMode(scene, processor.midi_chan, 0x0001)
                 self.reset_pattern(processor, scene)
             processor.controllers_dict.update(zctrls)
 
         # Remove controllers for non-existing patterns
         for zctrl in processor.controllers_dict.values():
-            if not zctrl.name.startswith("file "):
+            if not zctrl.symbol.startswith("file "):
                 continue
             pattern = int(zctrl.symbol.split(" ")[1])
             if pattern in patterns:
@@ -526,8 +526,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 processor.controllers_dict.pop(f"beats {pattern}", None)
                 processor.controllers_dict.pop(f"mode {pattern}", None)
                 processor.controllers_dict.pop(f"gain {pattern}", None)
-                processor.controllers_dict.pop(f"crop_start {pattern}", None)
-                processor.controllers_dict.pop(f"crop_end {pattern}", None)
+                #processor.controllers_dict.pop(f"crop_start {pattern}", None)
+                #processor.controllers_dict.pop(f"crop_end {pattern}", None)
             except Exception as e:
                 logging.warning("Failed to remove controller for pattern %d: %s", pattern, e)
 

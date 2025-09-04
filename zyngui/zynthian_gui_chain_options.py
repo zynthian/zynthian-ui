@@ -384,14 +384,14 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def move_chain(self):
         self.zyngui.screens["audio_mixer"].moving_chain = True
-        self.zyngui.show_screen_reset('audio_mixer')
+        self.zyngui.show_screen_reset('root')
 
     def rename_chain(self):
         self.zyngui.show_keyboard(self.do_rename_chain, self.chain.title)
 
     def do_rename_chain(self, title):
         self.chain.title = title
-        self.zyngui.show_screen_reset('audio_mixer')
+        self.zyngui.show_screen_reset('root')
 
     def export_chain(self):
         options = {}
@@ -447,7 +447,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def chain_remove_confirmed(self, params=None):
         self.zyngui.chain_manager.remove_chain(self.chain_id)
-        self.zyngui.show_screen_reset('audio_mixer')
+        self.zyngui.show_screen_reset('root')
 
     # FX-Chain management
 

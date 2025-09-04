@@ -155,28 +155,11 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
         barPos = 0;
     size_t nSequence = 0;
     while (nSequence < m_vPlayingSequences.size()) {
-        uint8_t nInc = 1;
         Sequence* pSequence = m_vPlayingSequences[nSequence];
         uint8_t nGroup = pSequence->getGroup();
         if (pSequence->getPlayState() == STOPPED || pSequence->getPlayState() == CHILD_PLAYING) {
-            if (nGroup < 17) {
+            if (nGroup < 17)
                 m_aGroupProgress[nGroup] = 0;
-                // Stop clippy if no other clippy sequences in same group are running
-                if (nGroup < 16 && m_nType[nGroup] == CHANNEL_TYPE_CLIPPY) {
-                    bool bStopClippy = true;
-                    for (auto seq: m_vPlayingSequences) {
-                        if (seq != pSequence && seq->getGroup() == nGroup) {
-                            bStopClippy = false;
-                            break;
-                        }
-                    }
-                    if (bStopClippy) {
-                        // Send clippy stop event
-                        pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nGroup), 0, 100}));
-                        pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime + 1, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_OFF | nGroup), 0, 0}));
-                    }
-                }
-            }
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
             continue;
         }
@@ -223,6 +206,24 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
             m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength()); //!@todo This can div by zero
         else if (nGroup == 16)
             m_aGroupProgress[16] = (100 * barPos / 24 / m_nTimeSig);
+
+        // Stop clippy if no other clippy sequences in same group are running
+        if (nGroup < 16 && m_nType[nGroup] == CHANNEL_TYPE_CLIPPY && pSequence->getPlayState() == STOPPED) {
+            bool bStopClippy = true;
+            for (auto seq: m_vPlayingSequences) {
+                if (seq != pSequence && seq->getGroup() == nGroup) {
+                    bStopClippy = false;
+                    break;
+                }
+            }
+            if (bStopClippy) {
+                // Send clippy stop event
+                pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nGroup), 0, 100}));
+                pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime + 1, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_OFF | nGroup), 0, 0}));
+            }
+            m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
+            continue;
+        }
         ++nSequence;
     }
 
@@ -386,9 +387,6 @@ void SequenceManager::insertScene(uint8_t scene) {
     pScene->setName(s);
     pScene->setGroup(16);
     pScene->setRepeat(1);
-    uint32_t nPattern = createPattern();
-    m_mPatterns[nPattern]->setBeatsInPattern(1); //!@todo Is it necessary to make scene pattern one beat long?
-    addPattern(pScene, 0, 0, nPattern);
     for (uint8_t chan = 0; chan < 16; ++chan) {
         Sequence* pSequence = new Sequence(pScene);
         pSequence->setGroup(chan);
