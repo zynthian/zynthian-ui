@@ -195,7 +195,7 @@ class zynthian_engine_clippy(zynthian_engine):
             if processor.controllers_dict[f"file {self.pattern}"].path:
                 self._ctrl_screens = [
                     [f"File", [f"file {self.pattern}", f"warp {self.pattern}", f"beats {self.pattern}", f"mode {self.pattern}"]],
-                    [f"Waveform", [f"gain {self.pattern}", f"crop_start {self.pattern}", f"crop_end {self.pattern}"]]
+                    [f"Waveform", [f"gain {self.pattern}"]]#, f"crop_start {self.pattern}", f"crop_end {self.pattern}"]]
                 ]
         except:
             pass
@@ -216,15 +216,15 @@ class zynthian_engine_clippy(zynthian_engine):
                 file_zctrl = processor.controllers_dict[f"file {pattern}"]
                 beats_zctrl = processor.controllers_dict[f"beats {pattern}"]
                 gain_zctrl = processor.controllers_dict[f"gain {pattern}"]
-                crop_start_zctrl = processor.controllers_dict[f"crop_start {pattern}"]
-                crop_end_zctrl = processor.controllers_dict[f"crop_end {pattern}"]
+                #crop_start_zctrl = processor.controllers_dict[f"crop_start {pattern}"]
+                #crop_end_zctrl = processor.controllers_dict[f"crop_end {pattern}"]
                 if file_zctrl.value:
                     file.write("<region>\n")
                     file.write(f"sample={file_zctrl.path}\n")
                     file.write(f"key={scene + 1}\n") #TODO: Fixme
                     file.write(f"volume={gain_zctrl.value}\n")
-                    file.write(f"offset={crop_start_zctrl.value}\n")
-                    file.write(f"end={crop_end_zctrl.value}\n")
+                    #file.write(f"offset={crop_start_zctrl.value}\n")
+                    #file.write(f"end={crop_end_zctrl.value}\n")
                     file.write(f"\n")
         self.lscp_send_single(processor, f"LOAD INSTRUMENT '{filename}' 0 0")
 
@@ -308,17 +308,17 @@ class zynthian_engine_clippy(zynthian_engine):
             except:
                 file_tempo = tempo
             
-            zctrl_crop_start = processor.controllers_dict[f"crop_start {pattern}"]
-            zctrl_crop_end = processor.controllers_dict[f"crop_end {pattern}"]
+            #zctrl_crop_start = processor.controllers_dict[f"crop_start {pattern}"]
+            #zctrl_crop_end = processor.controllers_dict[f"crop_end {pattern}"]
             if reset:
                 # Use full file duration
                 nudge_factor = frames / 1000
-                zctrl_crop_start.value_max = zctrl_crop_start.value_range = frames
-                zctrl_crop_start.value = 0
-                zctrl_crop_start.nudge_factor = nudge_factor
-                zctrl_crop_end.value = zctrl_crop_end.value_max = zctrl_crop_end.value_range = frames
-                zctrl_crop_end.nudge_factor = nudge_factor
-            frames = zctrl_crop_end.value - zctrl_crop_start.value
+                #zctrl_crop_start.value_max = zctrl_crop_start.value_range = frames
+                #zctrl_crop_start.value = 0
+                #zctrl_crop_start.nudge_factor = nudge_factor
+                #zctrl_crop_end.value = zctrl_crop_end.value_max = zctrl_crop_end.value_range = frames
+                #zctrl_crop_end.nudge_factor = nudge_factor
+            #frames = zctrl_crop_end.value - zctrl_crop_start.value
             duration = frames / sr
 
             # Configure pattern with required beats to play whole file at this tempo
@@ -357,16 +357,16 @@ class zynthian_engine_clippy(zynthian_engine):
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy_{processor.midi_chan}_{pattern}.flac"
                     soundfile.write(path, data, sr)
-                    zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
+                    #zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
                 else:
                     try:
                         data, sr = soundfile.read(path)
                         os.remove(f"/tmp/clippy_{processor.midi_chan}_{pattern}.flac")
-                        zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
+                        #zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
                     except:
                         pass
                 #TODO: Reset markers if warp changes, or calculate based on change.
-                zctrl_crop_end.set_value(min(zctrl_crop_end.value, zctrl_crop_end.value_max))
+                #zctrl_crop_end.set_value(min(zctrl_crop_end.value, zctrl_crop_end.value_max))
                 if bpm_match:
                     #TODO: Remove this when finished design - don't need to show user that warp is not changing file
                     warp_zctrl.labels = ["off", f"{tempo:.1f}*\nBPM"]
@@ -407,14 +407,14 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             self._ctrl_screens = [
                 [f"File", [f"file {pattern}", f"warp {pattern}", f"beats {pattern}", f"mode {pattern}"]],
-                [f"Waveform", [f"gain {pattern}", f"crop_start {pattern}", f"crop_end {pattern}"]]
+                [f"Waveform", [f"gain {pattern}"]]#, f"crop_start {pattern}", f"crop_end {pattern}"]]
             ]
         else:
             self._ctrl_screens = [["File", [f"file {pattern}"]]]
 
         processor.init_ctrl_screens()
 
-    def start_bg_task(self, param=None):
+    def start_bg_task(self, tempo=None):
         #TODO: This crashes with double free at high tempo
         if self.tempo_cb_timer:
             self.tempo_cb_timer.cancel()

@@ -24,7 +24,11 @@
 
 /** SequenceManager class methods implementation **/
 
-SequenceManager::SequenceManager() { init(); }
+SequenceManager::SequenceManager() {
+    init();
+    for (uint8_t channel = 0; channel < 16; ++channel)
+        setChannelType(channel, CHANNEL_TYPE_DISABLED);
+}
 
 void SequenceManager::init() {
     stop();
@@ -39,8 +43,6 @@ void SequenceManager::init() {
         delete scene;
     }
     m_vScenes.clear();
-    for (uint8_t channel = 0; channel < 16; ++channel)
-        m_nType[channel] = CHANNEL_TYPE_DISABLED;
 }
 
 Pattern* SequenceManager::getPattern(uint32_t index) {

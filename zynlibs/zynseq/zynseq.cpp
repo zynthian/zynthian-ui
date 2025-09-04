@@ -838,7 +838,7 @@ int fileWrite32u(uint32_t value, FILE* pFile) {
 int fileWrite32f(float value, FILE* pFile) {
     uint8_t* p = (uint8_t*)&value;
     for (int i = 3; i >= 0; --i)
-        fileWrite8u(*p + i, pFile);
+        fileWrite8u(*(p + i), pFile);
     return 4;
 }
 
@@ -1450,11 +1450,8 @@ void save(const char* filename) {
             while (StepEvent* pEvent = pPattern->getEventAt(nEvent++)) {
                 // Event Position (step)
                 nPos += fileWrite32u(pEvent->getPosition(), pFile);
-                // Offset as BCD
                 nPos += fileWrite32f(pEvent->getOffset(), pFile);
-                // Duration as BCD
                 nPos += fileWrite32f(pEvent->getDuration(), pFile);
-                // 1 byte values
                 nPos += fileWrite8u(pEvent->getCommand(), pFile);
                 nPos += fileWrite8u(pEvent->getValue1start(), pFile);
                 nPos += fileWrite8u(pEvent->getValue2start(), pFile);
