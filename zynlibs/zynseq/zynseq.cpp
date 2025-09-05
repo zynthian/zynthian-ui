@@ -2429,7 +2429,7 @@ void togglePlayState(uint8_t scene, uint8_t sequence) {
     Sequence* pSequence = g_seqMan.getSequence(scene, sequence);
     if (!pSequence)
         return;
-    if  (pSequence->getRepeat() == 0) {
+    if (pSequence->getRepeat() == 0) {
         g_seqMan.stopGroup(pSequence->getGroup());
         return;
     }
