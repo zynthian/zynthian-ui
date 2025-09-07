@@ -195,8 +195,9 @@ class zynthian_engine_clippy(zynthian_engine):
                     [f"File", [f"file {self.pattern}", f"warp {self.pattern}", f"beats {self.pattern}", f"mode {self.pattern}"]],
                     [f"Waveform", [f"gain {self.pattern}"]]#, f"crop_start {self.pattern}", f"crop_end {self.pattern}"]]
                 ]
+                processor.preset_name = processor.controllers_dict[f"file {self.pattern}"].value.split("/")[-1]
         except:
-            pass
+            processor.preset_name = ""
         processor.init_ctrl_screens()
 
     def write_sfz(self, processor):
@@ -287,6 +288,7 @@ class zynthian_engine_clippy(zynthian_engine):
             logging.error(f"Pattern {pattern} not found in any scene")
             return
         path = file_zctrl.value
+        processor.preset_name = path.split("/")[-1]
 
         if path:
             # Open file and get frames and samplerate
@@ -599,7 +601,6 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def get_preset_list(self, bank, processor=None):
         return []
-    #    return self._get_preset_list(bank)
 
     #def set_preset(self, processor, preset, preload=False):
     #    return False

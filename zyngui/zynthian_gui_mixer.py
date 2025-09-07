@@ -817,8 +817,6 @@ class zynthian_gui_mixer_strip:
                 else:
                     row = slot - self.parent.launcher_offset
                     self.canvas.itemconfig(f"launcher_sel:{self.parent.highlighted_strip.fader_bg}_{row}", state=tkinter.NORMAL)
-                    if self.chan is not None and self.chan < 16 and self.zynseq.launcher_info[slot][self.chan]["clippy"]:
-                        self.zynseq.launcher_info[slot][self.chan]["clippy"].set_current_screen_index(slot + 1)
 
     # --------------------------------------------------------------------------
     # Launcher UI event management
@@ -1629,7 +1627,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.launcher_mode and self.launcher_select_info:
             if self.launcher_select_info['chan'] < zynseq.SCENE_CHANNEL:
                 if self.launcher_select_info['clippy']:
-                    self.launcher_select_info['clippy'].engine.set_scene(self.launcher_select_info['clippy'], self.launcher_select_info['scene'])
                     self.zyngui.chain_control()
                     return True
                 else:
@@ -1924,6 +1921,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.set_highlighted_clip_info()
         if refresh_strips:
             self.refresh_visible_strips()
+        if self.launcher_select_info['clippy']:
+            self.launcher_select_info['clippy'].engine.set_scene(self.launcher_select_info['clippy'], self.launcher_select_info['scene'])
+
 
     def end_moving_chain(self):
         if zynthian_gui_config.enable_touch_navigation:
