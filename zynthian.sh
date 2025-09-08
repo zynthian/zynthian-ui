@@ -249,6 +249,13 @@ fi
 splash_zynthian
 
 while true; do
+
+# brumby touchscreen mouse function not working, I have to reload
+#modprobe -r hid_multitouch  # Beispieltreiber (ändern!)
+# sudo modprobe hid_multitouch
+nohup bash -c "sleep 10 && modprobe -r hid_multitouch" >/dev/null 2>&1 &
+
+
 	clean_zynthian_last_message
 
 	# Start Zynthian GUI & Synth Engine
