@@ -1,1 +1,0 @@
-/root/Peter_ctrldev/zynthian_ctrldev_keystation_pro_88_mk1.py
