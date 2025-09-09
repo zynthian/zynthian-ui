@@ -731,15 +731,34 @@ class zynthian_state_manager:
                     # Crop data until find the 0xF7 mark
                     while sysex_data[-1] != 0xF7:
                         del sysex_data[-1]
+                        
                     # logging.debug(f"  SYSEX DATA => {sysex_data}")
                     ev = bytes(sysex_data)
 
                 # Try to manage with a control device driver
                 if self.ctrldev_manager.midi_event(izmip, ev):
-                    self.status_midi = True
-                    self.last_event_flag = True
-                    continue
-
+                   self.status_midi = True
+                   self.last_event_flag = True
+                   continue
+                
+                """ # brumby 250906-2230
+                ret_value = self.ctrldev_manager.midi_event(izmip, ev)
+                if isinstance(ret_value, bool):
+                    # logging.info(f"returns boolean: {ret_value}")
+                    if ret_value:
+                        # if true, the driver self processed the event. if false, the event must be processed as usual
+                        self.status_midi = True
+                        self.last_event_flag = True
+                        continue #  process new event from midi_in
+                elif isinstance(ret_value, bytes) or isinstance(ret_value, bytearray):
+                        # driver modified the event and returns it
+                        logging.info(f"returns event: {ret_value.hex()}")
+                        evhead = ret_value[0] # update in Queue used varable.
+                        ev = ret_value # now process returned new event down the line
+                else:
+                    logging.error("wrong return type. not boolean, not midi_event")
+                 """
+                 
                 evtype = (evhead >> 4) & 0x0F
                 chan = evhead & 0x0F
 
