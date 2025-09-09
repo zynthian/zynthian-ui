@@ -28,6 +28,7 @@ import logging
 import oyaml as yaml
 from time import sleep
 from os.path import isfile, join
+from subprocess import check_output, STDOUT
 
 import zynautoconnect
 from . import zynthian_engine
@@ -100,12 +101,11 @@ class zynthian_engine_puredata(zynthian_engine):
         self.type = "Special"
         self.name = "PureData"
         self.nickname = "PD"
-        # self.jackname = "pure_data_0"
-        self.jackname = "pure_data"
+        self.jackname = self.state_manager.chain_manager.get_next_jackname(self.name)
+        self.jackname_midi = ""
 
         # Initialize custom GUI path as None - will be set conditionally when loading presets
         self.custom_gui_fpath = None
-        self.organelle_preset = False
 
         self.preset = ""
         self.preset_config = None
@@ -119,7 +119,7 @@ class zynthian_engine_puredata(zynthian_engine):
         self.reset()
 
     def get_jackname(self):
-        return "Pure Data"
+        return self.jackname_midi
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -156,23 +156,35 @@ class zynthian_engine_puredata(zynthian_engine):
 
         # Use Organelle widget for Organelle patches or when flag is set
         if "organelle" in preset_path.lower() or self.preset_config and self.preset_config.get('use_organelle_widget'):
-            self.organelle_preset = True
             self.custom_gui_fpath = self.ui_dir + "/zyngui/zynthian_widget_organelle.py"
             if not self.zctrl_config:
                 self.zctrl_config = self.default_organelle_zctrl_config
+
+        elif self.preset_config and self.preset_config.get('use_euclidseq_widget', False):
+            # Use EuclidSeq widget when flag is set
+            self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_euclidseq.py"
+
         else:
             # Don't use custom widget for other pd patches
-            self.organelle_preset = False
             self.custom_gui_fpath = None
     
         self.command = self.base_command + " " + self.get_preset_filepath(preset)
         self.preset = preset[0]
         self.stop()
+        amidi_ports = self.get_amidi_clients()
         self.start()
         for symbol in processor.controllers_dict:
             self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
         processor.refresh_controllers()
         sleep(2.0)
+        amidi_ports = list(set(self.get_amidi_clients()) - set(amidi_ports))
+        if len(amidi_ports) > 0:
+            self.jackname_midi = f"Pure Data \\[{amidi_ports[0]}\\]"
+            logging.debug(f"MIDI jackname => \"{self.jackname_midi}\"")
+        else:
+            self.jackname_midi = f"Pure Data"
+            logging.error(f"Can't get MIDI jackname!")
+
         # Need to all autoconnect because restart of process
         try:
             self.state_manager.chain_manager.chains[processor.chain_id].rebuild_graph()
@@ -197,7 +209,7 @@ class zynthian_engine_puredata(zynthian_engine):
                             self.zctrl_config[ctrl_group] = ctrl_dict
                     return True
                 else:
-                    logging.error(f"Preset config file '{config_path}' is empty.")
+                    logging.error(f"Preset config file '{config_fpath}' is empty.")
                     return False
         except Exception as e:
             logging.error(f"Can't load preset config file '{config_fpath}': {e}")
@@ -285,6 +297,22 @@ class zynthian_engine_puredata(zynthian_engine):
     # --------------------------------------------------------------------------
     # Special
     # --------------------------------------------------------------------------
+
+    @staticmethod
+    def get_amidi_clients():
+        res = []
+        try:
+            with open("/proc/asound/seq/clients", "r") as f:
+                for line in f.readlines():
+                    if line.startswith("Client") and "\"Pure Data\" [User Legacy]" in line:
+                        try:
+                            res.append(int(line[7:10]))
+                        except Exception as e:
+                            logging.error(f"Can't parse ALSA MIDI client port for {line} => {e}")
+            #logging.debug(f"ALSA MIDI CLIENTS => {res}")
+        except Exception as e:
+            logging.error(f"Can't get ALSA MIDI client list => {e}")
+        return res
 
     # ---------------------------------------------------------------------------
     # API methods

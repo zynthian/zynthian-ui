@@ -520,6 +520,10 @@ def is_plugin_ui(plugin):
                     res = "GtkUI"
                 elif ttl.find("X11UI") > 0 or ttl.find("X11") > 0:
                     res = "X11UI"
+                elif ttl.find("http://lv2plug.in/ns/extensions/ui#showInterface") > 0:
+                    # Fallback UI method when widget based methods are not available.
+                    # See: https://lv2plug.in/ns/extensions/ui#showInterface
+                    res = "UI"
                 else:
                     res = None
                 if res:

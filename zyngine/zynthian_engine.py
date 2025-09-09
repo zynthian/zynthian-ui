@@ -112,8 +112,7 @@ class zynthian_basic_engine:
                 self.proc.terminate(True)
                 self.proc = None
             except Exception as err:
-                logging.error(
-                    "Can't stop engine {} => {}".format(self.name, err))
+                logging.error("Can't stop engine {} => {}".format(self.name, err))
 
     def proc_get_output(self):
         if self.command_prompt:
