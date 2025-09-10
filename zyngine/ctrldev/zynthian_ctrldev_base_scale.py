@@ -66,8 +66,8 @@ class Harmony:
             So you ca    cycle through the number of keyboard keys to get their midi notes
       """
       try:
-         print(scales[scale])
-         l = scales[scale]
+         print(self.scales[scale])
+         l = self.scales[scale]
          pos = start%len(l)
          octave = start // len(l)
          print(f"[Debug note]: scale={scale}, start={start} pos={pos}, erg={l[pos]} von {l}")
@@ -78,12 +78,12 @@ class Harmony:
 
    def get_scale_len(self, scale) -> int:
       try:
-         print(f"[Debug len]: scale={scale}, len={len(scales[scale])}")
-         return len(scales[scale])
+         print(f"[Debug len]: scale={scale}, len={len(self.scales[scale])}")
+         return len(self.scales[scale])
       except: print("Error: get_scale_len: Tonart nicht definiert!")
 
    def get_scale_names(self):
-      return  list(scales)
+      return  list(self.scales)
 
 
 
