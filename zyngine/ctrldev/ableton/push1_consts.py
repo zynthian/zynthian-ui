@@ -206,7 +206,7 @@ PAD_98            = [0x90, 98] # note
 PAD_99            = [0x90, 99] # note
 
 
-## from pushmod.blospot.com
+## from pushmod.blosgpot.com
 #### PUSH 1 SYSEX #######################################
 
 # 71 is the manufacturer ID (Akai Electric Co. Ltd.)
@@ -275,3 +275,5 @@ BI_GREEN = 22                   # 22 - Green
 BI_GREEN_BLINK = 23             # 23 - Green Blink
 BI_GREEN_BLINK_FAST = 24        # 24 - Green Blink Fast
 #25 -> 127 - Green
+
+
