@@ -163,11 +163,11 @@ class zynseq(zynthian_engine):
         })
 
         # Cache sequence info for launchers to reduce access to libseq
-        self.launcher_info = [] # List of list launcher info, indexed by [slot][channel] - always 17 channels wide: MIDI chan 0..15 + scene launcher 16
-        self.sequence_info = {} # Map of launcher info, mapped by sequence (within current bank) - reverse linking for optimisation
-        self.scenes = 8 # Quantity of launcher slots/rows/scenes
-        self.bank = None # Currently selected bank
-        self.seq_in_bank = 0 # Quantity of sequence in the selected bank
+        self.launcher_info = []  # List of list launcher info, indexed by [slot][channel] - always 17 channels wide: MIDI chan 0..15 + scene launcher 16
+        self.sequence_info = {}  # Map of launcher info, mapped by sequence (within current bank) - reverse linking for optimisation
+        self.scenes = 8  # Quantity of launcher slots/rows/scenes
+        self.bank = 0  # Currently selected bank
+        self.seq_in_bank = 0  # Quantity of sequence in the selected bank
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
         self.reset()
@@ -192,7 +192,7 @@ class zynseq(zynthian_engine):
         count = self.libseq.getStateChange(states, size)
         for i in range(count):
             if self.pause_update:
-                return # Stop processing updates if changing structure
+                return  # Stop processing updates if changing structure
             scene = (states[i] >> 24) & 0xff
             chan = min((states[i] >> 16) & 0xff, 16)
             mode = (states[i] >> 8) & 0xff
@@ -205,12 +205,11 @@ class zynseq(zynthian_engine):
                 continue
             info["state"] = state
             info["mode"] = mode
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
-                        scene=scene, chan=chan, state=state, mode=mode)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, scene=scene, chan=chan, state=state, mode=mode)
         # Update progress
         progress = self.libseq.getProgress()
         for i in range(17):
-            self.progress[i] = progress[i] #TODO: Can we just point at getProgress()?
+            self.progress[i] = progress[i]  # TODO: Can we just point at getProgress()?
 
     def rebuild_all_launcher_info(self):
         self.pause_update = True
@@ -250,7 +249,7 @@ class zynseq(zynthian_engine):
         pattern = self.libseq.getPattern(scene, chan, 0, 0)
         empty = self.libseq.isEmpty(scene, chan)
         title = self.get_sequence_name(scene, chan)
-        #TODO: A lot of duplicated info. Much of this data optimises reverse lookup, e.g. from seq or position but it also repeats much channel data for each slot.
+        # TODO: A lot of duplicated info. Much of this data optimises reverse lookup, e.g. from seq or position but it also repeats much channel data for each slot.
         info = {
             "title": title,
             "mode": mode,
@@ -259,14 +258,15 @@ class zynseq(zynthian_engine):
             "chan": chan,
             "scene": scene,
             "pad_column": None,
-            "chains": [], # Used when drawing launcher pads
+            "chains": [],  # Used when drawing launcher pads
             "pattern": pattern,
             "empty": empty,
-            "clippy": None, # Clippy processor, for clippy slots
+            "clippy": None,  # Clippy processor, for clippy slots
             "follow_action": follow_action,
-            "follow_param": follow_param # Jump offset (rel or abs, dep on action)
+            "follow_param": follow_param  # Jump offset (rel or abs, dep on action)
         }
-        if chan == 16: # Scene launcher
+        # Scene launcher
+        if chan == 16:
             info["timesig"] = self.libseq.getTimeSigAt(scene, chan, 1, 0)
             info["tempo"] = self.libseq.getTempoAt(scene, chan, 1, 0)
 
@@ -282,19 +282,18 @@ class zynseq(zynthian_engine):
                     processor = chain.get_processors("MIDI Synth")[0]
                     if processor.engine.nickname == "CL":
                         info["clippy"] = processor
-
                 except:
                     pass
                 info["chains"].append(chain_id)
                 if info["pad_column"] is None:
                     info["pad_column"] = col
             if chain.midi_chan not in used_chan:
-                col +=1
+                col += 1
                 used_chan.append(chain.midi_chan)
 
         if info["pattern"] == -1:
             logging.warning("No pattern!")
-        self.sequence_info[scene * 17 + chan] = info # TODO: Can we lose one of these maps?
+        self.sequence_info[scene * 17 + chan] = info  # TODO: Can we lose one of these maps?
         while len(self.launcher_info) <= scene:
             self.launcher_info.append([{"state": 0} for i in range(LAUNCHER_COLS + 1)])
         self.launcher_info[scene][chan] = info
@@ -318,7 +317,7 @@ class zynseq(zynthian_engine):
 
     def remove_scene(self, scene):
         if self.scenes < 2:
-            return # TODO: What should be the minimum quantity of launchers?
+            return  # TODO: What should be the minimum quantity of launchers?
         self.libseq.removeScene(scene)
         self.rebuild_all_launcher_info()
 

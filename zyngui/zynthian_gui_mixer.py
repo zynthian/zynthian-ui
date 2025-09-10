@@ -442,7 +442,7 @@ class zynthian_gui_mixer_strip:
                     title = f"⇑ {name[:5]}"
                 else:
                     title = f"⇕ {name[:5]}"
-            else :
+            else:
                 title = name[:5]
                 if info["repeat"]:
                     match info["follow_action"]:
@@ -450,10 +450,10 @@ class zynthian_gui_mixer_strip:
                             mode_image = self.parent.mode_icons["oneshot"]
                         case zynseq.FOLLOW_ACTION_RELATIVE:
                             if info["follow_param"]:
-                                logging.info(f"follow_param")
+                                #logging.info(f"follow_param")
                                 mode_image = self.parent.mode_icons["oneshotall"]
                             else:
-                                logging.info(f"no follow_param")
+                                #logging.info(f"no follow_param")
                                 mode_image = self.parent.mode_icons["loopsync"]
                         case _:
                             mode_image = self.parent.mode_icons["oneshotall"]

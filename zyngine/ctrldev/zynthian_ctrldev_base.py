@@ -149,36 +149,42 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     def init(self):
         super().init()
         # Register for zynseq updates
-        zynsigman.register_queued(
-            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
-        zynsigman.register_queued(
-            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_pad_state)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
 
     def end(self):
         # Unregister from zynseq updates
-        zynsigman.unregister(
-            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
-        zynsigman.unregister(zynsigman.S_STEPSEQ,
-                             zynseq.SS_SEQ_REFRESH, self.refresh)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_pad_state)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
         self.light_off()
 
-    def update_seq_bank(self):
+    def update_scene_state(self):
         """Update hardware indicators for active bank and refresh sequence state as needed.
         *COULD* be implemented by child class
         """
-        pass
+        if self.idev_out is None:
+            return
+        for row in range(0, 7):
+            try:
+                info = self.zynseq.launcher_info[row][zynseq.SCENE_CHANNEL]
+                #logging.debug(f"SCENE ({row}) INFO => {info}")
+                if info is None:
+                    self.pad_off(zynseq.SCENE_CHANNEL, row)
+                else:
+                    self.update_pad_state(row, zynseq.SCENE_CHANNEL, info)
+            except Exception as e:
+                logging.error(e)
 
-    def update_seq_state(self, scene, chan, state=None, mode=None):
+    def update_pad_state(self, scene, chan, state=None, mode=None):
         """Update hardware indicators for a sequence (pad): playing state etc.
         *SHOULD* be implemented by child class
 
-        scene - scene index
-        seq - sequence index
+        scene - scene index (row)
+        chan - chan index (col)
         state - sequence's state
         mode - sequence's mode
         """
-        logging.debug("Update sequence playing state for {}: NOT IMPLEMENTED!".format(
-            type(self).__name__))
+        logging.debug("Update sequence playing state for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
     def pad_off(self, col, row):
         """Light-Off the pad specified with column & row
@@ -192,19 +198,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """
         if self.idev_out is None:
             return
-        self.update_seq_bank()
-        for col in range(self.cols):
-            for row in range(self.rows):
-                info = self.zynseq.get_launcher_info(col, row)
-                if info is None or info["mode"] == 0:
-                    self.pad_off(col, row)
-                else:
-                    scene = info["scene"]
-                    state = info["state"]
-                    mode = info["mode"]
-                    chan = info["chan"]
-                    self.update_seq_state(
-                        scene=scene, chan=chan, state=state, mode=mode)
+        self.update_scene_state()
+        for row in range(self.rows):
+            for col in range(self.cols):
+                self.update_pad_state(row, col)
 
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -230,8 +227,8 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     def end(self):
         zynsigman.unregister(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN,
-                             self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.unregister(
+            zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         zynsigman.unregister(
             zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
         self.light_off()
@@ -244,8 +241,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         symbol - Control name
         value - Control value
         """
-        logging.debug(
-            f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
+        logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
 
     def update_mixer_active_chain(self, active_chain):
         """Update hardware indicators for active_chain
@@ -253,8 +249,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 
         active_chain - Active chain
         """
-        logging.debug(
-            f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
+        logging.debug(f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
 
 
 # --------------------------------------------------------------------------

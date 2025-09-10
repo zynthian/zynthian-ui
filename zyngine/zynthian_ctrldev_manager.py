@@ -28,6 +28,7 @@ import os
 import glob
 import logging
 import importlib
+import traceback
 from pathlib import Path
 
 # Zynthian specific modules
@@ -137,18 +138,20 @@ class zynthian_ctrldev_manager():
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
             # Create the driver instance
-            self.drivers[izmip] = driver_class(self.state_manager, izmip, izmop)
+            driver = driver_class(self.state_manager, izmip, izmop)
             # Unroute from chains if driver want it
-            if self.drivers[izmip].unroute_from_chains:
+            if driver.unroute_from_chains:
                 lib_zyncore.zmip_set_route_chains(izmip, 0)
             # Initialize the driver after creating the instance to enable driver MIDI handler
-            self.drivers[izmip].init() #TODO: Why not call this in the driver _init_()?
+            driver.init()  # TODO: Why not call this in the driver _init_()?
             if uid in self.disabled_devices:
                 self.disabled_devices.remove(uid)
+            self.drivers[izmip] = driver
             logging.info(f"Loaded ctrldev driver '{driver_class.get_driver_name()}' for '{dev_id}'.")
             return True
         except Exception as e:
             logging.error(f"Can't load ctrldev driver '{driver_class.get_driver_name()}' for '{dev_id}' => {e}")
+            logging.exception(traceback.format_exc())
             return False
 
     def unload_driver(self, izmip, disable=False):
@@ -163,14 +166,15 @@ class zynthian_ctrldev_manager():
         if izmip in self.drivers:
             dev_id = zynautoconnect.get_midi_in_devid(izmip)
             uid = zynautoconnect.get_midi_in_uid(izmip)
+            # Drop the driver instance from the list
+            driver = self.drivers[izmip]
+            self.drivers.pop(izmip)
             # Restore route to chains
-            if self.drivers[izmip].unroute_from_chains:
+            if driver.unroute_from_chains:
                 lib_zyncore.zmip_set_route_chains(izmip, 1)
             # Terminate driver instance
-            self.drivers[izmip].end()
-            # Drop from the list => Unload driver!
-            logging.info(f"Unloaded ctrldev driver '{self.drivers[izmip].get_driver_name()}' for '{dev_id}'.")
-            self.drivers.pop(izmip)
+            driver.end()
+            logging.info(f"Unloaded ctrldev driver '{driver.get_driver_name()}' for '{dev_id}'.")
             if disable and uid not in self.disabled_devices:
                 self.disabled_devices.append(uid)
             return True
