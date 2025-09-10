@@ -704,8 +704,7 @@ def _generate_plugin_presets_cache(plugin):
         if len(presets_info[k]['presets']) == 0:
             del (presets_info[k])
         else:
-            presets_info[k]['presets'] = sorted(
-                presets_info[k]['presets'], key=lambda k: k['label'])
+            presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
 
     # Save cache file
     save_plugin_presets_cache(plugin_name, presets_info)

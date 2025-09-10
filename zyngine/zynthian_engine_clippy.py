@@ -288,9 +288,8 @@ class zynthian_engine_clippy(zynthian_engine):
             logging.error(f"Pattern {pattern} not found in any scene")
             return
         path = file_zctrl.value
-        processor.preset_name = path.split("/")[-1]
-
         if path:
+            processor.preset_name = path.split("/")[-1]
             # Open file and get frames and samplerate
             data, sr = soundfile.read(path)
             if len(data) < 100 or sr < 100:
