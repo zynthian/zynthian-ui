@@ -653,7 +653,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				fine = True
 			else:
 				fine = self.zyngui.alt_mode
-			logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
+			#logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
 			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False

@@ -801,7 +801,7 @@ class zynthian_processor:
                     if "value" in ctrl_state:
                         try:
                             self.controllers_dict[symbol].set_ignore_engine_fb(2.0)
-                            logging.debug(f"Ignoring next engine FB for {symbol}")
+                            #logging.debug(f"Ignoring next engine FB for {symbol}")
                         except Exception as e:
                             logging.warning(f"Invalid controller for processor {self.get_basepath()}: {e}")
 
