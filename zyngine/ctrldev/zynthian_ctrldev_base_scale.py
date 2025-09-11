@@ -4,16 +4,8 @@ import logging
 # do not change. just if this file is started directly from console
 console_debug = False
 
-
-# Zynthian specific modules
-# from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad # , zynthian_ctrldev_zynmixer
-# from zyncoder.zyncore import lib_zyncore
-# from zynlibs.zynseq import zynseq
-
-# import zynthian_ctrldev_base
-
 # Following from: https://github.com/Carlborg/hardpush/blob/master/hardpush.ino
-# All scales seem to work with 12-halftones. (otherwise they would need the octave-distance at the end)4
+# All scales seem to work as 12-halftone-scales. (otherwise they would need the octave-distance at the end)4
 _SCALES = { # define scales on the form 'semitones added to tonic'
   'Chromatic':          [0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 
   "Major":              [0, 2, 4, 5, 7, 9, 11], 
@@ -43,7 +35,7 @@ _SCALES = { # define scales on the form 'semitones added to tonic'
   "Spanish":            [0, 1, 3, 4, 5, 6, 8, 10]
 }
 
-### How to get names and  values from a named array:
+### How to get names and  values from a map:
 ## list(scales)        # ['Chromatic', 'Major', 'Minor', 'Dorian', 'Mixolydian', 'Lydian', 'Phrygian', 'Locrian', 'Diminished', 'Whole-Half', 'Whole Tone', 'Minor Blues', 'Minor Pentatonic', 'Major Pentatonic', 'Harmonic Minor', 'Melodig Minor', 'Super Locrian', 'Bhairav', 'Hungarian Minor', 'Minor Gipsy', 'Hirojoshi', 'In-Sen', 'Iwato', 'Kumoi', 'Pelog', 'Spanish']
 ## list(scales)[0]     # "Chromatic"
 ## scales['Chromatic'] # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
@@ -78,7 +70,7 @@ class Harmony:
       """
       self.col_versatz = col_versatz
       self.active_scale = scale_name
-      self.target_notes = [] # reset for new scale
+      self.target_notes = []         # reset for new scale
       self.target_notes_reverse = {} # reset for new scale
       
       for i in range(self.cols * self.rows):
