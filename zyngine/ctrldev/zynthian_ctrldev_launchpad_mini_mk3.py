@@ -80,8 +80,14 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             return
         try:
             info = self.zynseq.launcher_info[scene][chan]
+        except:
+            info = None
+        try:
             if info:
-                empty = info["empty"]
+                try:
+                    empty = info["empty"]
+                except:
+                    empty = 1
                 if state is None or mode is None:
                     state = info["state"]
                     mode = info["mode"]
