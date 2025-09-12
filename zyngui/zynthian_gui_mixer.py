@@ -1247,7 +1247,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         if strip.chain.mixer_chan is not None:
                             state = states[strip.chain.mixer_chan]
                             strip.draw_dpm(state)
-                        if strip.chain.midi_chan is not None:
+                        if strip.chain.midi_chan is not None and strip.chain.midi_chan < 16:
                             strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
             self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.SCENE_CHANNEL])
 
@@ -1491,7 +1491,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         pattern = self.zynseq.libseq.getPattern(scene, zynseq.SCENE_CHANNEL, 0, 0)
         self.zynseq.libseq.selectPattern(pattern)
         title = f"Scene options ({name})"
-        repeat = info["repeat"]
         if repeat == 0:
             options["Duration (DISABLED)"] = repeat
         else:
@@ -1502,12 +1501,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
                 options[f"Follow action (None)"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
-                match(follow_scene):
-                    case 0: # Loop
+                match follow_scene:
+                    case 0:  # Loop
                         options[f"Follow action (LOOP)"] = 1
-                    case 1: # Next
+                    case 1:  # Next
                         options[f"Follow action (NEXT)"] = 2
-                    case -1: # Previous
+                    case -1:  # Previous
                         options[f"Follow action (PREV)"] = 3
             if info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
@@ -1921,9 +1920,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.set_highlighted_clip_info()
         if refresh_strips:
             self.refresh_visible_strips()
-        if self.launcher_select_info['clippy']:
-            self.launcher_select_info['clippy'].engine.set_scene(self.launcher_select_info['clippy'], self.launcher_select_info['scene'])
-
+        try:
+            proc = self.launcher_select_info['clippy']
+            proc.engine.set_scene(proc, self.launcher_select_info['scene'])
+        except:
+            pass
 
     def end_moving_chain(self):
         if zynthian_gui_config.enable_touch_navigation:
