@@ -128,14 +128,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         # Geometry contants
         self.grid_height = self.height - PLAYHEAD_HEIGHT
         self.grid_width = int(self.width * 0.91)
-        self.base_row_height = self.grid_height // self.DEFAULT_VIEW_ROWS
-        self.base_step_width = self.grid_width // self.DEFAULT_VIEW_STEPS
         self.piano_roll_width = self.width - self.grid_width
         # Scale thickness of select border based on screen resolution
         self.select_thickness = 1 + int(self.width / 500)
         # Zoom factor => Negative / Zero / Positive
         self.zoom = 0
         # Geometry variables => change with zoom factor!
+        self.base_row_height = self.grid_height // self.DEFAULT_VIEW_ROWS
+        self.base_step_width = self.grid_width // self.DEFAULT_VIEW_STEPS
         # Quantity of columns (steps) displayed in grid
         self.view_steps = self.DEFAULT_VIEW_STEPS
         self.step_width = self.base_step_width
@@ -881,6 +881,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.total_width = self.n_steps * self.step_width
         self.total_height = 128 * self.row_height
         self.scroll_height = self.total_height - self.grid_height
+        # Base cell size
+        self.base_row_height = self.grid_height // self.DEFAULT_VIEW_ROWS
+        if self.n_steps:
+            self.base_step_width = self.grid_width // min(self.DEFAULT_VIEW_STEPS, self.n_steps)
+        else:
+            self.base_step_width = self.grid_width // self.DEFAULT_VIEW_STEPS
         # Font size
         self.fontsize_grid = self.row_height // 2
         if self.fontsize_grid > 20:
@@ -895,11 +901,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
         # Step width limits
         self.max_step_width = self.grid_width // 8
-        self.min_step_width = self.grid_width // 64
-        try:
-            self.min_step_width = max(self.min_step_width, self.grid_width // self.n_steps)
-        except:
-            pass
+        self.min_step_width = self.grid_width // min(64, max(8, self.n_steps))
+
+        #logging.debug(f"N_STEPS={self.n_steps}")
+        #logging.debug(f"ROW: MAX={self.max_row_height}, MIN={self.min_row_height}")
+        #logging.debug(f"STEP: MAX={self.max_step_width}, MIN={self.min_step_width}")
 
     # Update scrollregion in several canvas
     def update_scroll_regions(self):
@@ -914,7 +920,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def set_step_offset(self, offset=None):
         if offset is not None:
             self.step_offset = offset
-        if self.step_offset > self.n_steps - int(self.view_steps):
+        if self.n_steps < int(self.view_steps):
+            self.step_offset = 0
+        elif self.step_offset > self.n_steps - int(self.view_steps):
             self.step_offset = self.n_steps - int(self.view_steps)
         elif self.step_offset < 0:
             self.step_offset = 0
@@ -924,8 +932,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             xpos = 0
         self.grid_canvas.xview_moveto(xpos)
         self.play_canvas.xview_moveto(xpos)
-        # logging.debug(f"OFFSET: {self.step_offset} (NSTEPS: {self.n_steps}, TOTAL WIDTH: {self.total_width})")
-        # logging.debug(f"GRID X-SCROLL: {xpos}\n\n")
+        #logging.debug(f"OFFSET: {self.step_offset} (NSTEPS: {self.n_steps}, TOTAL WIDTH: {self.total_width})")
+        #logging.debug(f"GRID X-SCROLL: {xpos}\n\n")
 
     def set_grid_zoom(self, new_zoom=0):
         # self.selected_cell
@@ -956,12 +964,22 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if not step_width_changed and not row_height_changed:
             return False
         # Adjust real zoom value
-        hzoom = self.step_width - self.base_step_width
-        vzoom = self.row_height - self.base_row_height
-        if abs(hzoom) > abs(vzoom):
-            self.zoom = hzoom
+        if not step_width_changed:
+            self.zoom = self.row_height - self.base_row_height
+            logging.debug(f"VZOOM! => {self.zoom}")
+        elif not row_height_changed:
+            self.zoom = self.step_width - self.base_step_width
+            logging.debug(f"HZOOM! => {self.zoom}")
         else:
-            self.zoom = vzoom
+            hzoom = self.step_width - self.base_step_width
+            vzoom = self.row_height - self.base_row_height
+            if abs(hzoom) > abs(vzoom):
+                self.zoom = hzoom
+            else:
+                self.zoom = vzoom
+            logging.debug(f"ZOOM! => {self.zoom} (hzoom={hzoom}, vzoom={vzoom})")
+        #self.zoom = new_zoom
+
         # Recalculate geometry parameters and scaling factor
         w = self.total_width
         h = self.total_height
