@@ -1929,8 +1929,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.launcher_mode:
             self.set_highlighted_clip_info()
             self.highlighted_strip.highlight_launcher(scene)
-            if self.launcher_select_info['clippy']:
-                self.launcher_select_info['clippy'].engine.set_scene(self.launcher_select_info['clippy'], self.launcher_select_info['scene'])
+            try:
+                proc = self.launcher_select_info['clippy']
+                proc.engine.set_scene(proc, self.launcher_select_info['scene'])
+            except:
+                pass
         if refresh_strips:
             self.refresh_visible_strips()
 
