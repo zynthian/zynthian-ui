@@ -186,18 +186,19 @@ class zynthian_engine_clippy(zynthian_engine):
         self.processor = processor
         self.scene = scene
         self.pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+        processor.preset_name = ""
         if self.pattern == 4294967295:
             return
         self._ctrl_screens = [["File", [f"file {self.pattern}"]]]
         try:
-            if processor.controllers_dict[f"file {self.pattern}"].path:
+            if processor.controllers_dict[f"file {self.pattern}"].value:
                 self._ctrl_screens = [
                     [f"File", [f"file {self.pattern}", f"warp {self.pattern}", f"beats {self.pattern}", f"mode {self.pattern}"]],
                     [f"Waveform", [f"gain {self.pattern}"]]#, f"crop_start {self.pattern}", f"crop_end {self.pattern}"]]
                 ]
                 processor.preset_name = processor.controllers_dict[f"file {self.pattern}"].value.split("/")[-1]
-        except:
-            processor.preset_name = ""
+        except Exception as e:
+            logging.warning(f"Can't set scene {scene} for clippy on chan {processor.midi_chan} => {e}")
         processor.init_ctrl_screens()
 
     def write_sfz(self, processor):
