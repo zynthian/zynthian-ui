@@ -196,6 +196,7 @@ def init_lilv():
     # Disable language filtering
     # world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
     world.load_all()
+    world.ns.lv2 = lilv.Namespace(world, "http://lv2plug.in/ns/lv2core#")
     world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
     world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
     world.ns.portprops = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-props#")
@@ -203,6 +204,7 @@ def init_lilv():
     world.ns.parameters = lilv.Namespace(world, "http://lv2plug.in/ns/ext/parameters#")
     world.ns.patch = lilv.Namespace(world, "http://lv2plug.in/ns/ext/patch#")
     world.ns.atom = lilv.Namespace(world, "http://lv2plug.in/ns/ext/atom#")
+    world.ns.doap = lilv.Namespace(world, "http://usefulinc.com/ns/doap#")
     world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
 
 # ------------------------------------------------------------------------------
@@ -587,8 +589,11 @@ def get_plugin_description(plugin):
     try:
         res = str(plugin.get_value(world.ns.rdfs.comment)[0]).strip()
     except:
-        logging.debug(f"Can't get plugin {plugin.get_name()} description. Using default.")
-        res = None
+        try:
+            res = str(plugin.get_value(world.ns.doap.description)[0]).strip()
+        except:
+            logging.debug(f"Can't get plugin {plugin.get_name()} description. Using default.")
+            res = None
     return res
 
 # ------------------------------------------------------------------------------
