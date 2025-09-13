@@ -91,7 +91,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.title = "Pattern 0"
         self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
         self.pattern2copy = None  # Index of pattern to copy (clipboard)
-        self.scene = 0  # Bank used for pattern editor sequence player
+        self.scene = 0  # Scene where pattern is used
         self.pattern = 0  # Pattern to edit
         self.sequence = 0  # Sequence used for pattern editor sequence player
         self.channel = 0
@@ -140,6 +140,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.view_steps = self.DEFAULT_VIEW_STEPS
         self.step_width = self.base_step_width
         # Quantity of rows (notes) displayed in grid
+        self.n_rows = 36
         self.view_rows = self.DEFAULT_VIEW_ROWS
         self.row_height = self.base_row_height
 
@@ -897,7 +898,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def calculate_geometry_limits(self):
         # Row height limits
         self.max_row_height = self.grid_height // 6
-        self.min_row_height = self.grid_height // 36
+        self.min_row_height = self.grid_height // min(36, max(6, self.n_rows))
 
         # Step width limits
         self.max_step_width = self.grid_width // 8

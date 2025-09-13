@@ -686,6 +686,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def get_pianoroll_num_cells(self):
         return len(self.keymap)
 
+    def calculate_geometry_limits(self):
+        self.n_rows = len(self.keymap)
+        super().calculate_geometry_limits()
+
     # Function to set kaymap offset and move grid view accordingly
     # offset: Keymap Offset (note at bottom row)
     def set_keymap_offset(self, offset=None):
