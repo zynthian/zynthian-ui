@@ -1,45 +1,5 @@
 #! /zynthian/venv/bin/python
-
-
 # -*- coding: utf-8 -*-
-
-# 20250910-0044
-# Alle Konstanten ausgelagert.
-
-####
-####
-####
-
-
-
-# note werte Push 1 Midimapping
-# don't delete.
-ABL_PAD_START = 36 # 1. Pad = pad_36
-ABL_PAD_END   = 99 # letztes Paad = pad_99
-
-# # CC Werte der Tasten
-# ABL_REC   = 86
-# # ABL_PLAY  = 85
-
-# ABL_OK    = 62
-# ABL_ESC   = 63 # Abbruch, Zurück
-
-# ABL_TRACK = 112
-
-# ABL_ARROW_LEFT  = 44
-# ABL_ARROW_RIGHT = 45
-# ABL_ARROW_UP    = 46
-# ABL_ARROR_DOWN  = 47
-# ABL_SHIFT       = 49
-
-# # DISPLAY Buttons Row 1
-# ABL_BUTTON_DISPL_R1_0 = 20
-# # ...
-# ABL_BUTTON_DISPL_R1_8 = 27
-# # Display Buttons Row 2
-# ABL_BUTTON_DISPL_R2_0 = 102
-# # ...
-# ABL_BUTTON_DISPL_R2_8 = 109
 
 
 
@@ -69,6 +29,7 @@ ABL_PAD_END   = 99 # letztes Paad = pad_99
 
 
 import logging
+import traceback
 
 # Brumbys imports
 from time import sleep # pause between sysex events.
@@ -78,6 +39,7 @@ from time import sleep # pause between sysex events.
 from zyngine.ctrldev.zynthian_ctrldev_base_scale import Harmony
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_engine import zynthian_engine # to send directly to soundengine...
+from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
 
 
 # for running driver this way:
@@ -96,13 +58,22 @@ from zynlibs.zynseq import zynseq
 # zynthian_ctrldev_zynpad is class for Controlling the sequencer with pads
 #zynthian_ctrldev_zynmixer cpntrolls the main mixer
 
+
+# note werte Push 1 Midimapping
+# don't delete.
+ABL_PAD_START = 36 # 1. Pad = pad_36
+ABL_PAD_END   = 99 # letztes Paad = pad_99
+
+
 class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
 
-    logging.error("Klassenaufruf - Ableton Push 1 - BRUMBY")
+    logging.info("Klassenaufruf - Ableton Push 1")
     # Im Weblog wird angezeigt, dass der Treiber geladen wurde
 
-    dev_ids = ["Ableton Push IN 2", "Ableton Push IN 1"] # get by stepping through zynthian_ctrldev_manager.load_driver()
+    # dev_ids = ["Ableton Push IN 2", "Ableton Push IN 1"] # get by stepping through zynthian_ctrldev_manager.load_driver()
+    dev_ids = ["Ableton Push IN 2"] # get by stepping through zynthian_ctrldev_manager.load_driver(). Data just at Port 2
+    
     driver_name = "Ableton Push v1" # not essential. class name would be used otherwise
     driver_description = "Interface Ableton Push v1  with zynpad and zynmixer"
 
@@ -116,18 +87,25 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     # dev_modes
     DEV_MODE_NONE = None
     DEV_MODE_PAD = 1
-    DEV_MODE_DRUMS = 2
-    DEV_MODE_SCALES = 3
+    # DEV_MODE_DRUMS = 2
+    DEV_MODE_SCALES = 3 # keyboard modes
     
-    EV_NOTE_ON  = 0X9
-    EV_NOTE_OFF = 0x8
-    EV_CC       = 0XB
+    # evtype = (ev[0] >> 4) & 0x0F ->
+    EV_NOTE_OFF    = 0x8 # 3 Bytes
+    EV_NOTE_ON     = 0X9 # 3 Bytes
+    EV_AFTERTOUSCH = 0xA # 3 Bytes (polyphonic = per note)
+    EV_CC          = 0xB # 3 Bytes
+    EV_PC          = 0xC # 2 Bytes
+    EV_CHAN_PRESS  = 0xD #  2 Bytes
+    EV_PITCHBEND   = 0xE # 3 bytes ev[1] = LSB 0-127; ev[2] = MSB 0-127
+    EV_SYSTEM      = 0xF #  Systemtype = ev[0] & 0x0F
+    
     
     # pad_mode_active = PAD_MODE_SEQ
     device_mode_active = DEV_MODE_SCALES
     
     scales = Harmony(8,8)
-    scales.init_scale("Major", 36, -5) # -3 = new start per row 
+    scales.init_scale("Minor", 36-1, -5) # -3 = new start per row 
     
 
     # Function to initialise class
@@ -136,48 +114,28 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         
         # super.__init__ saves state_manger, chainmanger, idev_in and idev_out
         # nothing more.
-        super().__init__(state_manager, idev_in, idev_out)
         
+        # Indecators of the device LEDs and Text
+        self._leds_mono = Feedback_Mono_LEDs(idev_out)  # control buttons right and left from pads
+        self._leds_bi   = Feedback_Bi_LEDs(idev_out)    # display buttons below display, above pads
+        self._leds_rgb  = Feedback_RGB_LEDs(idev_out)   # pads in rgb
+        self._display   = Feedback_Display(idev_out)    # Text display
         
-        self.shift = False     
-        self.device_mode_active = self.DEV_MODE_SCALES
-        self.set_dev_scale_color()
+        super().__init__(state_manager, idev_in, idev_out)      
         
-        
-        # self.zynmixer = state_manager.zynmixer    # Mixer object  
-        
-        # set push to live mode
-        # seems not to do anything
-        #sysex = bytes(ABL.SYSEX_DATA_SET_LIVE_MODE)
-        #lib_zyncore.dev_send_midi_event(self.idev_out, sysex, len(sysex))
-        #sleep(0.01)
-        
-        # Initialize display        
-        self.display = Display(idev_out)
-        self.display.clear()
-        sleep(0.1) # necessary delays, otherwise the next command is ignored
-
-        self.display.brightnes(36)
-        sleep(0.1)
-
-        self.display.write_xy(b'* Pot 1 * Pot 2 ** Pot 3 * Pot 4 *', 0,0)
-        sleep(0.1)
-
-#       Positionierungshilfe
-        self.display.write_xy(b'123456789A123456789B123456789C123456789D123456789E123456789F123456789', 0,1)
-        sleep(0.1)
-
-        self.display.write_xy(b'** Zynthian Push1Driver 0.1 **', 17,2)
-        sleep(0.1)
-
-        self.display.write_xy(b'++  Make MusicNot War ++', 20,3)
+        # seems to be necessary, because we send translates midi_events.
         self.unroute_from_chains = True
         return
 
     def init(self):
         try: 
             logging.info("called init. Setting up Ableton Push 1 - BRUMBY")
+            self.shift = False     
+            self.device_mode_active = self.DEV_MODE_SCALES
+            self.set_dev_scale_color()
 
+            self._display.first_screen()
+            
             # Hier muss die Trackstaste zum Leuchten gebracht werden am Push 1
             # Enable session mode on launchkey
             # Track-Taste CC112 # ABL_TRACK
@@ -208,8 +166,14 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             if self.device_mode_active == self.DEV_MODE_SCALES:
                 self.set_dev_scale_color()
                 
-        except ValueError as e:
-            print(f"Fehler aufgetreten: {e}")
+        #except:
+        #    print("Fehler aufgetreten: {e}")
+        except Exception as e:
+            print("Exception aufgetreten:")
+            # Gibt den vollständigen Traceback aus
+            traceback.print_exc()
+            # logging.error("Exception aufgetreten: %s", e)
+            # logging.error("Traceback: %s", traceback.format_exc())
         
 
     def end(self):
@@ -332,69 +296,85 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # return super()._on_midi_event(ev)`
 
     def midi_event(self, ev):
-        try: # if midievent is too short it fails...
-            btn_name = self.button_name_from_midi_event(ev)
-            logging.debug(f"Button: {btn_name} gives midi_event: {ev} = {ev[0]}, {ev[1]} {ev[2]}")
-        except:
-            pass
         
-        #return False # prüfen ob sofortige Umleitung eine Note spield???!!!!
-         
-        evtype = (ev[0] >> 4) & 0x0F
-
+        ### For debugging purposes block can be commented out !
+        evtype               = None
+        chan_or_instruction  = None
+        note_or_register     = None
+        val_or_vel           = None
         
-
-        note = ev[1] & 0x7F # das ist überflüssig, weil note immer < 127 ist
-
-        # filter every note on not from pads. knobs have, when touched also note_on messages
-        if note < ABL_PAD_START: 
-            return True
-        if note > ABL_PAD_END: 
-            return True # ignore every note_on not from pads
-
-        logging.debug(f"BRUMBY: note on event with note={note}")
-
-        # Toggle pad
-        # Hier wird der midi-Notenwert in einen x,y Wert umgewandelt, um die Sequencer-Bank entsprechend zu toggeln.
+        if len(ev) > 0:
+            evtype              = (ev[0] >> 4) & 0x0F
+            chan_or_instruction = ev[0] & 0xF
+        if len(ev) > 1:
+            note_or_register    = ev[1] & 0x7F
+        if len(ev) > 2:
+            val_or_vel          = ev[2] & 0x7F
         
-        
-        if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF] and self.device_mode_active == self.DEV_MODE_SCALES:
-                # hier muss er Translator für scales hin!
-                logging.debug(f"Scales mode -BRUMBY")
-                pad_nr = note -35# get pad_nr from note
-                note_translated = self.scales.harmony_get_target_note(pad_nr-1) # midinotes arf based 0 pad_nr based 1
-                new_ev = bytes([ev[0], note_translated, ev[2]*2])
-                #if note_translated % 12 == 0: # Oktave detected
-                #    pass
-                # for note_on events following.
-                
-                self._forward_like_niels_did(new_ev)
-                return True #  not processed, has to be processed further
-
-        # evtype= EV_NOTE_ON
-        if evtype == 0x9:               
+        if note_or_register: # len > 1 -> Button / Pad detection is possible
+            btn_name = self.button_name_from_midi_event(ev) # ev[0] and ev[1] fields are proved. so any status can be a button
             
-            if self.device_mode_active == self.DEV_MODE_PAD:
+            logging.debug(f"Button: {btn_name} on chan. {chan_or_instruction} gives midi_event: {hex(ev[0])} {hex(ev[1])} {hex(val_or_vel)} = {evtype}, {note_or_register} {val_or_vel}")
+
+         ### End of debugging purposes. 
+        
+        # don't process  1-byte events. 
+        if len(ev)<2:
+            return False
+        
+        # processing starts here 
+        evtype = (ev[0] >> 4) & 0x0F
+        note = ev[1] & 0x7F # is that need? any event field is from 0-127 except the status field    
+
+        ### keyboard mode
+        if self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
+            # Filter out note events created by push 1 when touching Knobs and Ribbon 
+            if ABL_PAD_START <= note <= ABL_PAD_END: # just note events, which should sound.
+                # filter for getting any vent that is sound event
+                if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUSCH, self.EV_PITCHBEND]:
+                               
+                    # logging.debug(f"Scales mode -BRUMBY")
+                    pad_nr = note -35# translat note from event to pad_nr
+                    
+                    # here magic for different sccale layouts happens.
+                    # it translates midi_note events to the translated note_events
+                    note_translated = self.scales.harmony_get_target_note(pad_nr-1) # midinotes are based 0 pad_nr based 1
+                    new_ev = bytes([ev[0], note_translated, ev[2]*2])
+                    #if note_translated % 12 == 0: # Oktave detected
+                    #    pass
+                    # for note_on events following.
+                    
+                    self._forward_like_niels_did(new_ev) # 
+                    return True #  return to caller and mark event as processed
+
+        # pad mode to control sequencer
+        elif self.device_mode_active == self.DEV_MODE_PAD:              
+            if evtype == 0x9: # fitler just for note_on events
                 try:
-                    col = (note - ABL_PAD_START) // 8 # statt 96 -> 91
-                    row = (note - ABL_PAD_START) % 8  # Statt 96 -> 91
-                    # row = 7 - row; 
+                    col = (note - ABL_PAD_START) // 8 # 
+                    row = (note - ABL_PAD_START) % 8  # 
                     col = 7 - col; # midi notes start from bottom, so recalculate row
                     pad = row * self.zynseq.col_in_bank + col 
-
-                    logging.error(f"midi_event 1 MEINER  Ableton Push 1 - BRUMBY: row={row}; col={col}; pad={pad}")
-               
+                    # logging.error(f"BRUMBY: row={row}; col={col}; pad={pad}")
+            
                     if pad < self.zynseq.seq_in_bank:
                         self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
-                        return True
+                        return True # mark processed
                 except:
                     pass
             
-            return False
+            # I think we dont need any note events... so filter out
+            # NO note events anymore after this two lines. Comment out what you need after this lines in "Pad Mode" = DEV_MODE_PAD
+            if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUSCH, self.EV_PITCHBEND]:
+                return True 
+            
+            # no return call. I don't know if I need note_on_events further down.
+            
+        # if prceessd before there are just note_events lower PAD_START and higher PAD_END if processed before
 
         # GUI Control Changes
         # evtype = EV_CC
-        elif evtype == 0xB:
+        if evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
 
@@ -410,8 +390,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_DIM)
                 return True # event processed. No further action required
              
-            # From here filter any event with velocyty=0 We just need pressed vaues to come through
-            elif ccnum == 0 or ccval == 0:
+            # From here filter any event with velocyty=0 We just need notepressed values to come through
+            elif ccnum == 0 or ccval == 0: # is that midi bank change?
                 return False # Warning: With "return True" no further processing in zynthian. 
                             # So no Controlchange with data=0 gets through to zynthian.
                             # Is that, what we want ???
@@ -426,9 +406,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
                     self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0) # "/127.0" creates a float val from 0.0 .. 1.0
                 
-            # This swtches between this drivers pad states: Sequencer and Scales
+            # This swtches between this drivers pad states: Pad (Sequencer) and Scales
             elif (ccnum == ABL.BTN_SCALES[1]):
-                logging.info("BRUMBY: BTN_SCALES")
+                logging.info("BRUMBY: BTN_SCALES processing")
                 if not self.device_mode_active == self.DEV_MODE_SCALES:
                     self.device_mode_active = self.DEV_MODE_SCALES
                     # visual feedback, let Scales Button blink
@@ -444,7 +424,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     
                 return True
             
-            # Gui events ausgelagert zu:
+            # Gui events moved to:
             if self.process_gui_events(ev): return True
             
 
@@ -479,12 +459,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 logging.debug(f"BRUMBY: Poti={ccnum-71} val={val}")
                 return True
 
-
             elif (ccnum == ABL.BTN_OK[1]) or  (ccnum == 23):
                 logging.debug("ABL_OK BRUMBY")
                 self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [3,"S"])
                 return True
-
 
             # elif ccnum == 21: Does that work?
             elif ccnum == ABL.BTN_R1_C2[1]: # Zweiter Button unter dem Display
@@ -492,12 +470,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [1,"S"])
                 return True
 
-
             elif ccnum == ABL.BTN_ESC[1]:
                 # logging.debug("BTN_ESC BRUMBY")
                 self.state_manager.send_cuia("BACK")
                 return True
-
 
             # elif ccnum == 45: 
             elif ccnum == ABL.BTN_RIGHT[1]:
@@ -569,45 +545,49 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             if not name.startswith('__'): # no attributes with '__'
                 attr = getattr(ABL, name)
                 if attr == search_key and name.isupper():
-                    logging.debug(f"midi_event {ev} {ev[0]}, {ev[1]}, from Button with name: {name} and value: {data}")
+                    # logging.debug(f"midi_event {ev} {ev[0]}, {ev[1]}, from Button with name: {name} and value: {data}")
                     return name
-        logging.debug(f"midi_event {ev} from Button not defined with value: {data}")
-        return None
+        # logging.debug(f"midi_event {ev} from Button not defined with value: {data}")
+        return "<event is no button-evemt or button is missing in config file.>"
+        
             
     def set_dev_scale_color(self):
+        self._leds_rgb.all_off(True) # led_states must not be deleted. is done in next lines
         for pad_nr in range(64):
             new_note = self.scales.harmony_get_target_note(pad_nr)
             if new_note % 12 == 0:
                 r = 0; g = 0; b = 255
             else:
                 r = 200; g = 200; b = 200 
-            self.set_pad_rgb(pad_nr, r, g, b)
+            # self.set_pad_rgb(pad_nr, r, g, b) ## OLD FUnction
+            self._leds_rgb.set_rgb(pad_nr, r, g, b, overlay=False)
         pass
           
     def set_pad_rgb(self, pad_nr: int, r:int ,g:int ,b:int):
-        # Sysex : 240,71,127,21,4,0,8,<Pad(0-71)>,0,<r1>,<r2>,<g1>,<g2>,<b1>,<b2>,247
-        # pad = 0-71  NICHT PAD_36 - PAD_99 
-        # blogspot.com
-        # To set a pad color to a RGB(0-255) value, the RGB values need to be set into "Push" format, for example:
-        # r1 = r /(integer division) 16 
-        # r2 = r %(modulo) 16
-        # So a value of R132 would become: r1=8 r2=4.
-        # The pad index if from 0 to 71, zero being the bottom left pad, all the way up to the second row button to the right (second row of buttons is RGB).
-        if r > 255: r = 255; 
-        if r < 0: r = 0
-        if g > 255: g = 255; 
-        if g < 0: g = 0
-        if b > 255: b = 255; 
-        if b < 0: b = 0
-        if not 0 <= pad_nr <= 64: 
-            logging.error(f"Padnr wrong. not in 1..64 pad_nr = {pad_nr}")
-            return False
-        
-        r1= r // 16  ; r2= r % 16
-        g1= g // 16  ; g2= g % 16
-        b1= b // 16  ; b2= b % 16
-        sysex = bytes ([240,71,127,21,4,0,8,pad_nr,0,r1,r2,g1,g2,b1,b2,247] )   
-        lib_zyncore.dev_send_midi_event(self.idev_out, sysex, len(sysex))
+        logging.error(" set_pad_rb aufgerufen.")
+        # # Sysex : 240,71,127,21,4,0,8,<Pad(0-71)>,0,<r1>,<r2>,<g1>,<g2>,<b1>,<b2>,247
+        # # pad = 0-71  NICHT PAD_36 - PAD_99 
+        # # blogspot.com
+        # # To set a pad color to a RGB(0-255) value, the RGB values need to be set into "Push" format, for example:
+        # # r1 = r /(integer division) 16 
+        # # r2 = r %(modulo) 16
+        # # So a value of R132 would become: r1=8 r2=4.
+        # # The pad index if from 0 to 71, zero being the bottom left pad, all the way up to the second row button to the right (second row of buttons is RGB).
+        # if r > 255: r = 255; 
+        # if r < 0: r = 0
+        # if g > 255: g = 255; 
+        # if g < 0: g = 0
+        # if b > 255: b = 255; 
+        # if b < 0: b = 0
+        # if not 0 <= pad_nr <= 64: 
+        #     logging.error(f"Padnr wrong. not in 1..64 pad_nr = {pad_nr}")
+        #     return False
+        #
+        # r1= r // 16  ; r2= r % 16
+        # g1= g // 16  ; g2= g % 16
+        # b1= b // 16  ; b2= b % 16
+        # sysex = bytes ([240,71,127,21,4,0,8,pad_nr,0,r1,r2,g1,g2,b1,b2,247] )   
+        # lib_zyncore.dev_send_midi_event(self.idev_out, sysex, len(sysex))
 
     def send_sysex(self, data):
         return
@@ -668,12 +648,12 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 ##define RIGHT_ARROW                         30
 ##define LEFT_ARROW                          31
 
-class Display:
+class Feedback_Display:
     
     display_mem = [[32] * 68 for _ in range(4)] # 4 Zeilen mit 68 Spalten
             
     def __init__ (self, idev_out):
-        self.dbg = True
+        # self.dbg = True
         self.idev_out = idev_out
         # if self.dbg: 
         logging.error(f"BRUMBY: Class Display instantiiert")
@@ -681,15 +661,12 @@ class Display:
 
 
     def clear (self):
+        """Overwrites whole display with ascii 32""" 
+        # logging.info(f"Display.clear: end of func idev_out={self.idev_out}")
+      
         # clear out display_memory with blanks.
         self.display_mem = [[32] * 68 for _ in range(4)] # 4 Zeilen mit 68 Spalten
-        
-    
-        """Overwrites whole display with ascii 32"""
-        #if self.idve_out == 0:
-        #   pass
-        #logging.error(f"BRUMBY: Display.clear:  idev_out={self.idev_out}")
-
+            
         # SYSEX_ZEILE_LÖSCHEN = 240,71,127,21,<28+line(0-3)>,0,0,247
         s0 = bytes([240,71,127,21,28,0,0,247]) # Zeile 0
         s1 = bytes([240,71,127,21,29,0,0,247]) # Zeile 1
@@ -699,7 +676,6 @@ class Display:
             lib_zyncore.dev_send_midi_event(self.idev_out, x, len(x))
             sleep(0.05)
 
-        # logging.error(f"BRUMBY: Display.clear: end of func idev_out={self.idev_out}")
 
     def update (self):
         # move display memory to display with sysex
@@ -715,12 +691,10 @@ class Display:
             lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
             sleep(0.05)
         return
-        # not implemented yet
            
 
-
     def write_xy (self, text, col_in, row_in):
-        # schreibt Text an Position col_in, row_in in display memory und auf Display
+        # writes to display memory at Position col_in, row_in in display memory und auf Display
         # mit update
         
         # Koordinaten prüfen
@@ -738,44 +712,6 @@ class Display:
         self.update()
         return
         
-        
-        """ #dbg = False
-        #if dbg: logging.error(f"BRUMBY: Display.write_xy text={text}x={col_in} y={row_in}")
-        row=row_in; 
-        col=col_in
-        if not type(text) is bytes:
-            text = 'TypError b\'text\' erwartet'
-            logging.error(f"BRUMBY: TypeError b'text' erwartet und nicht {text}->{type(text)}")
-
-        if (row < 0)  : row = 0
-        if (row > 3) : row = 3
-        if (col < 0) : col = 0
-        if (col > 63): col = 63 # nur der erste Char von text wäre druckbar
-
-        #if dbg: logging.error(f"BRUMBY: Display.write_xy 2 text={text}x={col_in} y={row_in}")
-
-        # Textlänge prüfen, ob im erlaubten Bereich.
-        text_len = len(text)
-        if text_len + col > 68 : text = text[:68-col] # Rest abschneiden
-        text_len = len(text)
-        
-        # here the magic happens and sysex is cunstructed
-        #            240, 71, 127, 21, <24+line(0-3)>,0,   <Nchars+1>,<Offset>,<Chars>,      247
-        msg = bytes([240, 71, 127, 21, row+24,        0,   text_len+1,  col]) + text+ bytes([247])
-
-        #if dbg: logging.error(f"BRUMBY: Display.write_xy 4 SYSEX={msg}")
-
-        lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
-        # time.sleep(0.5)
-        #if dbg: logging.error(f"BRUMBY: END_OF_Display.write_xy 2 ")
- """
-
-# This might belong to the display setup
-# Contrast request	240,71,127,21,122,0,0,247
-# Contrast set		240,71,127,21,122,0,1,<contrast 0-127>, 247
-# Brightness request	240,71,127,21,124,0,0,247
-# Brightness set	240,71,127,21,124,0,1,<brightness 0-127>,247
-
     def contrast (self, i=None) -> int:
         """
         Setzt oder liest den Kontrast des Geräts via SysEx.
@@ -783,16 +719,12 @@ class Display:
         Args:
             i (int, optional): Der gewünschte Kontrastwert (typischerweise 0-127).
                             Wenn None, wird der aktuelle Kontrast gelesen.
-    
         Returns:
             int: Der aktuelle Kontrastwert (nach Setzung oder Abfrage).
-    
         Raises:
             ValueError: Wenn der Kontrastwert außerhalb des gültigen Bereichs liegt.
         """
-    
         # Überprüfen, ob ein Wert zum Setzen übergeben wurde
-
         if i is not None:
 
            if i < 0  : i = 0
@@ -807,13 +739,11 @@ class Display:
            lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
            return i
         
-        # send sysexrequest
-        # Contrast request	240,71,127,21,122,0,0,247
-        msg = bytes([240,71,127,21,122,0,0,247])
-
+        ### send sysexrequest
+        ### Contrast request	240,71,127,21,122,0,0,247
+        # msg = bytes([240,71,127,21,122,0,0,247])
         # lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
-
-        # Return Contrast. Not implemented
+        ### Return Contrast. Not implemented. Must be in event chain ais sysex anwser
         return None
 
 
@@ -838,29 +768,137 @@ class Display:
            logging.error(f"BRUMBY zu brightnes={i} geändert")
 
 
-        
-
         # send sysexrequest
         # Brightness request	240,71,127,21,124,0,0,247
         # commented out; getting return value not implemented yet. don't know how to
         # msg = bytes([240,71,127,21,124,0,0,247])
         # lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 
-        # Return Brightnes. Not implemented
+        # Return Brightnes. Not implemented. Answer comes as sysex in event chain
         return None
+    
+    def first_screen(self):
+        self.clear()
+        sleep(0.01) # necessary delays, otherwise sysex hick ups
+        self.brightnes(36)
+        sleep(0.01)
+        self.write_xy(b'* Pot 1 * Pot 2 ** Pot 3 * Pot 4 *', 0,0)
+        sleep(0.01)
+     #  Positionierungshilfe
+        self.write_xy(b'123456789A123456789B123456789C123456789D123456789E123456789F123456789', 0,1)
+        sleep(0.01)
+        self.write_xy(b'** Zynthian Push1Driver 0.1 **', 17,2)
+        sleep(0.1)
+        self.write_xy(b'++  Make MusicNot War ++', 20,3)
+        return
 
 
 
+# --------------------------------------------------------------------------
+# Feedback LEDs controller
+# --------------------------------------------------------------------------
+class Feedback_Mono_LEDs:
+                #Takt          Notenlängen               Pfeile        Track-Modifier        Copy/Del/undo 
+    _all_mono = [3,9,  28,29,  36,37,38,39,40,41,42,43,  44,45,46,47,  48,49,50,51,52,53,54,55,56,57,58,59,61,62,63,  85,86,87,88,89,90,  110,111,11,113,114,115,   116,117,118,119, ]
+    
+    def __init__(self, idev):
+        self._idev = idev
+        self._state = {}
+        self._timer = RunTimer()
+        
+    def all_off(self, overlay = False):
+        for note in self._all_mono:
+           lib_zyncore.dev_send_ccontrol_change(self._idev, 0, note, 0)
+           if not overlay:
+               self._led_state[note] = 0
+        return
+    
+    
+    def set_mono(self, note:int, grey_val:int, overlay=False):
+        lib_zyncore.dev_send_ccontrol_change(self._idev, 0, note, grey_val) # grey_val something of ABL.MONO_LED_DIM) 
+        if not overlay:
+               self._led_state[note] = 0
+        return
+    
+    def refresh_one(self, note):
+        if self._led_state[note]: # is one saved?
+            lib_zyncore.dev_send_ccontrol_change(self._idev, 0, note, self._led_state[note])
+        
+    def refresh(self):
+        for note in self._all_mono:
+            if self._led_state[note]:
+                lib_zyncore.dev_send_ccontrol_change(self._idev, 0, note, self._led_state[note])
+                
+    
+class Feedback_Bi_LEDs:
+    def __init__(self, idev):
+        self._idev = idev
+        self._state = {}
+        self._timer = RunTimer()
 
+    def all_off(self):
+        pass
+        
+# RGB LED Class for the pads rgb-LEDs           
+class Feedback_RGB_LEDs:
+    
+    # _led_states = {}
+    
+    def __init__(self, idev):
+        self._idev = idev
+        self._state = {}
+        self._timer = RunTimer()
+        self._led_state = {}
 
+    def all_off(self, overlay):
+        for pad_nr in range(ABL_PAD_END+1-ABL_PAD_START):
+            self.set_rgb(pad_nr,0,0,0, overlay)
+            if not overlay:
+               self._led_state[pad_nr] = [0,0,0]
+        return
+    
+    def refresh(self): # whole array of pads
+        for pad_nr in range(ABL_PAD_END+1-ABL_PAD_START):
+            self.refresh_one(pad_nr)
+    
+    
+    def refresh_one(self, pad_nr): # get back to saved value
+        self.set_rgb(pad_nr, self._led_state[pad_nr][0], self._led_state[pad_nr][1], self._led_state[pad_nr][2])
+        
+    
+    def off_col_row(self, col, row):
+        # note = 96 + row * 16 + col # statt 96 -> 91 für Push
+        note = ABL_PAD_END +1 -(row+1) * 8 + col  # recalculate midi note from col and row
+        # logging.info(f"BRUMBY: row={row}; col={col} pad-note={note}")
+        lib_zyncore.dev_send_note_on(self._idev, 0, note, 0) # this is palette mode.
 
+    def set_rgb(self, pad_nr: int, r:int ,g:int ,b:int, overlay=False):
+        # Sysex : 240,71,127,21,4,0,8,<Pad(0-71)>,0,<r1>,<r2>,<g1>,<g2>,<b1>,<b2>,247
+        # pad = 0-71  NICHT PAD_36 - PAD_99 
+        # blogspot.com
+        # To set a pad color to a RGB(0-255) value, the RGB values need to be set into "Push" format, for example:
+        # r1 = r /(integer division) 16 
+        # r2 = r %(modulo) 16
+        # So a value of R132 would become: r1=8 r2=4.
+        # The pad index if from 0 to 71, zero being the bottom left pad, all the way up to the second row button to the right (second row of buttons is RGB).
+        if r > 255: r = 255; 
+        if r < 0: r = 0
+        if g > 255: g = 255; 
+        if g < 0: g = 0
+        if b > 255: b = 255; 
+        if b < 0: b = 0
+        if not 0 <= pad_nr <= 64: 
+            logging.error(f"Padnr wrong. not in 1..64 pad_nr = {pad_nr}")
+            return False
+        
+        # self._led_state.setdefault(pad_nr, []).append(i)
+        if not overlay:
+            self._led_state[pad_nr] = [r,g,b]
+        
+        r1= r // 16  ; r2= r % 16
+        g1= g // 16  ; g2= g % 16
+        b1= b // 16  ; b2= b % 16
+        sysex = bytes ([240,71,127,21,4,0,8,pad_nr,0,r1,r2,g1,g2,b1,b2,247] )   
+        # lib_zyncore.dev
+        lib_zyncore.dev_send_midi_event(self._idev, sysex, len(sysex))
 
-
-
-
-
-
-# Zynthian specific modules
-# from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad # , zynthian_ctrldev_zynmixer
-# from zyncoder.zyncore import lib_zyncore
-# from zynlibs.zynseq import zynseq
