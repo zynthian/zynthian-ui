@@ -386,7 +386,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     # here magic for different sccale layouts happens.
                     # it translates midi_note events to the translated note_events
                     note_translated = self.scales.harmony_get_target_note(pad_nr-1) # midinotes are based 0 pad_nr based 1
-                    new_ev = bytes([ev[0], note_translated, ev[2]*2])
+                    vel = ev[2]
+                    if evtype == self.EV_NOTE_ON: vel = ev[2] *2 # this creates junk with aftertouch und pitchbend..
+                    if vel > 255: vel = 255
+                    new_ev = bytes([ev[0], note_translated, vel])
                     #if note_translated % 12 == 0: # Oktave detected
                     #    pass
                     # for note_on events following.

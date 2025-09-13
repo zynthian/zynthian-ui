@@ -123,7 +123,8 @@ class Harmony:
       self.target_notes_reverse = {} # Reset for new scale
           
       if middle_pad_nr < 0 : middle_pad_nr = 0
-      if middle_pad_nr>63 : middle_pad_nr = 63
+      if middle_pad_nr >= self.cols * self.rows:
+         middle_pad_nr = self.cols * self.rows -1
   
       mode = self.modes[self.active_mode]    
       pad_counter = -1
@@ -131,7 +132,7 @@ class Harmony:
       for i in range (-middle_pad_nr, (self.cols*self.rows) - middle_pad_nr):
          pad_counter += 1
          
-         row_nr = (pad_counter  +1) // self.cols
+         row_nr = pad_counter // self.cols
          
          note_nr_in_scale = i + (row_nr * col_versatz)
          
@@ -144,14 +145,16 @@ class Harmony:
          note += octave * 12
          note += self.middle_c
          
+         # store notes without tonic for internal represetation
          self.target_notes.append(note) # always as "C scale"
          # Reverse mapping
-         self.target_notes_reverse.setdefault(note, []).append(pad_counter) # always as "C-scale"
+         self.target_notes_reverse.setdefault(note, []).append(pad_counter)
          
          if console_debug: 
-            print(f"({note}),  ", end="\t", flush=True)
-            if  (pad_counter+1) % 8 == 0: # self.cols == 0: 
-               print("*", end="\n", flush=True) # Newline
+            actual_note = note + tonic
+            print(f"({actual_note}),  ", end="\t", flush=True)
+            if  (pad_counter+1) % self.cols == 0: 
+               print("*", end="\n", flush=True) # Newline at end of row
       return
 
 
@@ -183,16 +186,17 @@ class Harmony:
       return (midi_note - self.tonic) % 12
       
    def get_equi_sound_pads_with_midi_note(self, midi_note) -> list:
-      return self.target_notes_reverse[(midi_note - self.tonic)]      
+      # Subtract tonic to get internal representation
+      internal_note = midi_note - self.tonic
+      return self.target_notes_reverse.get(internal_note, [])     
    
    def get_equi_sound_pads_with_pad_nr(self, pad_nr):
       midi_note = self.target_notes[pad_nr]
-      return self.target_notes_reverse[midi_note]      
+      return self.target_notes_reverse.get(midi_note,[])      
 
    def harmony_get_mode_len(self, mode:str) -> int:
       """Return count of tones mode"""
       try:
-         logging.debug(f"[Debug len]: mode={mode}, len={len(self.modes[mode])}")
          return len(self.modes[mode])
       except KeyError:
          logging.error(f"Error: get_mode_len: mode '{mode}' not defined")
@@ -212,8 +216,10 @@ class Harmony:
       return self.target_notes[pad_nr] + self.tonic
    
    def harmony_get_padnrs_with_same_note(self, midi_note: int):
-      return self.target_notes_reverse.get(midi_note, [midi_note- self.tonic]) # If nothing is in map, midi_note itself is given back
-
+      internal_note = midi_note - self.tonic
+      return self.target_notes_reverse.get(internal_note, [])
+   
+   
 ### End of class definition Harmony ##############################################
 
 
