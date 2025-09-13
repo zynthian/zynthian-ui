@@ -105,10 +105,11 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     device_mode_active = DEV_MODE_SCALES
     
     scales = Harmony(8,8)
-    scales.init_scale("Minor", 36-1, -5) # -3 = new start per row 
+    scales.init_scale(tonic=0, middle_c=48) #  (0, "Major", 36-1, -5) # -3 = new start per row 
     
 
     # Function to initialise class
+    # called from parent (instance)
     def __init__(self, state_manager, idev_in, idev_out=None):
         logging.info("Created Instance from Ableton Push 1 driver - BRUMBY")
         
@@ -123,26 +124,24 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         
         super().__init__(state_manager, idev_in, idev_out)      
         
-        # seems to be necessary, because we send translates midi_events.
+        # seems to be necessary, because we send translated midi_events. o
         self.unroute_from_chains = True
         return
 
+    # called from parent
     def init(self):
         try: 
             logging.info("called init. Setting up Ableton Push 1 - BRUMBY")
             self.shift = False     
+            
+            # set initial device mode
             self.device_mode_active = self.DEV_MODE_SCALES
-            self.set_dev_scale_color()
-
+            
+            # setup device screen
             self._display.first_screen()
             
-            # Hier muss die Trackstaste zum Leuchten gebracht werden am Push 1
-            # Enable session mode on launchkey
-            # Track-Taste CC112 # ABL_TRACK
-            # lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 112, ABL.MONO_LED_LIT) # 2!
-            # CC62 = OK; CC63 = Back (ABL_OK, ABL_ESC
-            # lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 62, ABL.MONO_LED_LIT_BLINK) # 2!
             
+            # setup LEDS in Ctrl-Buttons
             # Monochrome Tasten die hell leuchten sollen
             for t in [ 36,37,38,39,40,41,42,43,   
                     ABL.BTN_START[1], ABL.BTN_OK[1], ABL.BTN_ESC[1], ABL.BTN_LEFT[1], 
@@ -159,12 +158,13 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_ORANGE_DIM) 
 
             ### lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
+            # setup device pad arry size
             self.cols = 8
             self.rows = 8 # war 2 20250829-2134
             super().init()  # aktiviert. Muss aktiviert sein!
             # self.pads_off()
             if self.device_mode_active == self.DEV_MODE_SCALES:
-                self.set_dev_scale_color()
+                self.set_dev_to_scales_mode()
                 
         #except:
         #    print("Fehler aufgetreten: {e}")
@@ -175,13 +175,57 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             # logging.error("Exception aufgetreten: %s", e)
             # logging.error("Traceback: %s", traceback.format_exc())
         
-
+    # called from parent
     def end(self):
         # logging.error("end Ableton Push 1 - BRUMBY")
         super().end()
         ### Disable session mode on launchkey
         ## lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0) # device, channel, note, velocity
 
+    # new in this class, to setup scales_mode = keyboard mode
+    def set_dev_to_scales_mode(self):
+        self.device_mode_active = self.DEV_MODE_SCALES
+        # visual feedback, let Scales Button blink
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
+        self.pads_off() # akk pad leds off
+        self.set_dev_scale_color() # set LEDs for scale mode
+        self._display.clear()
+        scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
+        self._display.write_xy_mem(scale_n_mode, 0, 3)
+        self._display.update_screen()
+    
+    
+    def set_tonic(self, step):
+        if step > 63: step -=128
+        self.scales.tonic = self.scales.tonic + step
+        if self.scales.tonic < 0:  self.scales.tonic = 11  # target: B
+        if self.scales.tonic > 11: self.scales.tonic = 0   # target: C
+        self.set_dev_to_scales_mode();
+        self.scales.init_scale(self.scales.tonic, self.scales.active_mode)
+        
+    def set_mode(self, step):
+        modenames = self.scales.harmony_get_mode_names()
+        nr_of_modes = len(modenames)
+        result = None
+        if not self.scales.active_mode: self.scales.active_mode = modenames[0]
+        if step > 63: step -=128
+        for i in range(nr_of_modes):
+            if modenames[i] == self.scales.active_mode:
+                result = i
+                break
+        if not result == None:
+            result += step
+            if result >= nr_of_modes: result = 0
+            elif result < 0 : result = nr_of_modes-1
+            
+            new_mode = modenames[result]
+            self.scales.active_mode = new_mode
+        else:
+            logging.error("Bug in set_mode")
+        # do the magic
+        self.set_dev_to_scales_mode();
+        self.scales.init_scale(self.scales.tonic, self.scales.active_mode)  # self.scales.tonic, self.scales.active_mode, 36-1, -5)
+    
 ### Mixer FUNCTIONS FOR DISPLAY ACTION from zynmixer.
 ### just copy the derived functions in the this driver and implement them accordingly 
     def update_mixer_active_chain(self, active_chain):
@@ -207,7 +251,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 
 ### Start of SEQUENCER FUNCTIONS
     # this function is called by zynseq when a sequencer state is changed
-    # we will update pad LED to show state
+    # we have update pad LED to show state
     def update_seq_state(self, bank, seq, state, mode, group):
         try:
             # return
@@ -257,8 +301,11 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         except ValueError as e:
             print(f"Fehler aufgetreten: {e}")
 
-
-
+    # for LED feedback bei pad mode (Sequencer)
+    def refresh(self): # form zynseq classe
+        # if not filtered, the pad loop kills any other LED setup
+        if self.device_mode_active == self.DEV_MODE_PAD:
+            return super().refresh()
 
     def pad_off(self, col, row):
         # note = 96 + row * 16 + col # statt 96 -> 91 für Push
@@ -410,11 +457,12 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             elif (ccnum == ABL.BTN_SCALES[1]):
                 logging.info("BRUMBY: BTN_SCALES processing")
                 if not self.device_mode_active == self.DEV_MODE_SCALES:
-                    self.device_mode_active = self.DEV_MODE_SCALES
+                    # self.device_mode_active = self.DEV_MODE_SCALES
                     # visual feedback, let Scales Button blink
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
-                    self.pads_off() # akk pad leds off
-                    self.set_dev_scale_color()
+                    # lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
+                    # self.pads_off() # akk pad leds off
+                    # self.set_dev_scale_color()
+                    self.set_dev_to_scales_mode()
                 else:
                     self.device_mode_active = self.DEV_MODE_PAD
                     # visual feedback, set LED to solid on
@@ -445,11 +493,16 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
         
-        
+            if ABL.KNOB_7[1] == ccnum: # scale
+                self.set_tonic(ccval)
+                
+            elif ABL.KNOB_8[1] == ccnum: # mode
+                self.set_mode(ccval)
+            
             # Zynpoties Werte an GUI
             # Potis Oben 72 - 75 die ersten 4
             # if 70 < ccnum < 80: 
-            if ABL.KNOB_1[1] <= ccnum <= ABL.KNOB_4[1]: 
+            elif ABL.KNOB_1[1] <= ccnum <= ABL.KNOB_4[1]: 
                 # self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 72, ccval/127])
                 val = ccval
                 if val > 68:
@@ -555,7 +608,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         self._leds_rgb.all_off(True) # led_states must not be deleted. is done in next lines
         for pad_nr in range(64):
             new_note = self.scales.harmony_get_target_note(pad_nr)
-            if new_note % 12 == 0:
+            if self.scales.is_tonic_by_midnote(new_note):
+                print (f"found: Tonic {new_note}")
                 r = 0; g = 0; b = 255
             else:
                 r = 200; g = 200; b = 200 
@@ -677,7 +731,7 @@ class Feedback_Display:
             sleep(0.05)
 
 
-    def update (self):
+    def update_screen (self):
         # move display memory to display with sysex
         for row in range(4):
             #msg = bytes([240, 71, 127, 21, row+24,        0,   text_len+1,  col]) + text+ bytes([247])
@@ -693,9 +747,20 @@ class Feedback_Display:
         return
            
 
-    def write_xy (self, text, col_in, row_in):
+    def write_xy_mem (self, text, col_in:int, row_in:int):
         # writes to display memory at Position col_in, row_in in display memory und auf Display
         # mit update
+        
+        #convert text to bytes
+        if isinstance(text, str):
+            # print("Die Variable ist ein String (Text)")
+            text = text.encode()
+        elif isinstance(text, bytes):
+            # print("Die Variable ist Bytes")
+            pass # is fine
+        else:
+            # print("Die Variable ist weder String noch Bytes")
+            text = "Typeerror in textconversion".encode()
         
         # Koordinaten prüfen
         if(row_in > 3): row_in = 3
@@ -709,7 +774,7 @@ class Feedback_Display:
         text_len = len(text)
         
         self.display_mem[row_in][col_in:col_in+text_len] = list(text)
-        self.update()
+        # self.update()
         return
         
     def contrast (self, i=None) -> int:
@@ -779,17 +844,14 @@ class Feedback_Display:
     
     def first_screen(self):
         self.clear()
-        sleep(0.01) # necessary delays, otherwise sysex hick ups
-        self.brightnes(36)
-        sleep(0.01)
-        self.write_xy(b'* Pot 1 * Pot 2 ** Pot 3 * Pot 4 *', 0,0)
-        sleep(0.01)
-     #  Positionierungshilfe
-        self.write_xy(b'123456789A123456789B123456789C123456789D123456789E123456789F123456789', 0,1)
-        sleep(0.01)
-        self.write_xy(b'** Zynthian Push1Driver 0.1 **', 17,2)
+        # self.brightnes(36)
         sleep(0.1)
-        self.write_xy(b'++  Make MusicNot War ++', 20,3)
+        self.write_xy_mem(b'* Pot 1 * Pot 2 ** Pot 3 * Pot 4 *', 0,0)
+     #  Positionierungshilfe
+        self.write_xy_mem(b'123456789A123456789B123456789C123456789D123456789E123456789F123456789', 0,1)
+        self.write_xy_mem(b'** Zynthian Push1Driver 0.1 **', 17,2)
+        self.write_xy_mem(b'++  Make MusicNot War ++', 20,3)
+        self.update_screen()
         return
 
 

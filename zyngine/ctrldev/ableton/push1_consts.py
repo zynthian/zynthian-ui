@@ -37,6 +37,9 @@ KNOB_6 = [0xB0, 76] # CC76
 KNOB_7 = [0xB0, 77] # CC77
 KNOB_8 = [0xB0, 78] # CC78
 KNOB_9 = [0xB0, 79] # CC79
+KNOB_10 = [0xB0, 14] # CC79
+KNOB_11 = [0xB0, 15] # CC79
+
 
 # Touch
 KNOB_1_T = [0x90,0] # "C-1" sic! 
@@ -48,6 +51,8 @@ KNOB_6_T = [0x90,5] # Note 5
 KNOB_7_T = [0x90,6] # note 6
 KNOB_8_T = [0x90,7] # note 7
 KNOB_9_T = [0x90,8] # Note 8
+KNOB_10_T = [0x90,9]
+KNOB_11_T = [0x90,10]
 
 RIBBON_TOUCH_T  = [0x90,12] # "C0" note 12
 RIBBON_PITCH    = [0xE0]    # Mod-wheel ?? ### Achtung einziger Identifier, der nur 1 byte hat!!! ###
