@@ -367,6 +367,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2612 CC editor'] = 'CC editor'
         options[f"Length ({self.get_pattern_length()})"] = 'Length'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
+        if self.zynseq.libseq.getQuantizeNotes():
+            options['\u2612 Quantization'] = 'Quantization'
+        else:
+            options['\u2610 Quantization'] = 'Quantization'
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
         options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime())})"] = 'Time Humanization'
@@ -382,10 +386,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2612 Record from MIDI'] = 'Record MIDI'
             else:
                 options['\u2610 Record from MIDI'] = 'Record MIDI'
-        if self.zynseq.libseq.getQuantizeNotes():
-            options['\u2612 Quantized recording'] = 'Quantized recording'
-        else:
-            options['\u2610 Quantized recording'] = 'Quantized recording'
         options[f"Copy this pattern ({self.pattern}) to clipboard"] = 'Copy pattern'
         if self.pattern2copy is not None and self.pattern2copy != self.pattern:
             options[f"Paste from clipboard ({self.pattern2copy})"] = 'Paste pattern'
@@ -435,6 +435,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
                                          'value_default': 3, 'value': self.n_steps_beat},
                                          assert_cb=self.assert_steps_per_beat)
+            case 'Quantization':
+                self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
             case 'Swing Amount':
                 self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100,
                                                                 'value': int(100.0 * self.zynseq.libseq.getSwingAmount()),
@@ -464,8 +466,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                     }, self.add_program_change)
             case 'Record MIDI':
                 self.toggle_midi_record()
-            case 'Quantized recording':
-                self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
             case 'Copy pattern':
                 self.pattern2copy = self.pattern
             case 'Paste pattern':
