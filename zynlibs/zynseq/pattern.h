@@ -536,15 +536,15 @@ class Pattern {
     */
     void setRefNote(uint8_t note);
 
-    /** @brief  Get the "Quantize Notes" flag
-        @retval bool flag
+    /** @brief  Get the "Quantize Notes" value
+        @retval uint8_t quantize value (0, 1, 2, 3, 4, 6, 8, 12, 16)
     */
-    bool getQuantizeNotes();
+    uint8_t getQuantizeNotes();
 
-    /** @brief  Set the "Quantize Notes" flag
-        @param  flag
+    /** @brief  Set the "Quantize Notes" value
+        @param  quantize value (0, 1, 2, 3, 4, 6, 8, 12, 16)
     */
-    void setQuantizeNotes(bool flag);
+    void setQuantizeNotes(uint8_t qn);
 
     /** @brief  Get the "Interpolate CC values" flag for a given CC number
         @param  ccnum
@@ -594,7 +594,7 @@ class Pattern {
     uint8_t m_nScale = 0;          // Index of scale
     uint8_t m_nTonic = 0;          // Scale tonic (root note)
     uint8_t m_nRefNote = 60;       // Note at which to position pattern editor
-    bool m_bQuantizeNotes = false; // Quantize note time so it plays in the nearest step boundary
+    uint8_t m_nQuantizeNotes = 0;  // Quantize note time so it plays in the nearest step fraction boundary (1, 1/2, 1/3, 1/4, 1/6, 1/8, 1/12, 1/16)
     bool m_bInterpolateCC[128];    // Enable/Disable CC value interpolation for each CC number
     uint32_t m_nSwingDiv = 1;      // Swing division, range from 1 to pPattern->getStepsPerBeat()
     float m_fSwingAmount = 0.0;    // Swing amount, range from 0 to 1, but over 0.5 is not "MPC swing"

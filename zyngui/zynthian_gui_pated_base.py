@@ -62,6 +62,10 @@ EDIT_MODE_HISTORY = 4  # Edit history mode (undo/redo)
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
+# List of quantization divisors
+QUANTIZATION_DIVISORS = [0, 1, 2, 3, 4, 6, 8]
+QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step", "1/6 step", "1/8 step"]
+# List of available MIDI channels
 INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
 
 # ------------------------------------------------------------------------------
@@ -367,10 +371,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2612 CC editor'] = 'CC editor'
         options[f"Length ({self.get_pattern_length()})"] = 'Length'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
-        if self.zynseq.libseq.getQuantizeNotes():
-            options['\u2612 Quantization'] = 'Quantization'
-        else:
-            options['\u2610 Quantization'] = 'Quantization'
+        qn = self.zynseq.libseq.getQuantizeNotes()
+        if qn == 0:
+            qval = "DISABLED"
+        elif qn == 1:
+            qval = "1 step"
+        elif qn > 1:
+            qval = f"1/{self.zynseq.libseq.getQuantizeNotes()} step"
+        options[f"Quantization ({qval})"] = 'Quantization'
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
         options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime())})"] = 'Time Humanization'
@@ -436,9 +444,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                          'value_default': 3, 'value': self.n_steps_beat},
                                          assert_cb=self.assert_steps_per_beat)
             case 'Quantization':
-                self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
+                self.enable_param_editor(self, 'quantization', {'name': 'Quantization Divisor',
+                                        'ticks': QUANTIZATION_DIVISORS, 'labels': QUANTIZATION_LABELS,
+                                        'value': self.zynseq.libseq.getQuantizeNotes()})
             case 'Swing Amount':
-                self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100,
+                self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount',
+                                                                'value_min': 0, 'value_max': 100,
                                                                 'value': int(100.0 * self.zynseq.libseq.getSwingAmount()),
                                                                 'value_default': 0})
             case 'Swing Divisor':
@@ -509,6 +520,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             case 'zoom':
                 self.set_grid_zoom(zctrl.value)
                 self.param_editor_zctrl.value = self.zoom
+            case 'quantization':
+                self.zynseq.libseq.setQuantizeNotes(zctrl.value)
             case 'swing_amount':
                 self.zynseq.libseq.setSwingAmount(zctrl.value / 100.0)
             case 'swing_div':

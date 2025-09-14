@@ -185,10 +185,17 @@ SEQ_EVENT* Track::getEvent() {
             m_nEventValue = pEvent->getValue2start();
             // Recorded Offset (fraction of step => float)
             m_fEventOffset = pEvent->getOffset();
-            // Real-time quantization (step quantization => TODO quantize to step divisors: 1/2, 1/3, 1/4, 1/6, 1/8, ...)
-            if (pPattern->getQuantizeNotes()) {
-            	if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
-            	else m_fEventOffset = 0.0;
+            // Real-time quantization (step quantization
+            uint8_t qn = pPattern->getQuantizeNotes();
+            if (qn > 0) {
+            	// Quantize to step boundary
+            	//if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
+            	//else m_fEventOffset = 0.0;
+            	// Quantize to step fraction boundary (1/qn => 1/2, 1/3, 1/4, 1/6, 1/8, ...)
+            	float m = m_fEventOffset * qn;
+            	uint8_t mi = (int)m;
+            	if ((m - mi) > 0.5) m_fEventOffset = (float)(mi + 1) / qn;
+            	else m_fEventOffset = (float)mi / qn;
 			}
             // Swing => Add to offset
             uint32_t swingDiv = pPattern->getSwingDiv();

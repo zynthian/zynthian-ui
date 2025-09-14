@@ -711,14 +711,14 @@ uint8_t getRefNote();
 void setRefNote(uint8_t note);
 
 /** @brief  Get the "Quantize Notes" flag
-    @retval bool flag
+    @retval uint8_t quantize value (0, 1, 2, 3, 4, 6, 8, 12, 16)
 */
-bool getQuantizeNotes();
+uint8_t getQuantizeNotes();
 
 /** @brief  Set the "Quantize Notes" flag
-    @param  flag
+    @param  quantize value (0, 1, 2, 3, 4, 6, 8, 12, 16)
 */
-void setQuantizeNotes(bool flag);
+void setQuantizeNotes(uint8_t qn);
 
 /** @brief  Get the "Interpolate CC values" flag for a given CC number
 	@param  ccnum

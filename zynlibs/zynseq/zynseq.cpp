@@ -440,16 +440,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     //}
                     if (offset < 0.0)
                         offset = 0;
-                    // Quantize or not
-                    /*
-                    if (g_pPattern->getQuantizeNotes()) {
-                        if (offset > 0.5)
-                            startEvents[midiEvent.buffer[1]].start++;
-                        startEvents[midiEvent.buffer[1]].offset = 0;
-                    } else {
-                    	startEvents[midiEvent.buffer[1]].offset = offset;
-                    }
-                    */
                     // Capture not quantized => quantization is done in real time (see track.cpp)
                     startEvents[midiEvent.buffer[1]].offset = offset;
                 }
@@ -2273,15 +2263,15 @@ void setRefNote(uint8_t note) {
         g_pPattern->setRefNote(note);
 }
 
-bool getQuantizeNotes() {
+uint8_t getQuantizeNotes() {
     if (g_pPattern)
         return g_pPattern->getQuantizeNotes();
     return false;
 }
 
-void setQuantizeNotes(bool flag) {
+void setQuantizeNotes(uint8_t qn) {
     if (g_pPattern)
-        g_pPattern->setQuantizeNotes(flag);
+        g_pPattern->setQuantizeNotes(qn);
 }
 
 void setInterpolateCC(uint8_t ccnum, bool flag) {

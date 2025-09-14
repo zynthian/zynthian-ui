@@ -30,7 +30,7 @@ Pattern& Pattern::operator=(Pattern& p) {
     m_nScale = p.m_nScale;
     m_nTonic = p.m_nTonic;
     m_nRefNote = p.m_nRefNote;
-    m_bQuantizeNotes = p.m_bQuantizeNotes;
+    m_nQuantizeNotes = p.m_nQuantizeNotes;
     m_nSwingDiv = p.m_nSwingDiv;
     m_fSwingAmount = p.m_fSwingAmount;
     m_fHumanTime = p.m_fHumanTime;
@@ -621,9 +621,9 @@ void Pattern::setRefNote(uint8_t note) {
         m_nRefNote = note;
 }
 
-bool Pattern::getQuantizeNotes() { return m_bQuantizeNotes; }
+uint8_t Pattern::getQuantizeNotes() { return m_nQuantizeNotes; }
 
-void Pattern::setQuantizeNotes(bool flag) { m_bQuantizeNotes = flag; }
+void Pattern::setQuantizeNotes(uint8_t qn) { m_nQuantizeNotes = qn; }
 
 bool Pattern::getInterpolateCC(uint8_t ccnum) { return m_bInterpolateCC[ccnum]; }
 
