@@ -440,15 +440,18 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     //}
                     if (offset < 0.0)
                         offset = 0;
-
                     // Quantize or not
+                    /*
                     if (g_pPattern->getQuantizeNotes()) {
                         if (offset > 0.5)
                             startEvents[midiEvent.buffer[1]].start++;
                         startEvents[midiEvent.buffer[1]].offset = 0;
                     } else {
-                        startEvents[midiEvent.buffer[1]].offset = offset;
+                    	startEvents[midiEvent.buffer[1]].offset = offset;
                     }
+                    */
+                    // Capture not quantized => quantization is done in real time (see track.cpp)
+                    startEvents[midiEvent.buffer[1]].offset = offset;
                 }
                 // Note off event
                 else if ((nCommand == MIDI_NOTE_ON && midiEvent.buffer[2] == 0) || nCommand == MIDI_NOTE_OFF) {
