@@ -240,7 +240,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def select_listbox(self, index, see=True):
         super().select_listbox(index, see=True)
-        if zynthian_gui_config.preset_preload_noteon:
+        if zynthian_gui_config.preset_preload:
             try:
                 zynthian_gui_config.top.after_cancel(self.preload_timer_id)
             except:
