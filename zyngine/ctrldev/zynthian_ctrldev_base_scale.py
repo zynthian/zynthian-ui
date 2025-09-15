@@ -1,4 +1,5 @@
 #!/zynthian/venv/bin/python
+
 import logging
 
 # Do not change. Only if this file is started directly from console
@@ -49,92 +50,127 @@ class Harmony:
    # Class variables: Hardware of device and Scales don't change in instances 
    modes = _MODES
    scales = _SCALES
-   
-   ### Next the instance variables, set up by init() function, are different for each instance
-   ### cols = 8
-   ### rows = 8
-   ### target_notes = []
-   ### target_notes_reverse = {} # To get pads with same MIDI note to light them up when pressed
-   ### col_versatz = -5
-   ### active_mode = "Major"
-   ### active_scale = 0 # means "C"
-   
+  
    def __init__(self, pad_cols, pad_rows):
       self.cols = pad_cols
       self.rows = pad_rows
       self.target_notes = [] # Instance variable
       self.target_notes_reverse = {}
       self.active_mode = None
-      self.col_versatz = 0 # 0 means linear, no offset 
+      self.col_versatz = None # 0 means linear, no offset 
+      self.middle_pad_nr = None
+      self.middle_c = None
+      self.must_redraw_led_colors = False
+      self._lock = 0
 
+   def is_initialized(self):
+      if self.target_notes == []: return False
+      if self.target_notes_reverse == {}: return False
+      if type(self.active_mode) == None: return False
+      if type(self.col_versatz) == None: return False
+      if type(self.middle_pad_nr) == None: return False
+      if type(self.middle_c) == None: return False
+      return True
    
-   # def init_scale(self, tonic: int, mode_name: str, note_start: int, col_versatz: int):
-   #    """tonic : tonic of scale as midinote 0-11 (semitones)
-   #       mode_name:   name of mode from self._modes
-   #       note_start:  number of the tone in scale with octaves (12 would be second octave tonic)
-   #       col_versatz: each row can start with a different offset, so -5 means in C-Major-Scale an "F" above the C in row-1 line
-   #    """
-   #    self.tonic = tonic
-   #    self.col_versatz = col_versatz
-   #    self.active_mode = mode_name
-   #    self.pad1_midi_note = note_start  # midi_note for pad1
+   def must_reset_led_colors(self) -> bool:
+      return self.must_redraw_led_colors
       
-   #    self.target_notes = []         # Reset for new scale
-   #    self.target_notes_reverse = {} # Reset for new scale
-      
-   #    for i in range(self.cols * self.rows):
-   #       in_row = i // self.cols
-   #       h = i + (in_row * col_versatz)
-   #       if console_debug: print(f"{h} ", end="", flush=True)
-   #       note_new = self._harmony_calculate_midi_note(h)
-         
-   #       self.target_notes.append(note_new) # always as "C scale"
-   #       # Reverse mapping
-   #       self.target_notes_reverse.setdefault(note_new, []).append(i) # always as "C-scale"
-         
-   #       if console_debug: 
-   #          print(f"({note_new}),  ", end="\t", flush=True)
-   #          if  (i+1) % 8 == 0: # self.cols == 0: 
-   #             print("*", end="\n", flush=True) # Newline
-   #    return
-
-
-
    def init_scale(self, 
-                     tonic: int         = 0,       # (C) semitone distance counted from from C = 0
-                     mode_name: str     = "Major", # mode as str from Array 
-                     col_versatz: int   = -5,      # per row recess
-                     middle_c: int      = 36,      # must be middle_c % 12 = 60
-                     middle_pad_nr: int = 3):      # padnr of middle tonic 
+                     tonic: int         = None,       # (C) semitone distance counted from from C = 0
+                     mode_name: str     = None,       # mode as str. look in _SCALES 
+                     col_versatz: int   = None,       # per row recess
+                     middle_c: int      = None,       # must be middle_c % 12 = 60  
+                     middle_pad_nr: int = None):      # padnr of middle tonic. pad where middle_c is placed
       
       """tonic : tonic of scale as midinote 0-11 (semitones)
          mode_name:   name of mode from self._modes
          middle_C:  number of the tone in scale with octaves (12 would be second octave tonic)
          col_versatz: each row can start with a different offset, so -5 means in C-Major-Scale an "F" above the C in row-1 line
       """
+      # for new tonic initialization is not necessary. Tonics just change returnvlaiues of notes
+      if not tonic is None:
+         if tonic > 11: tonic = 0; 
+         if tonic < 0: tonic = len(self.scales)-1
+         self.tonic       = tonic      
+      # Fallback for tonic
+      if self.tonic is None:
+         self.tonic = 0 # Set to C
+         logging.error("tonic not set. Fallback is 0 ='C'")
       
       
-      self.tonic       = tonic
-      self.col_versatz = col_versatz
-      self.middle_c    = middle_c
-      self.active_mode = mode_name
+      # any value afterwards will reinitialiue the class   
+      is_dirty = False # reinitialize?
+      if not col_versatz is None:
+         if not self.col_versatz == col_versatz:
+            is_dirty = True
+            self.must_redraw_led_colors = True
+            self.col_versatz = col_versatz
+      # col_versatz not intialiued
+      if self.col_versatz is None:
+         is_dirty = True
+         self.must_redraw_led_colors = True
+         self.col_versatz = -5 # upwards 1 fourth lower the scale -> in C-Major an F above the C and so on
+         logging.error("row recess not set. Fallback vlaue is -5")
+      
+      
+      if not middle_c is None:
+         if not self.middle_c  == middle_c:
+            is_dirty = True
+            self.must_reset_led_colors = True
+            middle_c = middle_c // 12 * 12 # makes middle_c % 12 == 0
+            self.middle_c    = middle_c
+      if self.middle_c is None:
+         self.middle_c = 48 # must be middle_c % 12 = 0
+         is_dirty = True
+         logging.error("middle_C not set. Will be set to Midi_note=48")
+      
+      if not mode_name is None:
+         if not mode_name in self.modes:
+            logging.error(f"modename: {mode_name}")
+         else:
+            if not self.active_mode == mode_name:  
+               # if len of new mode is different to before, LED Colors must be rewritten   
+               self.must_redraw_led_colors = True 
+               self.active_mode = mode_name
+               is_dirty = True
+      if self.active_mode is None:
+         self.active_mode = "Major"
+         self.must_redraw_led_colors = True
+         is_dirty = True
+         logging.error("mode not set. Falback is: Major")           
+      
+      if not middle_pad_nr is None:
+         if middle_pad_nr < 0 : middle_pad_nr = 0 # center of scale is pad1
+         if middle_pad_nr >= self.cols * self.rows:
+            middle_pad_nr = self.cols * self.rows -1 # center of scale is last pad  
+         if not self.middle_pad_nr == middle_pad_nr:   
+            self.middle_pad_nr = middle_pad_nr
+            self.must_redraw_led_colors = True
+            is_dirty = True
+      if self.middle_pad_nr is None:
+         self.middle_pad_nr = 4
+         self.must_redraw_led_colors = True
+         is_dirty == True
+            
+      
+      # if not is_dirty: return # if just tonica changed go back
       
       self.target_notes = []         # Reset for new scale
       self.target_notes_reverse = {} # Reset for new scale
-          
-      if middle_pad_nr < 0 : middle_pad_nr = 0
-      if middle_pad_nr >= self.cols * self.rows:
-         middle_pad_nr = self.cols * self.rows -1
-  
+         
+      # if middle_pad_nr < 0 : middle_pad_nr = 0
+      # if middle_pad_nr >= self.cols * self.rows:
+      #    middle_pad_nr = self.cols * self.rows -1
+
       mode = self.modes[self.active_mode]    
       pad_counter = -1
       
-      for i in range (-middle_pad_nr, (self.cols*self.rows) - middle_pad_nr):
+      for i in range (- self.middle_pad_nr, (self.cols*self.rows) - self.middle_pad_nr):
          pad_counter += 1
          
          row_nr = pad_counter // self.cols
          
-         note_nr_in_scale = i + (row_nr * col_versatz)
+         note_nr_in_scale = i + (row_nr * self.col_versatz)
          
          
          octave = note_nr_in_scale // len(mode) 
@@ -157,29 +193,25 @@ class Harmony:
                print("*", end="\n", flush=True) # Newline at end of row
       return
 
+   def set_new_tonic(self, new_tonic:int):
+      if new_tonic == self.tonic: return False
+      if new_tonic < 0:  new_tonic = 11  # target: B
+      if new_tonic > 11: new_tonic = 0   # target: C
+      self.tonic = new_tonic
+      return True # yes update display. we changed it
 
+   def step_to_next_tonic(self, step):
+      if step > 63: step -=128 # for controller sending 127 for -1
+      new_tonic = self.scales.tonic + step
+      if new_tonic < 0:  new_tonic = 11  # target: B
+      if new_tonic > 11: new_tonic = 0   # target: C
+      self.scales.tonic = new_tonic
 
-   # def _harmony_calculate_midi_note(self, note_in_scale) -> int:
-   #    """Parameters:
-   #       scale: string with name of scale
-   #       note: integer representing the starting point in the scale. If start is bigger than 
-   #             the length of the specified scale it adds start % len(scale) * 12 to the result.
-   #             So you can cycle through the number of keyboard keys to get their MIDI notes
-   #    """
-   #    try:
-   #       mode = self.modes[self.active_mode]
-   #       pos_in_mode = note_in_scale % len(mode) #
-   #       octave = note_in_scale // len(mode)
-   #       return mode[pos_in_mode] + (octave * 12) # is based "C-Scale"
-   #    except KeyError:
-   #       logging.error(f"Error: Mode '{self.active_mode}' not found!")
-   #       return -1 # -1 is error, there is no MIDI note -1
-   #    except Exception as e:
-   #       logging.error(f"Error calculating MIDI note: {e}")
-   #       return -1
-
-   def is_tonic_by_padnr(self, padnr:int)-> bool:
-      return self.target_notes[padnr] % 12 == 0
+   def is_tonic_by_padnr(self, pad_nr:int)-> bool:
+      res = self.target_notes[pad_nr]
+      res2 = res % 12
+      return res2 == 0
+      #return self.target_notes[padnr] % 12 == 0
 
 
    def is_tonic_by_midnote(self, midi_note:int) -> bool:
@@ -207,6 +239,7 @@ class Harmony:
    
    def harmony_get_scale_name_with_mode (self) -> str:
       result = self.scales[self.tonic] + ' ' + self.active_mode
+      result = result.ljust(20)[:20]
       return result
    
    def harmony_get_target_note(self, pad_nr: int) -> int:
