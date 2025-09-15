@@ -117,18 +117,18 @@ class zynthian_ctrldev_keystation_pro_88_mk1(zynthian_ctrldev_base):
         # Note: Using buttons on Keystation 88 Pro MK1 for "back" and "OK" is not ideal
         # because all buttons send only a program change when pressed, with no way to
         # detect long vs short presses
-        if len(ev) >= 2:
-            if ev[0] & 0xF0 == 0xC0:  # Program Change event
-                data1 = ev[1]  # Program number
+        # if len(ev) >= 2:
+        #     if ev[0] & 0xF0 == 0xC0:  # Program Change event
+        #         data1 = ev[1]  # Program number
                 
-                # Map program changes to UI actions
-                if data1 == 0:  # Button "Back"
-                    self.state_manager.send_control("BACK")
-                    return True
+        #         # Map program changes to UI actions
+        #         if data1 == 0:  # Button "Back"
+        #             self.state_manager.send_cuia("BACK")
+        #             return True
                 
-                elif data1 == 1:  # Button "OK"
-                    self.state_manager.send_control("SELECT")
-                    return True
+        #         elif data1 == 1:  # Button "OK"
+        #             self.state_manager.send_cuia("SELECT")
+        #             return True
         
         return False  # Event not processed by this driver
     
