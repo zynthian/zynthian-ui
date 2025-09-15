@@ -187,6 +187,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         ### Disable session mode on launchkey
         ## lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0) # device, channel, note, velocity
 
+
+#################################################################################################################
+##################     START   of scales fucntions     ##########################################################
+
     def scale_update_leds(self, index_activated): # index defines blinkin LED
         # Bicolor LEDs dim ## CC20-27 + 102-109
         scale_buttons = [
@@ -198,7 +202,26 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_GREEN_DIM) 
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, scale_buttons[index_activated], ABL.BI_GREEN_DIM_BLINK) 
 
+    def scales_cleanup(self): # set of any LED and display changes
+        # cleadup display
+        btn_txt_row0 = "| ZynP1 | ZynP2 |  ZynP3 | ZynP4 ||       |        |       |       |"
+        btn_txt_row2 = "|       |       |        |       ||       |        |       |       |"
+        self._display.write_xy_mem(btn_txt_row0, 0, 0)
+        self._display.write_xy_mem(btn_txt_row2, 0, 1)
+        self._display.write_xy_mem(btn_txt_row2, 0, 2)
+        self._display.write_xy_mem(btn_txt_row2, 0, 3)
+        self._display.update_screen()
         
+        # cleanup scale LED 
+        scale_buttons = [
+                    ABL.BTN_R2_C1[1], ABL.BTN_R2_C2[1], ABL.BTN_R2_C3[1], ABL.BTN_R2_C4[1],
+                    ABL.BTN_R2_C5[1], ABL.BTN_R2_C6[1], ABL.BTN_R2_C7[1], ABL.BTN_R2_C8[1],
+                    ABL.BTN_R1_C5[1], ABL.BTN_R1_C6[1], ABL.BTN_R1_C7[1], ABL.BTN_R1_C8[1]
+                    ]
+        for t in scale_buttons:
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_LED_OFF) 
+       
+    # def scales_setup(self) 
         
     # new in this class, to setup scales_mode = keyboard mode
     def set_dev_to_scales_mode(self):
@@ -212,9 +235,11 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         self._display.write_xy_mem(scale_n_mode, 0, 2)
         # Btn_row
         btn_txt_row0 = "| ZynP1 | ZynP2  | ZynP3 | ZynP4 ||       |        | Scale | Mode  |"
+        btn_txt_row1 = "|       |       |        |       ||       |        |       |       |"
         btn_txt_row2 = "|modes here      |       |       ||   G#  |    A   |  A#   |   B   |"
         btn_txt_row3 = "|   C   |   C#   |   D   |   D#  ||   E   |    F   |  F#   |   G   |"
         self._display.write_xy_mem(btn_txt_row0, 0, 0)
+        self._display.write_xy_mem(btn_txt_row1, 0, 1)
         self._display.write_xy_mem(btn_txt_row2, 0, 2)
         self._display.write_xy_mem(scale_n_mode, 0, 2) # Scale and scale over row2
         self._display.write_xy_mem(btn_txt_row3, 0, 3)
@@ -268,10 +293,132 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         else:
             logging.error("Bug in set_mode")
         # do the magic
-        self.set_dev_to_scales_mode();
+        # self.set_dev_to_scales_mode(); ### Das ist overkill
         self.scales.init_scale(self.scales.tonic, self.scales.active_mode)
+        # colorize pad array with tonic
         self.scales_set_pad_colors()
+        # Display
+        scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
+        self._display.write_xy_mem(scale_n_mode, 0, 2)
+        self._display.update_screen()
         # self.scales.tonic, self.scales.active_mode, 36-1, -5)
+   
+    def scales_set_pad_colors(self):        
+    # def set_dev_scale_color(self):
+        # self._leds_rgb.all_off(True) # led_states must not be deleted. is done in next lines. just for debugging
+        for pad_nr in range(64):
+            new_note = self.scales.harmony_get_target_note(pad_nr)
+            # if self.scales.is_tonic_by_midnote(new_note): ### NOT WORKING CONPLETELY
+            if self.scales.is_tonic_by_padnr(pad_nr):
+                r = 0; g = 0; b = 255
+            else:
+                r = 200; g = 200; b = 200 
+                print (f"found: Tonic {new_note}")
+            # self.set_pad_rgb(pad_nr, r, g, b) ## OLD FUnction
+            self._leds_rgb.set_rgb(pad_nr, r, g, b, overlay=False)
+        pass       
+
+    def process_scale_event(self, ev) -> bool:
+        if not self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
+            return False # we are not in scales mode
+    
+        ##### event part for sounds
+        # Filter out note events created by push 1 when touching Knobs and Ribbon 
+        note = ev[1]
+        if ABL_PAD_START <= note <= ABL_PAD_END: # just note events, which should sound.
+            # filter for getting any vent that is sound event
+            
+                      
+            evtype = (ev[0] >> 4) & 0x0F 
+            
+            if evtype == self.EV_PITCHBEND: # ribbon working as pitchwheel
+                self._forward_like_niels_did(ev) 
+                
+            
+            if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUCH]:
+                            
+                # logging.debug(f"Scales mode -BRUMBY")
+                pad_nr = note -35# translates input note to hardware pad_nr
+                
+                # here magic for different sccale layouts happens.
+                # it translates midi_note events to the translated note_events
+                note_translated = self.scales.harmony_get_target_note(pad_nr-1) # midinotes are based 0 pad_nr based 1
+                vel = ev[2] # my push1 is insensitive so I double any velocity val
+                if evtype == self.EV_NOTE_ON: 
+                    vel = ev[2] *2 # this creates junk with aftertouch und pitchbend..
+                    if vel > 255: vel = 255
+                new_ev = bytes([ev[0], note_translated, vel])
+                #if note_translated % 12 == 0: # Oktave detected
+                #    pass
+                # for note_on events following.
+                
+                self._forward_like_niels_did(new_ev) # 
+                return True #  return to caller and mark event as processed
+            
+        # here any other ebent 
+        # self.EV_CC, self.EV_CHAN_PRESS, self.EV_SEXSTEM, self.EV_PC
+        # and ALL events from Pads < PAD_START and Pads > PAD_END
+        
+        # we want to process display buttons:
+        ## helper for display buttons
+        def helper_set_new_tonic(tonic):
+            if self.scales.set_new_tonic(tonic):
+                    # yes it changed. update display
+                    scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
+                    self._display.write_xy_mem(scale_n_mode, 0, 2)
+                    self._display.update_screen()
+                    self.scale_update_leds(tonic)
+                    ###
+            return True
+        
+     ### processing starts here   
+        search_key = [ev[0], ev[1]] # build search key from event
+        if ev[2] > 0: # just btn down eventes
+            match search_key:                
+                case ABL.BTN_R2_C1:
+                    helper_set_new_tonic(0); return True    
+                case ABL.BTN_R2_C2:
+                    helper_set_new_tonic(1); return True
+                case ABL.BTN_R2_C3: 
+                    helper_set_new_tonic(2); return True
+                case ABL.BTN_R2_C4: 
+                    helper_set_new_tonic(3); return True
+                case ABL.BTN_R2_C5: 
+                    helper_set_new_tonic(4); return True
+                case ABL.BTN_R2_C6: 
+                    helper_set_new_tonic(5); return True
+                case ABL.BTN_R2_C7: 
+                    helper_set_new_tonic(6); return True
+                case ABL.BTN_R2_C8: 
+                    helper_set_new_tonic(7); return True
+                case ABL.BTN_R1_C5: 
+                    helper_set_new_tonic(8); return True
+                case ABL.BTN_R1_C6: 
+                    helper_set_new_tonic(9); return True
+                case ABL.BTN_R1_C7: 
+                    helper_set_new_tonic(10); return True
+                case ABL.BTN_R1_C8: 
+                    helper_set_new_tonic(11); return True   
+                    
+                # Display Knobs here      
+                # knobs
+                case ABL.KNOB_7: # scale
+                    self.scales_set_tonic(ev[2]); return True
+                case ABL.KNOB_8: # mode
+                    self.scales_set_mode(ev[2]); return True  
+                      
+                case _:
+                    pass
+                    #print ("Button not defined in process_scale_event")
+                    #logging.debug (f"Button {search_key}not defined in process_scale_event")
+                
+              
+        return False           
+
+
+##################     END   of scales fucntions     ##########################################################
+###############################################################################################################
+
     
 ### Mixer FUNCTIONS FOR DISPLAY ACTION from zynmixer.
 ### just copy the derived functions in the this driver and implement them accordingly 
@@ -503,6 +650,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     self.set_dev_to_scales_mode()
                 else:
                     self.device_mode_active = self.DEV_MODE_PAD
+                    self.scales_cleanup()
                     # visual feedback, set LED to solid on
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT)
                     self.pads_off() # clean up visible state. all pad leds off
@@ -524,88 +672,6 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # default return, when no match
         return False # When nothing matches, False shows that midi event has to be processed further
 
-    def process_scale_event(self, ev) -> bool:
-        if not self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
-            return False # we are not in scales mode
-    
-        # event part for sounds
-        # Filter out note events created by push 1 when touching Knobs and Ribbon 
-        note = ev[1]
-        if ABL_PAD_START <= note <= ABL_PAD_END: # just note events, which should sound.
-            # filter for getting any vent that is sound event
-                      
-            evtype = (ev[0] >> 4) & 0x0F 
-            if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUCH, self.EV_PITCHBEND]:
-                            
-                # logging.debug(f"Scales mode -BRUMBY")
-                pad_nr = note -35# translates input note to hardware pad_nr
-                
-                # here magic for different sccale layouts happens.
-                # it translates midi_note events to the translated note_events
-                note_translated = self.scales.harmony_get_target_note(pad_nr-1) # midinotes are based 0 pad_nr based 1
-                vel = ev[2] # my push1 is insensitive so I double any velocity val
-                if evtype == self.EV_NOTE_ON: 
-                    vel = ev[2] *2 # this creates junk with aftertouch und pitchbend..
-                    if vel > 255: vel = 255
-                new_ev = bytes([ev[0], note_translated, vel])
-                #if note_translated % 12 == 0: # Oktave detected
-                #    pass
-                # for note_on events following.
-                
-                self._forward_like_niels_did(new_ev) # 
-                return True #  return to caller and mark event as processed
-            
-        # here any other ebent 
-        # self.EV_CC, self.EV_CHAN_PRESS, self.EV_SEXSTEM, self.EV_PC
-        # and ALL events from Pads < PAD_START and Pads > PAD_END
-        
-        # we want to process display buttons:
-    ## helper for display buttons
-        def helper_set_new_tonic(tonic):
-            if self.scales.set_new_tonic(tonic):
-                    # yes it changed. update display
-                    scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
-                    self._display.write_xy_mem(scale_n_mode, 0, 2)
-                    self._display.update_screen()
-                    self.scale_update_leds(tonic)
-                    ###
-            return True
-        
-    ### processing starts here   
-        search_key = [ev[0], ev[1]]
-        if ev[2] > 0: # just btn down eventes
-            match search_key:
-                
-                case ABL.BTN_R2_C1:
-                    helper_set_new_tonic(0); return True    
-                case ABL.BTN_R2_C2:
-                    helper_set_new_tonic(1); return True
-                case ABL.BTN_R2_C3: 
-                    helper_set_new_tonic(2); return True
-                case ABL.BTN_R2_C4: 
-                    helper_set_new_tonic(3); return True
-                case ABL.BTN_R2_C5: 
-                    helper_set_new_tonic(4); return True
-                case ABL.BTN_R2_C6: 
-                    helper_set_new_tonic(5); return True
-                case ABL.BTN_R2_C7: 
-                    helper_set_new_tonic(6); return True
-                case ABL.BTN_R2_C8: 
-                    helper_set_new_tonic(7); return True
-                case ABL.BTN_R1_C5: 
-                    helper_set_new_tonic(8); return True
-                case ABL.BTN_R1_C6: 
-                    helper_set_new_tonic(9); return True
-                case ABL.BTN_R1_C7: 
-                    helper_set_new_tonic(10); return True
-                case ABL.BTN_R1_C8: 
-                    helper_set_new_tonic(11); return True
-                
-                
-                case _:
-                    print ("Button not defined in process_scale_event")
-                    logging.debug (f"Button {search_key}not defined in process_scale_event")
-        return False           
 
     # to clean up the code GUI events are processed here
     def process_gui_events(self,ev) -> bool:
@@ -614,16 +680,17 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
         
-            if ABL.KNOB_7[1] == ccnum: # scale
-                self.scales_set_tonic(ccval)
+            # no more neede moved to scales_event...
+            # if ABL.KNOB_7[1] == ccnum: # scale
+            #     self.scales_set_tonic(ccval)
                 
-            elif ABL.KNOB_8[1] == ccnum: # mode
-                self.scales_set_mode(ccval)
+            # elif ABL.KNOB_8[1] == ccnum: # mode
+            #     self.scales_set_mode(ccval)
             
             # Zynpoties Werte an GUI
             # Potis Oben 72 - 75 die ersten 4
             # if 70 < ccnum < 80: 
-            elif ABL.KNOB_1[1] <= ccnum <= ABL.KNOB_4[1]: 
+            if ABL.KNOB_1[1] <= ccnum <= ABL.KNOB_4[1]: 
                 # self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 72, ccval/127])
                 val = ccval
                 if val > 68:
@@ -742,20 +809,6 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # logging.debug(f"midi_event {ev} from Button not defined with value: {data}")
         return "<event is no button-evemt or button is missing in config file.>"
         
-    def scales_set_pad_colors(self):        
-    # def set_dev_scale_color(self):
-        self._leds_rgb.all_off(True) # led_states must not be deleted. is done in next lines
-        for pad_nr in range(64):
-            new_note = self.scales.harmony_get_target_note(pad_nr)
-            # if self.scales.is_tonic_by_midnote(new_note): ### NOT WORKING CONPLETELY
-            if self.scales.is_tonic_by_padnr(pad_nr):
-                r = 0; g = 0; b = 255
-            else:
-                r = 200; g = 200; b = 200 
-                print (f"found: Tonic {new_note}")
-            # self.set_pad_rgb(pad_nr, r, g, b) ## OLD FUnction
-            self._leds_rgb.set_rgb(pad_nr, r, g, b, overlay=False)
-        pass
           
     def set_pad_rgb(self, pad_nr: int, r:int ,g:int ,b:int):
         logging.error(" set_pad_rb aufgerufen.")
