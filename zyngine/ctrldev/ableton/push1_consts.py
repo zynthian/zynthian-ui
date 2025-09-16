@@ -149,11 +149,11 @@ PAD_42            = [0x90, 42] # note
 PAD_43            = [0x90, 43] # note
 
 PAD_44            = [0x90, 44] # note
-PAD_45            = [0x90, 44] # note
-PAD_46            = [0x90, 45] # note
-PAD_47            = [0x90, 46] # note
-PAD_48            = [0x90, 47] # note
-PAD_49            = [0x90, 48] # note
+PAD_45            = [0x90, 45] # note
+PAD_46            = [0x90, 46] # note
+PAD_47            = [0x90, 47] # note
+PAD_48            = [0x90, 48] # note
+PAD_49            = [0x90, 49] # note
 PAD_50            = [0x90, 50] # note
 PAD_51            = [0x90, 51] # note
 
