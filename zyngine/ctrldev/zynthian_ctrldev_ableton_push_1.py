@@ -190,39 +190,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 
 #################################################################################################################
 ##################     START   of scales fucntions     ##########################################################
-
-    def scale_update_leds(self, index_activated): # index defines blinkin LED
-        # Bicolor LEDs dim ## CC20-27 + 102-109
-        scale_buttons = [
-                    ABL.BTN_R2_C1[1], ABL.BTN_R2_C2[1], ABL.BTN_R2_C3[1], ABL.BTN_R2_C4[1],
-                    ABL.BTN_R2_C5[1], ABL.BTN_R2_C6[1], ABL.BTN_R2_C7[1], ABL.BTN_R2_C8[1],
-                    ABL.BTN_R1_C5[1], ABL.BTN_R1_C6[1], ABL.BTN_R1_C7[1], ABL.BTN_R1_C8[1]
-                    ]
-        for t in scale_buttons:
-            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_GREEN_DIM) 
-        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, scale_buttons[index_activated], ABL.BI_GREEN_DIM_BLINK) 
-
-    def scales_cleanup(self): # set of any LED and display changes
-        # cleadup display
-        btn_txt_row0 = "| ZynP1 | ZynP2 |  ZynP3 | ZynP4 ||       |        |       |       |"
-        btn_txt_row2 = "|       |       |        |       ||       |        |       |       |"
-        self._display.write_xy_mem(btn_txt_row0, 0, 0)
-        self._display.write_xy_mem(btn_txt_row2, 0, 1)
-        self._display.write_xy_mem(btn_txt_row2, 0, 2)
-        self._display.write_xy_mem(btn_txt_row2, 0, 3)
-        self._display.update_screen()
-        
-        # cleanup scale LED 
-        scale_buttons = [
-                    ABL.BTN_R2_C1[1], ABL.BTN_R2_C2[1], ABL.BTN_R2_C3[1], ABL.BTN_R2_C4[1],
-                    ABL.BTN_R2_C5[1], ABL.BTN_R2_C6[1], ABL.BTN_R2_C7[1], ABL.BTN_R2_C8[1],
-                    ABL.BTN_R1_C5[1], ABL.BTN_R1_C6[1], ABL.BTN_R1_C7[1], ABL.BTN_R1_C8[1]
-                    ]
-        for t in scale_buttons:
-            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_LED_OFF) 
-       
-    # def scales_setup(self) 
-        
+   
+    # when changing to scales mode: start here
     # new in this class, to setup scales_mode = keyboard mode
     def set_dev_to_scales_mode(self):
         self.device_mode_active = self.DEV_MODE_SCALES
@@ -246,26 +215,66 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         self._display.update_screen()
         # set Display-Button_LEDS
         self.scale_update_leds(self.scales.tonic) # 0 is 'C'
-        
     
+    # Leaving scales mode: remove anything that is initailized
+    def scales_cleanup(self): # set of any LED and display changes
+        # cleadup display
+        btn_txt_row0 = "| ZynP1 | ZynP2 |  ZynP3 | ZynP4 ||       |        |       |       |"
+        btn_txt_row2 = "|       |       |        |       ||       |        |       |       |"
+        self._display.write_xy_mem(btn_txt_row0, 0, 0)
+        self._display.write_xy_mem(btn_txt_row2, 0, 1)
+        self._display.write_xy_mem(btn_txt_row2, 0, 2)
+        self._display.write_xy_mem(btn_txt_row2, 0, 3)
+        self._display.update_screen()
+        
+        # cleanup scale LED 
+        scale_buttons = [
+                    ABL.BTN_R2_C1[1], ABL.BTN_R2_C2[1], ABL.BTN_R2_C3[1], ABL.BTN_R2_C4[1],
+                    ABL.BTN_R2_C5[1], ABL.BTN_R2_C6[1], ABL.BTN_R2_C7[1], ABL.BTN_R2_C8[1],
+                    ABL.BTN_R1_C5[1], ABL.BTN_R1_C6[1], ABL.BTN_R1_C7[1], ABL.BTN_R1_C8[1]
+                    ]
+        for t in scale_buttons:
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_LED_OFF) 
+
+    
+    
+    # LED are setup to passive and the the actiavated LED is set 
+    def scale_update_leds(self, index_activated): # index defines blinkin LED
+        # Bicolor LEDs dim ## CC20-27 + 102-109
+        scale_buttons = [
+                    ABL.BTN_R2_C1[1], ABL.BTN_R2_C2[1], ABL.BTN_R2_C3[1], ABL.BTN_R2_C4[1],
+                    ABL.BTN_R2_C5[1], ABL.BTN_R2_C6[1], ABL.BTN_R2_C7[1], ABL.BTN_R2_C8[1],
+                    ABL.BTN_R1_C5[1], ABL.BTN_R1_C6[1], ABL.BTN_R1_C7[1], ABL.BTN_R1_C8[1]
+                    ]
+        for t in scale_buttons:
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_GREEN_DIM) 
+        # set scale LED blinking
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, scale_buttons[index_activated], ABL.BI_GREEN_DIM_BLINK) 
+
+           
     def scales_set_tonic(self, step):
-        if step > 63: step -=128
+        if step > 63: step -=128 # make left turn values (+ 64 to +127) to negative value
+        # slowing down knob by factor ten
         self.steps_tonic = getattr(self, 'steps_tonic', 0) + step
         if not abs(self.steps_tonic) > 10: return # slow down. each 10th step
         self.steps_tonic = 0;
+        
+        # calculate new tonic 
         new_tonic = self.scales.tonic + step
         if new_tonic < 0:  new_tonic = 11  # target: B
         if new_tonic > 11: new_tonic = 0   # target: C
-        self.scales.tonic = new_tonic
+        self.scales.tonic = new_tonic # set tonic. thats all nothing to recalculate
+        
+        # set Display and LED from select buttons. PAD-LED  don't need update, because mode isn't changed
         scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
         self._display.write_xy_mem(scale_n_mode, 0, 2)
         self._display.update_screen()
         self.scale_update_leds(new_tonic)
         return
+       
         
     def scales_set_mode(self, step):
-        if step > 63: step -=128 # 127 = -1
-        
+        if step > 63: step -=128 # 127 = -1   # make left turn values negative     
         # lower knob speed by 10
         self.steps_mode = getattr(self, 'steps_mode', 0) + step
         if not abs(self.steps_mode) > 10: return # slow down. each 10th steop
@@ -293,16 +302,16 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         else:
             logging.error("Bug in set_mode")
         # do the magic
-        # self.set_dev_to_scales_mode(); ### Das ist overkill
         self.scales.init_scale(self.scales.tonic, self.scales.active_mode)
         # colorize pad array with tonic
         self.scales_set_pad_colors()
         # Display
         scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
-        self._display.write_xy_mem(scale_n_mode, 0, 2)
-        self._display.update_screen()
-        # self.scales.tonic, self.scales.active_mode, 36-1, -5)
-   
+        self._display.write_xy_mem(scale_n_mode, 0, 2) # just little part with new text
+        self._display.update_screen() # just second row is dirty_tagged and updated
+        # because just mode changes, no change of tonic LEDs and Display
+
+    # est color of 64 keyboard pads
     def scales_set_pad_colors(self):        
     # def set_dev_scale_color(self):
         # self._leds_rgb.all_off(True) # led_states must not be deleted. is done in next lines. just for debugging
@@ -318,6 +327,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             self._leds_rgb.set_rgb(pad_nr, r, g, b, overlay=False)
         pass       
 
+    # scale modes own midi_event routine, called by midi_event func
     def process_scale_event(self, ev) -> bool:
         if not self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
             return False # we are not in scales mode
@@ -334,7 +344,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             if evtype == self.EV_PITCHBEND: # ribbon working as pitchwheel
                 self._forward_like_niels_did(ev) 
                 
-            
+            # processing note events
             if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUCH]:
                             
                 # logging.debug(f"Scales mode -BRUMBY")
@@ -371,7 +381,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     ###
             return True
         
-     ### processing starts here   
+        ### processing of Control Buttons and knobs starts here   
+        ### because we set up push1_consts.py this way, it's so easy 
+        ### to get differnt controls CC,PC,Note_on,Note_of...
+        ### so we get a very clean event-function. just name and function call.
         search_key = [ev[0], ev[1]] # build search key from event
         if ev[2] > 0: # just btn down eventes
             match search_key:                
@@ -408,9 +421,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     self.scales_set_mode(ev[2]); return True  
                       
                 case _:
-                    pass
-                    #print ("Button not defined in process_scale_event")
-                    #logging.debug (f"Button {search_key}not defined in process_scale_event")
+                    return False # event not for any of the defined buttons
                 
               
         return False           
@@ -510,8 +521,76 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # logging.info(f"BRUMBY: row={row}; col={col} pad-note={note}")
         lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
-###############          End of derived Sequencer Functions.                  #####################
-###################################################################################################
+    # scenebuttons = right from pads
+    def sequencer_set_scene(self, ccnum):
+        # seams inconsistent, GUI says Scene. Api is: select Bank, or I misunderstaud
+        self.zynseq.select_bank (8- (ccnum - 36)) 
+        # change LED state
+        for t in [ 36,37,38,39,40,41,42,43]:
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_DIM) # 2!
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ccnum, ABL.MONO_LED_LIT_BLINK_FAST) # 2!
+        return True        
+        
+        
+    def process_sequencer_event(self, ev) -> bool:
+        if not self.device_mode_active == self.DEV_MODE_PAD: # keyboard modus is selected
+            return False #  we ignored here any event, we are not in Sequencer mode
+
+        
+        cc = ev[1] # controller used to calculate bank. keys are in line
+        # cc_val=ev[2]
+        
+        search_key = [ev[0], ev[1]]
+        if ev[2] > 0: # just btn down eventes
+            match search_key:                
+                case ABL.BTN_TEMP1_QUATER:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP2_QUATER_T:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP3_EIGHTH:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP4_EIGHTH_T:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP5_SIXTEENTH:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP6_SIXTEENTH_T:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP7_THIRTYSECOND:
+                    return self.sequencer_set_scene(cc)
+                case ABL.BTN_TEMP8_THIRTYSECOND_T:
+                    return self.sequencer_set_scene(cc)
+                
+                
+                
+            
+        
+        evtype = (ev[0] >> 4) & 0x0F
+        note = ev[1] & 0x7F
+        
+        if evtype == self.EV_NOTE_ON: # 0x9: # fitler just for note_on events
+            # all Pads send note_on events
+            # push are oriented buttom left to top right with cc 36 to 99 eq C2 to Eb7
+            try:
+                pad_nr = note - ABL_PAD_START# eq C2 or ABL.PAD_36# so padnr ranges from 0 - 63 eq (range(64)
+                col = pad_nr // 8 # 
+                row = pad_nr % 8  # 
+                col = 7 - col; # midi notes start from bottom, so recalculate row   
+                
+                # don't understand following XXXXXXXXXXXXXXXXX
+                pad = row * self.zynseq.col_in_bank + col 
+                logging.debug(f"BRUMBY: row={row}; col={col}; pad={pad}")
+                if pad < self.zynseq.seq_in_bank:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                    return True 
+            except:
+                pass
+            
+        
+    
+# xxxxxx
+
+    ###############          End of derived Sequencer Functions.                  #####################
+    ###################################################################################################
 
     # Just for me a helper function to set all pads off
     def pads_off(self):
@@ -584,20 +663,24 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         
 
         # pad mode to control sequencer
-        elif self.device_mode_active == self.DEV_MODE_PAD:              
-            if evtype == 0x9: # fitler just for note_on events
-                try:
-                    col = (note - ABL_PAD_START) // 8 # 
-                    row = (note - ABL_PAD_START) % 8  # 
-                    col = 7 - col; # midi notes start from bottom, so recalculate row
-                    pad = row * self.zynseq.col_in_bank + col 
-                    # logging.error(f"BRUMBY: row={row}; col={col}; pad={pad}")
+        elif self.device_mode_active == self.DEV_MODE_PAD:     
+            if self.process_sequencer_event(ev):                
+                return True
+        
+            ### old sequencer events
+            # if evtype == 0x9: # fitler just for note_on events
+            #     try:
+            #         col = (note - ABL_PAD_START) // 8 # 
+            #         row = (note - ABL_PAD_START) % 8  # 
+            #         col = 7 - col; # midi notes start from bottom, so recalculate row
+            #         pad = row * self.zynseq.col_in_bank + col 
+            #         # logging.error(f"BRUMBY: row={row}; col={col}; pad={pad}")
             
-                    if pad < self.zynseq.seq_in_bank:
-                        self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
-                        return True # mark processed
-                except:
-                    pass
+            #         if pad < self.zynseq.seq_in_bank:
+            #             self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+            #             return True # mark processed
+            #     except:
+            #         pass
             
             # I think we dont need any note events... so filter out
             # NO note events anymore after this two lines. Comment out what you need after this lines in "Pad Mode" = DEV_MODE_PAD
@@ -646,11 +729,6 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             elif (ccnum == ABL.BTN_SCALES[1]):
                 logging.info("BRUMBY: BTN_SCALES processing")
                 if not self.device_mode_active == self.DEV_MODE_SCALES:
-                    # self.device_mode_active = self.DEV_MODE_SCALES
-                    # visual feedback, let Scales Button blink
-                    # lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
-                    # self.pads_off() # akk pad leds off
-                    # self.set_dev_scale_color()
                     self.set_dev_to_scales_mode()
                 else:
                     self.device_mode_active = self.DEV_MODE_PAD
@@ -659,7 +737,6 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT)
                     self.pads_off() # clean up visible state. all pad leds off
                     self.refresh() # refreshe LEDs for Sequencer mode of this driver.
-                    
                 return True
             
             # Gui events moved to:
@@ -680,123 +757,174 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     # to clean up the code GUI events are processed here
     def process_gui_events(self,ev) -> bool:
         
+        # on this device any button or knob we use sends 3-byte-events
+        # otherwise event is no control 
+        if not len(ev) >= 3: return False
+        
+        # bild button search event
+        search_key = [ev[0], ev[1]]
+        data_val = ev[2] & 0x7F
+        
+        # make left turs on knobs negative
+        def helper_knob_calculation(ccval):
+            if ccval > 64: ccval -= 128
+            return ccval 
+        data_val_for_knobs = helper_knob_calculation(data_val)
+        
+        match search_key:
+            
+            # Knobs
+            case ABL.KNOB_1:
+                self.state_manager.send_cuia("ZYNPOT", [0, data_val_for_knobs]); return True
+            case ABL.KNOB_2:
+                self.state_manager.send_cuia("ZYNPOT", [1, data_val_for_knobs]); return True
+            case ABL.KNOB_3:
+                self.state_manager.send_cuia("ZYNPOT", [2, data_val_for_knobs]); return True
+            case ABL.KNOB_4:
+                self.state_manager.send_cuia("ZYNPOT", [3, data_val_for_knobs]); return True
+            case _: pass
+        
+        if data_val > 0: # just key-down events
+            match search_key:
+                # Buttons
+                case ABL.BTN_OK, ABL.BTN_R1_C3:
+                    self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [3,"S"]); return True
+                case ABL.BTN_R1_C1:
+                    self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [0,"S"]) ; return True    
+                case ABL.BTN_R1_C2:
+                    self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [1,"S"]) ; return True    
+                case ABL.BTN_R1_C3:
+                    self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [2,"S"]) ; return True    
+                
+                case ABL.BTN_ESC:
+                    self.state_manager.send_cuia("BACK"); return True
+                case ABL.BTN_RIGHT:
+                    self.state_manager.send_cuia("ARROW_RIGHT"); return False
+                case ABL.BTN_LEFT:
+                    self.state_manager.send_cuia("ARROW_LEFT"); return False
+                case ABL.BTN_UP: #  CC46
+                    self.state_manager.send_cuia("ARROW_UP"); return True
+                case ABL.BTN_DOWN:
+                    self.state_manager.send_cuia("ARROW_DOWN"); return True
+                case ABL.BTN_START: # ehemals ABL_PLAY:
+                    if self.shift: # shift button pressed
+                        self.state_manager.send_cuia("TOGGLE_MIDI_PLAY"); return True
+                    else:
+                        self.state_manager.send_cuia("TOGGLE_PLAY"); return True
+                case ABL.BTN_REC: # ABL_REC:
+                    if self.shift:
+                        self.state_manager.send_cuia("TOGGLE_MIDI_RECORD"); return True
+                    else:
+                        self.state_manager.send_cuia("TOGGLE_RECORD"); return True
+                case _: pass
+        
+        ################   OLD VERSION ##############################
         if ev[0] & 0xF0 == 0xB0: # event is midi CC ?
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
         
-            # no more neede moved to scales_event...
-            # if ABL.KNOB_7[1] == ccnum: # scale
-            #     self.scales_set_tonic(ccval)
+        #     # Zynpoties Werte an GUI
+        #     # Potis Oben 72 - 75 die ersten 4
+        #     # if 70 < ccnum < 80: 
+        #     if ABL.KNOB_1[1] <= ccnum <= ABL.KNOB_4[1]: 
+        #         # self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 72, ccval/127])
+        #         val = ccval
+        #         if val > 68:
+        #           val = (val - 128)
+        #         # falsch geraten, nicht ZYNPT_REL. Vielleicht ZYNPOT?
+        #         self.state_manager.send_cuia("ZYNPOT", [ccnum - 71, val])
+        #         # logging.debug(f"Poti={ccnum-71} val={val}")
+        #         return True
+
+        #     elif (ccnum == ABL.BTN_OK[1]) or  (ccnum == 23):
+        #         # logging.debug("ABL_OK)")
+        #         self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [3,"S"])
+        #         return True
+            
+        #     elif ccnum == ABL.BTN_R1_C1[1]: # Zweiter Button unter dem Display
+        #         # logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
+        #         self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [0,"S"])
+        #         return True
+        #     # elif ccnum == 21: Does that work?
+        #     elif ccnum == ABL.BTN_R1_C2[1]: # Zweiter Button unter dem Display
+        #         # logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
+        #         self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [1,"S"])
+        #         return True
+        #     elif ccnum == ABL.BTN_R1_C5[1]: # Zweiter Button unter dem Display
+        #         # logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
+        #         self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [2,"S"])
+        #         return True
+        #     # elif ccnum == 21: Does that work?
+        #     elif ccnum == ABL.BTN_R1_C4[1]: # Zweiter Button unter dem Display
+        #         # logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
+        #         self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [3,"S"])
+        #         return True
                 
-            # elif ABL.KNOB_8[1] == ccnum: # mode
-            #     self.scales_set_mode(ccval)
-            
-            # Zynpoties Werte an GUI
-            # Potis Oben 72 - 75 die ersten 4
-            # if 70 < ccnum < 80: 
-            if ABL.KNOB_1[1] <= ccnum <= ABL.KNOB_4[1]: 
-                # self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 72, ccval/127])
-                val = ccval
-                if val > 68:
-                  val = (val - 128)
-                # falsch geraten, nicht ZYNPT_REL. Vielleicht ZYNPOT?
-                self.state_manager.send_cuia("ZYNPOT", [ccnum - 71, val])
-                logging.debug(f"BRUMBY: Poti={ccnum-71} val={val}")
-                return True
+        #     elif ccnum == ABL.BTN_ESC[1]:
+        #         # logging.debug("BTN_ESC BRUMBY")
+        #         self.state_manager.send_cuia("BACK")
+        #         return True
 
-            elif (ccnum == ABL.BTN_OK[1]) or  (ccnum == 23):
-                logging.debug("ABL_OK BRUMBY")
-                self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [3,"S"])
-                return True
-            
-            elif ccnum == ABL.BTN_R1_C1[1]: # Zweiter Button unter dem Display
-                logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
-                self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [0,"S"])
-                return True
-            # elif ccnum == 21: Does that work?
-            elif ccnum == ABL.BTN_R1_C2[1]: # Zweiter Button unter dem Display
-                logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
-                self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [1,"S"])
-                return True
-            elif ccnum == ABL.BTN_R1_C5[1]: # Zweiter Button unter dem Display
-                logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
-                self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [2,"S"])
-                return True
-            # elif ccnum == 21: Does that work?
-            elif ccnum == ABL.BTN_R1_C4[1]: # Zweiter Button unter dem Display
-                logging.debug("ZYNPUT_BUT 1 ESC BRUMBY")
-                self.state_manager.send_cuia("V5_ZYNPOT_SWITCH",  [3,"S"])
-                return True
-            
-            
-            
-            
-            
-
-            elif ccnum == ABL.BTN_ESC[1]:
-                # logging.debug("BTN_ESC BRUMBY")
-                self.state_manager.send_cuia("BACK")
-                return True
-
-            # elif ccnum == 45: 
-            elif ccnum == ABL.BTN_RIGHT[1]:
-            # elif ccnum == 0x66:
-                # TRACK RIGHT
-                self.state_manager.send_cuia("ARROW_RIGHT")
-                return False
+        #     # elif ccnum == 45: 
+        #     elif ccnum == ABL.BTN_RIGHT[1]:
+        #     # elif ccnum == 0x66:
+        #         # TRACK RIGHT
+        #         self.state_manager.send_cuia("ARROW_RIGHT")
+        #         return False
 
 
-            # elif ccnum == 44:
-            elif ccnum == ABL.BTN_LEFT[1]:
-            # elif ccnum == 0x67:
-                # TRACK LEFT
-                self.state_manager.send_cuia("ARROW_LEFT")
-                return False
+        #     # elif ccnum == 44:
+        #     elif ccnum == ABL.BTN_LEFT[1]:
+        #     # elif ccnum == 0x67:
+        #         # TRACK LEFT
+        #         self.state_manager.send_cuia("ARROW_LEFT")
+        #         return False
 
 
-            elif ccnum == ABL.BTN_UP[1]: #  CC46
-            # elif ccnum == 0x68:
-                # UP
-                self.state_manager.send_cuia("ARROW_UP")
-                return True
+        #     elif ccnum == ABL.BTN_UP[1]: #  CC46
+        #     # elif ccnum == 0x68:
+        #         # UP
+        #         self.state_manager.send_cuia("ARROW_UP")
+        #         return True
 
 
-            elif ccnum == ABL.BTN_DOWN[1]:
-            # elif ccnum == 47:
-                # DOWN
-                self.state_manager.send_cuia("ARROW_DOWN")
-                return True
+        #     elif ccnum == ABL.BTN_DOWN[1]:
+        #     # elif ccnum == 47:
+        #         # DOWN
+        #         self.state_manager.send_cuia("ARROW_DOWN")
+        #         return True
 
 
-            elif ccnum == ABL.BTN_START[1]: # ehemals ABL_PLAY:
-                # PLAY
-                if self.shift:
-                    self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
-                else:
-                    self.state_manager.send_cuia("TOGGLE_PLAY")
-                return True
+        #     elif ccnum == ABL.BTN_START[1]: # ehemals ABL_PLAY:
+        #         # PLAY
+        #         if self.shift:
+        #             self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
+        #         else:
+        #             self.state_manager.send_cuia("TOGGLE_PLAY")
+        #         return True
 
 
-            elif ccnum == ABL.BTN_REC[1]: # ABL_REC:
-                # RECORD
-                if self.shift:
-                    self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
-                else:
-                    self.state_manager.send_cuia("TOGGLE_RECORD")
-                return True
+        #     elif ccnum == ABL.BTN_REC[1]: # ABL_REC:
+        #         # RECORD
+        #         if self.shift:
+        #             self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
+        #         else:
+        #             self.state_manager.send_cuia("TOGGLE_RECORD")
+        #         return True
 
 
             # These are the note_length Buttons right of pads in Sequencer mode to start and stop a whole row of sequences
-            elif (ccnum > 35) and (ccnum < 44):
-                self.zynseq.select_bank (8- (ccnum - 36))
-                # Leuchstatus ändern
-                for t in [ 36,37,38,39,40,41,42,43]:
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_DIM) # 2!
-                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ccnum, ABL.MONO_LED_LIT_BLINK_FAST) # 2!
-                return True
+            # if (ccnum > 35) and (ccnum < 44):
+            #     self.zynseq.select_bank (8- (ccnum - 36))
+            #     # Leuchstatus ändern
+            #     for t in [ 36,37,38,39,40,41,42,43]:
+            #         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_DIM) # 2!
+            #     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ccnum, ABL.MONO_LED_LIT_BLINK_FAST) # 2!
+            #     return True
 
         
         return False #  event is not processed
+    
     
     def button_name_from_midi_event(self, ev): ###, button_event): # button_event is a Constant from import abl.
         # create key_data from midi event
