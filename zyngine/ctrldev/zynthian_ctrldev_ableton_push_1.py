@@ -1,6 +1,8 @@
 #! /zynthian/venv/bin/python
 # -*- coding: utf-8 -*-
 
+# TODO: DIsplay rowas are of different type. 
+# Row two seams to be monochrome green, just brightnes
 
 
 # ******************************************************************************
@@ -8,7 +10,7 @@
 #
 # Zynthian Control Device Driver for "Ableton Push 1"
 #
-# Copyright (C) 2025 Julius Brumby 
+# Copyright (C) 2025 Brumby 
 #
 # ******************************************************************************
 #
@@ -68,7 +70,7 @@ ABL_PAD_END   = 99 # letztes Paad = pad_99
 class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
 
-    logging.info("Klassenaufruf - Ableton Push 1")
+    # logging.info("Class call")
     # Im Weblog wird angezeigt, dass der Treiber geladen wurde
 
     # dev_ids = ["Ableton Push IN 2", "Ableton Push IN 1"] # get by stepping through zynthian_ctrldev_manager.load_driver()
@@ -80,9 +82,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     # Folgende Farben sind wohl die Sequencer Farben??
     # siehe: https://pushmod.blogspot.com/p/pad-color-table.html
     # ORIGINAL PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
-    PAD_COLOURS =            [61, 36, 63, 54,      104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
-    STARTING_COLOUR = 123
-    STOPPING_COLOUR = 120
+    PAD_COLOURS =            [61, 36, 63, 54,      104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15] # not running
+    STARTING_COLOUR = 3 # WHITE 
+    STOPPING_COLOUR = 120 # RED
+    RUNNING_COLOR   = 123 # GREEM
 
     # dev_modes
     DEV_MODE_NONE = None
@@ -109,12 +112,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                       mode_name="Major", 
                       col_versatz=-5, 
                       middle_c=48, 
-                      middle_pad_nr=4)
-    # scales.init_scale(tonic=0, middle_c=48) #  (0, "Major", 36-1, -5) # -3 = new start per row 
-    
+                      middle_pad_nr=4)    
 
     # Function to initialise class
-    # called from parent (instance)
     def __init__(self, state_manager, idev_in, idev_out=None):
         logging.info("Created Instance from Ableton Push 1 driver - BRUMBY")
         
@@ -311,9 +311,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             # if self.scales.is_tonic_by_midnote(new_note): ### NOT WORKING CONPLETELY
             if self.scales.is_tonic_by_padnr(pad_nr):
                 r = 0; g = 0; b = 255
+                # print (f"found: Tonic {new_note}")
             else:
                 r = 200; g = 200; b = 200 
-                print (f"found: Tonic {new_note}")
             # self.set_pad_rgb(pad_nr, r, g, b) ## OLD FUnction
             self._leds_rgb.set_rgb(pad_nr, r, g, b, overlay=False)
         pass       
@@ -443,7 +443,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 
 ### END of Mixer functions.
 
-### Start of SEQUENCER FUNCTIONS
+
+
+##############################################################################################################
+################      Start of SEQUENCER FUNCTIONS   #########################################################  
     # this function is called by zynseq when a sequencer state is changed
     # we have update pad LED to show state
     def update_seq_state(self, bank, seq, state, mode, group):
@@ -474,7 +477,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                         vel = self.PAD_COLOURS[group]
                     elif state == zynseq.SEQ_PLAYING:
                         chan = 2
-                        vel = self.PAD_COLOURS[group]
+                        vel = self.RUNNING_COLOR
                     elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
                         chan = 1
                         vel = self.STOPPING_COLOUR
@@ -507,7 +510,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # logging.info(f"BRUMBY: row={row}; col={col} pad-note={note}")
         lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
-### End of derived Sequencer Functions.
+###############          End of derived Sequencer Functions.                  #####################
+###################################################################################################
 
     # Just for me a helper function to set all pads off
     def pads_off(self):

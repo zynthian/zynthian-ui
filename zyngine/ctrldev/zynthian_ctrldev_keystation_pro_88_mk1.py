@@ -53,6 +53,12 @@ class zynthian_ctrldev_keystation_pro_88_mk1(zynthian_ctrldev_base):
     EV_PITCHBEND = 0xE  # 3 bytes: ev[1] = LSB 0-127; ev[2] = MSB 0-127
     EV_SYSTEM = 0xF  # System type = ev[0] & 0x0F
     
+    
+    def __init__(self, state_manager, idev_in, idev_out=None):
+        self.zynseq = state_manager.zynseq # we need to send midi events to zynthina
+        super().__init__(state_manager, idev_in, idev_out)
+        return
+    
     def midi_event(self, ev):
         """MIDI event handler for Keystation Pro 88"""
         evtype = (ev[0] >> 4) & 0x0F
@@ -140,5 +146,9 @@ class zynthian_ctrldev_keystation_pro_88_mk1(zynthian_ctrldev_base):
             return False
         
         status = (ev[0] & 0xF0) | chain.midi_chan
-        zynseq.libseq.sendMidiCommand(status, ev[1], ev[2])
+        # zynseq.libseq.sendMidiCommand(status, ev[1], ev[2]) # was anytime working
+        self.zynseq.libseq.sendMidiCommand(status, ev[1], ev[2])
+        # self.chain_manager
+        # self.state_manager
+        ###### self.zynseq.libseq.sendMidiCommand(status, ev[1], ev[2])
         return True
