@@ -77,9 +77,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     # siehe: https://pushmod.blogspot.com/p/pad-color-table.html
     # ORIGINAL PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
     PAD_COLOURS =            [61, 36, 63, 54,      104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15] # not running
-    STARTING_COLOUR = 3 # WHITE 
+    STARTING_COLOUR = 123 # GREEM
     STOPPING_COLOUR = 120 # RED
-    RUNNING_COLOR   = 123 # GREEM
+    RUNNING_COLOR   = 3 # WHITE
 
   
     # evtype = (ev[0] >> 4) & 0x0F ->
@@ -94,10 +94,11 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     
     
     # dev_modes
-    DEV_MODE_NONE = None
-    DEV_MODE_PAD = 1
+    DEV_MODE_NONE    = None
+    DEV_MODE_PAD     = 1    
+    DEV_MODE_SCALES  = 2 # keyboard modes
+    DEV_MODE_MIXER   = 3
     # DEV_MODE_DRUMS = 2
-    DEV_MODE_SCALES = 3 # keyboard modes
     # pad_mode_active = PAD_MODE_SEQ
     device_mode_active = DEV_MODE_SCALES # initial mode
     
@@ -196,11 +197,13 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         self._display.clear()
         scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
         self._display.write_xy_mem(scale_n_mode, 0, 2)
-        # Btn_row
+        
         btn_txt_row0 = "| ZynP1 | ZynP2  | ZynP3 | ZynP4 ||       |        | Scale | Mode  |"
-        btn_txt_row1 = "|       |       |        |       ||       |        |       |       |"
+        # btn_txt_row1 = f"|   {chr(12)} {chr(11)} {chr(10)}  | {chr(9)} {chr(8)}  {chr(7)}  {chr(6)}    |       |       |"
+        btn_txt_row1 = "                                                                    "
         btn_txt_row2 = "|modes here      |       |       ||   G#  |    A   |  A#   |   B   |"
         btn_txt_row3 = "|   C   |   C#   |   D   |   D#  ||   E   |    F   |  F#   |   G   |"
+        
         self._display.write_xy_mem(btn_txt_row0, 0, 0)
         self._display.write_xy_mem(btn_txt_row1, 0, 1)
         self._display.write_xy_mem(btn_txt_row2, 0, 2)
@@ -450,7 +453,12 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 
 ### END of Mixer functions.
 
-
+    def process_sequencer_event(self, ev) -> bool:
+        """event function in sequencer state"""
+        # if using shift button with knob, then not following we are not in any mode
+        # if not self.device_mode_active == self.DEV_MODE_MIXER: # keyboard modus is selected
+        #     return False #  we ignored here any event, we are not in Sequencer mode
+        
 
 ##############################################################################################################
 ################      Start of SEQUENCER FUNCTIONS   #########################################################  
@@ -522,7 +530,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 
     # scenebuttons = right from pads
     def sequencer_set_scene(self, ccnum):
-        # seams inconsistent, GUI says Scene. Api is: select Bank, or I misunderstaud
+        # seams inconsistent, GUI says Scene. Api is: select Bank, or I misunderstood
         self.zynseq.select_bank (8- (ccnum - 36)) 
         # change LED state
         for t in [ 36,37,38,39,40,41,42,43]:
@@ -542,21 +550,21 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         search_key = [ev[0], ev[1]]
         if ev[2] > 0: # just btn down eventes
             match search_key:                
-                case ABL.BTN_TEMP1_QUATER:
+                case ABL.BTN_BEAT_1_QUATER:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP2_QUATER_T:
+                case ABL.BTN_BEAT_2_QUATER_T:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP3_EIGHTH:
+                case ABL.BTN_BEAT_3_EIGHTH:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP4_EIGHTH_T:
+                case ABL.BTN_BEAT_4_EIGHTH_T:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP5_SIXTEENTH:
+                case ABL.BTN_BEAT_5_SIXTEENTH:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP6_SIXTEENTH_T:
+                case ABL.BTN_BEAT_6_SIXTEENTH_T:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP7_THIRTYSECOND:
+                case ABL.BTN_BEAT_7_THIRTYSECOND:
                     return self.sequencer_set_scene(cc)
-                case ABL.BTN_TEMP8_THIRTYSECOND_T:
+                case ABL.BTN_BEAT_8_THIRTYSECOND_T:
                     return self.sequencer_set_scene(cc)
                 case _: 
                     pass
@@ -565,6 +573,15 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         evtype = (ev[0] >> 4) & 0x0F
         note = ev[1] & 0x7F
         
+        ### Program Change Event from Push 1 # It doesn't send such !!! just for explanatioin
+        # We filter them out. Push 1 has no midi in and sends nor PC. 
+        #  Or should we leave them in. 
+        if evtype == self.EV_PC: # 0xC:
+        ##     val1 = ev[1] & 0x7F
+        ##     self.zynseq.select_bank(val1 + 1) #### That would shange Bank /Scene in Sequencer. We do it with Beat_Buttons
+             return True #  
+         
+         
         # we do pad calculation with pads numbered woth control registers
         if evtype == self.EV_NOTE_ON: # 0x9: # fitler just for note_on events
             # all Pads send note_on events
@@ -579,7 +596,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 pad = row * self.zynseq.col_in_bank + col 
                 logging.debug(f"BRUMBY: row={row}; col={col}; pad={pad}")
                 if pad < self.zynseq.seq_in_bank:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                    # this is the complete magic. Start and stop a track in a scene (bank)
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad) # yes Scene is bank !!!
                     return True 
             except:
                 pass
@@ -617,7 +635,32 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # if not processed you call
         # return super()._on_midi_event(ev)`
 
-
+    def set_device_mode_new(self, new_mode):
+        match self.device_mode_active:
+            case self.DEV_MODE_MIXER:
+                # deinit mixer
+                pass
+            case self.DEV_MODE_PAD:
+                # deinit scales
+                pass
+            case self.DEV_MODE_SCALES:
+                # deinit  scales mode
+                pass
+        self.device_mode_active = new_mode
+        match new_mode:
+            case self.DEV_MODE_MIXER:
+                # init mixer
+                pass
+            case self.DEV_MODE_PAD:
+                # init scales
+                pass
+            case self.DEV_MODE_SCALES:
+                # init  scales mode
+                pass
+            case _:
+                # code not defined 
+                logging.error("DEVICE Mode not defined. Programming Error")
+            
 
     def midi_event(self, ev):
         
@@ -626,6 +669,46 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         chan_or_instruction  = None
         note_or_register     = None
         val_or_vel           = None
+        
+        if len(ev) > 1:
+            search_key = [ev[0], ev[1]] # ev to search_key
+            match search_key:
+                    case None:
+                        pass
+                    case ABL.BTN_SHIFT: # as momentary button ! hasto be hold for functions change
+                        self.shift =  val_or_vel != 0 # set shift variable. but just momenatary
+                        # visual feedback with button LED
+                        if self.shift:
+                            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_LIT_BLINK)
+                        else:
+                            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_DIM)
+                        return True # event processed. No further action required
+             
+                    case ABL.BTN_VOLUME: # mode change to mixer? It isn't best chosen.
+                        return self.set_device_mode_new(self.DEV_MODE_MIXER)                        
+                        
+                        pass
+                    case _:
+                        pass
+                    
+        # try to process the ev with active mode
+        match self.device_mode_active:
+            case self.DEV_MODE_MIXER:
+                if self.process_mixer_event(ev): # dom't return if  False
+                    return True
+            case self.DEV_MODE_PAD:
+                if self.process_sequencer_event(ev):
+                    return True
+            case self.DEV_MODE_SCALES:
+                if self.process_scale_event(ev):
+                    return True
+            case _:
+                pass # no actual devicemode
+            
+        # now the Gui events. 
+        # Gui events moved to:
+        if self.process_gui_events(ev): return True
+        return False # that should be all
         
         if len(ev) > 0:
             evtype              = (ev[0] >> 4) & 0x0F
@@ -646,7 +729,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             
             logging.debug(f"Button: {btn_name} on chan. {chan_or_instruction} gives midi_event: {aftertouch} {hex(ev[0])} {hex(ev[1])} {hex(val_or_vel)} = {evtype}, {note_or_register} {val_or_vel}")
 
-         ### End of debugging purposes. 
+         ### End of "debugging purposes." 
         
         # don't process  1-byte events. 
         if len(ev)<2:
@@ -657,23 +740,24 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         note = ev[1] & 0x7F # is that need? any event field is from 0-127 except the status field    
 
         ### Scale mode
-        if self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
-            if self.process_scale_event(ev):
-                return True # return value cuts out follwing
+        # if self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
+        #     if self.process_scale_event(ev):
+        #         return True # return value cuts out follwing
         
 
         # pad mode to control sequencer
-        elif self.device_mode_active == self.DEV_MODE_PAD:     
-            if self.process_sequencer_event(ev):                
-                return True
+        # elif self.device_mode_active == self.DEV_MODE_PAD:     
+        #     if self.process_sequencer_event(ev):                
+        #         return True
                     
             # I think we dont need any note events... so filter out
             # NO note events anymore after this two lines. Comment out what you need after this lines in "Pad Mode" = DEV_MODE_PAD
-            if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUCH, self.EV_PITCHBEND]:
-                return True 
+   ####         # if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUCH, self.EV_PITCHBEND]:
+            #     return True 
             
             # no return call. I don't know if I need note_on_events further down.
             
+        
         # if prceessd before there are just note_events lower PAD_START and higher PAD_END if processed before
 
         # GUI Control Changes
@@ -724,17 +808,13 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     self.refresh() # refreshe LEDs for Sequencer mode of this driver.
                 return True
             
+            
             # Gui events moved to:
             if self.process_gui_events(ev): return True
             
 
 
-        # evtype = MIDI_Program Change 
-        elif evtype == 0xC:
-            val1 = ev[1] & 0x7F
-            self.zynseq.select_bank(val1 + 1) 
-            return True
-        
+                
         # default return, when no match
         return False # When nothing matches, False shows that midi event has to be processed further
 
@@ -821,7 +901,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     # logging.debug(f"midi_event {ev} {ev[0]}, {ev[1]}, from Button with name: {name} and value: {data}")
                     return name
         # logging.debug(f"midi_event {ev} from Button not defined with value: {data}")
-        return "<event is no button-evemt or button is missing in config file.>"
+        return "" # "<event is no button-evemt or button is missing in config file.>"
         
           
     def set_pad_rgb(self, pad_nr: int, r:int ,g:int ,b:int):
@@ -850,66 +930,110 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # sysex = bytes ([240,71,127,21,4,0,8,pad_nr,0,r1,r2,g1,g2,b1,b2,247] )   
         # lib_zyncore.dev_send_midi_event(self.idev_out, sysex, len(sysex))
 
-    def send_sysex(self, data):
-        return
-        # Send SysEx universal inquiry.
-        # It's answered by some devices with a SysEx message.
-        # def send_sysex_universal_inquiry(self):
-        if self.idev_out > 0:
-            
-            #msg = bytes(ABL.SYSEX_DATA_SET_USER_MODE)
-            #logging.error(f"BRUMBY: set user mode SYSEX={msg};")
-            #lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
-            #sleep (0.05)
-
-            #    "240 71 127 21 24 0 69 0 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 247")
-            s  = "240 71 127 21 25 0 69 0 32 32 32 72 101 108 108 111 32 87 111 114 108 100 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 247"
-            s2 = "240 71 127 21 26 0 69 0 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 247"
-            #    "240 71 127 21 27 0 69 0 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 247"
-
-            # s = "240 71 127 21 25 0 69 0 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 247"
-            
-            # String S
-            integers = [int(x) for x in s.split()]
-            msg = bytes(integers) 
-            logging.error(f"BRUMBY: DISPLAY LINE2 SYSEX={msg};")
-            lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
-
-            # String S2
-            integers = [int(x) for x in s2.split()]
-            msg = bytes(integers) 
-            logging.error(f"BRUMBY: DISPLAY LINE3 SYSEX={msg};")
-            lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
-
-
-            #logging.error(f"BRUMBY: MIDDLE OF send_sysex;")
-    
-            #logging.error(f"BRUMBY: SYSEX={data};")
-            #lib_zyncore.dev_send_midi_event(self.idev_out, data, len(data))
-
-            #sleep(0.05)
-            logging.error(f"BRUMBY: END OF send_sysex;")
-        
-
+   
 # ------------------------------------------------------------------------------
 
-#// Special Dispay Characters
-##define UP_ARROW                            0
-##define DOWN_ARROW                          1
-##define THREE_STACKED_HORIZONTAL_LINES      2
-##define VERTICAL_LINE_AND_HORIZONTAL_LINE   3
-##define HORIZONTAL_LINE_AND_VERTICAL_LINE   4
-##define TWO_VERTICAL_LINES                  5
-##define TWO_SIDE_BY_SIDE_HORIZONTAL_LINES   6
-##define FOLDER_SYMBOL                       7
-##define SPLIT_VERTICAL_LINES                8
-##define FLAT_SYMBOLS                        27
-##define THREE_SIDE_BY_SIDE_DOTS             28
-##define FULL_BLOCK                          29
-##define RIGHT_ARROW                         30
-##define LEFT_ARROW                          31
+
+
 
 class Feedback_Display:
+    
+    #// Special Dispay Characters
+    # char0) bis cahr(31) order by Symbol_name
+    # char(32) to char(127) is like ASCII
+    # partly from https://pushmod.blogspot.com has no valid evmail adress, so I couldnt send him the updated list!
+    # login per google didnt work on his blog for safte reasons. What a pitty, I wanted to thank for his work with the complete list 
+    # of symbos
+ 
+    DISP_ARROW_UP                          =  0   # ↑ (U+2191)
+    DISP_ARROW_DOWN                        =  1   # ↓ (U+2193)
+    DISP_ARROW_RIGHT                       =  30  # → (U+2192)
+    DISP_ARROW_LEFT                        =  31  # ← (U+2190)
+
+    DISP_HORIZONTAL_LINES_THREE_STACKED    =  2   # ≡ (U+2261)
+    DISP_HORIZONRAL_LINE_LOW               =  95  # _ (U+005F) Lowbar
+    DISP_HOIZONTAL_LINE_SPLIT              =  6   # ╌ (U+254C) LIGHT DOUBLE DASH HORIZONTAL
+
+    DISP_VERTICAL_LINE_AND_HORIZONTAL_LINE =  3   # ┤ (U+2524)
+    DISP_HORIZONTAL_LINE_AND_VERTICAL_LINE =  4   # ├ (U+251C)
+
+    DISP_VERTICAL_LINES_TWO                =  5   # ║ (U+2551)
+    DISP_VERTICAL_LINE_MID                 =  174 # | (U+007C)
+    DISP_SPLIT_VERTICAL_LINES              =  8   # ⫼ (U+2AFC)
+
+    DISP_FOLDER_SYMBOL                     =  7   # 📁 (U+1F4C1)
+    DISP_FLAT_SYMBOLS                      =  27  # ♭ (U+266D)
+    DISP_THREE_SIDE_BY_SIDE_DOTS           =  28  # ⋮ (U+22EE)
+    DISP_FULL_BLOCK                        =  29  # █ (U+2588)
+    DISP_LITTLE_BOX_SHIFTED_HIGH_MIDDLE    =  9   # ▫ (U+25AB) Little box shifted high middle
+
+    DISP_AE_UC                             =  10  # Ä (U+00C4)
+    DISP_CEDILLE_UC                        =  11  # Ç (U+00C7)
+    DISP_OE_UC                             =  12  # Ö (U+00D6)
+    DISP_UE_UC                             =  13  # Ü (U+00DC)
+    DISP_SZ                                =  14  # ß (U+00DF)
+    DISP_A_GRAVE                           =  15  # à (U+00E0)
+    DISP_AE_LIC                            =  16  # ä (U+00E4)
+    DISP_CEDILE                            =  17  # ç (U+00E7)
+    DISP_E_LC_GRAVE                        =  18  # è (U+00E8)
+    DISP_E_LC_EGUT                         =  19  # é (U+00E9)
+    DISP_E_LC_CIRCUM                       =  20  # ê (U+00EA)
+    DISP_I_LC_TREMA                        =  21  # ï (U+00EF)
+    DISP_N_LC_WITH_TILDE                   =  22  # ñ (U+00F1)
+    DISP_OE_LC                             =  23  # ö (U+00F6)
+    DISP_DIV_STROKE                        =  24  # ⁄ (U+2044)
+    DISP_CIRC_WITH_DIV_STROKE              =  25  # Ø (U+00D8)
+    DISP_UE_LC                             =  26  # ü (U+00FC)
+
+
+    # with 32 (SPACE) starts pritable part from ASCII-Table
+    akai_to_unicode = {
+        # Pfeile
+        0: "↑",    # DISP_ARROW_UP (U+2191)
+        1: "↓",    # DISP_ARROW_DOWN (U+2193)
+        30: "→",   # DISP_ARROW_RIGHT (U+2192)
+        31: "←",   # DISP_ARROW_LEFT (U+2190)
+        
+        # Horizontale Linien
+        2: "≡",    # DISP_HORIZONTAL_LINES_THREE_STACKED (U+2261)
+        6: "╌",    # DISP_HOIZONTAL_LINE_SPLIT (U+2550)
+        95: "_",   # DISP_HORIZONRAL_LINE_LOW (U+005F) # might not look same
+        
+        # Kombinierte Linien
+        3: "┤",    # DISP_VERTICAL_LINE_AND_HORIZONTAL_LINE (U+2524)
+        4: "├",    # DISP_HORIZONTAL_LINE_AND_VERTICAL_LINE (U+251C)
+        
+        # Vertikale Linien
+        5: "║",    # DISP_VERTICAL_LINES_TWO (U+2551)
+        8: "⫼",    # DISP_SPLIT_VERTICAL_LINES (U+2AFC)
+        174: "|",  # DISP_VERTICAL_LINE_MID (U+007C) #  might not look same
+        
+        # Symbole
+        7: "📁",   # DISP_FOLDER_SYMBOL (U+1F4C1)
+        27: "♭",   # DISP_FLAT_SYMBOLS (U+266D)
+        28: "⋮",   # DISP_THREE_SIDE_BY_SIDE_DOTS (U+22EE)
+        29: "█",   # DISP_FULL_BLOCK (U+2588)
+        9: "▫",    # DISP_HIGH_LITTLE_BOX (U+25AB - Kleines hochgestelltes Kästchen)
+        
+        # Umlaute und Sonderzeichen
+        10: "Ä",   # DISP_AE_UC (U+00C4)
+        11: "Ç",   # DISP_CEDILLE_UC (U+00C7)
+        12: "Ö",   # DISP_OE_UC (U+00D6)
+        13: "Ü",   # DISP_UE_UC (U+00DC)
+        14: "ß",   # DISP_SZ (U+00DF)
+        15: "à",   # DISP_A_GRAVE (U+00E0)
+        16: "ä",   # DISP_AE_LC (U+00E4)
+        17: "ç",   # DISP_CEDILE (U+00E7)
+        18: "è",   # DISP_E_LC_GRAVE (U+00E8)
+        19: "é",   # DISP_E_LC_EGUT (U+00E9)
+        20: "ê",   # DISP_E_LC_CIRCUM (U+00EA)
+        21: "ï",   # DISP_I_LC_WITH_3_POINTS_ABOVE (U+00EF - i mit Trema)
+        22: "ñ",   # DISP_N_LC_WITH_TILDE (U+00F1)
+        23: "ö",   # DISP_OE_LC (U+00F6)
+        24: "⁄",   # DISP_DIV_STROKE (U+2044)
+        25: "Ø",   # DISP_CIRC_WITH_DIV_STROKE (U+00D8)
+        26: "ü",   # DISP_UE_LC (U+00FC)
+    }
     
     display_mem = [[32] * 68 for _ in range(4)] # 4 Zeilen mit 68 Spalten
     # _disp_line_dirty =[False, False, False, False]        
