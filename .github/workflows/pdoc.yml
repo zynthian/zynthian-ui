@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"  # Zynthian verwendet typischerweise Python 3.11
-          cache: 'pip'
+          cache: '' # 'pip' caching deactivated
 
       # 3. Abhängigkeiten installieren (angepasst für Zynthian)
       - name: Install dependencies
