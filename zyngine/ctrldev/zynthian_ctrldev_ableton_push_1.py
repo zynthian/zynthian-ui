@@ -28,12 +28,30 @@
 #
 # ******************************************************************************
 
-
-
 import logging
 import traceback
 
-# Brumbys new mports
+
+#### just local debug
+debug_mode = True
+if debug_mode:
+        
+    # Eigenen Logger für Ihre Library erstellen
+    logger = logging.getLogger("ABL-Push_1")  # Eindeutiger Name für Ihre Library
+
+    # Nur für Ihren Logger Level setzen
+    logger.setLevel(logging.DEBUG)  # Nur DIESER Logger zeigt Debug messages
+
+    # Handler for your logger (optional)
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+### end of just local debug
+
+
+# Brumbys new imports
 from time import sleep # pause between sysex events.
 import zyngine.ctrldev.ableton.push1_consts as ABL
 from zyngine.ctrldev.zynthian_ctrldev_base_scale import Harmony
@@ -62,7 +80,7 @@ ABL_PAD_END   = 99 # letztes Paad = pad_99
 
 class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
-    # logging.info("Class call")
+    logging.info("Push 1 initializes instance of class")
     # Weblog shows this messages
 
     # dev_ids = ["Ableton Push IN 2", "Ableton Push IN 1"] # get by stepping through zynthian_ctrldev_manager.load_driver()
@@ -81,16 +99,16 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     STOPPING_COLOUR = 120 # RED
     RUNNING_COLOR   = 3 # WHITE
 
-  
+    # equal vars are in base_extended...
     # evtype = (ev[0] >> 4) & 0x0F ->
     EV_NOTE_OFF    = 0x8 # 3 Bytes
     EV_NOTE_ON     = 0X9 # 3 Bytes
     EV_AFTERTOUCH  = 0xA # 3 Bytes (polyphonic = per note)
     EV_CC          = 0xB # 3 Bytes
     EV_PC          = 0xC # 2 Bytes
-    EV_CHAN_PRESS  = 0xD #  2 Bytes
+    EV_CHAN_PRESS  = 0xD # 2 Bytes
     EV_PITCHBEND   = 0xE # 3 bytes ev[1] = LSB 0-127; ev[2] = MSB 0-127
-    EV_SYSTEM      = 0xF #  Systemtype = ev[0] & 0x0F
+    EV_SYSTEM      = 0xF # varies from 1 to many Bytes ### Systemtype = ev[0] & 0x0F
     
     
     # dev_modes
@@ -100,7 +118,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     DEV_MODE_MIXER   = 3
     # DEV_MODE_DRUMS = 2
     # pad_mode_active = PAD_MODE_SEQ
-    device_mode_active = DEV_MODE_SCALES # initial mode
+    device_mode_active = DEV_MODE_NONE # initial mode
+    
+    ### would be nice to see on display if class is found
+    ### self._display   = Feedback_Display(idev_out)    # Text display
     
     scales = Harmony(8,8)
     scales.init_scale(tonic=0, 
@@ -111,18 +132,22 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
-        logging.info("Created Instance from Ableton Push 1 driver - BRUMBY")
+        logging.info("Found Push 1 on USB")
+        # would be nice to say, correct USB Device is found
         
         # super.__init__ saves state_manger, chainmanger, idev_in and idev_out
         # nothing more.
+        super().__init__(state_manager, idev_in, idev_out)      
+        
+        
         
         # Indecators of the device LEDs and Text # NOT USED
         self._leds_mono = Feedback_Mono_LEDs(idev_out)  # control buttons right and left from pads
         self._leds_bi   = Feedback_Bi_LEDs(idev_out)    # display buttons below display, above pads
         self._leds_rgb  = Feedback_RGB_LEDs(idev_out)   # pads in rgb
         self._display   = Feedback_Display(idev_out)    # Text display
+        self.mixer_init() # Text display for mixer # suerp()__init__ has to be called earlier to set idev_out
         
-        super().__init__(state_manager, idev_in, idev_out)      
         
         # seems to be necessary, because we send translated midi_events. o
         self.unroute_from_chains = True
@@ -133,20 +158,21 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         try: 
             logging.info("called init. Setting up Ableton Push 1 - BRUMBY")
             self.shift = False     
+                  
+            # setup device screen
+            # self._display.first_screen()
             
             # set initial device mode
-            self.device_mode_active = self.DEV_MODE_SCALES
-            
-            # setup device screen
-            self._display.first_screen()
+            self.set_device_mode_new(self.DEV_MODE_MIXER)
             
             
             # setup LEDS in Ctrl-Buttons
             # Monochrome Tasten die hell leuchten sollen
             for t in [ 36,37,38,39,40,41,42,43,   
                     ABL.BTN_START[1], ABL.BTN_OK[1], ABL.BTN_ESC[1], ABL.BTN_LEFT[1], 
-                    ABL.BTN_RIGHT[1], ABL.BTN_UP[1], ABL.BTN_DOWN[1], ABL.BTN_SCALES[1] ]:
-                
+                    ABL.BTN_RIGHT[1], ABL.BTN_UP[1], ABL.BTN_DOWN[1], ABL.BTN_SCALES[1], 
+                    ABL.BTN_USER[1]
+                    ]:                
                 lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_LIT)
 
             # monochrome Buttons than should be dim state
@@ -164,16 +190,16 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             super().init()  # aktiviert. Muss aktiviert sein!
             # self.pads_off()
             if self.device_mode_active == self.DEV_MODE_SCALES:
-                self.set_dev_to_scales_mode()
+                self.scales_set_dev_to_scales_mode()
                 
         #except:
         #    print("Fehler aufgetreten: {e}")
         except Exception as e:
             print("Exception aufgetreten:")
             # Gibt den vollständigen Traceback aus
-            traceback.print_exc()
-            # logging.error("Exception aufgetreten: %s", e)
-            # logging.error("Traceback: %s", traceback.format_exc())
+            # traceback.print_exc()
+            logger.error("Exception aufgetreten: %s", e)
+            logger.error("Traceback: %s", traceback.format_exc())
         
     # called from parent
     def end(self):
@@ -188,7 +214,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
    
     # when changing to scales mode: start here
     # new in this class, to setup scales_mode = keyboard mode
-    def set_dev_to_scales_mode(self):
+    def scales_set_dev_to_scales_mode(self):
         self.device_mode_active = self.DEV_MODE_SCALES
         # visual feedback, let Scales Button blink
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
@@ -210,7 +236,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         self._display.write_xy_mem(scale_n_mode, 0, 2) # Scale and scale over row2
         self._display.write_xy_mem(btn_txt_row3, 0, 3)
         self._display.update_screen()
-        # set Display-Button_LEDS
+        # set PAD LEDS
         self.scale_update_leds(self.scales.tonic) # 0 is 'C'
     
     # Leaving scales mode: remove anything that is initailized
@@ -427,32 +453,193 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 ##################     END   of scales fucntions     ##########################################################
 ###############################################################################################################
 
+#######################################################################################    
+###             Mixer FUNCTIONS FOR DISPLAY ACTION from zynmixer.                   ###
+        
+    def mixer_helper_bar(self, value) -> str:
+        field_width = 10 # width of anzeige
+        int_val = int(value*10)
+        if float(value) > 0.0: # always minimum 1 bar if any sound!
+            int_val += 1
+        erg = "".ljust(int_val,"|").ljust(10)
+        erg = "".ljust(int(value*10),"|").ljust(15)[:field_width]
+        return erg 
     
-### Mixer FUNCTIONS FOR DISPLAY ACTION from zynmixer.
-### just copy the derived functions in the this driver and implement them accordingly 
+    def mixer_helper_write_to_knobx_fieldy(self, text: any, knob_x:int, field_y:int, as_bar:bool = False):
+        """writes to a specified place below a knob
+           knob_x is the knob from 0 to 7 (push_1 has 9 knobs, but nith has no display)
+           field_y is the row written to see consts: _MIXER_DISP_ROW_* 
+           text can be text or float value
+        """
+        if knob_x > 7:
+            knob_x = 7
+            logging.error("knob_x bigger 7 not implemented. Sum channel is directed to 7")
+        if isinstance(text, (int, float)): # when text of type float; change it to str
+            if as_bar: 
+                text = self.mixer_helper_float_to_ascii_Bar(text)
+            else:
+                text = str(text)
+            
+        fields_start_knobs  = [0, 9,    18, 26,  35, 42,  51, 60]
+        knobx_start = fields_start_knobs[knob_x]
+        text=text.ljust(10)[:10] # make text with minimal 10 and max 10 chars
+        self._display_mixer.write_xy_mem(text, knobx_start, field_y)        
+        
+    def mixer_helper_float_to_ascii_Bar(self, value:float):
+        fieldlen = 8
+        int_val = int(value * fieldlen) # val is 0.0 to 1.0. we want range 0-7
+        return "".ljust(int_val, ">").ljust(fieldlen) # fill up with spaces to overwrite old values
+
+    def mixer_init(self):
+        """mixer display functions are called during start. 
+           Mixer is main functionality, so it hast to be setup in intit _function
+        """
+        # create consts for mixer display
+        self.MIXER_DISP_ROW_VOLUME = 0
+        self.MIXER_DISP_ROW_BALANCE = 1
+        self.MIXER_DISP_ROW_3 = 2
+        self.MIXER_DISP_ROW_4 = 3
+            
+        self._display_mixer = Feedback_Display(self.idev_out);
+        self.mixer_set_dev_to_mixermode()
+        
+        return
+    
+
+    def mixer_set_dev_to_mixermode(self):
+                
+        # creat private mixer display
+        
+        btn_txt_row0 = "| Ch 1 | Ch 2   | Ch 33 | Ch 4 || Ch 5  | Ch 6   | Ch 7  | Ch 8  |"
+        btn_txt_row1 = "      | This is the Mixer Display                                   "
+        btn_txt_row2 = "|modes here      |       |       ||       |        |       |       |"
+        btn_txt_row3 = "|      |         |      |       ||       |        |       |       |"
+        
+        btn_text_row2 = self._display_mixer.format_help
+        
+        self._display_mixer.write_xy_mem(btn_txt_row0, 0, 0)
+        self._display_mixer.write_xy_mem(btn_txt_row1, 0, 1)
+        self._display_mixer.write_xy_mem(btn_txt_row2, 0, 2)
+        self._display_mixer.write_xy_mem( "Volume Mode".ljust(20)[:20], 0, 2 ) # Mode of knobs
+        self._display_mixer.write_xy_mem(btn_txt_row3, 0, 3)
+        self._display_mixer.update_screen()
+        
+        # paint into tha test data
+        ch1_level = self.zynmixer.zctrls[0]['level'].get_value() # is this a set level or the real sound lovel
+        ch1_level_bar = self.mixer_helper_float_to_ascii_Bar(ch1_level)
+        first_knob_nr = 0
+        self.mixer_helper_write_to_knobx_fieldy(ch1_level_bar,  first_knob_nr, self.MIXER_DISP_ROW_VOLUME)
+               
+        self._display_mixer.update_screen()# send display_data to display
+
+
+    def mixer_cleanup(self):
+        pass
+
+    ### just copy the derived functions in the this driver and implement them accordingly 
     # DONT CHANGE FUNC NAME (is inherited)
     def update_mixer_active_chain(self, active_chain):
         """Update hardware indicators for active_chain"""
-        logging.error(f"not implemented active_chain: {active_chain}")
-    
+        
+        try:
+            mix_state = self.zynmixer.get_state()
+            volume = self.zynmixer.zctrls[0]['level'].get_value()
+            for c in mix_state.keys():
+                if c[:5] == "chan_":
+                    chan_nr = int(c[5:7])
+                    ch_level = self.zynmixer.zctrls[chan_nr]['level'].get_value() # we use level from here, so we no field exists
+                    ch_level_bar = self.mixer_helper_float_to_ascii_Bar(ch_level)
+                    self.mixer_helper_write_to_knobx_fieldy(ch_level_bar, chan_nr, self.MIXER_DISP_ROW_VOLUME)
+
+                    # write names
+                    # Check if chain exists
+                    # if zynmixer.get_chain_level(chain_index) is not None:
+                        # Namen von der Engine holen
+                    #engine_index = self.zynmixer.get_chain_engine(chan_nr)
+                    #engine_info = lib_zyncore.get_engine_info(engine_index)
+                    # name = engine_info.get('name', f"CH{chan_nr}")
+                    # name = self.zynmixer.get_chain_name(chan_nr)
+                    # name = self.zynmixer.
+            self._display_mixer.update_screen()    
+            # logging.error(f"not implemented active_chain: {active_chain}")
+            return
+        except Exception as e:
+            logging.error(f"Error in update_mixer_active_chain: {e}")
+            logging.exception(traceback.format_exc())
+            
+            
+            
+            
+            
     # DONT CHANGE FUNC NAME (is inherited)    
     def update_mixer_strip(self, chan, symbol, value):
-        """Update hardware indicators for a mixer strip: mute, solo, level, balance, etc. # oh my goodness, what means etc. ?
+        """Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.
         *SHOULD* be implemented by child class
 
         chan - Mixer strip index
         symbol - Control name
         value - Control value
-        
-        Idiea for display
-        |||||||||||  = lefel indicator
-        M S L B      = M=Mute; S=Solo L=changing the Lefel; B=changing balance; But what else ???
         """
-        logging.debug(
-            f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED! chan: {chan}; symbol: {symbol} value: {value}")
+        
+        try:
+            match symbol:
+                case 'level':
+                    if chan > 7: 
+                        chan = 7
+                    self.mixer_helper_write_to_knobx_fieldy(value, chan, self.MIXER_DISP_ROW_VOLUME, as_bar=True)
+                    self._display_mixer.update_screen()
+                    return  # Wichtig: Return nach erfolgreicher Verarbeitung!
+                
+                case 'balance': 
+                    # Implementierung für balance
+                    pass
+                
+                case 'mute':
+                    # Implementierung für mute
+                    pass
+                
+                case 'solo':
+                    # Implementierung für solo
+                    pass
+                
+                case 'mono':
+                    # Implementierung für mono
+                    pass
+                
+                case 'm+s': # Mono / Stereo
+                    # Implementierung für m+s
+                    pass
+                
+                case 'phase':
+                    # Implementierung für phase
+                    pass
+                
+                case _:
+                    # Fall für unbekannte symbols
+                    logging.debug(
+                        f"Update mixer strip for {type(self).__name__}: UNKNOWN SYMBOL! chan: {chan}; symbol: {symbol} value: {value}")
+                    return
+            
+            # Diese Zeile wird nur erreicht, wenn ein Case gematcht aber nicht behandelt wurde
+            logging.debug(
+                f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED! chan: {chan}; symbol: {symbol} value: {value}")
 
-### END of Mixer functions.
+        except Exception as e:
+            logging.error(f"Error in update_mixer_strip: {e}")
+            logging.exception(traceback.format_exc())
+        
+    def process_mixer_event(self, ev) -> bool:
+        #self.zyn
+        #self.zynmixer.setlevel()
+        pass
+    
+    
+###                END of Mixer functions.                            ###
+#########################################################################
 
+
+#########################################################################
+###           Start of Sequencer / Pad Functions                      ###
     def process_sequencer_event(self, ev) -> bool:
         """event function in sequencer state"""
         # if using shift button with knob, then not following we are not in any mode
@@ -460,9 +647,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         #     return False #  we ignored here any event, we are not in Sequencer mode
         
 
-##############################################################################################################
-################      Start of SEQUENCER FUNCTIONS   #########################################################  
-    # this function is called by zynseq when a sequencer state is changed
+   
+    # tzynseq updates LED states
     # we have update pad LED to show state
     # DONT CHANGE FUNC NAME (is inherited)
     def update_seq_state(self, bank, seq, state, mode, group):
@@ -636,58 +822,112 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # return super()._on_midi_event(ev)`
 
     def set_device_mode_new(self, new_mode):
-        match self.device_mode_active:
-            case self.DEV_MODE_MIXER:
-                # deinit mixer
-                pass
-            case self.DEV_MODE_PAD:
-                # deinit scales
-                pass
-            case self.DEV_MODE_SCALES:
-                # deinit  scales mode
-                pass
-        self.device_mode_active = new_mode
-        match new_mode:
-            case self.DEV_MODE_MIXER:
-                # init mixer
-                pass
-            case self.DEV_MODE_PAD:
-                # init scales
-                pass
-            case self.DEV_MODE_SCALES:
-                # init  scales mode
-                pass
-            case _:
-                # code not defined 
-                logging.error("DEVICE Mode not defined. Programming Error")
+        try:
+            if new_mode == self.device_mode_active: return # devmode was same
             
+            # clean up old device state
+            # NO USE RETURNS
+            match self.device_mode_active:
+                case self.DEV_MODE_MIXER:
+                    # deinit mixer
+                    lib_zyncore.dev_send_ccontrol_change(
+                        self.idev_out, 0, ABL.BTN_VOLUME[1], ABL.MONO_LED_LIT)
+                    self.mixer_cleanup()
+                    
+                case self.DEV_MODE_PAD:
+                    # there is no cleanup. do following
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_USER[1], ABL.MONO_LED_LIT)
+                    self.pads_off()                
+                    
+                case self.DEV_MODE_SCALES:
+                    # deinit  scales mode
+                    self.scales_cleanup()
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT)
+                    self.pads_off() # clean up visible state. all pad leds off
+                    
+            # now you can save new active mode        
+            self.device_mode_active = new_mode
+            
+            # Now Setup new device mode
+            # HERE USE RETURNS
+            match new_mode:
+                case self.DEV_MODE_MIXER:
+                    # init mixer
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_VOLUME[1], ABL.MONO_LED_LIT_BLINK)
+                    return self.mixer_set_dev_to_mixermode()
+                    
+                case self.DEV_MODE_PAD:
+                    self.refresh() # refreshe LEDs for Sequencer mode of this driver.
+                    # there is no clean_up method. so do following
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_USER[1], ABL.MONO_LED_LIT_BLINK)
+                    
+                case self.DEV_MODE_SCALES:
+                    self.scales_set_dev_to_scales_mode()
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
+                    
+            
+                case _:
+                    # code not defined 
+                    logging.error("DEVICE Mode not defined. Programming Error")
+                    
+            # if not done till now, mark as succed        
+            return True #  Whatever event is processed   
+        
+        except Exception as e:
+            logger.error(f"Error in set_device_mode_new: {e}")
+            logger.exception(traceback.format_exc())
+           
+       
+
+
 
     def midi_event(self, ev):
         
         ### For debugging purposes block can be commented out !
+        dbg = True
+        if len(ev) > 1 and dbg:
+            search_key = [ev[0], ev[1]] # ev to search_key
+            btn_name = self.button_name_from_midi_event(search_key) # ev[0] and ev[1] fields are proved. so any status can be a button 
+            if not btn_name == "": # just log known btns
+                logger.debug(f"Button: {btn_name} on chan. {ev[0] & 0x0F} gives midi_event: {hex(ev[0])} {hex(ev[1])} {hex(ev[2])} = {int(ev[1])}, {int(ev[2])}, {int(ev[2])}")
+
         evtype               = None
         chan_or_instruction  = None
         note_or_register     = None
         val_or_vel           = None
         
-        if len(ev) > 1:
+        ### end of debug
+        
+        if len(ev) > 1: # Btn is possible
+            
+            if len(ev) > 2: 
+                val_or_vel = ev[2]
+                is_key_push = val_or_vel > 0
+                
             search_key = [ev[0], ev[1]] # ev to search_key
             match search_key:
                     case None:
                         pass
-                    case ABL.BTN_SHIFT: # as momentary button ! hasto be hold for functions change
-                        self.shift =  val_or_vel != 0 # set shift variable. but just momenatary
+                    case ABL.BTN_SHIFT: # as momentary button NOT toggle! has to be hold for functions change
+                        self.shift =  is_key_push # set shift variable. but just momenatary
                         # visual feedback with button LED
                         if self.shift:
                             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_LIT_BLINK)
-                        else:
+                        else: # key is teleased
                             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_DIM)
                         return True # event processed. No further action required
              
                     case ABL.BTN_VOLUME: # mode change to mixer? It isn't best chosen.
-                        return self.set_device_mode_new(self.DEV_MODE_MIXER)                        
-                        
-                        pass
+                        if is_key_push:
+                            return self.set_device_mode_new(self.DEV_MODE_MIXER)                        
+                    
+                    case ABL.BTN_SCALES:    
+                        if is_key_push:
+                            return self.set_device_mode_new(self.DEV_MODE_SCALES)
+                    
+                    case ABL.BTN_USER:
+                        if is_key_push:
+                            return self.set_device_mode_new(self.DEV_MODE_PAD)
                     case _:
                         pass
                     
@@ -708,6 +948,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # now the Gui events. 
         # Gui events moved to:
         if self.process_gui_events(ev): return True
+        
+        # nothing below the line ???
         return False # that should be all
         
         if len(ev) > 0:
@@ -725,8 +967,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 button_ev == [0x90, ev[1]]
                 aftertouch = 'aftertouch'
                               
-            btn_name = self.button_name_from_midi_event(button_ev) # ev[0] and ev[1] fields are proved. so any status can be a button
-            
+            btn_name = self.button_name_from_midi_event(button_ev) # ev[0] and ev[1] fields are proved. so any status can be a button 
             logging.debug(f"Button: {btn_name} on chan. {chan_or_instruction} gives midi_event: {aftertouch} {hex(ev[0])} {hex(ev[1])} {hex(val_or_vel)} = {evtype}, {note_or_register} {val_or_vel}")
 
          ### End of "debugging purposes." 
@@ -1035,6 +1276,9 @@ class Feedback_Display:
         26: "ü",   # DISP_UE_LC (U+00FC)
     }
     
+    format_help = b'123456789A123456789B123456789C123456789D123456789E123456789F123456789'
+        
+    
     display_mem = [[32] * 68 for _ in range(4)] # 4 Zeilen mit 68 Spalten
     # _disp_line_dirty =[False, False, False, False]        
             
@@ -1095,8 +1339,10 @@ class Feedback_Display:
         elif isinstance(text, bytes):
             # print("Die Variable ist Bytes")
             pass # is fine
+        elif isinstance(text, (int, float)): # is a number?
+            text = str(text).encode()
         else:
-            # print("Die Variable ist weder String noch Bytes")
+            # print("type error")
             text = "Typeerror in textconversion".encode()
         
         # Koordinaten prüfen
@@ -1184,9 +1430,9 @@ class Feedback_Display:
         self.clear()
         # self.brightnes(36)
         sleep(0.1)
-        self.write_xy_mem(b'* Pot 1 * Pot 2 ** Pot 3 * Pot 4 *', 0,0)
+        #self.write_xy_mem(b'* Pot 1 * Pot 2 ** Pot 3 * Pot 4 *', 0,0)
      #  Positionierungshilfe
-        self.write_xy_mem(b'123456789A123456789B123456789C123456789D123456789E123456789F123456789', 0,1)
+        #self.write_xy_mem(b'123456789A123456789B123456789C123456789D123456789E123456789F123456789', 0,1)
         self.write_xy_mem(b'** Zynthian Push1Driver 0.1 **', 17,2)
         self.write_xy_mem(b'++  Make MusicNot War ++', 20,3)
         self.update_screen()
