@@ -640,7 +640,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
         presets = []
         result = self.rpc('getListOfPresets')
         if result is None or 'result' not in result:
-            return None
+            return []
         for preset in result['result']:
             if instrument is None or preset['instr'] == instrument:
                 presets.append([preset['name'], preset['bank']])

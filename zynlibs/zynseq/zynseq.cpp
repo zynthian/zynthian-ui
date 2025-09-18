@@ -572,8 +572,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             if (g_bSendMidiClock && g_bPlayingSequences) {
                 // Add a MIDI clock to the queue
                 jack_nframes_t nClockTime = g_qClockPos.front().first - nNow;
-                if (bSync)
-                    g_mSchedule.insert(std::pair<uint32_t, MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_CONTINUE, 0, 0})));
+                //if (bSync)
+                //    g_mSchedule.insert(std::pair<uint32_t, MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_CONTINUE, 0, 0})));
                 g_mSchedule.insert(std::pair<uint32_t, MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_CLOCK, 0, 0})));
             }
             if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)

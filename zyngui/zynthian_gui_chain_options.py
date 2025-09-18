@@ -75,7 +75,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             except Exception as e:
                 logging.error(e)
 
-        if synth_proc_count:
+        if self.chain.is_midi():
             self.list_data.append((self.chain_midi_cc, None, "MIDI CC",
                                    ["Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
 
