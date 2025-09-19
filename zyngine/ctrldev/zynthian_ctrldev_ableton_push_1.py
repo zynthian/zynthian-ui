@@ -159,10 +159,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     def init(self):
         try: 
             logging.info("called init. Setting up Ableton Push 1 - BRUMBY")
-            self.shift = False     
-                  
-            # setup device screen
-            # self._display.first_screen()
+            self.shift = False # BTN_SHIFT is pressed    
+            self.shift_note = 0 # Octave buttons      
+      
             
             # set initial device mode
             self.set_device_mode_new(self.DEV_MODE_MIXER)
@@ -240,6 +239,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         self._display.update_screen()
         # set PAD LEDS
         self.scale_update_leds(self.scales.tonic) # 0 is 'C'
+        # set up buttons
+        for t in [ABL.BTN_OCTAVE_DOWN[1], ABL.BTN_OCTAVE_UP[1]]:
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_LIT)
+
     
     # Leaving scales mode: remove anything that is initailized
     def scales_cleanup(self): # set of any LED and display changes
@@ -260,6 +263,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     ]
         for t in scale_buttons:
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_LED_OFF) 
+        # set up buttons
+        for t in [ABL.BTN_OCTAVE_DOWN[1], ABL.BTN_OCTAVE_UP[1]]:
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_OFF)
 
     
     
@@ -357,6 +363,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         if not self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
             return False # we are not in scales mode
     
+                   
+            
         ##### event part for sounds
         # Filter out note events created by push 1 when touching Knobs and Ribbon 
         note = ev[1]
@@ -378,6 +386,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 # here magic for different sccale layouts happens.
                 # it translates midi_note events to the translated note_events
                 note_translated = self.scales.harmony_get_target_note(pad_nr-1) # midinotes are based 0 pad_nr based 1
+                
+                # ocatve_buttons used
+                note_translated += self.shift_note
+                
                 vel = ev[2] # my push1 is insensitive so I double any velocity val
                 if evtype == self.EV_NOTE_ON: 
                     vel = ev[2] *2 # this creates junk with aftertouch und pitchbend..
@@ -444,6 +456,12 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     self.scales_set_tonic(ev[2]); return True
                 case ABL.KNOB_8: # mode
                     self.scales_set_mode(ev[2]); return True  
+                
+                # Octave Buttons
+                case ABL.BTN_OCTAVE_UP:
+                    self.shift_note += 12
+                case ABL.BTN_OCTAVE_DOWN:
+                    self.shift_note -= 12
                       
                 case _:
                     return False # event not for any of the defined buttons
