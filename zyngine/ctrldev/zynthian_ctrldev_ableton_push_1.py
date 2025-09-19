@@ -139,7 +139,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # nothing more.
         super().__init__(state_manager, idev_in, idev_out)      
         
-        
+        # to slow knob-events.translates 127 to -1
+        # TODO experiment with setup values when live
+        self._knobs_ease = KnobSpeedControl()
         
         # Indecators of the device LEDs and Text # NOT USED
         self._leds_mono = Feedback_Mono_LEDs(idev_out)  # control buttons right and left from pads
@@ -944,6 +946,10 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     return True
             case _:
                 pass # no actual devicemode
+         
+        # if nothing els then
+        #if self.process_scale_event(ev):
+        #    return True  
             
         # now the Gui events. 
         # Gui events moved to:
@@ -951,114 +957,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         
         # nothing below the line ???
         return False # that should be all
-        
-        if len(ev) > 0:
-            evtype              = (ev[0] >> 4) & 0x0F
-            chan_or_instruction = ev[0] & 0xF
-        if len(ev) > 1:
-            note_or_register    = ev[1] & 0x7F
-        if len(ev) > 2:
-            val_or_vel          = ev[2] & 0x7F
-        
-        if note_or_register: # len > 1 -> Button / Pad detection is possible
-            button_ev = ev
-            aftertouch = ''
-            if button_ev[1] == 0xa0: # EV_AFTERTOUCH:
-                button_ev == [0x90, ev[1]]
-                aftertouch = 'aftertouch'
-                              
-            btn_name = self.button_name_from_midi_event(button_ev) # ev[0] and ev[1] fields are proved. so any status can be a button 
-            logging.debug(f"Button: {btn_name} on chan. {chan_or_instruction} gives midi_event: {aftertouch} {hex(ev[0])} {hex(ev[1])} {hex(val_or_vel)} = {evtype}, {note_or_register} {val_or_vel}")
-
-         ### End of "debugging purposes." 
-        
-        # don't process  1-byte events. 
-        if len(ev)<2:
-            return False
-        
-        # processing starts here 
-        evtype = (ev[0] >> 4) & 0x0F
-        note = ev[1] & 0x7F # is that need? any event field is from 0-127 except the status field    
-
-        ### Scale mode
-        # if self.device_mode_active == self.DEV_MODE_SCALES: # keyboard modus is selected
-        #     if self.process_scale_event(ev):
-        #         return True # return value cuts out follwing
-        
-
-        # pad mode to control sequencer
-        # elif self.device_mode_active == self.DEV_MODE_PAD:     
-        #     if self.process_sequencer_event(ev):                
-        #         return True
-                    
-            # I think we dont need any note events... so filter out
-            # NO note events anymore after this two lines. Comment out what you need after this lines in "Pad Mode" = DEV_MODE_PAD
-   ####         # if evtype in [self.EV_NOTE_ON, self.EV_NOTE_OFF, self.EV_AFTERTOUCH, self.EV_PITCHBEND]:
-            #     return True 
-            
-            # no return call. I don't know if I need note_on_events further down.
-            
-        
-        # if prceessd before there are just note_events lower PAD_START and higher PAD_END if processed before
-
-        # GUI Control Changes
-        # evtype = EV_CC
-        if evtype == 0xB:
-            ccnum = ev[1] & 0x7F
-            ccval = ev[2] & 0x7F
-
-            # Sate of shoft button CC49 wird abgefragt. CCVall > 0  means pressed 
-            if ccnum == ABL.BTN_SHIFT[1]:
-            # if ccnum == 49:
-                # SHIFT
-                self.shift = ccval != 0 # set shift variable
-                # visual feedback with button LED
-                if self.shift:
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_LIT_BLINK)
-                else:
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 49, ABL.MONO_LED_DIM)
-                return True # event processed. No further action required
-             
-            # From here filter any event with velocyty=0 We just need notepressed values to come through
-            elif ccnum == 0 or ccval == 0: # is that midi bank change?
-                return False # Warning: With "return True" no further processing in zynthian. 
-                            # So no Controlchange with data=0 gets through to zynthian.
-                            # Is that, what we want ???
-                            # Also bank changes are msb or isit LSB are filtered waay.
-                            # I assume, it has to return False, so Zynthian can do bank chanages !!! 
-
-            # From here only positive Values are processed!
-
-            # Displays bi-color Buttons
-            elif (self.shift and 20 < ccnum < 29) or (20 < ccnum < 25):
-                chain = self.chain_manager.get_chain_by_position(ccnum - 21, midi=False)
-                if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
-                    self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0) # "/127.0" creates a float val from 0.0 .. 1.0
-                
-            # This swtches between this drivers pad states: Pad (Sequencer) and Scales
-            elif (ccnum == ABL.BTN_SCALES[1]):
-                logging.info("BRUMBY: BTN_SCALES processing")
-                if not self.device_mode_active == self.DEV_MODE_SCALES:
-                    self.set_dev_to_scales_mode()
-                else:
-                    self.device_mode_active = self.DEV_MODE_PAD
-                    self.scales_cleanup()
-                    # visual feedback, set LED to solid on
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT)
-                    self.pads_off() # clean up visible state. all pad leds off
-                    self.refresh() # refreshe LEDs for Sequencer mode of this driver.
-                return True
-            
-            
-            # Gui events moved to:
-            if self.process_gui_events(ev): return True
-            
-
-
-                
-        # default return, when no match
-        return False # When nothing matches, False shows that midi event has to be processed further
-
+ 
 
 
     #########  GUI EVENTS     ####################################
@@ -1073,23 +972,33 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         search_key = [ev[0], ev[1]]
         data_val = ev[2] & 0x7F
         
-        # make left turs on knobs negative
-        def helper_knob_calculation(ccval):
-            if ccval > 64: ccval -= 128
-            return ccval 
-        data_val_for_knobs = helper_knob_calculation(data_val)
+        # TODO remove if knob ease is fine
+        # # make left turs on knobs negative
+        # def helper_knob_calculation(ccval):
+        #     if ccval > 64: ccval -= 128
+        #     return ccval 
+        # # this could be changed to 
+        # # delta = self._knobs_ease.feed(btn_id, ev[2], self._is_shiftedxxx)
+        # data_val_for_knobs = helper_knob_calculation(data_val)
         
         match search_key:
             
             # Knobs
             case ABL.KNOB_1:
-                self.state_manager.send_cuia("ZYNPOT", [0, data_val_for_knobs]); return True
+                # translate 127 to -1 and slow down
+                delta = self._knobs_ease.feed(bytes(ABL.KNOB_1), data_val, is_shifted=False) 
+                self.state_manager.send_cuia("ZYNPOT", [0, delta]); return True
+                # self.state_manager.send_cuia("ZYNPOT", [0, data_val_for_knobs]); return True
             case ABL.KNOB_2:
-                self.state_manager.send_cuia("ZYNPOT", [1, data_val_for_knobs]); return True
+                delta = self._knobs_ease.feed(bytes(ABL.KNOB_1), data_val, is_shifted=False) 
+                self.state_manager.send_cuia("ZYNPOT", [1, delta]); return True
             case ABL.KNOB_3:
-                self.state_manager.send_cuia("ZYNPOT", [2, data_val_for_knobs]); return True
+                delta = self._knobs_ease.feed(bytes(ABL.KNOB_3), data_val, is_shifted=False) 
+                self.state_manager.send_cuia("ZYNPOT", [2, delta]); return True
             case ABL.KNOB_4:
-                self.state_manager.send_cuia("ZYNPOT", [3, data_val_for_knobs]); return True
+                delta = self._knobs_ease.feed(bytes(ABL.KNOB_4), data_val, is_shifted=True)
+                self.state_manager.send_cuia("ZYNPOT", [3, delta]); return True
+                # self.state_manager.send_cuia("ZYNPOT", [3, data_val_for_knobs]); return True
             case _: pass
         
         if data_val > 0: # just key-down events
