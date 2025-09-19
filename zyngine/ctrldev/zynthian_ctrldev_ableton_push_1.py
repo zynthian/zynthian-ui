@@ -456,14 +456,14 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 #######################################################################################    
 ###             Mixer FUNCTIONS FOR DISPLAY ACTION from zynmixer.                   ###
         
-    def mixer_helper_bar(self, value) -> str:
-        field_width = 10 # width of anzeige
-        int_val = int(value*10)
-        if float(value) > 0.0: # always minimum 1 bar if any sound!
-            int_val += 1
-        erg = "".ljust(int_val,"|").ljust(10)
-        erg = "".ljust(int(value*10),"|").ljust(15)[:field_width]
-        return erg 
+    # def mixer_helper_bar(self, value) -> str:
+    #     field_width =  8# width of anzeige
+    #     int_val = int(value * field_width)
+    #     if float(value) > 0.0: # always minimum 1 bar if any sound!
+    #         int_val += 1
+    #     erg = "".ljust(int_val,chr(6)).ljust(10)[:field_width]
+    #     # erg = "".ljust(int(value*10),"|").ljust(15)[:field_width]
+    #     return erg 
     
     def mixer_helper_write_to_knobx_fieldy(self, text: any, knob_x:int, field_y:int, as_bar:bool = False):
         """writes to a specified place below a knob
@@ -474,21 +474,21 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         if knob_x > 7:
             knob_x = 7
             logging.error("knob_x bigger 7 not implemented. Sum channel is directed to 7")
-        if isinstance(text, (int, float)): # when text of type float; change it to str
+        if isinstance(text, (int, float)): # when text of type float or int  change it to str
             if as_bar: 
                 text = self.mixer_helper_float_to_ascii_Bar(text)
             else:
                 text = str(text)
             
-        fields_start_knobs  = [0, 9,    18, 26,  35, 42,  51, 60]
+        fields_start_knobs  = [0,9, 17,26, 34,43,  51,60]
         knobx_start = fields_start_knobs[knob_x]
-        text=text.ljust(10)[:10] # make text with minimal 10 and max 10 chars
+        text=text.ljust(8)[:8] # make text with minimal 10 and max 10 chars
         self._display_mixer.write_xy_mem(text, knobx_start, field_y)        
         
     def mixer_helper_float_to_ascii_Bar(self, value:float):
         fieldlen = 8
         int_val = int(value * fieldlen) # val is 0.0 to 1.0. we want range 0-7
-        return "".ljust(int_val, ">").ljust(fieldlen) # fill up with spaces to overwrite old values
+        return "".ljust(int_val, chr(6)).ljust(fieldlen) # fill up with spaces to overwrite old values
 
     def mixer_init(self):
         """mixer display functions are called during start. 
@@ -511,16 +511,16 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # creat private mixer display
         
         btn_txt_row0 = "| Ch 1 | Ch 2   | Ch 33 | Ch 4 || Ch 5  | Ch 6   | Ch 7  | Ch 8  |"
-        btn_txt_row1 = "      | This is the Mixer Display                                   "
-        btn_txt_row2 = "|modes here      |       |       ||       |        |       |       |"
-        btn_txt_row3 = "|      |         |      |       ||       |        |       |       |"
+        btn_txt_row1 = "        | This is the Mixer Display                                 "
+        btn_txt_row2 = f"|modes here   {chr(5)} {chr(6)} {chr(5)}{chr(6)}  |           |"
+        btn_txt_row3 = "|       |       |      |       ||       |        |       |       |"
         
         btn_text_row2 = self._display_mixer.format_help
         
         self._display_mixer.write_xy_mem(btn_txt_row0, 0, 0)
         self._display_mixer.write_xy_mem(btn_txt_row1, 0, 1)
         self._display_mixer.write_xy_mem(btn_txt_row2, 0, 2)
-        self._display_mixer.write_xy_mem( "Volume Mode".ljust(20)[:20], 0, 2 ) # Mode of knobs
+        self._display_mixer.write_xy_mem( "Volume Mode".ljust(20)[:15], 0, 2 ) # Mode of knobs
         self._display_mixer.write_xy_mem(btn_txt_row3, 0, 3)
         self._display_mixer.update_screen()
         
@@ -1192,7 +1192,7 @@ class Feedback_Display:
     DISP_ARROW_LEFT                        =  31  # ← (U+2190)
 
     DISP_HORIZONTAL_LINES_THREE_STACKED    =  2   # ≡ (U+2261)
-    DISP_HORIZONRAL_LINE_LOW               =  95  # _ (U+005F) Lowbar
+    DISP_HORIZONTAL_LINE_LOW               =  95  # _ (U+005F) Lowbar
     DISP_HOIZONTAL_LINE_SPLIT              =  6   # ╌ (U+254C) LIGHT DOUBLE DASH HORIZONTAL
 
     DISP_VERTICAL_LINE_AND_HORIZONTAL_LINE =  3   # ┤ (U+2524)
