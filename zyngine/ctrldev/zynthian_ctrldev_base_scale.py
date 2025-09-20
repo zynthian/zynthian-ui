@@ -51,7 +51,11 @@ class Harmony:
    modes = _MODES
    scales = _SCALES
   
-   def __init__(self, pad_cols, pad_rows):
+   def __init__(self, pad_cols=8, pad_rows=8):
+      """pad_cols : number of cols of the pad array
+         pad_rows : number of rows of the pad array 
+         mostly 8 by 8
+      """
       self.cols = pad_cols
       self.rows = pad_rows
       self.target_notes = [] # Instance variable
@@ -76,18 +80,22 @@ class Harmony:
       return self.must_redraw_led_colors
       
    def init_scale(self, 
-                     tonic: int         = None,       # (C) semitone distance counted from from C = 0
-                     mode_name: str     = None,       # mode as str. look in _SCALES 
-                     col_versatz: int   = None,       # per row recess
-                     middle_c: int      = None,       # must be middle_c % 12 = 60  
-                     middle_pad_nr: int = None):      # padnr of middle tonic. pad where middle_c is placed
+                     tonic: int         = 0,       # (C) semitone distance counted from from C = 0
+                     mode_name: str     = "Major",  # mode as str. look in _SCALES 
+                     col_versatz: int   = -5,       # per row recess
+                     middle_c: int      = 48,       # must be middle_c % 12 = 60  
+                     middle_pad_nr: int = 5):       # padnr of middle tonic. pad where middle_c is placed
       
-      """tonic : tonic of scale as midinote 0-11 (semitones)
-         mode_name:   name of mode from self._modes
-         middle_C:  number of the tone in scale with octaves (12 would be second octave tonic)
-         col_versatz: each row can start with a different offset, so -5 means in C-Major-Scale an "F" above the C in row-1 line
+      """Defaults set:  C Major with next row is sub_dominant to row before. Middle_C is on 5th pad  
+      
+         tonic :        tonic of scale as 0 <= semitones <= 11 (semitones)
+         mode_name:     name of mode from self._modes
+         col_versatz:   shift next row by col_versatz steps. e.g. -5 makes sub_dominant above tonic
+         middle_c:      must be real midi notd c (c % 12 == 0). this will later be shifted by the 
+                        tonic value 60 as middle c has to be % 12 == 0
+         middle_pad_nr: which pad should be middle of your pad array 
       """
-      # for new tonic initialization is not necessary. Tonics just change returnvlaiues of notes
+      # for new tonic initialization is not necessary. Tonics just changes return values of notes
       if not tonic is None:
          if tonic > 11: tonic = 0; 
          if tonic < 0: tonic = len(self.scales)-1
@@ -194,6 +202,7 @@ class Harmony:
       return
 
    def set_new_tonic(self, new_tonic:int):
+      """new_tonic is next tonic in selected scale"""
       if new_tonic == self.tonic: return False
       if new_tonic < 0:  new_tonic = 11  # target: B
       if new_tonic > 11: new_tonic = 0   # target: C
@@ -201,6 +210,7 @@ class Harmony:
       return True # yes update display. we changed it
 
    def step_to_next_tonic(self, step):
+      """For Knob Control. 127 converted -1"""
       if step > 63: step -=128 # for controller sending 127 for -1
       new_tonic = self.scales.tonic + step
       if new_tonic < 0:  new_tonic = 11  # target: B
@@ -215,7 +225,7 @@ class Harmony:
 
 
    def is_tonic_by_midnote(self, midi_note:int) -> bool:
-      return (midi_note - self.tonic) % 12
+      return (midi_note - self.tonic) % 12 == 0
       
    def get_equi_sound_pads_with_midi_note(self, midi_note) -> list:
       # Subtract tonic to get internal representation
@@ -238,6 +248,7 @@ class Harmony:
       return list(self.modes)
    
    def harmony_get_scale_name_with_mode (self) -> str:
+      """actual scale and mode as string for display"""
       result = self.scales[self.tonic] + ' ' + self.active_mode
       result = result.ljust(20)[:20]
       return result
