@@ -28,9 +28,30 @@
 #
 # ******************************************************************************
 
-
-# Display: Top two rows mixer
-#          bottm two for rows scales / Sequencer display
+#
+# I was in need for a driver for Push 1 because without it, it is completly dead.
+# this driver brings it to some live and gives you:
+#
+# - a rudimentary mixer mode with just Volume Knobs for chain 1-7 and main Volume aat knob 8 
+#   (push "Volume"-Button) 
+#  
+# - a pad array mode for the Sequencer 
+#   (Puser "User"-Button)
+#
+# - an illuminated PadArray with selectable Scales and Modes 
+#   (push "Scales"-Button)
+# 
+# driver is not complete but in usable state.
+#
+# in Mixermode Knobs1 to Knob4 no more Zynpots. They control chain 1-4 Volume
+# in other Modes they act as Zynpots for Zynthian GUI
+#
+# Buttons that have functions are illuminated
+# actual driver modes are blinki its mode buttons
+# 
+# Display: 
+# - Top two rows exclusive for mixer
+# - bottom two rows for modes: scales and sequencer 
 
 import logging
 import traceback
@@ -39,14 +60,15 @@ import traceback
 #### just local debug
 debug_mode = True
 if debug_mode:
-        
-    # Eigenen Logger für Ihre Library erstellen
-    logger = logging.getLogger("ABL-Push_1")  # Eindeutiger Name für Ihre Library
+    
+    # Set own logger, so you can set it to debug. But the rest of zynthian debug is invisble    
+    # Start 
+    logger = logging.getLogger("ABL-Push_1")  # set own name for messags
 
-    # Nur für Ihren Logger Level setzen
-    logger.setLevel(logging.DEBUG)  # Nur DIESER Logger zeigt Debug messages
+    # set level to debug, so you can see you own debug messages
+    logger.setLevel(logging.DEBUG)  
 
-    # Handler for your logger (optional)
+    # possible own handler
     handler = logging.StreamHandler()
     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
@@ -56,11 +78,11 @@ if debug_mode:
 
 
 # Brumbys new imports
-from time import sleep # pause between sysex events.
-import zyngine.ctrldev.ableton.push1_consts as ABL
-from zyngine.ctrldev.zynthian_ctrldev_base_scale import Harmony
-from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_engine import zynthian_engine # to send directly to soundengine...
+from time import sleep # pause between sysex events. push 1 is too slow
+import zyngine.ctrldev.ableton.push1_consts as ABL # Button definitions
+from zyngine.ctrldev.zynthian_ctrldev_base_scale import Harmony # my Class for scales mode
+# from zyngine.zynthian_signal_manager import zynsigman
+# from zyngine.zynthian_engine import zynthian_engine 
 from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
 
 # Zynthian specific modules

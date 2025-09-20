@@ -3,7 +3,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
-# Zynthian Control Device Driver for "Ableton Push 1"
+# Zynthian Control Device Base Driver for "scales supperot for pads"
 #
 # Copyright (C) 2025 Brumby 
 #
@@ -24,36 +24,47 @@
 # ******************************************************************************
 
 
+# helps implement 2-D-arrays with fixed scales and modes
+# 
+# you can change the scales and modes on the fly and are not fixed to 
+# hard coded arrays like on my launchpad mk3 mini
+# 
+# my push 1 is an wonderful controller but it has no stand alone mode. With out specian 
+# zynthian driver it is completly dead.
+#
 # how to use this Class minimalistic
 #
 """
    scales = Harmony()  # set pad array
    scales.init_scale() # set scales, modes, etc
    
-   pushed_pad_nr = 5
+   pushed_pad_nr = 39 # use the number of the pushed pad. You have to calculate that from midi event
    target_note = scales.harmony_get_target_note(pushed_pad_nr)
    
-   ### send this target_note as note_on_event. See REMARK
+   ### send this target_note with note_on_event. See REMARK
 """
 ### REMARK
-### a self programmed driver doesn'send anymore  note_on events down the line.
-# drivers are intended as control drivers for zynthian divices not any more for sound genarating
-# I think there was a latency problem with keyboard drivers. 
+### a device driver in Zynthian doesn'send anymore  note_on events down the line.
+# drivers are intended as control drivers for zynthian divices. Sending note_on events 
+# is blocked by default.
+# ( I think there was a latency problem with keyboard device drivers. ) 
 # I use following hack on  PI 4 and it seams to work for me. 
 # One (?) possible way is to send your new events with zynseq.libseq.sendMidiCommand 
 """
 # EXAMPLE HERE:
+### many thanks to niels, who gave me this solution: ###
 ### solution to send new events down the chain comes from niels in Zynthian forum
-   def _forward_new_midi_event(self, ev):
+   def _forward_new_midi_event_to_active_chain(self, ev):
         
         # get selected chain in mixer 
         chain = self.chain_manager.get_active_chain()            .
         
-        # is it midi chain
-        if chain.midi_chan is None: # is it a midi chain?
-            return False
+        # is this a midi chain
+        if chain.midi_chan is None: 
+            return False # if not, do nothing
         
-        # set up vars
+        # set up needed vars  for function
+        # Fill in chains midi chanel into stauts from event
         status = (ev[0] & 0xF0) | chain.midi_chan
         self.zynseq.libseq.sendMidiCommand(status, ev[1], ev[2])
         return True # work is done.  main event can start over and get a new midi event.
@@ -333,7 +344,7 @@ class Harmony:
    
    
 ### End of class definition Harmony ##############################################
-
+##################################################################################
 
 
 ### For test purposes from command line
