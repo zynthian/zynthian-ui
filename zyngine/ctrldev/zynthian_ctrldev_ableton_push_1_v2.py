@@ -165,6 +165,7 @@ class zynthian_ctrldev_ableton_push_1_v2(zynthian_ctrldev_zynpad, zynthian_ctrld
         self._leds_bi = Feedback_Bi_LEDs(idev_out)      # Bi-color display buttons
         self._leds_rgb = Feedback_RGB_LEDs(idev_out)    # RGB pad LEDs
         self._display = Feedback_Display(idev_out)      # Text display
+        self._display.first_screen()
         self.mixer_init()  # Initialize mixer display
         
         # Required when sending translated MIDI events
@@ -1191,7 +1192,7 @@ class Feedback_Display:
         """Display welcome/splash screen"""
         self.clear()
         sleep(0.1)
-        self.write_xy_mem(b'** Zynthian Push1Driver 0.1 **', 17, 2)
+        self.write_xy_mem(b'** Zynthian Push1Driver 0.2 **', 17, 2)
         self.write_xy_mem(b'++  Make MusicNot War ++', 20, 3)
         self.update_screen()
 
