@@ -158,28 +158,21 @@ class Harmony:
       if self.middle_pad_nr is None:
          self.middle_pad_nr = 4
          self.must_redraw_led_colors = True
-         is_dirty == True
-            
+         is_dirty == True    
       
       # if not is_dirty: return # if just tonica changed go back
       
       self.target_notes = []         # Reset for new scale
       self.target_notes_reverse = {} # Reset for new scale
-         
-      # if middle_pad_nr < 0 : middle_pad_nr = 0
-      # if middle_pad_nr >= self.cols * self.rows:
-      #    middle_pad_nr = self.cols * self.rows -1
-
-      mode = self.modes[self.active_mode]    
+      mode = self.modes[self.active_mode]   
+      
       pad_counter = -1
       
       for i in range (- self.middle_pad_nr, (self.cols*self.rows) - self.middle_pad_nr):
-         pad_counter += 1
+         pad_counter += 1       
          
          row_nr = pad_counter // self.cols
-         
          note_nr_in_scale = i + (row_nr * self.col_versatz)
-         
          
          octave = note_nr_in_scale // len(mode) 
          if console_debug: print (f"{octave}:{pad_counter}=", end="")
@@ -201,6 +194,7 @@ class Harmony:
                print("*", end="\n", flush=True) # Newline at end of row
       return
 
+   # direct set from program
    def set_new_tonic(self, new_tonic:int):
       """new_tonic is next tonic in selected scale"""
       if new_tonic == self.tonic: return False
@@ -209,6 +203,7 @@ class Harmony:
       self.tonic = new_tonic
       return True # yes update display. we changed it
 
+   # for Knob Control. step to next
    def step_to_next_tonic(self, step):
       """For Knob Control. 127 converted -1"""
       if step > 63: step -=128 # for controller sending 127 for -1
@@ -217,25 +212,29 @@ class Harmony:
       if new_tonic > 11: new_tonic = 0   # target: C
       self.scales.tonic = new_tonic
 
+   # pad nr must be colorized as tonic
    def is_tonic_by_padnr(self, pad_nr:int)-> bool:
       res = self.target_notes[pad_nr]
       res2 = res % 12
       return res2 == 0
       #return self.target_notes[padnr] % 12 == 0
 
-
+   # midi note, which hast to be colorized as tonic
    def is_tonic_by_midnote(self, midi_note:int) -> bool:
       return (midi_note - self.tonic) % 12 == 0
-      
+   
+   # get back list of pads, that have same midi_note   
    def get_equi_sound_pads_with_midi_note(self, midi_note) -> list:
       # Subtract tonic to get internal representation
       internal_note = midi_note - self.tonic
       return self.target_notes_reverse.get(internal_note, [])     
    
+   # get back list of pads, that have same midi_note by pad_nr
    def get_equi_sound_pads_with_pad_nr(self, pad_nr):
       midi_note = self.target_notes[pad_nr]
       return self.target_notes_reverse.get(midi_note,[])      
 
+   # scale contains how much notes
    def harmony_get_mode_len(self, mode:str) -> int:
       """Return count of tones mode"""
       try:
@@ -244,24 +243,28 @@ class Harmony:
          logging.error(f"Error: get_mode_len: mode '{mode}' not defined")
          return 0
 
+   # get back a list if strings containing mode names
    def harmony_get_mode_names(self):
       return list(self.modes)
    
+   # get scale and mode as string
    def harmony_get_scale_name_with_mode (self) -> str:
       """actual scale and mode as string for display"""
       result = self.scales[self.tonic] + ' ' + self.active_mode
       result = result.ljust(20)[:20]
       return result
    
+   # THIS IS THE MAIN FUNCTION THAT DOES THE MAGIC
+   # transaltes pad_nr to midi_notes in the selected mode and scale !!!
    def harmony_get_target_note(self, pad_nr: int) -> int:
       if not 0 <= pad_nr < len(self.target_notes): 
          logging.error("Program error, pad_nr out of range for len(target_notes)")
          return None
       return self.target_notes[pad_nr] + self.tonic
    
-   def harmony_get_padnrs_with_same_note(self, midi_note: int):
-      internal_note = midi_note - self.tonic
-      return self.target_notes_reverse.get(internal_note, [])
+   # def harmony_get_padnrs_with_same_note(self, midi_note: int):
+   #    internal_note = midi_note - self.tonic
+   #    return self.target_notes_reverse.get(internal_note, [])
    
    
 ### End of class definition Harmony ##############################################
