@@ -28,6 +28,10 @@
 #
 # ******************************************************************************
 
+
+# Display: Top two rows mixer
+#          bottm two for rows scales / Sequencer display
+
 import logging
 import traceback
 
@@ -221,18 +225,18 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
         self.pads_off() # akk pad leds off
         self.scales_set_pad_colors() # set LEDs for scale mode
-        self._display.clear()
+        # self._display.clear()
         scale_n_mode = self.scales.harmony_get_scale_name_with_mode()
         self._display.write_xy_mem(scale_n_mode, 0, 2)
         
-        btn_txt_row0 = "| ZynP1 | ZynP2  | ZynP3 | ZynP4 ||       |        | Scale | Mode  |"
+        #btn_txt_row0 = "| ZynP1 | ZynP2  | ZynP3 | ZynP4 ||       |        | Scale | Mode  |"
         # btn_txt_row1 = f"|   {chr(12)} {chr(11)} {chr(10)}  | {chr(9)} {chr(8)}  {chr(7)}  {chr(6)}    |       |       |"
-        btn_txt_row1 = "                                                                    "
+        #btn_txt_row1 = "                                                                    "
         btn_txt_row2 = "|modes here      |       |       ||   G#  |    A   |  A#   |   B   |"
         btn_txt_row3 = "|   C   |   C#   |   D   |   D#  ||   E   |    F   |  F#   |   G   |"
         
-        self._display.write_xy_mem(btn_txt_row0, 0, 0)
-        self._display.write_xy_mem(btn_txt_row1, 0, 1)
+        #self._display.write_xy_mem(btn_txt_row0, 0, 0)
+        #self._display.write_xy_mem(btn_txt_row1, 0, 1)
         self._display.write_xy_mem(btn_txt_row2, 0, 2)
         self._display.write_xy_mem(scale_n_mode, 0, 2) # Scale and scale over row2
         self._display.write_xy_mem(btn_txt_row3, 0, 3)
@@ -242,15 +246,16 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         # set up buttons
         for t in [ABL.BTN_OCTAVE_DOWN[1], ABL.BTN_OCTAVE_UP[1]]:
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_LIT)
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT)
 
     
     # Leaving scales mode: remove anything that is initailized
     def scales_cleanup(self): # set of any LED and display changes
         # cleadup display
-        btn_txt_row0 = "| ZynP1 | ZynP2 |  ZynP3 | ZynP4 ||       |        |       |       |"
+        #btn_txt_row0 = "| ZynP1 | ZynP2 |  ZynP3 | ZynP4 ||       |        |       |       |"
         btn_txt_row2 = "|       |       |        |       ||       |        |       |       |"
-        self._display.write_xy_mem(btn_txt_row0, 0, 0)
-        self._display.write_xy_mem(btn_txt_row2, 0, 1)
+        #self._display.write_xy_mem(btn_txt_row0, 0, 0)
+        # self._display.write_xy_mem(btn_txt_row2, 0, 1)
         self._display.write_xy_mem(btn_txt_row2, 0, 2)
         self._display.write_xy_mem(btn_txt_row2, 0, 3)
         self._display.update_screen()
@@ -263,6 +268,9 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                     ]
         for t in scale_buttons:
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.BI_LED_OFF) 
+        
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_SCALES[1], ABL.MONO_LED_LIT_BLINK)
+
         # set up buttons
         for t in [ABL.BTN_OCTAVE_DOWN[1], ABL.BTN_OCTAVE_UP[1]]:
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, t, ABL.MONO_LED_OFF)
@@ -485,40 +493,46 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
     #     # erg = "".ljust(int(value*10),"|").ljust(15)[:field_width]
     #     return erg 
     
-    def mixer_helper_write_to_knobx_fieldy(self, text: any, knob_x:int, field_y:int, as_bar:bool = False):
-        """writes to a specified place below a knob
-           knob_x is the knob from 0 to 7 (push_1 has 9 knobs, but nith has no display)
-           field_y is the row written to see consts: _MIXER_DISP_ROW_* 
-           text can be text or float value
-        """
-        if knob_x > 7:
-            knob_x = 7
-            logging.error("knob_x bigger 7 not implemented. Sum channel is directed to 7")
-        if isinstance(text, (int, float)): # when text of type float or int  change it to str
-            if as_bar: 
-                text = self.mixer_helper_float_to_ascii_Bar(text)
-            else:
-                text = str(text)
-            
-        fields_start_knobs  = [0,9, 17,26, 34,43,  51,60]
-        knobx_start = fields_start_knobs[knob_x]
-        text=text.ljust(8)[:8] # make text with minimal 10 and max 10 chars
-        self._display_mixer.write_xy_mem(text, knobx_start, field_y)        
+    #     def mixer_helper_write_to_knobx_fieldy(self, text: any, knob_x:int, field_y:int, as_bar:bool = False):
+    #         """writes to a specified place below a knob
+    #         knob_x is the knob from 0 to 7 (push_1 has 9 knobs, but nith has no display)
+    #         field_y is the row written to see consts: _MIXER_DISP_ROW_* 
+    #         text can be text or float value
+    #         """
+    #         logging.error ("Call deprcated")
+    #         sleep(3)
+    #         if knob_x > 7:
+    #             knob_x = 7
+    #             logging.error("knob_x bigger 7 not implemented. Sum channel is directed to 7")
+    #         if isinstance(text, (int, float)): # when text of type float or int  change it to str
+    #             if as_bar: 
+    #                 text = self.mixer_helper_float_to_ascii_Bar(text)
+    #             else:
+    #                 text = str(text)
+                
+    #         fields_start_knobs  = [0,9, 17,26, 34,43,  51,60]
+    #         knobx_start = fields_start_knobs[knob_x]
+    #         text=text.ljust(8)[:8] # make text with minimal 10 and max 10 chars
+    #         self._display_mixer.write_xy_mem(text, knobx_start, field_y)        
         
-    def mixer_helper_float_to_ascii_Bar(self, value:float):
-        fieldlen = 8
-        int_val = int(value * fieldlen) # val is 0.0 to 1.0. we want range 0-7
-        return "".ljust(int_val, chr(6)).ljust(fieldlen) # fill up with spaces to overwrite old values
+    # def mixer_helper_float_to_ascii_Bar(self, value:float):
+    #     fieldlen = 8
+    #     int_val = int(value * fieldlen) # val is 0.0 to 1.0. we want range 0-7
+    #     return "".ljust(int_val, chr(6)).ljust(fieldlen) # fill up with spaces to overwrite old values
 
     def mixer_init(self):
         """mixer display functions are called during start. 
            Mixer is main functionality, so it hast to be setup in intit _function
         """
         # create consts for mixer display
-        self.MIXER_DISP_ROW_VOLUME = 0
-        self.MIXER_DISP_ROW_BALANCE = 1
-        self.MIXER_DISP_ROW_3 = 2
-        self.MIXER_DISP_ROW_4 = 3
+        self.MIXER_DISP_ROW_VOLUME = 1
+        self.MIXER_DISP_ROW_BALANCE = 0
+        # NO Mixer has rows 1, 2 exclusiv. doesn't need more
+        # self.MIXER_DISP_ROW_3 = 2
+        # self.MIXER_DISP_ROW_4 = 3
+        
+        self.KNOB_VOLUME = ABL.KNOB_8
+        self._mixer_chains_bank = 0
             
         self._display_mixer = Feedback_Display(self.idev_out);
         self.mixer_set_dev_to_mixermode()
@@ -530,25 +544,25 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 
         # creat private mixer display
         
-        btn_txt_row0 = "| Ch 1 | Ch 2   | Ch 33 | Ch 4 || Ch 5  | Ch 6   | Ch 7  | Ch 8  |"
-        btn_txt_row1 = "        | This is the Mixer Display                                 "
-        btn_txt_row2 = f"|modes here   {chr(5)} {chr(6)} {chr(5)}{chr(6)}  |           |"
-        btn_txt_row3 = "|       |       |      |       ||       |        |       |       |"
+        btn_txt_row0 = "  Ch 1     Ch 2    Ch 3     Ch 4    Ch 5     Ch 6    Ch 7     Main  "
+        btn_txt_row1 = "                                                                    "
+        #btn_txt_row2 = f"|modes here   {chr(5)} {chr(6)} {chr(5)}{chr(6)}  |           |"
+        #btn_txt_row3 = "|       |       |      |       ||       |        |       |       |"
         
         btn_text_row2 = self._display_mixer.format_help
         
         self._display_mixer.write_xy_mem(btn_txt_row0, 0, 0)
-        self._display_mixer.write_xy_mem(btn_txt_row1, 0, 1)
-        self._display_mixer.write_xy_mem(btn_txt_row2, 0, 2)
-        self._display_mixer.write_xy_mem( "Volume Mode".ljust(20)[:15], 0, 2 ) # Mode of knobs
-        self._display_mixer.write_xy_mem(btn_txt_row3, 0, 3)
+        # self._display_mixer.write_xy_mem(btn_txt_row1, 0, 1)
+        # self._display_mixer.write_xy_mem(btn_txt_row2, 0, 2)
+        # self._display_mixer.write_xy_mem( "Volume Mode".ljust(20)[:15], 0, 2 ) # Mode of knobs
+        # self._display_mixer.write_xy_mem(btn_txt_row3, 0, 3)
         self._display_mixer.update_screen()
         
-        # paint into tha test data
-        ch1_level = self.zynmixer.zctrls[0]['level'].get_value() # is this a set level or the real sound lovel
-        ch1_level_bar = self.mixer_helper_float_to_ascii_Bar(ch1_level)
-        first_knob_nr = 0
-        self.mixer_helper_write_to_knobx_fieldy(ch1_level_bar,  first_knob_nr, self.MIXER_DISP_ROW_VOLUME)
+        # # paint into test data
+        # ch1_level = self.zynmixer.zctrls[0]['level'].get_value() # is this a set level or the real sound lovel
+        # ch1_level_bar = self.mixer_helper_float_to_ascii_Bar(ch1_level)
+        # first_knob_nr = 0
+        # self._display_mixer.write_to_knobx_mem(ch1_level_bar,  first_knob_nr, self.MIXER_DISP_ROW_VOLUME)
                
         self._display_mixer.update_screen()# send display_data to display
 
@@ -568,8 +582,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 if c[:5] == "chan_":
                     chan_nr = int(c[5:7])
                     ch_level = self.zynmixer.zctrls[chan_nr]['level'].get_value() # we use level from here, so we no field exists
-                    ch_level_bar = self.mixer_helper_float_to_ascii_Bar(ch_level)
-                    self.mixer_helper_write_to_knobx_fieldy(ch_level_bar, chan_nr, self.MIXER_DISP_ROW_VOLUME)
+                    # ch_level_bar = self._display_mixer. mixer_helper_float_to_ascii_Bar(ch_level)
+                    self._display_mixer.write_to_knobx_mem(ch_level, chan_nr, self.MIXER_DISP_ROW_VOLUME, as_bar = True)
 
                     # write names
                     # Check if chain exists
@@ -599,6 +613,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         chan - Mixer strip index
         symbol - Control name
         value - Control value
+        we use just volume
         """
         
         try:
@@ -606,32 +621,53 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
                 case 'level':
                     if chan > 7: 
                         chan = 7
-                    self.mixer_helper_write_to_knobx_fieldy(value, chan, self.MIXER_DISP_ROW_VOLUME, as_bar=True)
+                    self._display_mixer.write_to_knobx_mem(value, chan, self.MIXER_DISP_ROW_VOLUME, as_bar=True)
                     self._display_mixer.update_screen()
                     return  # Wichtig: Return nach erfolgreicher Verarbeitung!
                 
                 case 'balance': 
-                    # Implementierung für balance
+                    # # Implementierung für balance
+                    # self._display_mixer.write_to_knobx_mem("<balance>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # self._display_mixer.update_screen()
                     pass
                 
                 case 'mute':
-                    # Implementierung für mute
-                    pass
+                    # # Implementierung für mute
+                    # if value == 1:
+                    #     self._display_mixer.write_to_knobx_mem("<muted>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # else:
+                    #     self._display_mixer.write_to_knobx_mem("<unmuted>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # self._display_mixer.update_screen()
+                    pass # update bar display
                 
                 case 'solo':
                     # Implementierung für solo
+                    # if value == 1:
+                    #     self._display_mixer.write_to_knobx_mem("<solo>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # else:
+                    #     self._display_mixer.write_to_knobx_mem("<unsolo>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # self._display_mixer.update_screen()
                     pass
                 
                 case 'mono':
-                    # Implementierung für mono
+                    # # Implementierung für mono
+                    # if value:
+                    #     self._display_mixer.write_to_knobx_mem("<mono>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # else:
+                    #     self._display_mixer.write_to_knobx_mem("<unmono>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # self._display_mixer.update_screen()
                     pass
                 
-                case 'm+s': # Mono / Stereo
-                    # Implementierung für m+s
+                case 'm+s': # Mono / Stereo ??? what does that mean
+                    # # Implementierung für m+s
+                    # self._display_mixer.write_to_knobx_mem("<m+s>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # self._display_mixer.update_screen()
                     pass
                 
                 case 'phase':
-                    # Implementierung für phase
+                    # # Implementierung für phase
+                    # self._display_mixer.write_to_knobx_mem("<phase>", chan, self.MIXER_DISP_ROW_VOLUME)
+                    # self._display_mixer.update_screen()
                     pass
                 
                 case _:
@@ -647,12 +683,60 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
         except Exception as e:
             logging.error(f"Error in update_mixer_strip: {e}")
             logging.exception(traceback.format_exc())
+    
+    
         
     def process_mixer_event(self, ev) -> bool:
+        # turning knob changes now volume from chanel
+        
+        if len(ev) != 3: return # we meed 3 bytes
+        
+        # Set Mixer Level from KNOBS 1 to 8
+        search_knob = [ev[0], ev[1]]
+        if search_knob in [ABL.KNOB_1, ABL.KNOB_2, ABL.KNOB_3, ABL.KNOB_4,
+                     ABL.KNOB_5, ABL.KNOB_6, ABL.KNOB_7, ABL.KNOB_8
+                     ]:
+                return self._update_control("level", ev, 0, 100)
+                
+            
         #self.zyn
         #self.zynmixer.setlevel()
         pass
     
+    
+    def _update_control(self, type:str, ev:bytes, minv, maxv):
+        ccnum = ev[1] & 0x7F
+        ccval = ev[2] & 0x7F
+        # if self.shift:
+        #     # Only main chain is handled with SHIFT, ignore the rest
+        #     if ev[:2] == bytes(self.KNOB_VOLUME):
+        #         return False
+        #     mixer_chan = 255 # is mixer mains volume
+        if ev[:2] == bytes(self.KNOB_VOLUME): # detect mains knob
+            mixer_chan = 255 
+        else:
+            # _chains_bank shifts the knob to the visual bank in mixer panel
+            index = (ccnum - ABL.KNOB_1[1]) + self._mixer_chains_bank * 8
+            chain = self.chain_manager.get_chain_by_index(index)
+            if chain is None or chain.chain_id == 0:
+                return False
+            mixer_chan = chain.mixer_chan
+
+        if type == "level":
+            value = self.zynmixer.get_level(mixer_chan) # get value
+            set_value = self.zynmixer.set_level # get function belonging to that chain
+        elif type == "balance":
+            value = self.zynmixer.get_balance(mixer_chan)
+            set_value = self.zynmixer.set_balance # get function belonging to that chain
+        else:
+            return False
+
+        # NOTE: knobs are encoders, not pots (so ccval is relative)
+        value *= 100 #  translat value 0.0 .. 1..     to 0.0 .. 100.0
+        value += ccval if ccval < 64 else ccval - 128 # translate knob values to plus or minus valus and add
+        value = max(minv, min(value, maxv)) # check and set range
+        set_value(mixer_chan, value / 100) # move val back to 0..1 range # use saved function to set chains target
+        return True
     
 ###                END of Mixer functions.                            ###
 #########################################################################
@@ -873,7 +957,7 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
             match new_mode:
                 case self.DEV_MODE_MIXER:
                     # init mixer
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_VOLUME[1], ABL.MONO_LED_LIT_BLINK)
+                    # lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, ABL.BTN_VOLUME[1], ABL.MONO_LED_LIT_BLINK)
                     return self.mixer_set_dev_to_mixermode()
                     
                 case self.DEV_MODE_PAD:
@@ -1102,7 +1186,8 @@ class zynthian_ctrldev_ableton_push_1(zynthian_ctrldev_zynpad, zynthian_ctrldev_
 # ------------------------------------------------------------------------------
 
 
-
+#####################################################################################
+#### Special Class for Ableton Pushh 1 Display
 
 class Feedback_Display:
     
@@ -1122,8 +1207,8 @@ class Feedback_Display:
     DISP_HORIZONTAL_LINE_LOW               =  95  # _ (U+005F) Lowbar
     DISP_HOIZONTAL_LINE_SPLIT              =  6   # ╌ (U+254C) LIGHT DOUBLE DASH HORIZONTAL
 
-    DISP_VERTICAL_LINE_AND_HORIZONTAL_LINE =  3   # ┤ (U+2524)
-    DISP_HORIZONTAL_LINE_AND_VERTICAL_LINE =  4   # ├ (U+251C)
+    DISP_VERTICAL_LINE_AND_HORIZONTAL_LINE =  3    # ├ (U+251C)
+    DISP_HORIZONTAL_LINE_AND_VERTICAL_LINE =  4    # ┤ (U+2524)
 
     DISP_VERTICAL_LINES_TWO                =  5   # ║ (U+2551)
     DISP_VERTICAL_LINE_MID                 =  174 # | (U+007C)
@@ -1287,6 +1372,36 @@ class Feedback_Display:
         self._disp_line_dirty[row_in] = True
         # self.update()
         return
+    
+    
+    def write_to_knobx_mem(self, text: any, knob_x:int, row_y:int, as_bar:bool = False):
+        """writes to a specified place below a knob
+           knob_x is the knob from 0 to 7 (push_1 has 9 knobs, but nith has no display)
+           field_y is the row written to see consts: _MIXER_DISP_ROW_* 
+           text can be text or float value
+        """
+        if knob_x > 7:
+            knob_x = 7
+            logging.error("program error: knob_x bigger 7 not implemented. Sum channel is directed to 7")
+        
+        if isinstance(text, (int, float)): # when text of type float or int  change it to str
+            # text contains float or int
+            if as_bar: 
+                # create an ascii bar representation
+                fieldlen = 8
+                if float(text) == 0.0: text = "<off>".ljust(fieldlen) # 0 vals as "off"
+                else:
+                    int_val = int(text * fieldlen) # val is 0.0 to 1.0. we want range 0-7
+                    if int_val == 0: text=".".ljust(fieldlen) # if minimal signal show a dot
+                    else: text = "".ljust(int_val, chr(self.DISP_VERTICAL_LINES_TWO)).ljust(fieldlen) # fill up with spaces to overwrite old values   
+            else:
+                text = str(text).ljust(fieldlen)
+            
+        fields_start_knobs  = [0,9, 17,26, 34,43,  51,60]
+        knobx_start = fields_start_knobs[knob_x]
+        text=text.ljust(8)[:8] # make text with minimal 10 and max 10 chars
+        self.write_xy_mem(text, knobx_start, row_y)        
+     
         
     def contrast (self, i=None) -> int:
         """
