@@ -1,5 +1,67 @@
 #!/zynthian/venv/bin/python
 
+# ******************************************************************************
+# ZYNTHIAN PROJECT: Zynthian Control Device Driver
+#
+# Zynthian Control Device Driver for "Ableton Push 1"
+#
+# Copyright (C) 2025 Brumby 
+#
+# ******************************************************************************
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# For a full copy of the GNU General Public License see the LICENSE.txt file.
+#
+# ******************************************************************************
+
+
+# how to use this Class minimalistic
+#
+"""
+   scales = Harmony()  # set pad array
+   scales.init_scale() # set scales, modes, etc
+   
+   pushed_pad_nr = 5
+   target_note = scales.harmony_get_target_note(pushed_pad_nr)
+   
+   ### send this target_note as note_on_event. See REMARK
+"""
+### REMARK
+### a self programmed driver doesn'send anymore  note_on events down the line.
+# drivers are intended as control drivers for zynthian divices not any more for sound genarating
+# I think there was a latency problem with keyboard drivers. 
+# I use following hack on  PI 4 and it seams to work for me. 
+# One (?) possible way is to send your new events with zynseq.libseq.sendMidiCommand 
+"""
+# EXAMPLE HERE:
+### solution to send new events down the chain comes from niels in Zynthian forum
+   def _forward_new_midi_event(self, ev):
+        
+        # get selected chain in mixer 
+        chain = self.chain_manager.get_active_chain()            .
+        
+        # is it midi chain
+        if chain.midi_chan is None: # is it a midi chain?
+            return False
+        
+        # set up vars
+        status = (ev[0] & 0xF0) | chain.midi_chan
+        self.zynseq.libseq.sendMidiCommand(status, ev[1], ev[2])
+        return True # work is done.  main event can start over and get a new midi event.
+     """
+
+
+### START OF LIBRARY
+
 import logging
 
 # Do not change. Only if this file is started directly from console
@@ -67,6 +129,7 @@ class Harmony:
       self.must_redraw_led_colors = False
       self._lock = 0
 
+   # helper functions
    def is_initialized(self):
       if self.target_notes == []: return False
       if self.target_notes_reverse == {}: return False
@@ -78,7 +141,9 @@ class Harmony:
    
    def must_reset_led_colors(self) -> bool:
       return self.must_redraw_led_colors
-      
+   
+   # here setup for scale and mode with defaults. 
+   # can be caled as scales = init_scale()   
    def init_scale(self, 
                      tonic: int         = 0,       # (C) semitone distance counted from from C = 0
                      mode_name: str     = "Major",  # mode as str. look in _SCALES 
