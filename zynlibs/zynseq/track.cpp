@@ -175,38 +175,43 @@ SEQ_EVENT* Track::getEvent() {
         // Have not yet started to interpolate value => process start value
         if (m_nEventValue == -1) {
             // Note Play Chance
-            int playChance = int(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
-            if (playChance < RAND_MAX && playChance < rand()) {
-                m_nEventValue = pEvent->getValue2end();
-                seqEvent.msg.command = 0xFE;
-                return &seqEvent;
-            }
+            if (nCommand == MIDI_NOTE_ON) {
+				int playChance = int(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
+				if (playChance < RAND_MAX && playChance < rand()) {
+					m_nEventValue = pEvent->getValue2end();
+					seqEvent.msg.command = 0xFE;
+					return &seqEvent;
+				}
+			}
             // Start interpolation
             m_nEventValue = pEvent->getValue2start();
             // Recorded Offset (fraction of step => float)
             m_fEventOffset = pEvent->getOffset();
-            // Real-time quantization (step quantization
-            uint8_t qn = pPattern->getQuantizeNotes();
-            if (qn > 0) {
-            	// Quantize to step boundary
-            	//if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
-            	//else m_fEventOffset = 0.0;
-            	// Quantize to step fraction boundary (1/qn => 1/2, 1/3, 1/4, 1/6, 1/8, ...)
-            	float m = m_fEventOffset * qn;
-            	uint8_t mi = (int)m;
-            	if ((m - mi) > 0.5) m_fEventOffset = (float)(mi + 1) / qn;
-            	else m_fEventOffset = (float)mi / qn;
+            // Notes => Quantization, swing & time humanization
+            if (nCommand == MIDI_NOTE_ON) {
+				// Real-time quantization (step quantization
+				uint8_t qn = pPattern->getQuantizeNotes();
+				if (qn > 0) {
+					// Quantize to step boundary
+					//if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
+					//else m_fEventOffset = 0.0;
+					// Quantize to step fraction boundary (1/qn => 1/2, 1/3, 1/4, 1/6, 1/8, ...)
+					float m = m_fEventOffset * qn;
+					uint8_t mi = (int)m;
+					if ((m - mi) > 0.5) m_fEventOffset = (float)(mi + 1) / qn;
+					else m_fEventOffset = (float)mi / qn;
+				}
+				// Swing => Add to offset
+				uint32_t swingDiv = pPattern->getSwingDiv();
+				float swingAmount = pPattern->getSwingAmount();
+				if ((m_nNextStep + swingDiv) % (2 * swingDiv) == 0) {
+					m_fEventOffset += swingAmount;
+				}
+				// Time humanization => Add to offset
+				float humanTime = pPattern->getHumanTime();
+				if (humanTime > 0.0)
+					m_fEventOffset += humanTime * d(gen);
 			}
-            // Swing => Add to offset
-            uint32_t swingDiv = pPattern->getSwingDiv();
-            float swingAmount = pPattern->getSwingAmount();
-            if ((m_nNextStep + swingDiv) % (2 * swingDiv) == 0) {
-                m_fEventOffset += swingAmount;
-            }
-            // Time humanization => Add to offset
-            float humanTime = pPattern->getHumanTime();
-            if (humanTime > 0.0)
-                m_fEventOffset += humanTime * d(gen);
             // Calculate event scheduled time
             seqEvent.time = m_nLastClockTime + m_fEventOffset * pPattern->getClocksPerStep() * m_dSamplesPerClock;
             // Reset Stutter and Interpolation counters
