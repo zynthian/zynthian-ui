@@ -344,9 +344,8 @@ class MultiTouch(object):
 
             if event._type == MultitouchTypes.MULTI_PRESS:
                 # Find a widget for the touch event
-                try:
-                    event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
-                except:
+                event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
+                if event.widget is None:
                     gui_obj = zynthian_gui_config.zyngui.get_current_screen_obj()
                     if isinstance(gui_obj, tkinter.Frame):
                         event.widget = gui_obj

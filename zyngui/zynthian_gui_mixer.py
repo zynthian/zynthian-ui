@@ -1182,7 +1182,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
                 zynsigman.unregister(
                     zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
-
+                zynsigman.unregister(
+                    zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
+                zynsigman.unregister(
+                    zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
             super().hide()
 
     def build_view(self):
@@ -1226,6 +1229,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
             zynsigman.register_queued(
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
+            zynsigman.register_queued(
+                zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
+            zynsigman.register_queued(
+                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
         return True
 
     def update_layout(self):
@@ -1319,6 +1326,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         self.main_canvas.itemconfig(strip.pedals[index], state=tkinter.HIDDEN)
         except Exception as e:
             logging.warning(e)
+
+    def midi_pc_cb(self, izmip, chan, num):
+        if zynthian_gui_config.midi_prog_change_zs3:
+            return
+        for strip in self.visible_mixer_strips:
+            if strip.chain and strip.chain.midi_chan == chan:
+                strip.draw_fader()
 
     def cb_load_zs3(self, zs3_id):
         self.refresh_visible_strips()
