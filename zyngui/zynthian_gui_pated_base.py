@@ -63,8 +63,10 @@ EDIT_MODE_HISTORY = 4  # Edit history mode (undo/redo)
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
 # List of quantization divisors
-QUANTIZATION_DIVISORS = [0, 1, 2, 3, 4, 6, 8]
-QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step", "1/6 step", "1/8 step"]
+QUANTIZATION_DIVISORS = [0, 1, 2, 3]
+QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step"]
+#QUANTIZATION_DIVISORS = [0, 1, 2, 3, 4, 6, 8]  # This has not sense due to the current 24 ppq clock resolution
+#QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step", "1/6 step", "1/8 step"]
 # List of available MIDI channels
 INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
 
@@ -99,7 +101,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.pattern = 0  # Pattern to edit
         self.sequence = 0  # Sequence used for pattern editor sequence player
         self.channel = 0
-        self.seq_info = None # Launcher sequence info - None to use scene 0xffff, sequence 0
+        self.seq_info = None  # Launcher sequence info - None to use scene 0xffff, sequence 0
+        self.last_menu_options = {}  # Last menu options (indexes) saved for each pattern. May be dirty, but we want good UX ;-)
 
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
@@ -338,14 +341,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             options['Grid zoom'] = 'Grid zoom'
         if extra_options:
             options['Tempo'] = 'Tempo'
-        menu_options["GLOBAL"] = options
+        if options:
+            menu_options["GLOBAL"] = options
         # Sequence options
         if self.seq_info:
             options = {}
             repeat = self.seq_info["repeat"]
             follow_action = self.seq_info["follow_action"]
             follow_param = self.seq_info["follow_param"]
-
             # TODO: Configure start and stop modes
             if repeat > 0:
                 if follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
@@ -358,9 +361,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                         options[f"Play mode (PLAY {repeat} TIMES)"] = "Playmode"
             else:
                 options["Follow action (DISABLED)"] = "Playmode"
-
             name = self.zynseq.get_sequence_name(self.scene, self.sequence)
             options[f"Name ({name})"] = 'Rename sequence'
+            program_change = self.zynseq.libseq.getProgramChange(0)
+            if program_change > 127:
+                program_change = "None"
+            options[f"Program Change ({program_change})"] = 'Program Change'
             menu_options['SEQUENCE'] = options
         # Pattern Options
         options = {}
@@ -385,10 +391,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         menu_options['PATTERN OPTIONS'] = options
         # Pattern Edit
         options = {}
-        program_change = self.zynseq.libseq.getProgramChange(0)
-        if program_change > 127:
-            program_change = "None"
-        options[f"Program Change ({program_change})"] = 'Program change'
         if extra_options:
             if self.zynseq.libseq.isMidiRecord():
                 options['\u2612 Record from MIDI'] = 'Record MIDI'
@@ -412,7 +414,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         for subtitle, subopts in menu_options.items():
             options[f"> {subtitle}"] = None
             options.update(subopts)
-        self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb)
+        self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb, index=self.get_last_menu_option())
         self.zyngui.show_screen('option')
 
     def toggle_menu(self):
@@ -421,7 +423,17 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif self.zyngui.current_screen == "option":
             self.zyngui.close_screen()
 
+    def save_last_menu_option(self):
+        self.last_menu_options[self.pattern] = self.zyngui.screens['option'].index
+
+    def get_last_menu_option(self):
+        try:
+            return self.last_menu_options[self.pattern]
+        except:
+            return 0
+
     def menu_cb(self, option, params):
+        #self.save_last_menu_option() => Include this in children classes
         match params:
             case 'Grid zoom':
                 self.enable_param_editor(self, 'zoom', {'name': 'Zoom', 'value_min': 1, 'value_max': 64,
@@ -460,21 +472,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100,
                                                               'value': int(100.0 * self.zynseq.libseq.getHumanTime()),
                                                               'value_default': 0})
-            case 'Program change':
-                program = self.zynseq.libseq.getProgramChange(0) + 1
-                if program > 128:
-                    program = 0
-                labels = ["None"]
-                for i in range(128):
-                    labels.append(f"{i}")
-                self.enable_param_editor(
-                    self,
-                    'prog_change',
-                    {
-                        'name': 'Program',
-                        'labels': labels,
-                        'value': program
-                    }, self.add_program_change)
             case 'Record MIDI':
                 self.toggle_midi_record()
             case 'Copy pattern':
@@ -514,6 +511,21 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             case "Rename sequence":
                 name = self.zynseq.get_sequence_name(self.scene, self.sequence)
                 self.zyngui.show_keyboard(self.rename_sequence, name, 8)
+            case 'Program Change':
+                program = self.zynseq.libseq.getProgramChange(0) + 1
+                if program > 128:
+                    program = 0
+                labels = ["None"]
+                for i in range(128):
+                    labels.append(f"{i}")
+                self.enable_param_editor(
+                    self,
+                    'prog_change',
+                    {
+                        'name': 'Program',
+                        'labels': labels,
+                        'value': program
+                    }, self.add_program_change)
 
     def send_controller_value(self, zctrl):
         match zctrl.symbol:

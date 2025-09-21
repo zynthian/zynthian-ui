@@ -93,6 +93,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         return menu_options
 
     def menu_cb(self, option, params):
+        self.save_last_menu_option()
         match params:
             case 'Interpolate CC OFF':
                 self.zynseq.libseq.setInterpolateCC(self.cc_num, False)

@@ -48,9 +48,7 @@ EDIT_PARAM_OFFSET = 2  # Edit event offset
 EDIT_PARAM_STUT_CNT = 3  # Edit note stutter count
 EDIT_PARAM_STUT_DUR = 4  # Edit note stutter duration
 EDIT_PARAM_CHANCE = 5  # Edit note play chance
-EDIT_PARAM_CHORD_MODE = 6  # Edit chord entry mode
-EDIT_PARAM_CHORD_TYPE = 7  # Edit chord type
-EDIT_PARAM_LAST = 7  # Index of last parameter
+EDIT_PARAM_LAST = 5  # Index of last parameter
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 SCALES = {
@@ -197,12 +195,19 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         menu_options['PATTERN OPTIONS'].update(options)
         # Pattern Edit
         options = {}
-        options[f"Clear pattern notes"] = 'Clear pattern notes'
+        options[f"Chord mode ({CHORD_MODES[self.chord_mode]})"] = 'Chord mode'
+        if self.chord_mode == 1:
+            options[f"Chord type ({CHORDS[self.chord_type][0]})"] = 'Chord type'
+        elif self.chord_mode >= 2:
+            options[f"Diatonic key ({NOTE_NAMES[self.diatonic_scale_tonic]})"] = 'Chord type'
         options['Transpose pattern'] = 'Transpose pattern'
-        menu_options['PATTERN EDIT'].update(options)
+        options.update(menu_options['PATTERN EDIT'])
+        options['Clear pattern notes'] = 'Clear pattern notes'
+        menu_options['PATTERN EDIT'] = options
         return menu_options
 
     def menu_cb(self, option, params):
+        self.save_last_menu_option()
         match params:
             case 'Velocity Humanization':
                 self.enable_param_editor(self, 'human_velo', {'name': 'Velocity Humanization', 'value_min': 0,
@@ -228,9 +233,20 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 if value > 128:
                     value = 0
                 self.enable_param_editor(self, 'rest', {'name': 'Rest', 'labels': labels, 'value': value})
+            case 'Chord mode':
+                self.enable_param_editor(self, 'chord_mode', {'name': 'Chord mode', 'labels': CHORD_MODES,
+                                                              'value': self.chord_mode})
+            case 'Chord type':
+                if self.chord_mode == 1:
+                    self.enable_param_editor(self, 'chord_type', {'name': 'Chord type',
+                                                                  'labels': [item[0] for item in CHORDS],
+                                                                  'value': self.chord_type})
+                elif self.chord_mode >= 2:
+                    self.enable_param_editor(self, 'diatonic_key', {'name': 'Diatonic key', 'labels': NOTE_NAMES,
+                                                                    'value': self.diatonic_scale_tonic})
             case 'Transpose pattern':
-                self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1,
-                                                             'labels': ['down', 'down/up', 'up'], 'value': 0})
+                    self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1,
+                                                                 'labels': ['down', 'down/up', 'up'], 'value': 0})
             case 'Clear pattern notes':
                 self.clear_pattern_notes()
             case _:
@@ -254,6 +270,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     self.zynseq.libseq.setInputRest(128)
                 else:
                     self.zynseq.libseq.setInputRest(zctrl.value - 1)
+            case 'chord_mode':
+                self.chord_mode = zctrl.value
+            case 'chord_type':
+                self.chord_type = zctrl.value
+            case 'diatonic_key':
+                self.diatonic_scale_tonic = zctrl.value
             case _:
                 super().send_controller_value(zctrl)
 
@@ -1135,15 +1157,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
             elif self.edit_param == EDIT_PARAM_CHANCE:
                 self.set_title(f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}%")
-            elif self.edit_param == EDIT_PARAM_CHORD_MODE:
-                self.set_title(f"Chord mode: {CHORD_MODES[self.chord_mode]}")
-            elif self.edit_param == EDIT_PARAM_CHORD_TYPE:
-                if self.chord_mode == 0:
-                    self.set_title(f"Chord type: Single note")
-                elif self.chord_mode == 1:
-                    self.set_title(f"Chord type: {CHORDS[self.chord_type][0]}")
-                else:
-                    self.set_title(f"Diatonic key: {NOTE_NAMES[self.diatonic_scale_tonic]}")
 
         self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
                              (f"ZYNPOT {zynpot},+1", f"+{delta}"),
@@ -1181,11 +1194,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     if sel_duration:
                         sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
                         sel_offset = self.zynseq.libseq.getNoteOffset(step, note)
-                        self.add_chord(step, self.selected_cell[1], sel_velocity, duration, sel_offset)
+                        self.add_note_event(step, index, sel_velocity, duration, sel_offset)
+                        #self.add_chord(step, index, sel_velocity, duration, sel_offset)
                     else:
                         self.duration = duration
                         self.select_cell()
-                    self.set_edit_title()
+                self.set_edit_title()
             elif self.edit_mode == EDIT_MODE_ALL:
                 if self.edit_param == EDIT_PARAM_DUR:
                     self.zynseq.libseq.changeDurationAll(dval * 0.1)
@@ -1265,22 +1279,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = 100
                     self.zynseq.libseq.setNotePlayChance(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
-                elif self.edit_param == EDIT_PARAM_CHORD_MODE:
-                    self.chord_mode += dval
-                    if self.chord_mode < 0:
-                        self.chord_mode = 0
-                    elif self.chord_mode > 5:
-                        self.chord_mode = 5
-                elif self.edit_param == EDIT_PARAM_CHORD_TYPE:
-                    if self.chord_mode == 1:
-                        self.chord_type += dval
-                        if self.chord_type < 0:
-                            self.chord_type = 0
-                        if self.chord_type > len(CHORDS) - 1:
-                            self.chord_type = len(CHORDS) - 1
-                    elif self.chord_mode > 1:
-                        self.diatonic_scale_tonic += dval
-                        self.diatonic_scale_tonic %= len(NOTE_NAMES)
                 self.set_edit_title()
             elif self.edit_mode == EDIT_MODE_ALL:
                 if self.edit_param == EDIT_PARAM_DUR:
@@ -1308,8 +1306,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     self.edit_param = 0
                 if self.edit_param > EDIT_PARAM_LAST:
                     self.edit_param = EDIT_PARAM_LAST
-                if self.edit_param == EDIT_PARAM_CHORD_TYPE and self.chord_mode == 0:
-                    self.edit_param = EDIT_PARAM_CHORD_MODE
                 self.set_edit_title()
             elif self.edit_mode == EDIT_MODE_ZOOM:
                 self.set_grid_zoom(self.zoom + dval)
