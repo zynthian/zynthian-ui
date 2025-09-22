@@ -1387,13 +1387,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Higlights active chain, redrawing strips if required
         """
         if chain_id is None:
-            try:
-                active_index = self.chain_manager.ordered_chain_ids.index(
-                    self.chain_manager.active_chain_id)
-            except:
-                active_index = 0
-        else:
-            active_index = chain_id
+            chain_id = self.chain_manager.active_chain_id
+        try:
+            active_index = self.chain_manager.ordered_chain_ids.index(chain_id)
+        except:
+            active_index = 0
         if active_index < self.mixer_strip_offset:
             self.mixer_strip_offset = active_index
             refresh = True
@@ -1932,10 +1930,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.update_active_chain(strip.chain_id)
         refresh_strips = False
         offset = self.launcher_offset
+        # This could be simplified, but it works ;-)
         if offset > scene:
             offset = min(scene, self.zynseq.scenes - zynthian_gui_config.visible_launchers)
         elif offset <= scene - zynthian_gui_config.visible_launchers:
             offset = max(0, scene - zynthian_gui_config.visible_launchers + 1)
+        if offset > self.zynseq.scenes - zynthian_gui_config.visible_launchers:
+            offset = max(0, self.zynseq.scenes - zynthian_gui_config.visible_launchers)
         if self.launcher_offset != offset:
             self.launcher_offset = offset
             refresh_strips = True
