@@ -46,6 +46,8 @@ class zynthian_ctrldev_base:
     dev_pated = False		# Can act as a pattern editor device
     enabled = False			# True if device driver is enabled
     # True if input device must be unrouted from chains when driver is loaded
+    # Alternately specific MIDI channels can be unrouted by specifying a bitwise mask,
+    # For instance, use "0b0000000000001111" to unroute MIDI channels 0 to 3.
     unroute_from_chains = True
 
     driver_name = None
