@@ -145,6 +145,8 @@ class zynthian_ctrldev_manager():
                     lib_zyncore.zmip_set_ui_midi_chans(izmip, 0xF)
                 elif isinstance(driver.unroute_from_chains, int):
                     lib_zyncore.zmip_set_ui_midi_chans(izmip, driver.unroute_from_chains)
+            else:
+                lib_zyncore.zmip_set_ui_midi_chans(izmip, 0)
             # Initialize the driver after creating the instance to enable driver MIDI handler
             driver.init()  # TODO: Why not call this in the driver _init_()?
             self.drivers[izmip] = driver

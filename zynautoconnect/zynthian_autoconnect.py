@@ -597,18 +597,26 @@ def midi_autoconnect():
                     devnum = i
                     devices_in[devnum] = hwsp
                     new_idev.append(i)
-                    logger.debug(
-                        f"Connected MIDI-in device {devnum}: {hwsp.name}")
+                    logger.debug(f"Connected MIDI-in device {devnum}: {hwsp.name}")
                     break
         if devnum is not None:
-            required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
+            try:
+                mididings_cname = state_manager.ctrldev_manager.drivers[i].mididings_client_name
+            except:
+                mididings_cname = None
+            # Connect ctrldev driver's mididing module between input device and zmip
+            if mididings_cname:
+                required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{mididings_cname}:out_1")
+                required_routes[f"{mididings_cname}:in_1"].add(hwsp.name)
+            # Connect input device to zmip directly
+            else:
+                required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
             busy_idevs.append(devnum)
 
-    # Delete disconnected input devices from list and unload driver
     for i in range(0, max_num_devs):
+        # Delete disconnected input devices from list and unload driver
         if i not in busy_idevs and devices_in[i] is not None:
-            logger.debug(
-                f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
+            logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
             devices_in[i] = None
             state_manager.ctrldev_manager.unload_driver(i)
 
@@ -627,8 +635,7 @@ def midi_autoconnect():
                     devnum = i
                     devices_out[devnum] = hwdp
                     devices_out_name[devnum] = hwdp.aliases[0]
-                    logger.debug(
-                        f"Connected MIDI-out device {devnum}: {hwdp.name}")
+                    logger.debug(f"Connected MIDI-out device {devnum}: {hwdp.name}")
                     break
         if devnum is not None:
             required_routes[hwdp.name].add(f"ZynMidiRouter:dev{devnum}_out")
@@ -637,8 +644,7 @@ def midi_autoconnect():
     # Delete disconnected output devices from list
     for i in range(0, max_num_devs):
         if i not in busy_odevs and devices_out[i] is not None:
-            logger.debug(
-                f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
+            logger.debug(f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
             devices_out[i] = None
             devices_out_name[i] = None
 
@@ -661,8 +667,7 @@ def midi_autoconnect():
                         routes[proc.engine.get_jackname()] = route
 
         for dst_name in routes:
-            dst_ports = jclient.get_ports(
-                re.escape(dst_name), is_input=True, is_midi=True)
+            dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
             if not dst_ports:
                 # Try to get destiny port by alias
                 try:
@@ -671,22 +676,18 @@ def midi_autoconnect():
                     pass
             if dst_ports:
                 for src_name in routes[dst_name]:
-                    src_ports = jclient.get_ports(
-                        src_name, is_output=True, is_midi=True)
+                    src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
                     if src_ports:
-                        required_routes[dst_ports[0].name].add(
-                            src_ports[0].name)
+                        required_routes[dst_ports[0].name].add(src_ports[0].name)
 
         # Add chain MIDI outputs
         if chain.midi_slots and chain.midi_thru:
             dests = []
             for out in chain.midi_out:
                 if out in chain_manager.chains:
-                    chain_midi_first_procs = chain_manager.get_processors(
-                        out, "MIDI Tool", 0)
+                    chain_midi_first_procs = chain_manager.get_processors(out, "MIDI Tool", 0)
                     if not chain_midi_first_procs:
-                        chain_midi_first_procs = chain_manager.get_processors(
-                            out, "Synth", 0)
+                        chain_midi_first_procs = chain_manager.get_processors(out, "Synth", 0)
                     for processor in chain_midi_first_procs:
                         for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
                             dests.append(dst.name)
@@ -705,8 +706,7 @@ def midi_autoconnect():
                 f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
             if src_ports:
                 for dst_proc in chain.get_processors(slot=0):
-                    dst_ports = jclient.get_ports(
-                        dst_proc.get_jackname(True), is_midi=True, is_input=True)
+                    dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
                     if dst_ports:
                         src = src_ports[0]
                         dst = dst_ports[0]
@@ -715,8 +715,7 @@ def midi_autoconnect():
     # Add zynseq to MIDI input devices
     idev = state_manager.get_zmip_step_index()
     if devices_in[idev] is None:
-        src_ports = jclient.get_ports(
-            "zynseq:output", is_midi=True, is_output=True)
+        src_ports = jclient.get_ports("zynseq:output", is_midi=True, is_output=True)
         if src_ports:
             devices_in[idev] = src_ports[0]
             update_midi_port_aliases(src_ports[0])
@@ -726,8 +725,7 @@ def midi_autoconnect():
     # Add SMF player to MIDI input devices
     idev = state_manager.get_zmip_seq_index()
     if devices_in[idev] is None:
-        src_ports = jclient.get_ports(
-            "zynsmf:midi_out", is_midi=True, is_output=True)
+        src_ports = jclient.get_ports("zynsmf:midi_out", is_midi=True, is_output=True)
         if src_ports:
             devices_in[idev] = src_ports[0]
             update_midi_port_aliases(src_ports[0])
@@ -749,8 +747,7 @@ def midi_autoconnect():
     for proc in chain_manager.processors.values():
         try:
             if proc.engine.options["ctrl_fb"]:
-                ports = jclient.get_ports(proc.get_jackname(
-                    True), is_midi=True, is_output=True)
+                ports = jclient.get_ports(proc.get_jackname(True), is_midi=True, is_output=True)
                 required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
                 ctrl_fb_procs.append(proc)
                 # logging.debug(f"Routed controller feedback from {proc.get_jackname(True)}")
@@ -848,8 +845,7 @@ def audio_autoconnect():
         routes = chain_manager.get_chain_audio_routing(chain_id)
         normalise = 0 in chain_manager.chains[chain_id].audio_out and chain_manager.chains[0].fader_pos == 0 and len(
             chain_manager.chains[chain_id].audio_slots) == chain_manager.chains[chain_id].fader_pos
-        state_manager.zynmixer.normalise(
-            chain_manager.chains[chain_id].mixer_chan, normalise)
+        state_manager.zynmixer.normalise(chain_manager.chains[chain_id].mixer_chan, normalise)
         for dst in list(routes):
             if isinstance(dst, int):
                 # Destination is a chain
@@ -873,12 +869,10 @@ def audio_autoconnect():
         for dst in routes:
             if dst in sidechain_ports:
                 # This is an exact match so we do want to route exactly this
-                dst_ports = jclient.get_ports(
-                    f"^{dst}$", is_input=True, is_audio=True)
+                dst_ports = jclient.get_ports(f"^{dst}$", is_input=True, is_audio=True)
             else:
                 # This may be a client name that will return all input ports, including side-chain inputs
-                dst_ports = jclient.get_ports(
-                    dst, is_input=True, is_audio=True)
+                dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
                 # Remove side-chain (no route) destinations
                 for port in list(dst_ports):
                     if port.name in sidechain_ports:
@@ -886,8 +880,7 @@ def audio_autoconnect():
             dst_count = len(dst_ports)
 
             for src_name in routes[dst]:
-                src_ports = jclient.get_ports(
-                    src_name, is_output=True, is_audio=True)
+                src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
                 # Auto mono/stereo routing
                 source_count = len(src_ports)
                 if source_count and dst_count:
