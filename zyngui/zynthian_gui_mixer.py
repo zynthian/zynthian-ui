@@ -1351,12 +1351,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             info = self.zynseq.launcher_info[scene][chan]
         except:
             return
-        if info["chan"] == zynseq.SCENE_CHANNEL:
-            self.main_mixbus_strip.draw_sequence_scene(scene)
-        else:
-            for strip in self.visible_mixer_strips:
+        try:
+            if info["chan"] == zynseq.SCENE_CHANNEL:
+                self.main_mixbus_strip.draw_sequence_scene(scene)
+                return
+        except:
+            pass
+        for strip in self.visible_mixer_strips:
+            try:
                 if not strip.hidden and strip.chain_id in info["chains"]:
                     strip.draw_sequence_scene(scene)
+            except:
+                pass
 
     def topbar_bold_touch_action(self):
         self.toggle_launcher_mode()
@@ -1854,7 +1860,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.chain_manager.move_chain(dval)
                 self.refresh_visible_strips()
             elif self.moving_scene:
-                self.launcher_highlighted_scene = self.zynseq.swap_scene(self.launcher_highlighted_scene, self.launcher_highlighted_scene + dval) #TODO: This swaps, not moves
+                self.zynseq.swap_scene(self.launcher_highlighted_scene, self.launcher_highlighted_scene + dval) #TODO: This swaps, not moves
+                self.select_launcher(self.launcher_highlighted_scene +dval)
+                #self.launcher_highlighted_scene += dval
                 self.refresh_visible_strips()
             else:
                 self.chain_manager.next_chain(dval)
