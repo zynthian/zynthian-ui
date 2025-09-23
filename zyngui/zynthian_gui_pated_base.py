@@ -739,7 +739,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                      self.do_paste_pattern)
 
     # Function to actually copy pattern
-    def do_paste_pattern(self):
+    def do_paste_pattern(self, param=None):
         # Doesn't paste over itself
         if self.pattern2copy == self.pattern:
             return
