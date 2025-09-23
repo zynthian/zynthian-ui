@@ -601,13 +601,13 @@ def midi_autoconnect():
                     break
         if devnum is not None:
             try:
-                mididings_cname = state_manager.ctrldev_manager.drivers[i].mididings_client_name
+                midiproc_jackname = state_manager.ctrldev_manager.drivers[i].midiproc_jackname
             except:
-                mididings_cname = None
-            # Connect ctrldev driver's mididing module between input device and zmip
-            if mididings_cname:
-                required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{mididings_cname}:out_1")
-                required_routes[f"{mididings_cname}:in_1"].add(hwsp.name)
+                midiproc_jackname = None
+            # Connect ctrldev driver's MIDI processor module between input device and zmip
+            if midiproc_jackname:
+                required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{midiproc_jackname}:out_1")
+                required_routes[f"{midiproc_jackname}:in_1"].add(hwsp.name)
             # Connect input device to zmip directly
             else:
                 required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
