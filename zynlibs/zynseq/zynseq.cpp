@@ -1115,15 +1115,15 @@ bool load(const char* filename) {
                 if (i >= 0)
                     nSequence = i;
                 for (; nScene < nScenes; ++nScene) {                    
-                    if (i == nBase)
-                        g_seqMan.insertScene(nScene);
-                    Sequence* pSequence = g_seqMan.getSequence(nScene, nSequence);
                     if (nVersion > 10 && checkBlock(pFile, nBlockSize, 28))
                         continue;
                     else if (nVersion > 5 && checkBlock(pFile, nBlockSize, 24))
                         continue;
                     else if (checkBlock(pFile, nBlockSize, 8))
                         continue;
+                    if (i == nBase)
+                        g_seqMan.insertScene(nScene);
+                    Sequence* pSequence = g_seqMan.getSequence(nScene, nSequence);
                     pSequence->setRepeat(1);
                     if (nVersion > 10) {
                         pSequence->setPlayMode(fileRead8u(pFile));
@@ -1178,8 +1178,6 @@ bool load(const char* filename) {
                     char sName[17];
                     memset(sName, '\0', 17);
                     if (nVersion > 5) {
-                        if (checkBlock(pFile, nBlockSize, 24))
-                            continue;
                         for (size_t nIndex = 0; nIndex < 16; ++nIndex)
                             sName[nIndex] = fileRead8u(pFile);
                         sName[16] = '\0';

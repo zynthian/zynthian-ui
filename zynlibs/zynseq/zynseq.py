@@ -199,9 +199,8 @@ class zynseq(zynthian_engine):
             state = states[i] & 0xff
             try:
                 info = self.launcher_info[scene][chan]
-            except Exception as e:
-                # This sequence is not used by a launcher
-                logging.warning(e)
+            except:
+                logging.warning(f"No launcher info for sequence ({scene},{chan})")
                 continue
             info["state"] = state
             info["mode"] = mode
