@@ -49,6 +49,7 @@ class zynthian_ctrldev_launchpad_mini_mk3_chorder(zynthian_ctrldev_base):
 
     # The midiproc task itself. It runs in a spawned process.
     def midiproc_task(self):
+        self.midiproc_task_reset_signal_handlers()
         mididings.config(
             backend='jack-rt',
             client_name=self.midiproc_jackname,

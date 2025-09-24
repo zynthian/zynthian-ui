@@ -603,14 +603,15 @@ def midi_autoconnect():
             busy_idevs.append(devnum)
             # Try to connect ctrldev driver's RT MIDI processor between input device and zmip
             try:
-                midiproc_jackname = state_manager.ctrldev_manager.drivers[devnum].midiproc_jackname
+                driver = state_manager.ctrldev_manager.drivers[devnum]
             except:
-                midiproc_jackname = None
-            if midiproc_jackname:
-                logger.debug(f"Found a ctrldev MIDI processor for zmip {devnum} => {midiproc_jackname}")
+                driver = None
+            if driver and driver.midiproc:
+                mpjn = driver.midiproc_jackname
+                logger.debug(f"Found a ctrldev MIDI processor for zmip {devnum} => {mpjn}")
                 try:
-                    required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{midiproc_jackname}:out_1")
-                    required_routes[f"{midiproc_jackname}:in_1"].add(hwsp.name)
+                    required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{mpjn}:out_1")
+                    required_routes[f"{mpjn}:in_1"].add(hwsp.name)
                     continue
                 except:
                     pass
@@ -707,8 +708,7 @@ def midi_autoconnect():
 
         # Add MIDI router outputs
         if chain.is_midi():
-            src_ports = jclient.get_ports(
-                f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
+            src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
             if src_ports:
                 for dst_proc in chain.get_processors(slot=0):
                     dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
@@ -1493,8 +1493,7 @@ def cb_jack_xrun(delayed_usecs: float):
     if not state_manager.power_save_mode and not paused_flag:
         global xruns
         xruns += 1
-        logger.warning(
-            f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
+        logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
         state_manager.status_xrun = True
 
 

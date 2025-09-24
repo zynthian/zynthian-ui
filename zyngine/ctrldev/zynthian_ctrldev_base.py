@@ -25,6 +25,7 @@
 #
 # ******************************************************************************
 
+import signal
 import logging
 from multiprocessing import Process
 
@@ -126,9 +127,19 @@ class zynthian_ctrldev_base:
                 logging.error(e)
 
     # The midiproc task itself. It runs in a spawned process.
+    # It must call self._midiproc_task() to reset signal handlers
     # *COULD* be implemented by child class
     # def midiproc_task(self):
-    #    logging.debug(f"midiproc_task() for {type(self).__name__)}: NOT IMPLEMENTED!")
+    #    self.midiproc_task_reset_signal_handlers()
+    #    # Implementation goes here!
+
+    # Reset process signal handlers.
+    # It *MUST* be called from midiproc_task, running in a spawned process.
+    def midiproc_task_reset_signal_handlers(self):
+        signal.signal(signal.SIGHUP, signal.SIG_DFL)
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
     # Refresh full device status (LED feedback, etc)
     # *COULD* be implemented by child class
