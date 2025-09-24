@@ -382,19 +382,34 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 dev_id = zynautoconnect.get_midi_in_devid(idev)
                 available_drivers = self.zyngui.state_manager.ctrldev_manager.available_drivers
                 loaded_drivers = self.zyngui.state_manager.ctrldev_manager.drivers
-                if dev_id not in available_drivers and idev < lib_zyncore.zmip_get_seq_index():
-                    dev_id = "*"
-                if dev_id in available_drivers:
+                # Get available drivers for this device ...
+                device_drivers = []
+                # Specific drivers
+                try:
+                    device_drivers += available_drivers[dev_id]
+                except:
+                    pass
+                # Generic drivers
+                if idev < lib_zyncore.zmip_get_seq_index():
+                    try:
+                        device_drivers += available_drivers["*"]
+                    except:
+                        pass
+                driver_options = {}
+                for i, driver_class in enumerate(device_drivers):
+                    driver_name = driver_class.get_driver_name()
+                    driver_description = driver_class.get_driver_description()
+                    if not driver_description:
+                        driver_description = "Device driver integrating UI functions and customized workflow."
+                    if idev in loaded_drivers and isinstance(loaded_drivers[idev], driver_class):
+                        driver_options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
+                            ["UNLOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
+                    else:
+                        driver_options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
+                            ["LOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
+                if driver_options:
                     options["Controller Drivers"] = None
-                    for i, driver_class in enumerate(available_drivers[dev_id]):
-                        driver_name = driver_class.get_driver_name()
-                        driver_description = driver_class.get_driver_description()
-                        if not driver_description:
-                            driver_description = "A specific controller driver integrating UI functions and customized workflow."
-                        if idev in loaded_drivers and isinstance(loaded_drivers[idev], driver_class):
-                            options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["UNLOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
-                        else:
-                            options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["LOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
+                    options.update(driver_options)
 
                 port = zynautoconnect.devices_in[idev]
 
