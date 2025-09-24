@@ -171,14 +171,13 @@ FN_CLEAR_PATTERN = 0x11
 # --------------------------------------------------------------------------
 # 'Akai APC Key 25 mk2' device controller class
 # --------------------------------------------------------------------------
+
+
 class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad):
 
     dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
     driver_name = 'AKAI APC Key25 MK2'
-
-    @classmethod
-    def get_autoload_flag(cls):
-        return True
+    driver_description = 'Full UI integration'
 
     def __init__(self, state_manager, idev_in, idev_out=None):
         self._leds = FeedbackLEDs(idev_out)

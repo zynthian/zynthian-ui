@@ -38,6 +38,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
     dev_ids = ["MIDI Mix IN 1"]
+    driver_description = "Full mixer integration"
 
     rec_mode = 0
 

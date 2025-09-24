@@ -66,12 +66,13 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
 
     dev_ids = ["*"]
     driver_name = "Fostex MixTab"
-    driver_description = "Interface Fostex MixTab with zynmixer"
+    driver_description = "Zynthian Mixer integration"
+    autoload_flag = False
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
         super().__init__(state_manager, idev_in, idev_out)
-        self.midi_chan = 0 # Base channel for MIDI messages. +1 for +8 offset, +2 for +16 offset.
+        self.midi_chan = 0  # Base channel for MIDI messages. +1 for +8 offset, +2 for +16 offset.
         self.chan2chain = {}
         self.last_store = monotonic()
 
@@ -182,9 +183,5 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         for chain_id, chain in self.chain_manager.chains.items():
             if chain.mixer_chan is not None and chain.mixer_chan < 16:
                 self.chan2chain[chain.mixer_chan] = chain_id
-
-    @classmethod
-    def get_autoload_flag(cls):
-        return False
 
 # ------------------------------------------------------------------------------

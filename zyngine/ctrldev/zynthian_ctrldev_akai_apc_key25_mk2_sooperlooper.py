@@ -193,10 +193,8 @@ PAD_ENABLE_SL = 0x07
 class zynthian_ctrldev_akai_apc_key25_mk2_sooperlooper(zynthian_ctrldev_akai_apc_key25_mk2):
 
     driver_name = 'AKAI APC Key25 MK2 + SL'
-
-    @classmethod
-    def get_autoload_flag(cls):
-        return False
+    driver_description = 'Full UI integration with SooperLooper extension'
+    autoload_flag = False
 
     def __init__(self, state_manager, idev_in, idev_out=None):
         super().__init__(state_manager, idev_in, idev_out)
@@ -1209,10 +1207,6 @@ class looper_handler(
         MODE_SESSION_SAVE,
         MODE_SESSION_LOAD,
     ]
-
-    @classmethod
-    def get_autoload_flag(cls):
-        return True
 
     SL_PORT = zynthian_engine_sooperlooper.SL_PORT
     # OSC_SL_PORT = ServerPort["sooperlooper_osc"] # 9951
