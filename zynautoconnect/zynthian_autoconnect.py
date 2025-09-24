@@ -574,7 +574,7 @@ def midi_autoconnect():
     # logger.info("ZynAutoConnect: MIDI ...")
     global zyn_routed_midi
 
-    new_idev = [] # List of newly detected input ports
+    new_idev = []  # List of newly detected input ports
 
     # Create graph of required chain routes as sets of sources indexed by destination
     required_routes = {}
@@ -600,18 +600,23 @@ def midi_autoconnect():
                     logger.debug(f"Connected MIDI-in device {devnum}: {hwsp.name}")
                     break
         if devnum is not None:
+            busy_idevs.append(devnum)
+            # Try to connect ctrldev driver's RT MIDI processor between input device and zmip
             try:
-                midiproc_jackname = state_manager.ctrldev_manager.drivers[i].midiproc_jackname
+                midiproc_jackname = state_manager.ctrldev_manager.drivers[devnum].midiproc_jackname
             except:
                 midiproc_jackname = None
-            # Connect ctrldev driver's MIDI processor module between input device and zmip
             if midiproc_jackname:
-                required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{midiproc_jackname}:out_1")
-                required_routes[f"{midiproc_jackname}:in_1"].add(hwsp.name)
-            # Connect input device to zmip directly
-            else:
-                required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
-            busy_idevs.append(devnum)
+                logger.debug(f"Found a ctrldev MIDI processor for zmip {devnum} => {midiproc_jackname}")
+                try:
+                    required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{midiproc_jackname}:out_1")
+                    required_routes[f"{midiproc_jackname}:in_1"].add(hwsp.name)
+                    continue
+                except:
+                    pass
+            # else => Connect input device to zmip directly
+            required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
+
 
     for i in range(0, max_num_devs):
         # Delete disconnected input devices from list and unload driver
