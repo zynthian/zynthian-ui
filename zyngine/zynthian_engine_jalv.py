@@ -369,10 +369,11 @@ class zynthian_engine_jalv(zynthian_engine):
         return self.proc.stdout.readline()
 
     def proc_poll_thread_task(self):
-        while not self.proc_exit:
+        while self.proc and not self.proc_exit:
             line = self.proc.stdout.readline().strip()
             if line:
                 self.proc_poll_parse_line(line)
+
 
     def proc_poll_parse_line(self, line):
         #logging.debug(f"{self.jackname} PARSE => " + line)
