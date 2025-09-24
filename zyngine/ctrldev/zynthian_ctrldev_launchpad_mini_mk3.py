@@ -28,7 +28,6 @@ import logging
 from time import sleep
 
 # Zynthian specific modules
-import zynautoconnect
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
@@ -43,11 +42,7 @@ from zyngui import zynthian_gui_config
 class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 
     dev_ids = ["Launchpad Mini MK3 IN 1"]
-
-    STARTING_COLOUR = 21
-    STOPPING_COLOUR = 5
-    SELECTED_BANK_COLOUR = 29
-    STOP_ALL_COLOUR = 5
+    driver_description = "Launcher + arrow keys integration"
 
     def send_sysex(self, data):
         if self.idev_out is not None:
@@ -154,7 +149,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
                 try:
                     info = self.zynseq.launcher_info[row][col]
                     if info:
-                        logging.debug(f"PAD ({row}, {col}) INFO => {info}")
+                        #logging.debug(f"PAD ({row}, {col}) INFO => {info}")
                         self.zynseq.libseq.togglePlayState(row, col)
                 except:
                     pass
@@ -175,11 +170,14 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
                 else:
                     col, row = self.get_note_xy(ccnum)
                     if col == 8:
-                        info = self.zynseq.launcher_info[row][zynseq.SCENE_CHANNEL]
-                        logging.debug(f"SCENE PAD ({row})!!")
-                        if info:
-                            logging.debug(f"SCENE ({row}) INFO => {info}")
-                            self.zynseq.libseq.togglePlayState(row, zynseq.SCENE_CHANNEL)
+                        try:
+                            info = self.zynseq.launcher_info[row][zynseq.SCENE_CHANNEL]
+                            #logging.debug(f"SCENE PAD ({row})!")
+                            if info:
+                                #logging.debug(f"SCENE ({row}) INFO => {info}")
+                                self.zynseq.libseq.togglePlayState(row, zynseq.SCENE_CHANNEL)
+                        except:
+                            pass
             return True
         # SysEx
         elif ev[0] == 0xF0:
