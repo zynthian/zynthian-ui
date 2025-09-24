@@ -28,10 +28,12 @@ import logging
 from time import sleep
 
 # Zynthian specific modules
+import zynautoconnect
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 from zyngui import zynthian_gui_config
+
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Mini MK3
@@ -149,10 +151,13 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)       #  scene=row
-                info = self.zynseq.launcher_info[row][col]
-                if info:
-                    logging.debug(f"PAD ({row}, {col}) INFO => {info}")
-                    self.zynseq.libseq.togglePlayState(row, col)
+                try:
+                    info = self.zynseq.launcher_info[row][col]
+                    if info:
+                        logging.debug(f"PAD ({row}, {col}) INFO => {info}")
+                        self.zynseq.libseq.togglePlayState(row, col)
+                except:
+                    pass
             return True
         # CC => arrows, scene change, stop all
         elif evtype == 0xB:
