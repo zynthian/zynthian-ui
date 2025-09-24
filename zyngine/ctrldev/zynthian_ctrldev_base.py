@@ -139,7 +139,7 @@ class zynthian_ctrldev_base:
     # Device MIDI event handler
     # *COULD* be implemented by child class
     def midi_event(self, ev):
-        pass
+        return False
         #logging.debug(f"MIDI EVENT for '{type(self).__name__}'")
 
     # Light-Off LEDs
