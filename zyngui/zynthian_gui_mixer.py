@@ -827,6 +827,8 @@ class zynthian_gui_mixer_strip:
         self.touch_x = event.x
         self.drag_axis = None  # +1=dragging in y-axis, -1=dragging in x-axis
         self.touch_ts = monotonic()
+        if self.chain:
+            self.chain_manager.set_active_chain_by_object(self.chain)
 
     def on_clip_release(self, row, event):
         now = monotonic()
@@ -840,8 +842,6 @@ class zynthian_gui_mixer_strip:
             self.parent.end_moving_scene()
             return
         self.parent.select_launcher(scene)
-        if self.chain:
-            self.chain_manager.set_active_chain_by_object(self.chain)
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
             self.on_clip_short_press(scene)
         elif ts < zynthian_gui_config.zynswitch_long_seconds:
@@ -977,8 +977,7 @@ class zynthian_gui_mixer_strip:
         self.strip_drag_start = event
         self.dragging = False
         if self.chain:
-            self.chain_manager.set_active_chain_by_object(
-                self.chain)
+            self.chain_manager.set_active_chain_by_object(self.chain)
 
     def on_strip_release(self, event):
         """ Function to handle legend strip release
