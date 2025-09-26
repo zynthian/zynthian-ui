@@ -26,7 +26,6 @@
 # ******************************************************************************
 
 import logging
-import mididings
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -50,6 +49,9 @@ class zynthian_ctrldev_launchpad_mini_mk3_chorder(zynthian_ctrldev_base):
     # The midiproc task itself. It runs in a spawned process.
     def midiproc_task(self):
         self.midiproc_task_reset_signal_handlers()
+
+        import mididings
+
         mididings.config(
             backend='jack-rt',
             client_name=self.midiproc_jackname,

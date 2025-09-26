@@ -26,7 +26,6 @@
 # ******************************************************************************
 
 import logging
-import mididings
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
@@ -36,7 +35,6 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
 # Generic Basic Chorder with mididings
 # ------------------------------------------------------------------------------------------------------------------
 
-
 class zynthian_ctrldev_generic_chorder(zynthian_ctrldev_base):
 
     dev_ids = ["*"]
@@ -44,9 +42,12 @@ class zynthian_ctrldev_generic_chorder(zynthian_ctrldev_base):
     unroute_from_chains = False
     autoload_flag = False
 
-    # The midiproc task itself. It runs in a spawned process.
+    # The midiproc task. It runs in a spawned process.
     def midiproc_task(self):
         self.midiproc_task_reset_signal_handlers()
+
+        import mididings
+
         mididings.config(
             backend='jack-rt',
             client_name=self.midiproc_jackname,
@@ -54,7 +55,7 @@ class zynthian_ctrldev_generic_chorder(zynthian_ctrldev_base):
             out_ports=1
         )
         mididings.run(
-            #mididings.Pass() // (mididings.Channel(2) >> (mididings.Pass() // mididings.Transpose(4) // mididings.Transpose(7)))
+            # mididings.Pass() // (mididings.Channel(2) >> (mididings.Pass() // mididings.Transpose(4) // mididings.Transpose(7)))
             mididings.Pass() // mididings.Transpose(4) // mididings.Transpose(7) // mididings.Transpose(11)
         )
 

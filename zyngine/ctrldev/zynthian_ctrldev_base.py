@@ -27,7 +27,11 @@
 
 import signal
 import logging
-from multiprocessing import Process
+import traceback
+from time import sleep
+import multiprocessing as mp
+
+mp.set_start_method('fork')
 
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
@@ -109,18 +113,23 @@ class zynthian_ctrldev_base:
         midiproc_task = getattr(self, "midiproc_task", None)
         if callable(midiproc_task):
             try:
-                self.midiproc_jackname = "mididings_" + self.get_driver_name()
-                self.midiproc = Process(target=midiproc_task)
+                self.midiproc_jackname = "midiproc_" + self.get_driver_name()
+                self.midiproc = mp.Process(target=midiproc_task)
                 self.midiproc.start()
                 zynautoconnect.request_midi_connect()
             except Exception as e:
-                logging.error(e)
+                self.midiproc = None
+                self.midiproc_jackname = None
+                logging.exception(traceback.format_exc())
+                #logging.error(e)
 
     # Terminate middings process
     def end_midiproc(self):
         if self.midiproc:
             try:
                 self.midiproc.terminate()
+                self.midiproc.join()
+                sleep(0.1)
                 self.midiproc = None
                 zynautoconnect.request_midi_connect()
             except Exception as e:
