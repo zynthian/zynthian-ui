@@ -43,7 +43,7 @@ from zyncoder.zyncore import lib_zyncore
 
 class zynthian_ctrldev_manager():
 
-    ctrldev_dpath = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngui/ctrldev"
+    ctrldev_dpath = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngine/ctrldev"
 
     # Function to initialise class
     def __init__(self, state_manager):
@@ -66,14 +66,14 @@ class zynthian_ctrldev_manager():
             self.driver_classes = {}
 
         # Find and load new driver modules
-        ctrldev_drivers_path = f"/zynthian/zynthian-ui/zyngine/ctrldev"
-        for module_path in glob.glob(f"{ctrldev_drivers_path}/*.py"):
+        for module_path in glob.glob(f"{self.ctrldev_dpath}/*.py"):
             module_name = Path(module_path).stem
             if not module_name.startswith("__") and not module_name.startswith("zynthian_ctrldev_base") and module_name not in self.driver_classes:
                 try:
-                    spec = importlib.util.spec_from_file_location(module_name, module_path)
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
+                    #spec = importlib.util.spec_from_file_location(module_name, module_path)
+                    #module = importlib.util.module_from_spec(spec)
+                    #spec.loader.exec_module(module)
+                    module = importlib.import_module(f"zyngine.ctrldev.{module_name}")
                 except Exception as e:
                     logging.error(f"Can't load ctrldev driver module '{module_name}' => {e}")
                     continue
@@ -84,7 +84,7 @@ class zynthian_ctrldev_manager():
                     logging.error(f"Ctrldev driver class '{module_name}' not found in module '{module_name}'")
 
         # Regenerate available drivers dict
-        self.available_drivers = { "*": [] }
+        self.available_drivers = {"*": []}
         for module_name, driver_class in self.driver_classes.items():
             for dev_id in driver_class.dev_ids:
                 logging.info(f"Found ctrldev driver '{module_name}' for devices with ID '{dev_id}'")
@@ -120,7 +120,7 @@ class zynthian_ctrldev_manager():
             try:
                 driver_class = self.driver_classes[driver_name]
             except:
-                logging.warning("Requested driver is not available")
+                logging.warning(f"Requested driver {driver_name} is not available")
 
         if driver_class is None:
             return False

@@ -403,10 +403,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                         driver_description = "Device driver integrating UI functions and customized workflow."
                     if idev in loaded_drivers and isinstance(loaded_drivers[idev], driver_class):
                         driver_options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
-                            ["UNLOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
+                            ["UNLOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                     else:
                         driver_options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
-                            ["LOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
+                            ["LOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                 if driver_options:
                     options["Controller Drivers"] = None
                     options.update(driver_options)
@@ -438,10 +438,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             elif isinstance(params, list):
                 idev = self.list_data[self.index][1]
                 if params[0] == "LOAD_DRIVER":
-                    logging.debug(f"LOAD DRIVER FOR {idev}")
+                    #logging.debug(f"LOAD DRIVER FOR {idev}")
                     self.zyngui.state_manager.ctrldev_manager.load_driver(idev, params[1])
                 elif params[0] == "UNLOAD_DRIVER":
-                    logging.debug(f"UNLOAD DRIVER FOR {idev}")
+                    #logging.debug(f"UNLOAD DRIVER FOR {idev}")
                     self.zyngui.state_manager.ctrldev_manager.unload_driver(idev,True)
             elif isinstance(params, str):
                 if params == "AUBIO_INPUTS":
