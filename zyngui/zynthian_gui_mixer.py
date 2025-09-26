@@ -641,7 +641,7 @@ class zynthian_gui_mixer_strip:
 
         if control in [None, 'play']:
             try:
-                processor = self.chain.synth_scenes[0][0]
+                processor = self.chain.synth_slots[0][0]
                 if processor.eng_code == "AP":
                     if zynaudioplayer.get_playback_state(processor.handle):
                         self.canvas.itemconfig(self.play_indicator, text="▶", fill="#009000", state=tkinter.NORMAL)
