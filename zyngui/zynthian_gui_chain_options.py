@@ -263,7 +263,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.chain = self.zyngui.chain_manager.get_chain(self.chain_id)
             self.processor = None
             self.set_select_path()
-            self.fill_list()
+            self.update_list()
 
     def arrow_left(self):
         chain_keys = self.zyngui.chain_manager.ordered_chain_ids
@@ -277,7 +277,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.chain = self.zyngui.chain_manager.get_chain(self.chain_id)
             self.processor = None
             self.set_select_path()
-            self.fill_list()
+            self.update_list()
 
     def processor_options(self, subchain, t='S'):
         self.zyngui.screens['processor_options'].setup(self.chain_id, subchain)
