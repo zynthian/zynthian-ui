@@ -4,7 +4,7 @@
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for Akai MPK mini MK3
-# A simple chorder implemented with mididings.
+# A simple chorder implemented as a python jack client.
 #
 # Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
@@ -39,7 +39,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
 class zynthian_ctrldev_akai_mpk_chorder(zynthian_ctrldev_base):
 
     dev_ids = ["MPK mini 3 IN 1"]
-    driver_description = "Basic chorder example using mididings for RT midi processing. Use pads to change chord type."
+    driver_description = "Basic chorder example implemented as a jack client for RT midi processing. Use pads to change chord type."
     unroute_from_chains = 0b0000001000000000  # Unroute channel 10 (akai MPK mini's pads)
     autoload_flag = False
 
