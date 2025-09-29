@@ -1539,6 +1539,26 @@ class zynthian_state_manager:
             zynautoconnect.request_audio_connect(True)
         return True
 
+    def get_next_zs3_index(self):
+        used_indexes = []
+        for zid, state in self.zs3.items():
+            if state['title'].startswith("ZS3-"):
+                try:
+                    used_indexes.append(int(state['title'].split('-')[1]))
+                except:
+                    pass
+            elif zid.startswith("zs3-"):
+                try:
+                    used_ids.append(int(zid.split('-')[1]))
+                except:
+                    pass
+
+        used_indexes.sort()
+        try:
+            return max(used_indexes[-1] + 1, len(self.zs3))
+        except:
+            return len(self.zs3)
+
     def save_zs3(self, zs3_id=None, title=None):
         """Store current state as ZS3
 
@@ -1546,30 +1566,21 @@ class zynthian_state_manager:
         title : ZS3 title (Default: Create new title)
         """
 
+        index = self.get_next_zs3_index()
+
         if zs3_id is None:
-            # Get next id and name
-            used_ids = []
-            for zid in self.zs3:
-                if zid.startswith("zs3-"):
-                    try:
-                        used_ids.append(int(zid.split('-')[1]))
-                    except:
-                        pass
-            used_ids.sort()
-            # Get next free zs3 id
-            for index in range(1, len(used_ids) + 2):
-                if index not in used_ids:
-                    zs3_id = f"zs3-{index}"
-                    break
+            zs3_id = f"zs3-{index}"
 
         if title is None:
             title = self.midi_learn_pc
 
         if not title:
+            # Existing ZS3s => keep current title
             if zs3_id in self.zs3:
                 title = self.zs3[zs3_id]['title']
+            # New ZS3 => autogenerate title
             else:
-                title = zs3_id.upper()
+                title = f"ZS3-{index}"
 
         # Initialise zs3
         self.zs3[zs3_id] = {
