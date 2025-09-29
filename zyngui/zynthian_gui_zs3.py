@@ -103,7 +103,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                     if parts[0] == "*":
                         title = f"{state['title']} -> PRG#{parts[1]}"
                     else:
-                        title = f"{state['title']} -> CH#{parts[0]}:PRG#{parts[1]}"
+                        title = f"{state['title']} -> CH#{int(parts[0]) + 1}:PRG#{parts[1]}"
                 else:
                     title = f"{state['title']} ({id})"
             self.list_data.append((id, state, title))
