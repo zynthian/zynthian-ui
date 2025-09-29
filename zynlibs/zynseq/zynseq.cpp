@@ -369,7 +369,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             */
             case MIDI_START:
                 g_nBar = 1;
-            case MIDI_CONTINUE:
                 if (nTransportState != JackTransportRolling) {
                     g_bMutex = false;
                     transportStart("zynseq");
@@ -379,8 +378,13 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 g_nClock = 0;
                 g_nMidiClock == 0;
                 nLastBeatFrame = 0;
-                g_nBeat = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
+                g_nBeat = 1;
                 break;
+
+            case MIDI_CONTINUE:
+                if (nTransportState != JackTransportRolling)
+                    transportStart("zynseq");
+                nTransportState   = JackTransportRolling;
             case MIDI_CLOCK:
                 if (g_nClockSource & TRANSPORT_CLOCK_MIDI) {
                     // DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
@@ -582,7 +586,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
         // g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
-        if (!g_bPlayingSequences) {
+        if (!g_bPlayingSequences && (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)) {
             DPRINTF("Stopping transport because no sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, g_nClock, g_nBeat, g_nTick);
             g_bMutex = false;
             transportStop("zynseq");
@@ -2408,10 +2412,13 @@ void setPlayState(uint8_t scene, uint8_t sequence, uint8_t state) {
     Sequence* pSequence = g_seqMan.getSequence(scene, sequence);
     if (pSequence == nullptr)
         return;
-    if (state == STARTING) {
-        if (transportGetPlayStatus() != JackTransportRolling)
-            setTransportToStartOfBar();
-        transportStart("zynseq");
+    if (transportGetPlayStatus() != JackTransportRolling) {
+        if (state == STARTING) {
+            if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
+                setTransportToStartOfBar();
+            transportStart("zynseq");
+        } else if (state == STOPPING)
+            state = STOPPED;
     }
     g_seqMan.setPlayState(pSequence, state);
 }
