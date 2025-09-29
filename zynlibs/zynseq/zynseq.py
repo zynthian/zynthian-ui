@@ -248,7 +248,8 @@ class zynseq(zynthian_engine):
         pattern = self.libseq.getPattern(scene, chan, 0, 0)
         empty = self.libseq.isEmpty(scene, chan)
         title = self.get_sequence_name(scene, chan)
-        # TODO: A lot of duplicated info. Much of this data optimises reverse lookup, e.g. from seq or position but it also repeats much channel data for each slot.
+        # TODO: A lot of duplicated info. Much of this data optimises reverse lookup,
+        #  e.g. from seq or position but it also repeats much channel data for each slot.
         info = {
             "title": title,
             "mode": mode,

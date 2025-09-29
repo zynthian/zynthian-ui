@@ -259,6 +259,7 @@ class SequenceManager {
     int16_t getFollowActionParam(uint8_t scene, uint8_t sequence);
 
     private:
+
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
     int fileWrite8(uint8_t value, FILE* pFile);

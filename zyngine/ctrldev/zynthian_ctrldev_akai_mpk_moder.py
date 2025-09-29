@@ -28,6 +28,7 @@ import logging
 import multiprocessing as mp
 
 # Zynthian specific modules
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
 
 # Following from: https://github.com/Carlborg/hardpush/blob/master/hardpush.ino
@@ -122,7 +123,7 @@ class zynthian_ctrldev_akai_mpk_moder(zynthian_ctrldev_base):
                          "+ Notes / Bank A (White Keys): Chromatic, Major, Minor, Dorian, Mixolydian, Lydian, Phrygian, Locrian\n"\
                          "+ Notes / Bank B (White Keys): Chromatic, Harmonic Minor, Melodic Minor, Super Locrian, Bhairav, Hungarian Minor, Minor Gypsy\n"\
                          "+ CC / Bank A (Black Keys): Chromatic, Minor Pentatonic, Major Pentatonic, Hirojoshi, In-Sen, Iwato, Kumoi\n"\
-                         "+ CC / Bank B (Custom Keys): Chromatic, Diminished, Whole-Half, Spanish, While Tone, Minor Blues, Pelog"
+                         "+ CC / Bank B (Custom Keys): Chromatic, Diminished, Whole-Half, Spanish, Whole Tone, Minor Blues, Pelog"
 
     unroute_from_chains = 0b0000001000000000  # Unroute channel 10 (akai MPK mini's pads)
     autoload_flag = False
@@ -237,6 +238,7 @@ class zynthian_ctrldev_akai_mpk_moder(zynthian_ctrldev_base):
                     except:
                         pass
                     logging.debug(f"MODE => {mode_key} ({self.mode_index.value})")
+                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"{self.get_driver_name()}: {mode_key}")
                     return True
             # Pad CCs, Bank A & B:
             elif evtype == 0xB:
@@ -249,6 +251,7 @@ class zynthian_ctrldev_akai_mpk_moder(zynthian_ctrldev_base):
                     except:
                         pass
                     logging.debug(f"MODE => {mode_key} ({self.mode_index.value})")
+                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"{self.get_driver_name()}: {mode_key}")
                     return True
 
 # ------------------------------------------------------------------------------

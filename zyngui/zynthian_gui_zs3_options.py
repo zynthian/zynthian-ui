@@ -162,6 +162,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         self.zyngui.state_manager.save_zs3(self.zs3_id)
         for chain_id in restore_chains:
             self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, chain_id)
+        if "restore" in state["mixer"] and state["mixer"]["restore"] == False:
+            self.zyngui.state_manager.zs3[self.zs3_id]["mixer"]["restore"] = False
         self.zyngui.close_screen()
 
     def zs3_delete(self):

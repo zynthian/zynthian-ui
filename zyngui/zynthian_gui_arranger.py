@@ -303,7 +303,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
     # Function to actually clear bank
     def do_clear_bank(self, params=None):
-        self.zynseq.libseq.clearBank(self.zynseq.bank)
+        self.zynseq.build_default_bank(self.zynseq.bank)
         self.zynseq.select_bank(self.zynseq.bank, True)
         self.update_sequence_tracks()
         self.zynseq.libseq.setPlayPosition(self.zynseq.bank, self.sequence, 0)
