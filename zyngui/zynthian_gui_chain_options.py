@@ -75,12 +75,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             except Exception as e:
                 logging.error(e)
 
-        if self.chain.is_midi():
+        if self.chain.is_midi() and synth_proc_count:
             self.list_data.append((self.chain_midi_cc, None, "MIDI CC",
                                    ["Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
 
-        if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            # TODO Disable midi learn for some chains???
+        if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]) and self.chain.get_processor_count():
             self.list_data.append((self.midi_learn, None, "MIDI Learn",
                                    ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
 
