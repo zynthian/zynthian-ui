@@ -361,18 +361,12 @@ def config_zyntof():
 # MIDI Configuration
 # ------------------------------------------------------------------------------
 
-
+# Setup MIDI options
 def set_midi_config():
-    global active_midi_channel, midi_prog_change_zs3
-    global midi_bank_change, midi_fine_tuning, midi_filter_rules, midi_usb_by_port
+    global active_midi_channel, midi_prog_change_zs3, midi_bank_change, midi_fine_tuning
+    global midi_usb_by_port, transport_clock_source, midi_filter_rules
     global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
     global midi_touchosc_enabled, bluetooth_enabled, ble_controller, midi_aubionotes_enabled
-    global transport_clock_source
-    global master_midi_channel, master_midi_change_type, master_midi_note_cuia
-    global master_midi_program_change_up, master_midi_program_change_down
-    global master_midi_program_base, master_midi_bank_change_ccnum
-    global master_midi_bank_change_up, master_midi_bank_change_down
-    global master_midi_bank_change_down_ccnum, master_midi_bank_base
 
     # MIDI options
     midi_fine_tuning = float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING', "440.0"))
@@ -393,6 +387,15 @@ def set_midi_config():
     midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
     midi_filter_rules = midi_filter_rules.replace("\\n", "\n")
 
+
+# Setup MIDI Master Channel options
+def set_mmc_config():
+    global master_midi_channel, master_midi_change_type, master_midi_note_cuia
+    global master_midi_program_change_up, master_midi_program_change_down
+    global master_midi_program_base, master_midi_bank_change_ccnum
+    global master_midi_bank_change_up, master_midi_bank_change_down
+    global master_midi_bank_change_down_ccnum, master_midi_bank_base
+
     # Master Channel Features
     master_midi_channel = int(os. environ.get("ZYNTHIAN_MIDI_MASTER_CHANNEL", 0))
     master_midi_channel -= 1
@@ -403,42 +406,59 @@ def set_midi_config():
     else:
         mmc_hex = None
 
+    # Predefined config for MMC Bank/Program change UP/DOWN (incremental)
     master_midi_change_type = os.environ.get("ZYNTHIAN_MIDI_MASTER_CHANGE_TYPE", "Roland")
 
     # Use LSB Bank by default
-    master_midi_bank_change_ccnum = int(os.environ.get("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x20))
-    # Use MSB Bank by default
-    # master_midi_bank_change_ccnum = int(os.environ.get("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x00))
+    master_midi_bank_change_ccnum = None
+    if mmc_hex:
+        try:
+            master_midi_bank_change_ccnum = int(os.environ.get("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x20))
+            # Use MSB Bank by default
+            # master_midi_bank_change_ccnum = int(os.environ.get("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x00))
+            logging.debug(f"MMC Bank Change CCNum: 0x{master_midi_bank_change_ccnum:02x}")
+        except Exception as e:
+            logging.error(f"Can't parse MMC Bank Change CCNum => {e}")
 
     mmpcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP', "")
+    master_midi_program_change_up = None
     if mmc_hex and len(mmpcu) == 4:
-        master_midi_program_change_up = int("{:<06}".format(mmpcu.replace("#", mmc_hex)), 16)
-    else:
-        master_midi_program_change_up = None
+        try:
+            ev = int("{:<06}".format(mmpcu.replace("#", mmc_hex)), 16)
+            logging.debug(f"MMC Program Change UP: 0x{ev:02x}")
+            master_midi_program_change_up = ev.to_bytes(3, 'big')
+        except Exception as e:
+            logging.error(f"Can't parse MMC Program Change UP => {e}")
 
     mmpcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN', "")
+    master_midi_program_change_down = None
     if mmc_hex and len(mmpcd) == 4:
-        master_midi_program_change_down = int("{:<06}".format(mmpcd.replace("#", mmc_hex)), 16)
-    else:
-        master_midi_program_change_down = None
+        try:
+            ev = int("{:<06}".format(mmpcd.replace("#", mmc_hex)), 16)
+            logging.debug(f"MMC Program Change DOWN: 0x{ev:02x}")
+            master_midi_program_change_down = ev.to_bytes(3, 'big')
+        except Exception as e:
+            logging.error(f"Can't parse MMC Program Change DOWN => {e}")
 
     mmbcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP', "")
+    master_midi_bank_change_up = None
     if mmc_hex and len(mmbcu) == 6:
-        master_midi_bank_change_up = int("{:<06}".format(mmbcu.replace("#", mmc_hex)), 16)
-    else:
-        master_midi_bank_change_up = None
+        try:
+            ev = int("{:<06}".format(mmbcu.replace("#", mmc_hex)), 16)
+            logging.debug(f"MMC Bank Change UP: 0x{ev:02x}")
+            master_midi_bank_change_up = ev.to_bytes(3, 'big')
+        except Exception as e:
+            logging.error(f"Can't parse MMC Bank Change UP => {e}")
 
     mmbcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN', "")
-    if mmc_hex and len(mmbcd) == 6:
-        master_midi_bank_change_down = int("{:<06}".format(mmbcd.replace("#", mmc_hex)), 16)
-    else:
-        master_midi_bank_change_down = None
-
-    logging.debug("MMC Bank Change CCNum: {}".format(master_midi_bank_change_ccnum))
-    logging.debug("MMC Bank Change UP: {}".format(master_midi_bank_change_up))
-    logging.debug("MMC Bank Change DOWN: {}".format(master_midi_bank_change_down))
-    logging.debug("MMC Program Change UP: {}".format(master_midi_program_change_up))
-    logging.debug("MMC Program Change DOWN: {}".format(master_midi_program_change_down))
+    master_midi_bank_change_down = None
+    try:
+        if mmc_hex and len(mmbcd) == 6:
+            ev = int("{:<06}".format(mmbcd.replace("#", mmc_hex)), 16)
+            logging.debug(f"MMC Bank Change DOWN: 0x{ev:02x}")
+            master_midi_bank_change_down = ev.to_bytes(3, 'big')
+    except Exception as e:
+        logging.error(f"Can't parse MMC Bank Change DOWN => {e}")
 
     # Master Note CUIA
     mmncuia_envar = os.environ.get('ZYNTHIAN_MIDI_MASTER_NOTE_CUIA', None)
@@ -808,6 +828,7 @@ if "zynthian_main.py" in sys.argv[0]:
 
     try:
         set_midi_config()
+        set_mmc_config()
     except Exception as e:
         logging.error("ERROR configuring MIDI: {}".format(e))
 

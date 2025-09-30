@@ -1067,7 +1067,9 @@ class zynthian_state_manager:
             self.end_busy("save snapshot")
             return False
 
-        self.last_snapshot_fpath = fpath
+        if basename(fpath) != "last_state.zss":
+            self.last_snapshot_fpath = fpath
+
         self.end_busy("save snapshot")
         return True
 
@@ -1224,16 +1226,19 @@ class zynthian_state_manager:
                 self.zynseq.restore_riff_data(binary_riff_data)
                 self.zynseq.update_tempo()
 
-            if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
-                self.last_snapshot_fpath = state["last_snapshot_fpath"]
-            else:
-                self.last_snapshot_fpath = fpath
-
+            # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1
-            try:
-                self.snapshot_program = int(basename(fpath[:3]))
-            except:
-                pass
+            if basename(fpath) != "last_state.zss":
+                self.last_snapshot_fpath = fpath
+                program = self.get_program_from_snapshot_fpath(fpath)
+            elif "last_snapshot_fpath" in state:
+                self.last_snapshot_fpath = state["last_snapshot_fpath"]
+                program = self.get_program_from_snapshot_fpath(self.last_snapshot_fpath)
+            else:
+                program = None
+            # Try to get program number
+            if program is not None:
+                self.snapshot_program = program
 
         except Exception as e:
             state = None
@@ -1252,6 +1257,14 @@ class zynthian_state_manager:
 
         self.end_busy("load snapshot")
         return state
+
+    @staticmethod
+    def get_program_from_snapshot_fpath(fpath):
+        try:
+            res = int(basename(fpath)[:3])
+            return res
+        except Exception as e:
+            return None
 
     def set_snapshot_midi_bank(self, bank):
         """Set the current snapshot bank
@@ -1276,10 +1289,14 @@ class zynthian_state_manager:
             bank = self.snapshot_bank
         if bank is None:
             return  # Don't load snapshot if invalid bank selected
-        files = glob(f"{self.snapshot_dir}/{bank}/{program:03d}-*.zss")
-        if files:
-            self.load_snapshot(files[0])
-            return True
+        if 0 <= program <= 127:
+            logging.debug(f"Searching snapshot by program number ({program}) => {self.snapshot_dir}/{bank}/{program:03d}-*.zss")
+            files = glob(f"{self.snapshot_dir}/{bank}/{program:03d}-*.zss")
+            if files:
+                self.load_snapshot(files[0])
+                return True
+        else:
+            logging.warning(f"Program number ({program}) out of range")
         return False
 
     def backup_snapshot(self, path):
@@ -2078,6 +2095,7 @@ class zynthian_state_manager:
         if midi_profile_fpath:
             zynconf.load_config(True, midi_profile_fpath)
             zynthian_gui_config.set_midi_config()
+            zynthian_gui_config.set_mmc_config()
             self.init_midi()
             self.init_midi_services()
             zynautoconnect.request_midi_connect()
