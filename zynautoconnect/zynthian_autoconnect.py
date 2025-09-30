@@ -1168,6 +1168,8 @@ def build_midi_port_name(port):
     returns - Tuple (uid, name)
     """
 
+    if port is None:
+        return "", ""
     if port.name.startswith("ttymidi:MIDI"):
         return port.name, "DIN-5 MIDI"
     elif port.name.startswith("ZynMaster"):

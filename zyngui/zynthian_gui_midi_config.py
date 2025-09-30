@@ -207,7 +207,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     aubio_devices.append(i)
                 elif dev.aliases[0].startswith("NET:"):
                     # net_devices[dev.name] = i
-                    port = zynautoconnect.devices_in[i]
+                    port = devs[i]
                     puid, name = zynautoconnect.build_midi_port_name(port)
                     net_devices[name] = i
                 else:
