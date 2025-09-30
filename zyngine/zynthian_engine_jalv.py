@@ -323,7 +323,10 @@ class zynthian_engine_jalv(zynthian_engine):
         if self.proc:
             try:
                 logging.info("Stopping Engine " + self.name)
-                self.proc_cmd("")
+                try:
+                    self.proc.stdin.writelines(["\n"])
+                except Exception as e:
+                    logging.error(f"Exception while ending jalv => {e}")
                 self.proc_exit = True
                 self.proc.terminate()
                 try:
