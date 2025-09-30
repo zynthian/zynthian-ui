@@ -369,22 +369,26 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             */
             case MIDI_START:
                 g_nBar = 1;
-                if (nTransportState != JackTransportRolling) {
-                    g_bMutex = false;
-                    transportStart("zynseq");
-                    g_bMutex = true;
-                }
+                g_bMutex = false;
+                transportStart("zynseq");
+                while (g_bMutex)
+                    std::this_thread::sleep_for(std::chrono::microseconds(10));
+                g_bMutex = true;
                 nTransportState = JackTransportRolling;
                 g_nClock = 0;
-                g_nMidiClock == 0;
+                g_nMidiClock = 0;
                 nLastBeatFrame = 0;
                 g_nBeat = 1;
                 break;
 
             case MIDI_CONTINUE:
-                if (nTransportState != JackTransportRolling)
-                    transportStart("zynseq");
-                nTransportState   = JackTransportRolling;
+                g_bMutex = false;
+                transportStart("zynseq");
+                while (g_bMutex)
+                    std::this_thread::sleep_for(std::chrono::microseconds(10));
+                g_bMutex = true;
+                nTransportState = JackTransportRolling;
+                break;
             case MIDI_CLOCK:
                 if (g_nClockSource & TRANSPORT_CLOCK_MIDI) {
                     // DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
@@ -569,11 +573,10 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 g_nClock = 0;
                 if (++g_nBeat > g_nTimeSig) {
                     g_nBeat = 1;
-                    if (g_bClientPlaying) //!@todo This will advance bar and stop manual beats per bar changes working when other clients are playing
-                        ++g_nBar;
+                    ++g_nBar;
                 }
             }
-            if (g_bSendMidiClock && g_bPlayingSequences) {
+            if (g_bSendMidiClock && g_bClientPlaying) {
                 // Add a MIDI clock to the queue
                 jack_nframes_t nClockTime = g_qClockPos.front().first - nNow;
                 //if (bSync)
@@ -2412,7 +2415,7 @@ void setPlayState(uint8_t scene, uint8_t sequence, uint8_t state) {
     Sequence* pSequence = g_seqMan.getSequence(scene, sequence);
     if (pSequence == nullptr)
         return;
-    if (transportGetPlayStatus() != JackTransportRolling) {
+    if (!g_bPlayingSequences) {
         if (state == STARTING) {
             if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
                 setTransportToStartOfBar();
@@ -2826,9 +2829,6 @@ void transportStart(const char* client) {
     if (bPlaying)
         return;
 
-    if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
-        ; // Only start transport if not external control???
-
     jack_position_t pos;
     if (jack_transport_query(g_pJackClient, &pos) != JackTransportRolling)
         jack_transport_start(g_pJackClient);
@@ -2844,11 +2844,10 @@ void transportStart(const char* client) {
 }
 
 void transportStop(const char* client) {
-    if (!g_bClientPlaying)
-        return;
-
     if (strcmp(client, "ALL") == 0)
         g_setTransportClient.clear();
+    else if (!g_bClientPlaying)
+        return;
     else {
         auto itClient = g_setTransportClient.find(std::string(client));
         if (itClient != g_setTransportClient.end())
