@@ -43,14 +43,14 @@ class zynthian_ctrldev_generic_chorder(zynthian_ctrldev_base):
     autoload_flag = False
 
     # The midiproc task. It runs in a spawned process.
-    def midiproc_task(self):
-        self.midiproc_task_reset_signal_handlers()
+    def midiproc_task(self, jackname):
+        zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
         import mididings
 
         mididings.config(
             backend='jack-rt',
-            client_name=self.midiproc_jackname,
+            client_name=jackname,
             in_ports=1,
             out_ports=1
         )

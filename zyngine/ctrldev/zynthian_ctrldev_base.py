@@ -114,7 +114,7 @@ class zynthian_ctrldev_base:
         if callable(midiproc_task):
             try:
                 self.midiproc_jackname = "midiproc_" + self.get_driver_name()
-                self.midiproc = mp.Process(target=midiproc_task)
+                self.midiproc = mp.Process(target=midiproc_task, args=(self.midiproc_jackname,))
                 self.midiproc.start()
                 zynautoconnect.request_midi_connect()
             except Exception as e:
@@ -144,7 +144,8 @@ class zynthian_ctrldev_base:
 
     # Reset process signal handlers.
     # It *MUST* be called from midiproc_task, running in a spawned process.
-    def midiproc_task_reset_signal_handlers(self):
+    @staticmethod
+    def midiproc_task_reset_signal_handlers():
         signal.signal(signal.SIGHUP, signal.SIG_DFL)
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGQUIT, signal.SIG_DFL)

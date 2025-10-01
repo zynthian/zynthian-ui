@@ -57,8 +57,8 @@ class zynthian_ctrldev_akai_mpk_chorder(zynthian_ctrldev_base):
     # IPC => multiprocessing.Value() object to share an integer variable (chord index) across processes
     chord = mp.Value('i', 0)
 
-    def midiproc_task(self):
-        self.midiproc_task_reset_signal_handlers()
+    def midiproc_task(self, jackname):
+        zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
         import jack
         import struct
@@ -68,7 +68,7 @@ class zynthian_ctrldev_akai_mpk_chorder(zynthian_ctrldev_base):
         NOTEON = 0x9
         NOTEOFF = 0x8
 
-        client = jack.Client(self.midiproc_jackname)
+        client = jack.Client(jackname)
         inport = client.midi_inports.register('in_1')
         outport = client.midi_outports.register('out_1')
         event = Event()

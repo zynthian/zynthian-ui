@@ -44,8 +44,8 @@ class zynthian_ctrldev_generic_hungarian(zynthian_ctrldev_base):
     autoload_flag = False
 
     # The midiproc task itself. It runs in a spawned process.
-    def midiproc_task(self):
-        self.midiproc_task_reset_signal_handlers()
+    def midiproc_task(self, jackname):
+        zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
         import mididings
         from functools import partial  # needed for function params in mididings process
@@ -57,7 +57,7 @@ class zynthian_ctrldev_generic_hungarian(zynthian_ctrldev_base):
 
         mididings.config(
             backend='jack',
-            client_name=self.midiproc_jackname,
+            client_name=jackname,
             in_ports=1,
             out_ports=1,
         )
