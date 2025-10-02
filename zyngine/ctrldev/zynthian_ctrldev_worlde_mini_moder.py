@@ -29,7 +29,7 @@ import logging
 # Zynthian specific modules
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
-from zyngine.ctrldev.zynthian_ctrldev_base_moder import zynthian_ctrldev_base_moder, _MODE_BANKS
+from zyngine.ctrldev.zynthian_ctrldev_base_moder import zynthian_ctrldev_base_moder
 
 
 _MODE_BANKS = {
