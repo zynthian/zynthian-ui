@@ -167,6 +167,8 @@ class zynthian_engine_jalv(zynthian_engine):
         self.save_bank = None
         self.save_preset_uri = None
 
+        self.expecting_ctrls = False
+
         if state_manager:
             self.eng_info = self.state_manager.chain_manager.engine_info[eng_code]
         else:
@@ -394,6 +396,7 @@ class zynthian_engine_jalv(zynthian_engine):
                     logging.debug(f"LOG {self.jackname} > " + line)
 
     def proc_parse_ctrl_value(self, line):
+        self.expecting_ctrls = False
         parts = line.split("=")
         if len(parts) == 2:
             symparts = parts[0].split("#", maxsplit=1)
@@ -587,6 +590,8 @@ class zynthian_engine_jalv(zynthian_engine):
     def set_preset(self, processor, preset, preload=False):
         if not preset[0]:
             return
+        # The `preset` command will print all controllers.
+        self.expecting_ctrls = True
         self.proc_cmd(f"preset {preset[0]}")
         return True
 
@@ -902,6 +907,15 @@ class zynthian_engine_jalv(zynthian_engine):
                 self.proc_cmd("%s=%s" % (zctrl.symbol, zctrl.value))
             else:
                 self.proc_cmd("%s=%.6f" % (zctrl.symbol, zctrl.value))
+
+        if self.expecting_ctrls:
+            # If we are expecting controllers values over the process pipe, but
+            # we just updated the controllers here, then there is a chance that
+            # the controller values coming from the pipe contain the old values
+            # from before this update, which will lead to the UI getting out of
+            # sync with the plugin. So schedule a new listing of the controller
+            # values to force a refresh.
+            self.proc_cmd("controls")
 
     # ---------------------------------------------------------------------------
     # API methods
