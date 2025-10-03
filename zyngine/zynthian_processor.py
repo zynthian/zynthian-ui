@@ -714,10 +714,10 @@ class zynthian_processor:
     def midi_bank_msb(self, bank_msb):
         """Handle MIDI bank MSB message
 
-        bank_msb : Bank MSB
+        bank_msb : Bank MSB [0: system, 1: user, 2: external]
         """
         logging.debug(f"Received Bank MSB for CH#{self.midi_chan}: {bank_msb}")
-        if 2 <= bank_msb >= 0:  # TODO Why this limit?
+        if 0 <= bank_msb <= 2:
             self.bank_msb = bank_msb
 
     def midi_bank_lsb(self, bank_lsb):

@@ -476,7 +476,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             case "disable_output":
                 self.zyngui.state_manager.start_busy("hotplug", f"Disabling {option[2:]}")
                 zynautoconnect.enable_audio_output_device(option[2:-4], False)
-        self.zyngui.screens['option'].options = self.get_hotplug_menu_options()
+        self.zyngui.screens['option'].config("Hotplug Audio", self.get_hotplug_menu_options(), self.hotplug_audio_cb, False)
+        self.zyngui.show_screen('option')
         self.zyngui.state_manager.end_busy("hotplug")
         zynautoconnect.resume()
 

@@ -77,11 +77,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.options['replace'] = False
         self.processor = None  # Last processor edited
 
-        if jackname:
-            self.jackname = jackname
-        else:
-            self.jackname = self.state_manager.chain_manager.get_next_jackname("audioplayer")
-
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 
         self.monitors_dict = {}
@@ -154,7 +149,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
     def get_bank_list(self, processor=None):
         banks = self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
                                       internal_include_empty=False, dirs_only=False)
-        self.presets_add_audio_info(banks)
         return banks
 
         #return self.get_bank_dirlist(recursion=1, internal_include_empty=True)
@@ -219,7 +213,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 duration = zynaudioplayer.get_file_duration(preset[0])
                 fduration = f"{int(duration/60):02d}:{round(duration)%60:02d}"
                 preset[2] += f"{fparts[1]} ({fduration})"
-                preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", "file_audio.png"])
+                #preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", "file_audio.png"])
 
     def preset_exists(self, bank_info, preset_name):
         if not bank_info or bank_info[0] is None:
