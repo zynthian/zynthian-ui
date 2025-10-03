@@ -230,7 +230,6 @@ void* file_thread_fn(void* param) {
         if (nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
     }
-
     if (pPlayer->file_open) {
         pPlayer->stretcher = new RubberBandStretcher(g_samplerate, 2,
                                                      RubberBandStretcher::OptionProcessRealTime | RubberBandStretcher::OptionWindowShort |
@@ -253,6 +252,7 @@ void* file_thread_fn(void* param) {
         pPlayer->ringbuffer_b = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_b);
         pPlayer->file_open = FILE_OPEN;
+        fprintf(stderr, "Here\n");
 
         {
             // Scope to avoid extra memory usage
@@ -272,7 +272,6 @@ void* file_thread_fn(void* param) {
                 enable_loop(pPlayer, true);
                 set_beats(pPlayer, 0);
             }
-
             SF_INSTRUMENT inst;
             if (sf_command(pFile, SFC_GET_INSTRUMENT, &inst, sizeof(inst)) == SF_TRUE) {
                 fprintf(stderr, "File instrument info: gain: %d, detune:%d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n", inst.gain,
@@ -1456,8 +1455,6 @@ int on_jack_samplerate(jack_nframes_t nFrames, void* pArgs) {
     return 0;
 }
 
-static void lib_init(void) { fprintf(stderr, "Started libzynaudioplayer using %s\n", sf_version_string()); }
-
 bool init_jack() {
     if (g_jack_client)
         return true;
@@ -1488,6 +1485,12 @@ bool init_jack() {
     if (g_samplerate < 10)
         g_samplerate = 44100;
     return true;
+}
+
+static void lib_init(void) {
+    if (!init_jack())
+        fprintf(stderr, "libzynaudioplayer failed to initialise jack client\n");
+    fprintf(stderr, "Started libzynaudioplayer using %s\n", sf_version_string());
 }
 
 void stop_jack() {
