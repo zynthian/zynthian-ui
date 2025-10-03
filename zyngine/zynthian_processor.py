@@ -714,7 +714,7 @@ class zynthian_processor:
     def midi_bank_msb(self, bank_msb):
         """Handle MIDI bank MSB message
 
-        bank_msb : Bank MSB [0: sytem, 1: user, 2: external]
+        bank_msb : Bank MSB [0: system, 1: user, 2: external]
         """
         logging.debug(f"Received Bank MSB for CH#{self.midi_chan}: {bank_msb}")
         if 0 <= bank_msb <= 2:
