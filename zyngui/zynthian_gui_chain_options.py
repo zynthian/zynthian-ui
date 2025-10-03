@@ -166,6 +166,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         for slot in self.chain.synth_slots:
             for processor in slot:
                 name = processor.get_name()
+                if not name:
+                    name = "???"
                 text = "  " * indent + "╰━ " + name
                 res.append((self.processor_options, processor, text,
                             [f"Options for synth processor '{name}'", "synth_processor.png"]))
