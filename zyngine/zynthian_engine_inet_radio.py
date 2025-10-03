@@ -776,6 +776,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
         return copy.deepcopy(presets)
 
     def set_preset(self, processor, preset, preload=False):
+        if preload or self.preset == preset:
+            return
         self.preset = preset
         for self.preset_i, config in enumerate(self.preset2bank):
             if config[0] == processor.bank_index and config[1] == processor.preset_index:
