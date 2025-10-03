@@ -2237,7 +2237,7 @@ class zynthian_state_manager:
                     break
         if not filename:
             path = capture_dir_sdc
-            filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+            filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         if self.last_snapshot_fpath and len(self.last_snapshot_fpath) > 4:
             filename += "_" + os.path.basename(self.last_snapshot_fpath[:-4])
         filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")

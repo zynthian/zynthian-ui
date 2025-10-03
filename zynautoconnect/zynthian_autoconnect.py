@@ -1045,7 +1045,7 @@ def enable_audio_input_device(device, enable=True):
         stop_alsa_in(device)
         if device not in zynthian_gui_config.disabled_audio_in:
             zynthian_gui_config.disabled_audio_in.append(device)
-    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN": ",".join(zynthian_gui_config.disabled_audio_in)})
+    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN": ",".join(zynthian_gui_config.disabled_audio_in)}, True)
 
 def enable_audio_output_device(device, enable=True):
     if enable:
@@ -1057,7 +1057,7 @@ def enable_audio_output_device(device, enable=True):
         stop_alsa_out(device)
         if device not in zynthian_gui_config.disabled_audio_out:
             zynthian_gui_config.disabled_audio_out.append(device)
-    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT": ",".join(zynthian_gui_config.disabled_audio_out)})
+    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT": ",".join(zynthian_gui_config.disabled_audio_out)}, True)
 
 
 def get_alsa_hotplug_audio_devices(playback=True):
