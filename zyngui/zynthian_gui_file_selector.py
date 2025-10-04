@@ -44,10 +44,11 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         "nam": [["Neural Models"], "file_model.png"],
         "nammodel": [["Neural Models"], "file_model.png"],
         "json": [["Neural Models"], "file_model.png"],
-        "wav": [["Samples"], "file_audio.png"],
+        "wav": [["IRs", "Samples"], "file_audio.png"],
+        "flac": [["IRs", "Samples"], "file_audio.png"],
+        "aiff": [["IRs", "Samples"], "file_audio.png"],
         "ogg": [["Samples"], "file_audio.png"],
         "mp3": [["Samples"], "file_audio.png"],
-        "aac": [["Samples"], "file_audio.png"],
         "scl": [["Tuning"], "file.png"]
     }
 
@@ -154,7 +155,12 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         self.index = 0
         for i, item in enumerate(self.list_data):
             if len(item) == 6:
-                item.append(["", self.fext2dirname[item[5]][1]])
+                try:
+                    fticon = self.fext2dirname[item[5]][1]
+                except:
+                    logging.warning(f"File type '{item[5]}' not supported")
+                    continue
+                item.append(["", fticon])
             else:
                 item.append(["", "folder.png"])
             if item[0] == self.path:
