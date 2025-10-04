@@ -750,18 +750,25 @@ class zynthian_engine_inet_radio(zynthian_engine):
 
         self.banks = []
         self.preset2bank = []
+        playlists = None
         for bank_i, bank in enumerate(self.presets):
             self.banks.append([bank, None, bank, None])
+            if bank == "Playlists":
+                self.presets[bank] = [] # Clear playlists
+                playlists = bank_i
+                continue
             for preset_i, preset in enumerate(self.presets[bank]):
                 self.preset2bank.append((bank_i, preset_i, preset[2]))
 
-        playlists = []
+        # Append playlists
+        if playlists is None:
+            self.banks.append(["Playlists", None, "Playlists", None])
+            self.presets["Playlists"] = []
+            playlists = len(self.banks) - 1
+        # Populate playlists
         for file in listdir(f"{self.my_data_dir}/capture"):
             if file[-4:].lower() in (".m3u", ".pls"):
-                playlists.append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4]])
-        if playlists:
-            self.presets["Playlists"] = playlists
-            self.banks.append(["Playlists", None, "Playlists", None])
+                self.presets["Playlists"].append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4]])
 
         return self.banks
 

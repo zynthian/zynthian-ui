@@ -252,8 +252,7 @@ void* file_thread_fn(void* param) {
         pPlayer->ringbuffer_b = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_b);
         pPlayer->file_open = FILE_OPEN;
-        fprintf(stderr, "Here\n");
-
+        
         {
             // Scope to avoid extra memory usage
             const char* loopModes[] = {"None", "Forward", "Backward", "Alternating"};
