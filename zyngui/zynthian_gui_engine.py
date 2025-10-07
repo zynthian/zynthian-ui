@@ -104,18 +104,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
         xpos = int(0.1 * star_fs)
         ypos = int(-0.3 * star_fs)
         info_width = ctrl_width - xpos
-        """
-		self.quality_label = self.info_canvas.create_text(
-			xpos,
-			ypos,
-			anchor=tkinter.NW,
-			justify=tkinter.LEFT,
-			width=info_width,
-			text="Quality:",
-			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size),
-			fill=zynthian_gui_config.color_panel_tx)
-		ypos += int(1.2 * zynthian_gui_config.font_size)
-		"""
         self.quality_stars_bg_label = self.info_canvas.create_text(
             xpos,
             ypos,
@@ -136,18 +124,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
             font=(zynthian_gui_config.font_family, star_fs),
             fill=color_star)
         ypos += int(1.2 * star_fs)
-        """
-		self.complexity_label = self.info_canvas.create_text(
-			xpos,
-			ypos,
-			anchor=tkinter.NW,
-			justify=tkinter.LEFT,
-			width=info_width,
-			text="Complex:",
-			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size),
-			fill=zynthian_gui_config.color_panel_tx)
-		ypos += int(1.2 * zynthian_gui_config.font_size)
-		"""
         self.complexity_stars_bg_label = self.info_canvas.create_text(
             xpos,
             ypos,
@@ -178,22 +154,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
             # font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
             font=("sans-serif", int(0.8 * zynthian_gui_config.font_size)),
             fill=zynthian_gui_config.color_panel_tx)
-
-        """
-		self.description_label = tkinter.Text(self.main_frame,
-			width=info_width,
-			height=1,
-			wrap=tkinter.CHAR,
-			font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
-			fg=zynthian_gui_config.color_panel_tx,
-			bd=0,
-			highlightthickness=0,
-			bg=zynthian_gui_config.color_bg,
-			padx=2,
-			pady=2
-		)
-		self.description_label.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
-		"""
 
     def update_layout(self):
         super().update_layout()
@@ -344,6 +304,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
                 engine = self.list_data[i][0]
                 if self.show_all:
                     self.engine_info[engine]['ENABLED'] = not self.engine_info[engine]['ENABLED']
+                    if self.engine_info[engine]['EDIT'] == 0:
+                        self.engine_info[engine]['EDIT'] = 1
                     self.engine_info_dirty = True
                     self.update_list()
                 else:
