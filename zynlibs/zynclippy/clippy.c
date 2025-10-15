@@ -29,26 +29,40 @@
 #include <jack/jack.h> // provides jack API
 #include <jack/midiport.h> // provides jack midi port API
 #include <jack/ringbuffer.h> //provides jack ring buffer
-#include <sndfile.h>   //provides sound file manipulation
-#include <samplerate.h> //provides samplerate conversion
-#include <pthread.h> //provides threading
+#include <sndfile.h>   // provides sound file manipulation
+#include <samplerate.h> // provides samplerate convertor
+#include <rubberband/rubberband-c.h> // provides time stretch
+#include <pthread.h> // provides threading
 
 #define PRELOAD 2048 // Size of preload buffers in frames
 #define RINGBUFFER PRELOAD * 2 // Size of ring buffers in frames
 #define MAX_CLIPS 32 // Maximum quantity of clips per player/channel
 
 enum STATE {
-    STATE_IDLE, // Not ready for use
-    STATE_LOAD, // Load new file into preload cache
-    STATE_RESET, // Reset clip buffers to start of clip
-    STATE_READY, // Cached, ready for use
+    STATE_IDLE,     // Not ready for use
+    STATE_LOAD,     // Load new file into preload cache
+    STATE_RESET,    // Reset clip buffers to start of clip
+    STATE_READY,    // Cached, ready for use
     STATE_STARTING, // Switch sndfile
-    STATE_PLAYING // Buffer in use for playback (may be from preload or ring buffer)
+    STATE_PLAYING   // Buffer in use for playback (may be from preload or ring buffer)
+};
+
+enum ERROR {
+    ERROR_SUCCESS,      // No error
+    ERROR_EXISTS,       // Already exists
+    ERROR_RANGE,        // Parameter out of range
+    ERROR_CREATE,       // Cannot create object
+    ERROR_PORT,         // Cannot create port
+    ERROR_OPEN,         // Error opening file
+    ERROR_SAMPLERATE,   // Wrong samplerate
+    ERROR_ACTIVATE,     // Cannot activate jack
+    ERROR_SRC,          // Error during samplerate conversion
+    ERROR_STRETCH       // Error during time stretch
 };
 
 // Forward declarations
-uint8_t unload(uint8_t player_id, uint32_t id);
-uint8_t load(uint8_t channel, uint32_t id, const char* path);
+uint8_t unloadClip(uint8_t player_id, uint32_t id);
+uint8_t loadClip(uint8_t channel, uint32_t id, const char* path);
 uint8_t addPlayer(uint8_t channel);
 uint32_t removePlayer(uint8_t channel);
 void setGain(uint8_t channel, uint32_t clip, float gain);
@@ -127,46 +141,7 @@ void* file_thread_fn(void* param) {
                 //!@todo Optimise - event driven rather than round-robin all clips
                 clip = player->clips[id];
                 if (clip) {
-                    if (clip->state== STATE_LOAD) {
-                        // Load data from file to preload cache
-                        sndfile = sf_open(clip->path, SFM_READ, &info);
-                        if (info.samplerate != samplerate)
-                            fprintf(stderr, "Mismatched samplerate: %u/%u\n", info.samplerate, samplerate);
-                        if (sndfile && info.channels && info.frames) {
-                            clip->channels = info.channels;
-                            clip->frames = info.frames;
-                            float buffer[PRELOAD * info.channels * sizeof(float)];
-                            sf_count_t frames = sf_readf_float(sndfile, buffer, PRELOAD);
-                            int stereo = info.channels > 1 ? 1 : 0;
-                            if (id == player->clip)
-                                getMutex();
-                            for (uint32_t i = 0; i < PRELOAD; ++i) {
-                                if (i < frames) {
-                                    clip->preload_buffer_a[i] = buffer[i * info.channels];
-                                    clip->preload_buffer_b[i] = buffer[i * info.channels + stereo];
-                                } else {
-                                    // Silence remaining frames
-                                    clip->preload_buffer_a[i] = 0.0f;
-                                    clip->preload_buffer_b[i] = 0.0f;
-                                }
-                            }
-                            clip->state = STATE_READY;
-                            jack_ringbuffer_reset(player->ringbuffer_a);
-                            jack_ringbuffer_reset(player->ringbuffer_b);
-                            if (id == player->clip) {
-                                player->state = STATE_LOAD;
-                                releaseMutex();
-                            }
-                            sf_close(sndfile);
-                        } else {
-                            if (id == player->clip)
-                                getMutex();
-                            clip->state = STATE_IDLE;
-                            player->state = STATE_IDLE;
-                            if (id == player->clip)
-                                releaseMutex();
-                        }
-                    } else if (clip->state == STATE_RESET) {
+                    if (clip->state == STATE_RESET) {
                         // Reset clip to start
                         sf_seek(player->sndfile, PRELOAD, SEEK_SET);
                         clip->state = STATE_READY;
@@ -349,9 +324,8 @@ void reset() {
         player->state=STATE_LOAD;
         for (uint32_t id = 0; id < MAX_CLIPS; ++id) {
             Clip* clip = player->clips[id];
-            if (!clip)
-                continue;
-            clip->state = STATE_LOAD;
+            if (clip)
+                loadClip(channel, id, clip->path);
         }
     }
     releaseMutex();
@@ -397,7 +371,7 @@ int init() {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     if (pthread_create(&file_thread, &attr, file_thread_fn, NULL)) {
         fprintf(stderr, "Clippy error: failed to create file reader thread\n");
-        return 1;
+        return ERROR_CREATE;
     }
 
     // Create jack client
@@ -405,7 +379,7 @@ int init() {
     jack_client = jack_client_open("clippy", JackNullOption, &status);
     if (jack_client == NULL) {
         fprintf(stderr, "Could not open JACK client\n");
-        return 1;
+        return ERROR_CREATE;
     }
 
     if (status & JackNameNotUnique) {
@@ -422,28 +396,28 @@ int init() {
     midi_input_port = jack_port_register(jack_client, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
     if (midi_input_port == NULL) {
         fprintf(stderr, "Could not open MIDI input port\n");
-        return 1;
+        return ERROR_PORT;
     }
 
     if (jack_activate(jack_client) != 0) {
         fprintf(stderr, "Could not activate client\n");
-        return 1;
+        return ERROR_ACTIVATE;
     }
     fprintf(stderr, "libclippy started\n");
 }
 
 /** @brief  Create a new clip player
     @brief  channel MIDI channel for new player
-    @retval uint8_t Error code [0=success, 1=out of range, 2=cannot create player, 3=cannot create jack ports]
+    @retval uint8_t Error code
 */
 uint8_t addPlayer(uint8_t channel) {
     if (channel >= 16)
-        return 1;
+        return ERROR_RANGE;
     if (players[channel])
-        return 0;
+        return ERROR_EXISTS;
     Player* player = malloc(sizeof(Player));
     if (!player)
-        return 2;
+        return ERROR_CREATE;
 
     memset(player, 0, sizeof(Player));
     char name[16];
@@ -462,19 +436,19 @@ uint8_t addPlayer(uint8_t channel) {
     getMutex();
     players[channel] = player;
     releaseMutex();
-    return 0;
+    return ERROR_SUCCESS;
 }
 
 /** @brief  Remove a clip player
     @param  channel MIDI channel
-    @retval uint8_t Error code [0=success, 1=out of range]
+    @retval uint8_t Error code
 */
 uint32_t removePlayer(uint8_t channel) {
     if(channel >= 16)
-        return 1;
+        return ERROR_RANGE;
     Player* player = players[channel];
     if(player == NULL)
-        return 0;
+        return ERROR_CREATE;
     getMutex();
     players[channel] = NULL;
     releaseMutex();
@@ -487,53 +461,90 @@ uint32_t removePlayer(uint8_t channel) {
     jack_port_unregister(jack_client, player->output_a);
     jack_port_unregister(jack_client, player->output_b);
     free(player);
-    return 0;
+    return ERROR_SUCCESS;
 }
 
 /** @brief  Load a file into a player
     @param  channel MIDI channel
     @param  id Clip id [0..MAX_CLIPS]
     @param  path Full (or relative) path and filename
-    @retval uint8_t Error code: [0:OK 1:Play not exist 2:Invalid channel 3:Failed to create clip object]
+    @retval uint8_t Error code
 */
-uint8_t load(uint8_t channel, uint32_t id, const char* path) {
+uint8_t loadClip(uint8_t channel, uint32_t id, const char* path) {
     if(channel >= 16)
-        return 2;
+        return ERROR_RANGE;
     if(id >= MAX_CLIPS)
-        return 4;
+        return ERROR_CREATE;
     Player* player = players[channel];
     if (!player)
-        return 1;
+        return ERROR_RANGE;
 
-    // Create a new clip instance and configure
-    Clip* clip = malloc(sizeof(Clip));
-    if (!clip) {
-        fprintf(stderr, "Clippy error: failed to create new clip object\n");
-        return 3;
+    // Load data from file to preload cache
+    struct SF_INFO info;
+    SNDFILE* sndfile = sf_open(path, SFM_READ, &info);
+    Clip* clip = NULL;
+
+    if (sndfile && info.channels && info.frames) {
+        if (info.samplerate != samplerate) {
+            fprintf(stderr, "File samplerate: %u is not system samplerate %u\n", info.samplerate, samplerate);
+            sf_close(sndfile);
+            return ERROR_SAMPLERATE;
+        }
+        // Create a new clip instance and configure
+        clip = malloc(sizeof(Clip));
+        if (!clip) {
+            fprintf(stderr, "Clippy error: failed to create new clip object\n");
+            sf_close(sndfile);
+            return ERROR_CREATE;
+        }
+
+        memset(clip, 0, sizeof(Clip));
+        clip->gain = 1.0f;
+        strcpy(clip->path, path);
+        clip->channels = info.channels;
+        clip->frames = info.frames;
+        float buffer[PRELOAD * info.channels * sizeof(float)];
+        sf_count_t frames = sf_readf_float(sndfile, buffer, PRELOAD);
+        int stereo = info.channels > 1 ? 1 : 0;
+        for (uint32_t i = 0; i < PRELOAD; ++i) {
+            if (i < frames) {
+                clip->preload_buffer_a[i] = buffer[i * info.channels];
+                clip->preload_buffer_b[i] = buffer[i * info.channels + stereo];
+            } else {
+                // Silence remaining frames
+                clip->preload_buffer_a[i] = 0.0f;
+                clip->preload_buffer_b[i] = 0.0f;
+            }
+        }
+        clip->state = STATE_READY;
+        jack_ringbuffer_reset(player->ringbuffer_a);
+        jack_ringbuffer_reset(player->ringbuffer_b);
+        sf_close(sndfile);
+    } else {
+        sf_close(sndfile);
+        return ERROR_OPEN;
     }
-    memset(clip, 0, sizeof(Clip));
-    clip->gain = 1.0f;
-    strcpy(clip->path, path);
-    clip->state = STATE_LOAD;
-
-    unload(channel, id);
-    getMutex();
+    unloadClip(channel, id);
     player->clips[id] = clip;
-    releaseMutex();
-    return 0;
+    return ERROR_SUCCESS;
 }
 
-uint8_t unload(uint8_t channel, uint32_t id) {
+/** @brief  Unload a file from a player
+    @param  channel MIDI channel
+    @param  id Clip id [0..MAX_CLIPS]
+    @retval uint8_t Error code
+*/
+uint8_t unloadClip(uint8_t channel, uint32_t id) {
     if(channel >= 16)
-        return 2;
+        return ERROR_RANGE;
     Player* player = players[channel];
     if(player == NULL)
-        return 1;
+        return ERROR_RANGE;
     if(id >= MAX_CLIPS)
-        return 4;
+        return ERROR_RANGE;
     Clip* clip = player->clips[id];
     if(clip == NULL)
-        return 3;
+        return ERROR_RANGE;
 
     if (player->clip == id) {
         getMutex();
@@ -542,16 +553,242 @@ uint8_t unload(uint8_t channel, uint32_t id) {
     }
     player->clips[id] = NULL;
     free(clip);
-    return 0;
+    return ERROR_SUCCESS;
 }
 
+/** @brief  Set clip gain
+    @param  channel MIDI channel
+    @param  id Clip id [0..MAX_CLIPS]
+    @param  gain Linear gain factor
+*/
 void setGain(uint8_t channel, uint32_t clip, float gain) {
     if (channel < 16 && players[channel] && players[channel]->clips[players[channel]->clip])
         players[channel]->clips[players[channel]->clip]->gain = gain;
 }
 
+/** @brief  Get clip gain
+    @param  channel MIDI channel
+    @param  id Clip id [0..MAX_CLIPS]
+    @retval float Linear gain factor
+*/
 float getGain(uint8_t channel, uint32_t clip) {
     if (channel < 16 && players[channel] && players[channel]->clips[players[channel]->clip])
         return players[channel]->clips[players[channel]->clip]->gain;
     return 0.0f;
+}
+
+/** @brief  Get the samplerate of a file
+    @param  path Full path and filename
+    @retval uint32_t Samplerate in frames per second or 0z0ero on error
+*/
+uint32_t getFileSamplerate(const char* path) {
+    SF_INFO sf_info;
+    memset(&sf_info, 0, sizeof(sf_info));
+    SNDFILE* sndfile = sf_open(path, SFM_READ, &sf_info);
+    if (!sndfile)
+        return 0;
+    sf_close(sndfile);
+    return sf_info.samplerate;
+}
+
+/** @brief  Get the quantity of frames in a file
+    @param  path Full path and filename
+    @retval uint32_t Duration in frames or 0 on error
+*/
+uint32_t getFileFrames(const char* path) {
+    SF_INFO sf_info;
+    memset(&sf_info, 0, sizeof(sf_info));
+    SNDFILE* sndfile = sf_open(path, SFM_READ, &sf_info);
+    if (!sndfile)
+        return 0;
+    sf_close(sndfile);
+    return sf_info.frames;
+}
+
+int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float ratio) {
+    uint8_t error = 0;
+    if (quality > 4 || ratio < 0.001)
+        return ERROR_RANGE;
+
+    // Read source file into interleaved float buffer data_in
+    SF_INFO sf_info;
+    memset(&sf_info, 0, sizeof(sf_info));
+    SNDFILE* sndfile = sf_open(src_path, SFM_READ, &sf_info);
+    if (!sndfile || sf_info.samplerate < 10 || sf_info.channels < 1 || sf_info.frames < 10)
+        return ERROR_OPEN;
+    int channels = sf_info.channels;
+    sf_count_t frames = sf_info.frames;
+    uint8_t src = samplerate != sf_info.samplerate;
+    uint8_t stretch = ratio != 0.0f;
+
+    size_t size = sf_info.frames * sf_info.channels * sizeof(float);
+    if (size == 0) {
+        sf_close(sndfile);
+        return ERROR_OPEN;
+    }
+    float* data_in = (float*)malloc(size);
+    if (!data_in) {
+        sf_close(sndfile);
+        return ERROR_CREATE;
+    }
+    sf_count_t count = sf_readf_float(sndfile, data_in, sf_info.frames);
+    sf_close(sndfile);
+    if (count != sf_info.frames) {
+        free(data_in);
+        return ERROR_OPEN;
+    }
+
+    // Deinterleave source audio into array of buffers data_deinterleaved[]
+    fprintf(stderr, "Deinterleave...\n");
+    float* data_deinterleaved[channels];
+    for (int ch = 0; ch < channels; ch++) {
+        data_deinterleaved[ch] = malloc(frames * sizeof(float));
+        for (sf_count_t i = 0; i < frames; i++) {
+            data_deinterleaved[ch][i] = data_in[i * channels + ch];
+        }
+    }
+    free(data_in);
+
+    if (samplerate != sf_info.samplerate) {
+        fprintf(stderr, "SRC...\n");
+        // SRC each channel into array of buffers data_resampled[]
+        double resample_ratio = (double)samplerate / sf_info.samplerate;
+        sf_count_t max_resampled_frames = frames * resample_ratio + 1;
+
+        float* data_resampled[channels];
+        sf_count_t resampled_frames = 0;
+
+        int ch;
+        for (ch = 0; ch < channels; ++ch) {
+            data_resampled[ch] = malloc(max_resampled_frames * sizeof(float));
+
+            SRC_DATA src_data = {
+                .data_in = data_deinterleaved[ch],
+                .data_out = data_resampled[ch],
+                .input_frames = frames,
+                .output_frames = max_resampled_frames,
+                .src_ratio = resample_ratio,
+                .end_of_input = SF_TRUE
+            };
+
+            int err;
+            SRC_STATE *src = src_new(quality, 1, &err);
+            if (!src) {
+                error = ERROR_SRC;
+                fprintf(stderr, "SRC init error: %s\n", src_strerror(err));
+                break;
+            }
+
+            if ((err = src_process(src, &src_data))) {
+                error = ERROR_SRC;
+                fprintf(stderr, "SRC error: %s\n", src_strerror(err));
+                break;
+            }
+
+            src_delete(src);
+            free(data_deinterleaved[ch]);
+            data_deinterleaved[ch] = data_resampled[ch];
+            if (ch == channels - 1)
+                frames = src_data.output_frames_gen;
+        }
+
+        if (error) {
+            for (int i = ch; i < channels; ++i)
+                free(data_deinterleaved[i]);
+            return error;
+        }
+    }
+
+    if (ratio != 1.0) {
+        // Stretch into array of buffers data_stretched[]
+        fprintf(stderr, "Stretch...\n");
+        RubberBandState rb = rubberband_new(
+            samplerate,
+            channels,
+            RubberBandOptionProcessRealTime |
+            RubberBandOptionStretchElastic |
+            RubberBandOptionTransientsSmooth |
+            RubberBandOptionThreadingAuto,
+            ratio,
+            1.0  // No pitch change
+        );
+
+        const int block_size = 512;
+        sf_count_t max_stretched_frames = frames * ratio + 2048;
+        float* data_stretched[channels];
+        for (int ch = 0; ch < channels; ch++)
+            data_stretched[ch] = calloc(max_stretched_frames, sizeof(float));
+
+        sf_count_t stretched_frames = 0;
+        for (sf_count_t i = 0; i < frames; i += block_size) {
+            int n, final = 0;
+            if (i + block_size > frames) {
+                n = frames - i;
+                final = 1;
+            } else {
+                n = block_size;
+            }
+            float* block_in[channels];
+            for (int ch = 0; ch < channels; ch++)
+                block_in[ch] = &data_deinterleaved[ch][i];
+
+            rubberband_process(rb, (const float* const*)block_in, n, final);
+            int available = rubberband_available(rb);
+            if (available > 0) {
+                float *block_out[channels];
+                for (int ch = 0; ch < channels; ch++)
+                    block_out[ch] = data_stretched[ch] + stretched_frames;
+                rubberband_retrieve(rb, block_out, available);
+                stretched_frames += available;
+            }
+        }
+
+        int available = rubberband_available(rb);
+        if (available > 0) {
+            float *block_out[channels];
+            for (int ch = 0; ch < channels; ch++) {
+                block_out[ch] = data_stretched[ch] + stretched_frames;
+            }
+
+            rubberband_retrieve(rb, block_out, available);
+            stretched_frames += available;
+        }
+
+        for (int ch = 0; ch < channels; ch++) {
+            free(data_deinterleaved[ch]);
+            data_deinterleaved[ch] = data_stretched[ch];
+        }
+        frames = stretched_frames;
+
+        rubberband_delete(rb);
+    }
+
+    // Interleave into buffer data_out
+    fprintf(stderr, "Interleave...\n");
+    float *data_out = malloc(frames * channels * sizeof(float));
+    for (int ch = 0; ch < channels; ch++) {
+        for (sf_count_t i = 0; i < frames; i++) {
+            data_out[i * channels + ch] = data_deinterleaved[ch][i];
+        }
+        free(data_deinterleaved[ch]);
+    }
+
+    // Write output
+    fprintf(stderr, "Write...\n");
+    sf_info.samplerate = samplerate;
+    sf_info.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
+
+    SNDFILE *outfile = sf_open(dst_path, SFM_WRITE, &sf_info);
+    if (!outfile) {
+        fprintf(stderr, "Failed to open output file.\n");
+        return 1;
+    }
+
+    sf_writef_float(outfile, data_out, frames);
+    sf_close(outfile);
+
+    free(data_out);
+
+    printf("Done. Output written to %s\n", dst_path);
+    return 0;
 }

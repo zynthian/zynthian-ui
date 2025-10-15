@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynclippy library
 #
-# Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2025 Brian Walton <brian@riban.co.uk>
 # License: LGPL V3
 #
 # ********************************************************************
@@ -51,7 +51,7 @@ try:
     libclippy.init()
 
     libclippy.getGain.restype = ctypes.c_float
-    libclippy.setGain.argtypes = [ctypes.c_uint8, ctypes.c_uint32, ctypes.c_float]
+    #libclippy.copyFile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint8, ctypes.c_float]
 
 
 except Exception as e:
@@ -81,8 +81,8 @@ def remove_player(channel):
     filename - Full path and filename
     returns - True on success
 """
-def load(channel, clip, path):
-    ret = libclippy.load(channel, clip, bytes(path, "utf-8"))
+def load_clip(channel, clip, path):
+    ret = libclippy.loadClip(channel, clip, bytes(path, "utf-8"))
     if ret:
         logging.warning(f"Failed to load file {path} to clip {clip} on channel {channel}: {ret}")
     return ret == 0
@@ -93,8 +93,8 @@ def load(channel, clip, path):
     clip - Clip id [0..MAX_CLIPS]
     returns - True on success
 """
-def unload(channel, clip):
-    return libclippy.unload(channel, clip) == 0
+def unload_clip(channel, clip):
+    return libclippy.unloadClip(channel, clip) == 0
 
 """ Set the gain fo a player
 
@@ -103,7 +103,7 @@ def unload(channel, clip):
     gain - Gain [float]
 """
 def set_gain(channel, clip, gain):
-    libclippy.setGain(channel, clip, gain)
+    libclippy.setGain(channel, clip, ctypes.c_float(gain))
 
 """ Get the gain fo a player
 
@@ -113,5 +113,31 @@ def set_gain(channel, clip, gain):
 """
 def get_gain(channel, clip):
     return libclippy.getGain(channel, clip)
+
+""" Get the samplerate of a file
+
+    path - Full path and filename
+    returns - samplerate in frames per second or 0 on error
+"""
+def get_file_samplerate(path):
+    return libclippy.getFileSamplerate(bytes(path, "utf-8"))
+
+""" Get the quantity of frames in a file
+
+    path - Full path and filename
+    returns - Duration in frames or 0 on error
+"""
+def get_file_frames(path):
+    return libclippy.getFileFrames(bytes(path, "utf-8"))
+
+""" Copy a file, converting to 16-bit WAV at system samplerate with optional time stretch
+    src_path -  Full path and filename of file to read
+    dst_path - Full path and filename of file to write
+    quality - Conversion quality [SINC_BEST_QUALITY=0,SINC_MEDIUM_QUALITY=1,SINC_FASTEST=2,ZERO_ORDER_HOLD=3,LINEAR=4]
+    ratio - Stretch ratio (1.0 for no stretch (default))
+    returns - Error code
+"""
+def copy_file(src_path, dst_path, quality=2, ratio=1.0):
+    return libclippy.copyFile(bytes(src_path, "utf-8"), bytes(dst_path, "utf-8"), quality, ctypes.c_float(ratio))
 
 # -------------------------------------------------------------------------------
