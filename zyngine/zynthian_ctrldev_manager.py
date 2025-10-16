@@ -141,7 +141,7 @@ class zynthian_ctrldev_manager():
             # Unroute from chains if driver want it
             if driver.unroute_from_chains:
                 if isinstance(driver.unroute_from_chains, bool):
-                    lib_zyncore.zmip_set_ui_midi_chans(izmip, 0xF)
+                    lib_zyncore.zmip_set_ui_midi_chans(izmip, 0xFFFF)
                 elif isinstance(driver.unroute_from_chains, int):
                     lib_zyncore.zmip_set_ui_midi_chans(izmip, driver.unroute_from_chains)
             else:
@@ -199,7 +199,7 @@ class zynthian_ctrldev_manager():
     def is_input_device_available_to_chains(self, idev):
         if idev in self.drivers and self.drivers[idev].unroute_from_chains:
             unroute_from_chains = self.drivers[idev].unroute_from_chains
-            if isinstance(unroute_from_chains, bool) or unroute_from_chains == 0xF:
+            if isinstance(unroute_from_chains, bool) or unroute_from_chains == 0xFFFF:
                 return False
         return True
 
