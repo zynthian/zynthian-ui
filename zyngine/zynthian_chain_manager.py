@@ -238,7 +238,10 @@ class zynthian_chain_manager:
                 except Exception as e:
                     unroute = False
                     logging.warning(f"ctrldev_manager => {e}")
-                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, not unroute)
+                if isinstance(unroute, bool) or unroute == 0xffff:
+                    lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, not unroute)
+                else:
+                    lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, True)
             # Enable StepSeq MIDI intput
             lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_STEP_INDEX, True)
             # Enable SMF sequencer MIDI intput
