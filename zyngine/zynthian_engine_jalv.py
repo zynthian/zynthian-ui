@@ -18,6 +18,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
+#
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
 # ******************************************************************************
@@ -220,21 +221,9 @@ class zynthian_engine_jalv(zynthian_engine):
 
             # Use jalv's development version =>
             #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
-
             self.command_prompt = ">"
-
             # Jalv which uses PWD as the root for presets
             self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
-
-            output = self.start()
-
-            # Get Plugin & Jack names from Jalv starting text ...
-            if output:
-                for line in output.split("\n"):
-                    if line[0:10] == "JACK Name:":
-                        self.jackname = line[11:].strip()
-                        logging.debug("Jack Name => {}".format(self.jackname))
-                        break
 
             # Setup MIDI Controllers
             self._ctrls = []
@@ -283,6 +272,16 @@ class zynthian_engine_jalv(zynthian_engine):
                 self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
             except:
                 self.custom_gui_fpath = None
+
+            # Instance jalv host with the plugin URI
+            output = self.start()
+            # Get Plugin & Jack names from Jalv starting text ...
+            if output:
+                for line in output.split("\n"):
+                    if line[0:10] == "JACK Name:":
+                        self.jackname = line[11:].strip()
+                        logging.debug("Jack Name => {}".format(self.jackname))
+                        break
 
         # Get bank & presets info
         self.load_preset_info()
@@ -377,7 +376,6 @@ class zynthian_engine_jalv(zynthian_engine):
             if line:
                 self.proc_poll_parse_line(line)
 
-
     def proc_poll_parse_line(self, line):
         #logging.debug(f"{self.jackname} PARSE => " + line)
         match line[0:5]:
@@ -421,7 +419,7 @@ class zynthian_engine_jalv(zynthian_engine):
                         logging.warning(f"Cant't parse controller index from jalv output: {line}")
             except Exception as e:
                 # TODO This shouldn't happen when property parameters are fully implemented
-                logging.warning(f"Unknown controller when parsing jalv output => {line}")
+                logging.warning(f"Unknown controller symbol when parsing jalv output => {symparts[1]} ({symparts[0]})")
         else:
             logging.warning(f"Wrong controller format when parsing jalv output => {line}")
 
