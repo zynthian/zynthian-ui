@@ -323,6 +323,13 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         else:
             return False
 
+    def zynpot_abs(self, i, val):
+        if i < len(self.zgui_ctrls):
+            self.zgui_ctrls[i].zynpot_abs(val)
+            return True
+        else:
+            return False
+
     # Function to back event
     def back_action(self):
         if self.learn_mode:

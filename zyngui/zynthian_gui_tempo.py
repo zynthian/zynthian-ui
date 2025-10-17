@@ -192,6 +192,13 @@ class zynthian_gui_tempo(zynthian_gui_base):
         else:
             return False
 
+    def zynpot_abs(self, i, val):
+        if i < 4:
+            self.zgui_ctrls[i].zynpot_abs(val)
+            return True
+        else:
+            return False
+
     def send_controller_value(self, zctrl):
         if self.shown:
             if zctrl == self.clk_source_zctrl:
