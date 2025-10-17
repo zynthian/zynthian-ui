@@ -1017,7 +1017,7 @@ class zynthian_chain_manager:
             if eng_code[0:3] == "JV/":
                 eng_key = f"JV/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(eng_code, self.state_manager, False)
-            elif eng_code in ("SF", "CL", "PD"):
+            elif eng_code in ("SF", "PD"):
                 eng_key = f"{eng_code}/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(self.state_manager)
             else:

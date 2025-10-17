@@ -41,10 +41,10 @@
 enum STATE {
     STATE_IDLE,     // Not ready for use
     STATE_LOAD,     // Load new file into preload cache
-    STATE_RESET,    // Reset clip buffers to start of clip
     STATE_READY,    // Cached, ready for use
     STATE_STARTING, // Switch sndfile
-    STATE_PLAYING   // Buffer in use for playback (may be from preload or ring buffer)
+    STATE_PLAYING,  // Buffer in use for playback (may be from preload or ring buffer)
+    STATE_STOPPING  // Fade to avoid stop clitch
 };
 
 enum ERROR {
@@ -88,7 +88,7 @@ enum MIDI_COMMANDS {
 };
 
 typedef struct {
-    uint8_t state; // Clip status: IDLE, LOAD, READY
+    uint8_t state; // Clip state
     uint32_t frames; // Quantity of frames in loaded clip
     uint8_t channels; // Quantity of channels in clip
     float gain; // Gain factor
@@ -124,30 +124,18 @@ static void inline releaseMutex() {
 
 // Background file and buffer management
 void* file_thread_fn(void* param) {
-    //!@todo ***SRC***
     Player* player;
     Clip* clip;
     SNDFILE* sndfile; // Used to refresh preload buffers
     struct SF_INFO info;
     float a, b;
+    size_t write_space_a, write_space_b, write_space;
 
     while (running) {
         for (uint8_t channel = 0; channel < 16; ++channel) {
             player = players[channel];
             if (!player)
                 continue;
-            // Update clips
-            for (uint32_t id = 0; id < MAX_CLIPS; ++id) {
-                //!@todo Optimise - event driven rather than round-robin all clips
-                clip = player->clips[id];
-                if (clip) {
-                    if (clip->state == STATE_RESET) {
-                        // Reset clip to start
-                        sf_seek(player->sndfile, PRELOAD, SEEK_SET);
-                        clip->state = STATE_READY;
-                    }
-                }
-            }
 
             // Update currently playing sample
             clip = player->clips[player->clip];
@@ -160,9 +148,9 @@ void* file_thread_fn(void* param) {
                 if (player->sndfile) {
                     sf_seek(player->sndfile, PRELOAD, SEEK_SET);
                     getMutex();
-                    player->state = STATE_PLAYING;
                     jack_ringbuffer_reset(player->ringbuffer_a);
                     jack_ringbuffer_reset(player->ringbuffer_b);
+                    player->state = STATE_PLAYING;
                 }
                 else {
                     getMutex();
@@ -172,8 +160,10 @@ void* file_thread_fn(void* param) {
             }
             if (player->state == STATE_PLAYING) {
                 // Load data from file to ring buffer
-                size_t write_space = jack_ringbuffer_write_space(player->ringbuffer_a); // Assume a & b are the same
-                if (write_space) {
+                size_t write_space_a = jack_ringbuffer_write_space(player->ringbuffer_a);
+                size_t write_space_b = jack_ringbuffer_write_space(player->ringbuffer_b);
+                write_space = (write_space_a < write_space_b) ? write_space_a : write_space_b;
+                if (write_space > 127) {
                     int free_frames = write_space / sizeof(float);
                     float buffer[free_frames * clip->channels];
                     int frames = sf_readf_float(player->sndfile, buffer, free_frames);
@@ -235,8 +225,10 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                 }
             }
             clip = player->clips[player->clip];
-            if (clip && player->play_pos >= clip->frames)
-                player->state = STATE_RESET;
+            if (clip && player->play_pos >= clip->frames) {
+                // Reached end of clip
+                player->state = STATE_STOPPING;
+            }
         } else {
             output_a[player_id] = NULL;
             output_b[player_id] = NULL;
@@ -267,8 +259,9 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                 if (!player)
                     break;
                 if (event.buffer[1] == 0) {
-                    if (player->state == STATE_PLAYING)
-                        player->state = STATE_RESET;
+                    // Note 0 stops playback
+                    if (player->state == STATE_PLAYING || player->state == STATE_STARTING)
+                        player->state = STATE_STOPPING;
                 } else {
                     // Start playing clip from preload buffer
                     player->clip = event.buffer[1] - 1;
@@ -298,6 +291,7 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
     }
 
     // Adjust volume
+    float dGain;
     for (uint8_t player_id = 0; player_id < 16; ++player_id) {
         player = players[player_id];
         if (!player)
@@ -305,9 +299,18 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
         clip = player->clips[player->clip];
         if (!clip)
             continue;
+        if (player->state == STATE_STOPPING) {
+            dGain = clip->gain / frames;
+            dGain = 0.0f;
+            player->state = STATE_READY;
+            player->play_pos = 0;
+        } else if (player->state == STATE_STARTING || player->state == STATE_PLAYING) {
+            dGain = 0.0f;
+        } else
+            continue;
         for (uint32_t i = 0; i < frames; ++i) {
-            output_a[player_id][i] *= clip->gain;
-            output_b[player_id][i] *= clip->gain;
+            output_a[player_id][i] *= (clip->gain - i * dGain);
+            output_b[player_id][i] *= (clip->gain - i * dGain);
         }
     }
 
@@ -354,10 +357,18 @@ void end() {
         removePlayer(i);
     if (jack_client)
         jack_client_close(jack_client);
+    jack_client = NULL;
     fprintf(stderr, "libclippy ended\n");
 }
 
+/** @brief  Initialise the library
+    @param  jackname Requested jack client name
+    @retval int Error code
+*/
 int init() {
+    int error = ERROR_SUCCESS;
+    if (jack_client)
+        return ERROR_EXISTS;
     // Register the cleanup function to be called when library exits
     atexit(end);
 
@@ -379,31 +390,36 @@ int init() {
     jack_client = jack_client_open("clippy", JackNullOption, &status);
     if (jack_client == NULL) {
         fprintf(stderr, "Could not open JACK client\n");
+        end();
         return ERROR_CREATE;
     }
 
-    if (status & JackNameNotUnique) {
-        fprintf(stderr, "Name was taken: assigned %s instead\n", jack_get_client_name(jack_client));
-    }
-    if (status & JackServerStarted) {
-        fprintf(stderr, "Connected to JACK\n");
+    midi_input_port = jack_port_register(jack_client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+    if (midi_input_port == NULL) {
+        fprintf(stderr, "Could not open MIDI input port\n");
+        end();
+        return ERROR_PORT;
     }
 
     jack_set_sample_rate_callback(jack_client, onSamplerate, NULL);
     jack_set_buffer_size_callback(jack_client, onBufferSize, NULL);
     jack_set_process_callback(jack_client, process, NULL);
 
-    midi_input_port = jack_port_register(jack_client, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
-    if (midi_input_port == NULL) {
-        fprintf(stderr, "Could not open MIDI input port\n");
-        return ERROR_PORT;
-    }
-
     if (jack_activate(jack_client) != 0) {
         fprintf(stderr, "Could not activate client\n");
+        end();
         return ERROR_ACTIVATE;
     }
+
     fprintf(stderr, "libclippy started\n");
+    return ERROR_SUCCESS;
+}
+
+/** @brief  Get the jack client name
+    @retval const char* Jack name
+*/
+const char* getJackname() {
+    return jack_get_client_name(jack_client);
 }
 
 /** @brief  Create a new clip player
@@ -421,9 +437,9 @@ uint8_t addPlayer(uint8_t channel) {
 
     memset(player, 0, sizeof(Player));
     char name[16];
-    sprintf(name, "output_%02ua", channel + 1);
+    sprintf(name, "out_%02ua", channel + 1);
     player->output_a = jack_port_register(jack_client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    sprintf(name, "output_%02ub", channel + 1);
+    sprintf(name, "out_%02ub", channel + 1);
     player->output_b = jack_port_register(jack_client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
     if (player->output_a == NULL || player->output_b == NULL)
         fprintf(stderr, "Clippy error: failed to create jack output ports\n");
@@ -516,9 +532,9 @@ uint8_t loadClip(uint8_t channel, uint32_t id, const char* path) {
                 clip->preload_buffer_b[i] = 0.0f;
             }
         }
-        clip->state = STATE_READY;
         jack_ringbuffer_reset(player->ringbuffer_a);
         jack_ringbuffer_reset(player->ringbuffer_b);
+        clip->state = STATE_READY;
         sf_close(sndfile);
     } else {
         sf_close(sndfile);
@@ -639,7 +655,6 @@ int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float 
     }
 
     // Deinterleave source audio into array of buffers data_deinterleaved[]
-    fprintf(stderr, "Deinterleave...\n");
     float* data_deinterleaved[channels];
     for (int ch = 0; ch < channels; ch++) {
         data_deinterleaved[ch] = malloc(frames * sizeof(float));
@@ -650,7 +665,6 @@ int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float 
     free(data_in);
 
     if (samplerate != sf_info.samplerate) {
-        fprintf(stderr, "SRC...\n");
         // SRC each channel into array of buffers data_resampled[]
         double resample_ratio = (double)samplerate / sf_info.samplerate;
         sf_count_t max_resampled_frames = frames * resample_ratio + 1;
@@ -701,7 +715,6 @@ int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float 
 
     if (ratio != 1.0) {
         // Stretch into array of buffers data_stretched[]
-        fprintf(stderr, "Stretch...\n");
         RubberBandState rb = rubberband_new(
             samplerate,
             channels,
@@ -764,7 +777,6 @@ int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float 
     }
 
     // Interleave into buffer data_out
-    fprintf(stderr, "Interleave...\n");
     float *data_out = malloc(frames * channels * sizeof(float));
     for (int ch = 0; ch < channels; ch++) {
         for (sf_count_t i = 0; i < frames; i++) {
@@ -774,7 +786,6 @@ int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float 
     }
 
     // Write output
-    fprintf(stderr, "Write...\n");
     sf_info.samplerate = samplerate;
     sf_info.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
 

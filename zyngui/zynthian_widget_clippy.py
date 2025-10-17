@@ -363,7 +363,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             load_waveform = True
         try:
             if self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].value:
-                path = self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].path
+                path = self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].value
             else:
                 path = ""
             if path != self.path:
@@ -376,7 +376,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 waveform_thread.start()
                 return
 
-            """
             crop_start = self.processor.controllers_dict[f"crop_start {self.processor.engine.pattern}"].value
             if crop_start != self.crop_start:
                 self.crop_start = crop_start
@@ -385,10 +384,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             if crop_end != self.crop_end:
                 self.crop_end = crop_end
                 update_markers = True
-            """
             self.refreshing = False
 
-            """
             if update_markers and self.frames:
                 h = self.waveform_height
                 f = self.width / self.frames * self.zoom
@@ -397,7 +394,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 x = int(f * (self.crop_end - self.offset))
                 self.widget_canvas.coords(
                     self.crop_end_rect, x, 0, self.width, h)
-            """
 
         except Exception as e:
             # logging.error(e)
