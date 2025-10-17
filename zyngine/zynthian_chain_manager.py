@@ -252,12 +252,7 @@ class zynthian_chain_manager:
             chain.set_zmop_index(zmop_index)
             # Enable all MIDI input devices by default => TODO: Should we allow user to define default routing?
             for zmip in range(MAX_NUM_MIDI_DEVS):
-                try:
-                    unroute = zmip in self.state_manager.ctrldev_manager.drivers and self.state_manager.ctrldev_manager.drivers[zmip].unroute_from_chains
-                except Exception as e:
-                    unroute = False
-                    logging.warning(f"ctrldev_manager => {e}")
-                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, not unroute)
+                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, True)
             # Enable StepSeq MIDI intput
             lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_STEP_INDEX, True)
             # Enable SMF sequencer MIDI intput
