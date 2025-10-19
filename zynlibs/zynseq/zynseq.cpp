@@ -1842,6 +1842,16 @@ uint32_t getPatternLength(uint32_t pattern) {
     return 0;
 }
 
+uint8_t getNoteAtIndex(uint32_t pattern, uint32_t index) {
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
+    if (!pPattern || index >= pPattern->getEvents())
+        return 0xff;
+    StepEvent* pEvent = pPattern->getEventAt(index);
+    if (pEvent->getCommand() == MIDI_NOTE_ON)
+        return pEvent->getValue1start();
+    return 0xff;
+}
+
 uint32_t getBeatsInPattern(uint32_t pattern) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern)

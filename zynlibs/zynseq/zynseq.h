@@ -650,9 +650,16 @@ void setBeatsInPattern(uint32_t pattern, uint32_t beats);
 
 /** @brief  Get pattern length in clock cycles
     @param  pattern Index of pattern
- *   returns Length in clock cycles
+    @retval Length in clock cycles
 */
 uint32_t getPatternLength(uint32_t pattern);
+
+/** @brief  Get the note at event index
+    @param  pattern Index of pattern
+    @param  index Index of event
+    @retval uint8_t MIDI note number or 0xff for invalid index
+*/
+uint8_t getNoteAtIndex(uint32_t pattern, uint32_t index);
 
 /** @brief  Get clocks per step for selected pattern
     @param  pattern Index of paatern

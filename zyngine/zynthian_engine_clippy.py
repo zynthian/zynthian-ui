@@ -65,7 +65,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.type = "MIDI Synth"
         self.options["replace"] = False
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_clippy.py"
-        self.pattern = None
+        self.pattern = None # Only used by GUI widget
         self.processor = None
 
         self.jackname = self.libclippy.getJackname().decode("utf-8")
@@ -90,6 +90,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.processor = processor
         self.scene = scene
         self.pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+
         processor.preset_name = ""
         if self.pattern == 4294967295:
             return
@@ -112,9 +113,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 scene = s
                 break
         return scene
-
-    def get_pattern(self, processor, scene):
-        return self.libseq.getPattern(scene, processor.midi_chan, 0, 0)
 
     def send_controller_value(self, zctrl):
         try:
@@ -171,11 +169,15 @@ class zynthian_engine_clippy(zynthian_engine):
         file_zctrl = processor.controllers_dict[f"file {pattern}"]
         warp_zctrl = processor.controllers_dict[f"warp {pattern}"]
         beats_zctrl = processor.controllers_dict[f"beats {pattern}"]
+        processor.pattern = pattern
         # Find what scene this pattern is in...
         scene = self.get_scene(processor, pattern)
         if scene is None:
             logging.error(f"Pattern {pattern} not found in any scene")
             return
+        note = self.libseq.getNoteAtIndex(pattern, 0)
+        if note > 127:
+            note = 0
         path = file_zctrl.value
         if path:
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
@@ -270,7 +272,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     self.libseq.setStepsPerBeat(1)
                     self.libseq.setBeatsInPattern(pattern, whole_beats)
                     #TODO: Need to add notes based on scenes
-                    self.libseq.addNote(0, scene + 1, 100, 1, 0.0)
+                    note = self.libclippy.loadClip(processor.midi_chan, note, bytes(path, "utf-8"))
+                    self.libseq.addNote(0, note, 100, 1, 0.0)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_name(scene, processor.midi_chan, os.path.splitext(filename)[0])
             except Exception as e:
@@ -282,14 +285,13 @@ class zynthian_engine_clippy(zynthian_engine):
         file_zctrl.path = path
         self.zynseq.rebuild_launcher_info(scene, processor.midi_chan)
         if path:
-            self.libclippy.loadClip(processor.midi_chan, scene, bytes(path, "utf-8"))
             self._ctrl_screens = [
                 [f"File", [f"file {pattern}", f"warp {pattern}", f"beats {pattern}", f"mode {pattern}"]],
                 [f"Waveform", [f"gain {pattern}", f"crop_start {pattern}", f"crop_end {pattern}"]]
             ]
         else:
             self._ctrl_screens = [["File", [f"file {pattern}"]]]
-            self.libclippy.unloadClip(processor.midi_chan, scene)
+            self.libclippy.unloadClip(processor.midi_chan, note)
 
         processor.init_ctrl_screens()
 

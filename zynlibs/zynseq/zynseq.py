@@ -219,12 +219,13 @@ class zynseq(zynthian_engine):
         for chan in range(17):
             for slot in range(self.scenes):
                 self.rebuild_launcher_info(slot, chan)
-            try:
-                clippy = self.launcher_info[0][chan]["clippy"]
-                if clippy:
-                    clippy.engine.update_controllers(clippy)
-            except Exception as e:
-                logging.warning(f"Error getting clippy for channel {chan}: {e}")
+            if self.scenes:
+                try:
+                    clippy = self.launcher_info[0][chan]["clippy"]
+                    if clippy:
+                        clippy.engine.update_controllers(clippy)
+                except Exception as e:
+                    logging.warning(f"Error getting clippy for channel {chan}: {e}")
         self.progress = [0] * 17
         self.pause_update = False
 
