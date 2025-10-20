@@ -61,7 +61,7 @@ enum ERROR {
 };
 
 // Forward declarations
-uint8_t unloadClip(uint8_t player_id, uint8_t note);
+uint8_t unloadClip(uint8_t channel, uint8_t note);
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path);
 uint8_t addPlayer(uint8_t channel);
 uint32_t removePlayer(uint8_t channel);
@@ -98,16 +98,15 @@ typedef struct {
 } Clip;
 
 typedef struct {
-    uint8_t clip; // Index of last played clip
     uint8_t state; // Play state
-    uint32_t preload_pos; // Playback position within preload buffer
     uint32_t play_pos; // Position of playhead in frames
     jack_ringbuffer_t* ringbuffer_a; // Ring buffers to pass left data between threads (L/R in each buffer)
     jack_ringbuffer_t* ringbuffer_b; // Ring buffers to pass right data between threads (L/R in each buffer)
-    jack_port_t* output_a; // Left jack output port
-    jack_port_t* output_b; // Right jack output port
+    jack_port_t* jack_out_a; // Left jack output port
+    jack_port_t* jack_out_b; // Right jack output port
     SNDFILE* sndfile; // Pointer to an open sndfile used to read current clip data
-    Clip* clips[MAX_CLIPS]; // Array of clips
+    Clip* current_clip; // Pointer to the currently selected / playing clip
+    Clip* clips[MAX_CLIPS]; // Array of pointers to clip objects
 } Player;
 
 Player* players[16]; // Up to 16 players, 1 per MIDI channel
@@ -125,7 +124,6 @@ static void inline releaseMutex() {
 // Background file and buffer management
 void* file_thread_fn(void* param) {
     Player* player;
-    Clip* clip;
     SNDFILE* sndfile; // Used to refresh preload buffers
     struct SF_INFO info;
     float a, b;
@@ -134,25 +132,19 @@ void* file_thread_fn(void* param) {
     while (running) {
         for (uint8_t channel = 0; channel < 16; ++channel) {
             player = players[channel];
-            if (!player)
-                continue;
-
-            // Update currently playing sample
-            clip = player->clips[player->clip];
-            if (!clip)
+            if (!player || !player->current_clip)
                 continue;
             if (player->state == STATE_STARTING) {
                 //!@todo Check if same file already open
                 sf_close(player->sndfile);
-                player->sndfile = sf_open(clip->path, SFM_READ, &info);
+                player->sndfile = sf_open(player->current_clip->path, SFM_READ, &info);
                 if (player->sndfile) {
                     sf_seek(player->sndfile, PRELOAD_FRAMES, SEEK_SET);
                     getMutex();
                     jack_ringbuffer_reset(player->ringbuffer_a);
                     jack_ringbuffer_reset(player->ringbuffer_b);
                     player->state = STATE_PLAYING;
-                }
-                else {
+                } else {
                     getMutex();
                     player->state = STATE_IDLE;
                 }
@@ -165,13 +157,13 @@ void* file_thread_fn(void* param) {
                 write_space = (write_space_a < write_space_b) ? write_space_a : write_space_b;
                 if (write_space > 127) {
                     int free_frames = write_space / sizeof(float);
-                    float buffer[free_frames * clip->channels];
+                    float buffer[free_frames * player->current_clip->channels];
                     int frames = sf_readf_float(player->sndfile, buffer, free_frames);
-                    int stereo = clip->channels > 1 ? 1 : 0;
+                    int stereo = player->current_clip->channels > 1 ? 1 : 0;
                     for (uint32_t i = 0; i < free_frames; ++i) {
                         if (i < frames) {
-                            a = buffer[i * clip->channels];
-                            b = buffer[i * clip->channels + stereo];
+                            a = buffer[i * player->current_clip->channels];
+                            b = buffer[i * player->current_clip->channels + stereo];
                         } else {
                             a = b = 0.0f; // Silence remaining frames
                         }
@@ -188,7 +180,6 @@ void* file_thread_fn(void* param) {
 
 static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
     static Player* player;
-    static Clip* clip;
     float* out_buff_a[16];
     float* out_buff_b[16];
 
@@ -196,43 +187,44 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
         usleep(10);
     mutex = 1;
 
-    // Populate player audio output buffers from ring buffers
-    for (uint8_t player_id = 0; player_id < 16; ++player_id) {
-        player = players[player_id];
+    // Populate player audio output buffers from preload/ring buffers
+    for (uint8_t channel = 0; channel < 16; ++channel) {
+        player = players[channel];
         if (player) {
-            out_buff_a[player_id] = jack_port_get_buffer(player->output_a, frames);
-            out_buff_b[player_id] = jack_port_get_buffer(player->output_b, frames);
-            memset(out_buff_a[player_id], 0, frames * sizeof(float));
-            memset(out_buff_b[player_id], 0, frames * sizeof(float));
+            out_buff_a[channel] = jack_port_get_buffer(player->jack_out_a, frames);
+            out_buff_b[channel] = jack_port_get_buffer(player->jack_out_b, frames);
+            memset(out_buff_a[channel], 0, frames * sizeof(float));
+            memset(out_buff_b[channel], 0, frames * sizeof(float));
             if (player->state == STATE_STARTING || player->state == STATE_PLAYING) {
+                if (!player->current_clip)
+                    continue;
                 int frame_count = 0;
                 if (player->play_pos < PRELOAD_FRAMES) {
                     // Play remaining prebuffer
                     frame_count = PRELOAD_FRAMES - player->play_pos;
-                    if (frame_count >= frames)
+                    if (frame_count > frames)
                         frame_count = frames;
-                    int count = frame_count * sizeof(float);
-                    memcpy(out_buff_a[player_id], clip->preload_buffer_a + player->play_pos, count);
-                    memcpy(out_buff_b[player_id], clip->preload_buffer_b + player->play_pos, count);
+                    size_t count = frame_count * sizeof(float);
+                    memcpy(out_buff_a[channel], player->current_clip->preload_buffer_a + player->play_pos, count);
+                    memcpy(out_buff_b[channel], player->current_clip->preload_buffer_b + player->play_pos, count);
                     player->play_pos += frame_count;
                 }
 
                 // Stream from ringbuffer
                 if (frame_count < frames) {
-                    int count = (frames - frame_count) * sizeof(float);
-                    count = jack_ringbuffer_read(player->ringbuffer_a, (char*)(out_buff_a[player_id]), count);
-                    jack_ringbuffer_read(player->ringbuffer_b, (char*)(out_buff_b[player_id]), count);
-                    player->play_pos += count / sizeof(float);
+                    size_t count = (frames - frame_count) * sizeof(float);
+                    count = jack_ringbuffer_read(player->ringbuffer_a, (char*)(out_buff_a[channel]), count);
+                    if (count % sizeof(float))
+                        fprintf(stderr, "Error reading ringbuffer_a: %u\n", count);
+                    count = jack_ringbuffer_read(player->ringbuffer_b, (char*)(out_buff_b[channel]), count);
+                    if (count % sizeof(float))
+                        fprintf(stderr, "Error reading ringbuffer_b: %u\n", count);
+                }
+                if (player->play_pos >= player->current_clip->frames) {
+                    // Reached end of clip
+                    player->state = STATE_STOPPING;
                 }
             }
-            clip = player->clips[player->clip];
-            if (clip && player->play_pos >= clip->frames) {
-                // Reached end of clip
-                player->state = STATE_STOPPING;
-            }
-        } else {
-            out_buff_a[player_id] = NULL;
-            out_buff_b[player_id] = NULL;
         }
     }
 
@@ -253,26 +245,26 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
         case MIDI_NOTE_ON:
             if (event.buffer[2] != 0) {
                 // Note on triggers playback from preload buffer
-                uint8_t player_id = event.buffer[0] & 0x0f;
-                player = players[player_id];
+                uint8_t channel = event.buffer[0] & 0x0f;
+                player = players[channel];
                 if (!player)
                     break;
                 if (event.buffer[1] == 0) {
                     // Note 0 stops playback
-                    if (player->state == STATE_PLAYING || player->state == STATE_STARTING)
+                    if (player->state == STATE_PLAYING || player->state == STATE_STARTING) {
                         player->state = STATE_STOPPING;
+                    }
                 } else {
                     // Start playing clip from preload buffer
-                    player->clip = event.buffer[1] - 1;
-                    clip = player->clips[player->clip];
-                    if (!clip || clip->state != STATE_READY)
+                    player->current_clip = player->clips[event.buffer[1] - 1];
+                    if (!player->current_clip || player->current_clip->state != STATE_READY)
                         break;
                     // Start audio at frame offset of MIDI event
                     size_t start = event.time * sizeof(float);
                     uint32_t frame_count = frames - event.time;
                     size_t count = frame_count * sizeof(float);
-                    memcpy(out_buff_a[player_id] + start, clip->preload_buffer_a, count);
-                    memcpy(out_buff_b[player_id] + start, clip->preload_buffer_b, count);
+                    memcpy(out_buff_a[channel] + start, player->current_clip->preload_buffer_a, count);
+                    memcpy(out_buff_b[channel] + start, player->current_clip->preload_buffer_b, count);
                     player->play_pos = frame_count;
                     //!@todo Crossfade
                     player->state = STATE_STARTING;
@@ -291,16 +283,12 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
 
     // Adjust volume
     float dGain;
-    for (uint8_t player_id = 0; player_id < 16; ++player_id) {
-        player = players[player_id];
-        if (!player)
-            continue;
-        clip = player->clips[player->clip];
-        if (!clip)
+    for (uint8_t channel = 0; channel < 16; ++channel) {
+        player = players[channel];
+        if (!player || !player->current_clip)
             continue;
         if (player->state == STATE_STOPPING) {
-            dGain = clip->gain / frames;
-            dGain = 0.0f;
+            dGain = player->current_clip->gain / frames; // Soft fade
             player->state = STATE_READY;
             player->play_pos = 0;
         } else if (player->state == STATE_STARTING || player->state == STATE_PLAYING) {
@@ -309,8 +297,8 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
             continue;
         }
         for (uint32_t i = 0; i < frames; ++i) {
-            out_buff_a[player_id][i] *= (clip->gain - i * dGain);
-            out_buff_b[player_id][i] *= (clip->gain - i * dGain);
+            out_buff_a[channel][i] *= (player->current_clip->gain - i * dGain);
+            out_buff_b[channel][i] *= (player->current_clip->gain - i * dGain);
         }
     }
 
@@ -376,6 +364,7 @@ int init() {
         players[i] = NULL;
 
     // Configure and start event thread
+    running = 1;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -435,10 +424,10 @@ uint8_t addPlayer(uint8_t channel) {
     memset(player, 0, sizeof(Player));
     char name[16];
     sprintf(name, "out_%02ua", channel + 1);
-    player->output_a = jack_port_register(jack_client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    player->jack_out_a = jack_port_register(jack_client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
     sprintf(name, "out_%02ub", channel + 1);
-    player->output_b = jack_port_register(jack_client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    if (player->output_a == NULL || player->output_b == NULL)
+    player->jack_out_b = jack_port_register(jack_client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    if (player->jack_out_a == NULL || player->jack_out_b == NULL)
         fprintf(stderr, "Clippy error: failed to create jack output ports\n");
     for (uint32_t id = 0; id < MAX_CLIPS; ++id)
         player->clips[id] = NULL;
@@ -471,8 +460,8 @@ uint32_t removePlayer(uint8_t channel) {
     jack_ringbuffer_free(player->ringbuffer_a);
     jack_ringbuffer_free(player->ringbuffer_b);
 
-    jack_port_unregister(jack_client, player->output_a);
-    jack_port_unregister(jack_client, player->output_b);
+    jack_port_unregister(jack_client, player->jack_out_a);
+    jack_port_unregister(jack_client, player->jack_out_b);
     free(player);
     return ERROR_SUCCESS;
 }
@@ -569,7 +558,7 @@ uint8_t unloadClip(uint8_t channel, uint8_t note) {
     if(clip == NULL)
         return ERROR_RANGE;
 
-    if (player->clip == id) {
+    if (player->current_clip == player->clips[id]) {
         getMutex();
         player->state = STATE_IDLE;
         releaseMutex();
