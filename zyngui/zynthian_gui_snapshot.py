@@ -162,11 +162,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
                 self.list_data.append((dpath, i, bank_name))
                 try:
                     bank_number = self.get_midi_number(bank_name)
-                    logging.debug("Snapshot Bank '%s' => MIDI bank %d" %
-                                  (bank_name, bank_number))
+                    logging.debug(f"Snapshot Bank '{bank_name}' => MIDI bank {bank_number}")
                 except:
-                    logging.warning(
-                        "Snapshot Bank '%s' don't have a MIDI bank number" % bank_name)
+                    logging.warning(f"Snapshot Bank '{bank_name}' don't have a MIDI bank number")
                 if bank_name == self.sm.snapshot_bank:
                     self.index = i
                 i = i + 1
@@ -256,8 +254,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
     def bank_options_cb(self, option, param):
         if option == "Delete Bank":
             snapshots = glob(f"{self.sm.snapshot_dir}/{param}/*.zss")
-            self.zyngui.show_confirm(
-                f"Do you really want to delete bank {param} with {len(snapshots)} snapshots", self.delete_bank, param)
+            self.zyngui.show_confirm(f"Do you really want to delete bank {param} with {len(snapshots)} snapshots",
+                                     self.delete_bank, param)
         elif option == "Rename Bank":
             parts = param.split("-", 1)
             if len(parts) > 1:
@@ -317,8 +315,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         fname = param[2]
         parts = self.get_parts_from_path(fpath)
         if parts is None:
-            logging.warning(
-                "Wrong snapshot {} => {}".format(self.index, fpath))
+            logging.warning(f"Wrong snapshot {self.index} => {fpath}")
             return
         if option == "Load":
             # self.zyngui.show_confirm("Loading '%s' will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
@@ -338,8 +335,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             budir = dirname(fpath) + "/.backup"
             fbase, fext = splitext(parts[2])
             fpat = "{}.*.zss".format(fbase)
-            self.zyngui.screens['option'].config_file_list(
-                "Restore backup: {}".format(fname), budir, fpat, self.restore_backup_cb)
+            self.zyngui.screens['option'].config_file_list(f"Restore backup: {fname}", budir, fpat, self.restore_backup_cb)
             self.zyngui.show_screen('option')
         elif option == "Rename":
             self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
@@ -347,8 +343,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
             self.zyngui.show_screen('midi_prog')
         elif option == "Delete":
-            self.zyngui.show_confirm(
-                "Do you really want to delete '%s'" % fname, self.delete_confirmed, fpath)
+            self.zyngui.show_confirm(f"Do you really want to delete '{fname}'", self.delete_confirmed, fpath)
 
     def load_snapshot(self, fpath):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
@@ -381,8 +376,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         fpath = self.list_data[self.index][0]
         parts = self.get_parts_from_path(fpath)
         if parts is None:
-            logging.warning(
-                "Wrong snapshot {} => {}".format(self.index, fpath))
+            logging.warning(f"Wrong snapshot {self.index} => {fpath}")
             return
         if parts[1] == new_name:
             self.zyngui.close_screen()
@@ -394,8 +388,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         if new_path[-4:].lower() != '.zss':
             new_path += '.zss'
         if isfile(new_path):
-            self.zyngui.show_confirm("Do you really want to overwrite '%s'?" %
-                                     new_name, self.do_rename, [parts[3], new_path])
+            self.zyngui.show_confirm(f"Do you really want to overwrite '{new_name}'?", self.do_rename, [parts[3], new_path])
         else:
             self.do_rename([parts[3], new_path])
         self.select_listbox_by_name(parts[2][:-4])
@@ -405,15 +398,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             os.rename(data[0], data[1])
             self.update_list()
         except Exception as e:
-            logging.warning(
-                "Failed to rename snapshot '{}' to '{}' => {}".format(data[0], data[1], e))
+            logging.warning(f"Failed to rename snapshot '{data[0]}' to '{data[1]}' => {e}")
 
     def set_program(self, value):
         fpath = self.list_data[self.index][0]
         parts = self.get_parts_from_path(fpath)
         if parts is None:
-            logging.warning(
-                "Wrong snapshot '{}' => '{}'".format(self.index, fpath))
+            logging.warning(f"Wrong snapshot '{self.index}' => '{fpath}'")
             return
 
         try:
@@ -444,13 +435,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
                     fullname = self.get_path_from_parts(dparts)
                     files_to_change.append([dparts[3], fullname])
                 if len(files_to_change):
-                    self.zyngui.show_confirm("Do you want to move {} snapshots up to next available program?".format(
-                        len(files_to_change)), self.do_set_program_number, (fpath, dfpath, files_to_change))
+                    self.zyngui.show_confirm(f"Do you want to move {len(files_to_change)} snapshots up to next available program?",
+                                             self.do_set_program_number, (fpath, dfpath, files_to_change))
                     return
             self.do_set_program_number((fpath, dfpath, files_to_change))
         except Exception as e:
-            logging.warning(
-                "Failed to set program for snapshot {} to {} => {}".format(fpath, program, e))
+            logging.warning(f"Failed to set program for snapshot {fpath} to {program} => {e}")
 
     def do_set_program_number(self, params):
         try:
@@ -474,8 +464,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         program = self.get_next_program(1)
         if type(program) == int and program < 128:
             name = format(program, "03") + "-" + name
-        path = self.get_snapshot_fpath(
-            name.replace('>', ';').replace('/', ';')) + '.zss'
+        path = self.get_snapshot_fpath(name.replace('>', ';').replace('/', ';')) + '.zss'
         self.save_snapshot(path)
         self.update_list()
 
@@ -517,8 +506,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         """
 
         try:
-            self.zyngui.show_screen(
-                state["current_screen"], self.zyngui.SCREEN_HMODE_RESET)
+            self.zyngui.show_screen(state["current_screen"], self.zyngui.SCREEN_HMODE_RESET)
             return True
         except:
             return False

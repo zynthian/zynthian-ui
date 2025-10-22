@@ -87,6 +87,16 @@ class zynthian_engine_jalv(zynthian_engine):
         'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py"
     }
 
+    # For certain plugins its beneficial to set parameters not set
+    # in preset files to their default values, for consistent loading
+    # of preset files in the event of the parameter list being
+    # extended from one plugin version to the next. For these we add
+    # -D to the jalv argument list.
+
+    plugins_custom_jalv_args = {
+        'https://butoba.net/homepage/mimid.html': [ "-D" ]
+    }
+
     # ------------------------------------------------------------------------------
     # Native formats configuration (used by zynapi_install, preset converter, etc.)
     # ------------------------------------------------------------------------------
@@ -218,6 +228,10 @@ class zynthian_engine_jalv(zynthian_engine):
                 # but some others can't run headless if there is a valid DISPLAY defined
                 if not self.plugin_name.endswith("v1"):
                     self.command_env['DISPLAY'] = "X"
+
+            # Add custom (per-plugin) jalv arguments:
+            if self.plugin_url in self.plugins_custom_jalv_args:
+                self.command = self.command[:1] + self.plugins_custom_jalv_args[self.plugin_url] + self.command[1:]
 
             # Use jalv's development version =>
             #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
