@@ -161,6 +161,21 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not self.processors:
             self.list_data.append((None, None, "NO PROCESSORS!"))
         else:
+            # Chain controllers => favorite processor controllers
+            chain_zctrls = self.processors[0].chain.zctrls
+            if chain_zctrls:
+                self.list_data.append((None, None, "> CHAIN"))
+                j = 0
+                page_zctrls = []
+                for zctrl in chain_zctrls:
+                    page_zctrls.append(zctrl)
+                    if len(page_zctrls) == 4:
+                        self.list_data.append((f"CHAIN_{j}", -1, f"Controllers {j + 1}", self.processors[0], j, page_zctrls))
+                        page_zctrls = []
+                        j += 1
+                if len(page_zctrls) > 0:
+                    self.list_data.append((f"CHAIN_{j}", -1, f"Controllers {j + 1}", self.processors[0], j, page_zctrls))
+            # Processor Controllers
             i = 0
             for processor in self.processors:
                 j = 0
@@ -181,17 +196,18 @@ class zynthian_gui_control(zynthian_gui_selector):
     def get_screen_info(self):
         if 0 <= self.index < len(self.list_data):
             self.screen_info = self.list_data[self.index]
-            if len(self.screen_info) < 5:
+            while self.screen_info and self.screen_info[0] is None:
                 if self.index + 1 < len(self.list_data):
                     self.index += 1
                     self.screen_info = self.list_data[self.index]
                 else:
                     self.screen_info = None
-            if self.screen_info and len(self.screen_info) == 5:
-                self.screen_title = self.screen_info[2]
-                self.screen_processor = self.screen_info[3]
-                self.screen_type = None
-                return True
+            if self.screen_info:
+                if len(self.screen_info) >= 5:
+                    self.screen_title = self.screen_info[2]
+                    self.screen_processor = self.screen_info[3]
+                    self.screen_type = None
+                    return True
             else:
                 pass
                 # logging.info("Can't get screen info!!")
@@ -346,15 +362,16 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_controller_screen(self):
         # Get screen info
         if self.get_screen_info():
-            try:
+            if self.screen_processor:
                 self.zyngui.chain_manager.get_active_chain().set_current_processor(self.screen_processor)
                 self.zyngui.current_processor = self.screen_processor
-            except:
-                pass
 
             # Get controllers for the current screen
-            self.zyngui.get_current_processor().set_current_screen_index(self.index)
-            self.zcontrollers = self.screen_processor.get_ctrl_screen(self.screen_title)
+            if self.screen_info[1] == -1:
+                self.zcontrollers = self.screen_info[5]
+            else:
+                self.zyngui.get_current_processor().set_current_screen_index(self.index)
+                self.zcontrollers = self.screen_processor.get_ctrl_screen(self.screen_title)
 
             # Show the widget for the current processor
             if self.mode == 'control':
@@ -714,8 +731,14 @@ class zynthian_gui_control(zynthian_gui_selector):
                 return
 
             if zctrl.is_path:
-                title = "Control options"
+                title = f"Control options: {zctrl.name}"
+                if zctrl in self.processors[0].chain.zctrls:
+                    options["\u2612 Chain Controller"] = zctrl
+                else:
+                    options["\u2610 Chain Controller"] = zctrl
+
                 options["Clear"] = zctrl
+
                 self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
                 self.zyngui.show_screen('option')
                 return
@@ -723,6 +746,12 @@ class zynthian_gui_control(zynthian_gui_selector):
             ml = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=True, chain=True, zynstep=False)
             if not unlearn_only:
                 title = f"Control options: {zctrl.name}"
+
+                if zctrl in self.processors[0].chain.zctrls:
+                    options["\u2612 Chain Controller"] = zctrl
+                else:
+                    options["\u2610 Chain Controller"] = zctrl
+
                 if not zctrl.is_toggle:
                     options["X-Y touchpad"] = None
                     # Only show X-Y if both zctrl are valid
@@ -804,7 +833,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def midi_learn_options_cb(self, option, param):
         parts = option.split(" ")
-        if option == "Control":
+        if option[2:] == "Chain Controller":
+            self.processors[0].chain.toggle_zctrl(param)
+            self.update_list()
+        elif option == "Control":
             self.show_xy()
         elif option == "Clear":
             param.set_value("")

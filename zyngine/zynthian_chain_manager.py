@@ -112,8 +112,7 @@ class zynthian_chain_manager:
         self.zyngines = {}  # List of instantiated engines
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain_id = None  # Active chain id
-        self.midi_chan_2_chain_ids = [list() for _ in range(
-            MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
+        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
 
         # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
         self.absolute_midi_cc_binding = {}
@@ -1192,6 +1191,9 @@ class zynthian_chain_manager:
                 self.chains[chain_id].fader_pos = chain_state["fader_pos"]
             else:
                 self.chains[chain_id].fader_pos = 0
+
+            if "zctrls" in chain_state:
+                self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
 
         self.state_manager.end_busy("set_chain_state")
 
