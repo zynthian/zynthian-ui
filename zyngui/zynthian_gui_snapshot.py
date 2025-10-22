@@ -111,8 +111,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         name = parts[1] + '.zss'
         if type(parts[0]) == int and 0 <= parts[0] < 128:
             name = format(parts[0], "03") + '-' + name
-        path = self.get_snapshot_fpath(
-            name.replace('>', ';').replace('/', ';'))
+        path = self.get_snapshot_fpath(name.replace('>', ';').replace('/', ';'))
 
         return path
 
