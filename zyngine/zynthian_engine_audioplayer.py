@@ -57,9 +57,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
     preset_fexts = zynaudioplayer.get_supported_codecs()
     root_bank_dirs = [
-        ('User Audio', zynthian_engine.my_data_dir + "/audio"),
+        ('User Audio', zynthian_engine.my_data_dir + "/files/Audio"),
         ('User Samples', zynthian_engine.my_data_dir + "/files/Samples"),
-        #('System Audio', zynthian_engine.data_dir + "/audio"),
         ('System Samples', zynthian_engine.data_dir + "/files/Samples")
     ]
 
