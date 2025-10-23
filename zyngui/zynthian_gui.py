@@ -1444,12 +1444,6 @@ class zynthian_gui:
     def cuia_screen_arranger(self, params=None):
         self.show_screen("arranger")
 
-    def cuia_screen_bank(self, params=None):
-        self.show_screen("bank")
-
-    def cuia_screen_preset(self, params=None):
-        self.show_screen("preset")
-
     def cuia_screen_calibrate(self, params=None):
         self.calibrate_touchscreen()
 
