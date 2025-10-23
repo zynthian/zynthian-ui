@@ -147,7 +147,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
     def get_bank_list(self, processor=None):
         banks = self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
-                                      internal_include_empty=False, dirs_only=False)
+                                      internal_include_empty=False, dirs_only=False,
+                                      info=[["Folder", "folder.png"], ["Audio", "file_audio.png"]])
         return banks
 
         #return self.get_bank_dirlist(recursion=1, internal_include_empty=True)
@@ -200,7 +201,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 dpath = processor.preset_subdir_info[0]
             else:
                 dpath = bank[0]
-            presets = self.get_filelist(dpath, self.preset_fexts, include_dirs=True, exclude_empty_dirs=True)
+            presets = self.get_filelist(dpath, self.preset_fexts, include_dirs=True, exclude_empty_dirs=True,
+                                        info=[["Folder", "folder.png"], ["Audio", "file_audio.png"]])
 
             self.presets_add_audio_info(presets)
             return presets
@@ -211,8 +213,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 fparts = os.path.splitext(preset[4])
                 duration = zynaudioplayer.get_file_duration(preset[0])
                 fduration = f"{int(duration/60):02d}:{round(duration)%60:02d}"
-                preset[2] += f"{fparts[1]} ({fduration})"
-                #preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", "file_audio.png"])
+                #preset[2] += f"{fparts[1]} ({fduration})"
+                preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", "file_audio.png"])
 
     def preset_exists(self, bank_info, preset_name):
         if not bank_info or bank_info[0] is None:

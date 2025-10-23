@@ -160,7 +160,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                     continue
                 item.append(["", fticon])
             else:
-                item.append(["", "folder.png"])
+                item.append(["Folder", "folder.png"])
             if item[0] == self.path:
                 self.index = i
         super().fill_list()

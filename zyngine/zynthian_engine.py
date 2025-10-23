@@ -309,7 +309,7 @@ class zynthian_engine(zynthian_basic_engine):
         return sorted(res, key=str.casefold)
 
     @classmethod
-    def get_filelist(cls, dpath, fext, include_dirs=False, exclude_empty_dirs=True):
+    def get_filelist(cls, dpath, fext, include_dirs=False, exclude_empty_dirs=True, info=None):
         files = []
         dirs = []
         if isinstance(dpath, str):
@@ -333,10 +333,16 @@ class zynthian_engine(zynthian_basic_engine):
                             if dn != '_':
                                 title = dn + '/' + title
                             # print("filelist => " + title)
-                            files.append([os.path.join(dp, f), i, title, dn, f, ext])
+                            row = [os.path.join(dp, f), i, title, dn, f, ext]
+                            if info:
+                                row.append(info[1])
+                            files.append(row)
                             i += 1
                     elif include_dirs and os.path.isdir(path) and (not exclude_empty_dirs or cls.find_some_preset_file(path, fext)):
-                        dirs.append([path, i, "> " + f, dn, f])
+                        row = [path, i, "> " + f, dn, f]
+                        if info:
+                            row.append(info[0])
+                        dirs.append(row)
                         i += 1
             except Exception as e:
                 #logging.warning(f"Can't access directory '{dp}' => {e}")
@@ -373,7 +379,7 @@ class zynthian_engine(zynthian_basic_engine):
 
     # Get bank dir list
     @classmethod
-    def get_bank_dirlist(cls, fexts=None, root_bank_dirs=None, recursion=1, exclude_empty=True, internal_include_empty=False):
+    def get_bank_dirlist(cls, fexts=None, root_bank_dirs=None, recursion=1, exclude_empty=True, internal_include_empty=False, info=None):
         if fexts is None:
             fexts = cls.preset_fexts
         if root_bank_dirs is None:
@@ -382,11 +388,11 @@ class zynthian_engine(zynthian_basic_engine):
                                      recursion=recursion,
                                      exclude_empty=exclude_empty,
                                      internal_include_empty=internal_include_empty,
-                                     dirs_only=True)
+                                     dirs_only=True, info=info)
 
     # Get dir & file list
     @classmethod
-    def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False):
+    def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False, info=None):
         if not dirs_only:
             dir_marker = "> "
         else:
@@ -417,11 +423,14 @@ class zynthian_engine(zynthian_basic_engine):
                 dpath = walk[0] + "/" + dir
                 if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion):
                     title = dir_marker + dir
-                    sres.append([dpath, None, title, None, dir])
+                    row = [dpath, None, title, None, dir]
+                    if info:
+                        row.append(info[0])
+                    sres.append(row)
 
             # Add files in root dir
             if not dirs_only:
-                sres += cls.get_filelist(root_dir[1], fexts)
+                sres += cls.get_filelist(root_dir[1], fexts, info=info)
 
             if len(sres):
                 res.append([None, None, root_dir[0], None, None])
