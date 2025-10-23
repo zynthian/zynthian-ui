@@ -662,7 +662,6 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			lib_zyncore.zmop_send_pitchbend_change(self.ZMOP_DEV0 + self.idev_out, i, int(zyn_volume * self.max_fader_value))
 		logging.debug(f"~~~ end refresh ~~~")
 
-
 	def midi_event(self, ev):
 		evtype = (ev[0] >> 4) & 0x0F
 
@@ -672,12 +671,8 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			logging.debug(f'midi_event fader_channel: {fader_channel}')
 			if self.fader_touch_active[fader_channel]:
 				logging.debug(f'{self.fader_touch_active}')
-				mackie_vol_level = (ev[2] * 256 + ev[1])
-				if self.device_settings['xtouch']:
-					zyn_vol_level = mackie_vol_level / (self.max_fader_value * 2)
-					mackie_vol_level = int(mackie_vol_level / 2)
-				else:
-					zyn_vol_level = mackie_vol_level / self.max_fader_value
+				mackie_vol_level = (ev[2] * 128 + ev[1])
+				zyn_vol_level = mackie_vol_level / self.max_fader_value
 				if fader_channel == self.device_settings['masterfader_fader_num'] and self.device_settings['masterfader']:
 					self.zynmixer.set_level(self.get_master_chain_audio_channel(), zyn_vol_level)
 					lib_zyncore.zmop_send_pitchbend_change(self.ZMOP_DEV0 + self.idev_out, fader_channel, mackie_vol_level)
