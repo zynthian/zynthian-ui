@@ -46,6 +46,7 @@ from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
     capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+    user_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/files/Midi"
     ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
     def __init__(self):
@@ -94,23 +95,23 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         self.update_status_recording()
         self.update_status_loop()
         i = 1
-        # Internal storage
-        flist = self.get_filelist(self.capture_dir_sdc)
-        if len(flist) > 0:
-            self.list_data.append((None, 0, "SD> Internal MIDI Tracks"))
-            for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):
-                title = f"{finfo['title']} ({finfo['fduration']})"
-                self.list_data.append((finfo['fpath'], i, title, ["Select to play MIDI file.\nBold to show more options.", None]))
-                i += 1
-        # External storage
-        for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-            flist = self.get_filelist(exd)
+
+        def fill_from_source(source_dir, header_title):
+            nonlocal i
+            flist = self.get_filelist(source_dir)
             if len(flist) > 0:
-                self.list_data.append((None, 0, f"USB> {os.path.basename(exd)} MIDI Tracks"))
+                self.list_data.append([None, 0, header_title])
                 for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):
                     title = f"{finfo['title']} ({finfo['fduration']})"
-                    self.list_data.append((finfo['fpath'], i, title, ["Select to play MIDI file.\nBold to show more options.", None]))
+                    self.list_data.append([finfo['fpath'], i, title, ["Select to play MIDI file.\nBold to show more options.", None]])
                     i += 1
+
+        # Internal storage
+        fill_from_source(self.capture_dir_sdc, "SD> Captured MIDI Tracks")
+        fill_from_source(self.user_dir_sdc, "SD> User MIDI Tracks")
+        # External storage
+        for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+            fill_from_source(exd, f"USB> {os.path.basename(exd)} MIDI Tracks")
         super().fill_list()
 
     def get_filelist(self, src_dir):
