@@ -79,6 +79,9 @@ class zynthian_gui_info:
         self.clean()
         self.add(text + "\n", tags)
 
+    def build_view(self):
+        return True
+
     def hide(self):
         if self.shown:
             self.shown = False

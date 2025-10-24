@@ -50,6 +50,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
 from zyngui import zynthian_gui_keybinding
 from zyngui.multitouch import MultiTouch
+from zyngui.zynthian_gui_none import zynthian_gui_none
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_help import zynthian_gui_help
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
@@ -93,8 +94,7 @@ from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
-# TODO This constants should go somewhere else
-MIXER_MAIN_CHANNEL = 17
+# TODO This constant should go somewhere else
 ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
 
 # -------------------------------------------------------------------------------
@@ -160,8 +160,7 @@ class zynthian_gui:
 
         self.status_counter = 0
 
-        self.modify_chain_status = {
-            "midi_thru": False, "audio_thru": False, "parallel": False}
+        self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 
         self.capture_log_ts0 = None
         self.capture_log_fname = None
@@ -434,6 +433,7 @@ class zynthian_gui:
 
     def create_screens(self):
         # Create Core UI Screens
+        self.screens['none'] = zynthian_gui_none()
         self.screens['info'] = zynthian_gui_info()
         self.screens['help'] = zynthian_gui_help()
         self.screens['splash'] = zynthian_gui_splash()
