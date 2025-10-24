@@ -488,6 +488,7 @@ class zynthian_gui:
 
         # Root screen
         self.screens['root'] = self.screens['audio_mixer']
+        #self.screens['root'] = self.screens['none']
 
         # Create Zynaptik-related screens
         try:
@@ -577,6 +578,8 @@ class zynthian_gui:
         # Show initial screen
         self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
 
+        #self.screens['root'] = self.screens['audio_mixer']
+
     def hide_screens(self, exclude=None):
         if not exclude:
             exclude = self.current_screen
@@ -601,10 +604,13 @@ class zynthian_gui:
                 screen = "root"
 
         if screen == "root":
-            if self.screens[screen].launcher_mode:
-                screen = "launcher"
-            else:
-                screen = "audio_mixer"
+            try:
+                if self.screens[screen].launcher_mode:
+                    screen = "launcher"
+                else:
+                    screen = "audio_mixer"
+            except:
+                pass
         elif screen == "audio_mixer":
             self.screens[screen].set_launcher_mode(False)
         elif screen == "launcher":
