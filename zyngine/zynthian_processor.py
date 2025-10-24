@@ -24,6 +24,7 @@
 # *****************************************************************************
 
 import os
+import re
 import copy
 import logging
 import traceback
@@ -691,6 +692,49 @@ class zynthian_processor:
             if zctrl.group_symbol == group:
                 zctrls.append(zctrl)
         return zctrls
+
+    # ---------------------------------------------------------------------------
+    # Keymap management
+    # ---------------------------------------------------------------------------
+
+    # Returns a keymap name if the keymap can be generated
+    def get_keymap_name(self):
+        if self.engine.name.startswith("Jalv/"):
+            logging.debug(f"KEYMAP PLUGIN NAME => {self.engine.plugin_name}")
+            if self.engine.plugin_name == "Fabla":
+                return "Fabla - " + self.preset_name
+        return None
+
+    # Returns keymap if possible
+    def get_keymap(self):
+        if self.engine.name.startswith("Jalv/"):
+            if self.engine.plugin_name == "Fabla":
+                return self.get_keymap_fabla()
+        return None
+
+    def get_keymap_fabla(self):
+        keymap = []
+        base_note = int(self.controllers_dict[f"base_note"].get_value())
+        for i in range(64):
+            try:
+                fpath = self.controllers_dict[f"pad_fpath_{i + 1}"].get_value()
+            except:
+                continue
+            try:
+                name = os.path.splitext(os.path.basename(fpath))[0].strip()
+                if name:
+                    name = re.sub("^\d*_*", '', name)
+                    keymap.append({
+                        "note": base_note + i,
+                        "name": name,
+                        "colour": "white"
+                    })
+            except Exception as e:
+                logging.error(f"Can't add keymap element {i}, {fpath} => {e}")
+        return keymap
+
+    # QUESTION: Should we move here the code for generating keymaps (midnam files & scales) from pattern editor?
+    # It makes sense ...
 
     # ----------------------------------------------------------------------------
     # MIDI processing

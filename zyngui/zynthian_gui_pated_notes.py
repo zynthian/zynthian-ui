@@ -384,34 +384,43 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Look for a custom keymap, defaults to chromatic
         custom_keymap = self.get_custom_keymap()
         if custom_keymap:
-            res.append(f"Custom - {custom_keymap}")
+            res.append(f"Custom - {custom_keymap[0]}")
         else:
             res.append(f"Custom - None")
         for scale in data:
             res.append(scale['name'])
         return res
 
-    # Search for a custom map
+    # Search for a custom map and return a tuple with [map_name, filepath / engine]
     def get_custom_keymap(self):
         synth_proc = self.zyngui.chain_manager.get_synth_processor(self.channel)
         if synth_proc:
-            map_name = None
-            preset_path = synth_proc.get_presetpath()
+            # Ask the synth processor for a keymap
             try:
-                with open(CONFIG_ROOT + "/keymaps.json") as json_file:
-                    data = json.load(json_file)
-                    for pat in data:
-                        if pat in preset_path:
-                            map_name = data[pat]
-                            break
-                if map_name:
-                    keymap_fpath = CONFIG_ROOT + f"/{map_name}.midnam"
-                    if os.path.isfile(keymap_fpath):
-                        return map_name
-                    else:
-                        logging.warning(f"Keymap file {keymap_fpath} doesn't exist.")
+                keymap_name = synth_proc.get_keymap_name()
             except:
-                logging.warning("Unable to load keymaps.json")
+                keymap_name = None
+            if keymap_name:
+                return [keymap_name, synth_proc]
+            # else, try to find a midnam file
+            else:
+                map_name = None
+                preset_path = synth_proc.get_presetpath()
+                try:
+                    with open(CONFIG_ROOT + "/keymaps.json") as json_file:
+                        data = json.load(json_file)
+                        for pat in data:
+                            if pat in preset_path:
+                                map_name = data[pat]
+                                break
+                    if map_name:
+                        keymap_fpath = CONFIG_ROOT + f"/{map_name}.midnam"
+                        if os.path.isfile(keymap_fpath):
+                            return [map_name, keymap_fpath]
+                        else:
+                            logging.warning(f"Keymap file {keymap_fpath} doesn't exist.")
+                except:
+                    logging.warning("Unable to load keymaps.json")
         else:
             logging.info(f"MIDI channel {self.channel} has not synth processors.")
 
@@ -425,28 +434,38 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
         # Try to load custom keymap
         if scale == 0:
-            map_name = self.get_custom_keymap()
-            if map_name:
-                keymap_fpath = CONFIG_ROOT + f"/{map_name}.midnam"
-                logging.info(f"Loading keymap {map_name} for MIDI channel {self.channel}...")
-                try:
-                    xml = minidom.parse(keymap_fpath)
-                    notes = xml.getElementsByTagName('Note')
-                    for note in notes:
-                        try:
-                            colour = note.attributes['Colour'].value
-                        except:
-                            colour = "white"
-                        self.keymap.append({'note': int(note.attributes['Number'].value),
-                                            'name': note.attributes['Name'].value,
-                                            'colour': colour})
-                    return map_name
-                except Exception as e:
-                    logging.error(f"Can't load '{keymap_fpath}' => {e}")
+            map_info = self.get_custom_keymap()
+            if map_info:
+                map_name = map_info[0]
+                # map_info[1] is the filename of a midnam file
+                if isinstance(map_info[1], str) and map_info[1].endswith(".midnam"):
+                    keymap_fpath = map_info[1]
+                    logging.info(f"Loading keymap {map_name} for MIDI channel {self.channel}...")
+                    try:
+                        xml = minidom.parse(keymap_fpath)
+                        notes = xml.getElementsByTagName('Note')
+                        for note in notes:
+                            try:
+                                colour = note.attributes['Colour'].value
+                            except:
+                                colour = "white"
+                            self.keymap.append({'note': int(note.attributes['Number'].value),
+                                                'name': note.attributes['Name'].value,
+                                                'colour': colour})
+                        return map_name
+                    except Exception as e:
+                        logging.error(f"Can't load '{keymap_fpath}' => {e}")
+                # map[1] is an engine to ask for a custom keymap
+                else:
+                    try:
+                        self.keymap = map_info[1].get_keymap()
+                        return map_name
+                    except:
+                        pass
 
-        # Not custom map loaded => Load scale
+        # Not custom map loaded => Setup a scale keymap
 
-        # Load specific scale
+        # Setup specific scale
         if scale > 1:
             try:
                 with open(CONFIG_ROOT + "/scales.json") as json_file:
@@ -463,7 +482,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             except Exception as e:
                 logging.error(f"Can't load 'scales.json' => {e}")
 
-        # Load chromatic scale
+        # Setup chromatic scale
         for note in range(0, 128):
             new_entry = {"note": note}
             key = note % 12
@@ -1004,7 +1023,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # vel: velocity (0-127)
     # dur: duration (in steps)
     # offset: offset of start of event (0..0.99)
-    def add_chord(self, step, note, vel, dur, offset=0.0):
+    def add_chord(self, step, row, vel, dur, offset=0.0):
+        note = self.keymap[row]["note"]
         match self.chord_mode:
             case 0:
                 # Single note entry
@@ -1016,7 +1036,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 # Diatonic chord entry mode
                 chord = self.get_diatonic_chord(note)
         for note_offset in chord:
-            if self.add_note_event(step, note + note_offset, vel, dur, offset):
+            if self.add_note_event(step, row + note_offset, vel, dur, offset):
                 self.play_note(note + note_offset)
 
     # Function to remove a note or chord, depending on current chord mode
@@ -1025,7 +1045,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # vel: velocity (0-127)
     # dur: duration (in steps)
     # offset: offset of start of event (0..0.99)
-    def remove_chord(self, step, note):
+    def remove_chord(self, step, row):
         match self.chord_mode:
             case 0:
                 # Single note entry
@@ -1035,9 +1055,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 chord = CHORDS[self.chord_type][1]
             case _:
                 # Diatonic chord entry mode
+                note = self.keymap[row]["note"]
                 chord = self.get_diatonic_chord(note)
         for offset in chord:
-            self.remove_event(step, note + offset)
+            self.remove_event(step, row + offset)
 
     # Function to add an event
     # step: step number (column)
