@@ -27,7 +27,7 @@
 SequenceManager::SequenceManager() {
     init();
     for (uint8_t channel = 0; channel < 16; ++channel)
-        setChannelType(channel, CHANNEL_TYPE_DISABLED);
+        enableChannel(channel, false);
 }
 
 void SequenceManager::init() {
@@ -143,7 +143,7 @@ void SequenceManager::updateAllSequenceLengths() {
     }
 }
 
-bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
+bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
@@ -162,11 +162,8 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
 
             if (nEventType & CLOCK_TRIG_MIDI) {
                 // A step event
-                while (SEQ_EVENT* pEvent = pSequence->getEvent()) {
-                    uint32_t nEventTime = pEvent->time;
-                    MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
-                    pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nEventTime, pNewEvent));
-                }
+                while (SEQ_EVENT* pEvent = pSequence->getEvent())
+                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(pEvent->time, new SEQ_EVENT(*pEvent)));
             }
             if (nEventType & CLOCK_TRIG_TEMPO) {
                 // Tempo change
@@ -197,18 +194,19 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 if (pFollowSequence && pFollowSequence->getRepeat())
                     setPlayState(pFollowSequence, PLAYING);
             }
-            if (nGroup < 16 && pSequence->getLength())
+            if (nGroup < 32 && pSequence->getLength())
                 m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength()); //!@todo This can div by zero
-            else if (nGroup == 16)
-                m_aGroupProgress[16] = (100 * barPos / 24 / m_nTimeSig);
+            else if (nGroup == 32)
+                m_aGroupProgress[32] = (100 * barPos / 24 / m_nTimeSig);
         }
 
         if (pSequence->getPlayState() == STOPPED || pSequence->getPlayState() == CHILD_PLAYING) {
-            if (nGroup < 17)
+            if (nGroup < 33)
                 m_aGroupProgress[nGroup] = 0;
 
             // Stop clippy if no other clippy sequences in same group are running
-            if (nGroup < 16 && m_nType[nGroup] == CHANNEL_TYPE_CLIPPY && pSequence->getPlayState() == STOPPED) {
+            Track* pTrack = pSequence->getTrack(0);
+            if (pTrack && pTrack->getOutput() == 0xfe && pSequence->getPlayState() == STOPPED) {
                 bool bStopClippy = true;
                 for (auto seq: m_vPlayingSequences) {
                     if (seq != pSequence && seq->getGroup() == nGroup) {
@@ -218,8 +216,8 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 }
                 if (bStopClippy) {
                     // Send clippy stop event
-                    pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nGroup), 0, 100}));
-                    pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nTime + 1, new MIDI_MESSAGE{uint8_t(MIDI_NOTE_OFF | nGroup), 0, 0}));
+                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nGroup), 0, 100}));
+                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime + 1, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_OFF | nGroup), 0, 0}));
                 }
             }
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
@@ -251,7 +249,7 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
             }
         }
         if (bAddToList) {
-            if (pSequence->getGroup() == 16)
+            if (pSequence->getGroup() == 32)
                 // Need scene launchers to be at head of queue to act before child sequences
                 m_vPlayingSequences.insert(m_vPlayingSequences.begin(), pSequence);
             else
@@ -262,12 +260,17 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
 
     // Start child sequences
     if (state == STARTING && pSequence->m_vChildSequences.size() > 0) {
+        fprintf(stderr, "Starting %u child sequences\n", pSequence->m_vChildSequences.size());
         // Child sequences
         for (auto pChildSequence: pSequence->m_vChildSequences) {
             if (pChildSequence->getRepeat()) {
                 pChildSequence->setPlayState(STARTING);
+                fprintf(stderr, "+");
             }
+            else
+                fprintf(stderr, "-");
         }
+        fprintf(stderr, "\n");
     }   
 }
 
@@ -348,23 +351,23 @@ uint8_t* SequenceManager::getProgress() {
     return m_aGroupProgress;
 }
 
-void SequenceManager::setChannelType(uint8_t channel, uint8_t type) {
-    if (channel >= 16)
+void SequenceManager::enableChannel(uint8_t channel, bool enable) {
+    if (channel >= 32)
         return;
-    m_nType[channel] = type;
+    m_bEnabled[channel] = enable;
     for (uint8_t nScene = 0; nScene < m_vScenes.size(); ++nScene) {
         Sequence* pSequence = getSequence(nScene, channel);
         if (pSequence) {
-            pSequence->setRepeat(type == CHANNEL_TYPE_DISABLED ? 0 : 1);
+            pSequence->setRepeat(enable ? 1 : 0);
             pSequence->setPlayState(STOPPED);
         }
     }
 }
 
-uint8_t SequenceManager::getChannelType(uint8_t channel) {
-    if (channel < 16)
-        return m_nType[channel];
-    return CHANNEL_TYPE_DISABLED;
+bool SequenceManager::isChannelEnabled(uint8_t channel) {
+    if (channel < 32)
+        return m_bEnabled[channel];
+    return false;
 }
 
 // Scene handling
@@ -386,20 +389,22 @@ void SequenceManager::insertScene(uint8_t scene) {
     std::string s;
     s = 'A' + scene;
     pScene->setName(s);
-    pScene->setGroup(16);
+    pScene->setGroup(32);
     pScene->setRepeat(1);
-    for (uint8_t chan = 0; chan < 16; ++chan) {
+    for (uint8_t chan = 0; chan < 32; ++chan) {
         Sequence* pSequence = new Sequence(pScene);
         pSequence->setGroup(chan);
         Track* pTrack = pSequence->getTrack(0);
-        if (pTrack)
-            pTrack->setChannel(chan);
+        if (pTrack) {
+            pTrack->setChannel(chan % 16);
+            pTrack->setOutput(chan < 16?0:0xfe);
+        }
         pSequence->setName(s  + std::to_string(chan + 1));
         addPattern(pSequence, 0, 0, createPattern());
         pScene->m_vChildSequences.push_back(pSequence);
         setFollowAction(scene, chan, FOLLOW_ACTION_RELATIVE, 0); // Loop
-        if (m_nType[chan] != CHANNEL_TYPE_DISABLED)
-            pSequence->setRepeat(1);
+        if (!m_bEnabled[chan])
+            pSequence->setRepeat(0);
     }
 }
 

@@ -170,6 +170,7 @@ SEQ_EVENT* Track::getEvent() {
 
         uint8_t nCommand = pEvent->getCommand();
         seqEvent.msg.command = nCommand | m_nChannel;
+        seqEvent.output = m_nOutput;
         //fprintf(stderr, "  found event at %u => %x, %u, %u\n", m_nNextStep, nCommand, pEvent->getValue1start(), pEvent->getValue2start());
 
         // Have not yet started to interpolate value => process start value

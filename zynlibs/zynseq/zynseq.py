@@ -81,16 +81,12 @@ FOLLOW_ACTION_NONE  = 0
 FOLLOW_ACTION_RELATIVE = 1
 FOLLOW_ACTION_ABSOLUTE  = 2
 
-CHANNEL_TYPE_DISABLED = 0
-CHANNEL_TYPE_MIDI = 1
-CHANNEL_TYPE_CLIPPY = 2
-
 SEQ_MAX_COLUMNS = 8
 
 PATTERN_EDITOR_BANK = 0     # Bank used for pattern editor
 LAUNCHER_BANK = 1           # Bank used for launchers
-LAUNCHER_COLS = 16          # Quantity of launcher columns (16 channels + scene launchers)
-SCENE_CHANNEL = 16
+LAUNCHER_COLS = 33          # Quantity of launcher columns (16 MIDI channels 16 Clippy + scene launchers)
+SCENE_CHANNEL = 32
 
 # Subsignals are defined inside each module. Here we define zynseq subsignals:
 SS_SEQ_PLAY_STATE = 1
@@ -163,7 +159,7 @@ class zynseq(zynthian_engine):
         })
 
         # Cache sequence info for launchers to reduce access to libseq
-        self.launcher_info = []  # List of list launcher info, indexed by [slot][channel] - always 17 channels wide: MIDI chan 0..15 + scene launcher 16
+        self.launcher_info = []  # List of list launcher info, indexed by [slot][channel] - always 33 channels wide: MIDI chan 0..15 + clippy chan 0..15 + scene launcher 16
         self.sequence_info = {}  # Map of launcher info, mapped by sequence (within current bank) - reverse linking for optimisation
         self.scenes = 8  # Quantity of launcher slots/rows/scenes
         self.bank = 0  # Currently selected bank
@@ -187,14 +183,14 @@ class zynseq(zynthian_engine):
         # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
         # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
 
-        size = self.scenes * 17
+        size = self.scenes * 33
         states = (ctypes.c_uint32 * size)()
         count = self.libseq.getStateChange(states, size)
         for i in range(count):
             if self.pause_update:
                 return  # Stop processing updates if changing structure
             scene = (states[i] >> 24) & 0xff
-            chan = min((states[i] >> 16) & 0xff, 16)
+            chan = min((states[i] >> 16) & 0xff, 32)
             mode = (states[i] >> 8) & 0xff
             state = states[i] & 0xff
             try:
@@ -207,7 +203,7 @@ class zynseq(zynthian_engine):
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, scene=scene, chan=chan, state=state, mode=mode)
         # Update progress
         progress = self.libseq.getProgress()
-        for i in range(17):
+        for i in range(33):
             self.progress[i] = progress[i]  # TODO: Can we just point at getProgress()?
 
     def rebuild_all_launcher_info(self):
@@ -215,18 +211,11 @@ class zynseq(zynthian_engine):
         self.launcher_info = []
         self.sequence_info = {}
         self.scenes = self.libseq.getNumScenes()
-        self.seq_in_bank = self.scenes * 16
-        for chan in range(17):
+        self.seq_in_bank = self.scenes * 32 #TODO Is this right?
+        for chan in range(33):
             for slot in range(self.scenes):
                 self.rebuild_launcher_info(slot, chan)
-            if self.scenes:
-                try:
-                    clippy = self.launcher_info[0][chan]["clippy"]
-                    if clippy:
-                        clippy.engine.update_controllers(clippy)
-                except Exception as e:
-                    logging.warning(f"Error getting clippy for channel {chan}: {e}")
-        self.progress = [0] * 17
+        self.progress = [0] * 33
         self.pause_update = False
 
     def rebuild_launcher_info(self, scene, chan):
@@ -234,7 +223,7 @@ class zynseq(zynthian_engine):
         Build a dictionary of info for a launcher
 
         :slot: Index of scene
-        :chan: MIDI chan
+        :chan: MIDI chan (0..15), Clippy chan (16..31) or main (32)
         """
 
         state = self.libseq.getSequenceState(scene, chan)
@@ -262,12 +251,12 @@ class zynseq(zynthian_engine):
             "chains": [],  # Used when drawing launcher pads
             "pattern": pattern,
             "empty": empty,
-            "clippy": None,  # Clippy processor, for clippy slots
+            "clippy": None,
             "follow_action": follow_action,
             "follow_param": follow_param  # Jump offset (rel or abs, dep on action)
         }
         # Scene launcher
-        if chan == 16:
+        if chan == 32:
             info["timesig"] = self.libseq.getTimeSigAt(scene, chan, 1, 0)
             info["tempo"] = self.libseq.getTempoAt(scene, chan, 1, 0)
 
@@ -283,6 +272,7 @@ class zynseq(zynthian_engine):
                     processor = chain.get_processors("MIDI Synth")[0]
                     if processor.engine.nickname == "CL":
                         info["clippy"] = processor
+                        processor.engine.update_controllers(processor)
                 except:
                     pass
                 info["chains"].append(chain_id)
@@ -294,7 +284,7 @@ class zynseq(zynthian_engine):
 
         if info["pattern"] == -1:
             logging.warning("No pattern!")
-        self.sequence_info[scene * 17 + chan] = info  # TODO: Can we lose one of these maps?
+        self.sequence_info[scene * 33 + chan] = info  # TODO: Can we lose one of these maps?
         while len(self.launcher_info) <= scene:
             self.launcher_info.append([{"state": 0} for i in range(LAUNCHER_COLS + 1)])
         self.launcher_info[scene][chan] = info
@@ -325,27 +315,6 @@ class zynseq(zynthian_engine):
     def swap_scene(self, scene1, scene2):
         self.libseq.swapScene(scene1, scene2)
         self.rebuild_all_launcher_info()
-
-    def enable_channel(self, channel, enable=True):
-        """
-        Enable or disable sequences in channel
-
-        :channel: MIDI channel
-        :enable: True to enable, False to disable
-        """
-
-        if channel is None or channel > 15:
-            return
-        repeat = 1 if enable else 0
-        for scene in range(len(self.launcher_info)):
-            info = self.launcher_info[scene][channel]
-            self.libseq.setRepeat(scene, channel, repeat)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
-                    scene=scene,
-                    chan=info["chan"],
-                    state=info["state"],
-                    mode=info["mode"]
-            )
 
     # Load a zynseq file
     # filename: Full path and filename

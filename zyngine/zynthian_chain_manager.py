@@ -36,7 +36,6 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_processor import zynthian_processor
-from zynlibs.zynseq.zynseq import CHANNEL_TYPE_DISABLED, CHANNEL_TYPE_MIDI
 from zyngui import zynthian_gui_config
 
 # ----------------------------------------------------------------------------
@@ -213,7 +212,7 @@ class zynthian_chain_manager:
                     enable_sequences = False
                     break
             if enable_sequences:
-                self.state_manager.zynseq.libseq.setChannelType(midi_chan, CHANNEL_TYPE_MIDI)
+                self.state_manager.zynseq.libseq.enableChannel(midi_chan, True)
 
         # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
@@ -256,7 +255,7 @@ class zynthian_chain_manager:
             lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_STEP_INDEX, True)
             # Enable SMF sequencer MIDI intput
             lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_SEQ_INDEX, True)
-            # Enable CV/Gate MIDI intput (fake port zmip)
+            # Enable CV/Gate MIDI input (fake port zmip)
             lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_INT_INDEX, True)
             # Enable default native CC handling of pedals
             cc_route_ct = (ctypes.c_uint8 * 128)()
@@ -392,7 +391,7 @@ class zynthian_chain_manager:
                     disable_sequences = False
                     break
             if disable_sequences:
-                self.state_manager.zynseq.libseq.setChannelType(midi_chan, CHANNEL_TYPE_DISABLED)
+                self.state_manager.zynseq.libseq.enableChannel(midi_chan, False)
         self.state_manager.zynseq.rebuild_all_launcher_info()
 
         self.state_manager.purge_zs3()

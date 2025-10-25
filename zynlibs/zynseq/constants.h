@@ -29,7 +29,7 @@
 #include <cstdint>
 
 #define DEFAULT_TEMPO 120.0 // March time (120 BPM)
-#define SCENE_CHANNEL 16 // Scene launcher channel
+#define SCENE_CHANNEL 32 // Scene launcher channel
 
 // Play modes START & END are OR'd to provide mode
 // Bits 0..1 Stop mode
@@ -56,13 +56,6 @@
 #define STOPPING_SYNC 5 // Sequence is playing waiting to stop at next sync point
 #define CHILD_PLAYING 6 // Child (of scene launcher) sequence is playing
 #define CHILD_STOPPING 7 // Child (of scene launcher) sequence is stopping
-
-// Channel types
-enum CHANNEL_TYPE {
-    CHANNEL_TYPE_DISABLED,
-    CHANNEL_TYPE_MIDI,
-    CHANNEL_TYPE_CLIPPY
-};
 
 // Follow action
 enum FOLLOW_ACTION {

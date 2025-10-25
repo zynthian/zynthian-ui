@@ -409,14 +409,18 @@ const char* getJackname() {
 }
 
 /** @brief  Create a new clip player
-    @brief  channel MIDI channel for new player
-    @retval uint8_t Error code
+    @brief  channel MIDI channel for new player or 255 for next available channel
+    @retval uint8_t Channel number or 255 on error
 */
 uint8_t addPlayer(uint8_t channel) {
-    if (channel >= 16)
-        return ERROR_RANGE;
-    if (players[channel])
-        return ERROR_EXISTS;
+    if (channel >= 16) {
+        for (channel = 0; channel < 16; ++channel) {
+            if (players[channel] == NULL)
+                break;
+        }
+    }
+    if (channel > 16)
+        return 255;
     Player* player = malloc(sizeof(Player));
     if (!player)
         return ERROR_CREATE;
@@ -438,7 +442,7 @@ uint8_t addPlayer(uint8_t channel) {
     getMutex();
     players[channel] = player;
     releaseMutex();
-    return ERROR_SUCCESS;
+    return channel;
 }
 
 /** @brief  Remove a clip player
@@ -638,6 +642,13 @@ uint32_t getFileFrames(const char* path) {
     return sf_info.frames;
 }
 
+/** @brief  Copy a file, applying samplerate conversion and time stretch
+    @param  src_path Full path and filename of file to copy
+    @param  dst_path Full path and filename of file to create
+    @param  quality Samplerate quality
+    @param  ratio Time stretch ratio (1.0 for no stretch)
+    @retval int Error code
+*/
 int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float ratio) {
     uint8_t error = 0;
     if (quality > 4 || ratio < 0.001)

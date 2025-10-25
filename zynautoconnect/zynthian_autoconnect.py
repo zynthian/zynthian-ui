@@ -814,6 +814,13 @@ def midi_autoconnect():
             except:
                 pass
 
+    # Connect clippy
+    for port in jclient.get_ports("clippy", is_midi=True, is_input=True):
+        try:
+            jclient.connect("zynseq:clippy", port)
+        except:
+            pass # Don't care about already connected ports
+
     # Autoload new drivers
     for i in new_idev:
         state_manager.ctrldev_manager.load_driver(i)
