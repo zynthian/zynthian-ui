@@ -52,7 +52,7 @@ def load_yaml_config(path, file):
 	try:
 		fh = open(file, "r")
 		data = fh.read()
-		logging.debug(f"Loading yaml config file '{file}' =>\n{data}")
+		logging.debug(f"Loading yaml config file '{file}'")
 		return yaml.load(data, Loader=yaml.SafeLoader)
 	except Exception as e:
 		logging.error(f"Bad formatted yaml in config file '{file}' => {e}")
