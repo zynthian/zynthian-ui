@@ -816,14 +816,18 @@ if "zynthian_main.py" in sys.argv[0]:
         num_zynswitches = lib_zyncore.get_num_zynswitches()
         last_zynswitch_index = lib_zyncore.get_last_zynswitch_index()
         num_zynpots = lib_zyncore.get_num_zynpots()
-        config_zynswitch_timing()
-        config_custom_switches()
-        config_zynpot2switch()
-        config_zynaptik()
-        config_zyntof()
     except Exception as e:
-        logging.error(f"Can't init control I/O subsytem: {e}")
-        exit(200)
+        logging.warning(f"Can't init control I/O subsytem: {e}")
+        num_zynswitches = 0
+        last_zynswitch_index = -1
+        num_zynpots = 0
+        #exit(200)
+
+    config_zynswitch_timing()
+    config_custom_switches()
+    config_zynpot2switch()
+    config_zynaptik()
+    config_zyntof()
 
     # ------------------------------------------------------------------------------
     # Load MIDI config

@@ -66,7 +66,8 @@ def zynpot_cb(i, dval):
         logging.exception(err)
 
 
-lib_zyncore.setup_zynpot_cb(zynpot_cb)
+if zynthian_gui_config.num_zynpots > 0:
+    lib_zyncore.setup_zynpot_cb(zynpot_cb)
 
 # ------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
