@@ -339,6 +339,8 @@ class zynthian_gui_control(zynthian_gui_selector):
                 continue
             if proc_id not in self.zyngui.chain_manager.processors:
                 logging.debug(f"Deleting orphaned widget: {k}")
+                if self.widgets[k] == self.current_widget:
+                    self.hide_widgets()
                 del self.widgets[k]
 
     def set_current_widget(self, widget):
