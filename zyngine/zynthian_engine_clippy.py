@@ -62,11 +62,9 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.name = "Clippy"
         self.nickname = "CL"
-        self.type = "MIDI Synth"
+        self.type = "Audio Generator"
         self.options["replace"] = False
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_clippy.py"
-        self.pattern = None # Only used by GUI widget
-        self.processor = None
 
         self.jackname = self.libclippy.getJackname().decode("utf-8")
 
@@ -87,21 +85,20 @@ class zynthian_engine_clippy(zynthian_engine):
         self.libclippy.end()
 
     def set_scene(self, processor, scene):
-        self.processor = processor
-        self.scene = scene
-        self.pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+        self.scene = scene # Only used by GUI widget
+        processor.pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
 
         processor.preset_name = ""
-        if self.pattern == 4294967295:
+        if processor.pattern == 4294967295:
             return
-        self._ctrl_screens = [["File", [f"file {self.pattern}"]]]
+        self._ctrl_screens = [["File", [f"file {processor.pattern}"]]]
         try:
-            if processor.controllers_dict[f"file {self.pattern}"].value:
+            if processor.controllers_dict[f"file {processor.pattern}"].value:
                 self._ctrl_screens = [
-                    [f"File", [f"file {self.pattern}", f"warp {self.pattern}", f"beats {self.pattern}", f"mode {self.pattern}"]],
-                    [f"Waveform", [f"gain {self.pattern}"], f"crop_start {self.pattern}", f"crop_end {self.pattern}"]
+                    [f"File", [f"file {processor.pattern}", f"warp {processor.pattern}", f"beats {processor.pattern}", f"mode {processor.pattern}"]],
+                    [f"Waveform", [f"gain {processor.pattern}", f"crop_start {processor.pattern}", f"crop_end {processor.pattern}", f"zoom {processor.pattern}"]]
                 ]
-                processor.preset_name = processor.controllers_dict[f"file {self.pattern}"].value.split("/")[-1]
+                processor.preset_name = processor.controllers_dict[f"file {processor.pattern}"].value.split("/")[-1]
         except Exception as e:
             logging.warning(f"Can't set scene {scene} for clippy on chan {processor.midi_chan} => {e}")
         processor.init_ctrl_screens()
@@ -135,15 +132,23 @@ class zynthian_engine_clippy(zynthian_engine):
             self.set_file(zctrl.processor, pattern)
         elif zctrl.symbol.startswith("mode"):
             self.set_mode(zctrl.processor, pattern, zctrl.value)
-        elif zctrl.symbol.startswith("crop"):
+        elif zctrl.symbol.startswith("crop_start"):
+            zctrl_crop_end = zctrl.processor.controllers_dict[zctrl.symbol.replace("start", "end")]
+            zctrl_crop_end.value_min = zctrl.value
+            zctrl_crop_end.value_range = zctrl_crop_end.value_max - zctrl_crop_end.value_min
+            #TODO: Change file crop
             return
-            #self.set_file(zctrl.processor, pattern)
+        elif zctrl.symbol.startswith("crop_end"):
+            zctrl_crop_start = zctrl.processor.controllers_dict[zctrl.symbol.replace("end", "start")]
+            zctrl_crop_start.value_max = zctrl.value
+            zctrl_crop_start.value_range = zctrl_crop_start.value
+            return
         elif zctrl.symbol.startswith("gain"):
-            pass
+            return
             #TODO: Must map clips so that we can access them. Clips may change scene if moved in UI... 
             #self.libclippy.setGain(zctrl.processor.midi_chan, scene, ctypes.c_float(zctrl.value))
-
-        self.write_sfz(zctrl.processor)
+        elif zctrl.symbol.startswith("zoom"):
+            return
 
     """ Set play mode
     
@@ -163,7 +168,7 @@ class zynthian_engine_clippy(zynthian_engine):
             case _:
                 self.libseq.setPlayMode(scene, processor.midi_chan, 0x01 | ((mode - 1) << 8))
                 self.libseq.setFollowAction(scene, processor.midi_chan, zynseq.FOLLOW_ACTION_NONE, 0)
-        self.zynseq.rebuild_launcher_info(processor.midi_chan)
+        self.zynseq.rebuild_launcher_info(scene, processor.midi_chan)
 
     def set_file(self, processor, pattern, reset=False):
         file_zctrl = processor.controllers_dict[f"file {pattern}"]
@@ -262,6 +267,19 @@ class zynthian_engine_clippy(zynthian_engine):
                     beats_zctrl.value = 0
                     warp_zctrl.value = 0
 
+                ticks = []
+                labels = []
+                i = 0
+                while True:
+                    val = 2 ** i
+                    if val > frames / 40:
+                        break
+                    ticks.append(val)
+                    labels.append(f"x{ticks[i]}")
+                    i += 1
+                processor.controllers_dict[f"zoom {pattern}"].ticks = ticks
+                processor.controllers_dict[f"zoom {pattern}"].labels = labels
+
                 # Setup zynseq pattern & sequence
                 pattern = self.libseq.getPattern(scene, processor.midi_chan, 0, 0)
                 if pattern == 4294967295:
@@ -272,7 +290,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     self.libseq.setStepsPerBeat(1)
                     self.libseq.setBeatsInPattern(pattern, whole_beats)
                     #TODO: Need to add notes based on scenes
-                    note = self.libclippy.loadClip(processor.midi_chan, note, bytes(path, "utf-8"))
+                    note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
                     self.libseq.addNote(0, note, 100, 1, 0.0)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_name(scene, processor.midi_chan, os.path.splitext(filename)[0])
@@ -287,11 +305,11 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             self._ctrl_screens = [
                 [f"File", [f"file {pattern}", f"warp {pattern}", f"beats {pattern}", f"mode {pattern}"]],
-                [f"Waveform", [f"gain {pattern}", f"crop_start {pattern}", f"crop_end {pattern}"]]
+                [f"Waveform", [f"gain {pattern}", f"crop_start {pattern}", f"crop_end {pattern}", f"zoom {pattern}"]]
             ]
         else:
             self._ctrl_screens = [["File", [f"file {pattern}"]]]
-            self.libclippy.unloadClip(processor.midi_chan, note)
+            self.libclippy.unloadClip(processor.midi_chan - 16, note)
 
         processor.init_ctrl_screens()
 
@@ -374,12 +392,23 @@ class zynthian_engine_clippy(zynthian_engine):
                     "processor": processor,
                     "is_integer": True
                 })
+                ticks = []
+                labels = []
+                for i in range(10):
+                    ticks.append(2 ** i)
+                    labels.append(f"x{ticks[i]}")
+                zctrls[f"zoom {pattern}"] = zynthian_controller(self, f"zoom {pattern}", {
+                    "name": "zoom",
+                    "processor": processor,
+                    "ticks": ticks,
+                    "labels": labels
+                })
                 self.libseq.setPlayMode(scene, processor.midi_chan, 0x0001)
                 self.reset_pattern(processor, scene)
             processor.controllers_dict.update(zctrls)
 
         # Remove controllers for non-existing patterns
-        for zctrl in processor.controllers_dict.values():
+        for zctrl in list(processor.controllers_dict.values()):
             if not zctrl.symbol.startswith("file "):
                 continue
             pattern = int(zctrl.symbol.split(" ")[1])
@@ -393,6 +422,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 processor.controllers_dict.pop(f"gain {pattern}", None)
                 processor.controllers_dict.pop(f"crop_start {pattern}", None)
                 processor.controllers_dict.pop(f"crop_end {pattern}", None)
+                processor.controllers_dict.pop(f"zoom {pattern}", None)
             except Exception as e:
                 logging.warning("Failed to remove controller for pattern %d: %s", pattern, e)
 
@@ -401,21 +431,25 @@ class zynthian_engine_clippy(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def add_processor(self, processor):
-        if self.libclippy.addPlayer(processor.midi_chan) != 0:
+        midi_chan = self.libclippy.addPlayer(255)
+        if midi_chan > 15:
             return
         self.processors.append(processor)
-        processor.jackname = f"{self.jackname}:out_{processor.midi_chan + 1 :02d}"
+        processor.chain.set_midi_chan(midi_chan + 16)
+        processor.jackname = f"{self.jackname}:out_{midi_chan + 1 :02d}"
 
         processor.controllers_dict = {}
         self.update_controllers(processor)
 
-        self.set_scene(processor, 0)
-        self.zynseq.libseq.setChannelType(processor.midi_chan, zynseq.CHANNEL_TYPE_CLIPPY)
+        self.libseq.enableChannel(midi_chan, True)
         for scene in range(self.zynseq.scenes):
             self.zynseq.libseq.setRepeat(scene, processor.midi_chan, 0)
+            self.zynseq.libseq.setTrackOutput(scene, processor.midi_chan, 0, 0xfe)
+        self.set_scene(processor, 0)
 
     def remove_processor(self, processor):
-        if self.libclippy.removePlayer(processor.midi_chan) != 0:
+        self.libseq.enableChannel(processor.midi_chan, False)
+        if self.libclippy.removePlayer(processor.midi_chan - 16) != 0:
             return
         super().remove_processor(processor)
 

@@ -639,7 +639,7 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES', "").spl
 PAD_COLOUR_DISABLED = '#707070'
 PAD_COLOUR_DISABLED_LIGHT = '#909090'
 PAD_COLOUR_STARTING = '#FFBB00'
-PAD_COLOUR_PLAYING = '#00D000'
+PAD_COLOUR_PLAYING = '#009000'
 PAD_COLOUR_STOPPING = '#D00000'
 PAD_COLOUR_STOPPED = '#E0E0E0'
 PAD_COLOUR_SCENE = '#707070'
@@ -661,8 +661,11 @@ LAUNCHER_COLOUR = [
     {"rgb": "#3F94A2", "launchpad": 32,  "apc": 92},  #15:teal
     {"rgb": "#F5B169", "launchpad": 126, "apc": 109}  #16:light orange
 ]
-LAUNCHER_STARTING_COLOUR = {"rgb": "#FF0000", "launchpad": 21, "apc": 87} #green
-LAUNCHER_STOPPING_COLOUR = {"rgb": "#FF0000", "launchpad": 5, "apc": 72} #red
+#TODO: Choose clip launcher colours
+LAUNCHER_COLOUR += LAUNCHER_COLOUR
+
+LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
+LAUNCHER_STOPPING_COLOUR = {"rgb": "#D00000", "launchpad": 5, "apc": 72} #red
 
 
 def color_variant(hex_color, brightness_offset=1):

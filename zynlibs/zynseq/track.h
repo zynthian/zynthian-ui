@@ -5,6 +5,7 @@
 
 struct SEQ_EVENT {
     uint32_t time;
+    uint8_t output;
     MIDI_MESSAGE msg;
 };
 

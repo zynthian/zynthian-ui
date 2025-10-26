@@ -27,15 +27,11 @@ import logging
 import tkinter
 import soundfile
 import traceback
-from math import modf, sqrt
-from os.path import basename
 from threading import Thread
 
 # Zynthian specific modules
-from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
-from zyngui.multitouch import MultitouchTypes
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for "zynaudioplayer"
@@ -69,6 +65,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.frames = 0  # Quantity of frames in audio
         self.scene = None
         self.info = None
+        self.sf = None
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
         self.widget_canvas = tkinter.Canvas(self,
                                             bd=0,
@@ -193,7 +190,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         pos = event.x / f + self.offset
         max_delta = 0.02 * self.frames / self.zoom
         self.drag_marker = None
-        for symbol in [f"crop_start {self.processor.engine.pattern}", f"crop_end {self.processor.engine.pattern}"]:
+        for symbol in [f"crop_start {self.processor.pattern}", f"crop_end {self.processor.pattern}"]:
             if abs(pos - self.processor.controllers_dict[symbol].value) < max_delta:
                 self.drag_marker = symbol
                 self.drag_value = self.processor.controllers_dict[symbol].value
@@ -240,7 +237,10 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                     self.duration = self.frames / self.samplerate
                 else:
                     self.duration = 0.0
-                y0 = self.waveform_height // self.channels
+                if self.channels:
+                    y0 = self.waveform_height // self.channels
+                else:
+                    y0 = self.waveform_height;
                 for chan in range(self.channels):
                     v_offset = chan * y0
                     self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"], tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
@@ -267,9 +267,11 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 logging.warning(f"Failed to show waveform - file too large")
                 self.widget_canvas.itemconfig(
                     self.loading_text, text="Can't display waveform")
+                self.sf = None
             except Exception as e:
                 self.widget_canvas.itemconfig(
                     self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+                self.sf = None
             self.refreshing = False
             self.refresh_waveform = True
         else:
@@ -277,10 +279,18 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(
                     self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.sf = None
 
         self.update()
 
     def draw_waveform(self, start, length):
+        if self.sf is None:
+            self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
+            self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
+            self.widget_canvas.itemconfig(
+                    self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            return
+
         start = max(0, start)
         start = min(self.frames, start)
         length = min(self.frames - start, length)
@@ -288,7 +298,10 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         data = [[] for i in range(self.channels)]
         large_file = self.frames * self.channels > 24000000
 
-        y0 = self.waveform_height // self.channels
+        if self.channels:
+            y0 = self.waveform_height // self.channels
+        else:
+            y0 = self.waveform_height
         y_offsets = []
         for i in range(self.channels):
             y_offsets.append(y0 * (i + 0.5))
@@ -362,8 +375,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             self.scene = self.processor.engine.scene
             load_waveform = True
         try:
-            if self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].value:
-                path = self.processor.controllers_dict[f"file {self.processor.engine.pattern}"].value
+            if self.processor.controllers_dict[f"file {self.processor.pattern}"].value:
+                path = self.processor.controllers_dict[f"file {self.processor.pattern}"].value
             else:
                 path = ""
             if path != self.path:
@@ -376,15 +389,23 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 waveform_thread.start()
                 return
 
-            crop_start = self.processor.controllers_dict[f"crop_start {self.processor.engine.pattern}"].value
+            zoom = self.processor.controllers_dict[f"zoom {self.processor.pattern}"].value
+            if zoom != self.zoom:
+                self.zoom = zoom
+                self.refresh_waveform = True
+            crop_start = self.processor.controllers_dict[f"crop_start {self.processor.pattern}"].value
             if crop_start != self.crop_start:
                 self.crop_start = crop_start
                 update_markers = True
-            crop_end = self.processor.controllers_dict[f"crop_end {self.processor.engine.pattern}"].value
+            crop_end = self.processor.controllers_dict[f"crop_end {self.processor.pattern}"].value
             if crop_end != self.crop_end:
                 self.crop_end = crop_end
                 update_markers = True
-            self.refreshing = False
+
+            if self.refresh_waveform:
+                self.draw_waveform(self.offset, int(self.frames / self.zoom))
+                update_markers = True
+                self.refresh_waveform = False
 
             if update_markers and self.frames:
                 h = self.waveform_height

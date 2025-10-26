@@ -431,7 +431,7 @@ class zynthian_gui_mixer_strip:
                 name = info["title"]
             if empty:
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
-            elif info["chan"] < 16:
+            elif info["chan"] < 32:
                 color = zynthian_gui_config.LAUNCHER_COLOUR[info["chan"]]["rgb"]
             else:
                 color = zynthian_gui_config.PAD_COLOUR_SCENE
@@ -583,6 +583,9 @@ class zynthian_gui_mixer_strip:
                 font = self.font
                 if self.parent.moving_chain and self.chain_id == self.chain_manager.active_chain_id:
                     strip_txt = f"⇦⇨"
+                elif self.chain.synth_slots and self.chain.synth_slots[0][0].type == "Audio Generator":
+                    strip_txt = "\uf028" # Speaker icon
+                    font = self.font_icons
                 elif isinstance(self.chan, int):
                     if 0 <= self.chan < 16:
                         strip_txt = f"♫ {self.chain.midi_chan + 1}"
@@ -590,8 +593,8 @@ class zynthian_gui_mixer_strip:
                         strip_txt = f"♫ All"
                     else:
                         strip_txt = f"♫ Err"
-                elif self.chain.is_audio:
-                    strip_txt = "\uf130"
+                elif self.chain.is_audio():
+                    strip_txt = "\uf130" # Microphone icon
                     font = self.font_icons
                 else:
                     strip_txt = "\uf0ae"
@@ -692,7 +695,7 @@ class zynthian_gui_mixer_strip:
             if self.chain.mixer_chan is not None and self.chain.mixer_chan < len(self.parent.zynmixer.zctrls):
                 self.zctrls = self.parent.zynmixer.zctrls[self.chain.mixer_chan]
             if self.chain_id == 0:
-                self.chan = 16
+                self.chan = 32
             else:
                 self.chan = self.chain.midi_chan
             self.show()
@@ -857,7 +860,7 @@ class zynthian_gui_mixer_strip:
             self.parent.drag_launcher(dY)
 
     def on_clip_short_press(self, scene):
-        if self.chan is None or self.chan > 16:
+        if self.chan is None or self.chan > 32:
             return
         self.parent.scene = scene
         self.parent.highlighted_strip = self
@@ -865,7 +868,7 @@ class zynthian_gui_mixer_strip:
         self.zynseq.libseq.togglePlayState(scene, self.chan)
 
     def on_clip_bold_press(self, scene):
-        if self.chan is None or self.chan > 16:
+        if self.chan is None or self.chan > 32:
             return
         self.parent.scene = scene
         self.parent.highlighted_strip = self
@@ -1178,6 +1181,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.unregister(
                     zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
                 zynsigman.unregister(
+                    zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
+                zynsigman.unregister(
                     zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
                 zynsigman.unregister(
                     zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
@@ -1225,6 +1230,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.register_queued(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
             zynsigman.register_queued(
+                zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
+            zynsigman.register_queued(
                 zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
             zynsigman.register_queued(
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
@@ -1256,7 +1263,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         if strip.chain.mixer_chan is not None:
                             state = states[strip.chain.mixer_chan]
                             strip.draw_dpm(state)
-                        if strip.chain.midi_chan is not None and strip.chain.midi_chan < 16:
+                        if strip.chain.midi_chan is not None and strip.chain.midi_chan < 32:
                             strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
             self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.SCENE_CHANNEL])
 
@@ -1327,7 +1334,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             logging.warning(e)
 
     def midi_pc_cb(self, izmip, chan, num):
-        if zynthian_gui_config.midi_prog_change_zs3:
+        if zynthian_gui_config.midi_prog_change_zs3 or self.launcher_mode:
             return
         for strip in self.visible_mixer_strips:
             if strip.chain and strip.chain.midi_chan == chan:
@@ -1661,7 +1668,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             scene = self.launcher_select_info["scene"]
             self.launcher_select_info["tempo"] = tempo
             self.zynseq.libseq.addTempoEvent(scene, zynseq.SCENE_CHANNEL, tempo, 1, 0)
-            for chan in range(16):
+            for chan in range(16, 32):
                 info = self.zynseq.launcher_info[scene][chan]
                 proc = info["clippy"]
                 if proc is None:
@@ -1744,7 +1751,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
-            if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 16 and self.launcher_highlighted_scene < self.zynseq.scenes:
+            if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 32 and self.launcher_highlighted_scene < self.zynseq.scenes:
                 self.edit_clip()
             else:
                 self.item_menu()

@@ -797,6 +797,22 @@ void setTrackType(uint8_t scene, uint8_t sequence, uint32_t track, uint8_t type)
 */
 uint8_t getTrackType(uint8_t scene, uint8_t sequence, uint32_t track);
 
+/** @brief  Set track output
+    @param  scene Index of scene
+    @param  sequence Sequence ID
+    @param  track Index of track
+    @param  output Track output: 0xfe for clippy output. 0xff for no output.
+*/
+void setTrackOutput(uint8_t scene, uint8_t sequence, uint32_t track, uint8_t output);
+
+/** @brief  Get track output
+    @param  scene Index of scene
+    @param  Index of sequence of sequence
+    @param  track Index of track
+    @retval uint8_t Track output: 0xfe for clippy output. 0xff for no output.
+*/
+uint8_t getTrackOutput(uint8_t scene, uint8_t sequence, uint32_t track);
+
 /** @brief  Set track's associated chain ID
     @param  scene Index of scene
     @param  sequence Sequence ID
@@ -874,7 +890,7 @@ void togglePlayState(uint8_t scene, uint8_t sequence);
 
 /** @brief  Get sequence states encoded as 32-bit word
     @param  scene Index of scene containing sequence
-    @param  Index of sequence (sequence) of sequence within scene
+    @param  Index of sequence within scene
     @retval uint32_t State encode as 4 bytes: [repeat, group, mode, play state]
 */
 uint32_t getSequenceState(uint8_t scene, uint8_t sequence);
@@ -1214,17 +1230,17 @@ uint8_t getClockSource();
 */
 void setClockSource(uint8_t source);
 
-/** @brief  Set MIDI channel type
+/** @brief  Enable a channel
     @param  channel MIDI channel
-    @param  type MIDI channel type
+    @param  bool True to enable
 */
-void setChannelType(uint8_t channel, uint8_t type);
+void enableChannel(uint8_t channel, bool enable);
 
-/** @brief  Get MIDI channel type
+/** @brief  Is a channel enabled
     @param  channel MIDI channel
-    @retval uint8_t MIDI channel type
+    @retval bool True if channel is enabled
 */
-uint8_t getChannelType(uint8_t channel);
+bool isChannelEnabled(uint8_t channel);
 
 /** @brief  Get quantity of frames in each clock cycle
     @retval double Quantity of frames

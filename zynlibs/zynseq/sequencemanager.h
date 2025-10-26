@@ -89,7 +89,7 @@ class SequenceManager {
         @param  dSamplesPerClock Quantity of samples in each clock cycle
         @retval bool True if sequences or scene playing
     */
-    bool clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync);
+    bool clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync);
 
     /** @brief  Get pointer to sequence
         @param  scene Index of scene
@@ -202,22 +202,22 @@ class SequenceManager {
     void setTimeSig(uint8_t sig);
 
     /** @brief  Get playback progress percentage
-        @param   uint8_t* Pointer to 17 element array containing progress as a percentage of sequence length
-        @note   Element 16 (scene launchers) is a percentage of the current time signature (beats per bar)
+        @param   uint8_t* Pointer to 33 element array containing progress as a percentage of sequence length
+        @note   Element 32 (scene launchers) is a percentage of the current time signature (beats per bar)
     */
     uint8_t* getProgress();
 
-    /** @brief  Set MIDI channel type
+    /** @brief  Enable a channel
         @param  channel MIDI channel
-        @param  type MIDI channel type
+        @param  enable True to enable
     */
-    void setChannelType(uint8_t channel, uint8_t type);
+    void enableChannel(uint8_t channel, bool enable);
 
-    /** @brief  Get MIDI channel type
+    /** @brief  Is channel enabled
         @param  channel MIDI channel
-        @retval uint8_t MIDI channel type
+        @retval bool True if channel is enabled
     */
-    uint8_t getChannelType(uint8_t channel);
+    bool isChannelEnabled(uint8_t channel);
 
     // Scene handling
 
@@ -273,10 +273,9 @@ class SequenceManager {
     uint8_t m_nTimeSig = 4;           // Current time signature in beats (1/4 notes) per bar
     uint8_t m_nTriggerDevice = 0xFF;  // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
-    uint8_t m_aGroupProgress[17];     // Array of group playback progress percentage
+    uint8_t m_aGroupProgress[33];     // Array of group playback progress percentage
     uint8_t m_nBeatsPerBar = 4;       // Time signature in beats
-    bool m_bClippy[16];               // Array of flags indicating if clippy is active on each channel
-    uint8_t m_nType[16];              // Array indicating channel type (see CHANNEL_TYPE enum)
+    uint8_t m_bEnabled[32];           // Array indicating if channel is enabled
     std::vector<Sequence*> m_vScenes; // Vector of pointers to scene sequences, ordered by scene index
 
     // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
