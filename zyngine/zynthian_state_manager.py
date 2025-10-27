@@ -185,6 +185,7 @@ class zynthian_state_manager:
         self.slow_thread = None
         self.fast_thread = None
         self.start()
+        self.set_power_save_mode(False)
 
         self.end_busy("zynthian_state_manager")
 
@@ -920,6 +921,8 @@ class zynthian_state_manager:
         if psm:
             logging.info("Power Save Mode: ON")
             self.ctrldev_manager.sleep_on()
+            self.last_event_flag = False
+            self.last_event_ts = monotonic() - zynthian_gui_config.power_save_secs
             check_output("powersave_control.sh on", shell=True)
         else:
             logging.info("Power Save Mode: OFF")

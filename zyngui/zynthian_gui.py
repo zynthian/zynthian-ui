@@ -174,9 +174,9 @@ class zynthian_gui:
         # => Note this condition is redundant, but needed to ensure some legacy V5 configs to work
         # => It should be simplified in the future and keep the second part only
         if zynthian_gui_config.check_kit_version(["V5"]) or os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
-            self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
+            self.multitouch = MultiTouch(self.state_manager, invert_x_axis=True, invert_y_axis=True)
         else:
-            self.multitouch = MultiTouch()
+            self.multitouch = MultiTouch(self.state_manager)
 
         # Load keyboard binding map
         zynthian_gui_keybinding.load()
@@ -382,9 +382,10 @@ class zynthian_gui:
         parts = path.upper().split("/", 2)
         # TODO: message may have fewer parts than expected
         if parts[0] == "" and parts[1] == "CUIA":
-            self.state_manager.set_event_flag()
             # Execute action
             cuia = parts[2].upper()
+            if cuia != "POWER_SAVE":
+                self.state_manager.set_event_flag()
             if self.state_manager.is_busy():
                 logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
                 return
@@ -1141,6 +1142,9 @@ class zynthian_gui:
 
     def cuia_help(self, params=None):
         self.show_help(params)
+
+    def cuia_power_save(self, params=None):
+        self.state_manager.set_power_save_mode(True)
 
     def cuia_power_off(self, params=None):
         if params == ['CONFIRM']:
@@ -2555,7 +2559,8 @@ class zynthian_gui:
                 else:
                     self.callable_ui_action(cuia, params)
 
-                self.state_manager.set_event_flag()
+                if cuia != "power_save":
+                    self.state_manager.set_event_flag()
 
             except Empty:
                 for i in zynswitch_repeat:
