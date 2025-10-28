@@ -401,7 +401,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     driver_description = driver_class.get_driver_description()
                     if not driver_description:
                         driver_description = "Device driver integrating UI functions and customized workflow."
-                    if idev in loaded_drivers and isinstance(loaded_drivers[idev], driver_class):
+                    if idev in loaded_drivers and type(loaded_drivers[idev]) is driver_class:
                         driver_options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
                             ["UNLOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                     else:
