@@ -927,10 +927,16 @@ class zynthian_state_manager:
             self.ctrldev_manager.sleep_on()
             self.last_event_flag = False
             self.last_event_ts = monotonic() - zynthian_gui_config.power_save_secs
-            check_output("powersave_control.sh on", shell=True)
+            try:
+                check_output("powersave_control.sh on", shell=True)
+            except Exception as e:
+                logging.error(e)
         else:
             logging.info("Power Save Mode: OFF")
-            check_output("powersave_control.sh off", shell=True)
+            try:
+                check_output("powersave_control.sh off", shell=True)
+            except Exception as e:
+                logging.error(e)
             self.ctrldev_manager.sleep_off()
 
     def set_event_flag(self):
