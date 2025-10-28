@@ -612,6 +612,7 @@ control_test_enabled = get_env_int('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0)
 power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
 preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
 
+
 # ------------------------------------------------------------------------------
 # Audio Options
 # ------------------------------------------------------------------------------

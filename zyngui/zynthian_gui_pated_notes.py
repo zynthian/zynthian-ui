@@ -1019,7 +1019,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
     # Function to add a note or chord, depending on current chord mode
     # step: step number (column)
-    # note: MIDI note (0-127)
+    # row: keymap index
     # vel: velocity (0-127)
     # dur: duration (in steps)
     # offset: offset of start of event (0..0.99)
