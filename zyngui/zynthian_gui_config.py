@@ -617,8 +617,8 @@ preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
 # ------------------------------------------------------------------------------
 
 rbpi_headphones = get_env_int('ZYNTHIAN_RBPI_HEADPHONES', 0)
-enable_dpm = get_env_int('ZYNTHIAN_DPM', True)
-hotplug_audio_enabled = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO', False) == "True"
+enable_dpm = bool(get_env_int('ZYNTHIAN_DPM', 1))
+hotplug_audio_enabled = bool(get_env_int('ZYNTHIAN_HOTPLUG_AUDIO', 0))
 disabled_audio_in = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN', "").split(',')
 disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'headphones,b1,b2').split(',')
 
