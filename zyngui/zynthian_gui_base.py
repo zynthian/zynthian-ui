@@ -23,6 +23,7 @@
 #
 # ******************************************************************************
 
+import os
 import time
 import logging
 import tkinter
@@ -40,6 +41,9 @@ from zyngine import zynthian_controller
 
 
 class zynthian_gui_base(tkinter.Frame):
+
+    ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
+
     # Default buttonbar config (touchwidget)
     buttonbar_config = []
 

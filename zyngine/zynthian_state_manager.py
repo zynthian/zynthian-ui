@@ -62,8 +62,12 @@ from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+
+zynthian_dir = os.environ.get('ZYNTHIAN_DIR', "/zynthian")
+ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
+my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
 ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+capture_dir_sdc = my_data_dir + "/capture"
 
 
 class zynthian_state_manager:
@@ -185,6 +189,7 @@ class zynthian_state_manager:
         self.slow_thread = None
         self.fast_thread = None
         self.start()
+        self.set_power_save_mode(False)
 
         self.end_busy("zynthian_state_manager")
 
@@ -214,7 +219,7 @@ class zynthian_state_manager:
                 logging.debug(f"Opened undervoltage sensor '{result[0]}'")
             except:
                 self.hwmon_undervolt_file = None
-                logging.error("Can't access undervoltage sensor.")
+                logging.warning("Can't access undervoltage sensor.")
 
         # RBPi native sensors monitoring interface
         if self.hwmon_thermal_file is None or self.hwmon_undervolt_file is None:
@@ -600,8 +605,8 @@ class zynthian_state_manager:
                             logging.error(e)
 
                     else:
-                        self.status_overtemp = True
-                        self.status_undervoltage = True
+                        self.status_overtemp = False
+                        self.status_undervoltage = False
 
                 else:
                     status_counter += 1
@@ -920,6 +925,8 @@ class zynthian_state_manager:
         if psm:
             logging.info("Power Save Mode: ON")
             self.ctrldev_manager.sleep_on()
+            self.last_event_flag = False
+            self.last_event_ts = monotonic() - zynthian_gui_config.power_save_secs
             check_output("powersave_control.sh on", shell=True)
         else:
             logging.info("Power Save Mode: OFF")
@@ -2840,7 +2847,7 @@ class zynthian_state_manager:
                 # else => Check for commits to pull
                 else:
                     for repo in repos:
-                        path = f"/zynthian/{repo}"
+                        path = f"/{zynthian_dir}/{repo}"
                         branch = get_repo_branch(path)
                         local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"],
                                                   encoding="utf-8", stderr=STDOUT).strip()

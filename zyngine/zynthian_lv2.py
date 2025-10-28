@@ -789,11 +789,13 @@ def get_plugin_ports(plugin_url):
     # Control ports
     for i in range(plugin.get_num_ports()):
         control = plugin.get_port_by_index(i)
+        is_trigger = False
         if control.is_a(lilv.LILV_URI_INPUT_PORT) and control.is_a(lilv.LILV_URI_CONTROL_PORT):
             name = str(control.get_name())
             symbol = str(control.get_symbol())
 
             is_toggled = control.has_property(world.ns.lv2.toggled)
+            is_trigger = control.has_property(world.ns.portprops.trigger)
             is_integer = control.has_property(world.ns.lv2.integer)
             is_enumeration = control.has_property(world.ns.lv2.enumeration)
             is_logarithmic = control.has_property(world.ns.portprops.logarithmic)
@@ -884,6 +886,7 @@ def get_plugin_ports(plugin_url):
                     'max': vmax
                 },
                 'is_toggled': is_toggled,
+                'is_trigger': is_trigger,
                 'is_integer': is_integer,
                 'is_enumeration': is_enumeration,
                 'is_logarithmic': is_logarithmic,
@@ -910,6 +913,7 @@ def get_plugin_ports(plugin_url):
             vmin = None
             vmax = None
             is_toggled = False
+            is_trigger = False
             is_integer = False
             is_enumeration = False
             is_logarithmic = False
@@ -1003,6 +1007,7 @@ def get_plugin_ports(plugin_url):
                 'max': vmax
             },
             'is_toggled': is_toggled,
+            'is_trigger': is_trigger,
             'is_integer': is_integer,
             'is_enumeration': is_enumeration,
             'is_logarithmic': is_logarithmic,

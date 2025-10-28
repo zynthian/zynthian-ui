@@ -128,7 +128,7 @@ class zynthian_ctrldev_manager():
         # If a driver is already loaded for this device ...
         if izmip in self.drivers:
             # If it's the requested driver ...
-            if isinstance(self.drivers[izmip], driver_class):
+            if type(self.drivers[izmip]) is driver_class:
                 return False
             # Unload the current driver if requested a different one
             else:

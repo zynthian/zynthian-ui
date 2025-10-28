@@ -30,13 +30,20 @@ import logging
 # Zynthian specific modules
 import zynconf
 
+def get_env_int(env_var, default_val=0):
+    try:
+        return int(os.environ.get(env_var, str(default_val)))
+    except:
+        logging.warning(f"Failed to retrieve environmental variable {env_var}")
+        return default_val
+
 # ------------------------------------------------------------------------------
 # Log level and debuging
 # ------------------------------------------------------------------------------
 
-debug_thread = int(os.environ.get('ZYNTHIAN_DEBUG_THREAD', "0"))
+debug_thread = get_env_int('ZYNTHIAN_DEBUG_THREAD', 0)
 
-log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL', logging.WARNING))
+log_level = get_env_int('ZYNTHIAN_LOG_LEVEL', logging.WARNING)
 # log_level = logging.DEBUG
 
 logging.basicConfig(format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', stream=sys.stderr, level=log_level)
@@ -140,8 +147,8 @@ def config_zynswitch_timing():
     global zynswitch_bold_seconds
     global zynswitch_long_seconds
     try:
-        zynswitch_bold_us = 1000 * int(os.environ.get('ZYNTHIAN_UI_SWITCH_BOLD_MS', 300))
-        zynswitch_long_us = 1000 * int(os.environ.get('ZYNTHIAN_UI_SWITCH_LONG_MS', 2000))
+        zynswitch_bold_us = 1000 * get_env_int('ZYNTHIAN_UI_SWITCH_BOLD_MS', 300)
+        zynswitch_long_us = 1000 * get_env_int('ZYNTHIAN_UI_SWITCH_LONG_MS', 2000)
         zynswitch_bold_seconds = zynswitch_bold_us / 1000000
         zynswitch_long_seconds = zynswitch_long_us / 1000000
 
@@ -233,7 +240,7 @@ def config_custom_switches():
                     num = os.environ.get(root_varname + "__MIDI_NUM")
 
                 try:
-                    val = int(os.environ.get(root_varname + "__MIDI_VAL"))
+                    val = get_env_int(root_varname + "__MIDI_VAL")
                     val = max(min(127, val), 0)
                 except:
                     val = 0
@@ -370,18 +377,18 @@ def set_midi_config():
 
     # MIDI options
     midi_fine_tuning = float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING', "440.0"))
-    active_midi_channel = int(os.environ.get('ZYNTHIAN_MIDI_ACTIVE_CHANNEL', "0"))
-    midi_prog_change_zs3 = int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3', "1"))
-    midi_bank_change = int(os.environ.get('ZYNTHIAN_MIDI_BANK_CHANGE', "0"))
-    midi_usb_by_port = int(os.environ.get("ZYNTHIAN_MIDI_USB_BY_PORT", "0"))
-    midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', "0"))
-    midi_netump_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETUMP_ENABLED', "0"))
-    midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', "0"))
-    midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', "0"))
-    bluetooth_enabled = int(os.environ.get('ZYNTHIAN_MIDI_BLE_ENABLED', "0"))
+    active_midi_channel = get_env_int('ZYNTHIAN_MIDI_ACTIVE_CHANNEL', 0)
+    midi_prog_change_zs3 = get_env_int('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3', 1)
+    midi_bank_change = get_env_int('ZYNTHIAN_MIDI_BANK_CHANGE', 0)
+    midi_usb_by_port = get_env_int("ZYNTHIAN_MIDI_USB_BY_PORT", 0)
+    midi_network_enabled = get_env_int('ZYNTHIAN_MIDI_NETWORK_ENABLED', 0)
+    midi_netump_enabled = get_env_int('ZYNTHIAN_MIDI_NETUMP_ENABLED', 0)
+    midi_rtpmidi_enabled = get_env_int('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', 0)
+    midi_touchosc_enabled = get_env_int('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0)
+    bluetooth_enabled = get_env_int('ZYNTHIAN_MIDI_BLE_ENABLED', 0)
     ble_controller = os.environ.get('ZYNTHIAN_MIDI_BLE_CONTROLLER', "")
-    midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', "0"))
-    transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', "0"))
+    midi_aubionotes_enabled = get_env_int('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', 0)
+    transport_clock_source = get_env_int('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', 0)
 
     # Filter Rules
     midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
@@ -413,9 +420,9 @@ def set_mmc_config():
     master_midi_bank_change_ccnum = None
     if mmc_hex:
         try:
-            master_midi_bank_change_ccnum = int(os.environ.get("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x20))
+            master_midi_bank_change_ccnum = get_env_int("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x20)
             # Use MSB Bank by default
-            # master_midi_bank_change_ccnum = int(os.environ.get("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x00))
+            # master_midi_bank_change_ccnum = get_env_int("ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM", 0x00)
             logging.debug(f"MMC Bank Change CCNum: 0x{master_midi_bank_change_ccnum:02x}")
         except Exception as e:
             logging.error(f"Can't parse MMC Bank Change CCNum => {e}")
@@ -550,6 +557,8 @@ if touch_navigation == "_UNDEF_":
         touch_keypad = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', '')
         if touch_keypad == "V5":
             touch_navigation = "v5_keypad_left"
+        else:
+            touch_navigation = None
 
 match touch_navigation:
     case "touch_widgets":
@@ -578,7 +587,7 @@ match touch_navigation:
         main_screen_column = 0
 
 try:
-    force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', 0))
+    force_enable_cursor = get_env_int('ZYNTHIAN_UI_ENABLE_CURSOR', 0)
 except:
     force_enable_cursor = 0
 
@@ -593,22 +602,22 @@ if touch_keypad_option == "V5" and wiring_layout =="TOUCH_ONLY":
 # UI Options
 # ------------------------------------------------------------------------------
 
-restore_last_state = int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE', 0))
-snapshot_mixer_settings = int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', 0))
-show_cpu_status = int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS', 0))
-visible_mixer_strips = int(os.environ.get('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS', 0))
-visible_launchers = int(os.environ.get('ZYNTHIAN_UI_VISIBLE_LAUNCHERS', 8))
-ctrl_graph = int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
-control_test_enabled = int(os.environ.get('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0))
-power_save_secs = 60 * int(os.environ.get('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60))
-preset_preload = int(os.environ.get('ZYNTHIAN_UI_PRESET_PRELOAD', "1"))
+restore_last_state = get_env_int('ZYNTHIAN_UI_RESTORE_LAST_STATE', 0)
+snapshot_mixer_settings = get_env_int('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', 0)
+show_cpu_status = get_env_int('ZYNTHIAN_UI_SHOW_CPU_STATUS', 0)
+visible_mixer_strips = get_env_int('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS', 0)
+visible_launchers = get_env_int('ZYNTHIAN_UI_VISIBLE_LAUNCHERS', 8)
+ctrl_graph = get_env_int('ZYNTHIAN_UI_CTRL_GRAPH', 1)
+control_test_enabled = get_env_int('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0)
+power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
+preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
 
 # ------------------------------------------------------------------------------
 # Audio Options
 # ------------------------------------------------------------------------------
 
-rbpi_headphones = int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES', 0))
-enable_dpm = int(os.environ.get('ZYNTHIAN_DPM', True))
+rbpi_headphones = get_env_int('ZYNTHIAN_RBPI_HEADPHONES', 0)
+enable_dpm = get_env_int('ZYNTHIAN_DPM', True)
 hotplug_audio_enabled = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO', False) == "True"
 disabled_audio_in = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN', "").split(',')
 disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'headphones,b1,b2').split(',')
@@ -617,14 +626,14 @@ disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'head
 # Networking Options
 # ------------------------------------------------------------------------------
 
-vncserver_enabled = int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED', 0))
+vncserver_enabled = get_env_int('ZYNTHIAN_VNCSERVER_ENABLED', 0)
 
 # ------------------------------------------------------------------------------
 # Player configuration
 # ------------------------------------------------------------------------------
 
-midi_play_loop = int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP', 0))
-audio_play_loop = int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP', 0))
+midi_play_loop = get_env_int('ZYNTHIAN_MIDI_PLAY_LOOP', 0)
+audio_play_loop = get_env_int('ZYNTHIAN_AUDIO_PLAY_LOOP', 0)
 
 # ------------------------------------------------------------------------------
 # Experimental features
@@ -700,7 +709,7 @@ if "zynthian_main.py" in sys.argv[0]:
 
         # Screen Size => Autodetect if None
         if os.environ.get('DISPLAY_WIDTH'):
-            display_width = int(os.environ.get('DISPLAY_WIDTH'))
+            display_width = get_env_int('DISPLAY_WIDTH')
         else:
             try:
                 display_width = top.winfo_screenwidth()
@@ -709,7 +718,7 @@ if "zynthian_main.py" in sys.argv[0]:
                 display_width = 320
 
         if os.environ.get('DISPLAY_HEIGHT'):
-            display_height = int(os.environ.get('DISPLAY_HEIGHT'))
+            display_height = get_env_int('DISPLAY_HEIGHT')
         else:
             try:
                 display_height = top.winfo_screenheight()
@@ -718,7 +727,7 @@ if "zynthian_main.py" in sys.argv[0]:
                 display_height = 240
 
         # Global font size
-        font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE', None))
+        font_size = get_env_int('ZYNTHIAN_UI_FONT_SIZE', 16)
         if not font_size:
             font_size = int(display_width / 40)
 

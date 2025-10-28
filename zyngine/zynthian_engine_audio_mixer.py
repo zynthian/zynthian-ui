@@ -43,8 +43,7 @@ class zynmixer(zynthian_engine):
     # Function to initialize library
     def __init__(self):
         super().__init__()
-        self.lib_zynmixer = ctypes.cdll.LoadLibrary(
-            "/zynthian/zynthian-ui/zynlibs/zynmixer/build/libzynmixer.so")
+        self.lib_zynmixer = ctypes.cdll.LoadLibrary(f"{self.ui_dir}/zynlibs/zynmixer/build/libzynmixer.so")
         self.lib_zynmixer.init()
 
         self.lib_zynmixer.setLevel.argtypes = [ctypes.c_uint8, ctypes.c_float]

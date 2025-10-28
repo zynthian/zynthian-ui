@@ -181,15 +181,17 @@ class MultiTouch(object):
     EVENT_FORMAT = str('llHHi')
     EVENT_SIZE = struct.calcsize(EVENT_FORMAT)
 
-    def __init__(self, invert_x_axis=False, invert_y_axis=False):
+    def __init__(self, state_manager, invert_x_axis=False, invert_y_axis=False):
         """Instantiate the touch driver
 
         Creates an instance of the driver attached to the first multitouch hardware discovered.
 
+        state_manager - State Manager object used for disabling powersave mode
         invert_x_axis - True to invert x axis (optional)
         invert_y_axis - True to invert y axis (optional)
         """
 
+        self.state_manager = state_manager
         self._running = False  # True when thread is running
         self.thread = None  # Background thread processing touch events
         self._invert_x = invert_x_axis
@@ -332,6 +334,9 @@ class MultiTouch(object):
         """
 
         now = int(monotonic() * 1000)
+        if self.state_manager.power_save_mode:
+            self.state_manager.set_event_flag()
+            return
         for event in self.events:
             try:
                 event.x = event.x_root - event.offset_x

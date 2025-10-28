@@ -158,7 +158,7 @@ function start_wifi_ap() {
 }
 
 function del_last_state() {
-	ss_dpath=$ZYNTHIAN_MY_ZYNTHIAN_MY_DATA_DIR/snapshots
+	ss_dpath=$ZYNTHIAN_MY_DATA_DIR/snapshots
 	cp -a $ss_dpath/last_state.zss $ss_dpath/recovery.zss
 	rm -f $ss_dpath/last_state.zss
 }
