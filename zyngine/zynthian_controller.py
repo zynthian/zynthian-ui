@@ -82,6 +82,7 @@ class zynthian_controller:
         self.ticks = None  # List of discrete value ticks
         self.range_reversed = False  # Flag if ticks order is reversed
         self.is_toggle = False  # True if control is Boolean toggle
+        self.is_trigger = False  # True if control is Boolean trigger
         self.is_integer = True  # True if control is Integer
         self.is_logarithmic = False  # True if control uses logarithmic scale
         if full:
@@ -163,6 +164,8 @@ class zynthian_controller:
             self.ticks = options['ticks']
         if 'is_toggle' in options:
             self.is_toggle = options['is_toggle']
+        if 'is_trigger' in options:
+            self.is_trigger = options['is_trigger']
         if 'midi_cc_momentary_switch' in options:
             self.midi_cc_momentary_switch = options['midi_cc_momentary_switch']
         if 'midi_cc_debounce' in options:
@@ -210,6 +213,15 @@ class zynthian_controller:
             return
 
         if self.labels:
+            # Detect trigger (one-shot)
+            if len(self.labels) == 1:
+                self.is_trigger = True
+                if not self.ticks:
+                    if self.value_min is None:
+                        self.value_min = 0
+                    if self.value_max is None:
+                        self.value_max = 127
+
             # Detect toggle (on/off)
             if len(self.labels) == 2:
                 self.is_toggle = True
@@ -230,8 +242,9 @@ class zynthian_controller:
                 value_range = self.value_max - self.value_min
                 if n == 1:
                     # This shouldn't happen!
-                    self.value_max = self.value_min
-                    self.ticks.append(self.value_min)
+                    if self.value_max is None:
+                        self.value_max = self.value_min
+                    self.ticks.append(self.value_max)
                 elif self.is_integer:
                     for i in range(n):
                         self.ticks.append(
@@ -278,7 +291,7 @@ class zynthian_controller:
             if self.is_logarithmic:
                 self.nudge_factor = 0.01  # TODO: Use number of divisions
                 self.nudge_factor_fine = 0.003 * self.nudge_factor
-            elif not self.is_integer and not self.is_toggle:
+            elif not self.is_integer and not self.is_toggle and not self.is_trigger:
                 if self.value_range <= 2.0:
                     self.nudge_factor = 0.01
                     self.nudge_factor_fine = 0.001
@@ -451,7 +464,10 @@ class zynthian_controller:
         if old_val == self.value:
             return
         self.send_value(send)
-        self.is_dirty = True
+        if self.is_trigger:
+            self.value = self.value_min
+        else:
+            self.is_dirty = True
 
     def send_value(self, send=True):
         mval = None
