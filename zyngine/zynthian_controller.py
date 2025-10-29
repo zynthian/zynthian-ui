@@ -82,7 +82,7 @@ class zynthian_controller:
         self.ticks = None  # List of discrete value ticks
         self.range_reversed = False  # Flag if ticks order is reversed
         self.is_toggle = False  # True if control is Boolean toggle
-        self.is_trigger = False  # True if control is Boolean trigger
+        self.is_trigger = False  # True if control is one-shot trigger
         self.is_integer = True  # True if control is Integer
         self.is_logarithmic = False  # True if control uses logarithmic scale
         if full:

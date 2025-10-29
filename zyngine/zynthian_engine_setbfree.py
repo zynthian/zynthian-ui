@@ -213,7 +213,7 @@ class zynthian_engine_setbfree(zynthian_engine):
     config_tpl_fpath = base_dir + "/cfg/zynthian.cfg.tpl"
     config_my_fpath = zynthian_engine.config_dir + "/setbfree/zynthian.cfg"
 
-    default_config_dir = "~/.config/setBfree"
+    default_config_dir = os.getenv("HOME", "/root") + "/.config/setBfree"
     default_config_fpath = default_config_dir + "/default.cfg"
     default_program_fpath = default_config_dir + "/default.pgm"
 

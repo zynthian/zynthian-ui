@@ -723,7 +723,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 						if self.zctrl.is_toggle:
 							self.zctrl.toggle()
 						elif self.zctrl.is_trigger:
-							self.zctrl.nudge(1)
+							self.zctrl.set_value(self.zctrl.value_max)
 						elif self.zctrl.is_path:
 							self.zctrl.nudge(1)
 						#self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
