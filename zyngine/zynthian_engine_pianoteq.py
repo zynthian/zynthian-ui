@@ -721,7 +721,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
                     'cc': param_options[5]
                 }
             else:
-                logging.warning(f"Unknown parameter {param['id']}")
+                logging.debug(f"Parameter {param['id']} not supported")
         return params
 
     #   Get a value of a parameter for the loaded preset
