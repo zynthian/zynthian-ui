@@ -449,8 +449,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     // if (lastClock.first) {
                     // offset += double(midiEvent.time + nNow - lastClock.first - nFrames) / double(g_pPattern->getClocksPerStep() * g_dFramesPerClock);
                     //}
-                    if (offset < 0.0)
-                        offset = 0;
+                    if (offset < 0.0) offset = 0;
                     // Capture not quantized => quantization is done in real time (see track.cpp)
                     startEvents[midiEvent.buffer[1]].offset = offset;
                 }
@@ -474,14 +473,17 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         if (midiEvent.buffer[2] > 0 && g_nSustainValue == 0) {
                             g_nSustainValue = midiEvent.buffer[2];
                             g_nSustainStart = nStep;
-                            // Remove old pedals => "Overdubbing" sustain pedal is a mess!
-                            g_pPattern->removeControlInterval(0, g_pPattern->getSteps() - 1, 64);
                             // Add new pedal press
                             g_pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
+                            setPatternModified(g_pPattern, true, false);
                         } else if (midiEvent.buffer[2] == 0) {
                             if (g_nSustainValue > 0) {
                                 // Add pedal release
                                 g_pPattern->addControl(nStep, 64, 0, 0);
+                                // The next should be improved to be functional!
+                                // Remove old pedals => "Overdubbing" sustain pedal is a mess!
+	                            //g_pPattern->removeControlInterval(0, g_pPattern->getSteps() - 1, 64);
+	                            setPatternModified(g_pPattern, true, false);
                             }
                             g_nSustainValue = 0;
                         }
