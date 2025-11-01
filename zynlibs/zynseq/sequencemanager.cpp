@@ -36,14 +36,52 @@ void SequenceManager::init() {
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
         delete (it->second);
     m_mPatterns.clear();
-    for (auto scene: m_vScenes) {
-        for (auto seq: scene->m_vChildSequences) {
-            delete seq;
+    for (auto& bank: m_vScenes) {
+        for (auto scene: bank) {
+            for (auto seq: scene->m_vChildSequences) {
+                delete seq;
+            }
+            delete scene;
         }
-        delete scene;
     }
     m_vScenes.clear();
+    setBank(0);
 }
+
+bool SequenceManager::setBank(uint8_t bank) {
+    bool bResult = bank >= m_vScenes.size();
+    if (bResult) {
+        for (uint8_t i = m_vScenes.size(); i <= bank; ++i) {
+            m_vScenes.emplace_back();
+        }
+    }
+    m_nBank = bank;
+    //fprintf(stderr, "%s bank %u\n", bResult?"Created":"Selected", bank);
+    return bResult;
+}
+
+uint8_t SequenceManager::getBank() {
+    return m_nBank;
+}
+
+void SequenceManager::removeBank(uint8_t bank) {
+    if (bank >= m_vScenes.size())
+        return;
+    uint8_t nBank = getBank();
+    setBank(bank);
+    while (getNumScenes())
+        removeScene(0);
+    m_vScenes.erase(m_vScenes.begin() + bank);
+    if (nBank == bank)
+        setBank(0);
+    else
+        setBank(nBank);
+}
+
+uint8_t SequenceManager::getNumBanks() {
+    return m_vScenes.size();
+}
+
 
 Pattern* SequenceManager::getPattern(uint32_t index) {
     if (m_mPatterns.find(index) == m_mPatterns.end())
@@ -88,18 +126,20 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination) {
 }
 
 void SequenceManager::setPatternModified(Pattern* pPattern) {
-    for (auto scene: m_vScenes) {
-        for (auto pSequence: scene->m_vChildSequences) {
-            bool bFound = false;
-            for (uint32_t nTrack = 0; nTrack < pSequence->getTracks() && !bFound; ++nTrack) {
-                Track* pTrack = pSequence->getTrack(nTrack);
-                for (uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern) {
-                    if (pTrack->getPatternByIndex(nPattern) == pPattern)
-                        bFound = true;
-                }
-                if (bFound) {
-                    pTrack->setModified();
-                    pSequence->setModified();
+    for (auto bank: m_vScenes) {
+        for (auto scene: bank) {
+            for (auto pSequence: scene->m_vChildSequences) {
+                bool bFound = false;
+                for (uint32_t nTrack = 0; nTrack < pSequence->getTracks() && !bFound; ++nTrack) {
+                    Track* pTrack = pSequence->getTrack(nTrack);
+                    for (uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern) {
+                        if (pTrack->getPatternByIndex(nPattern) == pPattern)
+                            bFound = true;
+                    }
+                    if (bFound) {
+                        pTrack->setModified();
+                        pSequence->setModified();
+                    }
                 }
             }
         }
@@ -107,11 +147,12 @@ void SequenceManager::setPatternModified(Pattern* pPattern) {
 }
 
 Sequence* SequenceManager::getSequence(uint8_t scene, uint8_t sequence) {
-    if (sequence == SCENE_CHANNEL && scene < m_vScenes.size())
-        return m_vScenes[scene];
-    if (scene >= m_vScenes.size() || sequence >= m_vScenes[scene]->m_vChildSequences.size())
+    auto& vScenes = m_vScenes[m_nBank];
+    if (sequence == SCENE_CHANNEL && scene < vScenes.size())
+        return vScenes[scene];
+    if (scene >= vScenes.size() || sequence >= vScenes[scene]->m_vChildSequences.size())
         return nullptr;
-    return m_vScenes[scene]->m_vChildSequences[sequence];
+    return vScenes[scene]->m_vChildSequences[sequence];
 }
 
 bool SequenceManager::addPattern(Sequence* pSequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
@@ -134,11 +175,13 @@ void SequenceManager::removePattern(Sequence* pSequence, uint32_t track, uint32_
 }
 
 void SequenceManager::updateAllSequenceLengths() {
-    for (auto scene: m_vScenes) {
-        // Update all sequences in scene
-        for (auto pSequence: scene->m_vChildSequences) {
-            if (pSequence)
-                pSequence->updateLength();
+    for (auto bank: m_vScenes) {
+        for (auto scene: bank) {
+            // Update all sequences in scene
+            for (auto pSequence: scene->m_vChildSequences) {
+                if (pSequence)
+                    pSequence->updateLength();
+            }
         }
     }
 }
@@ -260,17 +303,12 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
 
     // Start child sequences
     if (state == STARTING && pSequence->m_vChildSequences.size() > 0) {
-        fprintf(stderr, "Starting %u child sequences\n", pSequence->m_vChildSequences.size());
         // Child sequences
         for (auto pChildSequence: pSequence->m_vChildSequences) {
             if (pChildSequence->getRepeat()) {
                 pChildSequence->setPlayState(STARTING);
-                fprintf(stderr, "+");
             }
-            else
-                fprintf(stderr, "-");
         }
-        fprintf(stderr, "\n");
     }   
 }
 
@@ -355,11 +393,13 @@ void SequenceManager::enableChannel(uint8_t channel, bool enable) {
     if (channel >= 32)
         return;
     m_bEnabled[channel] = enable;
-    for (uint8_t nScene = 0; nScene < m_vScenes.size(); ++nScene) {
-        Sequence* pSequence = getSequence(nScene, channel);
-        if (pSequence) {
-            pSequence->setRepeat(enable ? 1 : 0);
-            pSequence->setPlayState(STOPPED);
+    for (auto bank: m_vScenes) {
+        for (uint8_t nScene = 0; nScene < bank.size(); ++nScene) {
+            Sequence* pSequence = getSequence(nScene, channel);
+            if (pSequence) {
+                pSequence->setRepeat(enable ? 1 : 0);
+                pSequence->setPlayState(STOPPED);
+            }
         }
     }
 }
@@ -373,18 +413,19 @@ bool SequenceManager::isChannelEnabled(uint8_t channel) {
 // Scene handling
 
 uint8_t SequenceManager::getNumScenes() {
-    return m_vScenes.size();
+    return m_vScenes[m_nBank].size();
 }
 
 void SequenceManager::insertScene(uint8_t scene) {
+    auto& vScenes = m_vScenes[m_nBank];
     Sequence* pScene = new Sequence(nullptr);
     if (!pScene)
         return;
-    if (scene > m_vScenes.size()) {
-        scene = m_vScenes.size();
-        m_vScenes.push_back(pScene);
+    if (scene > vScenes.size()) {
+        scene = vScenes.size();
+        vScenes.push_back(pScene);
     } else {
-        m_vScenes.insert(m_vScenes.begin() + scene, pScene);
+        vScenes.insert(vScenes.begin() + scene, pScene);
     }
     std::string s;
     s = 'A' + scene;
@@ -409,9 +450,10 @@ void SequenceManager::insertScene(uint8_t scene) {
 }
 
 void SequenceManager::removeScene(uint8_t scene) {
-    if (scene >= m_vScenes.size())
+    auto& vScenes = m_vScenes[m_nBank];
+    if (scene >= vScenes.size())
         return;
-    for (auto it = m_vScenes[scene]->m_vChildSequences.begin(); it != m_vScenes[scene]->m_vChildSequences.end(); ++it) {
+    for (auto it = vScenes[scene]->m_vChildSequences.begin(); it != vScenes[scene]->m_vChildSequences.end(); ++it) {
         for (auto it_playing = m_vPlayingSequences.begin(); it_playing != m_vPlayingSequences.end(); ++it_playing) {
             if (*it == *it_playing) {
                 m_vPlayingSequences.erase(it_playing);
@@ -419,33 +461,35 @@ void SequenceManager::removeScene(uint8_t scene) {
             }
         }
         delete *it;
-        it = m_vScenes[scene]->m_vChildSequences.erase(it);
+        it = vScenes[scene]->m_vChildSequences.erase(it);
     }
-    Track* pTrack = m_vScenes[scene]->getTrack(0);
+    Track* pTrack = vScenes[scene]->getTrack(0);
     if (pTrack) {
        Pattern* pPattern = pTrack->getPattern(0);
        if (pPattern) {
            deletePattern(getPatternIndex(pPattern));
        }
     }
-    delete m_vScenes[scene];
-    m_vScenes.erase(m_vScenes.begin() + scene);
+    delete vScenes[scene];
+    vScenes.erase(vScenes.begin() + scene);
 }
 
 void SequenceManager::swapScene(uint8_t scene1, uint8_t scene2) {
-    if (scene1 == scene2 || scene1 >= m_vScenes.size() || scene2 >= m_vScenes.size())
+    auto& vScenes = m_vScenes[m_nBank];
+    if (scene1 == scene2 || scene1 >= vScenes.size() || scene2 >= vScenes.size())
         return;
-    std::iter_swap(m_vScenes[scene1], m_vScenes[scene2]);
+    std::iter_swap(vScenes[scene1], vScenes[scene2]);
 }
 
 bool SequenceManager::setFollowAction(uint8_t scene, uint8_t sequence, uint8_t action, int16_t param) {
     Sequence* pSequence = getSequence(scene, sequence);
     if (pSequence) {
+        auto& vScenes = m_vScenes[m_nBank];
         switch (action) {
             case FOLLOW_ACTION_ABSOLUTE:
-                if (param < 0 || param > m_vScenes.size())
+                if (param < 0 || param > vScenes.size())
                     return false;
-                pSequence->setFollowSequence(m_vScenes[param], action);
+                pSequence->setFollowSequence(vScenes[param], action);
                 return true;
                 break;
             case FOLLOW_ACTION_RELATIVE:
@@ -455,11 +499,11 @@ bool SequenceManager::setFollowAction(uint8_t scene, uint8_t sequence, uint8_t a
                     return true;
                 } else {
                     // Find index of sequence
-                    for (uint32_t i = 0; i < m_vScenes.size(); ++i) {
-                        if (m_vScenes[i] == pSequence) {
+                    for (uint32_t i = 0; i < vScenes.size(); ++i) {
+                        if (vScenes[i] == pSequence) {
                             uint16_t offset = param + i;
-                            if (offset >= 0 && offset < m_vScenes.size()) {
-                                pSequence->setFollowSequence(m_vScenes[offset], action);
+                            if (offset >= 0 && offset < vScenes.size()) {
+                                pSequence->setFollowSequence(vScenes[offset], action);
                                 return true;
                             }
                             break;
@@ -477,16 +521,17 @@ bool SequenceManager::setFollowAction(uint8_t scene, uint8_t sequence, uint8_t a
 int16_t SequenceManager::getFollowActionParam(uint8_t scene, uint8_t sequence) {
     Sequence* pSequence = getSequence(scene, sequence);
     if (pSequence) {
+        auto& vScenes = m_vScenes[m_nBank];
         uint8_t nAction = pSequence->getFollowAction();
         if (nAction == FOLLOW_ACTION_NONE)
             return 0;
         Sequence* pFollowSequence = pSequence->getFollowSequence();
         uint8_t sceneIndex = 0xff;
         uint8_t nextSceneIndex = 0xff;
-        for (uint32_t i = 0; i < m_vScenes.size(); ++i) {
-            if (m_vScenes[i] == pSequence)
+        for (uint32_t i = 0; i < vScenes.size(); ++i) {
+            if (vScenes[i] == pSequence)
                 sceneIndex = i;
-            if (m_vScenes[i] && m_vScenes[i] == pFollowSequence) {
+            if (vScenes[i] && vScenes[i] == pFollowSequence) {
                 if (nAction == FOLLOW_ACTION_ABSOLUTE)
                     return i;
                 nextSceneIndex = i;

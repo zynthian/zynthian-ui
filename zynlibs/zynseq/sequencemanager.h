@@ -36,6 +36,28 @@ class SequenceManager {
     */
     void init();
 
+    /** @brief  Select a bank
+        @param  bank Index of bank
+        @retval bool True if new bank created
+    */
+    bool setBank(uint8_t bank);
+
+    /** @brief  Get currently selected bank
+        @retval uint8_t Index of bank
+    */
+    uint8_t getBank();
+
+    /** @brief  Get quantity of banks
+        @retval uint8_t Quantity of banks
+    */
+    uint8_t getNumBanks();
+
+    /** @brief  Remove a bank
+        @param  bank Inde of bank
+        @note   Subsequenct banks are renumbered. If selected bank is higher, select bank zero.
+    */
+    void removeBank(uint8_t bank);
+
     /** @brief  Get pointer to a pattern
         @param  index Index of pattern to retrieve
         @retval Pattern* Pointer to pattern
@@ -276,7 +298,8 @@ class SequenceManager {
     uint8_t m_aGroupProgress[33];     // Array of group playback progress percentage
     uint8_t m_nBeatsPerBar = 4;       // Time signature in beats
     uint8_t m_bEnabled[32];           // Array indicating if channel is enabled
-    std::vector<Sequence*> m_vScenes; // Vector of pointers to scene sequences, ordered by scene index
+    uint8_t m_nBank = 0;              // Index of selected bank
+    std::vector<std::vector<Sequence*>> m_vScenes; // Vectors of vector of pointers to scene sequences, indexed by bank.
 
     // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
     std::map<uint32_t, Pattern*> m_mPatterns;  // Map of pattern pointers indexed by pattern number
