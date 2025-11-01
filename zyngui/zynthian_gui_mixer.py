@@ -1933,10 +1933,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         Selects the current launcher
         """
 
+        if self.launcher_highlighted_scene == scene:
+            return
         if scene is None:
             scene = self.launcher_highlighted_scene
-        if scene < 0 or scene > self.zynseq.scenes:
-            return
+        if scene < 0:
+            scene = 0
+        elif scene > self.zynseq.scenes:
+            scene = self.zynseq.scenes
         if strip is None:
             strip = self.highlighted_strip
         if strip != self.highlighted_strip:

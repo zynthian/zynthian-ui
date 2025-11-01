@@ -2485,6 +2485,8 @@ uint32_t getSequenceState(uint8_t scene, uint8_t sequence) {
 }
 
 uint32_t getStateChange(uint32_t* states, uint32_t size) {
+    if (size == 0)
+        return 0;
     uint32_t count = 0;
     uint8_t scene = 0;
     uint8_t channel = 0;
