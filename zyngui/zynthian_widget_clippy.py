@@ -2,7 +2,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian Widget Class for "Zynthian Audio Clip Player" (zynthian_engine_clippy)
+# Zynthian Widget Class for "Clippy" (zynthian_engine_clippy)
 #
 # Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
@@ -34,7 +34,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
 # ------------------------------------------------------------------------------
-# Zynthian Widget Class for "zynaudioplayer"
+# Zynthian Widget Class for "clippy"
 # ------------------------------------------------------------------------------
 
 
@@ -55,8 +55,10 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.speed = 1.0
         self.path = ""
         self.duration = 0.0
-        self.bg_color = "black"
-        self.waveform_color = "white"
+        self.bg_color = zynthian_gui_config.color_bg
+        #self.waveform_color = zynthian_gui_config.color_tx_off
+        #self.waveform_color = zynthian_gui_config.color_hl
+        self.waveform_color = zynthian_gui_config.color_info
         self.zoom = 1
         self.v_zoom = 1
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
@@ -180,7 +182,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
         font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(
             1.5 * zynthian_gui_config.font_size))
-        self.waveform_height = self.height - font.metrics("linespace")
+        #self.waveform_height = self.height - font.metrics("linespace")
+        self.waveform_height = self.height
         self.refresh_waveform = True
 
     def on_canvas_press(self, event):
@@ -243,11 +246,10 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                     y0 = self.waveform_height;
                 for chan in range(self.channels):
                     v_offset = chan * y0
-                    self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"], tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
-                    self.widget_canvas.create_line(
-                        0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
-                    self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=(
-                        "waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+                    self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=self.bg_color, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
+                    # fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
+                    self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
+                    self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
                 #self.update_cue_markers()
                 frames = self.frames / 2
                 labels = ['x1']
@@ -265,20 +267,17 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
             except MemoryError:
                 logging.warning(f"Failed to show waveform - file too large")
-                self.widget_canvas.itemconfig(
-                    self.loading_text, text="Can't display waveform")
+                self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
                 self.sf = None
             except Exception as e:
-                self.widget_canvas.itemconfig(
-                    self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+                self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
                 self.sf = None
             self.refreshing = False
             self.refresh_waveform = True
         else:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
-            self.widget_canvas.itemconfig(
-                    self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             self.sf = None
 
         self.update()
@@ -287,8 +286,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         if self.sf is None:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
-            self.widget_canvas.itemconfig(
-                    self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             return
 
         start = max(0, start)
@@ -324,8 +322,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
         if frames_per_pixel < 1:
             self.refresh_waveform = False
-            self.widget_canvas.itemconfig(
-                self.loading_text, text="Audio too short")
+            self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
             return
 
         v1 = [0.0 for i in range(self.channels)]
@@ -413,8 +410,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 x = int(f * (self.crop_start - self.offset))
                 self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
                 x = int(f * (self.crop_end - self.offset))
-                self.widget_canvas.coords(
-                    self.crop_end_rect, x, 0, self.width, h)
+                self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
 
         except Exception as e:
             # logging.error(e)
