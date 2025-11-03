@@ -177,7 +177,7 @@ SEQ_EVENT* Track::getEvent() {
         if (m_nEventValue == -1) {
             // Note Play Chance
             if (nCommand == MIDI_NOTE_ON) {
-				int playChance = int(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
+				unsigned playChance = unsigned(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
 				if (playChance < RAND_MAX && playChance < rand()) {
 					m_nEventValue = pEvent->getValue2end();
 					seqEvent.msg.command = 0xFE;
@@ -241,7 +241,7 @@ SEQ_EVENT* Track::getEvent() {
                 	m_nEventValue = pEvent->getValue2end(); // Send end value
             	}
    	            // fprintf(stderr, "Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(),
-	            // pPattern->getClocksPerStep(), m_nSamplePerClock);
+	            //         pPattern->getClocksPerStep(), m_nSamplePerClock);
 			}
 			else if (nCommand == MIDI_CONTROL) {
 				if (nInterpolateCount < nInterpolateNum - 1) {

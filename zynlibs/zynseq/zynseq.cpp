@@ -691,7 +691,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         pBuffer[1] = it->second->msg.value1;
                     if (nSize > 2)
                         pBuffer[2] = it->second->msg.value2;
-                    DPRINTF("Sending MIDI event %d,%d,%d at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
+                    DPRINTF("Sending MIDI event %x,%x,%x at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
                 }
                 delete it->second;
                 it->second = NULL;
