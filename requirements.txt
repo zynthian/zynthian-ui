@@ -1,0 +1,15 @@
+pip
+JACK-Client
+alsa-midi
+oyaml
+adafruit-circuitpython-neopixel-spi
+Levenshtein
+ffmpeg-python
+pyrubberband
+mididings
+sox
+meson
+ninja
+abletonparsing
+hwmon
+vcgencmd
