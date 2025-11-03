@@ -743,6 +743,30 @@ void setInterpolateCC(uint8_t ccnum, bool flag);
 */
 void setInterpolateCCDefaults();
 
+// ** Bank management functions **
+
+/** @brief  Select a bank
+    @param  bank Index of bank
+    @retval bool True if new bank created
+*/
+bool setBank(uint8_t bank);
+
+/** @brief  Get currently selected bank
+    @retval uint8_t Index of bank
+*/
+uint8_t getBank();
+
+/** @brief  Get quantity of banks
+    @retval uint8_t Quantity of banks
+*/
+uint8_t getNumBanks();
+
+/** @brief  Remove a bank
+    @param  bank Inde of bank
+    @note   Subsequenct banks are renumbered. If selected bank is higher, select bank zero.
+*/
+void removeBank(uint8_t bank);
+
 // ** Track management functions **
 
 /** @brief  Add pattern to a track

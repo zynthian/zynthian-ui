@@ -941,6 +941,7 @@ void reset() {
 bool load(const char* filename) {
     g_nScene = 0;
     g_nSequence = 0;
+    uint8_t nLowestBank = 255;
     g_seqMan.init();
     g_nTimeSig = 4;
     uint32_t nVersion = 0;
@@ -1107,6 +1108,9 @@ bool load(const char* filename) {
                 continue;
             uint8_t nBank = fileRead8u(pFile);
             uint8_t nScenes = fileRead8u(pFile);
+            if (nBank < nLowestBank)
+                nLowestBank = nBank;
+            g_seqMan.setBank(nBank);
             nBlockSize -= 2;
             if (nVersion < 11) {
                 nScenes = std::sqrt(fileRead32u(pFile));
@@ -1257,7 +1261,10 @@ bool load(const char* filename) {
     fclose(pFile);
     g_seqMan.setTimeSig(g_nTimeSig);
     g_bDirty = false;
-    selectPattern(1); //!@todo Why do we do this?
+    if (nLowestBank == 255)
+        nLowestBank = 0;
+    setBank(nLowestBank);
+    //selectPattern(1); //!@todo Why do we do this?
     return true;
 }
 
@@ -1411,6 +1418,7 @@ void save(const char* filename) {
         fprintf(stderr, "ERROR: SequenceManager failed to open file %s\n", filename);
         return;
     }
+    uint8_t bank = g_seqMan.getBank();
     uint32_t nBlockSize;
     fwrite("vers", 4, 1, pFile); // IFF block name
     nPos += 4;
@@ -1476,8 +1484,9 @@ void save(const char* filename) {
     } while (nPattern != -1);
 
     // Iterate through banks
-    uint32_t nBanks = 1; //!@todo Get quantity of banks
-    for (uint32_t nBank = 0; nBank < nBanks; ++nBank) {
+    uint8_t nSelBank = getBank();
+    for (uint32_t nBank = 0; nBank < getNumBanks(); ++nBank) {
+        setBank(nBank);
         fwrite("bankxxxx", 8, 1, pFile);
         nPos += 8;
         uint32_t nStartOfBlock = nPos;
@@ -1552,6 +1561,7 @@ void save(const char* filename) {
         fileWrite32u(nBlockSize, pFile);
         fseek(pFile, 0, SEEK_END);
     }
+    setBank(nSelBank);
 
     fclose(pFile);
     g_bDirty = false;
@@ -2680,6 +2690,24 @@ int16_t getFollowActionParam(uint8_t scene, uint8_t sequence) {
 
 void updateSequenceInfo() {
     g_seqMan.updateAllSequenceLengths();
+}
+
+// ** Bank management **
+
+bool setBank(uint8_t bank) {
+    return g_seqMan.setBank(bank);
+}
+
+uint8_t getBank() {
+    return g_seqMan.getBank();
+}
+
+uint8_t getNumBanks() {
+    return g_seqMan.getNumBanks();
+}
+
+void removeBank(uint8_t bank) {
+    g_seqMan.removeBank(bank);
 }
 
 // ** Track management **
