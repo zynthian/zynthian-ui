@@ -421,13 +421,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
             else:
                 self.duration = 0.0
             y0 = self.waveform_height // self.channels
+            pairs = self.channels // 2
+            if pairs % 2:
+                bg_colors = [self.bg_color, self.bg_color_alt]
+            else:
+                bg_colors = [self.bg_color_alt, self.bg_color]
             for chan in range(self.channels):
                 v_offset = chan * y0
+                pair = chan // 2
+                fill = bg_colors[pair % 2]
                 # fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
-                if chan // 2 % 2:
-                    fill = self.bg_color_alt
-                else:
-                    fill = self.bg_color
                 self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, width=0, fill=fill, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
                 self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
                 self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
