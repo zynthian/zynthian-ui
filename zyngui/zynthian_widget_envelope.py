@@ -54,12 +54,9 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 
         # Create custom GUI elements (position and size set when canvas is grid and size applied)
         self.envelope_outline_color = zynthian_gui_config.color_low_on
-        self.envelope_color = zynthian_gui_config.color_variant(
-            zynthian_gui_config.color_low_on, -70)
-        self.envelope_polygon = self.widget_canvas.create_polygon(0, 0,
-                                                                  outline=self.envelope_outline_color, fill=self.envelope_color, width=3)
-        self.drag_polygon = self.widget_canvas.create_polygon(0, 0,
-                                                              outline=self.envelope_outline_color, fill=self.envelope_outline_color, width=3, state='hidden')
+        self.envelope_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
+        self.envelope_polygon = self.widget_canvas.create_polygon(0, 0, outline=self.envelope_outline_color, fill=self.envelope_color, width=3)
+        self.drag_polygon = self.widget_canvas.create_polygon(0, 0, outline=self.envelope_outline_color, fill=self.envelope_outline_color, width=3, state='hidden')
         # self.release_line = self.widget_canvas.create_line(0, 0, 0, 0,
         # fill=self.envelope_outline_color, state="hidden")
         # self.release_label = self.widget_canvas.create_text(0, 0, text="R", anchor="ne",
@@ -131,8 +128,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
                 match zctrl.envelope:
                     case "release":
                         x = self.width - zctrl.value / zctrl.value_range * self.dx
-                        drag_window = [x, y, self.width,
-                                       self.height, x, self.height]
+                        drag_window = [x, y, self.width, self.height, x, self.height]
                         self.envelope_click_ranges.append(x)
                         if coords[-2] == self.width:
                             coords[-2] = x  # Fix fade if it exists
@@ -142,14 +138,12 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
                         # self.widget_canvas.itemconfig(self.release_label, state="normal")
                     case "sustain":
                         y = y0 - zctrl.value / zctrl.value_range * self.dy
-                        drag_window = [x, y0, x, y,
-                                       x_release, y_fade, x_release, y0]
+                        drag_window = [x, y0, x, y, x_release, y_fade, x_release, y0]
                     case "fade":
                         y_offset = (y0 - y) / 2
                         drag_window = [x, y, x, y + y_offset]
                         y = y_fade
-                        self.envelope_click_ranges.append(
-                            x + (x_release - x) * 0.75)
+                        self.envelope_click_ranges.append(x + (x_release - x) * 0.75)
                         x = x_release
                         drag_window += [x, drag_window[-1], x, y]
                     case _:
@@ -184,11 +178,9 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         for i in range(len(self.envelope_click_ranges) - 1):
             # Allow selection of last phase, near end of penultimate phase
             if i == len(self.envelope_click_ranges) - 2:
-                x = self.envelope_click_ranges[i] - (
-                    self.envelope_click_ranges[i] - self.envelope_click_ranges[i - 1]) / 4
+                x = self.envelope_click_ranges[i] - (self.envelope_click_ranges[i] - self.envelope_click_ranges[i - 1]) / 4
             else:
-                x = self.envelope_click_ranges[i] + (
-                    self.envelope_click_ranges[i + 1] - self.envelope_click_ranges[i]) / 4
+                x = self.envelope_click_ranges[i] + (self.envelope_click_ranges[i + 1] - self.envelope_click_ranges[i]) / 4
             if event.x < x:
                 self.drag_zctrl = self.zctrls[i]
                 self.envelope_click_value = self.drag_zctrl.value

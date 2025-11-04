@@ -49,15 +49,16 @@ class zynthian_gui_control(zynthian_gui_selector):
     def __init__(self, selcap='Controllers'):
         self.mode = "control"
 
-        self.modules = {}
-        self.widgets = {}
-        self.current_widget = None
-
         self.processors = []
         self.ctrl_screens = {}
         self.zcontrollers = []
         self.zgui_controllers = []
         self.midi_learning = MIDI_LEARNING_DISABLED
+
+        self.modules = {}
+        self.widgets = {}
+        self.current_widget = None
+        self.widget_zctrl = None
 
         self.screen_info = None
         self.screen_name = None
@@ -230,9 +231,14 @@ class zynthian_gui_control(zynthian_gui_selector):
                                 "release" in self.zcontrollers[3].name.lower()):
                         self.screen_type = "envelope"
         """
+        self.widget_zctrl = None
         for zctrl in self.zcontrollers:
             if hasattr(zctrl, "envelope"):
                 self.screen_type = "envelope"
+                break
+            if zctrl.is_path and (set(zctrl.path_file_types) & {"wav", "aiff", "flac", "mp3", "ogg"}):
+                self.screen_type = "audio_file"
+                self.widget_zctrl = zctrl
                 break
         else:
             self.screen_type = None
