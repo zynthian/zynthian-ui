@@ -27,6 +27,7 @@ import logging
 import tkinter
 import soundfile
 import traceback
+from math import modf
 from threading import Thread
 
 # Zynthian specific modules
@@ -52,7 +53,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.crop_end = 1.0
         self.cue_pos = 0.0
         self.cue = None
-        self.speed = 1.0
         self.path = ""
         self.duration = 0.0
         self.bg_color = zynthian_gui_config.color_bg
@@ -136,8 +136,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             self.width,
             self.height,
             width=0,
-            fill="dark grey",
-            state=tkinter.HIDDEN # TODO: Show when zoom working
+            fill=zynthian_gui_config.color_panel_bg,
+            #state=tkinter.HIDDEN
         )
         self.info_text = self.widget_canvas.create_text(
             self.width - int(0.5 * zynthian_gui_config.font_size),
@@ -145,7 +145,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             anchor=tkinter.SE,
             justify=tkinter.RIGHT,
             width=self.width,
-            font=("DejaVu Sans Mono", int(1.5 * zynthian_gui_config.font_size)),
+            font=("DejaVu Sans Mono", int(1.3 * zynthian_gui_config.font_size)),
             fill=zynthian_gui_config.color_panel_tx,
             text="",
             state=tkinter.HIDDEN,
@@ -167,11 +167,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             return
         super().on_size(event)
         self.widget_canvas.configure(width=self.width, height=self.height)
-
-        self.widget_canvas.coords(
-            self.loading_text, self.width // 2, self.height // 2)
-        self.widget_canvas.coords(
-            self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
+        self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
+        self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
         self.widget_canvas.itemconfig(self.info_text, width=self.width)
 
         for chan in range(self.channels):
@@ -180,10 +177,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 coords[2] = self.width
                 self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
 
-        font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(
-            1.5 * zynthian_gui_config.font_size))
-        #self.waveform_height = self.height - font.metrics("linespace")
-        self.waveform_height = self.height
+        font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.3 * zynthian_gui_config.font_size))
+        self.waveform_height = self.height - font.metrics("linespace")
         self.refresh_waveform = True
 
     def on_canvas_press(self, event):
@@ -261,8 +256,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                     values.append(z)
                     frames /= 2
                 #zctrl = self.processor.controllers_dict['zoom']
-                #zctrl.set_options(
-                #    {'labels': labels, 'ticks': values, 'value_max': values[-1]}
+                #zctrl.set_options({'labels': labels, 'ticks': values, 'value_max': values[-1]}
                 self.draw_waveform(0, self.frames)
 
             except MemoryError:
@@ -289,8 +283,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             return
 
-        start = max(0, start)
-        start = min(self.frames, start)
+        start = min(self.frames, max(0, start))
         length = min(self.frames - start, length)
         steps_per_peak = 16
         data = [[] for i in range(self.channels)]
@@ -368,6 +361,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.refreshing = True
         load_waveform = False
         update_markers = False
+        refresh_info = False
         if self.scene != self.processor.engine.scene:
             self.scene = self.processor.engine.scene
             load_waveform = True
@@ -411,12 +405,24 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
                 x = int(f * (self.crop_end - self.offset))
                 self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
+                refresh_info = True
+
+            if refresh_info:
+                zoom_offset = self.width * self.offset // self.frames
+                self.widget_canvas.coords(self.zoom_rect, zoom_offset, self.waveform_height,
+                                          zoom_offset + max(1, self.width // self.zoom), self.height)
+                # time = (self.crop_end - self.crop_start) / self.samplerate
+                time = self.duration
+                self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)
 
         except Exception as e:
             # logging.error(e)
             logging.exception(traceback.format_exc())
 
         self.refreshing = False
+
+    def format_time(self, time):
+        return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
 
     # -------------------------------------------------------------------------
     # CUIA & LEDs methods
