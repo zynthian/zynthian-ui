@@ -327,7 +327,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.itemconfig(f"waveform", state=tkinter.NORMAL)
         self.widget_canvas.itemconfig(self.loading_text, state=tkinter.HIDDEN)
         self.widget_canvas.tag_lower(self.loading_text)
-        # TODO: Enable when crop is working self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
         self.widget_canvas.tag_raise("overlay")
         self.widget_canvas.itemconfig(f"overlay", state=tkinter.NORMAL)
 
@@ -351,8 +350,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 load_waveform = True
 
             if load_waveform:
-                waveform_thread = Thread(
-                target=self.load_file, name="waveform image")
+                waveform_thread = Thread(target=self.load_file, name="waveform image")
                 waveform_thread.start()
                 return
 
