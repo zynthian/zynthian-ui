@@ -29,6 +29,7 @@ import soundfile
 import traceback
 from math import modf
 from threading import Thread
+from os.path import basename
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -46,23 +47,28 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     def __init__(self, parent):
         super().__init__(parent)
 
-        # Geometry vars set accurately during resize
-        self.rows = self.zyngui_control.layout['rows'] // 2
+        # Take only half height
+        self.rows //= 2
 
-        self.refreshing = False
         self.zctrl = None
-        self.path = ""
-        self.duration = 0.0
-        self.bg_color = zynthian_gui_config.color_bg
-        self.waveform_color = zynthian_gui_config.color_info
-        self.zoom = 1
-        self.v_zoom = 1
-        self.refresh_waveform = False  # True to force redraw of waveform on next refresh
-        self.offset = 0  # Frames from start of file that waveform display starts
+        self.fpath = ""
+        self.fname = ""
+        self.sf = None
         self.channels = 0  # Quantity of channels in audio
         self.frames = 0  # Quantity of frames in audio
-        self.sf = None
+        self.samplerate = None
+        self.duration = 0.0
+
+        self.refreshing = False
+        self.refresh_waveform = False  # True to force redraw of waveform on next refresh
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
+        self.offset = 0  # Frames from start of file that waveform display starts
+        self.zoom = 1
+        self.v_zoom = 1
+
+        self.bg_color = zynthian_gui_config.color_bg
+        self.waveform_color = zynthian_gui_config.color_info
+
         self.widget_canvas = tkinter.Canvas(self,
                                             bd=0,
                                             highlightthickness=0,
@@ -71,25 +77,20 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.grid(sticky='news')
 
         self.loading_text = self.widget_canvas.create_text(
-            0,
-            0,
+            0, 0,
             anchor=tkinter.CENTER,
-            font=(
-                zynthian_gui_config.font_family,
-                int(1.5 * zynthian_gui_config.font_size)
-            ),
+            font=(zynthian_gui_config.font_family, int(1.5 * zynthian_gui_config.font_size)),
             justify=tkinter.CENTER,
             fill=zynthian_gui_config.color_tx_off,
             text="No file loaded"
         )
-        self.zoom_rect = self.widget_canvas.create_rectangle(
+        self.info_rect = self.widget_canvas.create_rectangle(
             0,
             self.height,
             self.width,
             self.height,
             width=0,
-            fill=zynthian_gui_config.color_panel_bg,
-            #state=tkinter.HIDDEN
+            fill=zynthian_gui_config.color_panel_bg
         )
         self.info_text = self.widget_canvas.create_text(
             self.width - int(0.5 * zynthian_gui_config.font_size),
@@ -97,7 +98,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             anchor=tkinter.SE,
             justify=tkinter.RIGHT,
             width=self.width,
-            font=("DejaVu Sans Mono", int(1.3 * zynthian_gui_config.font_size)),
+            font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)),
             fill=zynthian_gui_config.color_panel_tx,
             text="",
             state=tkinter.HIDDEN,
@@ -120,6 +121,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         super().on_size(event)
         self.widget_canvas.configure(width=self.width, height=self.height)
         self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
+        self.widget_canvas.coords(self.info_rect, 0, self.waveform_height, self.width, self.height)
         self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
         self.widget_canvas.itemconfig(self.info_text, width=self.width)
 
@@ -129,7 +131,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 coords[2] = self.width
                 self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
 
-        font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.3 * zynthian_gui_config.font_size))
+        font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.0 * zynthian_gui_config.font_size))
         self.waveform_height = self.height - font.metrics("linespace")
         self.refresh_waveform = True
 
@@ -144,12 +146,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
     def load_file(self):
         # Run as background thread
-        if self.path:
+        if self.fpath:
             try:
                 self.refreshing = True
                 self.widget_canvas.delete("waveform")
                 self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
-                self.sf = soundfile.SoundFile(self.path)
+                self.sf = soundfile.SoundFile(self.fpath)
                 self.channels = self.sf.channels
                 self.samplerate = self.sf.samplerate
                 self.frames = self.sf.seek(0, soundfile.SEEK_END)
@@ -160,7 +162,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 if self.channels:
                     y0 = self.waveform_height // self.channels
                 else:
-                    y0 = self.waveform_height;
+                    y0 = self.waveform_height
                 for chan in range(self.channels):
                     v_offset = chan * y0
                     self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=self.bg_color, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
@@ -179,8 +181,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     frames /= 2
                 #zctrl = self.processor.controllers_dict['zoom']
                 #zctrl.set_options({'labels': labels, 'ticks': values, 'value_max': values[-1]}
-                self.draw_waveform(0, self.frames)
-
+                #self.draw_waveform(0, self.frames)
             except MemoryError:
                 logging.warning(f"Failed to show waveform - file too large")
                 self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
@@ -285,12 +286,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         try:
             if self.zctrl != self.zyngui_control.widget_zctrl:
                 self.zctrl = self.zyngui_control.widget_zctrl
-            else:
-                self.zctrl = None
-                return
+        except:
+            self.refreshing = False
+            return
 
-            if self.path != self.zctrl.value:
-                self.path = self.zctrl.value
+        try:
+            if self.zctrl and self.fpath != self.zctrl.value:
+                self.fpath = self.zctrl.value
+                self.fname = basename(self.fpath)
                 waveform_thread = Thread(target=self.load_file, name="waveform image")
                 waveform_thread.start()
                 return
@@ -301,11 +304,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 self.refresh_waveform = False
 
             if refresh_info:
-                zoom_offset = self.width * self.offset // self.frames
-                self.widget_canvas.coords(self.zoom_rect, zoom_offset, self.waveform_height,
-                                          zoom_offset + max(1, self.width // self.zoom), self.height)
                 time = self.duration
-                self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)
+                fname = (self.fname[:30] + '...') if len(self.fname) > 33 else (self.fname + ' ')
+                self.widget_canvas.itemconfigure(self.info_text, text=f"{fname}[{self.format_time(time)}]", state=tkinter.NORMAL)
 
         except Exception as e:
             # logging.error(e)
@@ -313,7 +314,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         self.refreshing = False
 
-    def format_time(self, time):
+    @staticmethod
+    def format_time(time):
         return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
 
     # -------------------------------------------------------------------------

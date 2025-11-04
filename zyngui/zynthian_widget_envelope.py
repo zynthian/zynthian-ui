@@ -40,8 +40,8 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
     def __init__(self, parent):
         super().__init__(parent)
 
-        # Geometry vars set accurately during resize
-        self.rows = self.zyngui_control.layout['rows'] // 2
+        # Take only half height
+        self.rows //=  2
 
         self.widget_canvas = tkinter.Canvas(self,
                                             highlightthickness=0,
