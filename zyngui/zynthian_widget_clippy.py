@@ -47,17 +47,11 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         super().__init__(parent)
         self.refreshing = False
         self.play_pos = 0.0
-        self.loop_start = 0.0
-        self.loop_end = 1.0
         self.crop_start = 0.0
         self.crop_end = 1.0
-        self.cue_pos = 0.0
-        self.cue = None
         self.path = ""
         self.duration = 0.0
         self.bg_color = zynthian_gui_config.color_bg
-        #self.waveform_color = zynthian_gui_config.color_tx_off
-        #self.waveform_color = zynthian_gui_config.color_hl
         self.waveform_color = zynthian_gui_config.color_info
         self.zoom = 1
         self.v_zoom = 1
@@ -66,7 +60,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.channels = 0  # Quantity of channels in audio
         self.frames = 0  # Quantity of frames in audio
         self.scene = None
-        self.info = None
         self.sf = None
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
         self.widget_canvas = tkinter.Canvas(self,
@@ -94,22 +87,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             0,
             self.height,
             fill=zynthian_gui_config.color_on,
-            tags="overlay"
-        )
-        self.loop_start_line = self.widget_canvas.create_line(
-            0,
-            0,
-            0,
-            self.height,
-            fill=zynthian_gui_config.color_ml,
-            tags="overlay"
-        )
-        self.loop_end_line = self.widget_canvas.create_line(
-            self.width,
-            0,
-            self.width,
-            self.height,
-            fill=zynthian_gui_config.color_ml,
             tags="overlay"
         )
         self.crop_start_rect = self.widget_canvas.create_rectangle(
@@ -224,7 +201,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         if self.path:
             try:
                 self.refreshing = True
-                self.info = None
                 self.widget_canvas.delete("waveform")
                 self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
                 self.sf = soundfile.SoundFile(self.path)
