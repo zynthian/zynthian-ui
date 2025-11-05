@@ -69,6 +69,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
         self.bg_color = zynthian_gui_config.color_bg
         self.waveform_color = zynthian_gui_config.color_info
+        self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
         self.widget_canvas = tkinter.Canvas(self,
                                             bd=0,
@@ -114,7 +115,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             anchor=tkinter.SE,
             justify=tkinter.RIGHT,
             width=self.width,
-            font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)),
+            font=self.font_info,
             fill=zynthian_gui_config.color_panel_tx,
             text="",
             state=tkinter.HIDDEN,
@@ -147,8 +148,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 coords[2] = self.width
                 self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
 
-        font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.0 * zynthian_gui_config.font_size))
-        self.waveform_height = self.height - font.metrics("linespace")
+        self.waveform_height = self.height - self.font_info.metrics("linespace")
         self.refresh_waveform = True
 
     def on_canvas_press(self, event):
@@ -377,7 +377,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             if refresh_info:
                 # time = (self.crop_end - self.crop_start) / self.samplerate
                 time = self.duration
-                fname = (self.fname[:30] + '...') if len(self.fname) > 33 else (self.fname + ' ')
+                n = (self.width // self.font_info.measure("x")) - 12
+                fname = (self.fname[:n-3] + '...') if len(self.fname) > n else (self.fname + ' ')
                 self.widget_canvas.itemconfigure(self.info_text, text=f"{fname}[{self.format_time(time)}]", state=tkinter.NORMAL)
 
         except Exception as e:
