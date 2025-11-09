@@ -347,8 +347,8 @@ class ModeHandlerBase:
             self._is_shifted = override
 
     # FIXME: Could this be in chain_manager?
-    def _get_chain_id_by_sequence(self, bank, seq):
-        channel = self._libseq.getChannel(bank, seq, 0)
+    def _get_chain_id_by_sequence(self, phrase, seq):
+        channel = self._libseq.getChannel(self._zynseq.scene, phrase, seq, 0)
         return next(
             (id for id, c in self._chain_manager.chains.items()
              if c.midi_chan == channel),
@@ -356,34 +356,34 @@ class ModeHandlerBase:
         )
 
     # FIXME: Could this (or part of this) be in libseq?
-    def _get_sequence_patterns(self, bank, seq, create=False):
-        seq_len = self._libseq.getSequenceLength(bank, seq)
+    def _get_sequence_patterns(self, phrase, seq, create=False):
+        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, seq)
         pattern = -1
         retval = []
 
         if seq_len == 0:
             if create:
                 pattern = self._libseq.createPattern()
-                self._libseq.addPattern(bank, seq, 0, 0, pattern)
+                self._libseq.addPattern(self._zynseq.scene, phrase, seq, 0, 0, pattern)
                 retval.append(pattern)
             return retval
 
-        n_tracks = self._libseq.getTracksInSequence(bank, seq)
+        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq)
         for track in range(n_tracks):
-            retval.extend(self._get_patterns_in_track(bank, seq, track))
+            retval.extend(self._get_patterns_in_track(self._zynseq.scene, phrase, seq, track))
         return retval
 
     # FIXME: Could this be in libseq?
-    def _get_patterns_in_track(self, bank, seq, track):
+    def _get_patterns_in_track(self, phrase, seq, track):
         retval = []
-        n_patts = self._libseq.getPatternsInTrack(bank, seq, track)
+        n_patts = self._libseq.getPatternsInTrack(self._zynseq.scene, phrase, seq, track)
         if n_patts == 0:
             return retval
 
-        seq_len = self._libseq.getSequenceLength(bank, seq)
+        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, seq)
         pos = 0
         while pos < seq_len:
-            pattern = self._libseq.getPatternAt(bank, seq, track, pos)
+            pattern = self._libseq.getPatternAt(self._zynseq.scene, phrase, seq, track, pos)
             if pattern != -1:
                 retval.append(pattern)
                 pos += self._libseq.getPatternLength(pattern)
@@ -393,17 +393,17 @@ class ModeHandlerBase:
         return retval
 
     # FIXME: Could this be in libseq?
-    def _add_pattern_to_end_of_track(self, bank, seq, track, pattern):
+    def _add_pattern_to_end_of_track(self, phrase, seq, track, pattern):
         pos = 0
-        if self._libseq.getTracksInSequence(bank, seq) != 0:
-            pos = self._libseq.getSequenceLength(bank, seq)
+        if self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq) != 0:
+            pos = self._libseq.getSequenceLength(self._zynseq.scene, phrase, seq)
             while pos > 0:
                 # Arranger's offset step is a quarter note (24 clocks)
-                if self._libseq.getPatternAt(bank, seq, track, pos - 24) != -1:
+                if self._libseq.getPatternAt(self._zynseq.scene, phrase, seq, track, pos - 24) != -1:
                     break
                 pos -= 24
 
-        return self._libseq.addPattern(bank, seq, track, pos, pattern)
+        return self._libseq.addPattern(self._zynseq.scene, phrase, seq, track, pos, pattern)
 
     # FIXME: Could this be in libseq?
     def _set_note_duration(self, step, note, duration):

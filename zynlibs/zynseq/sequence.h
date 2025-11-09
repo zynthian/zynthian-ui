@@ -34,7 +34,7 @@ class Sequence {
   public:
     /** @brief  Create Sequence object
     */
-    Sequence(Sequence* sceneSequence);
+    Sequence(Sequence* phraseSequence);
 
     /** @brief  Get sequence's mutually excusive group
         @retval uint32_t sequence's group
@@ -71,9 +71,9 @@ class Sequence {
     */
     uint32_t getState();
 
-    /** @brief  Updates the play state of a scene
+    /** @brief  Updates the play state of a phrase
     */
-    void updateSceneState();
+    void updatePhraseState();
 
     /** @brief  Add new track to sequence
         @param  track Index of track afterwhich to add new track (Optional - default: add to end of sequence)
@@ -244,7 +244,12 @@ class Sequence {
     */
     uint8_t getRepeat();
 
-    std::vector<Sequence*> m_vChildSequences;   // List of pointers to sequences in scene
+    /** @brief  Is this sequence a phrase launcher?
+        @retval bool True if phrase launcher
+    */
+    bool isPhraseLauncher();
+
+    std::vector<Sequence*> m_vChildSequences;   // List of pointers to sequences in phrase
 
   private:
     std::vector<Track> m_vTracks;               // Vector of tracks within sequence
@@ -256,9 +261,9 @@ class Sequence {
     float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
     uint8_t m_nTimeSig = 0;                     // Current time signature in ticks per bar (24 ticks per beat)
     uint8_t m_nState = STOPPED;                 // Play state of sequence
-    uint8_t m_nMode = 1;                        // Bitwise flags: stop mode (bits 0..1), start mode (bit 2).
+    uint8_t m_nMode = MODE_END_SYNC;            // Bitwise flags: stop mode (bits 0..1), start mode (bit 2)
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence/ Added v11.
+    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
     bool m_bChanged = false;                    // True if sequence content changed
     bool m_bStateChanged = false;               // True if state changed since last clock cycle
@@ -266,5 +271,5 @@ class Sequence {
     std::string m_sName;                        // Sequence name
     uint8_t m_nFollowAction = FOLLOW_ACTION_NONE; // Follow action to perform when sequence ends
     Sequence* m_pFollowSequence = nullptr;      // Pointer to follow sequence (null for no follow action)
-    Sequence* m_pSceneSequence = nullptr;       // Pointer to scene sequence (null if not in a scene, e.g. is a scene)
+    Sequence* m_pPhraseSequence = nullptr;      // Pointer to phrase sequence (null if not in a phrase, e.g. is a phrase)
 };

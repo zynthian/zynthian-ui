@@ -29,7 +29,7 @@
 #include <cstdint>
 
 #define DEFAULT_TEMPO 120.0 // March time (120 BPM)
-#define SCENE_CHANNEL 32 // Scene launcher channel
+#define PHRASE_CHANNEL 32 // Phrase launcher channel
 
 // Play modes START & END are OR'd to provide mode
 // Bits 0..1 Stop mode
@@ -45,7 +45,7 @@
 #define CLOCK_TRIG_TEMPO 2   // Clock has triggered a tempo change
 #define CLOCK_TRIG_TIMESIG 4 // Clock has triggered a time signature change
 #define CLOCK_TRIG_SEQEND 8  // Clock has triggered a time signature change
-#define CLOCK_TRIG_SCENE 16  // Clock has triggered a scene change
+#define CLOCK_TRIG_PHRASE 16  // Clock has triggered a phrase change
 
 // Play status (bit 0 = playing)
 #define STOPPED 0       // Sequence is stopped
@@ -54,8 +54,8 @@
 #define STOPPING 3      // Sequence is playing waiting to stop
 #define FORCED_STOP 4   // Sequence is stopped immediately
 #define STOPPING_SYNC 5 // Sequence is playing waiting to stop at next sync point
-#define CHILD_PLAYING 6 // Child (of scene launcher) sequence is playing
-#define CHILD_STOPPING 7 // Child (of scene launcher) sequence is stopping
+#define CHILD_PLAYING 6 // Child (of phrase launcher) sequence is playing
+#define CHILD_STOPPING 7 // Child (of phrase launcher) sequence is stopping
 
 // Follow action
 enum FOLLOW_ACTION {

@@ -1302,7 +1302,7 @@ class zynthian_gui:
 
     def cuia_toggle_seq(self, params=None):
         try:
-            self.state_manager.zynseq.libseq.togglePlayState(self.state_manager.zynseq.bank, int(params[0]))
+            self.state_manager.zynseq.libseq.togglePlayState(self.state_manager.zynseq.scene, int(params[0]), int(params[1]))
         except (AttributeError, TypeError):
             pass
 

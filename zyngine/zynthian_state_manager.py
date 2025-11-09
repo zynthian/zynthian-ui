@@ -23,7 +23,6 @@
 #
 # ****************************************************************************
 
-import base64
 import ctypes
 import logging
 import traceback
@@ -983,10 +982,8 @@ class zynthian_state_manager:
         if armed_state:
             state['audio_recorder_armed'] = armed_state
 
-        # Zynseq RIFF data
-        binary_riff_data = self.zynseq.get_riff_data()
-        b64_data = base64.b64encode(binary_riff_data)
-        state['zynseq_riff_b64'] = b64_data.decode('utf-8')
+        # Zynseq json
+        state['zynseq'] = self.zynseq.state
 
         return state
 
@@ -1025,7 +1022,7 @@ class zynthian_state_manager:
                         except:
                             pass
 
-            for key in ["last_snapshot_fpath", "midi_profile_state", "engine_config", "audio_recorder_armed", "zynseq_riff_b64", "alsa_mixer", "zyngui"]:
+            for key in ["last_snapshot_fpath", "midi_profile_state", "engine_config", "audio_recorder_armed", "zynseq", "alsa_mixer", "zyngui"]:
                 try:
                     del state[key]
                 except:
@@ -1126,7 +1123,7 @@ class zynthian_state_manager:
 
                     if merge:
                         # Remove elements that are not to be merged
-                        for key in ["last_snapshot_fpath", "last_zs3_id", "midi_profile_state", "audio_recorder_armed", "zynseq_riff_b64", "alsa_mixer", "zyngui"]:
+                        for key in ["last_snapshot_fpath", "last_zs3_id", "midi_profile_state", "audio_recorder_armed", "zynseq", "alsa_mixer", "zyngui"]:
                             try:
                                 del state[key]
                             except:
@@ -1233,10 +1230,10 @@ class zynthian_state_manager:
                 for proc in self.chain_manager.processors.values():
                     proc.set_midi_autolearn(True)
 
-            if load_sequences and "zynseq_riff_b64" in state:
-                b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
-                binary_riff_data = base64.decodebytes(b64_bytes)
-                self.zynseq.restore_riff_data(binary_riff_data)
+            if load_sequences and "zynseq" in state:
+                if not self.zynseq.set_state(state["zynseq"]):
+                    self.set_busy_warning("Invalid sequence data within snapshot")
+                    sleep(2)
                 self.zynseq.update_tempo()
 
             # Save last snapshot info and get snapshot's program number
@@ -1579,7 +1576,7 @@ class zynthian_state_manager:
                     pass
             elif zid.startswith("zs3-"):
                 try:
-                    used_ids.append(int(zid.split('-')[1]))
+                    used_indexes.append(int(zid.split('-')[1]))
                 except:
                     pass
 

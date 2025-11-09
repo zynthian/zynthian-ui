@@ -59,6 +59,9 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
         self.refreshing = False
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
+        self.phrase = None
+        self.info = None
+        self.sf = None
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
         self.offset = 0  # Frames from start of file that waveform display starts
         self.zoom = 1
@@ -329,8 +332,8 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         load_waveform = False
         update_markers = False
         refresh_info = False
-        if self.scene != self.processor.engine.scene:
-            self.scene = self.processor.engine.scene
+        if self.phrase != self.processor.engine.phrase:
+            self.phrase = self.processor.engine.phrase
             load_waveform = True
         try:
             if self.processor.controllers_dict[f"file {self.processor.pattern}"].value:

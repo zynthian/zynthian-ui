@@ -34,7 +34,7 @@ bool Track::addPattern(uint32_t position, Pattern* pattern, bool force) {
     }
     m_mPatterns[position] = pattern;
     if (m_nTrackLength < position + pattern->getLength())
-        m_nTrackLength = position + pattern->getLength(); //!@todo Does this shrink and stretch song?
+        m_nTrackLength = position + pattern->getLength(); //!@todo Does this shrink and stretch scene?
     m_bChanged = true;
     return true;
 }
@@ -60,20 +60,6 @@ Pattern* Track::getPatternAt(uint32_t position) {
             return it->second;
     }
     return NULL;
-}
-
-uint8_t Track::getType() { return m_nType; }
-
-void Track::setType(uint8_t type) {
-    m_nType = type;
-    m_bChanged = true;
-}
-
-uint8_t Track::getChainID() { return m_nChainID; }
-
-void Track::setChainID(uint8_t chain_id) {
-    m_nChainID = chain_id;
-    m_bChanged = true;
 }
 
 uint8_t Track::getChannel() { return m_nChannel; }

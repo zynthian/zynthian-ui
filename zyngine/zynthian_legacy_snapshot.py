@@ -25,11 +25,12 @@
 
 import logging
 from math import ceil
-from json import JSONDecoder
+from json import JSONDecoder, loads
+import base64
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 
-SNAPSHOT_SCHEMA_VERSION = 3
+SNAPSHOT_SCHEMA_VERSION = 4
 
 
 class zynthian_legacy_snapshot:
@@ -75,6 +76,25 @@ class zynthian_legacy_snapshot:
             logging.info(f"Converting snapshot from schema V{version} to V{version+1}")
             getattr(self, f'version_{version}')()
         return self.snapshot
+
+    def version_3(self):
+        # Convert snapshot from schema V4 to V4
+
+        # Convert binary seq to json
+
+        fpath = "/tmp/snapshot.zynseq"
+        try:
+            # Save RIFF data to tmp file
+            b64_bytes = self.snapshot["zynseq_riff_b64"].encode("utf-8")
+            binary_riff_data = base64.decodebytes(b64_bytes)
+            with open(fpath, "wb") as fh:
+                fh.write(binary_riff_data)
+            a = self.state_manager.zynseq.libseq.convertToJson(bytes(fpath, "utf-8")).decode("utf-8")
+            self.state_manager.zynseq.libseq.freeState()
+            self.snapshot["zynseq"] = loads(a)
+            del self.snapshot["zynseq_riff_b64"]
+        except Exception as e:
+            logging.warning(e)
 
     def version_2(self):
         # Convert snapshot from schema V2 to V3

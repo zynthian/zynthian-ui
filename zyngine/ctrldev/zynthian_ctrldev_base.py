@@ -206,38 +206,38 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     def init(self):
         super().init()
         # Register for zynseq updates
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_pad_state)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
 
     def end(self):
         # Unregister from zynseq updates
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_pad_state)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
         self.light_off()
         super().end()
 
-    def update_scene_state(self):
-        """Update hardware indicators for active bank and refresh sequence state as needed.
+    def update_phrase_state(self):
+        """Update hardware indicators for active scene and refresh phrase launcher state as needed.
         *COULD* be implemented by child class
         """
         if self.idev_out is None:
             return
         for row in range(0, 7):
             try:
-                info = self.zynseq.launcher_info[row][zynseq.SCENE_CHANNEL]
-                #logging.debug(f"SCENE ({row}) INFO => {info}")
+                info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][row]
+                #logging.debug(f"PHRASE ({row}) INFO => {info}")
                 if info is None:
-                    self.pad_off(zynseq.SCENE_CHANNEL, row)
+                    self.pad_off(zynseq.PHRASE_CHANNEL, row)
                 else:
-                    self.update_pad_state(row, zynseq.SCENE_CHANNEL, info)
+                    self.update_seq_state(row, zynseq.PHRASE_CHANNEL, info)
             except Exception as e:
                 logging.error(e)
 
-    def update_pad_state(self, scene, chan, state=None, mode=None):
+    def update_seq_state(self, phrase, chan, state=None, mode=None):
         """Update hardware indicators for a sequence (pad): playing state etc.
         *SHOULD* be implemented by child class
 
-        scene - scene index (row)
+        phrase - phrase index (row)
         chan - chan index (col)
         state - sequence's state
         mode - sequence's mode
@@ -256,10 +256,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """
         if self.idev_out is None:
             return
-        self.update_scene_state()
+        self.update_phrase_state()
         for row in range(self.rows):
             for col in range(self.cols):
-                self.update_pad_state(row, col)
+                self.update_seq_state(row, col)
 
 
 # ------------------------------------------------------------------------------------------------------------------

@@ -89,17 +89,17 @@ class zynthian_ctrldev_launchpad_x(zynthian_ctrldev_zynpad):
                 lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
 
     # Zynpad Pad LED feedback
-    def update_pad(self, pad, state, mode):
+    def update_seq_state(self, phrase, chan, state=None, mode=None):
         if self.idev_out is None:
             return
         # logging.debug("Updating Launchpad X pad {}".format(pad))
         try:
-            col, row = self.zynseq.get_pad_coords(pad)
+            col, row = self.zynseq.get_pad_coords(phrase, chan)
         except:
             return
         note = 10 * (8 - row) + col + 1
 
-        group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
+        group = self.zynseq.libseq.getGroup(self.zynseq.bank, chan)
         if group > 15:
             return
         try:

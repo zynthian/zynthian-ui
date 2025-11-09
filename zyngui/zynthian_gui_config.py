@@ -651,7 +651,7 @@ PAD_COLOUR_STARTING = '#FFBB00'
 PAD_COLOUR_PLAYING = '#009000'
 PAD_COLOUR_STOPPING = '#D00000'
 PAD_COLOUR_STOPPED = '#E0E0E0'
-PAD_COLOUR_SCENE = '#707070'
+PAD_COLOUR_PHRASE = '#707070'
 LAUNCHER_COLOUR = [
     {"rgb": "#0000FF", "launchpad": 79,  "apc": 41},  #1:blue
     {"rgb": "#BBBB00", "launchpad": 13,  "apc": 74},  #2:yellow

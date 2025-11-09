@@ -19,8 +19,8 @@
 
 #include "sequence.h"
 
-Sequence::Sequence(Sequence* sceneSequence) {
-    m_pSceneSequence = sceneSequence;
+Sequence::Sequence(Sequence* phraseSequence) {
+    m_pPhraseSequence = phraseSequence;
     addTrack(); // Ensure new sequences have at least one track
 }
 
@@ -155,7 +155,7 @@ void Sequence::setPlayState(uint8_t state) {
     if (m_nState == STOPPED)
         m_nPosition = 0;
 
-    updateSceneState();
+    updatePhraseState();
 
     m_bStateChanged |= (nState != m_nState);
     m_bChanged = true;
@@ -163,26 +163,26 @@ void Sequence::setPlayState(uint8_t state) {
         m_nCount = 0;
 }
 
-void Sequence::updateSceneState() {
-    Sequence* pSceneSequence = m_pSceneSequence;
-    if (!pSceneSequence) {
+void Sequence::updatePhraseState() {
+    Sequence* pPhraseSequence = m_pPhraseSequence;
+    if (!pPhraseSequence) {
         if (m_vChildSequences.size() == 0) {
             return;
         }
-        pSceneSequence = this;
+        pPhraseSequence = this;
     }
-    uint8_t state = pSceneSequence->getPlayState();
+    uint8_t state = pPhraseSequence->getPlayState();
     if (state != STOPPED && state != CHILD_PLAYING && state != CHILD_STOPPING) {
         return;
     }
-    for (auto pChildSequence: pSceneSequence->m_vChildSequences) {
+    for (auto pChildSequence: pPhraseSequence->m_vChildSequences) {
         if (pChildSequence && (pChildSequence->getPlayState() & 1)) {
             if (state != CHILD_STOPPING)
-                pSceneSequence->setPlayState(CHILD_PLAYING);
+                pPhraseSequence->setPlayState(CHILD_PLAYING);
             return;
         }
     }
-    pSceneSequence->setPlayState(STOPPED);
+    pPhraseSequence->setPlayState(STOPPED);
 }
 
 uint32_t Sequence::getState() {
@@ -194,7 +194,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
     uint8_t nReturn = 0;
     uint8_t nState = m_nState;
     uint8_t nCountInc = (m_nState == STARTING) ? 0 : 1;
-    bool bSceneLauncher = m_vChildSequences.size() > 0; //!@todo is it safe (and more optimal) to use !m_pSceneSequence?
+    bool bPhraseLauncher = isPhraseLauncher();
     if (bSync) {
         if (m_nMode & MODE_END_SYNC) {
             if (m_nState == STOPPING) {
@@ -204,8 +204,8 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
         }
         if (m_nState == STARTING) {
             setPlayState(PLAYING);
-            if (bSceneLauncher) {
-                nReturn |= CLOCK_TRIG_SCENE;
+            if (bPhraseLauncher) {
+                nReturn |= CLOCK_TRIG_PHRASE;
                 uint8_t timeSig = m_timebase.getTimeSig(1, 0);
                 if (timeSig > 1) {
                     m_nTimeSig = timeSig;
@@ -215,9 +215,9 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
         } else if (m_nState == STOPPING_SYNC) {
             setPlayState(STOPPED);
             m_nPosition = 0;
-        } else if (m_nState == PLAYING && bSceneLauncher) {
-            // Playing at start of bar so must be triggering scene
-            nReturn |= CLOCK_TRIG_SCENE;
+        } else if (m_nState == PLAYING && bPhraseLauncher) {
+            // Playing at start of bar so must be triggering phrase
+            nReturn |= CLOCK_TRIG_PHRASE;
         }
     }
 
@@ -230,8 +230,8 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
             nReturn |= CLOCK_TRIG_MIDI;
         ++m_nPosition;
     }
-    if ((!bSceneLauncher && (m_nPosition >= m_nLength)) || (bSceneLauncher && (m_nPosition >= 24 * nTimeSig))) {
-        // End of sequence or scene
+    if ((!bPhraseLauncher && (m_nPosition >= m_nLength)) || (bPhraseLauncher && (m_nPosition >= 24 * nTimeSig))) {
+        // End of sequence or phrase
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
             m_nPosition = 0;
@@ -338,4 +338,8 @@ void Sequence::setRepeat(uint8_t repeat) {
 
 uint8_t Sequence::getRepeat() {
     return m_nRepeat;
+}
+
+bool Sequence::isPhraseLauncher() {
+    return m_pPhraseSequence == nullptr;
 }

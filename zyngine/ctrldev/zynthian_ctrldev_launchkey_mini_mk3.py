@@ -61,11 +61,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
-    def update_seq_state(self, scene, chan, state, mode):
+    def update_seq_state(self, phrase, chan, state=None, mode=None):
         if self.idev_out is None :
             return
         try:
-            col, row = self.zynseq.get_pad_coords(chan)
+            row, col = self.zynseq.get_pad_coords(phrase, chan)
         except:
             return
         if self.scroll:
@@ -123,7 +123,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 info = self.zynseq.get_launcher_info(col, row)
                 if info is None:
                     return
-                self.zynseq.libseq.togglePlayState(self.zynseq.bank, info["sequence"])
+                self.zynseq.libseq.togglePlayState(self.zynseq.scene, info['phrase'], info["sequence"])
             except:
                 pass
         elif evtype == 0xB:

@@ -119,8 +119,8 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
                 col = (note - 96) // 16
                 row = (note - 96) % 16
                 pad = row * self.zynseq.col_in_bank + col
-                if pad < self.zynseq.seq_in_bank:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                if pad < self.zynseq.seq_in_scene:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, pad)
             except:
                 pass
         elif evtype == 0xB:

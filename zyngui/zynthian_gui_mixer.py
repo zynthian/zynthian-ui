@@ -168,33 +168,33 @@ class zynthian_gui_mixer_strip:
                                              tags=(f"strip:{id}", f"mixer:{id}", f"fader:{id}"))
 
         # Launcher pads
-        height_scene = (self.fader_bottom - self.fader_top - 4) // zynthian_gui_config.visible_launchers
+        height_phrase = (self.fader_bottom - self.fader_top - 4) // zynthian_gui_config.visible_launchers
         ypos = self.fader_top + 2
         # Scroll up available indicator
         self.canvas.create_rectangle(x, ypos - 2, x + self.fader_width, ypos, width=0, state=tkinter.HIDDEN,
                                         fill="white", tags=(f"strip:{id}", f"launcher_scroll_top_{id}"))
         for row in range(0, zynthian_gui_config.visible_launchers):
             # Launcher pad (background)
-            launcher_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_scene - 1, width=0, state=tkinter.HIDDEN)
+            launcher_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_phrase - 1, width=0, state=tkinter.HIDDEN)
             self.canvas.itemconfig(launcher_bg, tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_bg"))
             # Play state text
-            self.canvas.create_text(x + self.fader_width,  ypos - height_scene // 6, text="", anchor=tkinter.NE, font=self.font_clip_state,
+            self.canvas.create_text(x + self.fader_width,  ypos - height_phrase // 6, text="", anchor=tkinter.NE, font=self.font_clip_state,
                     state=tkinter.HIDDEN, tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_state"))
             # Title text
-            self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_scene, text="", anchor=tkinter.CENTER,
+            self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_phrase, text="", anchor=tkinter.CENTER,
                                             font=self.font_clip_title, state=tkinter.HIDDEN, fill=self.legend_txt_color,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_title"))
             # Play mode image
             self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode"))
             # Selected/highlighted cursor
-            self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_scene - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
+            self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_phrase - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{id}", "launcher_sel", f"launcher_sel:{id}_{row}"))
 
             self.canvas.tag_bind(f"launcher:{id}_{row}", '<ButtonPress-1>', lambda e, row=row: self.on_clip_press(row, e))
             self.canvas.tag_bind(f"launcher:{id}_{row}", '<ButtonRelease-1>', lambda e, row=row: self.on_clip_release(row, e))
             self.canvas.tag_bind(f"launcher:{id}_{row}", '<B1-Motion>', lambda e, row=row: self.on_clip_motion(row, e))
-            ypos += height_scene
+            ypos += height_phrase
         # Scroll down available indicator
         self.canvas.create_rectangle(x, ypos - 2, x + self.fader_width, ypos, width=0, state=tkinter.HIDDEN,
                                         fill="white", tags=(f"strip:{id}", f"launcher_scroll_bottom_{id}"))
@@ -359,7 +359,7 @@ class zynthian_gui_mixer_strip:
                                            self.x + self.fader_width, self.fader_bottom)
 
     def draw_fader(self):
-        # Hide clip scenes
+        # Hide clip phrases
         self.canvas.itemconfig(f"strip:{self.fader_bg}", state=tkinter.HIDDEN)
         self.canvas.itemconfig(f"mixer:{self.fader_bg}", state=tkinter.NORMAL)
         if self.chain.mixer_chan is not None:
@@ -410,46 +410,51 @@ class zynthian_gui_mixer_strip:
         # Clip Launcher
         for row in range(zynthian_gui_config.visible_launchers):
             try:
-                scene = self.parent.launcher_offset + row
-                if scene < self.zynseq.scenes:
-                    self.draw_sequence_scene(scene)
+                phrase = self.parent.launcher_offset + row
+                if phrase < self.zynseq.phrases:
+                    self.draw_sequence_phrase(phrase)
                 else:
                     self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}", state=tkinter.HIDDEN)
             except:
                 self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}", state=tkinter.HIDDEN)
 
-    def draw_sequence_scene(self, scene):
+    def draw_sequence_phrase(self, phrase):
         mode_image = None
-        row = scene - self.parent.launcher_offset
-        info = self.zynseq.launcher_info[scene][self.chan]
+        row = phrase - self.parent.launcher_offset
+        disabled = False
+        if self.chain_id == 0:
+            state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
+        elif type(self.chain.midi_chan) is not int:
+            return
+        else:
+            state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][self.chain.midi_chan]
+            pattern = state_seq["tracks"][0]["patns"]['0']
+            if self.chain.midi_chan > 15:
+                disabled |= self.chain.synth_slots[0][0].controllers_dict[f"file {pattern}"].value == ""
         try:
-            if self.chain_id == 0:
-                name = info["title"]
-                empty = info["repeat"] == 0
-            else:
-                empty = info["empty"]
-                name = info["title"]
-            if empty:
+            name = state_seq["name"]
+            disabled |= state_seq["repeat"] == 0
+            if disabled:
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
-            elif info["chan"] < 32:
-                color = zynthian_gui_config.LAUNCHER_COLOUR[info["chan"]]["rgb"]
+            elif self.chain_id == 0:
+                color = zynthian_gui_config.PAD_COLOUR_PHRASE
             else:
-                color = zynthian_gui_config.PAD_COLOUR_SCENE
-            if self.parent.moving_scene and scene == self.parent.launcher_highlighted_scene:
-                if scene == 0:
+                color = zynthian_gui_config.LAUNCHER_COLOUR[self.chain.midi_chan]["rgb"]
+            if self.parent.moving_phrase and phrase == self.parent.launcher_highlighted_phrase:
+                if phrase == 0:
                     title = f"⇓ {name[:5]}"
-                elif scene == self.zynseq.scenes - 1:
+                elif phrase == self.zynseq.phrases - 1:
                     title = f"⇑ {name[:5]}"
                 else:
                     title = f"⇕ {name[:5]}"
             else:
                 title = name[:5]
-                if info["repeat"]:
-                    match info["follow_action"]:
+                if state_seq["repeat"]:
+                    match state_seq["followAction"]:
                         case zynseq.FOLLOW_ACTION_NONE:
                             mode_image = self.parent.mode_icons["oneshot"]
                         case zynseq.FOLLOW_ACTION_RELATIVE:
-                            if info["follow_param"]:
+                            if state_seq["followParam"]:
                                 #logging.info(f"follow_param")
                                 mode_image = self.parent.mode_icons["oneshotall"]
                             else:
@@ -460,7 +465,7 @@ class zynthian_gui_mixer_strip:
                 else:
                     title = "⏹"
                     mode_image = self.parent.mode_icons["empty"]
-            match info["state"]:
+            match state_seq["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
                     state_text = "▶"
@@ -479,6 +484,15 @@ class zynthian_gui_mixer_strip:
                 case zynseq.SEQ_CHILD_STOPPING:
                     color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
                     state_text = "▶"
+                case zynseq.SEQ_STOPPED:
+                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                    try:
+                        if self.zynseq.libseq.isPatternEmpty(state_seq["tracks"][0]["patns"]["0"]):
+                            state_text = ""
+                        else:
+                            state_text = "⏹"
+                    except:
+                        state_text = ""
                 case _:
                     color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
                     state_text = ""
@@ -494,7 +508,7 @@ class zynthian_gui_mixer_strip:
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode", image=mode_image)
         if self.parent.launcher_offset:
             self.canvas.itemconfig(f"launcher_scroll_top_{self.fader_bg}", state=tkinter.NORMAL)
-        if self.parent.launcher_offset + zynthian_gui_config.visible_launchers < self.zynseq.scenes:
+        if self.parent.launcher_offset + zynthian_gui_config.visible_launchers < self.zynseq.phrases:
             self.canvas.itemconfig(f"launcher_scroll_bottom_{self.fader_bg}", state=tkinter.NORMAL)
 
     def update_clip_progress(self, progress):
@@ -809,16 +823,16 @@ class zynthian_gui_mixer_strip:
     # Clip launcher functionality
     # --------------------------------------------------------------------------
 
-    def highlight_launcher(self, scene=None):
-        if scene is None:
-            scene = self.parent.launcher_highlighted_scene
+    def highlight_launcher(self, phrase=None):
+        if phrase is None:
+            phrase = self.parent.launcher_highlighted_phrase
         self.canvas.itemconfig(f"launcher_sel", state=tkinter.HIDDEN)
-        if scene is not None and self.chain is not None:
+        if phrase is not None and self.chain is not None:
             if self.chain_id == self.parent.chain_manager.active_chain_id:
-                if scene >= self.zynseq.scenes:
+                if phrase >= self.zynseq.phrases:
                     self.canvas.itemconfig(f"legend_sel:{self.parent.highlighted_strip.fader_bg}", state=tkinter.NORMAL)
                 else:
-                    row = scene - self.parent.launcher_offset
+                    row = phrase - self.parent.launcher_offset
                     self.canvas.itemconfig(f"launcher_sel:{self.parent.highlighted_strip.fader_bg}_{row}", state=tkinter.NORMAL)
 
     # --------------------------------------------------------------------------
@@ -840,42 +854,42 @@ class zynthian_gui_mixer_strip:
         if self.drag_axis:
             self.drag_axis = None
             return
-        scene = row + self.parent.launcher_offset
-        if self.parent.moving_scene:
-            self.parent.end_moving_scene()
+        phrase = row + self.parent.launcher_offset
+        if self.parent.moving_phrase:
+            self.parent.end_moving_phrase()
             return
-        self.parent.select_launcher(scene)
+        self.parent.select_launcher(phrase)
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
-            self.on_clip_short_press(scene)
+            self.on_clip_short_press(phrase)
         elif ts < zynthian_gui_config.zynswitch_long_seconds:
-            self.on_clip_bold_press(scene)
+            self.on_clip_bold_press(phrase)
         else:
-            self.on_clip_long_press(scene)
+            self.on_clip_long_press(phrase)
 
     def on_clip_motion(self, row, event):
-        dY = int((event.y - self.touch_y) / self.parent.scene_height)
+        dY = int((event.y - self.touch_y) / self.parent.phrase_height)
         if dY:
             self.drag_axis = 1
             self.touch_y = event.y
             self.parent.drag_launcher(dY)
 
-    def on_clip_short_press(self, scene):
+    def on_clip_short_press(self, phrase):
         if self.chan is None or self.chan > 32:
             return
-        self.parent.scene = scene
+        self.parent.phrase = phrase
         self.parent.highlighted_strip = self
         self.parent.set_highlighted_clip_info()
-        self.zynseq.libseq.togglePlayState(scene, self.chan)
+        self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, self.chan)
 
-    def on_clip_bold_press(self, scene):
+    def on_clip_bold_press(self, phrase):
         if self.chan is None or self.chan > 32:
             return
-        self.parent.scene = scene
+        self.parent.phrase = phrase
         self.parent.highlighted_strip = self
         self.parent.set_highlighted_clip_info()
         self.parent.edit_clip()
 
-    def on_clip_long_press(self, scene):
+    def on_clip_long_press(self, phrase):
         self.parent.edit_clip()
 
     # --------------------------------------------------------------------------
@@ -1050,8 +1064,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.zynseq = self.state_manager.zynseq
         
         self.launcher_mode = self.zyngui.alt_mode
-        self.launcher_highlighted_scene = 0 # Index of selected scene
-        self.launcher_select_info = None # zynseq launcher_info object of the selected launcher
+        self.launcher_highlighted_phrase = 0 # Index of selected phrase
+        self.launcher_select_info = None # zynseq state model of the selected launcher
         self.clippy_file_zctrl = None
 
         self.zynmixer.set_midi_learn_cb(self.enter_midi_learn)
@@ -1059,7 +1073,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
         self.highlighted_strip = None  # Highligted mixer strip object
         self.moving_chain = False  # True if moving a chain left/right
-        self.moving_scene = False # True if moving a launcher scene up/down
+        self.moving_phrase = False # True if moving a launcher phrase up/down
 
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
         self.pending_refresh_queue = set()
@@ -1103,7 +1117,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # List of mixer strip objects indexed by horizontal position on screen
         self.visible_mixer_strips = [None] * visible_chains
         self.mixer_strip_offset = 0  # Index of first mixer strip displayed on far left
-        self.launcher_offset = 0  # Index of first launcher scene shown at top
+        self.launcher_offset = 0  # Index of first launcher phrase shown at top
 
         # Fader Canvas
         self.main_canvas = tkinter.Canvas(self.main_frame,
@@ -1117,8 +1131,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         # Clip Mode Icons
         empty_icon = tkinter.PhotoImage()
-        self.scene_height = self.height // (zynthian_gui_config.visible_launchers + 3)
-        iconsize = (int(self.fader_width * 0.4), int(self.scene_height * 0.30))
+        self.phrase_height = self.height // (zynthian_gui_config.visible_launchers + 3)
+        iconsize = (int(self.fader_width * 0.4), int(self.phrase_height * 0.30))
         self.mode_icons = {}
         for f in ("empty", "loopsync", "oneshot", "oneshotall"):
             try:
@@ -1161,7 +1175,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle hiding display
         """
         if self.shown:
-            self.moving_chain = self.moving_scene = False
+            self.moving_chain = self.moving_phrase = False
             if not self.zyngui.osc_clients:
                 self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX - 1, False)
             if not self.midi_learn_sticky:
@@ -1198,7 +1212,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if len(self.visible_mixer_strips) != zynthian_gui_config.visible_mixer_strips or self.visible_launchers != zynthian_gui_config.visible_launchers:
                 self.set_visible_chains(zynthian_gui_config.visible_mixer_strips)
         #self.launcher_mode = self.zyngui.alt_mode
-        if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.moving_scene or self.zynmixer.midi_learn_zctrl:
+        if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.moving_phrase or self.zynmixer.midi_learn_zctrl:
             self.show_back_button()
 
         self.set_title()
@@ -1209,7 +1223,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             for strip in self.visible_mixer_strips:
                 strip.draw_dpm([-200, -200, -200, -200, False])
 
-        self.zynseq.rebuild_all_launcher_info()
         self.highlight_active_chain(True)
         self.setup_zynpots()
         if self.midi_learn_sticky:
@@ -1265,7 +1278,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                             strip.draw_dpm(state)
                         if strip.chain.midi_chan is not None and strip.chain.midi_chan < 32:
                             strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
-            self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.SCENE_CHANNEL])
+            self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.PHRASE_CHANNEL])
 
     def plot_zctrls(self):
         """Function to refresh display (fast)
@@ -1350,23 +1363,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 for i in range(0, 4):
                     self.main_canvas.itemconfig(strip.pedals[i], state=tkinter.HIDDEN)
 
-    def cb_launcher_play_state(self, scene, chan, state, mode):
+    def cb_launcher_play_state(self, phrase, chan, state, mode):
         if not self.launcher_mode:
             return
         try:
-            info = self.zynseq.launcher_info[scene][chan]
-        except:
-            return
-        try:
-            if info["chan"] == zynseq.SCENE_CHANNEL:
-                self.main_mixbus_strip.draw_sequence_scene(scene)
+            if chan == zynseq.PHRASE_CHANNEL:
+                self.main_mixbus_strip.draw_sequence_phrase(phrase)
                 return
         except:
             pass
         for strip in self.visible_mixer_strips:
             try:
-                if not strip.hidden and strip.chain_id in info["chains"]:
-                    strip.draw_sequence_scene(scene)
+                if not strip.hidden and strip.chain.midi_chan == chan:
+                    strip.draw_sequence_phrase(phrase)
             except:
                 pass
 
@@ -1383,9 +1392,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.close_screen()
 
     def item_menu(self):
-        if self.launcher_mode and self.launcher_highlighted_scene < self.zynseq.scenes:
+        if self.launcher_mode and self.launcher_highlighted_phrase < self.zynseq.phrases:
             # Launcher Options
-            self.scene_menu()
+            self.phrase_menu()
         else:
             # Chain Options
             self.zyngui.screens['chain_options'].setup(self.chain_manager.active_chain_id)
@@ -1436,7 +1445,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if strip:
             strip.set_highlight(True)
             if self.launcher_mode:
-                strip.highlight_launcher(self.launcher_highlighted_scene)
+                strip.highlight_launcher(self.launcher_highlighted_phrase)
 
     # Function refresh and populate visible mixer strips
     def refresh_visible_strips(self):
@@ -1446,8 +1455,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         active_strip = None
         strip_index = 0
-        if self.launcher_offset + zynthian_gui_config.visible_launchers > self.zynseq.scenes:
-            self.launcher_offset = max(0, self.zynseq.scenes - zynthian_gui_config.visible_launchers)
+        if self.launcher_offset + zynthian_gui_config.visible_launchers > self.zynseq.phrases:
+            self.launcher_offset = max(0, self.zynseq.phrases - zynthian_gui_config.visible_launchers)
         for chain_id in self.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
             strip = self.visible_mixer_strips[strip_index]
             strip.set_chain(chain_id)
@@ -1466,7 +1475,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip
         self.main_mixbus_strip.draw_control()
         if self.highlighted_strip and self.launcher_mode:
-            self.highlighted_strip.highlight_launcher(self.launcher_highlighted_scene)
+            self.highlighted_strip.highlight_launcher(self.launcher_highlighted_phrase)
         return active_strip
 
     # --------------------------------------------------------------------------
@@ -1483,7 +1492,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     strip.draw_control()
             self.main_mixbus_strip.draw_control()
             if self.highlighted_strip and self.launcher_mode:
-                self.highlighted_strip.highlight_launcher(self.launcher_highlighted_scene)
+                self.highlighted_strip.highlight_launcher(self.launcher_highlighted_phrase)
 
     def toggle_launcher_mode(self):
         if self.launcher_mode:
@@ -1495,24 +1504,27 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         Sets launcher_select_info"""
         try:
-            self.launcher_select_info = self.zynseq.launcher_info[self.launcher_highlighted_scene][self.highlighted_strip.chan]
+            if self.highlighted_strip.chan == zynseq.PHRASE_CHANNEL:
+                self.launcher_select_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.launcher_highlighted_phrase]
+            else:
+                self.launcher_select_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.launcher_highlighted_phrase]["sequences"][self.highlighted_strip.chan]
         except Exception as e:
             self.launcher_select_info = None
-            #logging.error(f"Can't get info for scene {self.launcher_highlighted_scene} in column {self.highlighted_strip.chan} => {e}")
+            #logging.error(f"Can't get info for phrase {self.launcher_highlighted_phrase} in column {self.highlighted_strip.chan} => {e}")
 
-    def scene_menu(self):
+    def phrase_menu(self):
         info = self.launcher_select_info
         if not info:
             return
         options = {}
-        scene = info["scene"]
-        name = info["title"]
+        phrase = self.launcher_highlighted_phrase
+        name = info["name"]
         repeat = info["repeat"]
-        follow_action = info["follow_action"]
-        follow_scene = info["follow_param"]
-        pattern = self.zynseq.libseq.getPattern(scene, zynseq.SCENE_CHANNEL, 0, 0)
+        follow_action = info["followAction"]
+        follow_phrase = info["followParam"]
+        pattern = self.zynseq.libseq.getPattern(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, 0, 0)
         self.zynseq.libseq.selectPattern(pattern)
-        title = f"Scene options ({name})"
+        title = f"Phrase options ({name})"
         if repeat == 0:
             options["Duration (DISABLED)"] = repeat
         else:
@@ -1523,49 +1535,48 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
                 options[f"Follow action (None)"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
-                match follow_scene:
+                match follow_phrase:
                     case 0:  # Loop
                         options[f"Follow action (LOOP)"] = 1
                     case 1:  # Next
                         options[f"Follow action (NEXT)"] = 2
                     case -1:  # Previous
                         options[f"Follow action (PREV)"] = 3
-            if info['tempo'] == 0.0:
+            if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
                 options[f"Tempo ({info['tempo']})"] = info['tempo']
-                options["Remove tempo"] = info["chan"]
-            sig = self.zynseq.libseq.getTimeSigAt(scene, zynseq.SCENE_CHANNEL, 1)
-            if sig:
-                options[f"Time signature ({sig}/4)"] = sig
+                options["Remove tempo"] = self.launcher_highlighted_phrase
+            if 'timeSig' not in info or not info['timeSig']:
+                options[f"Time signature (None)"] = 0
             else:
-                options[f"Time signature (None)"] = sig
+                options[f"Time signature ({info['timeSig']}/4)"] = info["timeSig"]
         options[f"Edit name ({name})"] = name
-        options["Append scene"] = None
-        options["Insert scene"] = scene
-        if self.zynseq.scenes > 1:
-            options["Remove scene"] = scene
-            options["Move scene"] = scene
+        options["Manipulate phrase"] = None
+        options["Insert phrase"] = phrase
+        if self.zynseq.phrases > 1:
+            options["Remove phrase"] = phrase
+            options["Move phrase"] = phrase
 
-        self.zyngui.screens['option'].config(title, options, self.scene_menu_cb, close_on_select=False)
+        self.zyngui.screens['option'].config(title, options, self.phrase_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
-    def scene_menu_cb(self, option, params):
+    def phrase_menu_cb(self, option, params):
         option_screen = self.zyngui.screens["option"]
         if option.startswith("Edit name"):
-            self.zyngui.show_keyboard(self.rename_sequence, params, 8)
-        elif option.startswith("Append scene"):
-            self.zynseq.insert_scene(self.zynseq.scenes)
+            self.zyngui.show_keyboard(self.rename_phrase, params, 8)
+        elif option.startswith("Append phrase"):
+            self.zynseq.insert_phrase(self.zynseq.scene, self.zynseq.phrases)
             self.refresh_visible_strips()
             self.zyngui.show_screen("launcher")
-        elif option.startswith("Insert scene"):
-            self.zynseq.insert_scene(params)
+        elif option.startswith("Insert phrase"):
+            self.zynseq.insert_phrase(self.zynseq.scene, params)
             self.refresh_visible_strips()
             self.zyngui.show_screen("launcher")
-        elif option.startswith("Remove scene"):
-            self.zyngui.show_confirm(f"Remove scene {params + 1}?", self.remove_scene, params)
-        elif option.startswith("Move scene"):
-            self.moving_scene = True
+        elif option.startswith("Remove phrase"):
+            self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
+        elif option.startswith("Move phrase"):
+            self.moving_phrase = True
             self.zyngui.show_screen("launcher")
         elif option.startswith("Tempo"):
             if not params:
@@ -1579,10 +1590,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            self.zynseq.libseq.removeTempoEvent(params, zynseq.SCENE_CHANNEL)
+            self.zynseq.libseq.removeTempoEvent(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL)
             self.launcher_select_info["tempo"] = 0.0
             index = option_screen.index
-            self.scene_menu()
+            self.phrase_menu()
             option_screen.select(index - 1)
         elif option.startswith("Duration"):
             labels = ["DISABLED", "1 bar"]
@@ -1597,7 +1608,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             labels = ["None"]
             for i in range(2, 25):
                 labels.append(f"{i}/4")
-            option_screen.enable_param_editor(option_screen, "timesig", {
+            option_screen.enable_param_editor(option_screen, "timeSig", {
                 'name': 'Time signature',
                 'value_min': 1,
                 'value_max': 24,
@@ -1612,21 +1623,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
 
-    def remove_scene(self, scene):
-        self.zynseq.remove_scene(scene)
+    def remove_phrase(self, phrase):
+        self.zynseq.remove_phrase(self.zynseq.scene, phrase)
         self.refresh_visible_strips()
         self.zyngui.show_screen("launcher")
 
     def drag_launcher(self, dy):
         new_pos = self.launcher_offset - dy
-        if 0 <= new_pos <= len(self.zynseq.launcher_info) - self.visible_launchers:
+        if 0 <= new_pos <= len(self.state["scenes"][self.zynseq.scene]["phrases"]) - self.visible_launchers:
             self.launcher_offset = new_pos
             self.refresh_visible_strips()
 
     def get_clippy_zctrl(self, zctrl_name):
         try:
             clippy_proc = self.launcher_select_info['clippy']
-            return clippy_proc.controllers_dict[f"{zctrl_name} {self.launcher_select_info['scene'] + 1:02}"]
+            return clippy_proc.controllers_dict[f"{zctrl_name} {self.launcher_select_info['phrase'] + 1:02}"]
         except:
             return None
 
@@ -1637,8 +1648,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def edit_pattern(self):
         if self.launcher_select_info:
             pated = self.zyngui.screens['pattern_editor']
-            pated.set_sequence_info(self.launcher_select_info)
-            pated.load_pattern(self.launcher_select_info["pattern"])
+            pated.set_sequence_info(self.zynseq.scene, self.launcher_highlighted_phrase, self.highlighted_strip.chain.midi_chan)
+            pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.launcher_highlighted_phrase, self.highlighted_strip.chain.midi_chan, 0, 0))
             self.zyngui.show_screen("pattern_editor")
             return True
         else:
@@ -1646,79 +1657,78 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def edit_clip(self):
         if self.launcher_mode and self.launcher_select_info:
-            if self.launcher_select_info['chan'] < zynseq.SCENE_CHANNEL:
-                if self.launcher_select_info['clippy']:
-                    self.launcher_select_info['clippy'].engine.set_scene(self.launcher_select_info['clippy'], self.launcher_select_info['scene'])
+            if self.highlighted_strip.chain_id == 0:
+                self.item_menu()
+                return True
+            if type(self.highlighted_strip.chain.midi_chan) is int and self.highlighted_strip.chain.midi_chan < zynseq.PHRASE_CHANNEL:
+                if self.highlighted_strip.chain.midi_chan> 15:
+                    proc = self.highlighted_strip.chain.get_processors()[0]
+                    proc.engine.set_phrase(proc, self.launcher_highlighted_phrase)
                     self.zyngui.chain_control()
                     return True
                 else:
                     return self.edit_pattern()
-            else:
-                self.item_menu()
-                return True
 
-    def rename_sequence(self, name):
-        self.zynseq.set_sequence_name(self.launcher_select_info["scene"], self.launcher_select_info["chan"], name)
+    def rename_phrase(self, name):
+        self.zynseq.set_sequence_param(self.zynseq.scene, self.launcher_highlighted_phrase, zynseq.PHRASE_CHANNEL, "name", name)
         index = self.zyngui.screens['option'].index
-        self.scene_menu()
+        self.phrase_menu()
         self.zyngui.screens['option'].select(index)
 
-    def set_scene_tempo(self, tempo):
+    def set_phrase_tempo(self, tempo):
         try:
-            scene = self.launcher_select_info["scene"]
+            phrase = self.launcher_highlighted_phrase
+            self.zynseq.libseq.addTempoEvent(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, tempo, 1, 0)
             self.launcher_select_info["tempo"] = tempo
-            self.zynseq.libseq.addTempoEvent(scene, zynseq.SCENE_CHANNEL, tempo, 1, 0)
-            for chan in range(16, 32):
-                info = self.zynseq.launcher_info[scene][chan]
-                proc = info["clippy"]
-                if proc is None:
-                    continue
-                proc.engine.start_bg_task(tempo)
-                return
+            if "CL" in self.chain_manager.zyngines:
+                # Update clippy tempos
+                self.chain_manager.zyngines["CL"].start_bg_task(tempo)
         except Exception as e:
-            logging.warning(f"Error setting scene tempo: {e}")
+            logging.warning(f"Error setting phrase tempo: {e}")
 
     def cb_assert_param_editor(self, val=None):
         self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
         index = self.zyngui.screens['option'].index
-        self.scene_menu()
+        self.phrase_menu()
         self.zyngui.screens['option'].select(index)
 
     def send_controller_value(self, zctrl):
         """ Handle param editor value change """
 
-        scene = self.launcher_select_info["scene"]
-        chan = self.launcher_select_info["chan"]
+        phrase = self.launcher_highlighted_phrase
+        chan = self.highlighted_strip.chain.midi_chan
+        if chan is None:
+            chan = zynseq.PHRASE_CHANNEL
         match zctrl.symbol:
             case "tempo":
-                self.set_scene_tempo(zctrl.value)
-            case "timesig":
-                self.launcher_select_info["timesig"] = zctrl.value
+                self.set_phrase_tempo(zctrl.value)
+            case "timeSig":
                 if zctrl.value > 1:
-                    self.zynseq.libseq.addTimeSigEvent(scene, chan, 1, zctrl.value)
+                    self.zynseq.libseq.addTimeSigEvent(self.zynseq.scene, phrase, chan, 1, zctrl.value)
                 else:
-                    self.zynseq.libseq.removeTimeSigEvent(scene, chan, 1)
+                    self.zynseq.libseq.removeTimeSigEvent(self.zynseq.scene, phrase, chan, 1)
+                self.launcher_select_info["timeSig"] = zctrl.value
             case "duration":
-                self.zynseq.libseq.setRepeat(scene, chan, zctrl.value)
-                self.launcher_select_info["repeat"] = zctrl.value
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)
             case "follow":
                 match zctrl.value:
                     case 0: # None
-                        self.launcher_select_info["follow_action"] = zynseq.FOLLOW_ACTION_NONE
-                        self.launcher_select_info["follow_param"] = 0
+                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
+                        self.launcher_select_info["followParam"] = 0
                     case 1: # Loop
-                        self.launcher_select_info["follow_action"] = zynseq.FOLLOW_ACTION_RELATIVE
-                        self.launcher_select_info["follow_param"] = 0
+                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
+                        self.launcher_select_info["followParam"] = 0
                     case 2: # Next
-                        self.launcher_select_info["follow_action"] = zynseq.FOLLOW_ACTION_RELATIVE
-                        self.launcher_select_info["follow_param"] = +1
+                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
+                        self.launcher_select_info["followParam"] = +1
                     case 3: # Previous
-                        self.launcher_select_info["follow_action"] = zynseq.FOLLOW_ACTION_RELATIVE
-                        self.launcher_select_info["follow_param"] = -1
+                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
+                        self.launcher_select_info["followParam"] = -1
 
-                self.zynseq.libseq.setFollowAction(scene, chan, self.launcher_select_info["follow_action"], self.launcher_select_info["follow_param"])
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", self.launcher_select_info["followAction"])
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", self.launcher_select_info["followParam"])
 
-        self.main_mixbus_strip.draw_sequence_scene(scene)
+        self.main_mixbus_strip.draw_sequence_phrase(phrase)
 
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches
@@ -1736,13 +1746,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.moving_chain:
             self.end_moving_chain()
             return True
-        elif self.moving_scene:
-            self.end_moving_scene()
+        elif self.moving_phrase:
+            self.end_moving_phrase()
             return True
         elif type == "S":
             if self.launcher_mode:
-                if self.launcher_highlighted_scene < self.zynseq.scenes:
-                    self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_scene)
+                if self.launcher_highlighted_phrase < self.zynseq.phrases:
+                    self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_phrase)
                 else:
                     self.zyngui.chain_control()
             else:
@@ -1751,7 +1761,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
-            if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 32 and self.launcher_highlighted_scene < self.zynseq.scenes:
+            if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 32 and self.launcher_highlighted_phrase < self.zynseq.phrases:
                 self.edit_clip()
             else:
                 self.item_menu()
@@ -1773,8 +1783,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.moving_chain:
             self.end_moving_chain()
             return True
-        if self.moving_scene:
-            self.end_moving_scene()
+        if self.moving_phrase:
+            self.end_moving_phrase()
             return True
         elif self.zynmixer.midi_learn_zctrl:
             self.exit_midi_learn()
@@ -1807,7 +1817,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             # return False
             # This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
             # Moving the "learn" button to back is not an option. It's a labeled button on V4!!
-            if t == "S" and not self.moving_chain and not self.moving_scene:
+            if t == "S" and not self.moving_chain and not self.moving_phrase:
                 if self.zynmixer.midi_learn_zctrl or self.highlighted_strip is not None and not self.back_action():
                     self.highlighted_strip.toggle_mute()
                 return True
@@ -1865,10 +1875,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.moving_chain:
                 self.chain_manager.move_chain(dval)
                 self.refresh_visible_strips()
-            elif self.moving_scene:
-                self.zynseq.swap_scene(self.launcher_highlighted_scene, self.launcher_highlighted_scene + dval) #TODO: This swaps, not moves
-                self.select_launcher(self.launcher_highlighted_scene +dval)
-                #self.launcher_highlighted_scene += dval
+            elif self.moving_phrase:
+                self.zynseq.swap_phrase(self.zynseq.scene, self.launcher_highlighted_phrase, self.launcher_highlighted_phrase + dval) #TODO: This swaps, not moves
+                self.select_launcher(self.launcher_highlighted_phrase +dval)
+                #self.launcher_highlighted_phrase += dval
                 self.refresh_visible_strips()
             else:
                 self.chain_manager.next_chain(dval)
@@ -1896,14 +1906,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_UP
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_scene > 0:
-                if self.moving_scene:
-                    self.zynseq.swap_scene(self.launcher_highlighted_scene, self.launcher_highlighted_scene - nudge)
-                    self.select_launcher(self.launcher_highlighted_scene - nudge)
+            if self.launcher_highlighted_phrase > 0:
+                if self.moving_phrase:
+                    self.zynseq.swap_phrase(self.zynseq.scene, self.launcher_highlighted_phrase, self.launcher_highlighted_phrase - nudge)
+                    self.select_launcher(self.launcher_highlighted_phrase - nudge)
                     self.refresh_visible_strips()
                 else:
-                    scene = self.launcher_highlighted_scene - nudge
-                    self.select_launcher(scene)
+                    phrase = self.launcher_highlighted_phrase - nudge
+                    self.select_launcher(phrase)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1912,14 +1922,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_DOWN
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_scene < len(self.zynseq.launcher_info):
-                if self.moving_scene:
-                    self.zynseq.swap_scene(self.launcher_highlighted_scene, self.launcher_highlighted_scene - nudge)
-                    self.select_launcher(self.launcher_highlighted_scene - nudge)
+            if self.launcher_highlighted_phrase < len(self.zynseq.state["scenes"][self.zynseq.scene]["phrases"]):
+                if self.moving_phrase:
+                    self.zynseq.swap_phrase(self.zynseq.scene, self.launcher_highlighted_phrase, self.launcher_highlighted_phrase - nudge)
+                    self.select_launcher(self.launcher_highlighted_phrase - nudge)
                     self.refresh_visible_strips()
                 else:
-                    scene = self.launcher_highlighted_scene - nudge
-                    self.select_launcher(scene)
+                    phrase = self.launcher_highlighted_phrase - nudge
+                    self.select_launcher(phrase)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1928,19 +1938,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if not self.back_action():
             self.zyngui.back_screen()
 
-    def select_launcher(self, scene=None, strip=None):
+    def select_launcher(self, phrase=None, strip=None):
         """
         Selects the current launcher
         """
 
-        if self.launcher_highlighted_scene == scene:
+        if self.launcher_highlighted_phrase == phrase:
             return
-        if scene is None:
-            scene = self.launcher_highlighted_scene
-        if scene < 0:
-            scene = 0
-        elif scene > self.zynseq.scenes:
-            scene = self.zynseq.scenes
+        if phrase is None:
+            phrase = self.launcher_highlighted_phrase
+        if phrase < 0:
+            phrase = 0
+        elif phrase > self.zynseq.phrases:
+            phrase = self.zynseq.phrases
         if strip is None:
             strip = self.highlighted_strip
         if strip != self.highlighted_strip:
@@ -1949,22 +1959,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         refresh_strips = False
         offset = self.launcher_offset
         # This could be simplified, but it works ;-)
-        if offset > scene:
-            offset = min(scene, self.zynseq.scenes - zynthian_gui_config.visible_launchers)
-        elif offset <= scene - zynthian_gui_config.visible_launchers:
-            offset = max(0, scene - zynthian_gui_config.visible_launchers + 1)
-        if offset > self.zynseq.scenes - zynthian_gui_config.visible_launchers:
-            offset = max(0, self.zynseq.scenes - zynthian_gui_config.visible_launchers)
+        if offset > phrase:
+            offset = min(phrase, self.zynseq.phrases - zynthian_gui_config.visible_launchers)
+        elif offset <= phrase - zynthian_gui_config.visible_launchers:
+            offset = max(0, phrase - zynthian_gui_config.visible_launchers + 1)
+        if offset > self.zynseq.phrases - zynthian_gui_config.visible_launchers:
+            offset = max(0, self.zynseq.phrases - zynthian_gui_config.visible_launchers)
         if self.launcher_offset != offset:
             self.launcher_offset = offset
             refresh_strips = True
-        self.launcher_highlighted_scene = scene
+        self.launcher_highlighted_phrase = phrase
         if self.launcher_mode:
             self.set_highlighted_clip_info()
-            self.highlighted_strip.highlight_launcher(scene)
+            self.highlighted_strip.highlight_launcher(phrase)
             try:
                 proc = self.launcher_select_info['clippy']
-                proc.engine.set_scene(proc, self.launcher_select_info['scene'])
+                proc.engine.set_phrase(proc, self.launcher_select_info['phrase'])
             except:
                 pass
         if refresh_strips:
@@ -1977,10 +1987,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.strip_drag_start = None
         self.refresh_visible_strips()
 
-    def end_moving_scene(self):
+    def end_moving_phrase(self):
         if zynthian_gui_config.enable_touch_navigation:
             self.show_back_button(False)
-        self.moving_scene = False
+        self.moving_phrase = False
         self.strip_drag_start = None
         self.refresh_visible_strips()
 

@@ -108,10 +108,10 @@ class zynthian_chain_manager:
         self.chains = {}  # Map of chain objects indexed by chain id
         self.ordered_chain_ids = []  # List of chain IDs in display order
         self.zyngine_counter = 0  # Appended to engine names for uniqueness
-        self.zyngines = {}  # List of instantiated engines
+        self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain_id = None  # Active chain id
-        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
+        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Lists of chain IDs mapped by MIDI channel
 
         # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
         self.absolute_midi_cc_binding = {}
@@ -212,7 +212,7 @@ class zynthian_chain_manager:
                     enable_sequences = False
                     break
             if enable_sequences:
-                self.state_manager.zynseq.libseq.enableChannel(midi_chan, True)
+                self.state_manager.zynseq.enable_channel(midi_chan, True)
 
         # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
@@ -262,8 +262,6 @@ class zynthian_chain_manager:
             for ccnum in (64, 66, 67, 69):
                 cc_route_ct[ccnum] = 1
             lib_zyncore.zmop_set_cc_route(zmop_index, cc_route_ct)
-
-        self.state_manager.zynseq.rebuild_all_launcher_info()
 
 
         chain.rebuild_graph()
@@ -391,8 +389,7 @@ class zynthian_chain_manager:
                     disable_sequences = False
                     break
             if disable_sequences:
-                self.state_manager.zynseq.libseq.enableChannel(midi_chan, False)
-        self.state_manager.zynseq.rebuild_all_launcher_info()
+                self.state_manager.zynseq.enable_channel(midi_chan, False)
 
         self.state_manager.purge_zs3()
         self.state_manager.end_busy("remove_chain")
@@ -429,8 +426,6 @@ class zynthian_chain_manager:
         if pos == index:
             return
         self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
-        if self.chains[chain_id].midi_chan is not None:
-            self.state_manager.zynseq.rebuild_all_launcher_info()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):
@@ -1566,8 +1561,6 @@ class zynthian_chain_manager:
                     # logging.debug(f"Adding chain ID {chain_id} to MIDI channel {mc}")
                 except:
                     pass
-
-            self.state_manager.zynseq.rebuild_all_launcher_info()
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""

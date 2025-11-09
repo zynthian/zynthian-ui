@@ -99,12 +99,12 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
                 lib_zyncore.dev_send_note_on(
                     self.idev_out, 0, note, self.OFF_COLOUR)
 
-    def update_seq_state(self, scene, chan, state, mode):
+    def update_seq_state(self, phrase, chan, state, mode):
         if self.idev_out is None:
             return
         # logging.debug("Updating Launchpad MINI pad {}".format(chan))
         try:
-            col, row = self.zynseq.get_pad_coords(chan)
+            row, col = self.zynseq.get_pad_coords(phrase, chan)
         except:
             return
         note = 16 * row + col
@@ -134,7 +134,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         if evtype == 0x9:
             note = ev[1] & 0x7F
             col, row = self.get_note_xy(note)
-            # scene change
+            # phrase change
             if col == 8:
                 self.zynseq.select_bank(row + 1)
                 return True

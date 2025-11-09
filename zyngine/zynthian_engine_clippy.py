@@ -84,9 +84,11 @@ class zynthian_engine_clippy(zynthian_engine):
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_bg_task)
         self.libclippy.end()
 
-    def set_scene(self, processor, scene):
-        self.scene = scene # Only used by GUI widget
-        processor.pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+    def set_phrase(self, processor, phrase):
+        """ Select the phrase for control, etc"""
+
+        self.phrase = phrase # Only used by GUI widget
+        processor.pattern = self.zynseq.libseq.getPattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
 
         processor.preset_name = ""
         if processor.pattern == 4294967295:
@@ -100,16 +102,16 @@ class zynthian_engine_clippy(zynthian_engine):
                 ]
                 processor.preset_name = processor.controllers_dict[f"file {processor.pattern}"].value.split("/")[-1]
         except Exception as e:
-            logging.warning(f"Can't set scene {scene} for clippy on chan {processor.midi_chan} => {e}")
+            logging.warning(f"Can't set phrase {phrase} for clippy on chan {processor.midi_chan} => {e}")
         processor.init_ctrl_screens()
 
-    def get_scene(self, processor, pattern):
-        scene = None
-        for s in range(self.zynseq.scenes):
-            if self.zynseq.libseq.getPattern(s, processor.midi_chan, 0, 0) == pattern:
-                scene = s
+    def get_phrase(self, processor, pattern):
+        phrase = None
+        for s in range(self.zynseq.phrases):
+            if self.zynseq.libseq.getPattern(self.zynseq.scene, s, processor.midi_chan, 0, 0) == pattern:
+                phrase = s
                 break
-        return scene
+        return phrase
 
     def send_controller_value(self, zctrl):
         try:
@@ -121,17 +123,16 @@ class zynthian_engine_clippy(zynthian_engine):
             return
         if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0" or zctrl.value == "":
-                zctrl.value = ""   # TODO: This should be fixed in zctrl class
+                zctrl.value = "" # TODO: This should be fixed in zctrl class
                 mode_zctrl.set_value(0)
             else:
                 mode_zctrl.set_value(1)
             beats_zctrl.value = 0
             self.set_file(zctrl.processor, pattern, True)
-            self.zynseq.rebuild_all_launcher_info()
         elif zctrl.symbol.startswith("warp"):
             self.set_file(zctrl.processor, pattern)
         elif zctrl.symbol.startswith("mode"):
-            self.set_mode(zctrl.processor, pattern, zctrl.value)
+            self.set_mode(self.get_phrase(zctrl.processor, pattern), zctrl.processor.midi_chan, zctrl.value)
         elif zctrl.symbol.startswith("crop_start"):
             zctrl_crop_end = zctrl.processor.controllers_dict[zctrl.symbol.replace("start", "end")]
             zctrl_crop_end.value_min = zctrl.value
@@ -145,40 +146,42 @@ class zynthian_engine_clippy(zynthian_engine):
             return
         elif zctrl.symbol.startswith("gain"):
             return
-            #TODO: Must map clips so that we can access them. Clips may change scene if moved in UI... 
-            #self.libclippy.setGain(zctrl.processor.midi_chan, scene, ctypes.c_float(zctrl.value))
+            #TODO: Must map clips so that we can access them. Clips may change phrase if moved in UI... 
+            #self.libclippy.setGain(zctrl.processor.midi_chan, phrase, ctypes.c_float(zctrl.value))
         elif zctrl.symbol.startswith("zoom"):
             return
 
     """ Set play mode
     
-        processor - processor object
-        pattern - pattern id
+        phrase - Index of phrase
+        chan - MIDI channel
         mode - play mode [0=disabled, 1=loop, 2..25=play 1..24 times]
     """
-    def set_mode(self, processor, pattern, mode):
-        scene = self.get_scene(processor, pattern)
+    def set_mode(self, phrase, chan, mode):
         match mode:
             case 0:
-                self.libseq.setPlayMode(scene, processor.midi_chan, 0x0001)
-
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", 0)
             case 1:
-                self.libseq.setPlayMode(scene, processor.midi_chan, 0x0101)
-                self.libseq.setFollowAction(scene, processor.midi_chan, zynseq.FOLLOW_ACTION_RELATIVE, 0)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "mode", 0x01)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", zynseq.FOLLOW_ACTION_RELATIVE)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", 0)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", 1)
             case _:
-                self.libseq.setPlayMode(scene, processor.midi_chan, 0x01 | ((mode - 1) << 8))
-                self.libseq.setFollowAction(scene, processor.midi_chan, zynseq.FOLLOW_ACTION_NONE, 0)
-        self.zynseq.rebuild_launcher_info(scene, processor.midi_chan)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "mode", 0x01)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", zynseq.FOLLOW_ACTION_NONE)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", 0)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", mode - 1)
 
     def set_file(self, processor, pattern, reset=False):
         file_zctrl = processor.controllers_dict[f"file {pattern}"]
         warp_zctrl = processor.controllers_dict[f"warp {pattern}"]
         beats_zctrl = processor.controllers_dict[f"beats {pattern}"]
+        mode_zctrl = processor.controllers_dict[f"mode {pattern}"]
         processor.pattern = pattern
-        # Find what scene this pattern is in...
-        scene = self.get_scene(processor, pattern)
-        if scene is None:
-            logging.error(f"Pattern {pattern} not found in any scene")
+        # Find what phrase this pattern is in...
+        phrase = self.get_phrase(processor, pattern)
+        if phrase is None:
+            logging.error(f"Pattern {pattern} not found in any phrase")
             return
         note = self.libseq.getNoteAtIndex(pattern, 0)
         if note > 127:
@@ -193,7 +196,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Try to determine tempo from filename
             filename = os.path.basename(path)
-            tempo = self.zynseq.libseq.getTempoAt(scene, zynseq.SCENE_CHANNEL, 1, 0)
+            tempo = self.zynseq.libseq.getTempoAt(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, 1, 0)
             if not tempo:
                 tempo = self.zynseq.libseq.getTempo()
             regptn = r"(\d+)\s*(?=bpm|BPM)"
@@ -219,7 +222,7 @@ class zynthian_engine_clippy(zynthian_engine):
             # Configure pattern with required beats to play whole file at this tempo
             try:
                 #beats_per_bar = self.libseq.getTimeSig()
-                beats_per_bar = self.zynseq.libseq.getTimeSigAt(scene, zynseq.SCENE_CHANNEL, 0)
+                beats_per_bar = self.zynseq.libseq.getTimeSigAt(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, 0)
                 if beats_per_bar < 1:
                     beats_per_bar = 4
                 beats = duration * file_tempo / 60
@@ -281,27 +284,27 @@ class zynthian_engine_clippy(zynthian_engine):
                 processor.controllers_dict[f"zoom {pattern}"].labels = labels
 
                 # Setup zynseq pattern & sequence
-                pattern = self.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+                pattern = self.libseq.getPattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
                 if pattern == 4294967295:
-                    logging.warning(f"Can't find pattern for scene {scene} chan {processor.midi_chan}")
+                    logging.warning(f"Can't find pattern for phrase {phrase} chan {processor.midi_chan}")
                 else:
                     self.libseq.selectPattern(pattern)
                     self.libseq.clearPattern(pattern)
                     self.libseq.setStepsPerBeat(1)
                     self.libseq.setBeatsInPattern(pattern, whole_beats)
-                    #TODO: Need to add notes based on scenes
+                    #TODO: Need to add notes based on phrases
                     note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
                     self.libseq.addNote(0, note, 100, 1, 0.0)
                 self.libseq.updateSequenceInfo()
-                self.zynseq.set_sequence_name(scene, processor.midi_chan, os.path.splitext(filename)[0])
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
+                self.set_mode(phrase, processor.midi_chan, mode_zctrl.value)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {pattern} => {e}")
         else:
-            self.libseq.setPlayState(scene, processor.midi_chan, zynseq.SEQ_STOPPED)
-            self.reset_pattern(processor, scene)
+            self.libseq.setPlayState(self.zynseq.scene, phrase, processor.midi_chan, zynseq.SEQ_STOPPED)
+            self.reset_pattern(processor, phrase)
 
         file_zctrl.path = path
-        self.zynseq.rebuild_launcher_info(scene, processor.midi_chan)
         if path:
             self._ctrl_screens = [
                 [f"File", [f"file {pattern}", f"warp {pattern}", f"beats {pattern}", f"mode {pattern}"]],
@@ -325,8 +328,8 @@ class zynthian_engine_clippy(zynthian_engine):
             self.tempo_cb_timer.cancel()
         self.tempo_cb_timer = None
         for processor in self.processors:
-            for scene in range(self.zynseq.scenes):
-                pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+            for phrase in range(self.zynseq.phrases):
+                pattern = self.zynseq.libseq.getPattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
                 if pattern == 4294967295:
                     continue
                 symbol = f"warp {pattern}"
@@ -335,8 +338,8 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def update_controllers(self, processor):
         patterns = []
-        for scene in range(self.zynseq.scenes):
-            pattern = self.zynseq.libseq.getPattern(scene, processor.midi_chan, 0, 0)
+        for phrase in range(self.zynseq.phrases):
+            pattern = self.zynseq.libseq.getPattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
             if pattern == 4294967295:
                 continue
             patterns.append(pattern)
@@ -403,8 +406,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     "ticks": ticks,
                     "labels": labels
                 })
-                self.libseq.setPlayMode(scene, processor.midi_chan, 0x0001)
-                self.reset_pattern(processor, scene)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "mode", 0x0001)
+                self.reset_pattern(processor, phrase)
             processor.controllers_dict.update(zctrls)
 
         # Remove controllers for non-existing patterns
@@ -431,6 +434,12 @@ class zynthian_engine_clippy(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def add_processor(self, processor):
+        """
+            Add a processor (clip player channel)
+
+            processor: zynthian_processor object
+        """
+        
         midi_chan = self.libclippy.addPlayer(255)
         if midi_chan > 15:
             return
@@ -441,30 +450,30 @@ class zynthian_engine_clippy(zynthian_engine):
         processor.controllers_dict = {}
         self.update_controllers(processor)
 
-        self.libseq.enableChannel(midi_chan, True)
-        for scene in range(self.zynseq.scenes):
-            self.zynseq.libseq.setRepeat(scene, processor.midi_chan, 0)
-            self.zynseq.libseq.setTrackOutput(scene, processor.midi_chan, 0, 0xfe)
-        self.set_scene(processor, 0)
+        self.zynseq.enable_channel(processor.midi_chan, True)
+        for phrase in range(self.zynseq.phrases):
+            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
+            self.zynseq.libseq.setTrackOutput(self.zynseq.scene, phrase, processor.midi_chan, 0, 0xfe)
+        self.set_phrase(processor, 0)
 
     def remove_processor(self, processor):
-        self.libseq.enableChannel(processor.midi_chan, False)
+        self.zynseq.enable_channel(processor.midi_chan, False)
         if self.libclippy.removePlayer(processor.midi_chan - 16) != 0:
             return
         super().remove_processor(processor)
 
-    def reset_pattern(self, processor, scene):
-            #self.libseq.clearSequence(scene, processor.midi_chan)
-            #pattern = self.libseq.getPatternAt(scene, processor.midi_chan, 0, 0)
+    def reset_pattern(self, processor, phrase):
+            #self.libseq.clearSequence(self.zynseq.scene, phrase, processor.midi_chan)
+            #pattern = self.libseq.getPatternAt(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
             #if pattern == 4294967295:
             #    pattern = self.libseq.createPattern()
-            #    self.libseq.addPattern(scene, processor.midi_chan, 0, 0, pattern, True)
+            #    self.libseq.addPattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0, pattern, True)
             #self.libseq.clearPattern(pattern)
             #self.libseq.setStepsPerBeat(1)
             #self.libseq.setBeatsInPattern(pattern, 1)
-            self.libseq.setRepeat(scene, processor.midi_chan, 0)
+            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
             self.libseq.updateSequenceInfo()
-            self.zynseq.set_sequence_name(scene, processor.midi_chan, "")
+            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management

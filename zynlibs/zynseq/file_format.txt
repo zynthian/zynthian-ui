@@ -55,37 +55,36 @@ RIFF Header:
 	Block size: 32-bit big endian
 Block:
 	Bank ID [1]
-	Quantity of scenes [1]
-	Quantity of sequences in each scene [1]
+	Quantity of phrases [1]
+	Quantity of sequences in each phrase [1]
 	Padding[1]
-	Sequences (Scene sequence, followed by child (chain) sequences):
-		Scenes:
-			Play mode [1]
-			Repeats [1]
-			Group [1]
-			Trigger note [1] (This seems like wrong place but makes code much simpler)
-			Follow action [1] (Added in v11)
-			Follow action param[2] (Added in v11)
-			Padding [1] (Added in v11)
-			Name [16] (Since V6)
-			Quantity of tracks [4]
-			Tracks:
-				Type [1] (Added in v10. 0=MIDI, 1=Audio)
-				Chain ID [1] (Added in v10. 0=None)
-				MIDI channel [1]
-				JACK output [1]
-				Keymap [1] (bits scale: 0..200, 254=map)
-				Padding [1]
-				Quantity of patterns [2]
-				Patterns:
-					Start time [4]
-					Pattern ID [4]
-			Quantity of timebase events [4]
-			Timebase events:
-				Event measure [2]
-				Event tick [2]
-				Event command [2] [0x0001: Tempo, 0x0002: Time signature]
-				Event data [2] (maybe variable data in future?)
+	Sequences (Phrase sequence, followed by child (chain) sequences):
+		Play mode [1]
+		Repeats [1]
+		Group [1]
+		Trigger note [1] (This seems like wrong place but makes code much simpler)
+		Follow action [1] (Added in v11)
+		Follow action param[2] (Added in v11)
+		Padding [1] (Added in v11)
+		Name [16] (Since V6)
+		Quantity of tracks [4]
+		Tracks:
+			Type [1] (Added in v10. 0=MIDI, 1=Audio)
+			Chain ID [1] (Added in v10. 0=None)
+			MIDI channel [1]
+			JACK output [1]
+			Keymap [1] (bits scale: 0..200, 254=map)
+			Padding [1]
+			Quantity of patterns [2]
+			Patterns:
+				Start time [4]
+				Pattern ID [4]
+		Quantity of timebase events [4]
+		Timebase events:
+			Event measure [2]
+			Event tick [2]
+			Event command [2] [0x0001: Tempo, 0x0002: Time signature]
+			Event data [2] (maybe variable data in future?)
 
 RIFF Header: (user defined scales) NOT IMPLEMENTED
 	Block ID: 'scal'
