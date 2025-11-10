@@ -221,8 +221,9 @@ class Sequence {
     /** @brief  Set follow sequence
         @param  sequence Pointer to follow sequence
         @param  action Follow action @see FOLLOW_ACTION enum
+        @param  param Follow action parameter
     */
-    void setFollowSequence(Sequence* pSequence, uint8_t action);
+    void setFollowSequence(Sequence* pSequence, uint8_t action, int16_t param);
 
     /** @brief  Get follow sequence
         @retval Sequence* Pointer to follow sequence
@@ -233,6 +234,11 @@ class Sequence {
         @retval uint8_t Follow action
     */
     uint8_t getFollowAction();
+
+    /** @brief  Get follow action parameter
+        @retval uint8_t Follow action parameter
+    */
+    uint8_t getFollowParam();
 
     /** @brief  Set times to play
         @param  repeat Quantity of times to play (0 to disable)
@@ -270,6 +276,7 @@ class Sequence {
     bool m_bEmpty = true;                       // True if all patterns are emtpy (no events)
     std::string m_sName;                        // Sequence name
     uint8_t m_nFollowAction = FOLLOW_ACTION_NONE; // Follow action to perform when sequence ends
+    int16_t m_nFollowParam = 0;                 // Follow action parameter
     Sequence* m_pFollowSequence = nullptr;      // Pointer to follow sequence (null for no follow action)
     Sequence* m_pPhraseSequence = nullptr;      // Pointer to phrase sequence (null if not in a phrase, e.g. is a phrase)
 };

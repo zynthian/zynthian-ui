@@ -1093,7 +1093,7 @@ void setSequenceName(uint8_t scene, uint8_t phrase, uint8_t sequence, const char
 */
 const char* getSequenceName(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
-/** @brief  Set sequence follow action when one-shot ends
+/** @brief  Set sequence follow action
     @param  scene Index of scene
     @param  phrase Index of phrase
     @param  sequence Index of sequence
@@ -1105,7 +1105,7 @@ void setSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence, ui
     @param  scene Index of scene
     @param  phrase Index of phrase
     @param  sequence Index of sequence
-    @param  param Parameter of action, e.g. offset
+    @param  param  Follow action parameter
 */
 void setSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param);
 

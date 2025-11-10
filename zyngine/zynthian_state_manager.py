@@ -1234,7 +1234,6 @@ class zynthian_state_manager:
                 if not self.zynseq.set_state(state["zynseq"]):
                     self.set_busy_warning("Invalid sequence data within snapshot")
                     sleep(2)
-                self.zynseq.update_tempo()
 
             # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1

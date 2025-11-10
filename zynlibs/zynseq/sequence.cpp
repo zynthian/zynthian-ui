@@ -319,9 +319,10 @@ std::string Sequence::getName() {
     return m_sName;
 }
 
-void Sequence::setFollowSequence(Sequence* sequence, uint8_t action) {
+void Sequence::setFollowSequence(Sequence* sequence, uint8_t action, int16_t param) {
     m_pFollowSequence = sequence;
     m_nFollowAction = action;
+    m_nFollowParam = param;
 }
 
 Sequence* Sequence::getFollowSequence() {
@@ -330,6 +331,10 @@ Sequence* Sequence::getFollowSequence() {
 
 uint8_t Sequence::getFollowAction() {
     return m_nFollowAction;
+}
+
+uint8_t Sequence::getFollowParam() {
+    return m_nFollowParam;
 }
 
 void Sequence::setRepeat(uint8_t repeat) {

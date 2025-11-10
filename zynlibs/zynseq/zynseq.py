@@ -304,9 +304,6 @@ class zynseq(zynthian_engine):
     def get_tempo(self):
         return self.libseq.getTempo()
 
-    def update_tempo(self):
-        self.set_tempo(self.libseq.getTempo())
-
     def nudge_tempo(self, offset):
         self.zctrl_tempo.nudge(offset)
 
@@ -318,6 +315,7 @@ class zynseq(zynthian_engine):
 
     def set_midi_channel(self, chan, sequence, track, channel):
         self.libseq.setChannel(chan, sequence, track, channel)
+        self.refresh_state()
 
     def remove_pattern(self, chan, sequence, track, time):
         self.libseq.removePattern(chan, sequence, track, time)

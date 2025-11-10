@@ -276,7 +276,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         self.zgui_ctrl2.hide()
         self.zgui_ctrl2.config(self.zyngui.state_manager.zynseq.zctrl_tempo)
         self.zgui_ctrl2.show()
-        self.zyngui.state_manager.zynseq.update_tempo()
 
     def hide_playing_bpm(self):
         self.zgui_ctrl2.hide()

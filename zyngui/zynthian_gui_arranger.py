@@ -1214,7 +1214,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             return
         if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
             # Tempo change
-            self.zynseq.update_tempo()
             self.zynseq.nudge_tempo(dval)
             self.set_title("Tempo: {:.1f}".format(
                 self.zynseq.get_tempo()), None, None, 2)

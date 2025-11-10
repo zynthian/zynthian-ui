@@ -454,25 +454,40 @@ void SequenceManager::removePhrase(uint8_t scene, uint8_t phrase) {
     auto& vPhrases = m_vScenes[scene];
     if (phrase >= vPhrases.size())
         return;
-    for (auto it = vPhrases[phrase]->m_vChildSequences.begin(); it != vPhrases[phrase]->m_vChildSequences.end(); ++it) {
+
+    Sequence* pPhrase = vPhrases[phrase];
+    // Iterate each sequence in phrase
+    for (auto it = pPhrase->m_vChildSequences.begin(); it != pPhrase->m_vChildSequences.end(); ++it) {
+        // Iterate each playing sequence
         for (auto it_playing = m_vPlayingSequences.begin(); it_playing != m_vPlayingSequences.end(); ++it_playing) {
             if (*it == *it_playing) {
+                // Remove from playing sequences
                 m_vPlayingSequences.erase(it_playing);
                 break;
             }
         }
         delete *it;
-        it = vPhrases[phrase]->m_vChildSequences.erase(it);
+        it = pPhrase->m_vChildSequences.erase(it);
     }
-    Track* pTrack = vPhrases[phrase]->getTrack(0);
+
+    // Delete the pattern used by phrase launcher
+    Track* pTrack = pPhrase->getTrack(0);
     if (pTrack) {
        Pattern* pPattern = pTrack->getPattern(0);
        if (pPattern) {
            deletePattern(getPatternIndex(pPattern));
        }
     }
-    delete vPhrases[phrase];
+
+    // Delete phrase launcher sequence
+    delete pPhrase;
     vPhrases.erase(vPhrases.begin() + phrase);
+
+    // Refresh follow actions
+    for (auto& pPhrase2: vPhrases) {
+        setFollowAction(scene, pPhrase2, pPhrase2->getFollowAction(), pPhrase2->getFollowParam());
+        fprintf(stderr, "Reasserting %u follow %u, %d\n", pPhrase, pPhrase2->getFollowAction(), pPhrase2->getFollowParam());
+    }
 }
 
 void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2) {
@@ -484,47 +499,28 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
     std::iter_swap(vPhrases[phrase1], vPhrases[phrase2]);
 }
 
-bool SequenceManager::setFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t action) {
-    Sequence* pSequence = getSequence(scene, phrase, sequence);
-    if (pSequence) {
-        uint16_t param = getFollowParam(scene, pSequence);
-        return setFollowAction(scene, pSequence, action, param);
-    }
-    return false;
-}
-
-bool SequenceManager::setFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param) {
-    Sequence* pSequence = getSequence(scene, phrase, sequence);
-    if (pSequence) {
-        uint8_t action = pSequence->getFollowAction();
-        return setFollowAction(scene, pSequence, action, param);
-    }
-    return false;
-}
-
 bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param) {
-    Sequence* pSequence = sequence;
-    if (pSequence) {
+    if (sequence && scene < m_vScenes.size()) {
         auto& vPhrases = m_vScenes[scene];
         switch (action) {
             case FOLLOW_ACTION_ABSOLUTE:
                 if (param < 0 || param > vPhrases.size())
                     return false;
-                pSequence->setFollowSequence(vPhrases[param], action);
+                sequence->setFollowSequence(vPhrases[param], action, param);
                 return true;
                 break;
             case FOLLOW_ACTION_RELATIVE:
                 if (param == 0) {
                     // Loop
-                    pSequence->setFollowSequence(pSequence, action);
+                    sequence->setFollowSequence(sequence, action, param);
                     return true;
                 } else {
                     // Find index of sequence
                     for (uint32_t i = 0; i < vPhrases.size(); ++i) {
-                        if (vPhrases[i] == pSequence) {
+                        if (vPhrases[i] == sequence) {
                             uint16_t offset = param + i;
                             if (offset >= 0 && offset < vPhrases.size()) {
-                                pSequence->setFollowSequence(vPhrases[offset], action);
+                                sequence->setFollowSequence(vPhrases[offset], action, offset);
                                 return true;
                             }
                             break;
@@ -533,34 +529,8 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                 }
                 break;
             default:
-                pSequence->setFollowSequence(nullptr, 0);
+                sequence->setFollowSequence(nullptr, 0, 0);
         }
     }
     return false;
-}
-
-int16_t SequenceManager::getFollowParam(uint8_t scene, Sequence* sequence) {
-    if (sequence) {
-        auto& vPhrases = m_vScenes[scene];
-        uint8_t nAction = sequence->getFollowAction();
-        if (nAction == FOLLOW_ACTION_NONE)
-            return 0;
-        Sequence* pFollowSequence = sequence->getFollowSequence();
-        uint8_t phraseIndex = 0xff;
-        uint8_t nextPhraseIndex = 0xff;
-        for (uint32_t i = 0; i < vPhrases.size(); ++i) {
-            if (vPhrases[i] == sequence)
-                phraseIndex = i;
-            if (vPhrases[i] && vPhrases[i] == pFollowSequence) {
-                if (nAction == FOLLOW_ACTION_ABSOLUTE)
-                    return i;
-                nextPhraseIndex = i;
-            }
-        }
-        if (phraseIndex == 0xff || nextPhraseIndex == 0xff)
-            return 0;
-        if (nAction == FOLLOW_ACTION_RELATIVE)
-            return nextPhraseIndex - phraseIndex;
-    }
-    return 0;
 }

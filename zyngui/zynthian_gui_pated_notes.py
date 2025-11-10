@@ -1193,7 +1193,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             return
 
         if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
-            self.zynseq.update_tempo()
             self.zynseq.nudge_tempo(dval)
             self.set_title("Tempo: {:.1f}".format(self.zynseq.get_tempo()), None, None, 2)
 

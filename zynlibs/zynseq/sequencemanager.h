@@ -279,33 +279,8 @@ class SequenceManager {
     */
     bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param);
 
-    /** @brief  Set follow action
-        @param  scene Index of scene
-        @param  phrase Index of phrase
-        @param  sequence Index of sequence
-        @param  action Follow action @see FOLLOW_ACTION enum
-        @retval bool True on success
-    */
-    bool setFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t action);
-
-    /** @brief  Set parameter for follow action
-        @param  scene Index of scene
-        @param  phrase Index of phrase
-        @param  sequence Index of sequence
-        @param  param Parameter of action, e.g. offset
-        @retval bool True on success
-    */
-    bool setFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param);
-
-    /** @brief  Get sequence follow action parameter
-        @param  scene Index of scene
-        @param  sequence Pointer sequence
-        @retval uint16_t Follow action parameter
-    */
-    int16_t getFollowParam(uint8_t scene, Sequence* sequence);
 
     private:
-
 
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);

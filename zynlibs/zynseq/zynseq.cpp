@@ -1340,8 +1340,7 @@ bool setState(const char* state) {
                 // Set follow actions late, after creating all sequence objects
                 for (auto& followAction : vFollowActions) {
                     Sequence* pSeq = g_seqMan.getSequence(nScene, followAction[0], followAction[1]);
-                    if (pSeq)
-                        g_seqMan.setFollowAction(followAction[0], pSeq, followAction[2], followAction[3]);             
+                    g_seqMan.setFollowAction(nScene, pSeq, followAction[2], followAction[3]);
                 }
             }
         }
@@ -1420,7 +1419,7 @@ const char* getState() {
             jPhrase["sig"] = pPhrase->getTimeSig();
             jPhrase["repeat"] = pPhrase->getRepeat();
             jPhrase["followAction"] = pPhrase->getFollowAction();
-            jPhrase["followParam"] = g_seqMan.getFollowParam(nScene, pPhrase);
+            jPhrase["followParam"] = pPhrase->getFollowParam();
             jPhrase["state"] = pPhrase->getPlayState();
             for (const auto& pSequence : pPhrase->m_vChildSequences) {
                 if (!pSequence)
@@ -1432,7 +1431,7 @@ const char* getState() {
                 jSeq["mode"] = pSequence->getPlayMode();
                 jSeq["repeat"] = pSequence->getRepeat();
                 jSeq["followAction"] = pSequence->getFollowAction();
-                jSeq["followParam"] = g_seqMan.getFollowParam(nScene, pSequence);
+                jSeq["followParam"] = pSequence->getFollowParam();
                 jSeq["state"] = pSequence->getPlayState();
                 for (size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack) {
                     Track* pTrack = pSequence->getTrack(nTrack);
@@ -2554,6 +2553,7 @@ uint8_t* getProgress() {
 
 void stop() {
     g_seqMan.stop();
+    g_mSchedule.clear();
 }
 
 uint32_t getSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence) {
@@ -2708,11 +2708,15 @@ const char* getSequenceName(uint8_t scene, uint8_t phrase, uint8_t sequence) {
 }
 
 void setSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t action) {
-    g_bDirty |= g_seqMan.setFollowAction(scene, phrase, sequence, action);
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, action, pSequence->getFollowParam());
 }
 
 void setSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param) {
-    g_bDirty |= g_seqMan.setFollowParam(scene, phrase, sequence, param);
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, pSequence->getFollowAction(), param);
 }
 
 uint8_t getSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence) {
@@ -2723,7 +2727,10 @@ uint8_t getSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence)
 }
 
 int16_t getSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence) {
-    return g_seqMan.getFollowParam(scene, g_seqMan.getSequence(scene, phrase, sequence));
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        return pSequence->getFollowParam();
+    return 0;
 }
 
 void updateSequenceInfo() {
@@ -3032,6 +3039,7 @@ void removePhrase(uint8_t scene, uint8_t phrase) {
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
+    stop(); //!@todo Blunt stop everything to avoid pointers to events in deleted sequences segfault!
     g_seqMan.removePhrase(scene, phrase);
     g_bMutex = false;
 }
