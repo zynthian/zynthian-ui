@@ -425,7 +425,7 @@ class zynthian_gui_mixer_strip:
         if self.chain_id == 0:
             state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
         elif type(self.chain.midi_chan) is not int:
-            return
+            state_seq = None # This will raise an exception later and draw empty block
         else:
             state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][self.chain.midi_chan]
             pattern = state_seq["tracks"][0]["patns"]['0']
@@ -1630,7 +1630,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def drag_launcher(self, dy):
         new_pos = self.launcher_offset - dy
-        if 0 <= new_pos <= len(self.state["scenes"][self.zynseq.scene]["phrases"]) - self.visible_launchers:
+        if 0 <= new_pos <= len(self.zynseq.state["scenes"][self.zynseq.scene]["phrases"]) - self.visible_launchers:
             self.launcher_offset = new_pos
             self.refresh_visible_strips()
 

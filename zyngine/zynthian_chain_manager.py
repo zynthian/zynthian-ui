@@ -42,7 +42,7 @@ from zyngui import zynthian_gui_config
 # Some variables & definitions
 # ----------------------------------------------------------------------------
 
-MAX_NUM_MIDI_CHANS = 16
+MAX_NUM_MIDI_CHANS = 32
 
 # TODO: Get this from zynmixer
 MAX_NUM_MIXER_CHANS = 16
@@ -106,7 +106,7 @@ class zynthian_chain_manager:
         self.state_manager = state_manager
 
         self.chains = {}  # Map of chain objects indexed by chain id
-        self.ordered_chain_ids = []  # List of chain IDs in display order
+        self.ordered_chain_ids = []  # List of chain IDs in mixer display order
         self.zyngine_counter = 0  # Appended to engine names for uniqueness
         self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
@@ -274,6 +274,9 @@ class zynthian_chain_manager:
 
         self.active_chain_id = chain_id
         self.state_manager.end_busy("add_chain")
+        if fast_refresh:
+            self.state_manager.zynseq.refresh_chan2col()
+            self.state_manager.ctrldev_manager.refresh_all()
         return chain_id
 
     def add_chain_from_state(self, chain_id, chain_state):
@@ -392,6 +395,9 @@ class zynthian_chain_manager:
                 self.state_manager.zynseq.enable_channel(midi_chan, False)
 
         self.state_manager.purge_zs3()
+        if fast_refresh:
+            self.state_manager.zynseq.refresh_chan2col()
+            self.state_manager.ctrldev_manager.refresh_all()
         self.state_manager.end_busy("remove_chain")
         return True
 
@@ -406,6 +412,8 @@ class zynthian_chain_manager:
         success = True
         for chain in list(self.chains.keys()):
             success &= self.remove_chain(chain, stop_engines, fast_refresh=False)
+        self.state_manager.zynseq.refresh_chan2col()
+        self.state_manager.ctrldev_manager.refresh_all()
         return success
 
     def move_chain(self, offset, chain_id=None):
@@ -426,6 +434,8 @@ class zynthian_chain_manager:
         if pos == index:
             return
         self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
+        self.state_manager.zynseq.refresh_chan2col()
+        self.state_manager.ctrldev_manager.refresh_all()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):
@@ -442,7 +452,7 @@ class zynthian_chain_manager:
             return None
 
     def get_chain_by_index(self, index):
-        """Get a chain object by the index"""
+        """Get a chain object by its display index"""
 
         try:
             return self.chains[self.ordered_chain_ids[index]]
@@ -475,7 +485,7 @@ class zynthian_chain_manager:
         return None
 
     def get_chain_id_by_index(self, index):
-        """Get a chain ID by the index"""
+        """Get a chain ID by the display index"""
 
         try:
             return self.ordered_chain_ids[index]
@@ -708,7 +718,7 @@ class zynthian_chain_manager:
         return self.active_chain_id
 
     def set_active_chain_by_index(self, index):
-        """Select the active chain by index
+        """Select the active chain by display index
 
         index : Index of chain in ordered_chain_ids
         Returns : ID of active chain

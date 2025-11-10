@@ -216,23 +216,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         self.light_off()
         super().end()
 
-    def update_phrase_state(self):
-        """Update hardware indicators for active scene and refresh phrase launcher state as needed.
-        *COULD* be implemented by child class
-        """
-        if self.idev_out is None:
-            return
-        for row in range(0, 7):
-            try:
-                info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][row]
-                #logging.debug(f"PHRASE ({row}) INFO => {info}")
-                if info is None:
-                    self.pad_off(zynseq.PHRASE_CHANNEL, row)
-                else:
-                    self.update_seq_state(row, zynseq.PHRASE_CHANNEL, info)
-            except Exception as e:
-                logging.error(e)
-
     def update_seq_state(self, phrase, chan, state=None, mode=None):
         """Update hardware indicators for a sequence (pad): playing state etc.
         *SHOULD* be implemented by child class
@@ -256,10 +239,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """
         if self.idev_out is None:
             return
-        self.update_phrase_state()
         for row in range(self.rows):
             for col in range(self.cols):
                 self.update_seq_state(row, col)
+            self.update_seq_state(row, zynseq.PHRASE_CHANNEL)
 
 
 # ------------------------------------------------------------------------------------------------------------------

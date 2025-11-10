@@ -165,6 +165,7 @@ class zynseq(zynthian_engine):
         self.seq_in_scene = 0  # Quantity of sequence in the selected scene
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
+        self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
         self.reset()
 
     # Destroy instance of shared library
@@ -340,6 +341,16 @@ class zynseq(zynthian_engine):
         self.state = loads(self.libseq.getState().decode("utf-8"))
         self.libseq.freeState()
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
+        self.refresh_chan2col()
+
+    def refresh_chan2col(self):
+        self.chan2col = [None] * LAUNCHER_COLS
+        col = 0
+        for id in self.state_manager.chain_manager.ordered_chain_ids:
+            midi_chan = self.state_manager.chain_manager.chains[id].midi_chan
+            if midi_chan is not None:
+                self.chan2col[midi_chan] = col
+                col += 1
 
     def set_state(self, state):
         result = self.libseq.setState(bytes(dumps(state), "utf-8"))
@@ -378,13 +389,12 @@ class zynseq(zynthian_engine):
             logging.warning(f"Failed to set sequence parameter {param}={value}: {e}")
             return False
 
-    def get_pad_coords(self, phrase, chan, scroll=False):
+    def get_pad_coords(self, phrase, chan):
         """
         Get the coordinates of a sequence in the displayed launcher grid
 
-        :param phrase Index of phrase (row)
+        :param phrase: Index of phrase (row)
         :param chan: MIDI channel of sequence
-        :param scroll: True to get the relative scrolled position, False for absolute (default) - not implemented
         :returns: [row, col] Row and column in the grid or None if not found
         .. note::
             Column is the chain position, starting from 0 at left side of mixer view
@@ -393,11 +403,23 @@ class zynseq(zynthian_engine):
 
         try:
             #TODO: Lookup horizontal and vertical scroll poisition
-            chain_id = self.state_manager.chain_manager.midi_chan_2_chain_ids[chan][0]
-            col = self.state_manager.chain_manager.ordered_chain_ids.index(chain_id)
             row = phrase
-            return row, col
+            return row, self.chan2col[chan]
         except:
             return None
+
+    def get_chan_from_col(self, col):
+        """
+        Get the MIDI channel of a column of launchers
+        
+        :param col: Index of column on hardware launcher (display order, MIDI chains only)
+        :returns: MIDI channel or None if invalid
+        """
+
+        try:
+            return self.chan2col.index(col)
+        except:
+            return None
+
 
 # -------------------------------------------------------------------------------

@@ -31,6 +31,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynth
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchkey Mini MK3
@@ -46,13 +47,13 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.shift = False
-        self.scroll = False
+        self.scroll = 0 # Vertical scroll position
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         # Enable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
-        self.cols = 16
+        self.cols = 8
         self.rows = 2
         super().init()
 
@@ -61,41 +62,50 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
+    def light_off(self):
+        for row in range(self.rows):
+            for col in range(8):
+                self.pad_off(col, row)
+
     def update_seq_state(self, phrase, chan, state=None, mode=None):
         if self.idev_out is None :
             return
         try:
             row, col = self.zynseq.get_pad_coords(phrase, chan)
+            if col is None:
+                return
+            row -= self.scroll
         except:
             return
-        if self.scroll:
-            col -= 8
-        if row > 1 or col > 8 or col < 0:
+        if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
             return
+        if state is None or mode is None:
+            state = self.zynseq.libseq.getSequenceState(self.zynseq.scene, phrase, chan)
+            mode = (state >> 8) & 0xff
+            state &= 0xff
         note = 96 + row * 16 + col
         # chan: 0=static, 1=flashing, 2=pulsing
         try:
-            if mode == 0 or chan > 15: #TODO: Handle groups > 15
-                chan = 0
+            if mode == 0 or chan >= MAX_NUM_MIDI_CHANS: #TODO: Handle phrase launcher
                 vel = 0
+                chan = 0
             elif state == zynseq.SEQ_STOPPED:
-                chan = 0
                 vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                chan = 0
             elif state == zynseq.SEQ_PLAYING:
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
                 chan = 2
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                chan = 1
                 vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
-            elif state == zynseq.SEQ_STARTING:
-                chan = 0
-                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
-                lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
                 chan = 1
+            elif state == zynseq.SEQ_STARTING:
+                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
+                lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
                 vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                chan = 1
             else:
-                chan = 0
                 vel = 0
+                chan = 0
         except Exception as e:
             chan = 0
             vel = 0
@@ -106,6 +116,13 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     def pad_off(self, col, row):
         note = 96 + row * 16 + col
         lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
+
+    def refresh(self):
+        if self.idev_out is None:
+            return
+        for row in range(self.rows):
+            for col in range(zynseq.PHRASE_CHANNEL + 1):
+                self.update_seq_state(row + self.scroll, col)
 
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
@@ -119,11 +136,10 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             # Toggle pad
             try:
                 col = (note - 96) % 16
-                row = (note - 96) // 16
-                info = self.zynseq.get_launcher_info(col, row)
-                if info is None:
-                    return
-                self.zynseq.libseq.togglePlayState(self.zynseq.scene, info['phrase'], info["sequence"])
+                row = (note - 96) // 16 + self.scroll
+                midi_chan = self.zynseq.get_chan_from_col(col)
+                if midi_chan is not None:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, row, midi_chan)
             except:
                 pass
         elif evtype == 0xB:
@@ -148,13 +164,21 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 # TRACK LEFT
                 self.state_manager.send_cuia("ARROW_LEFT")
             elif ccnum == 0x68:
-                # UP
-                #self.state_manager.send_cuia("ARROW_UP")
-                self.scroll = not self.scroll
-                self.refresh()
+                if self.shift:
+                    # UP
+                    self.scroll -= 1
+                    if self.scroll < 0:
+                        self.scroll = 0
+                    self.refresh()
+                else:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, self.scroll, zynseq.PHRASE_CHANNEL)
             elif ccnum == 0x69:
-                # DOWN
-                self.state_manager.send_cuia("ARROW_DOWN")
+                if self.shift:
+                    # DOWN
+                    self.scroll += 1
+                    if self.scroll >= self.zynseq.phrases - 1:
+                        self.scroll = self.zynseq.phrases - 1
+                    self.refresh()
             elif ccnum == 0x73:
                 # PLAY
                 if self.shift:

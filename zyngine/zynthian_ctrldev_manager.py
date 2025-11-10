@@ -229,6 +229,13 @@ class zynthian_ctrldev_manager():
             else:
                 logging.warning(f"Can't restore state for '{uid}'. Device not connected or driver not loaded.")
 
+    def refresh_all(self):
+        """ Refresh all device indications"""
+
+        for ctrldev in self.drivers.values():
+            ctrldev.light_off()
+            ctrldev.refresh()
+
     def sleep_on(self):
         """Enable sleep state"""
 

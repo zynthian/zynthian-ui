@@ -444,7 +444,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if midi_chan > 15:
             return
         self.processors.append(processor)
-        processor.chain.set_midi_chan(midi_chan + 16)
+        self.state_manager.chain_manager.set_midi_chan(processor.chain_id, midi_chan + 16)
         processor.jackname = f"{self.jackname}:out_{midi_chan + 1 :02d}"
 
         processor.controllers_dict = {}
