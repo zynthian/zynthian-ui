@@ -246,8 +246,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     write_file = True
 
                 dst_path = f"/tmp/clippy_{processor.midi_chan}_{pattern}.wav"
-                if write_file:
-                    self.libclippy.copyFile(bytes(path, "utf-8"), bytes(dst_path, "utf-8"), 2, ctypes.c_float(ratio))
+                if write_file and self.libclippy.copyFile(bytes(path, "utf-8"), bytes(dst_path, "utf-8"), 2, ctypes.c_float(ratio)) == 0:
                     path = dst_path
                     zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
                 else:

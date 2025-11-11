@@ -1630,7 +1630,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': params
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            labels = ["NONE", "LOOP", "NEXT", "PREV"]
+            labels = ["NONE", "LOOP"]
+            if (self.zynseq.phrase < self.zynseq.phrases - 1):
+                labels.append("NEXT")
+            if (self.zynseq.phrase > 0):
+                labels.append("PREV")
             option_screen.enable_param_editor(option_screen, "follow", {
                 "name": "Follow action",
                 "labels": labels,
@@ -1725,17 +1729,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             case "duration":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)
             case "follow":
-                match zctrl.value:
-                    case 0: # None
+                match zctrl.value2label[str(zctrl.value)]:
+                    case "NONE":
                         self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
                         self.launcher_select_info["followParam"] = 0
-                    case 1: # Loop
+                    case "LOOP":
                         self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
                         self.launcher_select_info["followParam"] = 0
-                    case 2: # Next
+                    case "NEXT":
                         self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
                         self.launcher_select_info["followParam"] = +1
-                    case 3: # Previous
+                    case "PREV":
                         self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
                         self.launcher_select_info["followParam"] = -1
 

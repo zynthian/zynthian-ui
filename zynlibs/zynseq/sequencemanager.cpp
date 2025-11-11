@@ -234,7 +234,7 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 // Reached end of sequence repeats
                 Sequence* pFollowSequence = pSequence->getFollowSequence();
                 if (pFollowSequence && pFollowSequence->getRepeat())
-                    setPlayState(pFollowSequence, STARTING);
+                    setPlayState(pFollowSequence, PLAYING);
             }
             if (nGroup < 32 && pSequence->getLength())
                 m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
@@ -290,13 +290,8 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
                 }
             }
         }
-        if (bAddToList) {
-            if (pSequence->isPhraseLauncher())
-                // Need phrase launchers to be at head of queue to act before child sequences
-                m_vPlayingSequences.insert(m_vPlayingSequences.begin(), pSequence);
-            else
-                m_vPlayingSequences.push_back(pSequence);
-        }
+        if (bAddToList)
+            m_vPlayingSequences.push_back(pSequence);
     }
     pSequence->setPlayState(state);
 
@@ -484,10 +479,8 @@ void SequenceManager::removePhrase(uint8_t scene, uint8_t phrase) {
     vPhrases.erase(vPhrases.begin() + phrase);
 
     // Refresh follow actions
-    for (auto& pPhrase2: vPhrases) {
+    for (auto& pPhrase2: vPhrases)
         setFollowAction(scene, pPhrase2, pPhrase2->getFollowAction(), pPhrase2->getFollowParam());
-        fprintf(stderr, "Reasserting %u follow %u, %d\n", pPhrase, pPhrase2->getFollowAction(), pPhrase2->getFollowParam());
-    }
 }
 
 void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2) {
@@ -515,13 +508,16 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                     sequence->setFollowSequence(sequence, action, param);
                     return true;
                 } else {
-                    // Find index of sequence
+                    // Find index of sequence - this should already be known by caller!!!
                     for (uint32_t i = 0; i < vPhrases.size(); ++i) {
                         if (vPhrases[i] == sequence) {
-                            uint16_t offset = param + i;
+                            int16_t offset = param + i;
                             if (offset >= 0 && offset < vPhrases.size()) {
-                                sequence->setFollowSequence(vPhrases[offset], action, offset);
+                                sequence->setFollowSequence(vPhrases[offset], action, param);
                                 return true;
+                            } else {
+                                // Attempt to select non-existing phrase so set to none.
+                                sequence->setFollowSequence(nullptr, 0, 0);
                             }
                             break;
                         }
