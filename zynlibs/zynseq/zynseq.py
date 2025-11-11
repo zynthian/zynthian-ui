@@ -350,7 +350,7 @@ class zynseq(zynthian_engine):
         col = 0
         for id in self.state_manager.chain_manager.ordered_chain_ids:
             midi_chan = self.state_manager.chain_manager.chains[id].midi_chan
-            if midi_chan is not None:
+            if midi_chan is not None and self.chan2col[midi_chan] is None:
                 self.chan2col[midi_chan] = col
                 col += 1
 

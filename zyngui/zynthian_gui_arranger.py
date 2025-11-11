@@ -306,7 +306,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         self.zynseq.build_default_scene(self.zynseq.scene)
         self.zynseq.select_scene(self.zynseq.scene, True)
         self.update_sequence_tracks()
-        self.zynseq.libseq.setPlayPosition(self.zynseq.scene, self.sequence, 0)
+        self.zynseq.libseq.setSequencePlayPosition(self.zynseq.scene, self.sequence, 0)
         self.redraw_pending = 4
 
     # Function to clear sequence
@@ -720,7 +720,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         # bars = int(self.selected_cell[0] / self.zynseq.libseq.getTimeSig())
         # pos = bars * self.zynseq.libseq.getTimeSig() * self.clocks_per_division
         # if self.zynseq.libseq.getSequenceLength(self.zynseq.scene, self.sequence) > pos:
-        # self.zynseq.libseq.setPlayPosition(self.zynseq.scene, self.sequence, pos)
+        # self.zynseq.libseq.setSequencePlayPosition(self.zynseq.scene, self.sequence, pos)
         self.zynseq.libseq.togglePlayState(self.zynseq.scene, self.sequence)
 
     # Function to toggle note event
@@ -1251,7 +1251,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
                 self.zynseq.libseq.togglePlayState(
                     self.zynseq.scene, self.sequence)
             elif t == 'B':
-                self.zynseq.libseq.setPlayPosition(
+                self.zynseq.libseq.setSequencePlayPosition(
                     self.zynseq.scene, self.sequence, 0)
             else:
                 return False

@@ -938,7 +938,7 @@ void stop();
     @param  sequence Index of sequence of sequence within phrase
     @retval uint32_t Playhead position in clock cycles
 */
-uint32_t getSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence);
+uint32_t getSequencePlayPosition(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
 /** @brief  Set the currently playing clock cycle
     @param  scene Index of scene containing sequence
@@ -946,7 +946,7 @@ uint32_t getSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence);
     @param  sequence Index of sequence of sequence within phrase
     @param  clock Clock cycle to position play head
 */
-void setSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t clock);
+void setSequencePlayPosition(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t clock);
 
 /** @brief  Get length of sequence in clock cycles
     @param  scene Index of scene containing sequence

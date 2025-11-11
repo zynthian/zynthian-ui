@@ -1276,7 +1276,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def start_playback(self):
         # Set to start of pattern - work around for timebase issue in library.
-        self.zynseq.libseq.setPlayPosition(self.phrase, self.sequence, 0)
+        self.zynseq.libseq.setSequencePlayPosition(self.phrase, self.sequence, 0)
         self.zynseq.libseq.setPlayState(self.zynseq.scene, self.phrase, self.sequence, zynseq.SEQ_STARTING)
 
     def stop_playback(self):

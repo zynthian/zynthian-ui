@@ -45,6 +45,7 @@ void SequenceManager::init() {
     m_vScenes.clear();
     for (uint8_t channel = 0; channel < 32; ++channel)
         enableChannel(channel, false);
+    getPattern(0); // Create pattern 0 so that getNextPattern always has a valid starting point.
     setScene(0);
 }
 

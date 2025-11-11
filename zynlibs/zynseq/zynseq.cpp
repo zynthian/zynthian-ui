@@ -1364,7 +1364,7 @@ const char* getState() {
     j["scene"] = nScene;
     // Iterate through patterns
     uint32_t nPattern = 0;
-    do {
+    while ((nPattern = g_seqMan.getNextPattern(nPattern)) != -1) {
         Pattern* pPattern = g_seqMan.getPattern(nPattern);
         // Only save patterns with content
         if (pPattern->getEventAt(0)) {
@@ -1400,11 +1400,9 @@ const char* getState() {
             }
             j["patns"][std::to_string(nPattern)] = jPatn;
         }
-        nPattern = g_seqMan.getNextPattern(nPattern);
-    } while (nPattern != -1);
+    }
 
     // Iterate through scenes
-
     for (uint32_t nScene = 0; nScene < g_seqMan.getNumScenes(); ++nScene) {
         json jScene;
         uint32_t nPhrase = 0;
@@ -2556,7 +2554,7 @@ void stop() {
     g_mSchedule.clear();
 }
 
-uint32_t getSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence) {
+uint32_t getSequencePlayPosition(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence) {
         return pSequence->getPlayPosition();
@@ -2564,7 +2562,7 @@ uint32_t getSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     return 0;
 }
 
-void setSequencePosition(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t clock) {
+void setSequencePlayPosition(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t clock) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence) {
         pSequence->setPlayPosition(clock);

@@ -983,6 +983,7 @@ class zynthian_state_manager:
             state['audio_recorder_armed'] = armed_state
 
         # Zynseq json
+        self.zynseq.refresh_state()
         state['zynseq'] = self.zynseq.state
 
         return state
