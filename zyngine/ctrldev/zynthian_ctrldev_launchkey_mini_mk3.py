@@ -37,12 +37,22 @@ from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 # Novation Launchkey Mini MK3
 # ------------------------------------------------------------------------------------------------------------------
 
-
 class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
     dev_ids = ["Launchkey Mini MK3 IN 2"]
     driver_name = "Launchkey Mini Mk3"
     driver_description = "Interface Novation Launchkey Mini Mk3 with zynpad and zynmixer"
+
+    POT_MODE_CUSTOM_0   = 0
+    POT_MODE_VOLUME     = 1
+    POT_MODE_DEVICE     = 2
+    POT_MODE_PAN        = 3
+    POT_MODE_SEND_A     = 4
+    POT_MODE_SEND_B     = 5
+    POT_MODE_CUSTOM_0   = 6
+    POT_MODE_CUSTOM_1   = 7
+    POT_MODE_CUSTOM_2   = 8
+    POT_MODE_CUSTOM_3   = 9
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
@@ -54,6 +64,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
         self.cols = 8
         self.rows = 2
+        self.pot_mode = 0 # Potentiometer mode
         super().init()
 
     def end(self):
@@ -127,12 +138,12 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         if self.state_manager.power_save_mode:
             return True
         evtype = (ev[0] >> 4) & 0x0F
+        chan = ev[0] & 0x0f
         if evtype == 0x9:
             note = ev[1] & 0x7F
-            # Entered session mode so set pad LEDs
-            # QUESTION: What kind of message is this? Only SysEx messages can be bigger than 3 bytes.
-            # if ev == b'\x90\x90\x0C\x7F':
-            # self.update_seq_bank()
+            if ev == b'\x9f\x0C\x7F':
+                # Ignore tally of the request to put the device into DAW mode
+                return True
 
             # Toggle pad
             try:
@@ -146,24 +157,52 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
+            if chan == 0xf:
+                if ccnum == 9:
+                    self.pot_mode = ccval
+                elif 20 < ccnum < 29:
+                    # Pots
+                    if self.shift:
+                        # Add 8 extra pots with shift
+                        pot = ccnum - 13
+                    else:
+                        pot = ccnum - 21
+                    chain = self.chain_manager.get_chain_by_position(pot, midi=False)
+                    if chain is None or chain.mixer_chan > 16:
+                        return True
+                    match self.pot_mode:
+                        case self.POT_MODE_VOLUME:
+                            self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
+                        case self.POT_MODE_PAN:
+                            self.zynmixer.set_balance(chain.mixer_chan, 2 * ccval / 127.0 - 1)
+                        case self.POT_MODE_DEVICE:
+                            # Ignore CC on MIDI channel 16 as it may trigger master channel or other unexpected action.
+                            return True
+                elif ccnum == 0x66:
+                    # TRACK RIGHT
+                    self.state_manager.send_cuia("ARROW_RIGHT")
+                elif ccnum == 0x67:
+                    # TRACK LEFT
+                    self.state_manager.send_cuia("ARROW_LEFT")
+                elif ccnum == 0x73:
+                    # PLAY
+                    if self.shift:
+                        self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
+                    else:
+                        self.state_manager.send_cuia("TOGGLE_PLAY")
+                elif ccnum == 0x75:
+                    # RECORD
+                    if self.shift:
+                        self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
+                    else:
+                        self.state_manager.send_cuia("TOGGLE_RECORD")
+                return True
+
             if ccnum == 0x6C:
                 # SHIFT
                 self.shift = ccval != 0
             elif ccnum == 0 or ccval == 0:
                 return True
-            elif (self.shift and 20 < ccnum < 29) or (20 < ccnum < 25):
-                chain = self.chain_manager.get_chain_by_position(
-                    ccnum - 21, midi=False)
-                if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
-                    self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
-            elif 24 < ccnum < 29:
-                self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 25, ccval/127])
-            elif ccnum == 0x66:
-                # TRACK RIGHT
-                self.state_manager.send_cuia("ARROW_RIGHT")
-            elif ccnum == 0x67:
-                # TRACK LEFT
-                self.state_manager.send_cuia("ARROW_LEFT")
             elif ccnum == 0x68:
                 if self.shift:
                     # UP
@@ -176,18 +215,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                     # DOWN
                     self.zynseq.select_phrase(self.zynseq.phrase + 1)
                     self.refresh()
-            elif ccnum == 0x73:
-                # PLAY
-                if self.shift:
-                    self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
-                else:
-                    self.state_manager.send_cuia("TOGGLE_PLAY")
-            elif ccnum == 0x75:
-                # RECORD
-                if self.shift:
-                    self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
-                else:
-                    self.state_manager.send_cuia("TOGGLE_RECORD")
         elif evtype == 0xC:
             val1 = ev[1] & 0x7F
             self.zynseq.select_bank(val1 + 1)

@@ -1253,7 +1253,7 @@ bool setState(const char* state) {
                 pPattern->setSwingAmount(jPattern.value("swing", 0.0));
                 pPattern->setHumanTime(jPattern.value("humanTime", 0.0));
                 pPattern->setHumanVelo(jPattern.value("humanVel", 0.0));
-                pPattern->setPlayChance(jPattern.value("chance", 1));
+                pPattern->setPlayChance(jPattern.value("chance", 1.0));
                 for (auto& jEvent: jPattern["events"]) {
                     uint32_t nStep = jEvent.value("step", 0);
                     float fDuration = jEvent.value("duration", 1.0);
@@ -1266,7 +1266,7 @@ bool setState(const char* state) {
                     pEvent->setValue2end(jEvent.value("val2End", nValue2start));
                     pEvent->setStutterCount(jEvent.value("stutCnt", 0));
                     pEvent->setStutterDur(jEvent.value("stutDur", 1));
-                    pEvent->setPlayChance(jEvent.value("chance", 1));
+                    pEvent->setPlayChance(jEvent.value("chance", 100));
                 }
             }
         }
