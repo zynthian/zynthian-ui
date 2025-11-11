@@ -186,7 +186,9 @@ class zynthian_gui_mixer_strip:
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_title"))
             # Play mode image
             self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
-                                            tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode"))
+                                            tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_icon", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_icon"))
+            self.canvas.create_text(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color,
+                                            tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_text"))
             # Selected/highlighted cursor
             self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_phrase - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{id}", "launcher_sel", f"launcher_sel:{id}_{row}"))
@@ -422,6 +424,7 @@ class zynthian_gui_mixer_strip:
         if self.chain is None:
             return
         mode_image = None
+        mode_text = ""
         row = phrase - self.parent.launcher_offset
         disabled = False
         if self.chain_id == 0:
@@ -452,18 +455,24 @@ class zynthian_gui_mixer_strip:
             else:
                 title = name[:5]
                 if state_seq["repeat"]:
+                    mode_text = f"x{state_seq['repeat']}"
                     match state_seq["followAction"]:
                         case zynseq.FOLLOW_ACTION_NONE:
                             mode_image = self.parent.mode_icons["oneshot"]
+                            mode_text += "→"
                         case zynseq.FOLLOW_ACTION_RELATIVE:
-                            if state_seq["followParam"]:
-                                #logging.info(f"follow_param")
+                            if state_seq["followParam"] < 0:
                                 mode_image = self.parent.mode_icons["oneshotall"]
+                                mode_text += "↑"
+                            elif state_seq["followParam"] > 0:
+                                mode_image = self.parent.mode_icons["oneshotall"]
+                                mode_text += "↓"
                             else:
-                                #logging.info(f"no follow_param")
                                 mode_image = self.parent.mode_icons["loopsync"]
+                                mode_text = "↻"
                         case _:
                             mode_image = self.parent.mode_icons["oneshotall"]
+                            mode_text += "↦"
                 else:
                     title = "⏹"
                     mode_image = self.parent.mode_icons["empty"]
@@ -507,7 +516,12 @@ class zynthian_gui_mixer_strip:
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_bg", fill=color)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_state", text=state_text, fill=color_state)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_title", text=title)
-        self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode", image=mode_image)
+        if self.chain_id:
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_text", state=tkinter.HIDDEN)
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_icon", image=mode_image)
+        else:
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_text", text=mode_text)
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_icon", state=tkinter.HIDDEN)
         if self.parent.launcher_offset:
             self.canvas.itemconfig(f"launcher_scroll_top_{self.fader_bg}", state=tkinter.NORMAL)
         if self.parent.launcher_offset + zynthian_gui_config.visible_launchers < self.zynseq.phrases:
