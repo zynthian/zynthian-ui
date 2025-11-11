@@ -124,6 +124,8 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 self.update_seq_state(row + self.zynseq.phrase, col)
 
     def midi_event(self, ev):
+        if self.state_manager.power_save_mode:
+            return True
         evtype = (ev[0] >> 4) & 0x0F
         if evtype == 0x9:
             note = ev[1] & 0x7F
