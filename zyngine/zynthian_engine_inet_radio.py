@@ -610,6 +610,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
                 self.client.connect(("localhost", 4212))  # TODO Assign port in config
                 self.client.recv(4096)
                 self.client.send("zynthian\n".encode())
+                self.running= True
                 self.start_proc_poll_thread()
                 
             except Exception as err:
@@ -620,6 +621,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
         if self.proc:
             try:
                 logging.info("Stopping Engine " + self.name)
+                self.running = False
+                self.proc_poll_thread.join()
                 self.proc_cmd("shutdown")
                 self.proc.terminate()
                 try:
@@ -644,7 +647,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
         last_status = 0
         last_info = 0
         line = ""
-        while self.proc.poll() is None:
+        while self.running and self.proc.poll() is None:
             now = monotonic()
             if self.preset_i == self.pending_preset_i:
                 if now > last_info + 5:

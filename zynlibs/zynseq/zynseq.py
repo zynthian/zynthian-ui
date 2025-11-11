@@ -162,6 +162,8 @@ class zynseq(zynthian_engine):
         # Cache sequence info for launchers to reduce access to libseq
         self.phrases = 0  # Quantity of launcher slots/rows/phrases
         self.scene = 0  # Currently selected scene
+        self.chan = 0 # Currently selected channel
+        self.phrase = 0 # Currently selected phrase
         self.seq_in_scene = 0  # Quantity of sequence in the selected scene
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
@@ -388,6 +390,23 @@ class zynseq(zynthian_engine):
         except Exception as e:
             logging.warning(f"Failed to set sequence parameter {param}={value}: {e}")
             return False
+
+    def select_phrase(self, phrase):
+        """
+        Select a phrase
+
+        :param: phrase Index of phrase
+        """
+
+        if (phrase >= self.phrases):
+            phrase = self.phrases - 1
+        if (phrase < 0):
+            phrase = 0
+        if phrase == self.phrase:
+            return False
+        self.phrase = phrase
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
+
 
     def get_pad_coords(self, phrase, chan):
         """

@@ -47,7 +47,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.shift = False
-        self.scroll = 0 # Vertical scroll position
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
@@ -74,7 +73,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             row, col = self.zynseq.get_pad_coords(phrase, chan)
             if col is None:
                 return
-            row -= self.scroll
+            row -= self.zynseq.phrase
         except:
             return
         if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
@@ -122,7 +121,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             return
         for row in range(self.rows):
             for col in range(zynseq.PHRASE_CHANNEL + 1):
-                self.update_seq_state(row + self.scroll, col)
+                self.update_seq_state(row + self.zynseq.phrase, col)
 
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
@@ -136,7 +135,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             # Toggle pad
             try:
                 col = (note - 96) % 16
-                row = (note - 96) // 16 + self.scroll
+                row = (note - 96) // 16 + self.zynseq.phrase
                 midi_chan = self.zynseq.get_chan_from_col(col)
                 if midi_chan is not None:
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, row, midi_chan)
@@ -166,18 +165,14 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             elif ccnum == 0x68:
                 if self.shift:
                     # UP
-                    self.scroll -= 1
-                    if self.scroll < 0:
-                        self.scroll = 0
+                    self.zynseq.select_phrase(self.zynseq.phrase - 1)
                     self.refresh()
                 else:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, self.scroll, zynseq.PHRASE_CHANNEL)
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, self.zynseq.phrase, zynseq.PHRASE_CHANNEL)
             elif ccnum == 0x69:
                 if self.shift:
                     # DOWN
-                    self.scroll += 1
-                    if self.scroll >= self.zynseq.phrases - 1:
-                        self.scroll = self.zynseq.phrases - 1
+                    self.zynseq.select_phrase(self.zynseq.phrase + 1)
                     self.refresh()
             elif ccnum == 0x73:
                 # PLAY
