@@ -187,7 +187,8 @@ class zynthian_gui_mixer_strip:
             # Play mode image
             self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_icon", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_icon"))
-            self.canvas.create_text(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color,
+            # Play mode text
+            self.canvas.create_text(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_clip_state,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_text"))
             # Selected/highlighted cursor
             self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_phrase - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,

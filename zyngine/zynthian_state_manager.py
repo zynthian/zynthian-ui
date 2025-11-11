@@ -273,7 +273,7 @@ class zynthian_state_manager:
         zynautoconnect.pause()
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
-        self.zynseq.load("")
+        self.zynseq.reset()
         self.ctrldev_manager.unload_all_drivers()
         self.destroy_audio_player()
         zynautoconnect.stop()
