@@ -65,6 +65,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.cols = 8
         self.rows = 2
         self.pot_mode = 0 # Potentiometer mode
+        self.mixer_toggle = False # Used to toggle mixer / launcher view
         super().init()
 
     def end(self):
@@ -158,6 +159,8 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if chan == 0xf:
+                if ccval == 0:
+                    return True # Ignore button release
                 if ccnum == 9:
                     self.pot_mode = ccval
                 elif 20 < ccnum < 29:
@@ -202,19 +205,27 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 # SHIFT
                 self.shift = ccval != 0
             elif ccnum == 0 or ccval == 0:
-                return True
+                return True # Ignore Modulation CC and button release
             elif ccnum == 0x68:
                 if self.shift:
                     # UP
                     self.zynseq.select_phrase(self.zynseq.phrase - 1)
                     self.refresh()
                 else:
+                    # Scene (Phrase) launcher
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, self.zynseq.phrase, zynseq.PHRASE_CHANNEL)
             elif ccnum == 0x69:
                 if self.shift:
                     # DOWN
                     self.zynseq.select_phrase(self.zynseq.phrase + 1)
                     self.refresh()
+                else:
+                    # Stop Solo Mute button
+                    if self.mixer_toggle:
+                        self.state_manager.send_cuia("show_screen", ["launcher"])
+                    else:
+                        self.state_manager.send_cuia("show_screen", ["audio_mixer"])
+                    self.mixer_toggle = not self.mixer_toggle
         elif evtype == 0xC:
             val1 = ev[1] & 0x7F
             self.zynseq.select_bank(val1 + 1)
