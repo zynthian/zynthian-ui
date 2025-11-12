@@ -1285,12 +1285,8 @@ bool setState(const char* state) {
                         pPhrase->setName(jPhrase["name"]);
                     if (jPhrase.contains("mode"))
                         pPhrase->setPlayMode(jPhrase["mode"]);
-                    uint8_t sig = jPhrase.value("sig", 0);
-                    if (sig)
-                        pPhrase->addTimeSig(sig);
-                    float tempo = jPhrase.value("tempo", 0);
-                    if (tempo)
-                        pPhrase->addTempo(tempo, 1, 0);
+                    pPhrase->setTimeSig(jPhrase.value("sig", 0));
+                    pPhrase->setTempo(jPhrase.value("tempo", 0));
                     if (jPhrase.contains("repeat"))
                         pPhrase->setRepeat(jPhrase["repeat"]);
                     // Store the follow configuration to apply after all sequences have been created
@@ -2466,6 +2462,32 @@ uint8_t getSequenceRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     return 0;
 }
 
+void setSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence, float tempo) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        pSequence->setTempo(tempo);
+}
+
+float getSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        return pSequence->getTempo();
+    return 0.0f;
+}
+
+void setSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t sig) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        pSequence->setTimeSig(sig);
+}
+
+uint8_t getSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        return pSequence->getTimeSig();
+    return 0;
+}
+
 bool selectSequence(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     if (g_seqMan.getSequence(scene, phrase, sequence) == nullptr)
         return false;
@@ -2476,9 +2498,8 @@ bool selectSequence(uint8_t scene, uint8_t phrase, uint8_t sequence) {
 
 bool isEmpty(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
-    if (pSequence) {
+    if (pSequence)
         return pSequence->isEmpty();
-    }
     return true;
 }
 

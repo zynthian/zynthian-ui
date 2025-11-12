@@ -217,8 +217,8 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
             if (nEventType & CLOCK_TRIG_TIMESIG) {
                 // Time signature change
                 uint8_t nTimeSig = pSequence->getTimeSig();
-                if (nTimeSig > 1) {
-                    m_bTimeSigChanged |= m_nTimeSig != nTimeSig;
+                if (nTimeSig) {
+                    m_bTimeSigChanged |= (m_nTimeSig != nTimeSig);
                     m_nTimeSig = nTimeSig;
                 }
             }

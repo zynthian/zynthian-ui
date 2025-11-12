@@ -1093,6 +1093,38 @@ void setSequenceName(uint8_t scene, uint8_t phrase, uint8_t sequence, const char
 */
 const char* getSequenceName(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
+/** @brief  Set sequence tempo
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @param  tempo Tempo or 0.0 to disable
+*/
+void setSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence, float tempo);
+
+/** @brief  Get sequence tempo
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @retval float Tempo or 0.0 if disabled
+*/
+float getSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence);
+
+/** @brief  Set sequence time signature
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @param  sig Time signature or 0to disable
+*/
+void setSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t sig);
+
+/** @brief  Get sequence tempo
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @retval uint8_t Time signature (beats per bar) or 0 if disabled
+*/
+uint8_t getSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence);
+
 /** @brief  Set sequence follow action
     @param  scene Index of scene
     @param  phrase Index of phrase

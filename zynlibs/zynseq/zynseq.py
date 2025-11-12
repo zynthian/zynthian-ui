@@ -137,6 +137,12 @@ class zynseq(zynthian_engine):
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
             # Sequence functions
+            self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.getSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getSequenceTempo.restype = ctypes.c_float
+            self.libseq.setSequenceSig.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getSequenceSig.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getSequenceSig.restype = ctypes.c_uint8
             self.libseq.setSequenceFollowAction.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
             self.libseq.getSequenceFollowAction.restype = ctypes.c_uint8
             self.libseq.setSequenceFollowParam.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_int16]

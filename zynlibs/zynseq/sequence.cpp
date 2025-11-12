@@ -74,6 +74,22 @@ Track* Sequence::getTrack(size_t index) {
     return NULL;
 }
 
+void Sequence::setTempo(float tempo) {
+    m_fTempo = tempo;
+}
+
+float Sequence::getTempo() {
+    return m_fTempo;
+}
+
+void Sequence::setTimeSig(uint8_t sig) {
+    m_nTimeSig = sig;
+}
+
+uint8_t Sequence::getTimeSig() {
+    return m_nTimeSig;
+}
+
 void Sequence::addTempo(float tempo, uint16_t bar, uint16_t tick) {
     m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo * 100);
     m_bChanged = true;
@@ -86,10 +102,6 @@ void Sequence::removeTempo(uint16_t bar, uint16_t tick) {
 
 float Sequence::getTempoAt(uint16_t bar, uint16_t tick) {
     return m_timebase.getTempo(bar, tick);
-}
-
-float Sequence::getTempo() {
-    return m_fTempo;
 }
 
 void Sequence::addTimeSig(uint8_t timeSig, uint16_t bar) {
@@ -111,10 +123,6 @@ uint8_t Sequence::getTimeSigAt(uint16_t bar) {
     if (pEvent)
         return pEvent->value;
     return 0;
-}
-
-uint8_t Sequence::getTimeSig() {
-    return m_nTimeSig;
 }
 
 Timebase* Sequence::getTimebase() {
@@ -206,11 +214,10 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
             setPlayState(PLAYING);
             if (bPhraseLauncher) {
                 nReturn |= CLOCK_TRIG_PHRASE;
-                uint8_t timeSig = m_timebase.getTimeSig(1, 0);
-                if (timeSig > 1) {
-                    m_nTimeSig = timeSig;
+                if (m_fTempo)
+                    nReturn |= CLOCK_TRIG_TEMPO;
+                if (m_nTimeSig)
                     nReturn |= CLOCK_TRIG_TIMESIG;
-                }
             }
         } else if (m_nState == STOPPING_SYNC) {
             setPlayState(STOPPED);
@@ -218,6 +225,10 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
         } else if (m_nState == PLAYING && bPhraseLauncher) {
             // Playing at start of bar so must be triggering phrase
             nReturn |= CLOCK_TRIG_PHRASE;
+            if (m_fTempo)
+                nReturn |= CLOCK_TRIG_TEMPO;
+            if (m_nTimeSig)
+                nReturn |= CLOCK_TRIG_TIMESIG;
         }
     }
 
@@ -256,11 +267,6 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
         m_bStateChanged = false;
         if (m_nState == PLAYING)
             m_pNextTimebaseEvent = m_timebase.getFirstTimebaseEvent();
-    }
-
-    if (nState != STOPPED && m_pNextTimebaseEvent && nTime >= m_pNextTimebaseEvent->clock && m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
-        m_fTempo = m_pNextTimebaseEvent->value / 100;
-        nReturn |= CLOCK_TRIG_TEMPO;
     }
 
     return nReturn;

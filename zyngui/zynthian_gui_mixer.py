@@ -488,10 +488,14 @@ class zynthian_gui_mixer_strip:
                     mode_image = self.parent.mode_icons["empty"]
                 if self.chain_id == 0:
                     # Phrase launcher
-                    if "sig" in state_seq and state_seq["sig"]:
-                        timesig_text = f"{state_seq['sig']}/4"
-                    if "tempo" in state_seq and state_seq["tempo"]:
-                        tempo_text += f" {state_seq['tempo']}"
+                    if "sig" in state_seq:
+                        sig = state_seq["sig"]
+                        if sig:
+                            timesig_text = f"{state_seq['sig']}/4"
+                    if "tempo" in state_seq:
+                        tempo = state_seq["tempo"]
+                        if tempo:
+                            tempo_text = f"{tempo}"
             match state_seq["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -1639,7 +1643,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            self.zynseq.libseq.removeTempoEvent(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL)
+            self.zynseq.libseq.setSequenceTempo(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL, 0)
             self.launcher_select_info["tempo"] = 0.0
             index = option_screen.index
             self.phrase_menu()
@@ -1655,11 +1659,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Time signature"):
             labels = ["None"]
-            for i in range(2, 25):
+            for i in range(1, 25):
                 labels.append(f"{i}/4")
             option_screen.enable_param_editor(option_screen, "timeSig", {
                 'name': 'Time signature',
-                'value_min': 1,
+                'value_min': 0,
                 'value_max': 24,
                 'labels': labels,
                 'value': params
@@ -1721,17 +1725,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.phrase_menu()
         self.zyngui.screens['option'].select(index)
 
-    def set_phrase_tempo(self, tempo):
-        try:
-            phrase = self.zynseq.phrase
-            self.zynseq.libseq.addTempoEvent(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, tempo, 1, 0)
-            self.launcher_select_info["tempo"] = tempo
-            if "CL" in self.chain_manager.zyngines:
-                # Update clippy tempos
-                self.chain_manager.zyngines["CL"].start_bg_task(tempo)
-        except Exception as e:
-            logging.warning(f"Error setting phrase tempo: {e}")
-
     def cb_assert_param_editor(self, val=None):
         self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
         index = self.zyngui.screens['option'].index
@@ -1747,13 +1740,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             chan = zynseq.PHRASE_CHANNEL
         match zctrl.symbol:
             case "tempo":
-                self.set_phrase_tempo(zctrl.value)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo", zctrl.value)
+                if "CL" in self.chain_manager.zyngines:
+                    self.chain_manager.zyngines["CL"].start_bg_task(zctrl.value)
             case "timeSig":
-                if zctrl.value > 1:
-                    self.zynseq.libseq.addTimeSigEvent(self.zynseq.scene, phrase, chan, 1, zctrl.value)
-                else:
-                    self.zynseq.libseq.removeTimeSigEvent(self.zynseq.scene, phrase, chan, 1)
-                self.launcher_select_info["sig"] = zctrl.value
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "sig", zctrl.value)
             case "duration":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)
             case "follow":
@@ -1959,7 +1950,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.select_launcher(self.zynseq.phrase - nudge)
                     self.refresh_visible_strips()
                 else:
-                    self.zynseq.select_phrase(self.zynseq.phrase - nudge)
+                    self.select_launcher(self.zynseq.phrase - nudge)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1974,7 +1965,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.select_launcher(self.zynseq.phrase - nudge)
                     self.refresh_visible_strips()
                 else:
-                    self.zynseq.select_phrase(self.zynseq.phrase - nudge)
+                    self.select_launcher(self.zynseq.phrase - nudge)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1996,6 +1987,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             phrase = 0
         elif phrase > self.zynseq.phrases:
             phrase = self.zynseq.phrases
+        if phrase != self.zynseq.phrase:
+            self.zynseq.select_phrase(phrase)
         if strip is None:
             strip = self.highlighted_strip
         if strip != self.highlighted_strip:
