@@ -92,7 +92,7 @@ float Sequence::getTempo() {
     return m_fTempo;
 }
 
-void Sequence::addTimeSig(uint16_t bar, uint8_t timeSig) {
+void Sequence::addTimeSig(uint8_t timeSig, uint16_t bar) {
     if (bar < 1)
         bar = 1;
     m_timebase.addTimebaseEvent(bar, 0, TIMEBASE_TYPE_TIMESIG, timeSig);

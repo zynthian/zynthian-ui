@@ -139,6 +139,7 @@ class zynthian_gui_mixer_strip:
         self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
         self.font_icons = (zynthian_gui_config.font_family, int(0.3 * self.width))
         self.font_learn = (zynthian_gui_config.font_family, int(0.7 * font_size))
+        self.font_timbase = (zynthian_gui_config.font_family, int(0.45 * font_size))
 
         self.fader_text_limit = self.fader_top + int(0.1 * self.fader_height)
 
@@ -181,15 +182,21 @@ class zynthian_gui_mixer_strip:
             self.canvas.create_text(x + self.fader_width,  ypos - height_phrase // 6, text="", anchor=tkinter.NE, font=self.font_clip_state,
                     state=tkinter.HIDDEN, tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_state"))
             # Title text
-            self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_phrase, text="", anchor=tkinter.CENTER,
+            self.canvas.create_text(x + self.fader_width // 2, ypos + 0.5 * height_phrase, text="", anchor=tkinter.CENTER,
                                             font=self.font_clip_title, state=tkinter.HIDDEN, fill=self.legend_txt_color,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_title"))
             # Play mode image
             self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_icon", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_icon"))
             # Play mode text
-            self.canvas.create_text(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_clip_state,
+            self.canvas.create_text(x + 2, ypos - height_phrase // 10, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_clip_state,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_text"))
+            # Timesig text
+            self.canvas.create_text(x + 2, ypos + height_phrase - 1, anchor=tkinter.SW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_timbase,
+                                            tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_timesig_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_timesig_text"))
+            # Tempo text
+            self.canvas.create_text(x + self.fader_width - 1, ypos + height_phrase - 1, anchor=tkinter.SE, state=tkinter.HIDDEN, fill=self.legend_txt_color, justify=tkinter.RIGHT, font=self.font_timbase,
+                                            tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_tempo_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_tempo_text"))
             # Selected/highlighted cursor
             self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_phrase - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{id}", "launcher_sel", f"launcher_sel:{id}_{row}"))
@@ -426,6 +433,8 @@ class zynthian_gui_mixer_strip:
             return
         mode_image = None
         mode_text = ""
+        timesig_text = ""
+        tempo_text = ""
         row = phrase - self.parent.launcher_offset
         disabled = False
         if self.chain_id == 0:
@@ -477,6 +486,12 @@ class zynthian_gui_mixer_strip:
                 else:
                     title = "⏹"
                     mode_image = self.parent.mode_icons["empty"]
+                if self.chain_id == 0:
+                    # Phrase launcher
+                    if "sig" in state_seq and state_seq["sig"]:
+                        timesig_text = f"{state_seq['sig']}/4"
+                    if "tempo" in state_seq and state_seq["tempo"]:
+                        tempo_text += f" {state_seq['tempo']}"
             match state_seq["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -518,10 +533,15 @@ class zynthian_gui_mixer_strip:
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_state", text=state_text, fill=color_state)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_title", text=title)
         if self.chain_id:
+            # Chain sequence launcher
             self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_text", state=tkinter.HIDDEN)
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_timebase_text", state=tkinter.HIDDEN)
             self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_icon", image=mode_image)
         else:
+            # Phrase launcher
             self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_text", text=mode_text)
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_timesig_text", text=timesig_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_tempo_text", text=tempo_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_icon", state=tkinter.HIDDEN)
         if self.parent.launcher_offset:
             self.canvas.itemconfig(f"launcher_scroll_top_{self.fader_bg}", state=tkinter.NORMAL)
@@ -1576,10 +1596,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             else:
                 options[f"Tempo ({info['tempo']})"] = info['tempo']
                 options["Remove tempo"] = self.zynseq.phrase
-            if 'timeSig' not in info or not info['timeSig']:
+            if 'sig' not in info or not info['sig']:
                 options[f"Time signature (None)"] = 0
             else:
-                options[f"Time signature ({info['timeSig']}/4)"] = info["timeSig"]
+                options[f"Time signature ({info['sig']}/4)"] = info["sig"]
         options[f"Edit name ({name})"] = name
         options["Manipulate phrase"] = None
         options["Insert phrase"] = phrase
@@ -1667,13 +1687,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.launcher_offset = new_pos
             self.refresh_visible_strips()
 
-    def get_clippy_zctrl(self, zctrl_name):
-        try:
-            clippy_proc = self.launcher_select_info['clippy']
-            return clippy_proc.controllers_dict[f"{zctrl_name} {self.launcher_select_info['phrase'] + 1:02}"]
-        except:
-            return None
-
     # Handle file selector callback
     def on_clippy_file_sel(self, path):
         self.clippy_file_zctrl.set_value(path)
@@ -1740,26 +1753,27 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.zynseq.libseq.addTimeSigEvent(self.zynseq.scene, phrase, chan, 1, zctrl.value)
                 else:
                     self.zynseq.libseq.removeTimeSigEvent(self.zynseq.scene, phrase, chan, 1)
-                self.launcher_select_info["timeSig"] = zctrl.value
+                self.launcher_select_info["sig"] = zctrl.value
             case "duration":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)
             case "follow":
                 match zctrl.value2label[str(zctrl.value)]:
                     case "NONE":
-                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
-                        self.launcher_select_info["followParam"] = 0
+                        followAction = zynseq.FOLLOW_ACTION_NONE
+                        followParam = 0
                     case "LOOP":
-                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
-                        self.launcher_select_info["followParam"] = 0
+                        followAction = zynseq.FOLLOW_ACTION_RELATIVE
+                        followParam = 0
                     case "NEXT":
-                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
-                        self.launcher_select_info["followParam"] = +1
+                        followAction = zynseq.FOLLOW_ACTION_RELATIVE
+                        followParam = +1
                     case "PREV":
-                        self.launcher_select_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
-                        self.launcher_select_info["followParam"] = -1
-
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", self.launcher_select_info["followAction"])
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", self.launcher_select_info["followParam"])
+                        followAction = zynseq.FOLLOW_ACTION_RELATIVE
+                        followParam = -1
+                    case _:
+                        return
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", followAction)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", followParam)
 
         self.main_mixbus_strip.draw_sequence_phrase(phrase)
 
@@ -2003,11 +2017,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.launcher_mode:
             self.set_highlighted_clip_info()
             self.highlighted_strip.highlight_launcher(phrase)
-            try:
-                proc = self.launcher_select_info['clippy']
-                proc.engine.set_phrase(proc, self.launcher_select_info['phrase'])
-            except:
-                pass
         if refresh_strips:
             self.refresh_visible_strips()
 

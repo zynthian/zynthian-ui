@@ -1285,6 +1285,21 @@ bool setState(const char* state) {
                         pPhrase->setName(jPhrase["name"]);
                     if (jPhrase.contains("mode"))
                         pPhrase->setPlayMode(jPhrase["mode"]);
+                    uint8_t sig = jPhrase.value("sig", 0);
+                    if (sig)
+                        pPhrase->addTimeSig(sig);
+                    float tempo = jPhrase.value("tempo", 0);
+                    if (tempo)
+                        pPhrase->addTempo(tempo, 1, 0);
+                    if (jPhrase.contains("repeat"))
+                        pPhrase->setRepeat(jPhrase["repeat"]);
+                    // Store the follow configuration to apply after all sequences have been created
+                    std::array<int16_t, 4> followAction;
+                    followAction[0] = nPhrase;
+                    followAction[1] = PHRASE_CHANNEL;
+                    followAction[2] = jPhrase.value("followAction", FOLLOW_ACTION_NONE);
+                    followAction[3] = jPhrase.value("followParam", 0);
+                    vFollowActions.push_back(followAction);
                     uint8_t nSeq = 0;
                     for (auto& jSeq: jPhrase["sequences"]) {
                         uint32_t nTracks = jSeq["tracks"].size();
@@ -1415,6 +1430,7 @@ const char* getState() {
             jPhrase["name"] = pPhrase->getName().c_str();
             jPhrase["mode"] = pPhrase->getPlayMode();
             jPhrase["sig"] = pPhrase->getTimeSig();
+            jPhrase["tempo"] = pPhrase->getTempo();
             jPhrase["repeat"] = pPhrase->getRepeat();
             jPhrase["followAction"] = pPhrase->getFollowAction();
             jPhrase["followParam"] = pPhrase->getFollowParam();
@@ -2662,7 +2678,7 @@ void addTimeSigEvent(uint8_t scene, uint8_t phrase, uint8_t sequence, uint16_t b
         bar = 1;
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence) {
-        pSequence->addTimeSig(bar, timeSig);
+        pSequence->addTimeSig(timeSig, bar);
     }
     g_bDirty = true;
 }

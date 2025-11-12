@@ -129,11 +129,11 @@ class Sequence {
     float getTempo();
 
     /** @brief  Add time signature to timebase track
-        @param  bar Bar (measure) at which to set time signature
         @param  timeSig Beats per bar
+        @param  bar Bar (measure) at which to set time signature [Optional - default: 1]
         @note   Removes time signature if same as previous time signature
     */
-    void addTimeSig(uint16_t bar, uint8_t timeSig);
+    void addTimeSig(uint8_t timeSig, uint16_t bar = 1);
 
     /** @brief  Remove time signature from timebase track
         @param  bar Bar (measure) at which to remove time signature
@@ -264,7 +264,7 @@ class Sequence {
     size_t m_nCurrentTrack = 0;                 // Index of track currently being queried for events
     uint32_t m_nPosition = 0;                   // Play position in clock cycles
     uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
-    float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
+    float m_fTempo = 0.0;                       // Current tempo (overriden by tempo events in timebase map) 0 to ignore
     uint8_t m_nTimeSig = 0;                     // Current time signature in ticks per bar (24 ticks per beat)
     uint8_t m_nState = STOPPED;                 // Play state of sequence
     uint8_t m_nMode = MODE_END_SYNC;            // Bitwise flags: stop mode (bits 0..1), start mode (bit 2)
