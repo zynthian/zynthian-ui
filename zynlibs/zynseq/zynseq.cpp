@@ -1014,7 +1014,7 @@ const char* convertToJson(const char* filename) {
                 patj["swing"] = fileReadBCD(pFile);
                 patj["humanTime"] = fileReadBCD(pFile);
                 patj["humanVel"] = fileReadBCD(pFile);
-                patj["chance"] = fileReadBCD(pFile);
+                patj["chance"] = int(fileReadBCD(pFile) * 100);
                 nBlockSize -= 18;
             }
             if (nVersion > 4) {
@@ -1057,7 +1057,7 @@ const char* convertToJson(const char* filename) {
                     nBlockSize -= 2;
                 }
                 if (nVersion > 8) {
-                    eventj["chance"] = fileRead8u(pFile);
+                    eventj["chance"] = float(fileRead8u(pFile));
                     nBlockSize -= 1;
                 }
                 fileRead8(pFile); // Padding
@@ -1253,7 +1253,7 @@ bool setState(const char* state) {
                 pPattern->setSwingAmount(jPattern.value("swing", 0.0));
                 pPattern->setHumanTime(jPattern.value("humanTime", 0.0));
                 pPattern->setHumanVelo(jPattern.value("humanVel", 0.0));
-                pPattern->setPlayChance(jPattern.value("chance", 1.0));
+                pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
                 for (auto& jEvent: jPattern["events"]) {
                     uint32_t nStep = jEvent.value("step", 0);
                     float fDuration = jEvent.value("duration", 1.0);
@@ -1266,7 +1266,7 @@ bool setState(const char* state) {
                     pEvent->setValue2end(jEvent.value("val2End", nValue2start));
                     pEvent->setStutterCount(jEvent.value("stutCnt", 0));
                     pEvent->setStutterDur(jEvent.value("stutDur", 1));
-                    pEvent->setPlayChance(jEvent.value("chance", 100));
+                    pEvent->setPlayChance(float(jEvent.value("chance", 100)) / 100);
                 }
             }
         }
@@ -1391,7 +1391,7 @@ const char* getState() {
             jPatn["swing"] = pPattern->getSwingAmount();
             jPatn["humanTime"] = pPattern->getHumanTime();
             jPatn["humanVel"] = pPattern->getHumanVelo();
-            jPatn["chance"] = pPattern->getPlayChance();
+            jPatn["chance"] = int(pPattern->getPlayChance() * 100);
             uint32_t nEvent = 0;
             while (StepEvent* pEvent = pPattern->getEventAt(nEvent++)) {
                 json jEvt;
@@ -1406,7 +1406,7 @@ const char* getState() {
                 jEvt["val2End"] = pEvent->getValue2end();
                 jEvt["stutCnt"] = pEvent->getStutterCount();
                 jEvt["stutDur"] = pEvent->getStutterDur();
-                jEvt["chance"] = pEvent->getPlayChance();
+                jEvt["chance"] = int(pEvent->getPlayChance() * 100);
                 jPatn["events"].push_back(jEvt);
             }
             j["patns"][std::to_string(nPattern)] = jPatn;
@@ -1521,10 +1521,7 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
             fileRead16u(pFile);
             // printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nTimeSig, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
-            if (nVersion > 10) {
-                if (checkBlock(pFile, nBlockSize, 156))
-                    continue;
-            } else if (nVersion > 8) {
+            if (nVersion > 8) {
                 if (checkBlock(pFile, nBlockSize, 28))
                     continue;
             } else if (nVersion > 4) {
@@ -1544,26 +1541,13 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                 pPattern->setRefNote(fileRead8u(pFile));
                 nBlockSize -= 1;
             }
-            if (nVersion > 10) {
-                uint8_t ccnum;
-                for (ccnum=0; ccnum<128; ccnum++)
-                    pPattern->setInterpolateCC(ccnum, fileRead8u(pFile));
-                nBlockSize -= 128;
-            }
             if (nVersion > 8) {
                 pPattern->setQuantizeNotes(fileRead8u(pFile));
                 pPattern->setSwingDiv(fileRead8u(pFile));
-                if (nVersion < 11) {
-                    pPattern->setSwingAmount(fileReadBCD(pFile));
-                    pPattern->setHumanTime(fileReadBCD(pFile));
-                    pPattern->setHumanVelo(fileReadBCD(pFile));
-                    pPattern->setPlayChance(fileReadBCD(pFile));
-                } else {
-                    pPattern->setSwingAmount(fileRead32f(pFile));
-                    pPattern->setHumanTime(fileRead32f(pFile));
-                    pPattern->setHumanVelo(fileRead32f(pFile));
-                    pPattern->setPlayChance(fileRead32f(pFile));
-                }
+                pPattern->setSwingAmount(fileReadBCD(pFile));
+                pPattern->setHumanTime(fileReadBCD(pFile));
+                pPattern->setHumanVelo(fileReadBCD(pFile));
+                pPattern->setPlayChance(fileReadBCD(pFile));
                 nBlockSize -= 18;
             }
             if (nVersion > 4) {
@@ -1587,13 +1571,8 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                 uint32_t nStep = fileRead32u(pFile);
                 float fDuration, fOffset;
                 if (nVersion > 8) {
-                    if (nVersion < 11) {
-                        fOffset = fileReadBCD(pFile);
-                        fDuration = fileReadBCD(pFile);
-                    } else {
-                        fOffset = fileRead32f(pFile);
-                        fDuration = fileRead32f(pFile);
-                    }
+                    fOffset = fileReadBCD(pFile);
+                    fDuration = fileReadBCD(pFile);
                     nBlockSize -= 4;
                 } else {
                     fOffset = 0;
@@ -1615,12 +1594,9 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                     nBlockSize -= 2;
                 }
                 if (nVersion > 8) {
-                    uint8_t nPlayChance = fileRead8u(pFile);
-                    pEvent->setPlayChance(nPlayChance);
+                    pEvent->setPlayChance(float(fileRead8u(pFile)) / 100);
                     nBlockSize -= 1;
                 }
-                if (nVersion < 11)
-                    fileRead8u(pFile); // Padding
                 nBlockSize -= 14;
                 // printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end,
                 // nValue2start, nValue2end);
@@ -2180,13 +2156,13 @@ void setStutterDur(uint32_t step, uint8_t note, uint8_t dur) {
     }
 }
 
-uint8_t getNotePlayChance(uint32_t step, uint8_t note) {
+float getNotePlayChance(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getPlayChance(step, note);
-    return 100;
+    return 1.0;
 }
 
-void setNotePlayChance(uint32_t step, uint8_t note, uint8_t chance) {
+void setNotePlayChance(uint32_t step, uint8_t note, float chance) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->setPlayChance(step, note, chance);

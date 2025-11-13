@@ -122,6 +122,9 @@ class zynseq(zynthian_engine):
             self.libseq.getHumanVelo.restype = ctypes.c_float
             self.libseq.setPlayChance.argtypes = [ctypes.c_float]
             self.libseq.getPlayChance.restype = ctypes.c_float
+            self.libseq.setNotePlayChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.getNotePlayChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
+            self.libseq.getNotePlayChance.restype = ctypes.c_float
             self.libseq.getTempo.restype = ctypes.c_double
             self.libseq.setTempo.argtypes = [ctypes.c_double]
             self.libseq.getTempoAt.restype = ctypes.c_float

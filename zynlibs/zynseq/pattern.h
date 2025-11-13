@@ -33,7 +33,7 @@ class StepEvent {
         m_nValue2end = 0;
         m_nStutterCount = 0;
         m_nStutterDur = 1;
-        m_nPlayChance = 100;
+        m_fPlayChance = 1.0f;
     };
 
     /** Constructor - create an instance of StepEvent object
@@ -52,7 +52,7 @@ class StepEvent {
             m_nValue2end = value2;
         m_nStutterCount = 0;
         m_nStutterDur = 1;
-        m_nPlayChance = 100;
+        m_fPlayChance = 1.0f;
     };
 
     /** Copy constructor - create an copy of StepEvent object from an existing object
@@ -68,7 +68,7 @@ class StepEvent {
         m_nValue2end = pEvent->getValue2end();
         m_nStutterCount = pEvent->getStutterCount();
         m_nStutterDur = pEvent->getStutterDur();
-        m_nPlayChance = pEvent->getPlayChance();
+        m_fPlayChance = pEvent->getPlayChance();
     };
 
     uint32_t getPosition() { return m_nPosition; }
@@ -81,7 +81,7 @@ class StepEvent {
     uint8_t getValue2end() { return m_nValue2end; }
     uint8_t getStutterCount() { return m_nStutterCount; }
     uint8_t getStutterDur() { return m_nStutterDur; }
-    uint8_t getPlayChance() { return m_nPlayChance; }
+    float getPlayChance() { return m_fPlayChance; }
     void setPosition(uint32_t position) { m_nPosition = position; }
     void setOffset(float offset) { m_fOffset = offset; }
     void setDuration(float duration) { m_fDuration = duration; }
@@ -94,7 +94,7 @@ class StepEvent {
         if (value)
             m_nStutterDur = value;
     }
-    void setPlayChance(uint8_t chance) { m_nPlayChance = chance; }
+    void setPlayChance(float chance) { m_fPlayChance = chance; }
 
   private:
     uint32_t m_nPosition;    // Start position of event in steps
@@ -108,7 +108,7 @@ class StepEvent {
     uint32_t m_nProgress;    // Progress through event (start value to end value)
     uint8_t m_nStutterCount; // Quantity of stutters (fast repeats) at start of event
     uint8_t m_nStutterDur;   // Duration of each stutter in clock cycles
-    uint8_t m_nPlayChance;   // Probability of playing (0 = not played, 50 = plays with 50%, 100 = always plays)
+    float m_fPlayChance;     // Probability of playing (0 = not played, 0.5 = plays with 50%, 1.0 = always plays)
 };
 
 typedef std::vector<StepEvent*> StepEventVector;
@@ -253,16 +253,16 @@ class Pattern {
     /** @brief  Set note play chance
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @param  chance Note play probability from 0% to 100%
+        @param  chance Note play probability (0..1 for 0%..100%)
     */
-    void setPlayChance(uint32_t step, uint8_t note, uint8_t chance);
+    void setPlayChance(uint32_t step, uint8_t note, float chance);
 
     /** @brief  Get note play chance
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @retval uint8_t Chance, the note play probability from 0% to 100%
+        @retval float Chance, the note play probability (0..1 for 0%..100%)
     */
-    uint8_t getPlayChance(uint32_t step, uint8_t note);
+    float getPlayChance(uint32_t step, uint8_t note);
 
     /** @brief  Add program change to pattern
         @param  position Quantity of steps from start of pattern at which to add program change

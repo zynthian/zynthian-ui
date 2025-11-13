@@ -162,7 +162,7 @@ ZynthianState = {
                 "swing": 0.0, # Amount of swing to apply to pattern
                 "humanTime": 0.0, # Variation in timing feel
                 "humanVel": 0.0, # Variation in velocity feel
-                "chance": 1.0, # Probability of playing pattern
+                "chance": 100, # Probability % of notes within pattern playing
                 "events": [ # List of events in the pattern
                     {
                         "step": 0, # Step within pattern
@@ -173,7 +173,7 @@ ZynthianState = {
                         "val1End": 60, # MIDI value 1 at end of event
                         "val2Start": 100, # MIDI value 2 at start of event
                         "val2End": 0, # MIDI value 2 at end of event
-                        "chance": 100, # % chance of event triggering
+                        "chance": 100, # Probability % of event triggering
                         "stutCnt": 0, # Quantity of stutters
                         "stutDur": 1 # Duration of each stutter
                     }, # ... Other events

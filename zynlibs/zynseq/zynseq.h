@@ -460,16 +460,16 @@ void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
 /** @brief  Get note play chance in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @retval uint8_t Note play probability from 0% to 100%
+    @retval float Note play probability (0..1 for 0%..100%)
 */
-uint8_t getNotePlayChance(uint32_t step, uint8_t note);
+float getNotePlayChance(uint32_t step, uint8_t note);
 
 /** @brief  Set note play chance in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @param  chance Note play probability from 0% to 100%
+    @param  chance Note play probability (0..1 for 0%..100%)
 */
-void setNotePlayChance(uint32_t step, uint8_t note, uint8_t chance);
+void setNotePlayChance(uint32_t step, uint8_t note, float chance);
 
 /** @brief  Get duration of note in selected pattern
     @param  position Index of step at which note starts

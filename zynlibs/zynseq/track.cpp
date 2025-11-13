@@ -163,7 +163,7 @@ SEQ_EVENT* Track::getEvent() {
         if (m_nEventValue == -1) {
             // Note Play Chance
             if (nCommand == MIDI_NOTE_ON) {
-				unsigned playChance = unsigned(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
+				unsigned playChance = unsigned(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance());
 				if (playChance < RAND_MAX && playChance < rand()) {
 					m_nEventValue = pEvent->getValue2end();
 					seqEvent.msg.command = 0xFE;

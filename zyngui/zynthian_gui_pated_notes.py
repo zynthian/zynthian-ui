@@ -183,7 +183,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Pattern Options
         options = {}
         options[f"Velocity Humanization ({int(self.zynseq.libseq.getHumanVelo())})"] = 'Velocity Humanization'
-        options[f"Note Play Chance ({int(100 * self.zynseq.libseq.getPlayChance())}%)"] = 'Note Play Chance'
+        options[f"Note Play Chance ({round(100 * self.zynseq.libseq.getPlayChance())}%)"] = 'Note Play Chance'
         scales = self.get_scales()
         options[f"Scale ({scales[self.zynseq.libseq.getScale()]})"] = 'Scale'
         options[f"Tonic ({NOTE_NAMES[self.zynseq.libseq.getTonic()]})"] = 'Tonic'
@@ -216,8 +216,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
             case 'Note Play Chance':
                 self.enable_param_editor(self, 'play_chance', {'name': 'Note Play Chance', 'value_min': 0,
-                                                               'value_max': 100, 'value_default': 0,
-                                                               'value': int(100.0 * self.zynseq.libseq.getPlayChance())})
+                                                               'value_max': 100, 'value_default': 100,
+                                                               'value': round(100.0 * self.zynseq.libseq.getPlayChance())})
 
             case 'Scale':
                 self.enable_param_editor(self, 'scale', {'name': 'Scale', 'labels': self.get_scales(),
@@ -1177,7 +1177,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             elif self.edit_param == EDIT_PARAM_STUT_DUR:
                 self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
             elif self.edit_param == EDIT_PARAM_CHANCE:
-                self.set_title(f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}%")
+                self.set_title(f"Play chance: {round(100 * self.zynseq.libseq.getNotePlayChance(step, note))}%")
 
         self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
                              (f"ZYNPOT {zynpot},+1", f"+{delta}"),
@@ -1292,11 +1292,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     self.zynseq.libseq.setStutterDur(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
                 elif self.edit_param == EDIT_PARAM_CHANCE:
-                    val = self.zynseq.libseq.getNotePlayChance(step, note) + dval
+                    val = round(100 * self.zynseq.libseq.getNotePlayChance(step, note)) + dval
                     if val < 0:
                         val = 0
                     elif val > 100:
                         val = 100
+                    val /= 100
                     self.zynseq.libseq.setNotePlayChance(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
                 self.set_edit_title()

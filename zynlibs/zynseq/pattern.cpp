@@ -233,16 +233,16 @@ void Pattern::setStutterDur(uint32_t step, uint8_t note, uint8_t dur) {
         }
 }
 
-uint8_t Pattern::getPlayChance(uint32_t step, uint8_t note) {
+float Pattern::getPlayChance(uint32_t step, uint8_t note) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
             return ev->getPlayChance();
-    return 100;
+    return 1.0;
 }
 
-void Pattern::setPlayChance(uint32_t step, uint8_t note, uint8_t chance) {
-    if (chance > 100)
-        chance = 100;
+void Pattern::setPlayChance(uint32_t step, uint8_t note, float chance) {
+    if (chance > 1.0f)
+        chance = 1.0f;
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
             ev->setPlayChance(chance);
