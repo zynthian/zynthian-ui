@@ -818,7 +818,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                     ccnum = "NONE"
                 options[f"ZynStep CC [{ccnum}]"] = i
             else:
-                title = f"Control unlearn: {zctrl.name}"
+                title = "Control unlearn"
 
             if ml:
                 cc = ml[0] & 0x7f
