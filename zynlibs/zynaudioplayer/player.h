@@ -550,11 +550,16 @@ void enable_debug(int enable);
 int is_debug();
 
 /** @brief  Get duration of a file without loading it
- *   @param  player_handle Handle of player provided by init_player()
  *   @param  filename Full path and name of file to load
  *   @retval float Duration is seconds. Zero if cannot open file.
  */
 float get_file_duration(const char* filename);
+
+/** @brief  Get num of channels of a file without loading it
+ *   @param  filename Full path and name of file to load
+ *   @retval int Num of channels in the file. Zero if cannot open file.
+ */
+int get_file_channels(const char* filename);
 
 /** @brief  Get info from file meta data
  *   @param  filename Full path and filename of audio file

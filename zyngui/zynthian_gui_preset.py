@@ -138,6 +138,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
                     options["Rename"] = [preset, ["Rename preset", "rename.png"]]
                 if hasattr(engine, "delete_preset"):
                     options["Delete"] = [preset, ["Delete preset", "file_delete.png"]]
+
         global_options = {}
         if hasattr(engine, "save_preset"):
             global_options["Save new preset"] = [True, ["Save as new preset", "file_save.png"]]
@@ -146,6 +147,16 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if global_options:
             options["Global"] = None
             options.update(global_options)
+
+        # Processor (engine) specific preset options
+        if hasattr(engine, "get_preset_options") and callable(engine.get_preset_options):
+            proc_options = engine.get_preset_options(preset)
+        else:
+            proc_options = {}
+        if proc_options:
+            options["Processor"] = None
+            options.update(proc_options)
+
         if options:
             self.zyngui.screens['option'].config(title, options, self.preset_options_cb)
             self.zyngui.show_screen('option')
@@ -174,6 +185,9 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             super().save_preset()
         elif option == "Scan for new presets":
             self.scan_presets()
+        # Process engine specific preset options
+        elif hasattr(self.processor.engine, "preset_options_cb") and callable(self.processor.engine.preset_options_cb):
+            self.processor.engine.preset_options_cb(option, preset)
 
     def rename_preset(self, new_name):
         preset = self.list_data[self.index]

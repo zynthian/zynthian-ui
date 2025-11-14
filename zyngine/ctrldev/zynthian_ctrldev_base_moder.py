@@ -78,6 +78,7 @@ class zynthian_ctrldev_base_moder():
     mode_keys = list(_MODES.keys())
     mode_values = list(_MODES.values())
     mode_index = mp.Value('i', 0)
+    unroute_from_chains = 0b0000000000000000
 
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
@@ -105,8 +106,8 @@ class zynthian_ctrldev_base_moder():
             for offset, indata in inport.incoming_midi_events():
                 if len(indata) == 3:
                     status, pitch, vel = struct.unpack('3B', indata)
-                    # Process notes from all channels except channel 10
-                    if (status & 0xF) != 9 and status >> 4 in (NOTEON, NOTEOFF):
+                    # Process notes from all channels except unrouted channel
+                    if not (self.unroute_from_chains >> (status & 0xF) & 0x1) and status >> 4 in (NOTEON, NOTEOFF):
                         # Translate key to mode note
                         note_offset = pitch % 12
                         pitch_base = pitch - note_offset

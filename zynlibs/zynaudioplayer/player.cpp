@@ -1823,6 +1823,17 @@ float get_file_duration(const char* filename) {
     return 0.0f;
 }
 
+int get_file_channels(const char* filename) {
+    SF_INFO info;
+    info.format     = 0;
+    info.samplerate = 0;
+    SNDFILE* pFile  = sf_open(filename, SFM_READ, &info);
+    sf_close(pFile);
+    if (info.samplerate)
+        return info.channels;
+    return 0;
+}
+
 const char* get_file_info(const char* filename, int type) {
     SF_INFO info;
     info.format        = 0;

@@ -2672,8 +2672,7 @@ class zynthian_state_manager:
     def select_bluetooth_controller(self, controller):
         if controller.count(":") != 5:
             return
-        proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE,
-                     stderr=PIPE, encoding='utf-8')
+        proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
         for addr in check_output("bluetoothctl list", shell=True, timeout=1, encoding="utf-8").split():
             if addr.count(":") == 5:
                 proc.stdin.write(f"select {addr}\n")

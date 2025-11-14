@@ -66,11 +66,9 @@ _MODE_BANKS = {
 class zynthian_ctrldev_worlde_mini_moder(zynthian_ctrldev_base, zynthian_ctrldev_base_moder):
 
     dev_ids = ["WORLDE MINI IN 1"]
-    driver_description = "Mode enforcer. Use pads notes & CCs to change mode:\n"\
-                         "+ Notes / Bank A (White Keys): Chromatic, Major, Minor, Dorian, Mixolydian, Lydian, Phrygian, Locrian\n"\
-                         "+ Notes / Bank B (White Keys): Chromatic, Harmonic Minor, Melodic Minor, Super Locrian, Bhairav, Hungarian Minor, Minor Gypsy\n"\
-                         "+ CC / Bank A (Black Keys): Chromatic, Minor Pentatonic, Major Pentatonic, Hirojoshi, In-Sen, Iwato, Kumoi\n"\
-                         "+ CC / Bank B (Custom Keys): Chromatic, Diminished, Whole-Half, Spanish, Whole Tone, Minor Blues, Pelog"
+    driver_description = "Mode enforcer. Use pads to change mode:\n"\
+                         "+ Bank A: Chromatic, Dorian, Mixolydian, Lydian, Phrygian, Locrian, Super Locrian, Bhairav\n"\
+                         "+ Bank B: Chromatic, Hungarian Minor, Minor Gypsy, Hirojoshi, In-Sen, Iwato, Kumoi, Spanish\n"
 
     unroute_from_chains = 0b0000001000000000  # Unroute channel 10 (akai MPK mini's pads)
     autoload_flag = False

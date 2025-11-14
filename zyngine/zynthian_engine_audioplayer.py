@@ -27,6 +27,7 @@ import copy
 import shutil
 import logging
 from glob import glob
+from subprocess import check_output, STDOUT
 
 from . import zynthian_engine
 from zynlibs.zynaudioplayer import *
@@ -380,7 +381,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
     def delete_preset(self, bank, preset):
         try:
             os.remove(preset[0])
-            os.remove(f"{preset[0]}.png")
         except Exception as e:
             logging.debug(e)
 
@@ -402,7 +402,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             logging.debug(e)
 
     def is_preset_user(self, preset):
-        if preset[2] != "capture":
+        if zynthian_engine.my_data_dir in preset[0]:
             return True
         else:
             return False
@@ -429,6 +429,32 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 title = str.replace(parts[0], '_', ' ')
                 processor.set_preset([latest_fpath, None, title, None, bank_fpath])
         self.processor = processor
+
+    # ----------------------------------------------------------------------------
+    # Audioplayer Preset Options
+    # ----------------------------------------------------------------------------
+
+    def get_preset_options(self, preset):
+        options = {}
+        if zynaudioplayer.get_file_channels(preset[0]) >= 4:
+            options["Deconvolve"] = [preset, ["Deconvolve a multi-channel recording to generate IR", "settings.png"]]
+        return options
+
+    def preset_options_cb(self, option, preset):
+        if option == "Deconvolve":
+            self.state_manager.start_busy("deconvolve preset", "deconvolving audio file...")
+            self.deconvolve_preset(preset)
+            self.state_manager.end_busy("deconvolve preset")
+
+    def deconvolve_preset(self, preset):
+        try:
+            dest_fpath = f"{self.my_data_dir}/files/IRs/deconvolved/{os.path.basename(preset[0])}"
+            cmd = [f"{self.ui_dir}/zyngine/deconvolve.py", preset[0], dest_fpath]
+            logging.debug(f"Executing: {cmd}")
+            result = check_output(cmd, encoding="utf-8", stderr=STDOUT)
+            logging.debug(result)
+        except Exception as e:
+            logging.error(e)
 
     # ----------------------------------------------------------------------------
     # Controllers Management
