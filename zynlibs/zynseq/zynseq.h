@@ -104,6 +104,12 @@ const char* getState();
 */
 void freeState();
 
+/** @brief  Set state of a pattern
+    @param  id Pattern index
+    @param  patn_state Pattern state as json string
+*/
+void setPattern(uint32_t id, const char* patn_state);
+
 /** @brief  Set sequences and patterns
     @param  state State as json string
     @retval bool True on success
@@ -118,22 +124,17 @@ bool setState(const char* state);
 */
 bool load(const char* filename);
 
-/** @brief  Load pattern from file
+/** @brief  Convert a legacy pattern from binary file
     @param  nPattern Pattern number
     @param  filename Full path and filename
+    @retval char* JSON representation of pattern as c-string or null on error
 */
-bool load_pattern(uint32_t nPattern, const char* filename);
+const char* convertPattern(uint32_t nPattern, const char* filename);
 
 /** @brief  Save sequences and patterns to file
     @param  filename Full path and filename
 */
 void save(const char* filename);
-
-/** @brief  Save pattern to file
-    @param  nPattern Pattern number
-    @param  filename Full path and filename
-*/
-void save_pattern(uint32_t nPattern, const char* filename);
 
 /** @brief  Store current pattern on undo queue
 */

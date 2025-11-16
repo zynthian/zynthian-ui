@@ -657,7 +657,15 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
 
     def save_pattern_file(self, fname):
-        self.zynseq.save_pattern(self.pattern, f"{self.my_patterns_dpath}/{fname}.zpat")
+        fpath = f"{self.my_patterns_dpath}/{fname}.zpat"
+        if os.path.exists(fpath):
+            self.zyngui.show_confirm(f"Do you want to overwrite pattern file '{fname}'?",
+                                     self.do_save_pattern_file, fpath)
+        else:
+            self.do_save_pattern_file(fpath)
+
+    def do_save_pattern_file(self, fpath):
+        self.zynseq.save_pattern(self.pattern, fpath)
 
     def load_pattern_file(self, fname, fpath):
         if not self.zynseq.is_pattern_empty(self.pattern):

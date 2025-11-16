@@ -1222,6 +1222,41 @@ const char* convertToJson(const char* filename) {
     return g_pState;
 }
 
+void setPattern(uint32_t id, const char* patn_state) {
+    json jPattern = json::parse(patn_state);
+    Pattern* pPattern = g_seqMan.getPattern(id);
+    pPattern->clear();
+    pPattern->setBeatsInPattern(jPattern.value("beats", 4));
+    pPattern->setStepsPerBeat(jPattern.value("steps", 16) / pPattern->getBeatsInPattern());
+    pPattern->setScale(jPattern.value("scale", 0));
+    pPattern->setTonic(jPattern.value("tonic", 0));
+    pPattern->setRefNote(jPattern.value("refNote", 60));
+    if (jPattern.contains("ccnum")) {
+        for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
+            pPattern->setInterpolateCC(ccnum, jPattern["ccnum"][ccnum]);
+    }
+    pPattern->setQuantizeNotes(jPattern.value("qantize", 0));
+    pPattern->setSwingDiv(jPattern.value("swingDiv", 1));
+    pPattern->setSwingAmount(jPattern.value("swing", 0.0));
+    pPattern->setHumanTime(jPattern.value("humanTime", 0.0));
+    pPattern->setHumanVelo(jPattern.value("humanVel", 0.0));
+    pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
+    for (auto& jEvent: jPattern["events"]) {
+        uint32_t nStep = jEvent.value("step", 0);
+        float fDuration = jEvent.value("duration", 1.0);
+        float fOffset = jEvent.value("offset", 0.0);
+        uint8_t nCommand = jEvent.value("command", 144);
+        uint8_t nValue1start = jEvent["val1Start"];
+        uint8_t nValue2start = jEvent["val2Start"];
+        StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
+        pEvent->setValue1end(jEvent.value("val1End", nValue1start));
+        pEvent->setValue2end(jEvent.value("val2End", nValue2start));
+        pEvent->setStutterCount(jEvent.value("stutCnt", 0));
+        pEvent->setStutterDur(jEvent.value("stutDur", 1));
+        pEvent->setPlayChance(float(jEvent.value("chance", 100)) / 100);
+    }
+}
+
 bool setState(const char* state) {
     try {
         json j = json::parse(state);
@@ -1237,6 +1272,7 @@ bool setState(const char* state) {
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {
                 uint32_t id = std::stoi(key);
+                //!@todo We could reuse setPattern but that means encoding and re-decoding the json
                 Pattern* pPattern = g_seqMan.getPattern(id);
                 pPattern->clear();
                 pPattern->setBeatsInPattern(jPattern.value("beats", 4));
@@ -1369,10 +1405,10 @@ bool setState(const char* state) {
 
 const char* getState() {
     uint8_t nScene = getScene();
-    json j;
-    j["tempo"] = g_dTempo;
-    j["sig"] = g_nTimeSig;
-    j["scene"] = nScene;
+    json jState;
+    jState["tempo"] = g_dTempo;
+    jState["sig"] = g_nTimeSig;
+    jState["scene"] = nScene;
     // Iterate through patterns
     uint32_t nPattern = 0;
     while ((nPattern = g_seqMan.getNextPattern(nPattern)) != -1) {
@@ -1409,7 +1445,7 @@ const char* getState() {
                 jEvt["chance"] = int(pEvent->getPlayChance() * 100);
                 jPatn["events"].push_back(jEvt);
             }
-            j["patns"][std::to_string(nPattern)] = jPatn;
+            jState["patns"][std::to_string(nPattern)] = jPatn;
         }
     }
 
@@ -1476,10 +1512,10 @@ const char* getState() {
             jScene["phrases"].push_back(jPhrase);
             ++nPhrase;
         }
-        j["scenes"].push_back(jScene);
+        jState["scenes"].push_back(jScene);
     }
 
-    std::string json_str = j.dump();
+    std::string json_str = jState.dump();
     free(g_pState);
     g_pState = (char*)malloc(json_str.size() + 1);
     std::strcpy(g_pState, json_str.c_str());
@@ -1491,13 +1527,14 @@ void freeState() {
     g_pState = nullptr;
 }
 
-bool load_pattern(uint32_t nPattern, const char* filename) {
-    //!@todo Load pattern from json
+const char* convertPattern(uint32_t nPattern, const char* filename) {
+    // Legacy binary format
     uint32_t nVersion = 0;
     FILE* pFile;
     pFile = fopen(filename, "r");
     if (pFile == NULL)
-        return false;
+        return nullptr;
+    json jPattern;
     char sHeader[4];
     // Iterate each block within IFF file
     while (fread(sHeader, 4, 1, pFile) == 1) {
@@ -1506,13 +1543,13 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
             if (nBlockSize != 10) {
                 fclose(pFile);
                 printf("Error reading vers block from pattern file\n");
-                return false;
+                return nullptr;
             }
             nVersion = fileRead32u(pFile);
             if (nVersion < 4 || nVersion > FILE_VERSION) {
                 fclose(pFile);
                 DPRINTF("Unsupported pattern file version %d. Not loading file.\n", nVersion);
-                return false;
+                return nullptr;
             }
             // Loaded from file but not used!
             // g_nTimeSig, g_nVerticalZoom, g_nHorizontalZoom
@@ -1531,23 +1568,21 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                 if (checkBlock(pFile, nBlockSize, 8))
                     continue;
             }
-            Pattern* pPattern = g_seqMan.getPattern(nPattern);
-            pPattern->clear();
-            pPattern->setBeatsInPattern(fileRead32u(pFile));
-            pPattern->setStepsPerBeat(fileRead16u(pFile));
-            pPattern->setScale(fileRead8u(pFile));
-            pPattern->setTonic(fileRead8u(pFile));
+            jPattern["beats"] = fileRead32u(pFile);
+            jPattern["steps"] = fileRead16u(pFile);
+            jPattern["scale"] = fileRead8u(pFile);
+            jPattern["tonic"] = fileRead8u(pFile);
             if (nVersion > 4) {
-                pPattern->setRefNote(fileRead8u(pFile));
+                jPattern["refNote"] = fileRead8u(pFile);
                 nBlockSize -= 1;
             }
             if (nVersion > 8) {
-                pPattern->setQuantizeNotes(fileRead8u(pFile));
-                pPattern->setSwingDiv(fileRead8u(pFile));
-                pPattern->setSwingAmount(fileReadBCD(pFile));
-                pPattern->setHumanTime(fileReadBCD(pFile));
-                pPattern->setHumanVelo(fileReadBCD(pFile));
-                pPattern->setPlayChance(fileReadBCD(pFile));
+                jPattern["qantize"] = fileRead8u(pFile);
+                jPattern["swingDiv"] = fileRead8u(pFile);
+                jPattern["swing"] = fileReadBCD(pFile);
+                jPattern["humanTime"] = fileReadBCD(pFile);
+                jPattern["humanVel"] = fileReadBCD(pFile);
+                jPattern["chance"] = fileReadBCD(pFile);
                 nBlockSize -= 18;
             }
             if (nVersion > 4) {
@@ -1568,119 +1603,44 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                     if (checkBlock(pFile, nBlockSize, 14))
                         break;
                 }
-                uint32_t nStep = fileRead32u(pFile);
-                float fDuration, fOffset;
+                json jEvent;
+                jEvent["step"] = fileRead32u(pFile);
                 if (nVersion > 8) {
-                    fOffset = fileReadBCD(pFile);
-                    fDuration = fileReadBCD(pFile);
+                    jEvent["offset"] = fileReadBCD(pFile);
+                    jEvent["duration"] = fileReadBCD(pFile);
                     nBlockSize -= 4;
                 } else {
-                    fOffset = 0;
-                    fDuration = float(fileRead16u(pFile)) / 100 + fileRead16u(pFile); // fractional + integral (BCD)
+                    jEvent["duration"] = float(fileRead16u(pFile)) / 100 + fileRead16u(pFile); // fractional + integral (BCD)
                 }
-                uint8_t nCommand = fileRead8u(pFile);
-                uint8_t nValue1start = fileRead8u(pFile);
-                uint8_t nValue2start = fileRead8u(pFile);
-                uint8_t nValue1end = fileRead8u(pFile);
-                uint8_t nValue2end = fileRead8u(pFile);
-                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
-                pEvent->setValue1end(nValue1end);
-                pEvent->setValue2end(nValue2end);
+                jEvent["command"] = fileRead8u(pFile);
+                jEvent["val1Start"] = fileRead8u(pFile);
+                jEvent["val2Start"] = fileRead8u(pFile);
+                jEvent["val1End"] = fileRead8u(pFile);
+                jEvent["val2End"] = fileRead8u(pFile);
                 if (nVersion > 7) {
-                    uint8_t nStutterCount = fileRead8u(pFile);
-                    uint8_t nStutterDur = fileRead8u(pFile);
-                    pEvent->setStutterCount(nStutterCount);
-                    pEvent->setStutterDur(nStutterDur);
+                    jEvent["stutCnt"] = fileRead8u(pFile);
+                    jEvent["stutDur"] = fileRead8u(pFile);
                     nBlockSize -= 2;
                 }
                 if (nVersion > 8) {
-                    pEvent->setPlayChance(float(fileRead8u(pFile)) / 100);
+                    jEvent["chance"] = (float(fileRead8u(pFile)) / 100);
                     nBlockSize -= 1;
                 }
+                fileRead8(pFile); // Padding
                 nBlockSize -= 14;
                 // printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end,
                 // nValue2start, nValue2end);
+                jPattern["events"].push_back(jEvent);
             }
-            pPattern->resetSnapshots();
         }
     }
     fclose(pFile);
     // printf("Ver: %d Loaded %lu pattern from file %s\n", nVersion, m_mPatterns.size(), filename);
-    return true;
-}
-
-void save_pattern(uint32_t nPattern, const char* filename) {
-    //!@todo Save pattern as json
-    //!@todo Need to save / load ticks per beat (unless we always use 1920)
-
-    Pattern* pPattern = g_seqMan.getPattern(nPattern);
-    // Only save pattern if it has content
-    if (isPatternEmpty(nPattern)) {
-        fprintf(stderr, "WARNING: SequenceManager didn't save pattern %d because it's empty\n", nPattern);
-        return;
-    }
-
-    FILE* pFile;
-    int nPos = 0;
-    pFile = fopen(filename, "w");
-    if (pFile == NULL) {
-        fprintf(stderr, "ERROR: SequenceManager failed to open file %s\n", filename);
-        return;
-    }
-
-    uint32_t nBlockSize;
-    fwrite("vers", 4, 1, pFile); // IFF block name
-    nPos += 4;
-    nPos += fileWrite32u(10, pFile);             // IFF block size
-    nPos += fileWrite32u(FILE_VERSION, pFile);   // IFF block content
-    nPos += fileWrite8u(g_nTimeSig, pFile);
-    nPos += fileWrite16(g_nVerticalZoom, pFile);
-    nPos += fileWrite16(g_nHorizontalZoom, pFile);
-
-    fwrite("patn", 4, 1, pFile);
-    nPos += 4;
-    nPos += fileWrite32u(0, pFile); // IFF block size
-    uint32_t nStartOfBlock = nPos;
-    nPos += fileWrite32u(pPattern->getBeatsInPattern(), pFile);
-    nPos += fileWrite16(pPattern->getStepsPerBeat(), pFile);
-    nPos += fileWrite8u(pPattern->getScale(), pFile);
-    nPos += fileWrite8u(pPattern->getTonic(), pFile);
-    nPos += fileWrite8u(pPattern->getRefNote(), pFile);
-    uint8_t ccnum;
-    for (ccnum=0; ccnum<128; ccnum++) {
-        nPos += fileWrite8u(pPattern->getInterpolateCC(ccnum), pFile);
-    }
-    nPos += fileWrite8u(pPattern->getQuantizeNotes(), pFile);
-    nPos += fileWrite8u(pPattern->getSwingDiv(), pFile);
-    nPos += fileWrite32f(pPattern->getSwingAmount(), pFile);
-    nPos += fileWrite32f(pPattern->getHumanTime(), pFile);
-    nPos += fileWrite32f(pPattern->getHumanVelo(), pFile);
-    nPos += fileWrite32f(pPattern->getPlayChance(), pFile);
-    nPos += fileWrite8u('\0', pFile);
-    uint32_t nEvent = 0;
-    while (StepEvent* pEvent = pPattern->getEventAt(nEvent++)) {
-        // Event Position (step)
-        nPos += fileWrite32u(pEvent->getPosition(), pFile);
-        // Offset as BCD
-        nPos += fileWrite32f(pEvent->getOffset(), pFile);
-        // Duration as BCD
-        nPos += fileWrite32f(pEvent->getDuration(), pFile);
-        // 1 byte values
-        nPos += fileWrite8u(pEvent->getCommand(), pFile);
-        nPos += fileWrite8u(pEvent->getValue1start(), pFile);
-        nPos += fileWrite8u(pEvent->getValue2start(), pFile);
-        nPos += fileWrite8u(pEvent->getValue1end(), pFile);
-        nPos += fileWrite8u(pEvent->getValue2end(), pFile);
-        nPos += fileWrite8u(pEvent->getStutterCount(), pFile);
-        nPos += fileWrite8u(pEvent->getStutterDur(), pFile);
-        nPos += fileWrite8u(pEvent->getPlayChance(), pFile);
-        nPos += fileWrite8u('\0', pFile); // Pad to even block (could do at end but simplest here)
-    }
-    nBlockSize = nPos - nStartOfBlock;
-    fseek(pFile, nStartOfBlock - 4, SEEK_SET);
-    fileWrite32u(nBlockSize, pFile);
-    fseek(pFile, 0, SEEK_END);
-    fclose(pFile);
+    std::string json_str = jPattern.dump();
+    freeState();
+    g_pState = (char*)malloc(json_str.size() + 1);
+    std::strcpy(g_pState, json_str.c_str());
+    return g_pState;
 }
 
 void savePatternSnapshot() {

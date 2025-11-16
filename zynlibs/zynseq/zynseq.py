@@ -26,7 +26,7 @@
 import ctypes
 import logging
 from os.path import dirname, realpath
-from json import dumps, loads
+from json import dump, dumps, load, loads
 
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
@@ -139,6 +139,8 @@ class zynseq(zynthian_engine):
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
+            self.libseq.convertPattern.argtypes = [ctypes.c_int32, ctypes.c_char_p]
+            self.libseq.convertPattern.restype = ctypes.c_char_p
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
@@ -255,7 +257,20 @@ class zynseq(zynthian_engine):
     # patnum: Pattern number
     # filename: Full path and filename
     def load_pattern(self, patnum, filename):
-        self.libseq.load_pattern(int(patnum), bytes(filename, "utf-8"))
+        try:
+            with open(filename, "r") as f:
+                patn = load(f)
+                patn_str = dumps(patn)
+        except:
+            try:
+                patn_str = self.libseq.convertPattern(int(patnum), bytes(filename, "utf-8")).decode("utf-8")
+                self.libseq.freeState()
+                patn = loads(patn_str)
+            except:
+                return
+        if patn:
+            self.libseq.setPattern(patnum, bytes(patn_str, "utf-8"))
+            self.state["patns"][str(patnum)] = patn
 
     # Save a zynseq file
     # filename: Full path and filename
@@ -270,9 +285,12 @@ class zynseq(zynthian_engine):
     # filename: Full path and filename
     # Returns: True on success
     def save_pattern(self, patnum, filename):
-        if self.libseq:
-            return self.libseq.save_pattern(int(patnum), bytes(filename, "utf-8"))
-        return None
+        try:
+            with open(filename, "w") as f:
+                dump(self.state["patns"][str(patnum)], f)
+                return True
+        except:
+            pass
 
     # Check if pattern is empty
     # Returns: True is pattern is empty
