@@ -287,8 +287,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
         default_b = 0
         track_labels = ['mixdown']
         track_values = [-1]
-        zoom_labels = ['x1']
-        zoom_values = [1]
+        zoom_labels = ['x1', 'x2', 'x4']
+        zoom_values = [1, 2, 4]
         if dur:
             channels = zynaudioplayer.get_channels(processor.handle)
             if channels > 2:
