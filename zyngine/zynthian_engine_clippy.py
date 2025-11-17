@@ -113,6 +113,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 break
         return phrase
 
+    def get_clip_id(self, pattern):
+        return self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
+
     def send_controller_value(self, zctrl):
         try:
             pattern = int(zctrl.symbol.split(" ")[1])
@@ -145,9 +148,11 @@ class zynthian_engine_clippy(zynthian_engine):
             zctrl_crop_start.value_range = zctrl_crop_start.value
             return
         elif zctrl.symbol.startswith("gain"):
+            try:
+                self.libclippy.setGain(zctrl.processor.midi_chan - 16, self.get_clip_id(pattern) - 1, ctypes.c_float(zctrl.value))
+            except:
+                pass
             return
-            #TODO: Must map clips so that we can access them. Clips may change phrase if moved in UI... 
-            #self.libclippy.setGain(zctrl.processor.midi_chan, phrase, ctypes.c_float(zctrl.value))
         elif zctrl.symbol.startswith("zoom"):
             return
 

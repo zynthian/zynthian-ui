@@ -33,6 +33,7 @@
 #include <samplerate.h> // provides samplerate convertor
 #include <rubberband/rubberband-c.h> // provides time stretch
 #include <pthread.h> // provides threading
+#include <math.h> // provides pow for dB calcs
 
 #define PRELOAD_FRAMES 2048 // Size of preload buffers in frames
 #define RINGBUFFER PRELOAD_FRAMES * 2 // Size of ring buffers in frames
@@ -276,7 +277,7 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
             // Not handling note-off
             break;
         case MIDI_CC:
-            setGain(event.buffer[0] & 0x0f, event.buffer[1], (float)(event.buffer[2]) / 64);
+            //setGain(event.buffer[0] & 0x0f, event.buffer[1], (float)(event.buffer[2]) / 64);
             break;
         }
     }
@@ -572,46 +573,52 @@ uint8_t unloadClip(uint8_t channel, uint8_t note) {
     return ERROR_SUCCESS;
 }
 
+float toDb(float val) {
+    return 20.0 * log10(val);
+}
+
+float fromDb(float val) {
+    return pow(10.0, val / 20.0);
+}
+
 /** @brief  Set clip gain
     @param  channel MIDI channel
-    @param  note MIDI note to trigger clip
+    @param  id Clip index
     @param  gain Linear gain factor
     @retval uint8_t Error code
 */
-uint8_t setGain(uint8_t channel, uint8_t note, float gain) {
+uint8_t setGain(uint8_t channel, uint8_t id, float gain) {
     if (channel > 15)
         return ERROR_RANGE;
     Player* player = players[channel];
     if (!player)
         return ERROR_RANGE;
-    uint8_t id = note - 1;
     if (id >= MAX_CLIPS)
         return ERROR_RANGE;
     Clip* clip = player->clips[id];
     if (!clip)
         return ERROR_RANGE;
-    clip->gain = gain;
+    clip->gain = fromDb(gain);
     return ERROR_SUCCESS;
 }
 
 /** @brief  Get clip gain
     @param  channel MIDI channel
-    @param  note MIDI note to trigger clip
+    @param  id Clip index
     @retval float Linear gain factor
 */
-float getGain(uint8_t channel, uint8_t note) {
+float getGain(uint8_t channel, uint8_t id) {
     if (channel > 15)
         return 0.0f;
     Player* player = players[channel];
     if (!player)
         return 0.0f;
-    uint8_t id = note - 1;
     if (id >= MAX_CLIPS)
         return 0.0f;
     Clip* clip = player->clips[id];
     if (!clip)
         return 0.0f;
-    return clip->gain;
+    return toDb(clip->gain);
 }
 
 /** @brief  Get the samplerate of a file
