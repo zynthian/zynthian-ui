@@ -157,7 +157,7 @@ ZynthianState = {
                 "tonic": 0, # Root note for scale
                 "refNote": 51,
                 "ccnum": [0, 1, ...], # Interpolate CC numbers
-                "qantize": 0, # Amount to quantize
+                "quantize": 0, # Amount to quantize
                 "swingDiv": 1, # Swing divisor
                 "swing": 0.0, # Amount of swing to apply to pattern
                 "humanTime": 0.0, # Variation in timing feel
