@@ -1139,6 +1139,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 visible_chains = 16
         self.set_visible_chains(visible_chains)
 
+        self.status_tempo = self.status_canvas.create_text(
+            0, 0,
+            anchor=tkinter.NW,
+            fill=zynthian_gui_config.color_header_tx,
+            font=("forkawesome", int(0.25 * self.status_h)),
+            text="120.0 bpm",
+            state=tkinter.NORMAL)
+
+        self.status_sig = self.status_canvas.create_text(
+            int(self.status_fs * 5), 0,
+            anchor=tkinter.NW,
+            fill=zynthian_gui_config.color_header_tx,
+            font=("forkawesome", int(0.25 * self.status_h)),
+            text="4/4",
+            state=tkinter.NORMAL)
+
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.set_tempo)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TIMESIG, self.set_timesig)
+
     def set_visible_chains(self, visible_chains):
         self.fader_width = (self.width - 6) / (visible_chains + 1)
         self.legend_height = self.height * 0.05
@@ -1303,6 +1322,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         super().update_layout()
         # TODO: Update mixer layout
+
+    def set_tempo(self, tempo):
+        self.status_canvas.itemconfig(self.status_tempo, text=f"{tempo} bpm")
+
+    def set_timesig(self, timesig):
+        self.status_canvas.itemconfig(self.status_sig, text=f"{timesig}/4")
 
     def refresh_status(self):
         """Function to refresh screen (slow)

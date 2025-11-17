@@ -91,6 +91,7 @@ SS_SEQ_PLAY_STATE = 1
 SS_SEQ_REFRESH = 2
 SS_SEQ_PROGRESS = 3
 SS_TEMPO = 4
+SS_TIMESIG = 5
 
 class zynseq(zynthian_engine):
 
@@ -179,6 +180,8 @@ class zynseq(zynthian_engine):
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
         self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
+        self.tempo = 120.0
+        self.timesig = 4
         self.reset()
 
     # Destroy instance of shared library
@@ -199,24 +202,35 @@ class zynseq(zynthian_engine):
         size = self.phrases * 33
         states = (ctypes.c_uint32 * size)()
         count = self.libseq.getStateChange(states, size)
-        for i in range(count):
-            if self.pause_update:
-                return  # Stop processing updates if changing structure
-            phrase = (states[i] >> 24) & 0xff
-            chan = min((states[i] >> 16) & 0xff, 32)
-            mode = (states[i] >> 8) & 0xff
-            state = states[i] & 0xff
-            try:
-                if chan == PHRASE_CHANNEL:
-                    info = self.state["scenes"][self.scene]["phrases"][phrase]
-                else:
-                    info = self.state["scenes"][self.scene]["phrases"][phrase]["sequences"][chan]
-            except:
-                logging.warning(f"No launcher info for sequence ({phrase},{chan})")
-                continue
-            info["state"] = state
-            info["mode"] = mode
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan, state=state, mode=mode)
+        if count:
+            # Only check for tempo and time signature changes when change of play state - this works for now but won't if we have dynamic tempo changes
+            tempo = self.libseq.getTempo()
+            if tempo != self.tempo:
+                self.tempo = tempo
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=tempo)
+            timesig = self.libseq.getTimeSig()
+            if timesig != self.timesig:
+                self.timesig = timesig
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_TIMESIG, timesig=timesig)
+            # Iterate state changes
+            for i in range(count):
+                if self.pause_update:
+                    return  # Stop processing updates if changing structure
+                phrase = (states[i] >> 24) & 0xff
+                chan = min((states[i] >> 16) & 0xff, 32)
+                mode = (states[i] >> 8) & 0xff
+                state = states[i] & 0xff
+                try:
+                    if chan == PHRASE_CHANNEL:
+                        info = self.state["scenes"][self.scene]["phrases"][phrase]
+                    else:
+                        info = self.state["scenes"][self.scene]["phrases"][phrase]["sequences"][chan]
+                except:
+                    logging.warning(f"No launcher info for sequence ({phrase},{chan})")
+                    continue
+                info["state"] = state
+                info["mode"] = mode
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan, state=state, mode=mode)
         # Update progress
         progress = self.libseq.getProgress()
         for i in range(33):
@@ -369,6 +383,18 @@ class zynseq(zynthian_engine):
         self.libseq.freeState()
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
         self.refresh_chan2col()
+        try:
+            if self.state["tempo"] != self.tempo:
+                self.tempo = self.state["tempo"]
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=self.tempo)
+        except:
+            logging.warning("Failed to set tempo")
+        try:
+            if self.state["timesig"] != self.timesig:
+                self.timesig = self.state["timesig"]
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_TIMESIG, timesig=self.timesig)
+        except:
+            logging.warning("Failed to set timesig")
 
     def refresh_chan2col(self):
         self.chan2col = [None] * LAUNCHER_COLS
