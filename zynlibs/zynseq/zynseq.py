@@ -259,10 +259,12 @@ class zynseq(zynthian_engine):
     def load_pattern(self, patnum, filename):
         try:
             with open(filename, "r") as f:
-                patn = load(f)
+                state = load(f)
+                patn = state["patn"]
                 patn_str = dumps(patn)
         except:
             try:
+                # Legacy binary file format
                 patn_str = self.libseq.convertPattern(int(patnum), bytes(filename, "utf-8")).decode("utf-8")
                 self.libseq.freeState()
                 patn = loads(patn_str)
@@ -272,22 +274,18 @@ class zynseq(zynthian_engine):
             self.libseq.setPattern(patnum, bytes(patn_str, "utf-8"))
             self.state["patns"][str(patnum)] = patn
 
-    # Save a zynseq file
-    # filename: Full path and filename
-    # Returns: True on success
-    def save(self, filename):
-        if self.libseq:
-            return self.libseq.save(bytes(filename, "utf-8"))
-        return None
-
     # Save a zynseq pattern file
     # patnum: Pattern number
     # filename: Full path and filename
     # Returns: True on success
     def save_pattern(self, patnum, filename):
         try:
+            state = {
+                "schema_version": self.state_manager.get_schema(),
+                "patn": self.state["patns"][str(patnum)]
+            }
             with open(filename, "w") as f:
-                dump(self.state["patns"][str(patnum)], f)
+                dump(state, f)
                 return True
         except:
             pass

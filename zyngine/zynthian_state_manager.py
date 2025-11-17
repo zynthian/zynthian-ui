@@ -948,6 +948,9 @@ class zynthian_state_manager:
     # Snapshot Save & Load
     # ----------------------------------------------------------------------------
 
+    def get_schema(self):
+        return SNAPSHOT_SCHEMA_VERSION
+
     def get_state(self):
         """Get a dictionary describing the full state model"""
 

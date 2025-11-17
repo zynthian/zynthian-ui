@@ -677,7 +677,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def do_load_pattern_file(self, fpath):
         self.zynseq.load_pattern(self.pattern, fpath)
         self.changed = False
-        self.redraw_pending = 3
+        self.redraw_pending = 4
 
     # If changed, save snapshot:
     #  + right now, if now=True
