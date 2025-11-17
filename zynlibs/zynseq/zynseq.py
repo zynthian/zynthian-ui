@@ -390,8 +390,8 @@ class zynseq(zynthian_engine):
         except:
             logging.warning("Failed to set tempo")
         try:
-            if self.state["timesig"] != self.timesig:
-                self.timesig = self.state["timesig"]
+            if self.state["sig"] != self.timesig:
+                self.timesig = self.state["ig"]
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_TIMESIG, timesig=self.timesig)
         except:
             logging.warning("Failed to set timesig")
