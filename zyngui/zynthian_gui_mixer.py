@@ -30,6 +30,7 @@ import logging
 from math import log10
 from time import monotonic
 from PIL import Image, ImageTk
+from threading import Timer
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -1147,7 +1148,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             text="120.0 bpm",
             state=tkinter.NORMAL)
 
-        self.status_sig = self.status_canvas.create_text(
+        self.status_timesig = self.status_canvas.create_text(
             int(self.status_l - self.status_fs * 3), 2,
             anchor=tkinter.NE,
             fill=zynthian_gui_config.color_header_tx,
@@ -1324,10 +1325,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # TODO: Update mixer layout
 
     def set_tempo(self, tempo):
-        self.status_canvas.itemconfig(self.status_tempo, text=f"{tempo} bpm")
+        self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_ml, text=f"{tempo} bpm")
+        Timer(0.6, self.clear_tempo_highlight).start()
+
+    def clear_tempo_highlight(self):
+        self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_header_tx)
 
     def set_timesig(self, timesig):
-        self.status_canvas.itemconfig(self.status_sig, text=f"{timesig}/4")
+        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"{timesig}/4")
+        Timer(0.6, self.clear_timesig_highlight).start()
+
+    def clear_timesig_highlight(self):
+        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_header_tx)
 
     def refresh_status(self):
         """Function to refresh screen (slow)
