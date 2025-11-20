@@ -1009,7 +1009,7 @@ const char* convertToJson(const char* filename) {
                 nBlockSize -= 1;
             }
             if (nVersion > 8) {
-                patj["qantize"] = fileRead8u(pFile);
+                patj["quantize"] = fileRead8u(pFile);
                 patj["swingDiv"] = fileRead8u(pFile);
                 patj["swing"] = fileReadBCD(pFile);
                 patj["humanTime"] = fileReadBCD(pFile);
@@ -1235,7 +1235,7 @@ void setPattern(uint32_t id, const char* patn_state) {
         for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
             pPattern->setInterpolateCC(ccnum, jPattern["ccnum"][ccnum]);
     }
-    pPattern->setQuantizeNotes(jPattern.value("qantize", 0));
+    pPattern->setQuantizeNotes(jPattern.value("quantize", 0));
     pPattern->setSwingDiv(jPattern.value("swingDiv", 1));
     pPattern->setSwingAmount(jPattern.value("swing", 0.0));
     pPattern->setHumanTime(jPattern.value("humanTime", 0.0));
@@ -1284,7 +1284,7 @@ bool setState(const char* state) {
                     for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
                         pPattern->setInterpolateCC(ccnum, jPattern["ccnum"][ccnum]);
                 }
-                pPattern->setQuantizeNotes(jPattern.value("qantize", 0));
+                pPattern->setQuantizeNotes(jPattern.value("quantize", 0));
                 pPattern->setSwingDiv(jPattern.value("swingDiv", 1));
                 pPattern->setSwingAmount(jPattern.value("swing", 0.0));
                 pPattern->setHumanTime(jPattern.value("humanTime", 0.0));
@@ -1422,7 +1422,7 @@ const char* getState() {
             jPatn["scale"] = pPattern->getScale();
             jPatn["tonic"] = pPattern->getTonic();
             jPatn["refNote"] = pPattern->getRefNote();
-            jPatn["qantize"] = pPattern->getQuantizeNotes();
+            jPatn["quantize"] = pPattern->getQuantizeNotes();
             jPatn["swingDiv"] = pPattern->getSwingDiv();
             jPatn["swing"] = pPattern->getSwingAmount();
             jPatn["humanTime"] = pPattern->getHumanTime();
@@ -1577,7 +1577,7 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 nBlockSize -= 1;
             }
             if (nVersion > 8) {
-                jPattern["qantize"] = fileRead8u(pFile);
+                jPattern["quantize"] = fileRead8u(pFile);
                 jPattern["swingDiv"] = fileRead8u(pFile);
                 jPattern["swing"] = fileReadBCD(pFile);
                 jPattern["humanTime"] = fileReadBCD(pFile);
