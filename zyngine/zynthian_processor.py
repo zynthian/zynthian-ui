@@ -672,19 +672,25 @@ class zynthian_processor:
                 mval = zctrl.get_ctrl_midi_val()
                 zctrl.send_midi_cc(mval)
                 # logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(mval), k))
-            if zctrl.midi_feedback:
-                zctrl.send_midi_feedback(mval)
+
+            if zctrl.send_value_cb and callable(zctrl.send_value_cb):
+                try:
+                    zctrl.send_value_cb(zctrl)
+                except Exception as e:
+                    logging.warning(f"Can't send value feedback for {zctrl.symbol} => {e}")
 
     def send_ctrlfb_midi_cc(self):
-        """Send MIDI CC for all feeback controllers
+        """Send MIDI CC feedback for all configured controllers
 
         TODO: When is this required? Called by send_ctrl_midi_cc. Fluidsynth calls this during set_preset
         """
 
         for k, zctrl in self.controllers_dict.items():
-            if zctrl.midi_feedback:
-                zctrl.send_midi_feedback()
-                # logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
+            if zctrl.send_value_cb and callable(zctrl.send_value_cb):
+                try:
+                    zctrl.send_value_cb(zctrl)
+                except Exception as e:
+                    logging.warning(f"Can't send value feedback for {zctrl.symbol} => {e}")
 
     def get_group_zctrls(self, group):
         zctrls = []
