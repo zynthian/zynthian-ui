@@ -146,26 +146,50 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
             'reverb_duration': 78
         }
     }
+    fader_touch_flags = [False] * 33  # 4 banks x 8 faders + 1 master fader
     setbfree_procs = None
     pianoteq_proc = None
     ccnum2zctrls = {}
 
+    def init(self):
+        super().init()
+        # Register for processor tree changes
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_PROCESSOR, self.refresh)
+
+    def end(self):
+        self.reset_feedback()
+        # Unregister from processor tree changes
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_PROCESSOR, self.refresh)
+        super().end()
+
     def refresh(self):
+        changed = False
         # Look for setBfree engine
         if "BF" in self.chain_manager.zyngines:
-            self.setbfree_procs = self.chain_manager.zyngines["BF"].processors
-        else:
+            if self.setbfree_procs != self.chain_manager.zyngines["BF"].processors:
+                self.setbfree_procs = self.chain_manager.zyngines["BF"].processors
+                changed = True
+        elif self.setbfree_procs:
             self.setbfree_procs = None
+            changed = True
+
         # Look for pianoteq engine
         if "PT" in self.chain_manager.zyngines:
-            self.pianoteq_proc = self.chain_manager.zyngines["PT"].processors[0]
-        else:
+            if self.pianoteq_proc != self.chain_manager.zyngines["PT"].processors[0]:
+                self.pianoteq_proc = self.chain_manager.zyngines["PT"].processors[0]
+                changed = True
+        elif self.pianoteq_proc:
             self.pianoteq_proc = None
+            changed = True
 
-        if self.setbfree_procs or self.pianoteq_proc:
+        if changed:
             self.setup_feedback()
-        else:
-            self.ccnum2zctrls = {}
 
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
@@ -173,9 +197,20 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
 
         # By default, pads, faders and encoders use MIDI channel 2
         if evchan == 1:
-            # Note-On: pads
-            if evtype == 0x9:
+            # Note-Off:
+            if evtype == 0x8:
                 note = ev[1] & 0x7F
+                # Fader touch
+                if 0 <= note <= 32:
+                    self.fader_touch_flags[note] = False
+                    return True
+            # Note-On:
+            elif evtype == 0x9:
+                note = ev[1] & 0x7F
+                # Fader touch
+                if 0 <= note <= 32:
+                    self.fader_touch_flags[note] = True
+                    return True
                 # Pads (bank A, B, C & D) => Mode selection
                 if 66 <= note <= 97:
                     mode_key = _MODE_BANKS["notes"][note - 66]
@@ -242,6 +277,9 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
             #elif zctrl.processor in self.setbfree_procs:
             else:
                 ccnum = self.zctrls2ccnum[zctrl.processor.bank_name][zctrl.symbol]
+                # Don't send feedback if fader is touched
+                if 21 <= ccnum <= 53 and self.fader_touch_flags[ccnum - 21]:
+                    return
                 ccval = zctrl.value
             #logging.debug(f"Sending feedback to CC{ccnum} => {ccval}")
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 1, ccnum, ccval)
