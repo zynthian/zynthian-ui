@@ -73,7 +73,10 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         elif curscreen in ("preset", "bank"):
             self.wsleds[2] = self.wscolor_active2
         else:
-            self.wsleds[2] = self.wscolor_default
+            if self.zyngui.alt_mode:
+                self.wsleds[2] = self.wscolor_alt
+            else:
+                self.wsleds[2] = self.wscolor_default
 
         # ZS3 / Snapshot:
         if curscreen == "zs3":

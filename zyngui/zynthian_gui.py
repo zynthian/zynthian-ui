@@ -1484,7 +1484,10 @@ class zynthian_gui:
             else:
                 chain_id = self.chain_manager.get_chain_id_by_index(index - 1)
         except:
-            chain_id = self.chain_manager.active_chain_id
+            if self.alt_mode:
+                chain_id = 0
+            else:
+                chain_id = self.chain_manager.active_chain_id
         self.chain_control(chain_id)
 
     cuia_layer_control = cuia_chain_control
