@@ -6,7 +6,7 @@ include(CheckLibraryExists)
 
 link_directories(/usr/local/lib)
 
-add_library(zynclippy SHARED clippy.c)
+add_library(zynclippy SHARED clippy.c tinyosc.c)
 add_definitions(-Werror)
 target_link_libraries(zynclippy jack sndfile samplerate rubberband)
 

@@ -444,9 +444,14 @@ class zynthian_gui_mixer_strip:
             state_seq = None # This will raise an exception later and draw empty block
         else:
             state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][self.chain.midi_chan]
-            pattern = state_seq["tracks"][0]["patns"]['0']
+            """
             if self.chain.midi_chan > 15:
-                disabled |= self.chain.synth_slots[0][0].controllers_dict[f"file {pattern}"].value == ""
+                note = phrase + 1
+                try:
+                    disabled |= self.chain.synth_slots[0][0].controllers_dict[f"file {note}"].value == ""
+                except:
+                    disabled = True
+            """
         try:
             name = state_seq["name"]
             disabled |= state_seq["repeat"] == 0
@@ -1107,11 +1112,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         
         self.launcher_mode = self.zyngui.alt_mode
         self.launcher_select_info = None # zynseq state model of the selected launcher
-        self.clippy_file_zctrl = None
 
         self.zynmixer.set_midi_learn_cb(self.enter_midi_learn)
         self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS - 1
-        self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
+        self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1) # Map mixer channel to mixer strip
         self.highlighted_strip = None  # Highligted mixer strip object
         self.moving_chain = False  # True if moving a chain left/right
         self.moving_phrase = False # True if moving a launcher phrase up/down
@@ -1368,13 +1372,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def update_control(self, chan, symbol, value):
         """Mixer control update signal handler
+        chan: Mixer channel
+        symbol: Mixer control symbol
+        value: Control value
         """
         strip = self.chan2strip[chan]
         if not strip or not strip.chain or strip.chain.mixer_chan is None:
             return
         self.pending_refresh_queue.add((strip, symbol))
         if symbol == "level":
-            value = strip.zctrls["level"].value
+            #value = strip.zctrls["level"].value
             if value > 0:
                 level_db = 20 * log10(value)
                 self.set_title(f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
@@ -1725,10 +1732,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.launcher_offset = new_pos
             self.refresh_visible_strips()
 
-    # Handle file selector callback
-    def on_clippy_file_sel(self, path):
-        self.clippy_file_zctrl.set_value(path)
-
     def edit_pattern(self):
         if self.launcher_select_info:
             pated = self.zyngui.screens['pattern_editor']
@@ -1745,7 +1748,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.item_menu()
                 return True
             if type(self.highlighted_strip.chain.midi_chan) is int and self.highlighted_strip.chain.midi_chan < zynseq.PHRASE_CHANNEL:
-                if self.highlighted_strip.chain.midi_chan> 15:
+                if self.highlighted_strip.chain.midi_chan > 15:
                     proc = self.highlighted_strip.chain.get_processors()[0]
                     proc.engine.set_phrase(proc, self.zynseq.phrase)
                     self.zyngui.chain_control()

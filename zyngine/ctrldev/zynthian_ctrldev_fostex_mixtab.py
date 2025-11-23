@@ -75,6 +75,7 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         self.midi_chan = 0  # Base channel for MIDI messages. +1 for +8 offset, +2 for +16 offset.
         self.chan2chain = {}
         self.last_store = monotonic()
+        self.aux = [False] * 24 # Aux selector state for each chain
 
     def set_param(self, cc, val, midi_chan):
         if cc == 7:
@@ -166,6 +167,20 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
                     # Send 2 EQ HIGH
                     self.state_manager.send_cuia("ZYNPOT_ABS", [2, val/127])
                     return True
+            if 66 <= cc <= 73:
+                # Aux
+                if val < 64:
+                    # Aux 1
+                    val *=  2
+                    self.aux[(cc - 66) + (midi_chan * 8)] = False
+                else:
+                    val = (val - 64) * 2
+                    self.aux[(cc - 66) + (midi_chan * 8)] = True
+                self.chain_manager.midi_control_change(ev[0], midi_chan, cc, val)
+                self.zynmixer.midi_control_change(midi_chan, cc, val)
+                self.state_manager.alsa_mixer_processor.midi_control_change(midi_chan, cc, val)
+                self.state_manager.audio_player.midi_control_change(midi_chan, cc, val)
+                return True
             return self.set_param(cc, val, midi_chan)
         return False
 

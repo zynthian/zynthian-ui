@@ -1339,7 +1339,7 @@ class zynthian_chain_manager:
         zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
         """
 
-        logging.debug(f"(proccessor={zctrl.processor.id}, symbol={zctrl.symbol})")
+        # processor.id may not exist! logging.debug(f"(proccessor={zctrl.processor.id}, symbol={zctrl.symbol})")
 
         if zynstep is None:
             zynstep = not self.is_custom_zynstep_mapping(zctrl)

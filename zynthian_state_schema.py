@@ -181,49 +181,52 @@ ZynthianState = {
             }, # ... Other patterns
         },
         "scenes": [ # List of scenes, indexed by scene id
-            [ # List of phrases, indexed by phrase number
-                {
-                    "name": "A", # Scene name
-                    "mode": 4, # Scene play mode
-                    "sig": 4, # Time signature override x/4
-                    "tempo": 0, # Tempo override 0=no override
-                    "repeat": 1, # Quantity of repeats
-                    "followAction": 0, # Follow action
-                    "followParam": 0, # Follow action param
-                    "state": 0, # Play state (when snapshot saved)
-                    "sequences": [ # List of sequences in phrase
-                        {
-                            "mode": 4, # Sequence play mode
-                            "group": 0, # Mutex group (0..15, Chain MIDI channel else multi-channel)
-                            "name": "1", # Sequence name
-                            "repeat": 1, # Quantity of repeats
-                            "followAction": 0, # Follow action
-                            "followParam": 0, # Follow action param                   
-                            "state": 0, # Play state (when snapshot saved)
-                            "tracks": [ # List of tracks in sequence
-                                {
-                                    "chan": 0, # MIDI channel
-                                    "output": 0, # Jack output
-                                    "map": 0, # Key map
-                                    "patns": { # Indexed by relative start time within sequence 
-                                        "0": 3, # Pattern id
-                                        # ... Other patterns
-                                    }
-                                }, # ... Other tracks
-                            ],
-                            "timebase": [ # List of timebase events
-                                { # Event
-                                    "bar": 1, # Measure or bar of event
-                                    "tick": 0, # Tick within measure
-                                    "type": 0, # Event type, e.g. tempo
-                                    "value": 80 # Event value
-                                },
-                                # ... Other timebase events
-                            ]
-                        }, # ... Other sequences
-                    ],
-                }, # .. Other phrases
-            ], # ... Other scenes
+            { # First scene
+                "name": "Scene 1", # Scene name (optional)
+                "phrases": [ # List of phrases, indexed by phrase number
+                    { # First phrase
+                        "name": "A", # Scene name
+                        "mode": 4, # Scene play mode
+                        "sig": 4, # Time signature override x/4
+                        "tempo": 0, # Tempo override 0=no override
+                        "repeat": 1, # Quantity of repeats
+                        "followAction": 0, # Follow action
+                        "followParam": 0, # Follow action param
+                        "state": 0, # Play state (when snapshot saved)
+                        "sequences": [ # List of sequences in phrase
+                            {
+                                "mode": 4, # Sequence play mode
+                                "group": 0, # Mutex group (0..15, Chain MIDI channel else multi-channel)
+                                "name": "1", # Sequence name
+                                "repeat": 1, # Quantity of repeats
+                                "followAction": 0, # Follow action
+                                "followParam": 0, # Follow action param
+                                "state": 0, # Play state (when snapshot saved)
+                                "tracks": [ # List of tracks in sequence
+                                    {
+                                        "chan": 0, # MIDI channel
+                                        "output": 0, # Jack output
+                                        "map": 0, # Key map
+                                        "patns": { # Indexed by relative start time within sequence
+                                            "0": 3, # Pattern id
+                                            # ... Other patterns
+                                        }
+                                    }, # ... Other tracks
+                                ],
+                                "timebase": [ # List of timebase events
+                                    { # Event
+                                        "bar": 1, # Measure or bar of event
+                                        "tick": 0, # Tick within measure
+                                        "type": 0, # Event type, e.g. tempo
+                                        "value": 80 # Event value
+                                    },
+                                    # ... Other timebase events
+                                ]
+                            }, # ... Other sequences
+                        ],
+                    }, # .. Other phrases
+                ]
+            }, # Other scenes
         ]
     },
     "alsa_mixer": {  # Indexed by processor id

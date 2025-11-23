@@ -62,9 +62,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     def init(self):
         # Enable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
+        # Set pots to volume control
+        self.pot_mode = 1 # Potentiometer mode
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 15, 10, self.pot_mode)
         self.cols = 8
         self.rows = 2
-        self.pot_mode = 0 # Potentiometer mode
         self.mixer_toggle = False # Used to toggle mixer / launcher view
         super().init()
 

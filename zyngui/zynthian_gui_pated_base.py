@@ -296,6 +296,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["repeat"])
         else:
             self.stop_playback()
+        self.zynseq.refresh_state()
         super().hide()
 
     # -------------------------------------------------------------------------

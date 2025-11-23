@@ -59,7 +59,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
         self.refreshing = False
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
-        self.phrase = None
+        self.note = None
         self.info = None
         self.sf = None
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
@@ -161,7 +161,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         pos = event.x / f + self.offset
         max_delta = 0.02 * self.frames / self.zoom
         self.drag_marker = None
-        for symbol in [f"crop_start {self.processor.pattern}", f"crop_end {self.processor.pattern}"]:
+        for symbol in [f"crop_start {self.note}", f"crop_end {self.note}"]:
             if abs(pos - self.processor.controllers_dict[symbol].value) < max_delta:
                 self.drag_marker = symbol
                 self.drag_value = self.processor.controllers_dict[symbol].value
@@ -248,7 +248,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.update()
 
     def draw_waveform(self, start, length):
-        if self.sf is None:
+        if self.sf is None or self.note == 0:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
@@ -279,15 +279,15 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         else:
             self.sf.seek(start)
             a_data = self.sf.read(length, always_2d=True)
-            frames_per_pixel = len(a_data) // self.width
-            step = max(1, frames_per_pixel // steps_per_peak)
+            frames_per_pixel = len(a_data) / self.width
+            step = max(1, frames_per_pixel / steps_per_peak)
             # Limit read blocks for larger files
             block_size = min(frames_per_pixel, 1024)
 
-        if frames_per_pixel < 1:
-            self.refresh_waveform = False
-            self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
-            return
+        #if frames_per_pixel < 1:
+        #    self.refresh_waveform = False
+        #    self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
+        #    return
 
         v1 = [0.0 for i in range(self.channels)]
         v2 = [0.0 for i in range(self.channels)]
@@ -306,13 +306,15 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
                 # For each audio channel
                 v1[0:] = [0.0] * self.channels
                 v2[0:] = [0.0] * self.channels
-                for frame in range(offset1, offset2, step):
+                frame = offset1
+                while int(frame) < int(offset2):
                     # Find peak audio within block of audio represented by this x-axis pixel
-                    av = a_data[frame][channel] * self.v_zoom
+                    av = a_data[int(frame)][channel] * self.v_zoom
                     if av < v1[channel]:
                         v1[channel] = av
                     if av > v2[channel]:
                         v2[channel] = av
+                    frame += step
                 data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0),
                                   x, y_offsets[channel] + int(v2[channel] * y0))
 
@@ -332,12 +334,19 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         load_waveform = False
         update_markers = False
         refresh_info = False
-        if self.phrase != self.processor.engine.phrase:
-            self.phrase = self.processor.engine.phrase
+        if self.note != self.processor.engine.selected_note:
+            self.note = self.processor.engine.selected_note
+            if self.note == 0:
+                self.draw_waveform(0, 0)
+                self.refreshing = False
+                return
             load_waveform = True
+        elif self.note == 0:
+            self.refreshing = False
+            return
         try:
-            if self.processor.controllers_dict[f"file {self.processor.pattern}"].value:
-                fpath = self.processor.controllers_dict[f"file {self.processor.pattern}"].value
+            if self.processor.controllers_dict[f"file {self.note}"].value:
+                fpath = self.processor.controllers_dict[f"file {self.note}"].value
             else:
                 fpath = ""
             if fpath != self.fpath:
@@ -348,17 +357,18 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             if load_waveform:
                 waveform_thread = Thread(target=self.load_file, name="waveform image")
                 waveform_thread.start()
+                self.refreshing = False
                 return
 
-            zoom = self.processor.controllers_dict[f"zoom {self.processor.pattern}"].value
+            zoom = self.processor.controllers_dict[f"zoom {self.note}"].value
             if zoom != self.zoom:
                 self.zoom = zoom
                 self.refresh_waveform = True
-            crop_start = self.processor.controllers_dict[f"crop_start {self.processor.pattern}"].value
+            crop_start = self.processor.controllers_dict[f"crop_start {self.note}"].value
             if crop_start != self.crop_start:
                 self.crop_start = crop_start
                 update_markers = True
-            crop_end = self.processor.controllers_dict[f"crop_end {self.processor.pattern}"].value
+            crop_end = self.processor.controllers_dict[f"crop_end {self.note}"].value
             if crop_end != self.crop_end:
                 self.crop_end = crop_end
                 update_markers = True

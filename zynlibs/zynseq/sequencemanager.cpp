@@ -435,11 +435,17 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         pTrack->setChannel(chan % 16);
         pTrack->setOutput(chan < 16?0:0xfe);
         pSequence->setName(s  + std::to_string(chan + 1));
-        addPattern(pSequence, 0, 0, createPattern());
+        uint32_t nPattern = createPattern();
+        addPattern(pSequence, 0, 0, nPattern);
         pPhrase->m_vChildSequences.push_back(pSequence);
         setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0); // Loop
         if (m_bEnabled[chan])
             pSequence->setRepeat(1);
+        if (chan > 15) {
+            // Clippy
+            Pattern* pPattern = getPattern(nPattern);
+            //pPattern->addNote(0, phrase, 127);
+        }
     }
     return pPhrase;
 }

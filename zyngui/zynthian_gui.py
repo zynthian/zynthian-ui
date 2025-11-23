@@ -939,7 +939,7 @@ class zynthian_gui:
                         self.modify_chain_status["engine"]
                     )
                     # self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
-                    if processor:
+                    if processor and processor.eng_code != "CL":
                         self.close_screen("loading")
                         self.screen_history = []
                         self.chain_control(

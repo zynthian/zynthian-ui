@@ -249,16 +249,31 @@ class zynseq(zynthian_engine):
         if phrase is None:
             phrase = self.phrases
         self.libseq.insertPhrase(scene, phrase)
+        if scene == self.scene:
+            try:
+                self.state_manager.chain_manager.zyngines["CL"].insertClip(phrase)
+            except:
+                pass
         self.refresh_state()
 
     def remove_phrase(self, scene, phrase):
         if self.phrases < 2:
             return  # TODO: What should be the minimum quantity of launchers?
         self.libseq.removePhrase(scene, phrase)
+        if scene == self.scene:
+            try:
+                self.state_manager.chain_manager.zyngines["CL"].removeClip(phrase)
+            except:
+                pass
         self.refresh_state()
 
     def swap_phrase(self, scene, phrase1, phrase2):
         self.libseq.swapPhrase(scene, phrase1, phrase2)
+        if scene == self.scene:
+            try:
+                pass #self.state_manager.chain_manager.zyngines["CL"].swap_phrase(phrase1, phrase2)
+            except:
+                pass
         self.refresh_state()
 
     # Load a zynseq file
@@ -401,7 +416,7 @@ class zynseq(zynthian_engine):
         col = 0
         for id in self.state_manager.chain_manager.ordered_chain_ids:
             midi_chan = self.state_manager.chain_manager.chains[id].midi_chan
-            if midi_chan is not None and self.chan2col[midi_chan] is None:
+            if midi_chan is not None and midi_chan in self.chan2col and self.chan2col[midi_chan] is None:
                 self.chan2col[midi_chan] = col
                 col += 1
 
