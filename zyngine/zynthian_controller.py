@@ -138,6 +138,8 @@ class zynthian_controller:
             self.value = options['value']
         if 'value_default' in options:
             self.value_default = options['value_default']
+            if 'value' not in options:
+                self.value = self.value_default
         if 'value_min' in options:
             self.value_min = options['value_min']
         if 'value_max' in options:
@@ -178,6 +180,8 @@ class zynthian_controller:
             self.is_logarithmic = options['is_logarithmic']
         if 'is_path' in options:
             self.is_path = options['is_path']
+            if not self.value:
+                self.value = ""
         if 'path_file_types' in options:
             self.path_file_types = options['path_file_types']
         if 'path_dir_names' in options:

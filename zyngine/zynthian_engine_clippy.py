@@ -64,21 +64,15 @@ class zynthian_engine_clippy(zynthian_engine):
         self.nickname = "CL"
         self.type = "Audio Generator"
         self.options["replace"] = False
-        self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_clippy.py"
+        #self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_clippy.py"
 
         self.jackname = self.libclippy.getJackname().decode("utf-8")
-
-        self.default_zctrls = {
-            "file": zynthian_controller(self, f"file", {
-                "name": "file",
-                "is_path": True,
-                "value_default": "",
-                "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"]
-                }
-            )
-        }
         self._ctrls = []
         self._ctrl_screens = []
+
+        self.selected_proc = None
+        self.selected_phrase = None
+        self.selected_note = None
 
         self.tempo_cb_timer = None
         self.crop_cb_timer = None
@@ -105,13 +99,13 @@ class zynthian_engine_clippy(zynthian_engine):
             if note == 0xff:
                 return
             self._ctrl_screens = [
-                [f"File", [f"file {note}", f"warp {note}", f"beats {note}", f"mode {note}"]],
-                [f"Waveform", [f"gain {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]]
+                ["Clip", [f"file {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]],
+                ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]]
                 ]
             # Set processor name for display
             processor.preset_name = processor.controllers_dict[f"file {note}"].value.split("/")[-1]
         except:
-            self._ctrl_screens = [["File", ["file"]]]
+            self._ctrl_screens = [["Clip", ["file"]]]
             processor.preset_name = ""
             self.selected_note = 0
         processor.init_ctrl_screens()
@@ -348,6 +342,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
                 self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
+                if phrase == self.selected_phrase:
+                    self.selected_note = note
+
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {pattern} => {e}")
         else:
@@ -356,10 +353,11 @@ class zynthian_engine_clippy(zynthian_engine):
 
         file_zctrl.path = path
         if path:
+            #TODO: This is duplicate / redundant code
             self._ctrl_screens = [
-                [f"File", [f"file {note}", f"warp {note}", f"beats {note}", f"mode {note}"]],
-                [f"Waveform", [f"gain {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]]
-            ]
+                ["Clip", [f"file {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]],
+                ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]]
+                ]
             ticks = []
             labels = []
             i = 0
@@ -374,10 +372,11 @@ class zynthian_engine_clippy(zynthian_engine):
             processor.controllers_dict[f"zoom {note}"].labels = labels
             processor.controllers_dict[f"zoom {note}"].value_max = val / 2
         else:
-            self._ctrl_screens = [["File", [f"file {note}"]]]
+            self._ctrl_screens = [["Clip", ["file"]]]
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
 
         processor.init_ctrl_screens()
+        self.monitors_dict["path"] = path
 
     def start_bg_task(self, tempo=None):
         #TODO: This crashes with double free at high tempo

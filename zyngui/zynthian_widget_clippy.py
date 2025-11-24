@@ -56,6 +56,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.frames = 0  # Quantity of frames in audio
         self.samplerate = None
         self.duration = 0.0
+        self.zynseq = self.zyngui.state_manager.zynseq
 
         self.refreshing = False
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
@@ -130,6 +131,12 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
 
     def show(self):
         self.refreshing = False
+        try:
+            if self.fpath != self.processor.controllers_dict[f"file {self.processor.engine.selected_note}"].path:
+                self.fpath == self.processor.controllers_dict[f"file {self.processor.engine.selected_note}"].path
+                self.load_file()
+        except:
+            self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
         super().show()
 
     def hide(self):
@@ -237,7 +244,6 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             except Exception as e:
                 self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
                 self.sf = None
-            self.refreshing = False
             self.refresh_waveform = True
         else:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
@@ -334,6 +340,14 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         load_waveform = False
         update_markers = False
         refresh_info = False
+        try:
+            if self.fpath != self.processor.controllers_dict[f"file {self.processor.engine.selected_note}"].path:
+                self.fpath = self.processor.controllers_dict[f"file {self.processor.engine.selected_note}"].path
+                self.load_file()
+                self.refreshing = False
+        except:
+            pass
+
         if self.note != self.processor.engine.selected_note:
             self.note = self.processor.engine.selected_note
             if self.note == 0:

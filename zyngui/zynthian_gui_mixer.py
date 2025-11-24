@@ -440,7 +440,7 @@ class zynthian_gui_mixer_strip:
         disabled = False
         if self.chain_id == 0:
             state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
-        elif type(self.chain.midi_chan) is not int:
+        elif type(self.chan) is not int:
             state_seq = None # This will raise an exception later and draw empty block
         else:
             state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][self.chain.midi_chan]
@@ -460,7 +460,7 @@ class zynthian_gui_mixer_strip:
             elif self.chain_id == 0:
                 color = zynthian_gui_config.PAD_COLOUR_PHRASE
             else:
-                color = zynthian_gui_config.LAUNCHER_COLOUR[self.chain.midi_chan]["rgb"]
+                color = zynthian_gui_config.LAUNCHER_COLOUR[self.chan]["rgb"]
             if self.parent.moving_phrase and phrase == self.parent.zynseq.phrase:
                 if phrase == 0:
                     title = f"⇓ {name[:5]}"

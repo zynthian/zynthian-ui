@@ -250,30 +250,18 @@ class zynseq(zynthian_engine):
             phrase = self.phrases
         self.libseq.insertPhrase(scene, phrase)
         if scene == self.scene:
-            try:
-                self.state_manager.chain_manager.zyngines["CL"].insertClip(phrase)
-            except:
-                pass
+            for chan in range(16, 32):
+                self.set_sequence_param(self.scene, phrase, chan, "repeat", 0)
         self.refresh_state()
 
     def remove_phrase(self, scene, phrase):
         if self.phrases < 2:
             return  # TODO: What should be the minimum quantity of launchers?
         self.libseq.removePhrase(scene, phrase)
-        if scene == self.scene:
-            try:
-                self.state_manager.chain_manager.zyngines["CL"].removeClip(phrase)
-            except:
-                pass
         self.refresh_state()
 
     def swap_phrase(self, scene, phrase1, phrase2):
         self.libseq.swapPhrase(scene, phrase1, phrase2)
-        if scene == self.scene:
-            try:
-                pass #self.state_manager.chain_manager.zyngines["CL"].swap_phrase(phrase1, phrase2)
-            except:
-                pass
         self.refresh_state()
 
     # Load a zynseq file

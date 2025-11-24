@@ -25,6 +25,8 @@
 /** SequenceManager class methods implementation **/
 
 SequenceManager::SequenceManager() {
+    for (uint8_t channel = 0; channel < 32; ++ channel)
+        m_bEnabled[channel] = false;
     init();
 }
 
@@ -44,7 +46,7 @@ void SequenceManager::init() {
     }
     m_vScenes.clear();
     for (uint8_t channel = 0; channel < 32; ++channel)
-        enableChannel(channel, false);
+        enableChannel(channel, m_bEnabled[channel]);
     getPattern(0); // Create pattern 0 so that getNextPattern always has a valid starting point.
     setScene(0);
 }
