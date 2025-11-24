@@ -90,13 +90,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         )
         self.crop_start_rect = self.widget_canvas.create_rectangle(
             0, 0, 0, self.height,
-            fill="black",
+            fill="grey",
             stipple="gray50",
             tags="overlay"
         )
         self.crop_end_rect = self.widget_canvas.create_rectangle(
             self.width, 0, self.width, self.height,
-            fill="black",
+            fill="grey",
             stipple="gray50",
             tags="overlay"
         )

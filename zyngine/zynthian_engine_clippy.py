@@ -210,24 +210,15 @@ class zynthian_engine_clippy(zynthian_engine):
     def set_file(self, processor, note, reset=False):
         """ Loads a file into a clip. SRC and warp to new file if necessary."""
 
-        """
-        if note == 0:
-            # No clip loaded so create controllers
-            self.add_controllers(processor, note)
-
-        """
         if note == 0:
             # No clip loaded
             beats_value = 0
             warp_value = True
+            adding_clip = True
             file_zctrl = processor.controllers_dict["file"]
         else:
+            adding_clip = False
             file_zctrl = processor.controllers_dict[f"file {note}"]
-            warp_zctrl = processor.controllers_dict[f"warp {note}"]
-            beats_zctrl = processor.controllers_dict[f"beats {note}"]
-            mode_zctrl = processor.controllers_dict[f"mode {note}"]
-            beats_value = beats_zctrl.value
-            warp_value = warp_zctrl.value
 
         # Find what phrase this note is in...
         phrase = self.get_phrase(processor.midi_chan, note)
@@ -256,19 +247,6 @@ class zynthian_engine_clippy(zynthian_engine):
             except:
                 file_tempo = tempo
             
-            """
-            zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
-            zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
-            if reset:
-                # Use full file duration
-                nudge_factor = frames // 1000
-                zctrl_crop_start.value_max = zctrl_crop_start.value_range = frames
-                zctrl_crop_start.value = 0
-                zctrl_crop_start.nudge_factor = nudge_factor
-                zctrl_crop_end.value = zctrl_crop_end.value_max = zctrl_crop_end.value_range = frames
-                zctrl_crop_end.nudge_factor = nudge_factor
-            #frames = zctrl_crop_end.value - zctrl_crop_start.value
-            """
             duration = frames / sr
 
             # Configure pattern with required beats to play whole file at this tempo
@@ -279,6 +257,17 @@ class zynthian_engine_clippy(zynthian_engine):
                     beats_per_bar = self.zynseq.libseq.getTimeSig()
                 beats = duration * file_tempo / 60
                 bars = round(beats / beats_per_bar)
+
+                if f"warp {note}" in processor.controllers_dict:
+                    warp_zctrl = processor.controllers_dict[f"warp {note}"]
+                    beats_zctrl = processor.controllers_dict[f"beats {note}"]
+                    mode_zctrl = processor.controllers_dict[f"mode {note}"]
+                    beats_value = beats_zctrl.value
+                    warp_value = warp_zctrl.value
+                else:
+                    beats_value = 0
+                    warp_value = 1
+
                 if beats_value:
                     whole_beats = beats_value
                 else:
@@ -330,14 +319,15 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.libseq.selectPattern(pattern)
                 self.libseq.clearPattern(pattern)
                 self.libseq.setStepsPerBeat(1)
-                self.libseq.setBeatsInPattern(pattern, whole_beats)
                 note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
                 self.libseq.addNote(0, note, 100, 1, 0.0)
                 self.zynseq.refresh_state()
                 self.add_controllers(processor, note, frames)
-                processor.controllers_dict[f"file {note}"].value = file_zctrl.value
-                file_zctrl.value = ""
-                file_zctrl = processor.controllers_dict[f"file {note}"]
+                if adding_clip:
+                    processor.controllers_dict[f"file {note}"].value = file_zctrl.value
+                    file_zctrl.value = ""
+                    file_zctrl = processor.controllers_dict[f"file {note}"]
+                self.libseq.setBeatsInPattern(pattern, whole_beats)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
                 self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
@@ -405,14 +395,13 @@ class zynthian_engine_clippy(zynthian_engine):
 
         # Add default controllers for each phrase
         zctrls = {}
-        zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
-                "name": "file",
-                "processor": processor,
-                "is_path": True,
-                "value_default": "",
-                "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
-                "value": ""
-        })
+        if f"file {note}" not in processor.controllers_dict:
+            zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
+                    "name": "file",
+                    "processor": processor,
+                    "is_path": True,
+                    "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
+            })
         zctrls[f"warp {note}"] = zynthian_controller(self, f"warp {note}", {
                 "name": "warp",
                 "processor": processor,
@@ -504,16 +493,25 @@ class zynthian_engine_clippy(zynthian_engine):
                 "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
             })
         }
+
+        zctrls = {}
         for phrase in range(self.zynseq.phrases):
             self.zynseq.libseq.setTrackOutput(self.zynseq.scene, phrase, processor.midi_chan, 0, 0xfe)
             try:
                 pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
                 note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
-                self.add_controllers(processor, note)
+                zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
+                        "name": "file",
+                        "processor": processor,
+                        "is_path": True,
+                        "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
+                })
+                #self.zynseq.set_sequence_param(self.zynseq.scene, note - 1, processor.midi_chan, "mode", 0x0001)
+                #self.reset_sequence(processor, note - 1)
             except:
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
-
-        self.set_phrase(processor, self.zynseq.phrase)
+        processor.controllers_dict.update(zctrls)
+        #self.set_phrase(processor, self.zynseq.phrase)
 
     def remove_processor(self, processor):
         self.zynseq.enable_channel(processor.midi_chan, False)

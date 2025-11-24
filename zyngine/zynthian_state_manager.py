@@ -1114,6 +1114,11 @@ class zynthian_state_manager:
             converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
 
+            if load_sequences and "zynseq" in state:
+                if not self.zynseq.set_state(state["zynseq"]):
+                    self.set_busy_warning("Invalid sequence data within snapshot")
+                    sleep(2)
+
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, True)
@@ -1233,11 +1238,6 @@ class zynthian_state_manager:
                 # After loading initial state, enable midi autolearn in all processors
                 for proc in self.chain_manager.processors.values():
                     proc.set_midi_autolearn(True)
-
-            if load_sequences and "zynseq" in state:
-                if not self.zynseq.set_state(state["zynseq"]):
-                    self.set_busy_warning("Invalid sequence data within snapshot")
-                    sleep(2)
 
             # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1
