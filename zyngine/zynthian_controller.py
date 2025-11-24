@@ -180,8 +180,8 @@ class zynthian_controller:
             self.is_logarithmic = options['is_logarithmic']
         if 'is_path' in options:
             self.is_path = options['is_path']
-            if not self.value:
-                self.value = ""
+        if self.is_path and not self.value:
+            self.value = "" # Ensure string value
         if 'path_file_types' in options:
             self.path_file_types = options['path_file_types']
         if 'path_dir_names' in options:

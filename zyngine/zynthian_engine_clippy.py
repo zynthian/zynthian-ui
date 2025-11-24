@@ -153,12 +153,6 @@ class zynthian_engine_clippy(zynthian_engine):
             logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
             return
         if zctrl.symbol.startswith("file"):
-            if zctrl.value == 0 or zctrl.value == "0" or zctrl.value == "":
-                zctrl.value = "" # TODO: This should be fixed in zctrl class
-                #mode_zctrl.set_value(0)
-            #else:
-                #mode_zctrl.set_value(1)
-            #beats_zctrl.value = 0
             self.set_file(zctrl.processor, note, True)
         elif zctrl.symbol.startswith("warp"):
             self.set_file(zctrl.processor, note)
@@ -168,23 +162,28 @@ class zynthian_engine_clippy(zynthian_engine):
             zctrl_crop_end = zctrl.processor.controllers_dict[zctrl.symbol.replace("start", "end")]
             zctrl_crop_end.value_min = zctrl.value
             zctrl_crop_end.value_range = zctrl_crop_end.value_max - zctrl_crop_end.value_min
+            self.monitors_dict["crop_start"] = zctrl.value
             return
         elif zctrl.symbol.startswith("crop_end"):
             zctrl_crop_start = zctrl.processor.controllers_dict[zctrl.symbol.replace("end", "start")]
             zctrl_crop_start.value_max = zctrl.value
             zctrl_crop_start.value_range = zctrl_crop_start.value
-            if self.crop_cb_timer:
-                self.crop_cb_timer.cancel()
-            self.crop_cb_timer = Timer(0.5, self.set_file, [zctrl.processor, note])
-            self.crop_cb_timer.start()
+            self.monitors_dict["crop_end"] = zctrl.value
             return
         elif zctrl.symbol.startswith("gain"):
             try:
                 self.libclippy.setGain(zctrl.processor.midi_chan - 16, note - 1, ctypes.c_float(zctrl.value))
-            except:
-                pass
+            except Exception as e:
+                logging.warning(e)
             return
         elif zctrl.symbol.startswith("zoom"):
+            zctrl_crop_start = zctrl.processor.controllers_dict[zctrl.symbol.replace("zoom", "crop_start")]
+            zctrl_crop_end = zctrl.processor.controllers_dict[zctrl.symbol.replace("zoom", "crop_end")]
+            frames = zctrl_crop_end.value_max
+            nudge_factor = max(1, frames // (zctrl.value * 100))
+            zctrl_crop_start.nudge_factor = nudge_factor
+            zctrl_crop_end.nudge_factor = nudge_factor
+            self.monitors_dict["zoom"] = zctrl.value
             return
 
     """ Set play mode
@@ -335,7 +334,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
                 self.libseq.addNote(0, note, 100, 1, 0.0)
                 self.zynseq.refresh_state()
-                self.add_controllers(processor, note)
+                self.add_controllers(processor, note, frames)
                 processor.controllers_dict[f"file {note}"].value = file_zctrl.value
                 file_zctrl.value = ""
                 file_zctrl = processor.controllers_dict[f"file {note}"]
@@ -376,7 +375,6 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
 
         processor.init_ctrl_screens()
-        self.monitors_dict["path"] = path
 
     def start_bg_task(self, tempo=None):
         #TODO: This crashes with double free at high tempo
@@ -397,11 +395,12 @@ class zynthian_engine_clippy(zynthian_engine):
                 if processor.controllers_dict.get(symbol).value:
                     self.set_file(processor, note)
 
-    def add_controllers(self, processor, note):
+    def add_controllers(self, processor, note, frames):
         """ Adds a controllers to processor
 
             processor: Clippy processor object
             note: MIDI note (clip id)
+            frames: Quantity of frames in file
         """
 
         # Add default controllers for each phrase
@@ -448,12 +447,15 @@ class zynthian_engine_clippy(zynthian_engine):
         zctrls[f"crop_start {note}"] = zynthian_controller(self, f"crop_start {note}", {
             "name": "crop start",
             "processor": processor,
-            "is_integer": True
+            "is_integer": True,
+            "value_max": frames
         })
         zctrls[f"crop_end {note}"] = zynthian_controller(self, f"crop_end {note}", {
             "name": "crop end",
             "processor": processor,
-            "is_integer": True
+            "is_integer": True,
+            "value": frames,
+            "value_max": frames
         })
         ticks = []
         labels = []
