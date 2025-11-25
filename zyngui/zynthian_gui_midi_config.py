@@ -270,7 +270,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
-                if chain and chain.is_midi() and chain != self.chain:
+                if chain and chain.is_midi() and chain != self.chain and chain.midi_chan < 16:
                     if self.zyngui.chain_manager.will_midi_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
                         prefix = "∞ "
                     else:
