@@ -93,6 +93,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.selected_proc = processor
         self.selected_phrase = phrase
+        self.monitors_dict = {}
         try:
             pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
             note = self.selected_note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
@@ -104,6 +105,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 ]
             # Set processor name for display
             processor.preset_name = processor.controllers_dict[f"file {note}"].value.split("/")[-1]
+            for symbol in ["zoom", "crop_start", "crop_end"]:
+                self.monitors_dict[symbol] = processor.controllers_dict[f"{symbol} {note}"].value
         except:
             self._ctrl_screens = [["Clip", ["file"]]]
             processor.preset_name = ""
