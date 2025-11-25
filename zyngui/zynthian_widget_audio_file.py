@@ -71,6 +71,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         self.bg_color = zynthian_gui_config.color_bg
         self.waveform_color = zynthian_gui_config.color_info
+        self.bg_crop_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 30)
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
         self.widget_canvas = tkinter.Canvas(self,
@@ -90,13 +91,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         )
         self.crop_start_rect = self.widget_canvas.create_rectangle(
             0, 0, 0, self.height,
-            fill="grey",
+            fill=self.bg_crop_color,
             stipple="gray50",
             tags="overlay"
         )
         self.crop_end_rect = self.widget_canvas.create_rectangle(
             self.width, 0, self.width, self.height,
-            fill="grey",
+            fill=self.bg_crop_color,
             stipple="gray50",
             tags="overlay"
         )
