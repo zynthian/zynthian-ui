@@ -228,7 +228,7 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 // Phrase change
                 if (pSequence->getPlayState() == PLAYING) {
                     for (Sequence* pChildSeq: pSequence->m_vChildSequences) {
-                        if (pChildSeq && pChildSeq->getRepeat())
+                        if (pChildSeq && pChildSeq->getRepeat() && pChildSeq->getPlayState() != PLAYING)
                             setPlayState(pChildSeq, PLAYING);
                     }
                 }
@@ -302,7 +302,7 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
     if (state == STARTING) {
         for (auto pChildSequence: pSequence->m_vChildSequences) {
             if (pChildSequence->getRepeat()) {
-                pChildSequence->setPlayState(PLAYING);
+                pChildSequence->setPlayState(STARTING);
             }
         }
     }   
