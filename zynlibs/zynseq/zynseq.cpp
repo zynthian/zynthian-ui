@@ -37,8 +37,6 @@
 #include <thread>           // provides thread for timer
 #include <cmath>            // provides sqrt
 #include <nlohmann/json.hpp> // provides json
-#include "tinyosc.h"        // provides OSC interface, e.g. to clippy
-#include <arpa/inet.h>      // provides inet_pton
 
 #include "metronome.h"       // metronome wav data
 #include "pattern.h"         // provides pattern objects
@@ -85,10 +83,6 @@ uint32_t g_nSustainStart = 0;                       // Step when sustain pedal w
 uint32_t g_nLastStepCC = 0;                         // Step when last => WARNING!! Doesn't work if capturing several CC at once!
 bool g_naHeldNote[16][128];                         // Array of flags indicating a note has been played on a MIDI channel
 bool g_bPlayingSequences = false;                   // True if any sequences are playing
-
-char g_oscbuffer[1024];  // Used to send OSC messages
-int g_oscfd = -1;        // File descriptor for OSC socket
-struct sockaddr_in g_oscDestAddr; // OSC address of clippy
 
 char g_sName[256];           // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest = 0xFF;     // MIDI note number that creates rest in pattern
@@ -698,24 +692,15 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 if (!bSkip) {
-                    if (it->second->output == 0xfe) {
-                        // Clippy
-                        if (g_oscfd >= 0 && (it->second->msg.command & 0xf0) == 0x90 && it->second->msg.value2) {
-                            int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), "/", "iii", nTime, it->second->msg.command & 0x0f, it->second->msg.value1);
-                            sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr*)&g_oscDestAddr, sizeof(g_oscDestAddr));
-                            //fprintf(stderr, "zynseq Tx OSC %u %u %u\n", nTime, it->second->msg.command & 0x0f, it->second->msg.value1);
-                        }
-                    } else {
-                        pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
-                        if (pBuffer == NULL)
-                            break; // Exceeded buffer size (or other issue)
-                        pBuffer[0] = it->second->msg.command;
-                        if (nSize > 1)
-                            pBuffer[1] = it->second->msg.value1;
-                        if (nSize > 2)
-                            pBuffer[2] = it->second->msg.value2;
-                        DPRINTF("Sending MIDI event %x,%x,%x at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
-                    }
+                    pBuffer = jack_midi_event_reserve(it->second->output == 0xfe ? pClippyBuffer : pOutputBuffer, nTime, nSize);
+                    if (pBuffer == NULL)
+                        break; // Exceeded buffer size (or other issue)
+                    pBuffer[0] = it->second->msg.command;
+                    if (nSize > 1)
+                        pBuffer[1] = it->second->msg.value1;
+                    if (nSize > 2)
+                        pBuffer[2] = it->second->msg.value2;
+                    DPRINTF("Sending MIDI event %x,%x,%x at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
                 }
                 delete it->second;
                 it->second = NULL;
@@ -772,15 +757,6 @@ void init(char* name) {
     char* sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
-
-    // Create OSC socket
-    g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
-    // Configure destination address
-
-    memset(&g_oscDestAddr, 0, sizeof(g_oscDestAddr));
-    g_oscDestAddr.sin_family = AF_INET;
-    g_oscDestAddr.sin_port = htons(2222); //!@todo Choose OSC port
-    inet_pton(AF_INET, "localhost", &g_oscDestAddr.sin_addr);
 
     if (g_pJackClient) {
         fprintf(stderr, "libzynseq already initialised\n");

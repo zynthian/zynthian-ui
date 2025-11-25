@@ -34,10 +34,6 @@
 #include <rubberband/rubberband-c.h> // provides time stretch
 #include <pthread.h> // provides threading
 #include <math.h> // provides pow for dB calcs
-#include "tinyosc.h" // provides OSC interface, e.g. to clippy
-#include <arpa/inet.h> // provides inet_pton
-#include <sys/socket.h>
-#include <fcntl.h>
 
 typedef struct {
     uint8_t state; // Clip state
@@ -71,11 +67,6 @@ typedef union {
     };
 } MidiMsg;
 
-typedef struct {
-    uint32_t time; // Time of event within jack cycle
-    MidiMsg msg; // 3 (+ 1 unused) byte MIDI message
-} OscEvent;
-
 // Global variables
 jack_nframes_t samplerate = 48000;
 jack_nframes_t buffersize = 1024;
@@ -84,7 +75,6 @@ static jack_client_t* jack_client;
 static volatile uint8_t running = 1;
 static volatile uint8_t mutex = 0;
 pthread_t file_thread; // ID of file loader thread
-int g_oscfd = -1;        // File descriptor for OSC socket
 
 Player* players[16]; // Up to 16 players, 1 per MIDI channel
 
@@ -157,9 +147,6 @@ void* file_thread_fn(void* param) {
 
 static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
     static char buffer[1048];
-    static struct sockaddr_in src;
-    static socklen_t srclen = sizeof(src);
-    static OscEvent oscEvent;
     static Player* player;
     float* out_buff_a[16];
     float* out_buff_b[16];
@@ -214,44 +201,7 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
     jack_nframes_t numMidiEvents = jack_midi_get_event_count(midi_buffer);
     jack_midi_event_t event;
 
-    int n = recvfrom(g_oscfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&src, &srclen);
-    if (n > 0) {
-        // Parse OSC message
-        tosc_message osc;
-        if (tosc_parseMessage(&osc, buffer, n) == 0) {
-            uint32_t time = tosc_getNextInt32(&osc);
-            uint8_t channel = tosc_getNextInt32(&osc);
-            uint8_t note = tosc_getNextInt32(&osc);
-            //fprintf(stderr, "Clippy Rx OSC %u %u %u\n", time, channel, note);
-            // Note on triggers playback from preload buffer
-            player = players[channel];
-            if (player && time <= frames) {
-                if (note) {
-                    // Start playing clip from preload buffer
-                    player->current_clip = player->clips[note - 1];
-                    if (player->current_clip && player->current_clip->state == STATE_READY) {
-                        // Start audio at frame offset of MIDI event
-                        size_t start = event.time * sizeof(float);
-                        uint32_t frame_count = frames - time;
-                        size_t count = frame_count * sizeof(float);
-                        memcpy(out_buff_a[channel] + start, player->current_clip->preload_buffer_a, count);
-                        memcpy(out_buff_b[channel] + start, player->current_clip->preload_buffer_b, count);
-                        player->play_pos = frame_count;
-                        //!@todo Crossfade
-                        player->state = STATE_STARTING;
-                    }
-                } else {
-                    // Note 0 stops playback
-                    if (player->state == STATE_PLAYING || player->state == STATE_STARTING) {
-                        player->state = STATE_STOPPING;
-                    }
-                }
-            }
-        }
-    }
-
     // Received MIDI messages
-    /*
     for (uint32_t i = 0; i < numMidiEvents; ++i) {
         if (jack_midi_event_get(&event, midi_buffer, i) != 0)
             continue;
@@ -298,7 +248,6 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
             break;
         }
     }
-    */
 
     // Adjust volume
     float dGain;
@@ -365,7 +314,6 @@ void end() {
     if (jack_client)
         jack_client_close(jack_client);
     jack_client = NULL;
-    close(g_oscfd);
 }
 
 /** @brief  Initialise the library
@@ -382,20 +330,6 @@ int init() {
     // Initialise players
     for (uint8_t i = 0; i < 16; ++i)
         players[i] = NULL;
-
-    // Create OSC socket
-    g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(2222); //!@todo Choose OSC port
-    addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(g_oscfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        fprintf(stderr, "Clippy Failed to bind to OSC port. g_oscfd:%d \n", g_oscfd);
-        perror("socket");
-    }
-    int flags = fcntl(g_oscfd, F_GETFL, 0);
-    fcntl(g_oscfd, F_SETFL, flags | O_NONBLOCK);
 
     // Configure and start event thread
     running = 1;
@@ -618,6 +552,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path) {
     }
     unloadClip(channel, note);
     player->clips[id] = clip;
+    //fprintf(stderr, "clippy loadClip(channel=%u, note=%u, path=%s) id=%u\n", channel, note, path, id);
     return note;
 }
 

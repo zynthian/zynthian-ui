@@ -262,7 +262,7 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 if (bStopClippy) {
                     // Send clippy stop event
                     pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nGroup), 0, 100}));
-                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime + 1, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_OFF | nGroup), 0, 0}));
+                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime + 1, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nGroup), 0, 0}));
                 }
             }
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
