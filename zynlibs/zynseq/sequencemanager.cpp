@@ -228,7 +228,7 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 // Phrase change
                 if (pSequence->getPlayState() == PLAYING) {
                     for (Sequence* pChildSeq: pSequence->m_vChildSequences) {
-                        if (pChildSeq && pChildSeq->getRepeat())
+                        if (pChildSeq && pChildSeq->getRepeat() && pChildSeq->getPlayState() != PLAYING)
                             setPlayState(pChildSeq, PLAYING);
                     }
                 }
@@ -281,6 +281,7 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
     if (state == STARTING || state == PLAYING) {
         bool bAddToList = true;
         // Stop other sequences in same group
+        size_t nInsert = 0;
         for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
             Sequence* pPlayingSequence = *it;
             if (pSequence == pPlayingSequence)
@@ -291,10 +292,17 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
                 else if (pPlayingSequence->getPlayState() != STOPPED) {
                     pPlayingSequence->setPlayState(state == STARTING?STOPPING:STOPPED);
                 }
+                if (pPlayingSequence->isPhraseLauncher())
+                    ++nInsert;
             }
         }
-        if (bAddToList)
-            m_vPlayingSequences.push_back(pSequence);
+        if (bAddToList) {
+            // Need phrase launchers before sequences to avoid a sequence playing its first event before a follow action stops that sequence
+            if (pSequence->isPhraseLauncher())
+                m_vPlayingSequences.insert(m_vPlayingSequences.begin() + nInsert, pSequence);
+            else
+                m_vPlayingSequences.push_back(pSequence);
+        }
     }
     pSequence->setPlayState(state);
 
@@ -302,7 +310,7 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
     if (state == STARTING) {
         for (auto pChildSequence: pSequence->m_vChildSequences) {
             if (pChildSequence->getRepeat()) {
-                pChildSequence->setPlayState(PLAYING);
+                pChildSequence->setPlayState(STARTING);
             }
         }
     }   

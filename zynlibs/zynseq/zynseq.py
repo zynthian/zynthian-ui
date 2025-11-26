@@ -398,6 +398,7 @@ class zynseq(zynthian_engine):
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_TIMESIG, timesig=self.timesig)
         except:
             logging.warning("Failed to set timesig")
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
 
     def refresh_chan2col(self):
         self.chan2col = [None] * LAUNCHER_COLS
@@ -460,7 +461,6 @@ class zynseq(zynthian_engine):
             return False
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
-
 
     def get_pad_coords(self, phrase, chan):
         """

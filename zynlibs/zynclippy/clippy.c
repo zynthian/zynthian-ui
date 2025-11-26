@@ -638,7 +638,9 @@ uint32_t getFileFrames(const char* path) {
 
 int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float ratio, uint32_t start, uint32_t end) {
     uint8_t error = 0;
-    if (quality > 4 || ratio < 0.001)
+    if (ratio < 0.001 || ratio > 1000)
+        ratio = 1.0; // Default to no stretch if excessive stretch requested.
+    if (quality > 4)
         return ERROR_RANGE;
 
     // Read source file into interleaved float buffer data_in
