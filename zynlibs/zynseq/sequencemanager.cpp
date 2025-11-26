@@ -506,7 +506,9 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
     auto& vPhrases = m_vScenes[scene];
     if (phrase1 == phrase2 || phrase1 >= vPhrases.size() || phrase2 >= vPhrases.size())
         return;
-    std::iter_swap(vPhrases[phrase1], vPhrases[phrase2]);
+    std::iter_swap(vPhrases.begin() + phrase1, vPhrases.begin() + phrase2);
+    setFollowAction(scene, vPhrases[phrase1], vPhrases[phrase1]->getFollowAction(), vPhrases[phrase1]->getFollowParam());
+    setFollowAction(scene, vPhrases[phrase2], vPhrases[phrase2]->getFollowAction(), vPhrases[phrase2]->getFollowParam());
 }
 
 bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param) {

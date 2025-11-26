@@ -63,8 +63,9 @@ class Sequence {
 
     /** @brief  Set sequence's play state
         @param  state Play state [STOPPED | PLAYING | STOPPING]
+        @param  updatePhrase True to update phrase play status (default True)
     */
-    void setPlayState(uint8_t state);
+    void setPlayState(uint8_t state, bool updatePhrase = true);
 
     /** @brief  Get sequence state
         @retval uint32_t Sequence state as 32-bit word [repeat, group, mode, play state]

@@ -143,7 +143,7 @@ uint8_t Sequence::getPlayState() {
     return m_nState;
 }
 
-void Sequence::setPlayState(uint8_t state) {
+void Sequence::setPlayState(uint8_t state, bool updatePhrase) {
     if (state == CHILD_STOPPING) {
         for (auto pSequence: m_vChildSequences) {
             pSequence->setPlayState(STOPPING);
@@ -163,7 +163,8 @@ void Sequence::setPlayState(uint8_t state) {
     if (m_nState == STOPPED)
         m_nPosition = 0;
 
-    updatePhraseState();
+    if (updatePhrase)
+        updatePhraseState();
 
     m_bStateChanged |= (nState != m_nState);
     m_bChanged = true;
@@ -172,25 +173,22 @@ void Sequence::setPlayState(uint8_t state) {
 }
 
 void Sequence::updatePhraseState() {
+    // Find which sequence is the phrase, this or its parent.
     Sequence* pPhraseSequence = m_pPhraseSequence;
-    if (!pPhraseSequence) {
-        if (m_vChildSequences.size() == 0) {
-            return;
-        }
+    if (!pPhraseSequence)
         pPhraseSequence = this;
-    }
-    uint8_t state = pPhraseSequence->getPlayState();
-    if (state != STOPPED && state != CHILD_PLAYING && state != CHILD_STOPPING) {
+    if (pPhraseSequence->m_vChildSequences.size() == 0)
         return;
-    }
+    uint8_t state = pPhraseSequence->getPlayState();
+    if (state != STOPPED && state != CHILD_PLAYING && state != CHILD_STOPPING)
+        return;
     for (auto pChildSequence: pPhraseSequence->m_vChildSequences) {
-        if (pChildSequence && (pChildSequence->getPlayState() & 1)) {
-            if (state != CHILD_STOPPING)
-                pPhraseSequence->setPlayState(CHILD_PLAYING);
+        if (pChildSequence && (pChildSequence->getPlayState() & 1) && state != CHILD_STOPPING) {
+            pPhraseSequence->setPlayState(CHILD_PLAYING, false);
             return;
         }
     }
-    pPhraseSequence->setPlayState(STOPPED);
+    pPhraseSequence->setPlayState(STOPPED, false);
 }
 
 uint32_t Sequence::getState() {

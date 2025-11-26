@@ -1998,9 +1998,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.launcher_mode:
             if self.zynseq.phrase < self.zynseq.phrases:
                 if self.moving_phrase:
-                    self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
-                    self.select_launcher(self.zynseq.phrase - nudge)
-                    self.refresh_visible_strips()
+                    if self.zynseq.phrase < self.zynseq.phrases - 1:
+                        self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
+                        self.select_launcher(self.zynseq.phrase - nudge)
+                        self.refresh_visible_strips()
                 else:
                     self.select_launcher(self.zynseq.phrase - nudge)
         else:
