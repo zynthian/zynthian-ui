@@ -27,6 +27,7 @@ import logging
 import re
 from threading import Timer
 import ctypes
+from time import sleep
 
 from zynlibs.zynseq import zynseq
 from zyngine.zynthian_signal_manager import zynsigman
@@ -64,7 +65,6 @@ class zynthian_engine_clippy(zynthian_engine):
         self.nickname = "CL"
         self.type = "Audio Generator"
         self.options["replace"] = False
-        #self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_clippy.py"
 
         self.jackname = self.libclippy.getJackname().decode("utf-8")
         self._ctrls = []
@@ -74,10 +74,11 @@ class zynthian_engine_clippy(zynthian_engine):
         self.selected_phrase = None
         self.selected_note = None
 
-        self.tempo_cb_timer = None
+        self.tempo_timer = None
+        self.tempo_mutex = False
         self.crop_cb_timer = None
         self.samplerate = zynautoconnect.get_jackd_samplerate()
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_bg_task)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_tempo_timer)
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -85,7 +86,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def stop(self):
         logging.info("Stopping Engine " + self.name)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_bg_task)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.start_tempo_timer)
         self.libclippy.end()
 
     def set_phrase(self, processor, phrase):
@@ -298,21 +299,13 @@ class zynthian_engine_clippy(zynthian_engine):
                         #zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
                     except:
                         pass
-                #TODO: Reset markers if warp changes, or calculate based on change.
-                #zctrl_crop_end.set_value(min(zctrl_crop_end.value, zctrl_crop_end.value_max))
-                """
-                if bpm_match:
-                    #TODO: Remove this when finished design - don't need to show user that warp is not changing file
-                    warp_zctrl.labels = ["off", f"{tempo:.1f}*\nBPM"]
-                else:
-                    warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
-                if can_warp:
-                    beats_zctrl.value = whole_beats
-                    beats_zctrl.set_readonly(warp_zctrl.value != 0)
-                else:
-                    beats_zctrl.value = 0
-                    warp_zctrl.value = 0
-                """
+                if f"beats {note}" in processor.controllers_dict:
+                    if can_warp:
+                        beats_zctrl.value = whole_beats
+                        beats_zctrl.set_readonly(warp_zctrl.value != 0)
+                    else:
+                        beats_zctrl.value = 0
+                        warp_zctrl.value = 0
 
                 # Setup zynseq pattern & sequence
                 self.libseq.setStepsPerBeat(1)
@@ -348,24 +341,34 @@ class zynthian_engine_clippy(zynthian_engine):
 
         processor.init_ctrl_screens()
 
-    def start_bg_task(self, tempo=None):
+    def start_tempo_timer(self, tempo=None):
         #TODO: This crashes with double free at high tempo
-        if self.tempo_cb_timer:
-            self.tempo_cb_timer.cancel()
-        self.tempo_cb_timer = Timer(0.5, self.start_bg_task_cb)
-        self.tempo_cb_timer.start()
+        if self.tempo_timer:
+            self.tempo_timer.cancel()
+        self.tempo_timer = Timer(0.5, self.tempo_timer_cb)
+        self.tempo_timer.start()
 
-    def start_bg_task_cb(self):
-        if self.tempo_cb_timer:
-            self.tempo_cb_timer.cancel()
-        self.tempo_cb_timer = None
+    def tempo_timer_cb(self):
+        if self.tempo_timer:
+            self.tempo_timer.cancel()
+        self.tempo_timer = None
+        while self.tempo_mutex:
+            sleep(0.001)
+        self.tempo_mutex = True
         for processor in self.processors:
-            #TODO: This is wrong...
-            for note in range(1, self.zynseq.phrases + 1):
-                # There should only be notes 1..num of phrases
+            notes = []
+            for symbol in processor.controllers_dict:
+                try:
+                    note = int(symbol.split(" ")[1])
+                    if note not in notes:
+                        notes.append(note)
+                except:
+                    pass
+            for note in notes:
                 symbol = f"warp {note}"
                 if processor.controllers_dict.get(symbol).value:
                     self.set_file(processor, note)
+        self.tempo_mutex = False
 
     def add_controllers(self, processor, note, frames):
         """ Adds a controllers to processor
