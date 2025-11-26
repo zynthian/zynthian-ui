@@ -2668,9 +2668,21 @@ class zynthian_state_manager:
         else:
             self.stop_touchosc2midi(False)
 
+    # Unblock all soft-blocked bluetooth controllers
+    def unblock_bluetooth_controllers(self):
+        self.start_busy("Unblock Bluetooth Controllers")
+        for row in check_output("rfkill -n", shell=True, encoding="utf-8").split("\n"):
+            parts = row.split()  # ID, type, device, soft blocked, hard blocked
+            if len(parts) == 5 and parts[1].strip() == "bluetooth" and parts[3].strip() == "blocked":
+                logging.debug(f"Unblocking {parts[0].strip()}")
+                check_output(f"rfkill unblock {parts[0].strip()}", shell=True)
+        self.end_busy("Unblock Bluetooth Controllers")
+
     def select_bluetooth_controller(self, controller):
         if controller.count(":") != 5:
+            logging.error(f"Bad controller address ({controller})!")
             return
+        self.unblock_bluetooth_controllers()
         proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
         for addr in check_output("bluetoothctl list", shell=True, timeout=1, encoding="utf-8").split():
             if addr.count(":") == 5:
@@ -2691,8 +2703,7 @@ class zynthian_state_manager:
         service = "bluetooth"
         if zynconf.is_service_active(service):
             zynthian_gui_config.bluetooth_enabled = 1
-            self.select_bluetooth_controller(
-                zynthian_gui_config.ble_controller)
+            self.select_bluetooth_controller(zynthian_gui_config.ble_controller)
             return
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
@@ -2700,8 +2711,7 @@ class zynthian_state_manager:
             check_output(f"systemctl start {service}", shell=True, timeout=2)
             sleep(wait)
             zynthian_gui_config.bluetooth_enabled = 1
-            self.select_bluetooth_controller(
-                zynthian_gui_config.ble_controller)
+            self.select_bluetooth_controller(zynthian_gui_config.ble_controller)
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({
