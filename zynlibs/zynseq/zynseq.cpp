@@ -2935,6 +2935,7 @@ void setTempo(double tempo) {
         if (transportGetPlayStatus() != JackTransportRolling)
             transportLocate(0); // Cludge to update transport tempo when transport not running
         g_dFramesPerClock = getFramesPerClock(g_dTempo);
+        g_seqMan.setTempo(tempo);
         DPRINTF("Tempo set to: %f FramesPerClock: %f\n", g_dTempo, g_dFramesPerClock);
     }
 }

@@ -1779,8 +1779,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             case "tempo":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo", zctrl.value)
                 if "CL" in self.chain_manager.zyngines:
-                    #TODO: This looks wrong to warp all clips for phrase tempo changes
-                    self.chain_manager.zyngines["CL"].start_tempo_timer(zctrl.value)
+                    # Warp clips in this phrase to match tempo
+                    clippy_engine = self.chain_manager.zyngines["CL"]
+                    for processor in clippy_engine.processors:
+                        try:
+                            pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
+                            note = self.selected_note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
+                            if processor.controllers_dict[f"warp {note}"]:
+                                clippy_engine.set_file(processor, note, phrase=phrase)
+                        except:
+                            continue
             case "timeSig":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "sig", zctrl.value)
             case "duration":

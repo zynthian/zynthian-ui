@@ -180,7 +180,6 @@ class zynseq(zynthian_engine):
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
         self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
-        self.tempo = 120.0
         self.timesig = 4
         self.reset()
 
@@ -205,8 +204,8 @@ class zynseq(zynthian_engine):
         if count:
             # Only check for tempo and time signature changes when change of play state - this works for now but won't if we have dynamic tempo changes
             tempo = self.libseq.getTempo()
-            if tempo != self.tempo:
-                self.tempo = tempo
+            if tempo != self.zctrl_tempo.value:
+                self.zctrl_tempo.value = tempo
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=tempo)
             timesig = self.libseq.getTimeSig()
             if timesig != self.timesig:
@@ -387,9 +386,9 @@ class zynseq(zynthian_engine):
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
         self.refresh_chan2col()
         try:
-            if self.state["tempo"] != self.tempo:
-                self.tempo = self.state["tempo"]
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=self.tempo)
+            if self.state["tempo"] != self.zctrl_tempo.value:
+                self.zctrl_tempo.value = self.state["tempo"]
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=self.zctrl_tempo.value)
         except:
             logging.warning("Failed to set tempo")
         try:

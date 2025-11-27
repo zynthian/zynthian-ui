@@ -208,6 +208,11 @@ class SequenceManager {
     */
     float getTempo(bool clear = true);
 
+    /** @brief  Set current tempo
+        @param  tempo Tempo in bpm
+    */
+    void setTempo(float tempo);
+
     /** @brief  Check if time signature has changed
         @retval bool True if time signature has changed
     */

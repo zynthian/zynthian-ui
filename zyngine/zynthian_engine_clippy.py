@@ -114,19 +114,6 @@ class zynthian_engine_clippy(zynthian_engine):
             self.selected_note = 0
         processor.init_ctrl_screens()
 
-
-    def get_note(self, symbol):
-        """ Get the the MIDI note from a controller symbol
-
-            symbol: Controller symbol
-            returns: MIDI note of clip or None if invalid
-        """
-
-        try:
-            return int(symbol.split(" ")[1])
-        except:
-            return None
-
     def send_controller_value(self, zctrl):
         if zctrl.symbol == "file":
             # Empty clip
@@ -198,12 +185,12 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", 0)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", mode - 1)
 
-    def set_file(self, processor, note, reset=False):
+    def set_file(self, processor, note, reset=False, phrase=None):
         """ Loads a file into a clip. SRC and warp to new file if necessary."""
 
         if note == 0:
             # No clip loaded
-            note =self.libclippy.getFreeClip(processor.midi_chan - 16)
+            note = self.libclippy.getFreeClip(processor.midi_chan - 16)
             path = processor.controllers_dict["file"].value
             processor.controllers_dict["file"].value = ""
             beats_value = 0
@@ -213,15 +200,16 @@ class zynthian_engine_clippy(zynthian_engine):
         orig_path = path
 
         # Find what phrase this note is in...
-        phrase = self.selected_phrase
-        for phrase_id, phrase_state in enumerate(self.zynseq.state["scenes"][self.zynseq.scene]["phrases"]):
-            try:
-                pattern = phrase_state["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
-                if note == self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]:
-                    phrase = phrase_id
-                    break
-            except:
-                pass
+        if phrase is None:
+            phrase = self.selected_phrase
+            for phrase_id, phrase_state in enumerate(self.zynseq.state["scenes"][self.zynseq.scene]["phrases"]):
+                try:
+                    pattern = phrase_state["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
+                    if note == self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]:
+                        phrase = phrase_id
+                        break
+                except:
+                    pass
 
         if 0 < note > 127:
             return
@@ -355,15 +343,22 @@ class zynthian_engine_clippy(zynthian_engine):
         while self.tempo_mutex:
             sleep(0.001)
         self.tempo_mutex = True
-        for processor in self.processors:
-            notes = []
-            for symbol in processor.controllers_dict:
+
+        notes = []
+        for phrase_state in self.zynseq.state["scenes"][self.zynseq.scene]["phrases"]:
+            if phrase_state["tempo"]:
+                continue
+            for sequence in range(16, 32):
                 try:
-                    note = int(symbol.split(" ")[1])
+                    seq_state = phrase_state["sequences"][sequence]
+                    pattern = seq_state["tracks"][0]["patns"]["0"]
+                    note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
                     if note not in notes:
                         notes.append(note)
                 except:
-                    pass
+                    continue
+
+        for processor in self.processors:
             for note in notes:
                 symbol = f"warp {note}"
                 if processor.controllers_dict.get(symbol).value:

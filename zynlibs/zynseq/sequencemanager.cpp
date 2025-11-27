@@ -213,7 +213,7 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
             if (nEventType & CLOCK_TRIG_TEMPO) {
                 // Tempo change
                 float tempo = pSequence->getTempo();
-                m_bTempoChanged |= m_fTempo != tempo;
+                m_bTempoChanged |= (m_fTempo != tempo);
                 m_fTempo = tempo;
             }
             if (nEventType & CLOCK_TRIG_TIMESIG) {
@@ -375,6 +375,11 @@ float SequenceManager::getTempo(bool clear) {
     if (clear)
         m_bTempoChanged = false;
     return m_fTempo;
+}
+
+void SequenceManager::setTempo(float tempo) {
+    if (tempo > 10.0)
+        m_fTempo = tempo;
 }
 
 bool SequenceManager::isTimeSigChanged() { return m_bTimeSigChanged; }
