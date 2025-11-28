@@ -903,6 +903,11 @@ uint32_t getStateChange(uint32_t* states, uint32_t max);
 */
 uint8_t* getProgress();
 
+/** @brief  Get current beat in bar
+    @retval uint8_t Beat
+*/
+uint32_t getBeat();
+
 /** @brief  Get quantity of tracks in a sequence
     @param  scene Index of scene
     @param  phrase Index of phrase

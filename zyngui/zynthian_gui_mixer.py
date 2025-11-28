@@ -1109,7 +1109,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chain_manager = self.zyngui.chain_manager
         self.zynmixer = self.state_manager.zynmixer
         self.zynseq = self.state_manager.zynseq
-        
+        self.timesig = 4
+        self.beat = 0
+
         self.launcher_mode = self.zyngui.alt_mode
         self.launcher_select_info = None # zynseq state model of the selected launcher
 
@@ -1145,7 +1147,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.set_visible_chains(visible_chains)
 
         self.status_tempo = self.status_canvas.create_text(
-            int(self.status_l - self.status_fs * 5.5), 2,
+            int(self.status_l - self.status_fs * 2), 2,
             anchor=tkinter.NE,
             fill=zynthian_gui_config.color_header_tx,
             font=("forkawesome", int(0.25 * self.status_h)),
@@ -1153,11 +1155,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             state=tkinter.NORMAL)
 
         self.status_timesig = self.status_canvas.create_text(
-            int(self.status_l - self.status_fs * 3), 2,
+            int(self.status_l - self.status_fs * 7), 2,
             anchor=tkinter.NE,
             fill=zynthian_gui_config.color_header_tx,
             font=("forkawesome", int(0.25 * self.status_h)),
-            text="4/4",
+            text="[1] 4/4",
             state=tkinter.NORMAL)
 
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.set_tempo)
@@ -1336,7 +1338,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_header_tx)
 
     def set_timesig(self, timesig):
-        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"{timesig}/4")
+        self.timesig = timesig
+        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"[{self.beat}] {timesig}/4")
         Timer(0.6, self.clear_timesig_highlight).start()
 
     def clear_timesig_highlight(self):
@@ -1361,7 +1364,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         if strip.chain.midi_chan is not None and strip.chain.midi_chan < 32:
                             strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
             self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.PHRASE_CHANNEL])
-
+            if self.beat != self.zynseq.beat:
+                self.beat = self.zynseq.beat
+                self.status_canvas.itemconfig(self.status_timesig, text=f"[{self.beat}] {self.timesig}/4")
+ 
     def plot_zctrls(self):
         """Function to refresh display (fast)
         """

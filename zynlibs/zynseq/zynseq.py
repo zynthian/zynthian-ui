@@ -181,6 +181,7 @@ class zynseq(zynthian_engine):
         self.progress = [0] * LAUNCHER_COLS
         self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
         self.timesig = 4
+        self.beat = 0 # Current beat of bar
         self.reset()
 
     # Destroy instance of shared library
@@ -234,6 +235,7 @@ class zynseq(zynthian_engine):
         progress = self.libseq.getProgress()
         for i in range(33):
             self.progress[i] = progress[i]  # TODO: Can we just point at getProgress()?
+        self.beat = self.libseq.getBeat()
 
     def enable_channel(self, channel, enable):
         self.libseq.enableChannel(channel, enable)

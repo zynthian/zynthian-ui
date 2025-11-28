@@ -2522,6 +2522,10 @@ uint8_t* getProgress() {
     return g_seqMan.getProgress();
 }
 
+uint32_t getBeat() {
+    return g_nBeat;
+}
+
 void stop() {
     g_seqMan.stop();
     g_mSchedule.clear();
