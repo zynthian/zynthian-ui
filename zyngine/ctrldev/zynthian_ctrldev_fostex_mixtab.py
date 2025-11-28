@@ -25,12 +25,13 @@
 # ******************************************************************************
 
 import logging
-from time import monotonic
+from threading import Timer
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Fostex MixTab MIDI controller
@@ -73,14 +74,31 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
     def __init__(self, state_manager, idev_in, idev_out=None):
         super().__init__(state_manager, idev_in, idev_out)
         self.midi_chan = 0  # Base channel for MIDI messages. +1 for +8 offset, +2 for +16 offset.
-        self.chan2chain = {}
-        self.last_store = monotonic()
+        self.strip2chan = [] # List of mixer channels, indexed by display position
         self.aux = [False] * 24 # Aux selector state for each chain
+        self.feedback_timer = None
+
+    def init(self):
+        # Send the current mixer state to the mixtab allowing "enable" mode to be used
+        super().init()
+        # Register for processor tree changes
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+
+    def end(self):
+        # Unregister from processor tree changes
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        super().end()
 
     def set_param(self, cc, val, midi_chan):
         if cc == 7:
             # Main fader
-            self.zynmixer.set_level(255, val / 127.0, False)
+            self.zynmixer.set_level(255, val / 127.0, True)
         if cc < 16 or cc > 31:
             return False
         chain = self.chain_manager.get_chain_by_position(
@@ -90,10 +108,10 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         match int(cc / 8):
             case 2:
                 # Fader
-                self.zynmixer.set_level(chain.mixer_chan, val / 127.0, False)
+                self.zynmixer.set_level(chain.mixer_chan, val / 127.0, True)
             case 3:
                 # Pan
-                self.zynmixer.set_balance(chain.mixer_chan, (val - 64) / 64, False)
+                self.zynmixer.set_balance(chain.mixer_chan, (val - 64) / 64, True)
         return True
 
     def get_param(self, cc, midi_chan):
@@ -118,7 +136,7 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
         midi_chan = ev[0] & 0xF
-        if midi_chan > 1:
+        if midi_chan > 2:
             return False
         if evtype == 0xb:
             cc = ev[1] & 0x7F
@@ -132,20 +150,13 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
                 case 49:
                     # Dump Request parameter 0..126 or 127 for all parameters
                     if val == 127:
-                        for i in range(16, 32):
-                            param_val = self.get_param(i, midi_chan)
-                            if param_val is not None:
-                                lib_zyncore.dev_send_ccontrol_change(self.idev_out, midi_chan, i, param_val)
+                        self.refresh()
                     else:
                         lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, val, self.get_param(val))
                     return True
                 case 50:
                     # Scene store 0..99
-                    now = monotonic()
-                    if now < self.last_store + 1.5:
-                        # Double press STORE but second press has to be after display stops flashing
-                        self.state_manager.save_zs3(f"{self.midi_chan}/{val}", "Saved by MIXTAB")
-                    self.last_store = now
+                    self.state_manager.save_zs3(f"{self.midi_chan}/{val}", "Saved by MIXTAB")
                     return True
                 case 51:
                     # Scene clear 0..99 or 127 for all scenes
@@ -182,21 +193,33 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
                 self.state_manager.audio_player.midi_control_change(midi_chan, cc, val)
                 return True
             return self.set_param(cc, val, midi_chan)
+        elif evtype == 0xc:
+            pass
+            # Let zynthian handle PC
         return False
 
     def update_mixer_strip(self, chan, symbol, value):
-        return
-        if chan in self.chan2chain:
-            match symbol:
-                case "level":
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(chan / 8), 16 + chan % 8 , int(value * 127))
-                case "balance":
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(chan / 8), 24 + chan % 8 , int(value * 64 + 64))
+        #TODO: Blunt refresh of all controls after 2s of inactivity
+        if self.feedback_timer:
+            self.feedback_timer.cancel()
+        self.feedback_timer = Timer(2.0, self.refresh)
+        self.feedback_timer.start()
 
     def refresh(self):
-        self.chan2chain = {}
-        for chain_id, chain in self.chain_manager.chains.items():
+        if self.feedback_timer:
+            self.feedback_timer.cancel()
+            self.feedback_timer = None
+        self.strip2chan = []
+        for chain_id in self.chain_manager.ordered_chain_ids:
+            chain = self.chain_manager.chains[chain_id]
             if chain.mixer_chan is not None and chain.mixer_chan < 16:
-                self.chan2chain[chain.mixer_chan] = chain_id
+                self.strip2chan.append(chain.mixer_chan)
+        main_level = int(self.zynmixer.get_level(255) * 127)
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 7, main_level)
+        for strip, chan in enumerate(self.strip2chan):
+            value = int(self.zynmixer.get_level(chan) * 127)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(strip / 8), 16 + strip % 8 , value)
+            value = int(self.zynmixer.get_balance(chan) * 64 + 64)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(strip / 8), 24 + strip % 8 , value)
 
 # ------------------------------------------------------------------------------

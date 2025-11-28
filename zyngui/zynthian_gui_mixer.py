@@ -230,9 +230,9 @@ class zynthian_gui_mixer_strip:
 
         # Legend strip at bottom of screen
         self.legend_strip_bg = self.canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, fill=self.legend_bg_color,
-                                                       tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"legend_strip:{id}"))
+                                                       tags=(f"strip:{id}", f"mixer:{id}", f"legend_strip:{id}"))
         self.legend_strip_txt = self.canvas.create_text(self.fader_centre_x, self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-",
-                                                   tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"legend_strip:{id}"), font=self.font)
+                                                   tags=(f"strip:{id}", f"mixer:{id}", f"legend_strip:{id}"), font=self.font)
         self.legend_sel = self.canvas.create_rectangle(x, self.height - self.legend_height, x + 3, self.height, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{id}", "launcher_sel", f"legend_sel:{id}"))
 
@@ -250,12 +250,12 @@ class zynthian_gui_mixer_strip:
 
         # Clip Launcher Progress Bar
         self.clip_progress = self.canvas.create_rectangle(x, self.height - self.legend_height, x, self.height - self.legend_height + 4, width=0,
-                             fill=self.legend_txt_color, tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}"))
+                             fill=self.legend_txt_color, tags=(f"strip:{id}", f"mixer:{id}"))
         # Balance indicator
         self.balance_left = self.canvas.create_rectangle(x, self.balance_top, self.fader_centre_x, self.balance_top + self.balance_height,
-                                                    fill=self.left_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"balance:{id}", f"audio_strip:{id}"))
+                                                    fill=self.left_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"balance:{id}", f"audio_strip:{id}"))
         self.balance_right = self.canvas.create_rectangle(self.fader_centre_x + 1, self.balance_top, self.width, self.balance_top + self.balance_height,
-                                                     fill=self.right_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"balance:{id}", f"audio_strip:{id}"))
+                                                     fill=self.right_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"balance:{id}", f"audio_strip:{id}"))
         self.balance_text = self.canvas.create_text(self.fader_centre_x, int(self.balance_top + self.balance_height / 2) - 1,
                                                text="??", font=self.font_learn, state=tkinter.HIDDEN)
 

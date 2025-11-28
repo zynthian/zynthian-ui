@@ -377,8 +377,11 @@ class zynthian_engine_clippy(zynthian_engine):
         for processor in self.processors:
             for note in notes:
                 symbol = f"warp {note}"
-                if processor.controllers_dict.get(symbol).value:
-                    self.set_file(processor, note)
+                try:
+                    if processor.controllers_dict.get(symbol).value:
+                        self.set_file(processor, note)
+                except:
+                    continue
         self.tempo_mutex = False
 
     def add_controllers(self, processor, note, frames, reset):
