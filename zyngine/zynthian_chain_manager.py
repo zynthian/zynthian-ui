@@ -283,7 +283,6 @@ class zynthian_chain_manager:
         self.state_manager.end_busy("add_chain")
         if fast_refresh:
             self.state_manager.zynseq.refresh_chan2col()
-            #self.state_manager.ctrldev_manager.refresh_all()
         return chain_id
 
     def add_chain_from_state(self, chain_id, chain_state):
@@ -404,7 +403,6 @@ class zynthian_chain_manager:
         self.state_manager.purge_zs3()
         if fast_refresh:
             self.state_manager.zynseq.refresh_chan2col()
-            #self.state_manager.ctrldev_manager.refresh_all()  # => Should capture signal
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_CHAIN)
 
         self.state_manager.end_busy("remove_chain")
@@ -422,7 +420,6 @@ class zynthian_chain_manager:
         for chain in list(self.chains.keys()):
             success &= self.remove_chain(chain, stop_engines, fast_refresh=False)
         self.state_manager.zynseq.refresh_chan2col()
-        #self.state_manager.ctrldev_manager.refresh_all()  # => Should capture signal
         zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
         return success
 
@@ -445,7 +442,6 @@ class zynthian_chain_manager:
             return
         self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
         self.state_manager.zynseq.refresh_chan2col()
-        #self.state_manager.ctrldev_manager.refresh_all()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):

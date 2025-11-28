@@ -411,6 +411,7 @@ class zynthian_gui_mixer_strip:
 
     def draw_launcher(self):
         self.canvas.itemconfig(f"strip:{self.fader_bg}", state=tkinter.HIDDEN)
+        self.canvas.itemconfig(f"legend_strip:{self.fader_bg}", state=tkinter.NORMAL)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}", state=tkinter.NORMAL)
         self.zyngui.multitouch.tag_unbind(self.canvas, f"fader:{self.fader_bg}", "press")
         self.zyngui.multitouch.tag_unbind(self.canvas, f"fader:{self.fader_bg}", "motion")
@@ -2059,7 +2060,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.launcher_offset != offset:
             self.launcher_offset = offset
             refresh_strips = True
-        self.zynseq.phrase = phrase
         if self.launcher_mode:
             self.set_highlighted_clip_info()
             self.highlighted_strip.highlight_launcher(phrase)

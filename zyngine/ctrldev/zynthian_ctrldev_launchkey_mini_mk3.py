@@ -32,6 +32,7 @@ from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchkey Mini MK3
@@ -69,11 +70,25 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.rows = 2
         self.mixer_toggle = False # Used to toggle mixer / launcher view
         super().init()
+        # Register for processor tree changes
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.chain_change)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.chain_change)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.chain_change)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.chain_change)
 
     def end(self):
+        # Unregister from processor tree changes
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.chain_change)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.chain_change)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.chain_change)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.chain_change)
         super().end()
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
+
+    def chain_change(self):
+        self.light_off()
+        self.refresh()
 
     def light_off(self):
         for row in range(self.rows):
