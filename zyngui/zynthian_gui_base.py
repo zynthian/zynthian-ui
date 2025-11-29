@@ -23,6 +23,7 @@
 #
 # ******************************************************************************
 
+import os
 import time
 import logging
 import tkinter
@@ -40,6 +41,9 @@ from zyngine import zynthian_controller
 
 
 class zynthian_gui_base(tkinter.Frame):
+
+    ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
+
     # Default buttonbar config (touchwidget)
     buttonbar_config = []
 
@@ -184,6 +188,7 @@ class zynthian_gui_base(tkinter.Frame):
 
         # Topbar parameter editor
         self.param_editor_zctrl = None
+        self.param_editor_assert_cb = None
 
         # Main Frame
         self.main_frame = tkinter.Frame(self, bg=zynthian_gui_config.color_bg)
@@ -206,9 +211,9 @@ class zynthian_gui_base(tkinter.Frame):
         self.set_select_path()
         self.cb_scroll_select_path()
 
-        # TODO: Consolidate set_title and set_select_path, etc.
-        self.disable_param_editor()
         self.bind("<Configure>", self.on_size)
+
+        # TODO: Consolidate set_title and set_select_path, etc.
 
     def show_back_button(self, show=True):
         if show:
@@ -399,7 +404,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.zyngui.callable_ui_action('screen_zynpad')
+        self.zyngui.callable_ui_action('screen_launcher')
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):
@@ -795,10 +800,9 @@ class zynthian_gui_base(tkinter.Frame):
                 self.disable_param_editor()
                 return True
             elif typ == 'B':
-                self.param_editor_zctrl.set_value(
-                    self.param_editor_zctrl.value_default)
-            self.update_param_editor()
-            return True
+                self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
+                self.update_param_editor()
+                return True
 
     def back_action(self):
         if self.param_editor_zctrl:
@@ -831,7 +835,7 @@ class zynthian_gui_base(tkinter.Frame):
             if self.dscroll_select_path():
                 zynthian_gui_config.top.after(1000, self.cb_scroll_select_path)
                 return
-        zynthian_gui_config.top.after(100, self.cb_scroll_select_path)
+        zynthian_gui_config.top.after(50, self.cb_scroll_select_path)
 
     def dscroll_select_path(self):
         if self.shown:
@@ -886,8 +890,7 @@ class zynthian_gui_base(tkinter.Frame):
         else:
             self.format_print = "{}: {}"
 
-        self.label_select_path.config(
-            bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
+        self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
         self.init_buttonbar([("ZYNPOT 3,-1", "-1"), ("ZYNPOT 3,+1", "+1"),
                             ("ZYNPOT 3,-10", "-10"), ("ZYNPOT 3,+10", "+10"), (3, "OK")])
         self.update_param_editor()
@@ -911,10 +914,8 @@ class zynthian_gui_base(tkinter.Frame):
     def update_param_editor(self):
         if self.param_editor_zctrl:
             if self.param_editor_zctrl.labels:
-                self.select_path.set("{}: {}".format(
-                    self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
+                self.select_path.set(f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}")
             else:
-                self.select_path.set(self.format_print.format(
-                    self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+                self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
 
 # ------------------------------------------------------------------------------

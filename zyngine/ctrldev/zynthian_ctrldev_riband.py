@@ -51,23 +51,26 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
             lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
         super().end()
 
-    def update_seq_state(self, bank, seq, state, mode, group):
-        if self.idev_out is None or bank != self.zynseq.bank:
+    def update_seq_state(self, phrase, chan, state, mode):
+        if self.idev_out is None:
             return
-        col, row = self.zynseq.get_xy_from_pad(seq)
+        try:
+            row, col = self.zynseq.get_pad_coords(phrase, chan)
+        except:
+            return
         if row > 3 or col > 3:
             return
         note = col * 4 + row
         if note > 15:
             return
         try:
-            if mode == 0 or group > 25:
+            if mode == 0 or chan > 15:
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
-                vel = 4 + group
+                vel = 4 + chan
             elif state == zynseq.SEQ_PLAYING:
-                vel = 64 + group
-            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
+                vel = 64 + chan
+            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
                 vel = 33
             elif state == zynseq.SEQ_STARTING:
                 vel = 31
@@ -88,7 +91,7 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
         if evtype == 0x9:
             note = ev[1] & 0x7F
             vel = ev[2] & 0x7F
-            if vel > 0 and note < self.zynseq.seq_in_bank:
+            if vel > 0 and note < self.zynseq.seq_in_scene:
                 # Toggle pad
                 self.zynseq.libseq.togglePlayState(self.zynseq.bank, note)
                 return True

@@ -43,7 +43,7 @@ from zyngui import zynthian_gui_config
 # Some variables & definitions
 # ----------------------------------------------------------------------------
 
-MAX_NUM_MIDI_CHANS = 16
+MAX_NUM_MIDI_CHANS = 32
 
 # Get ZYnMidiRouter parameters and limits from lib_zyncore
 NUM_ZMOP_CHAINS = lib_zyncore.zmop_get_num_chains()
@@ -75,6 +75,7 @@ engine2class = {
     "MI": zynthian_engine_audio_mixer,
     "MR": zynthian_engine_audio_mixer,
     "MX": zynthian_engine_alsa_mixer,
+    'CL': zynthian_engine_clippy
 }
 
 # ----------------------------------------------------------------------------
@@ -87,9 +88,14 @@ class zynthian_chain_manager:
     # Subsignals are defined inside each module. Here we define chain_manager subsignals:
     SS_SET_ACTIVE_CHAIN = 1
     SS_MOVE_CHAIN = 2
+    SS_ADD_CHAIN = 3
+    SS_REMOVE_CHAIN = 4
+    SS_REMOVE_ALL_CHAINS = 5
+    SS_ADD_PROCESSOR = 6
+    SS_REMOVE_PROCESSOR = 7
 
     engine_info = None
-    single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "SL", "IR"]
+    single_processor_engines = ["BF", "MD", "PT", "AE", "SL", "IR"]
 
     def __init__(self, state_manager):
         """ Create an instance of a chain manager
@@ -106,16 +112,17 @@ class zynthian_chain_manager:
         self.state_manager = state_manager
 
         self.chains = {}  # Map of chain objects indexed by chain id
-        self.ordered_chain_ids = []  # List of chain IDs in display order
+        self.ordered_chain_ids = []  # List of chain IDs in mixer display order
         self.zyngine_counter = 0  # Appended to engine names for uniqueness
-        self.zyngines = {}  # List of instantiated engines
+        self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain_id = None  # Active chain id
-        self.midi_chan_2_chain_ids = [list() for _ in range(
-            MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
-        # Optimisation dicts:
-        self.chain_midi_cc_binding = {}  # Map of list of zctrls indexed by chain_id<<8|cc
-        self.chan_midi_cc_binding = {}  # Map of list of zctrls indexed by chain_id<<8|cc
+        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
+
+        # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
+        self.absolute_midi_cc_binding = {}
+        # Map of list of zctrls indexed by 24-bit CHAIN,CHAN,CC
+        self.chain_midi_cc_binding = {}
 
     # ------------------------------------------------------------------------
     # Engine Management
@@ -168,7 +175,8 @@ class zynthian_chain_manager:
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, zmop_index=None, title="", chain_pos=None):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None,
+                  title="", chain_pos=None, fast_refresh=True):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
@@ -202,6 +210,16 @@ class zynthian_chain_manager:
             self.state_manager.end_busy("add_chain")
             return chain_id
 
+        # Enable launcher sequences if not used by other chain
+        if midi_chan is not None:
+            enable_sequences = True
+            for chain in self.chains.values():
+                if chain.midi_chan == midi_chan:
+                    enable_sequences = False
+                    break
+            if enable_sequences:
+                self.state_manager.zynseq.enable_channel(midi_chan, True)
+
         # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
         if not chain:
@@ -211,56 +229,50 @@ class zynthian_chain_manager:
         # Setup chain
         chain.set_title(title)
 
+        # Add to chain index (sorted!)
+        if chain_pos is None:
+            chain_pos = self.get_chain_index(0)
+        self.ordered_chain_ids.insert(chain_pos, chain_id)
+
+        # Set MIDI channel
+        self.set_midi_chan(chain_id, midi_chan)
+
         # Setup MIDI routing
         if isinstance(midi_chan, int):
             # Restore zmop_index if it's free for assignment
             if zmop_index is None or not self.is_free_zmop_index(zmop_index):
                 zmop_index = self.get_next_free_zmop_index()
             chain.set_zmop_index(zmop_index)
-        if chain.zmop_index is not None:
             # Enable all MIDI input devices by default => TODO: Should we allow user to define default routing?
             for zmip in range(MAX_NUM_MIDI_DEVS):
-                try:
-                    unroute = zmip in self.state_manager.ctrldev_manager.drivers and self.state_manager.ctrldev_manager.drivers[
-                        zmip].unroute_from_chains
-                except Exception as e:
-                    unroute = False
-                    logging.warning(f"ctrldev_manager => {e}")
-                lib_zyncore.zmop_set_route_from(
-                    chain.zmop_index, zmip, not unroute)
+                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, True)
             # Enable StepSeq MIDI intput
-            lib_zyncore.zmop_set_route_from(
-                chain.zmop_index, ZMIP_STEP_INDEX, True)
+            lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_STEP_INDEX, True)
             # Enable SMF sequencer MIDI intput
-            lib_zyncore.zmop_set_route_from(
-                chain.zmop_index, ZMIP_SEQ_INDEX, True)
-            # Enable CV/Gate MIDI intput (fake port zmip)
-            lib_zyncore.zmop_set_route_from(
-                chain.zmop_index, ZMIP_INT_INDEX, True)
+            lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_SEQ_INDEX, True)
+            # Enable CV/Gate MIDI input (fake port zmip)
+            lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_INT_INDEX, True)
             # Enable default native CC handling of pedals
             cc_route_ct = (ctypes.c_uint8 * 128)()
             for ccnum in (64, 66, 67, 69):
                 cc_route_ct[ccnum] = 1
             lib_zyncore.zmop_set_cc_route(zmop_index, cc_route_ct)
 
-        # Set MIDI channel
-        self.set_midi_chan(chain_id, midi_chan)
 
-        # Add to chain index (sorted!)
-        if chain_pos is None:
-            chain_pos = 0
-            for chain_pos, id in enumerate(self.ordered_chain_ids):
-                if id == 0:
-                    break # Position all chains before main bus
-        self.ordered_chain_ids.insert(chain_pos, chain_id)
+        chain.rebuild_graph()
+        zynautoconnect.request_audio_connect(fast_refresh)
+        zynautoconnect.request_midi_connect(fast_refresh)
 
-        logging.debug(
-            f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, zmop_index={chain.zmop_index}")
+        logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, zmop_index={chain.zmop_index}")
         # logging.debug(f"ordered_chain_ids = {self.ordered_chain_ids}")
         # logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
 
         self.active_chain_id = chain_id
+        if fast_refresh:
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
         self.state_manager.end_busy("add_chain")
+        if fast_refresh:
+            self.state_manager.zynseq.refresh_chan2col()
         return chain_id
 
     def add_chain_from_state(self, chain_id, chain_state):
@@ -313,6 +325,7 @@ class zynthian_chain_manager:
         # List of associated chains that shold be removed simultaneously
         chains_to_remove = [chain_id]
         chain = self.chains[chain_id]
+        midi_chan = chain.midi_chan
         if chain.synth_slots:
             if chain.synth_slots[0][0].eng_code in ["BF", "AE"]:
                 # TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
@@ -324,10 +337,11 @@ class zynthian_chain_manager:
             chain = self.chains[chain_id]
             if isinstance(chain.midi_chan, int):
                 if chain.midi_chan < MAX_NUM_MIDI_CHANS:
-                    self.midi_chan_2_chain_ids[chain.midi_chan].remove(
-                        chain_id)
-                    lib_zyncore.ui_send_ccontrol_change(
-                        chain.midi_chan, 120, 0)
+                    try:
+                        self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
+                    except:
+                        pass
+                    lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
                 elif chain.midi_chan == 0xffff:
                     for mc in range(16):
                         self.midi_chan_2_chain_ids[mc].remove(chain_id)
@@ -360,6 +374,17 @@ class zynthian_chain_manager:
             if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
+
+        # Disable launcher sequences if not used by other chain
+        if midi_chan is not None:
+            disable_sequences = True
+            for chain in self.chains.values():
+                if chain.midi_chan == midi_chan:
+                    disable_sequences = False
+                    break
+            if disable_sequences:
+                self.state_manager.zynseq.enable_channel(midi_chan, False)
+
         self.state_manager.purge_zs3()
 
         if update_fxreturns:
@@ -369,6 +394,9 @@ class zynthian_chain_manager:
                 if chain.title.startswith("Effect Return "):
                     chain.title = f"Effect Return {i}"
                     i += 1
+        if fast_refresh:
+            self.state_manager.zynseq.refresh_chan2col()
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_CHAIN)
 
         self.state_manager.end_busy("remove_chain")
         return True
@@ -383,8 +411,9 @@ class zynthian_chain_manager:
 
         success = True
         for chain in list(self.chains.keys()):
-            success &= self.remove_chain(
-                chain, stop_engines, fast_refresh=False)
+            success &= self.remove_chain(chain, stop_engines, fast_refresh=False)
+        self.state_manager.zynseq.refresh_chan2col()
+        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
         return success
 
     def move_chain(self, offset, chain_id=None):
@@ -396,14 +425,17 @@ class zynthian_chain_manager:
 
         if chain_id is None:
             chain_id = self.active_chain_id
-        if chain_id and chain_id in self.ordered_chain_ids:
-            index = self.ordered_chain_ids.index(chain_id)
-            pos = index + offset
-            pos = min(pos, len(self.ordered_chain_ids) - 2)
-            pos = max(pos, 0)
-            self.ordered_chain_ids.insert(
-                pos, self.ordered_chain_ids.pop(index))
-            zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
+        if not chain_id or chain_id not in self.ordered_chain_ids:
+            return
+        index = self.ordered_chain_ids.index(chain_id)
+        pos = index + offset
+        pos = min(pos, len(self.ordered_chain_ids) - 2)
+        pos = max(pos, 0)
+        if pos == index:
+            return
+        self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
+        self.state_manager.zynseq.refresh_chan2col()
+        zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):
         """Get the quantity of chains"""
@@ -419,7 +451,7 @@ class zynthian_chain_manager:
             return None
 
     def get_chain_by_index(self, index):
-        """Get a chain object by the index"""
+        """Get a chain object by its display index"""
 
         try:
             return self.chains[self.ordered_chain_ids[index]]
@@ -453,7 +485,7 @@ class zynthian_chain_manager:
         return None
 
     def get_chain_id_by_index(self, index):
-        """Get a chain ID by the index"""
+        """Get a chain ID by the display index"""
 
         try:
             return self.ordered_chain_ids[index]
@@ -687,7 +719,7 @@ class zynthian_chain_manager:
         return self.active_chain_id
 
     def set_active_chain_by_index(self, index):
-        """Select the active chain by index
+        """Select the active chain by display index
 
         index : Index of chain in ordered_chain_ids
         Returns : ID of active chain
@@ -758,7 +790,8 @@ class zynthian_chain_manager:
             id += 1
         return id
 
-    def add_processor(self, chain_id, eng_code, slot=None, proc_id=None, eng_config=None):
+    def add_processor(self, chain_id, eng_code, parallel=False, slot=None, proc_id=None, post_fader=False,
+                      fast_refresh=True, eng_config=None, midi_autolearn=True):
         """Add a processor to a chain
 
         chain : Chain ID
@@ -766,6 +799,7 @@ class zynthian_chain_manager:
         slot : Slot (position) within subchain (0..last slot, Default: last slot)
         proc_id : Processor UID (Default: Use next available ID)
         eng_config: Extended configuration for the engine (optional)
+        midi_autolearn: True to auto-learn MIDI-CC based controllers (i.e. False when creating from state)
         Returns : processor object or None on failure
         """
 
@@ -779,16 +813,17 @@ class zynthian_chain_manager:
             return None
         if proc_id is None:
             proc_id = self.get_available_processor_id()
+            send_signal = True
         elif proc_id in self.processors:
             logging.error(f"Processor '{proc_id}' already exists!")
             return None
+        else:
+            send_signal = False
 
         if self.state_manager.is_busy():
-            self.state_manager.start_busy(
-                "add_processor", None, f"adding {eng_code} to chain {chain_id}")
+            self.state_manager.start_busy("add_processor", None, f"adding {eng_code} to chain {chain_id}")
         else:
-            self.state_manager.start_busy(
-                "add_processor", "Adding Processor", f"adding {eng_code} to chain {chain_id}")
+            self.state_manager.start_busy("add_processor", "Adding Processor", f"adding {eng_code} to chain {chain_id}")
 
         logging.debug(f"Adding processor '{eng_code}' with ID '{proc_id}'")
         processor = zynthian_processor(
@@ -822,12 +857,15 @@ class zynthian_chain_manager:
             if chain_id in src_chain.audio_out:
                 src_chain.rebuild_graph()
         chain.rebuild_graph()
+        # Signal processor creation, except when creating from state (loading snapshot)
+        if send_signal:
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_PROCESSOR)
         self.state_manager.end_busy("add_processor")
         # Success!! => Return processor
         return processor
 
     def nudge_processor(self, chain_id, processor, up):
-        if (chain_id not in self.chains):
+        if chain_id not in self.chains:
             return False
         chain = self.chains[chain_id]
         if not chain.nudge_processor(processor, up):
@@ -859,13 +897,11 @@ class zynthian_chain_manager:
             return False
 
         if not isinstance(processor, zynthian_processor):
-            logging.error(
-                f"Invalid processor instance '{processor}' can't be removed from chain {chain_id}!")
+            logging.error(f"Invalid processor instance '{processor}' can't be removed from chain {chain_id}!")
             return False
 
         if self.state_manager.is_busy():
-            self.state_manager.start_busy(
-                "remove_processor", None, f"removing {processor.get_basepath()} from chain {chain_id}")
+            self.state_manager.start_busy("remove_processor", None, f"removing {processor.get_basepath()} from chain {chain_id}")
         else:
             self.state_manager.start_busy(
                 "remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
@@ -898,6 +934,7 @@ class zynthian_chain_manager:
             # Update chain routing (may have effected lots of chains)
             for chain in self.chains.values():
                 chain.rebuild_graph()
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_PROCESSOR)
 
         self.state_manager.end_busy("remove_processor")
         return success
@@ -1029,9 +1066,8 @@ class zynthian_chain_manager:
             zynthian_engine_class = info["ENGINE"]
             if eng_code[0:3] == "JV/":
                 eng_key = f"JV/{self.zyngine_counter}"
-                zyngine = zynthian_engine_class(
-                    eng_code, self.state_manager, False)
-            elif eng_code == "SF":
+                zyngine = zynthian_engine_class(eng_code, self.state_manager, False)
+            elif eng_code in ("SF", "PD"):
                 eng_key = f"{eng_code}/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(self.state_manager)
             else:
@@ -1053,8 +1089,7 @@ class zynthian_chain_manager:
         for eng_key in list(self.zyngines.keys()):
             if not self.zyngines[eng_key].processors:
                 logging.debug(f"Stopping Unused Engine '{eng_key}' ...")
-                self.state_manager.set_busy_details(
-                    f"stopping engine {self.zyngines[eng_key].get_name()}")
+                self.state_manager.set_busy_details(f"stopping engine {self.zyngines[eng_key].get_name()}")
                 self.zyngines[eng_key].stop()
                 del self.zyngines[eng_key]
 
@@ -1063,8 +1098,7 @@ class zynthian_chain_manager:
         for eng_key in list(self.zyngines.keys()):
             if len(self.zyngines[eng_key].processors) == 0 and eng_key[0:3] == "JV/":
                 logging.debug(f"Stopping Unused Jalv Engine '{eng_key}'...")
-                self.state_manager.set_busy_details(
-                    f"stopping engine {self.zyngines[eng_key].get_name()}")
+                self.state_manager.set_busy_details(f"stopping engine {self.zyngines[eng_key].get_name()}")
                 self.zyngines[eng_key].stop()
                 del self.zyngines[eng_key]
 
@@ -1086,8 +1120,7 @@ class zynthian_chain_manager:
                     if (info["ENABLED"] or all) and hide_if_single_proc:
                         result[eng_cat][eng_code] = info
                 else:
-                    logging.error(
-                        f"Engine '{eng_code}' has invalid category '{eng_cat}'!")
+                    logging.error(f"Engine '{eng_code}' has invalid category '{eng_cat}'!")
             # Remove empty categories
             for eng_cat in list(result.keys()):
                 if not result[eng_cat]:
@@ -1104,8 +1137,7 @@ class zynthian_chain_manager:
             # Jack, when listing ports, accepts regular expressions as the jack name.
             # So, for avoiding problems, jack names shouldn't contain regex characters.
             if sanitize:
-                jackname = re.sub("[\_]{2,}", "_", re.sub(
-                    "[\s\'\*\(\)\[\]]", "_", jackname))
+                jackname = re.sub("[\_]{2,}", "_", re.sub("[\s\'\*\(\)\[\]]", "_", jackname))
             names = set()
             for processor in self.get_processors():
                 jn = processor.get_jackname()
@@ -1208,6 +1240,9 @@ class zynthian_chain_manager:
                             slot = self.chains[chain_id].get_slot(processor)
                     slot += 1
 
+            if "zctrls" in chain_state:
+                self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
+
         self.state_manager.end_busy("set_chain_state")
 
     def restore_presets(self):
@@ -1220,9 +1255,32 @@ class zynthian_chain_manager:
     # MIDI CC
     # ----------------------------------------------------------------------------
 
-    def add_midi_learn(self, zctrl, chain_id, chan, midi_cc, exclude_zmips=0):
+    def print_midi_learn(self):
+        print(f"\n\n*********** CHAIN MIDI LEARN TABLE ***********")
+        for key, zctrls in self.chain_midi_cc_binding.items():
+            key = int(key)
+            chain_id = (key >> 16) & 0xFF
+            midi_chan = (key >> 8) & 0xFF
+            midi_cc = key & 0x7F
+            print(f"CHAIN={chain_id}, CHAN={midi_chan}, CC={midi_cc} =>")
+            for zctrl in zctrls:
+                print(f"     {zctrl.symbol}")
+        print(f"*********** ABSOLUTE MIDI LEARN TABLE ***********")
+        for key, zctrls in self.absolute_midi_cc_binding.items():
+            key = int(key)
+            zmip = (key >> 16) & 0xFF
+            midi_chan = (key >> 8) & 0xFF
+            midi_cc = key & 0x7F
+            print(f"ZMIP={zmip}, CHAN={midi_chan}, CC={midi_cc} =>")
+            for zctrl in zctrls:
+                print(f"     {zctrl.symbol}")
+        print(f"**************************************************\n\n")
+
+    def add_midi_learn(self, midi_chan, midi_cc, zctrl, zmip=None):
         """Adds a midi learn configuration
 
+        midi_chan : MIDI channel to bind (None / 0xFF to not bind to MIDI channel)
+        midi_cc : CC number of CC message
         zctrl : Controller object
         chain_id: Chain to learn or None for global
         chan : MIDI channel to bind or None for chain learn
@@ -1233,15 +1291,36 @@ class zynthian_chain_manager:
         if zctrl is None:
             return
 
-        logging.debug(f"(chan={chan}, midi_cc={midi_cc}, zctrl={zctrl.symbol}, exclude_zmips={exclude_zmips})")
-        self.remove_midi_learn(zctrl.processor, zctrl.symbol)
+        # Remove previous mappings with extra care
+        if zmip is None or zmip != ZMIP_STEP_INDEX:
+            # When mapping chain or absolute, remove previous mappings, except custom ZynStep mappings
+            map_zynstep = not self.is_custom_zynstep_mapping(zctrl)
+            self.remove_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=map_zynstep)
+        else:
+            # When explicitly mapping ZynStep, don't remove previous chain/absolute mappings
+            map_zynstep = True
+            self.remove_midi_learn_from_zctrl(zctrl, chain=False, abs=False, zynstep=True)
 
-        if chain_id is None:
-            # Absolute mapping
-            key = chan << 8 | midi_cc
-            if key in self.chan_midi_cc_binding:
-                if zctrl not in self.chan_midi_cc_binding[key]:
-                    self.chan_midi_cc_binding[key].append(zctrl)
+        if midi_chan is None:
+            midi_chan = 0xff
+        logging.debug(f"(chan={midi_chan}, midi_cc={midi_cc}, zctrl={zctrl.symbol}, zmip={zmip})")
+
+        # Chain learning for external devices => All chain types
+        if zmip is None:
+            if zctrl.processor and zctrl.processor.chain_id is not None:
+                key = (zctrl.processor.chain_id << 16) | (midi_chan << 8) | midi_cc
+                if key in self.chain_midi_cc_binding:
+                    if zctrl not in self.chain_midi_cc_binding[key]:
+                        self.chain_midi_cc_binding[key].append(zctrl)
+                else:
+                    self.chain_midi_cc_binding[key] = [zctrl]
+
+        # Absolute learning for external devices
+        elif zmip != ZMIP_STEP_INDEX:
+            key = (zmip << 16) | (midi_chan << 8) | midi_cc
+            if key in self.absolute_midi_cc_binding:
+                if zctrl not in self.absolute_midi_cc_binding[key]:
+                    self.absolute_midi_cc_binding[key].append(zctrl)
             else:
                 self.chan_midi_cc_binding[key] = [zctrl]
         else:
@@ -1252,49 +1331,130 @@ class zynthian_chain_manager:
                 self.chain_midi_cc_binding[key] = [zctrl]
         zctrl.midi_cc_learn = [chain_id, chan, midi_cc, exclude_zmips]
 
-        # TODO: Handle MD midi learn
-        """
-        #logging.debug(f"ADDING GLOBAL MIDI LEARN => MIDI CHANNEL {chan}, CC#{midi_cc}")
-        if zctrl.processor.eng_code == "MD":
-            # Add native MIDI learn #TODO: Should / can we still use native midi learn?
-            zctrl.processor.engine.set_midi_learn(zctrl, chan, midi_cc)
+        # ZynStep mapping => MIDI chains only
+        if map_zynstep and zctrl.processor and zctrl.processor.midi_chan is not None:
+            key = (ZMIP_STEP_INDEX << 16) | (zctrl.processor.midi_chan << 8) | midi_cc
+            if key in self.absolute_midi_cc_binding:
+                if zctrl not in self.absolute_midi_cc_binding[key]:
+                    self.absolute_midi_cc_binding[key].append(zctrl)
+            else:
+                self.absolute_midi_cc_binding[key] = [zctrl]
+
+        #self.print_midi_learn()
+
+    def add_zynstep_midi_learn(self, midi_cc, zctrl):
+        """Adds a midi learn configuration for zynstep
+
+        midi_cc : CC number of CC message
+        zctrl : Controller object
         """
 
-    def remove_midi_learn(self, proc, symbol):
+        self.add_midi_learn(None, midi_cc, zctrl, ZMIP_STEP_INDEX)
+
+    def remove_midi_learn(self, proc, symbol, chain=True, abs=True, zynstep=None):
         """Remove a midi learn configuration
 
         proc : Processor object
         symbol : Control symbol
+        chain : remove chain MIDI learn
+        abs : remove absolute MIDI learn
+        zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
         """
 
-        if not proc or symbol not in proc.controllers_dict:
+        try:
+            zctrl = proc.controllers_dict[symbol]
+        except:
             return
-        zctrl = proc.controllers_dict[symbol]
-        zctrl.midi_cc_learn = None
-        logging.debug(f"(symbol={symbol} => zctrl={zctrl.symbol})")
-        for key in list(self.chan_midi_cc_binding):
-            zctrls = self.chan_midi_cc_binding[key]
-            try:
-                zctrls.remove(zctrl)
-            except:
-                pass
-            if not zctrls:
-                self.chan_midi_cc_binding.pop(key)
-        for key in list(self.chain_midi_cc_binding):
-            zctrls = self.chain_midi_cc_binding[key]
-            try:
-                zctrls.remove(zctrl)
-            except:
-                pass
-            if not zctrls:
-                self.chain_midi_cc_binding.pop(key)
+        self.remove_midi_learn_from_zctrl(zctrl, chain=chain, abs=abs, zynstep=zynstep)
 
+    def remove_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=None):
+        """Remove a midi learn configuration
+
+        zctrl : zctrl object
+        chain : remove chain MIDI learn
+        abs : remove absolute MIDI learn
+        zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
         """
-        if proc.eng_code == "MD":
-            # Remove native MIDI learn
-            proc.engine.midi_unlearn(zctrl)
-        return
-        """
+
+        # processor.id may not exist! logging.debug(f"(proccessor={zctrl.processor.id}, symbol={zctrl.symbol})")
+
+        if zynstep is None:
+            zynstep = not self.is_custom_zynstep_mapping(zctrl)
+
+        if chain:
+            for key in list(self.chain_midi_cc_binding):
+                zctrls = self.chain_midi_cc_binding[key]
+                try:
+                    zctrls.remove(zctrl)
+                except:
+                    pass
+                if not zctrls:
+                    self.chain_midi_cc_binding.pop(key)
+        if abs:
+            for key in list(self.absolute_midi_cc_binding):
+                if (key >> 16) & 0xff == ZMIP_STEP_INDEX:
+                    continue
+                zctrls = self.absolute_midi_cc_binding[key]
+                try:
+                    zctrls.remove(zctrl)
+                except:
+                    pass
+                if not zctrls:
+                    self.absolute_midi_cc_binding.pop(key)
+
+        if zynstep:
+            for key in list(self.absolute_midi_cc_binding):
+                if (key >> 16) & 0xff != ZMIP_STEP_INDEX:
+                    continue
+                zctrls = self.absolute_midi_cc_binding[key]
+                try:
+                    zctrls.remove(zctrl)
+                except:
+                    pass
+                if not zctrls:
+                    self.absolute_midi_cc_binding.pop(key)
+
+    def get_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=True):
+        if chain:
+            for key, zctrls in self.chain_midi_cc_binding.items():
+                if zctrl in zctrls:
+                    return [key, "chain"]
+        if abs:
+            for key, zctrls in self.absolute_midi_cc_binding.items():
+                if (key >> 16) & 0xff == ZMIP_STEP_INDEX:
+                    continue
+                if zctrl in zctrls:
+                    return [key, "abs"]
+        if zynstep:
+            for key, zctrls in self.absolute_midi_cc_binding.items():
+                if (key >> 16) & 0xff != ZMIP_STEP_INDEX:
+                    continue
+                if zctrl in zctrls:
+                    return [key, "zynstep"]
+
+    def is_custom_zynstep_mapping(self, zctrl):
+        # Look for a non-zynstep mapping (absolute or chain)
+        try:
+            key = self. get_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=False)[0]
+            midi_cc = key & 0x7f
+        except:
+            midi_cc = None
+        # Look for a zynstep mapping
+        for key, zctrls in self.absolute_midi_cc_binding.items():
+            if ZMIP_STEP_INDEX == (key >> 16) & 0xff and zctrl in zctrls:
+                # Check if it's custom mapping => It's different to non-zynstep mapping (not auto-mapped!)
+                if midi_cc is None or midi_cc != key & 0x7f:
+                    return True
+                else:
+                    return False
+        return False
+
+    def get_zynstep_mapped_zctrl(self, midi_chan, cc_num):
+        try:
+            key = (ZMIP_STEP_INDEX << 16) | (midi_chan << 8) | cc_num
+            return self.absolute_midi_cc_binding[key][0]
+        except:
+            return None
 
     def midi_control_change(self, zmip, midi_chan, cc_num, cc_val):
         """Send MIDI CC message to relevant chain
@@ -1320,21 +1480,23 @@ class zynthian_chain_manager:
                         break
                     return
 
-        # Handle controller feedback from setBfree engine => setBfree sends feedback in channel 0
+        key_low = (midi_chan << 8) | cc_num
+
+        # Handle controller feedback from setBfree engine => setBfree sends feedback in assigned MIDI channels
         # Each engine sending feedback should use a separated zmip, currently only setBfree does.
         if zmip == ZMIP_CTRL_INDEX:
-            # logging.debug(f"MIDI CONTROL FEEDBACK {midi_chan}, {cc_num} => {cc_val}")
-            try:
-                for proc in zynautoconnect.ctrl_fb_procs:
+            #logging.debug(f"MIDI CONTROL FEEDBACK {midi_chan}, {cc_num} => {cc_val}")
+            for proc in zynautoconnect.ctrl_fb_procs:
+                try:
                     if proc.part_i == midi_chan:
-                        key = (proc.chain_id << 8) | cc_num
-                        zctrls = self.chain_midi_cc_binding[key]
-                        for zctrl in zctrls:
-                            # logging.debug(f"CONTROLLER FEEDBACK {zctrl.symbol} ({midi_chan}) => {cc_val}")
-                            zctrl.midi_control_change(cc_val, send=False)
-            except Exception as e:
-                logging.warning(
-                    f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
+                        for symbol, zctrl in proc.controllers_dict.items():
+                            if zctrl.midi_cc == cc_num:
+                                #logging.debug(f"CONTROLLER FEEDBACK {proc.id}:{symbol} ({midi_chan}:{cc_num}) => {cc_val}")
+                                #zctrl.midi_control_change(cc_val, send=False)
+                                zctrl.set_value(cc_val, send=False)
+                                return
+                except Exception as e:
+                    logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
         # Handle pedal off for chain-mode
@@ -1345,19 +1507,33 @@ class zynthian_chain_manager:
 
         exclude_flags = 1 << zmip
         try:
-            key = self.active_chain_id << 8 | cc_num
-            for zctrl in self.chain_midi_cc_binding[key]:
-                if exclude_flags & zctrl.midi_cc_learn[3]:
-                    continue
-                self.handle_pedals(cc_num, cc_val, zctrl)
+            key = (zmip << 16) | key_low
+            zctrls = self.absolute_midi_cc_binding[key]
+            for zctrl in zctrls:
                 zctrl.midi_control_change(cc_val)
+                #logging.debug(f"ABSOLUTE LEARNED ZCTRL {zctrl.symbol} ...")
         except:
             pass
+        if zmip == ZMIP_STEP_INDEX:
+            #logging.debug(f"MIDI CC FROM ZYNSTEP:  {midi_chan}#{cc_num} => {cc_val}")
+            return
+
+        # Handle active chain CC binding
         try:
-            key = midi_chan << 8 | cc_num
-            for zctrl in self.chan_midi_cc_binding[key]:
-                if exclude_flags & zctrl.midi_cc_learn[3]:
-                    continue
+            # Channel-bond
+            try:
+                key = (self.active_chain_id << 16) | key_low
+                zctrls1 = self.chain_midi_cc_binding[key]
+            except:
+                zctrls1 = []
+            # Channel-unbond
+            try:
+                key = (self.active_chain_id << 16) | (0xff << 8) | cc_num
+                zctrls2 = self.chain_midi_cc_binding[key]
+            except:
+                zctrls2 = []
+            # Change controllers values
+            for zctrl in zctrls1 + zctrls2:
                 zctrl.midi_control_change(cc_val)
         except:
             pass
@@ -1407,8 +1583,7 @@ class zynthian_chain_manager:
                         continue
                     changed |= processor.set_preset(midi_prog, True)
             except Exception as e:
-                logging.error(
-                    f"Can't set preset for CH#{midi_chan}:PC#{midi_prog} => {e}")
+                logging.error(f"Can't set preset for CH#{midi_chan}:PC#{midi_prog} => {e}")
         return changed
 
     def set_midi_chan(self, chain_id, midi_chan):
@@ -1438,6 +1613,8 @@ class zynthian_chain_manager:
                 except:
                     pass
 
+        chain.set_midi_chan(midi_chan)
+
         # Add new midi_chan(s) to dictionary
         if isinstance(midi_chan, int):
             midi_chans = []
@@ -1454,8 +1631,6 @@ class zynthian_chain_manager:
                     # logging.debug(f"Adding chain ID {chain_id} to MIDI channel {mc}")
                 except:
                     pass
-
-        chain.set_midi_chan(midi_chan)
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""

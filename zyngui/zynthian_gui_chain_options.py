@@ -73,13 +73,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             except Exception as e:
                 logging.error(e)
 
-        if synth_proc_count:
+        if self.chain.is_midi() and synth_proc_count:
             self.list_data.append((self.chain_midi_cc, None, "MIDI CC",
                                    ["Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
 
-        if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            self.list_data.append((self.clean_midi_learn, None, "Clean Chain MIDI Learn"))
-            #TODO: Put this in zctrl Control options menu, e.g. Unlearn all controls for whole chain
+        if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]) and self.chain.get_processor_count():
+            self.list_data.append((self.midi_learn, None, "MIDI Learn",
+                                   ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
 
         if self.chain_id != 0 and self.chain.zynmixer_proc and self.chain.zynmixer_proc.eng_code!="MR":
             self.list_data.append((self.chain_audio_capture, None, "Audio In",
@@ -113,13 +113,17 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                                    ["Add a new audio processor to the end of the chain.", "audio_processor.png"]))
 
         if self.chain_id != 0:
-            if synth_proc_count * midi_proc_count == 0 and audio_proc_count < 2:
-                self.list_data.append((self.remove_chain, None, "Remove Chain", ["Remove this chain and all its processors.", "delete_chains.png"]))
+            self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
+                                   ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
+            if synth_proc_count * midi_proc_count + audio_proc_count == 0:
+                self.list_data.append((self.remove_chain, None, "Remove Chain",
+                                       ["Remove this chain and all its processors.", "delete_chains.png"]))
             else:
-                self.list_data.append((self.remove_cb, None, "Remove...", ["Remove chain or processors.", "delete_chains.png"]))
-            self.list_data.append((self.export_chain, None, "Export chain as snapshot...", ["Save the selected chain as a snapshot which may then be imported into another snapshot.", None]))
-        elif audio_proc_count > 1:
-            self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX", ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
+                self.list_data.append((self.remove_cb, None, "Remove...",
+                                       ["Remove chain or processors.", "delete_chains.png"]))
+        elif audio_proc_count > 0:
+            self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
+                                   ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
 
         self.list_data.append((None, None, "> GUI"))
         self.list_data.append((self.rename_chain, None, "Rename chain",
@@ -154,6 +158,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         for slot in self.chain.synth_slots:
             for processor in slot:
                 name = processor.get_name()
+                if not name:
+                    name = "???"
                 text = "  " * indent + "╰━ " + name
                 res.append((self.processor_options, processor, text,
                             [f"Options for synth processor '{name}'", "synth_processor.png"]))
@@ -230,7 +236,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.chain_id = chain_keys[index]
             self.chain = self.zyngui.chain_manager.get_chain(self.chain_id)
             self.set_select_path()
-            self.fill_list()
+            self.update_list()
 
     def arrow_left(self):
         chain_keys = self.zyngui.chain_manager.ordered_chain_ids
@@ -243,7 +249,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.chain_id = chain_keys[index]
             self.chain = self.zyngui.chain_manager.get_chain(self.chain_id)
             self.set_select_path()
-            self.fill_list()
+            self.update_list()
 
     def processor_options(self, subchain, t='S'):
         self.zyngui.screens['processor_options'].setup(self.chain_id, subchain)
@@ -265,9 +271,31 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.zyngui.screens['midi_key_range'].config(self.chain)
         self.zyngui.show_screen('midi_key_range')
 
-    def clean_midi_learn(self):
-        self.zyngui.show_confirm(
-            f"Do you want to remove all MIDI CC binding for ALL controls in ALL processors within chain {self.chain_id:02d}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
+    def midi_learn(self):
+        options = {}
+        options['Enter MIDI-learn'] = "enable_midi_learn"
+        options['Enter Global MIDI-learn'] = "enable_global_midi_learn"
+        if self.processor:
+            options[f'Clear {self.processor.name} MIDI-learn'] = "clean_proc"
+        options['Clear chain MIDI-learn'] = "clean_chain"
+        self.zyngui.screens['option'].config(
+            "MIDI-learn", options, self.midi_learn_menu_cb)
+        self.zyngui.show_screen('option')
+
+    def midi_learn_menu_cb(self, options, params):
+        if params == 'enable_midi_learn':
+            self.zyngui.close_screen()
+            self.zyngui.cuia_toggle_midi_learn()
+        elif params == 'enable_global_midi_learn':
+            self.zyngui.close_screen()
+            self.zyngui.cuia_toggle_midi_learn()
+            self.zyngui.cuia_toggle_midi_learn()
+        elif params == 'clean_proc':
+            self.zyngui.show_confirm(
+                f"Do you want to clean MIDI-learn for ALL controls in processor {self.processor.name}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
+        elif params == 'clean_chain':
+            self.zyngui.show_confirm(
+                f"Do you want to clean MIDI-learn for ALL controls in ALL processors within chain {self.chain_id:02d}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
 
     def chain_midi_routing(self):
         self.zyngui.screens['midi_config'].set_chain(self.chain)
@@ -289,14 +317,14 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def move_chain(self):
         self.zyngui.screens["audio_mixer"].moving_chain = True
-        self.zyngui.show_screen_reset('audio_mixer')
+        self.zyngui.show_screen_reset('root')
 
     def rename_chain(self):
         self.zyngui.show_keyboard(self.do_rename_chain, self.chain.title)
 
     def do_rename_chain(self, title):
         self.chain.title = title
-        self.zyngui.show_screen_reset('audio_mixer')
+        self.zyngui.show_screen_reset('root')
 
     def export_chain(self):
         options = {}
@@ -352,7 +380,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def chain_remove_confirmed(self, params=None):
         self.zyngui.chain_manager.remove_chain(self.chain_id)
-        self.zyngui.show_screen_reset('audio_mixer')
+        self.zyngui.show_screen_reset('root')
 
     # FX-Chain management
 

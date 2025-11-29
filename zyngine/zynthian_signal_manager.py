@@ -55,14 +55,15 @@ class zynthian_signal_manager:
     SS_GUI_SHOW_SIDEBAR = 1
     SS_GUI_CONTROL_MODE = 2
     SS_GUI_SHOW_FILE_SELECTOR = 3
+    SS_GUI_TOGGLE_ALT_MODE = 4
+    SS_GUI_SHOW_MESSAGE = 5
 
-    SS_MIDI_SYS = 0
+    SS_MIDI_ALL = 0
     SS_MIDI_CC = 1
-    SS_MIDI_CC_LEARNED = 2
-    SS_MIDI_PC = 3
-    SS_MIDI_PC_LEARNED = 4
-    SS_MIDI_NOTE_ON = 5
-    SS_MIDI_NOTE_OFF = 6
+    SS_MIDI_PC = 2
+    SS_MIDI_NOTE_ON = 3
+    SS_MIDI_NOTE_OFF = 4
+    SS_MIDI_SYSEX = 5
 
     last_signal = 13
     last_subsignal = 10

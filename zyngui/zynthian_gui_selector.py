@@ -30,7 +30,6 @@ from datetime import datetime
 # Zynthian specific modules
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
-from zyngine import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
@@ -253,7 +252,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             return
         if self.zselector.zctrl.is_dirty:
             self.zselector.calculate_plot_values()
-        self.zselector.plot_value()
+            self.zselector.plot_value()
+            self.zselector.zctrl.is_dirty = False
 
     def swipe_nudge(self, dts):
         self.swipe_speed = int(len(self.swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.swipe_roll_scale))

@@ -27,16 +27,15 @@ import sys
 import signal
 import ctypes
 import logging
-from tkinter import EventType
 from time import sleep
+from tkinter import EventType
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_chain import *
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui import zynthian_gui
 from zyngui import zynthian_gui_keybinding
-from zynlibs.zynseq import *
 
 # ******************************************************************************
 # ------------------------------------------------------------------------------
@@ -66,18 +65,12 @@ def zynpot_cb(i, dval):
         logging.exception(err)
 
 
-get_lib_zyncore().setup_zynpot_cb(zynpot_cb)
+if zynthian_gui_config.num_zynpots > 0:
+    lib_zyncore.setup_zynpot_cb(zynpot_cb)
 
 # ------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
 # ------------------------------------------------------------------------------
-
-
-def flushflush():
-    for i in range(1000):
-        print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
-    zynthian_gui_config.top.after(200, flushflush)
-
 
 if zynthian_gui_config.wiring_layout == "EMULATOR":
     top_xid = zynthian_gui_config.top.winfo_id()
@@ -88,9 +81,8 @@ if zynthian_gui_config.wiring_layout == "EMULATOR":
         zynthian_gui_config.top.geometry('-10000-10000')
         zynthian_gui_config.top.overrideredirect(True)
         zynthian_gui_config.top.wm_withdraw()
-        flushflush()
-        zynthian_gui_config.top.after(
-            1000, zynthian_gui_config.top.wm_deiconify)
+        #flush()
+        zynthian_gui_config.top.after(1000, zynthian_gui_config.top.wm_deiconify)
 
 
 # ------------------------------------------------------------------------------

@@ -231,7 +231,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
                 preset_list.append([preset_fpath, [bank_msb, bank_lsb, prg], title, ext, f])
         return preset_list
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         return self._get_preset_list(bank)
 
     def set_preset(self, processor, preset, preload=False):
@@ -276,8 +276,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
             try:
                 osc_path = tpl.safe_substitute(i=processor.part_i)
                 options['osc_path'] = osc_path
-                if self.osc_target_port > 0:
-                    options['osc_port'] = self.osc_target_port
                 #logging.debug(f"CONTROLLER {ctrl[0]} with OSC PATH => {osc_path}")
             except Exception as e:
                 logging.error(f"Malformed OSC path => {ctrl[1]}")

@@ -99,11 +99,14 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
                 lib_zyncore.dev_send_note_on(
                     self.idev_out, 0, note, self.OFF_COLOUR)
 
-    def update_seq_state(self, bank, seq, state, mode, group):
-        if self.idev_out is None or bank != self.zynseq.bank:
+    def update_seq_state(self, phrase, chan, state, mode):
+        if self.idev_out is None:
             return
-        # logging.debug("Updating Launchpad MINI pad {}".format(seq))
-        col, row = self.zynseq.get_xy_from_pad(seq)
+        # logging.debug("Updating Launchpad MINI pad {}".format(chan))
+        try:
+            row, col = self.zynseq.get_pad_coords(phrase, chan)
+        except:
+            return
         note = 16 * row + col
         chan = 0
         if mode == 0:
@@ -131,14 +134,14 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         if evtype == 0x9:
             note = ev[1] & 0x7F
             col, row = self.get_note_xy(note)
-            # scene change
+            # phrase change
             if col == 8:
                 self.zynseq.select_bank(row + 1)
                 return True
             # launch/stop pad
-            pad = self.zynseq.get_pad_from_xy(col, row)
-            if pad >= 0:
-                self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+            info = self.zynseq.get_launcher_info(col, row)
+            if info is not None:
+                self.zynseq.libseq.togglePlayState(self.zynseq.bank, info["sequence"])
                 return True
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F

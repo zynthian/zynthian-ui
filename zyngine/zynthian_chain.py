@@ -72,11 +72,13 @@ class zynthian_chain:
         self.audio_out = []
         self.record_audio = False
 
-        self.status = ""  # Arbitary status text
+        self.status = ""  # Arbitary status text => THIS IS NOT USED AT ALL, RIGHT?
+
         self.current_processor = None  # Selected processor object
         self.title = None  # User defined title for chain
         self.midi_routes = {}  # Map of MIDI routes indexed by jackname
         self.audio_routes = {}  # Map of audio routes indexed by jackname
+        self.zctrls = []  # List of selected zctrls
         self.reset()
 
     def reset(self):
@@ -566,7 +568,14 @@ class zynthian_chain:
                     processors = slots[slot]
         return processors
 
-    def insert_processor(self, processor, slot=None):
+    def get_processors_by_id(self):
+        procs = self.get_processors()
+        procs_by_id = {}
+        for proc in procs:
+            procs_by_id[proc.id] = proc
+        return procs_by_id
+
+    def insert_processor(self, processor, parallel=False, slot=None):
         """Insert a processor in the chain
 
         processor : processor object to insert
@@ -658,6 +667,7 @@ class zynthian_chain:
 
         self.set_zmop_options()
         self.rebuild_graph()
+        self.purge_zctrls()
 
         if processor == self.current_processor:
             if slots:
@@ -673,6 +683,16 @@ class zynthian_chain:
 
         # del processor => I don't think this is needed nor right?? (Jofemodo)
         return True
+
+    def remove_all_processors(self):
+        """Remove all processors from chain
+
+        stop_engines : True to stop the processors' worker engines
+        """
+
+        self.clean_zctrls()
+        for processor in self.get_processors():
+            self.remove_processor(processor)
 
     def nudge_processor(self, processor, up):
         try:
@@ -767,6 +787,45 @@ class zynthian_chain:
     def set_current_processor(self, processor):
         if processor in self.get_processors():
             self.current_processor = processor
+
+    # ------------------------------------------------------------------------
+    # Chain zctrls Management
+    # ------------------------------------------------------------------------
+
+    def clean_zctrls(self):
+        self.zctrls = []
+
+    def purge_zctrls(self):
+        if not self.zctrls:
+            return
+        purged_zctrls = []
+        procs_by_id = self.get_processors_by_id()
+        for zctrl in self.zctrls:
+            if zctrl.processor in procs_by_id:
+                purged_zctrls.append(zctrl)
+        self.zctrls = purged_zctrls
+
+    def toggle_zctrl(self, zctrl):
+        try:
+            self.zctrls.remove(zctrl)
+        except:
+            self.zctrls.append(zctrl)
+
+    def set_zctrls_state(self, state):
+        self.zctrls = []
+        procs_by_id = self.get_processors_by_id()
+        for s in state:
+            try:
+                proc = procs_by_id[s[0]]
+                self.zctrls.append(proc.controllers_dict[s[1]])
+            except Exception as e:
+                logging.error(f"Can't restore chain zctrl from state => {s}")
+
+    def get_zctrls_state(self):
+        state = []
+        for zctrl in self.zctrls:
+            state.append((zctrl.processor.id, zctrl.symbol))
+        return state
 
     # ------------------------------------------------------------------------
     # State Management

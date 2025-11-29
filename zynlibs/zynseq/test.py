@@ -22,8 +22,8 @@ def testSave():
     libzynseq.save(b"./test.zynseq")
 
 
-def testSong():
-    libzynseq.selectSong(1)
+def testScene():
+    libzynseq.selectScene(1)
     print("Get tracks (expect 0):", libzynseq.getTracks())
     for track in range(1, 5):
         libzynseq.addTrack()

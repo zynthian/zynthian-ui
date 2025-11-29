@@ -100,7 +100,7 @@ NoteCuiaDefault = {
     "65": "SCREEN_SNAPSHOT",
     "67": "SCREEN_ALSA_MIXER",
     "69": "SCREEN_MIDI_RECORDER",
-    "71": "SCREEN_ZYNPAD",
+    "71": "SCREEN_LAUNCHER",
     "72": "SCREEN_PATTERN_EDITOR",
     "74": "SCREEN_BANK",
     "76": "SCREEN_PRESET",
@@ -169,6 +169,7 @@ ServerPort = {
 
 sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
 config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')
+my_data_dir = os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data")
 config_fpath = config_dir + "/zynthian_envars.sh"
 
 # -------------------------------------------------------------------------------
@@ -178,12 +179,10 @@ config_fpath = config_dir + "/zynthian_envars.sh"
 
 def get_midi_config_fpath(fpath=None):
     if not fpath:
-        fpath = os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE",
-                               os.environ.get("ZYNTHIAN_MY_DATA_DIR", "/zynthian/zynthian-my-data") + "/midi-profiles/default.sh")
+        fpath = os.environ.get("ZYNTHIAN_SCRIPT_MIDI_PROFILE", my_data_dir + "/midi-profiles/default.sh")
     if not os.path.isfile(fpath):
         # Try to copy from default template
-        default_src = "%s/config/default_midi_profile.sh" % os.getenv(
-            'ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
+        default_src = f"{sys_dir}/config/default_midi_profile.sh"
         copyfile(default_src, fpath)
 
     return fpath
@@ -208,7 +207,7 @@ def load_config(set_env=True, fpath=None):
     #logging.debug(f"CONFIG VARNAMES: {varnames}")
 
     # Execute config script and dump environment
-    env = check_output("source \"{}\";env".format(fpath), shell=True, universal_newlines=True, executable="/bin/bash")
+    env = check_output(f"source \"{fpath}\";env", shell=True, universal_newlines=True, executable="/bin/bash")
 
     # Parse environment dump
     config = {}

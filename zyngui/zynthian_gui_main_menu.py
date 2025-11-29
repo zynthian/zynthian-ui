@@ -89,7 +89,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
         # Add list of Apps
         self.list_data.append((None, 0, "> MAIN"))
         self.list_data.append((self.snapshots, 0, "Snapshots", ["Show snapshots management menu.", "snapshot.png"]))
-        self.list_data.append((self.step_sequencer, 0, "Sequencer", ["Show sequencer's zynpad view.", "sequencer.png"]))
+        #self.list_data.append((self.step_sequencer, 0, "Sequencer", ["Show sequencer.", "sequencer.png"]))
         self.list_data.append((self.audio_recorder, 0, "Audio Recorder", ["Show audio recorder/player.", "audio_recorder.png"]))
         self.list_data.append((self.midi_recorder, 0, "MIDI Recorder", ["Show SMF recorder/player.", "midi_recorder.png"]))
         self.list_data.append((self.tempo_settings, 0, "Tempo Settings", ["Show tempo & sync options.", "metronome.png"]))
@@ -166,7 +166,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
 
     def step_sequencer(self, t='S'):
         logging.info("Step Sequencer")
-        self.zyngui.show_screen('zynpad')
+        self.zyngui.show_screen('arranger')
 
     def audio_recorder(self, t='S'):
         logging.info("Audio Recorder/Player")

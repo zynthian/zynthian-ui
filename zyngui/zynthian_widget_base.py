@@ -25,7 +25,6 @@
 
 import tkinter
 import logging
-from time import sleep
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -85,5 +84,8 @@ class zynthian_widget_base(tkinter.Frame):
         pass
         # for k,v in self.monitors.items():
         # logging.debug("MONITOR {} = {}".format(k,v))
+
+    def hide_on_select_mode(self):
+        return True
 
 # ------------------------------------------------------------------------------

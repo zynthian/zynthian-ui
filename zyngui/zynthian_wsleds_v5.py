@@ -44,7 +44,8 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         # + BACK/SEL => 15, 13
         # + F1-F4 => 4, 11, 12, 19
         self.custom_wsleds = [7, 8, 9, 10, 14,
-                              16, 17, 18, 15, 13, 4, 11, 12, 19]
+                              16, 17, 18, 15, 13,
+                              4, 11, 12, 19]
 
     def update_wsleds(self):
         curscreen = self.zyngui.current_screen
@@ -72,7 +73,10 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         elif curscreen in ("preset", "bank"):
             self.wsleds[2] = self.wscolor_active2
         else:
-            self.wsleds[2] = self.wscolor_default
+            if self.zyngui.alt_mode:
+                self.wsleds[2] = self.wscolor_alt
+            else:
+                self.wsleds[2] = self.wscolor_default
 
         # ZS3 / Snapshot:
         if curscreen == "zs3":
@@ -82,10 +86,10 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         else:
             self.wsleds[3] = self.wscolor_default
 
-        # Zynseq: Zynpad /Pattern Editor
-        if curscreen == "zynpad":
+        # Zynseq: Launcher /Pattern Editor / Arranger
+        if curscreen == "launcher":
             self.wsleds[5] = self.wscolor_active
-        elif curscreen == "pattern_editor":
+        elif curscreen in ("pattern_editor", "pated_cc", "arranger"):
             self.wsleds[5] = self.wscolor_active2
         else:
             self.wsleds[5] = self.wscolor_default

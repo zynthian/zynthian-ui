@@ -89,7 +89,7 @@ class zynthian_engine_sysex(zynthian_engine):
 	# Preset Managament
 	# ----------------------------------------------------------------------------
 
-	def get_preset_list(self, bank):
+	def get_preset_list(self, bank, processor=None):
 		return self.get_filelist(bank[0], self.preset_fexts[0])
 
 	def set_preset(self, processor, preset, preload=False):

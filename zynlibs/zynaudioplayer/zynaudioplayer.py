@@ -55,13 +55,11 @@ try:
     libaudioplayer.get_loop_end_time.restype = ctypes.c_float
     libaudioplayer.get_crop_start_time.restype = ctypes.c_float
     libaudioplayer.get_crop_end_time.restype = ctypes.c_float
-    libaudioplayer.get_file_duration.restype = ctypes.c_float
     libaudioplayer.get_env_attack.restype = ctypes.c_float
     libaudioplayer.get_env_hold.restype = ctypes.c_float
     libaudioplayer.get_env_decay.restype = ctypes.c_float
     libaudioplayer.get_env_sustain.restype = ctypes.c_float
     libaudioplayer.get_env_release.restype = ctypes.c_float
-    libaudioplayer.get_file_info.restype = ctypes.c_char_p
     libaudioplayer.get_filename.restype = ctypes.c_char_p
     libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
     libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
@@ -80,6 +78,9 @@ try:
     libaudioplayer.get_pitch.restype = ctypes.c_float
     libaudioplayer.get_varispeed.restype = ctypes.c_float
     libaudioplayer.is_loop.restype = ctypes.c_uint8
+    libaudioplayer.get_file_duration.restype = ctypes.c_float
+    libaudioplayer.get_file_channels.restype = ctypes.c_int32
+    libaudioplayer.get_file_info.restype = ctypes.c_char_p
 
 except Exception as e:
     libaudioplayer = None
@@ -671,6 +672,13 @@ def is_debug():
 # Returns: Duration in seconds or zero if file cannot be opened or invalid format
 def get_file_duration(filename):
     return libaudioplayer.get_file_duration(bytes(filename, "utf-8"))
+
+
+# Get num of channels of an audio file
+# filename: Full path and filename
+# Returns: Num of channels or zero if file cannot be opened or invalid format
+def get_file_channels(filename):
+    return libaudioplayer.get_file_channels(bytes(filename, "utf-8"))
 
 
 # Get info from file metadata

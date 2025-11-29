@@ -324,11 +324,9 @@ class SavedState:
 class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
 
     dev_ids = ["MPK mini 3 IN 1"]
+    driver_description = "Full UI integration"
     unroute_from_chains = False
-
-    @classmethod
-    def get_autoload_flag(cls):
-        return False
+    autoload_flag = False
 
     def __init__(self, state_manager, idev_in, idev_out):
         self._saved_state = SavedState(state_manager.zynseq)
@@ -955,8 +953,9 @@ class PatternHandler(ModeHandlerBase):
         if self.CC_PAD_START <= ccnum <= self.CC_PAD_END:
             if ccval == 127 and self._current_screen == "zynpad":
                 pad = ccnum - self.CC_PAD_START
-                seq = self._zynseq.get_pad_from_xy(pad // 4, pad % 4)
-                self._libseq.togglePlayState(self._zynseq.bank, seq)
+                info = self._zynseq.get_launcher_info(pad // 4, pad % 4)
+                if info is not None:
+                    self._libseq.togglePlayState(self._zynseq.scene, info['phrase'], info["sequence"])
                 return
 
         if ccnum in (self.CC_PAD_SHIFT_A, self.CC_PAD_SHIFT_B):

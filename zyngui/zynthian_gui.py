@@ -50,6 +50,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
 from zyngui import zynthian_gui_keybinding
 from zyngui.multitouch import MultiTouch
+from zyngui.zynthian_gui_none import zynthian_gui_none
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_help import zynthian_gui_help
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
@@ -64,6 +65,7 @@ from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
+from zyngui.zynthian_gui_midi_cc_single import zynthian_gui_midi_cc_single
 from zyngui.zynthian_gui_midi_prog import zynthian_gui_midi_prog
 from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
@@ -80,9 +82,9 @@ from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
 from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
-from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
+from zyngui.zynthian_gui_pated_notes import zynthian_gui_pated_notes
+from zyngui.zynthian_gui_pated_cc import zynthian_gui_pated_cc
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
 from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
@@ -92,8 +94,7 @@ from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
-# TODO This constants should go somewhere else
-MIXER_MAIN_CHANNEL = 17
+# TODO This constant should go somewhere else
 ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
 
 # -------------------------------------------------------------------------------
@@ -103,7 +104,13 @@ ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
 
 class zynthian_gui:
     # Subsignals are defined inside each module. Here we define GUI subsignals:
-    SS_SHOW_SCREEN = 0
+
+    SS_GUI_SHOW_SCREEN = 0
+    SS_GUI_SHOW_SIDEBAR = 1
+    SS_GUI_CONTROL_MODE = 2
+    SS_GUI_SHOW_FILE_SELECTOR = 3
+    SS_GUI_TOGGLE_ALT_MODE = 4
+    SS_GUI_SHOW_MESSAGE = 5
 
     # Screen Modes
     SCREEN_HMODE_NONE = 0
@@ -144,6 +151,7 @@ class zynthian_gui:
         self.zynpot_lock = Lock()
         self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
         self.zynpot_pr_state = zynthian_gui_config.num_zynpots * [0]
+        self.zynswitch_autolong_disabled = False
         self.dtsw = []
 
         self.exit_code = 0
@@ -152,8 +160,7 @@ class zynthian_gui:
 
         self.status_counter = 0
 
-        self.modify_chain_status = {
-            "midi_thru": False, "audio_thru": False}
+        self.modify_chain_status = {"midi_thru": False, "audio_thru": False}
 
         self.capture_log_ts0 = None
         self.capture_log_fname = None
@@ -164,10 +171,12 @@ class zynthian_gui:
         self.init_wsleds()
 
         # Init multitouch driver
-        if os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted' or zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
+        # => Note this condition is redundant, but needed to ensure some legacy V5 configs to work
+        # => It should be simplified in the future and keep the second part only
+        if zynthian_gui_config.check_kit_version(["V5"]) or os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
+            self.multitouch = MultiTouch(self.state_manager, invert_x_axis=True, invert_y_axis=True)
         else:
-            self.multitouch = MultiTouch()
+            self.multitouch = MultiTouch(self.state_manager)
 
         # Load keyboard binding map
         zynthian_gui_keybinding.load()
@@ -179,6 +188,8 @@ class zynthian_gui:
         # Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
         self.osc_clients = {}
         self.osc_heartbeat_timeout = 120  # Heartbeat timeout period
+
+        self.prog_change = [0] * 16 # Track last program change for each MIDI channel
 
     # ---------------------------------------------------------------------------
     # Capture Log
@@ -238,11 +249,11 @@ class zynthian_gui:
                 from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
                 self.wsleds = zynthian_wsleds_v5touch(self)
                 self.wsleds.start()
-        elif zynthian_gui_config.check_wiring_layout("Z2"):
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
             from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
             self.wsleds = zynthian_wsleds_z2(self)
             self.wsleds.start()
-        elif zynthian_gui_config.wiring_layout.startswith("V5"):
+        elif zynthian_gui_config.check_wiring_layout(["V5"]):
             from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
             self.wsleds = zynthian_wsleds_v5(self)
             self.wsleds.start()
@@ -371,9 +382,10 @@ class zynthian_gui:
         parts = path.upper().split("/", 2)
         # TODO: message may have fewer parts than expected
         if parts[0] == "" and parts[1] == "CUIA":
-            self.state_manager.set_event_flag()
             # Execute action
             cuia = parts[2].upper()
+            if cuia != "POWER_SAVE":
+                self.state_manager.set_event_flag()
             if self.state_manager.is_busy():
                 logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
                 return
@@ -438,6 +450,7 @@ class zynthian_gui:
 
     def create_screens(self):
         # Create Core UI Screens
+        self.screens['none'] = zynthian_gui_none()
         self.screens['info'] = zynthian_gui_info()
         self.screens['help'] = zynthian_gui_help()
         self.screens['splash'] = zynthian_gui_splash()
@@ -453,6 +466,7 @@ class zynthian_gui:
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
         self.screens['midi_cc'] = zynthian_gui_midi_cc()
+        self.screens['midi_cc_single'] = zynthian_gui_midi_cc_single()
         self.screens['midi_prog'] = zynthian_gui_midi_prog()
         self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
         self.screens['audio_out'] = zynthian_gui_audio_out()
@@ -479,14 +493,19 @@ class zynthian_gui:
         self.screens['audio_player'] = self.screens['control']
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
-        self.screens['zynpad'] = zynthian_gui_zynpad()
+        self.screens['launcher'] = self.screens['audio_mixer']
         self.screens['arranger'] = zynthian_gui_arranger()
-        self.screens['pattern_editor'] = zynthian_gui_patterneditor()
+        self.screens['pattern_editor'] = zynthian_gui_pated_notes()
+        self.screens['pated_cc'] = zynthian_gui_pated_cc()
         self.screens['wifi'] = zynthian_gui_wifi()
         self.screens['bluetooth'] = zynthian_gui_bluetooth()
         self.screens['brightness_config'] = zynthian_gui_brightness_config()
         self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
         self.screens['control_test'] = zynthian_gui_control_test()
+
+        # Root screen
+        self.screens['root'] = self.screens['audio_mixer']
+        #self.screens['root'] = self.screens['none']
 
         # Create Zynaptik-related screens
         try:
@@ -561,7 +580,7 @@ class zynthian_gui:
                 snapshot_loaded = self.state_manager.load_default_snapshot()
 
         if snapshot_loaded:
-            init_screen = "audio_mixer"
+            init_screen = "root"
         else:
             # Init MIDI Subsystem => MIDI Profile
             self.state_manager.init_midi()
@@ -575,6 +594,8 @@ class zynthian_gui:
 
         # Show initial screen
         self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
+
+        #self.screens['root'] = self.screens['audio_mixer']
 
     def hide_screens(self, exclude=None):
         if not exclude:
@@ -597,12 +618,23 @@ class zynthian_gui:
             if self.current_screen:
                 screen = self.current_screen
             else:
-                screen = "audio_mixer"
+                screen = "root"
 
+        if screen == "root":
+            try:
+                if self.screens[screen].launcher_mode:
+                    screen = "launcher"
+                else:
+                    screen = "audio_mixer"
+            except:
+                pass
+        elif screen == "audio_mixer":
+            self.screens[screen].set_launcher_mode(False)
+        elif screen == "launcher":
+            self.screens[screen].set_launcher_mode(True)
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.alsa_mixer_processor
-
         elif screen == "audio_player":
             if self.state_manager.audio_player:
                 self.current_processor = self.state_manager.audio_player
@@ -617,7 +649,13 @@ class zynthian_gui:
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
 
-        if not self.screens[screen].build_view():
+        root_screens = ("root", "audio_mixer", "launcher")
+        if screen in root_screens and self.current_screen in root_screens:
+            dummy_show = True
+        else:
+            dummy_show = False
+
+        if not dummy_show and not self.screens[screen].build_view():
             self.screen_lock.release()
             # self.show_screen_reset("audio_mixer")
             self.close_screen()
@@ -636,10 +674,12 @@ class zynthian_gui:
 
         if self.current_screen != screen:
             #logging.debug(f"SHOW_SCREEN {screen}")
-            self.screens[screen].show()
+            if not dummy_show:
+                self.screens[screen].show()
             self.current_screen = screen
-            self.hide_screens(exclude=screen)
-            zynsigman.send(zynsigman.S_GUI, self.SS_SHOW_SCREEN, screen=screen)
+            if not dummy_show:
+                self.hide_screens(exclude=screen)
+            zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
 
         self.screen_lock.release()
 
@@ -670,11 +710,11 @@ class zynthian_gui:
         try:
             last_screen = self.screen_history.pop()
         except:
-            last_screen = "audio_mixer"
+            last_screen = "root"
 
         if last_screen not in self.screens:
             logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
-            last_screen = "audio_mixer"
+            last_screen = "root"
         logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
         self.show_screen(last_screen)
 
@@ -875,8 +915,7 @@ class zynthian_gui:
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
                             self.close_screen("loading")
-                            self.chain_control(
-                                self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
+                            self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                 else:
                     # Adding processor to existing chain
                     processor = self.chain_manager.add_processor(
@@ -886,7 +925,7 @@ class zynthian_gui:
                         self.close_screen("loading")
                         self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                     else:
-                        self.show_screen_reset("audio_mixer")
+                        self.show_screen_reset("root")
             else:
                 # Creating a new chain
                 if "midi_chan" in self.modify_chain_status:
@@ -910,7 +949,7 @@ class zynthian_gui:
                         zmop_index
                     )
                     if chain_id is None:
-                        self.show_screen_reset("audio_mixer")
+                        self.show_screen_reset("root")
                         self.show_info("Failed to create chain", 1500)
                         return
                     processor = self.chain_manager.add_processor(
@@ -925,15 +964,15 @@ class zynthian_gui:
                             am_proc = self.chain_manager.add_processor(chain_id, "MI")
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
-                    # self.modify_chain_status = {"midi_thru": False, "audio_thru": False}
-                    if processor:
+                    if processor and processor.eng_code != "CL":
                         self.close_screen("loading")
+                        self.screen_history = []
                         self.chain_control(
                             chain_id, processor, force_bank_preset=True)
                     else:
                         # Created empty chain
                         # self.chain_manager.set_active_chain_by_id(chain_id)
-                        self.show_screen_reset("audio_mixer")
+                        self.show_screen_reset("root")
                 else:
                     # Select MIDI channel
                     logging.debug(self.modify_chain_status)
@@ -952,7 +991,7 @@ class zynthian_gui:
             # TODO: Offer type selection
             pass
 
-    def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_RESET, force_bank_preset=False):
+    def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_ADD, force_bank_preset=False):
         if chain_id is None:
             chain_id = self.chain_manager.active_chain_id
         else:
@@ -1072,7 +1111,7 @@ class zynthian_gui:
         if self.chain_manager.get_chain_count() > 1:
             self.state_manager.save_last_state_snapshot()
         self.state_manager.clean_sequences()
-        self.show_screen_reset('zynpad')
+        self.show_screen_reset('launcher')
 
     # -------------------------------------------------------------------
     # Callable UI Actions
@@ -1087,8 +1126,7 @@ class zynthian_gui:
         cuia_func_name = "cuia_" + cuia.lower()
         # First try screen defined cuia function
         done = False
-        cuia_func = getattr(self.get_current_screen_obj(),
-                            cuia_func_name, None)
+        cuia_func = getattr(self.get_current_screen_obj(), cuia_func_name, None)
         if callable(cuia_func):
             if cuia_func(params):
                 done = True
@@ -1125,9 +1163,13 @@ class zynthian_gui:
             self.alt_mode = False
         else:
             self.alt_mode = True
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, alt_mode=self.alt_mode)
 
     def cuia_help(self, params=None):
         self.show_help(params)
+
+    def cuia_power_save(self, params=None):
+        self.state_manager.set_power_save_mode(True)
 
     def cuia_power_off(self, params=None):
         if params == ['CONFIRM']:
@@ -1285,7 +1327,7 @@ class zynthian_gui:
 
     def cuia_toggle_seq(self, params=None):
         try:
-            self.state_manager.zynseq.libseq.togglePlayState(self.state_manager.zynseq.bank, int(params[0]))
+            self.state_manager.zynseq.libseq.togglePlayState(self.state_manager.zynseq.scene, int(params[0]), int(params[1]))
         except (AttributeError, TypeError):
             pass
 
@@ -1385,7 +1427,10 @@ class zynthian_gui:
         except (AttributeError, TypeError):
             pass
 
-    # Screen/Mode management CUIAs
+    # -------------------------------------------------------------------
+    # Screen management CUIAs
+    # -------------------------------------------------------------------
+
     def cuia_toggle_screen(self, params=None):
         if params:
             self.toggle_screen(params[0])
@@ -1416,26 +1461,23 @@ class zynthian_gui:
     def cuia_screen_alsa_mixer(self, params=None):
         self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
+    def cuia_screen_launcher(self, params=None):
+        self.show_screen("launcher")
+
     def cuia_screen_zynpad(self, params=None):
-        self.show_screen("zynpad")
+        self.show_screen("launcher")
 
     def cuia_screen_pattern_editor(self, params=None):
         success = False
-        if self.current_screen in ["arranger", "zynpad"]:
+        if self.current_screen == "launcher":
+            success = self.screens['launcher'].edit_clip()
+        elif self.current_screen == "arranger":
             success = self.screens[self.current_screen].show_pattern_editor()
-        if not success:
-            success = self.screens['zynpad'].show_pattern_editor()
         if not success:
             self.show_screen("pattern_editor")
 
     def cuia_screen_arranger(self, params=None):
         self.show_screen("arranger")
-
-    def cuia_screen_bank(self, params=None):
-        self.show_screen("bank")
-
-    def cuia_screen_preset(self, params=None):
-        self.show_screen("preset")
 
     def cuia_screen_calibrate(self, params=None):
         self.calibrate_touchscreen()
@@ -1447,6 +1489,17 @@ class zynthian_gui:
             sleep(1)
         self.state_manager.end_busy("clean_screen")
 
+    def cuia_refresh_screen(self, params=None):
+        if params is None or self.current_screen in params:
+            self.screen_lock.acquire()
+            self.screens[self.current_screen].build_view()
+            self.screens[self.current_screen].show()
+            self.screen_lock.release()
+
+    # -------------------------------------------------------------------
+    # Menu, Chain Control & Options, Bank/Presets:
+    # -------------------------------------------------------------------
+
     def cuia_chain_control(self, params=None):
         try:
             # Select chain by index
@@ -1456,7 +1509,10 @@ class zynthian_gui:
             else:
                 chain_id = self.chain_manager.get_chain_id_by_index(index - 1)
         except:
-            chain_id = self.chain_manager.active_chain_id
+            if self.alt_mode:
+                chain_id = 0
+            else:
+                chain_id = self.chain_manager.active_chain_id
         self.chain_control(chain_id)
 
     cuia_layer_control = cuia_chain_control
@@ -1489,8 +1545,7 @@ class zynthian_gui:
 
     def cuia_menu(self, params=None):
         if self.current_screen != "alsa_mixer":
-            toggle_menu_func = getattr(
-                self.screens[self.current_screen], "toggle_menu", None)
+            toggle_menu_func = getattr(self.screens[self.current_screen], "toggle_menu", None)
             if callable(toggle_menu_func):
                 toggle_menu_func()
                 return
@@ -1514,18 +1569,20 @@ class zynthian_gui:
                 logging.warning("Can't set control screen processor! ")
 
         if self.current_screen == 'bank':
-            # self.replace_screen('preset')
-            self.close_screen()
+            if not self.screens['bank'].browse_back():
+                self.close_screen()
         else:
             curproc = self.get_current_processor()
             if curproc:
-                bank_list = curproc.get_bank_list()
                 if self.current_screen == 'preset':
-                    if len(bank_list) > 1:
-                        self.replace_screen('bank')
-                    else:
-                        self.close_screen()
+                    if not self.screens['preset'].browse_back():
+                        bank_list = curproc.get_bank_list()
+                        if len(bank_list) > 1:
+                            self.replace_screen('bank')
+                        else:
+                            self.close_screen()
                 else:
+                    bank_list = curproc.get_bank_list()
                     if len(curproc.preset_list) > 0 and curproc.preset_list[0][0] != '':
                         self.screens['preset'].index = curproc.get_preset_index()
                         self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
@@ -1542,6 +1599,27 @@ class zynthian_gui:
 
     def cuia_preset_fav(self, params=None):
         self.show_favorites()
+
+    # -------------------------------------------------------------------
+    # ZS3 management CUIAs:
+    # -------------------------------------------------------------------
+
+    def cuia_zs3_load(self, params=None):
+        if len(params) >= 1:
+            if isinstance(params[0], int):
+                self.state_manager.load_zs3_by_index(params[0])
+            else:
+                self.state_manager.load_zs3(params[0])
+
+    def cuia_zs3_next(self, params=None):
+        self.state_manager.load_next_zs3()
+
+    def cuia_zs3_prev(self, params=None):
+        self.state_manager.load_prev_zs3()
+
+    # -------------------------------------------------------------------
+    # MIDI Learn CUIAS:
+    # -------------------------------------------------------------------
 
     def cuia_enable_midi_learn_cc(self, params=None):
         # TODO: Find zctrl
@@ -1603,7 +1681,27 @@ class zynthian_gui:
             if self.midi_learn_zctrl:
                 self.screens[self.current_screen].midi_unlearn_action()
 
+    # Unlearn all mixer controls
+    def cuia_midi_unlearn_mixer(self, params=None):
+        try:
+            #TODO: Implement unlear all mixer controls
+            pass
+        except (AttributeError, TypeError) as err:
+            logging.error(err)
+
+    def cuia_midi_unlearn_node(self, params=None):
+        if params:
+            self.chain_manager.remove_midi_learn([params[0], params[1]])
+
+    def cuia_midi_unlearn_chain(self, params=None):
+        if params:
+            self.chain_manager.clean_midi_learn(params[0])
+        else:
+            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
+
+    # -------------------------------------------------------------------
     # Z2 knob touch
+    # -------------------------------------------------------------------
     def cuia_z2_zynpot_touch(self, params=None):
         if params:
             try:
@@ -1612,7 +1710,9 @@ class zynthian_gui:
                 pass
                 # TODO: Should all screens be derived from base?
 
-    # V5 knob click
+    # -------------------------------------------------------------------
+    # V5 knob's switch actions
+    # -------------------------------------------------------------------
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
@@ -1635,36 +1735,32 @@ class zynthian_gui:
             if i == 2 and t == 'S':
                 self.zynswitch_short(i)
                 return
-        elif self.current_screen == "audio_mixer":
+        elif self.current_screen in ("audio_mixer", "launcher"):
             if t == 'S':
                 self.zynswitch_short(i)
                 return
-        elif self.current_screen == "zynpad":
-            if i == 2 and t == 'S':
-                self.zynswitch_short(i)
-                return
-        elif self.current_screen == "pattern_editor":
+        elif self.current_screen in ("pattern_editor", "pated_cc"):
             if i == 0:
                 if t == 'S' or t == 'B':
-                    self.show_screen("arranger")
+                    self.toggle_pated()
                     return
             elif i == 1:
                 if t == 'S' or t == 'B':
-                    self.screens["pattern_editor"].reset_grid_zoom()
+                    self.get_current_screen_obj().reset_grid_zoom()
                     return
             elif i == 2:
                 if t == 'S' or t == 'B':
-                    self.zynswitch_bold(3)
+                    #self.show_screen("arranger")
                     return
         elif self.current_screen == "arranger":
             if i == 0:
-                if t == 'S' or t == 'B':
-                    self.show_screen("pattern_editor")
-                    return
+                return
             elif i == 1:
                 return
             elif i == 2:
-                return
+                if t == 'S' or t == 'B':
+                    self.show_screen("pattern_editor")
+                    return
         if i == 3:
             if t == 'S':
                 self.zynswitch_short(i)
@@ -1673,20 +1769,12 @@ class zynthian_gui:
                 self.zynswitch_bold(i)
                 return
 
-    def cuia_midi_unlearn_node(self, params=None):
-        if params:
-            self.chain_manager.remove_midi_learn([params[0], params[1]])
-
-    def cuia_midi_unlearn_chain(self, params=None):
-        if params:
-            self.chain_manager.clean_midi_learn(params[0])
-        else:
-            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
-
+    # -------------------------------------------------------------------
     # MIDI CUIAs
+    # -------------------------------------------------------------------
+
     def cuia_program_change(self, params=None):
         if len(params) > 0:
-            pgm = int(params[0])
             if len(params) > 1:
                 chan = int(params[1])
             else:
@@ -1696,8 +1784,15 @@ class zynthian_gui:
                         chan = 0
                 except:
                     chan = 0
+            if params[0] == "+":
+                pgm = self.prog_change[chan] + 1
+            elif params[0] == "-":
+                pgm = self.prog_change[chan] - 1
+            else:
+                pgm = int(params[0])
             if 0 <= chan < 16 and 0 <= pgm < 128:
                 lib_zyncore.write_zynmidi_program_change(chan, pgm)
+                self.prog_change[chan] = pgm
 
     def cuia_zyn_cc(self, params=None):
         if len(params) > 2:
@@ -1709,7 +1804,9 @@ class zynthian_gui:
             else:
                 lib_zyncore.write_zynmidi_ccontrol_change(chan, cc, int(params[2]))
 
+    # -------------------------------------------------------------------
     # Common methods to control views derived from zynthian_gui_base
+    # -------------------------------------------------------------------
     def cuia_show_cursor(self, params=None):
         try:
             zynthian_gui_config.top.config(cursor="arrow")
@@ -1768,6 +1865,10 @@ class zynthian_gui:
         except (AttributeError, TypeError):
             pass
 
+    # -------------------------------------------------------------------
+    # Zynaptik config CUIAs (CV/gate, etc.)
+    # -------------------------------------------------------------------
+
     def cuia_zynaptik_cvin_set_volts_octave(self, params):
         try:
             lib_zyncore.zynaptik_cvin_set_volts_octave(float(params[0]))
@@ -1791,13 +1892,6 @@ class zynthian_gui:
             lib_zyncore.zynaptik_cvout_set_note0(int(params[0]))
         except Exception as err:
             logging.debug(err)
-
-    def cuia_refresh_screen(self, params=None):
-        if params is None or self.current_screen in params:
-            self.screen_lock.acquire()
-            self.screens[self.current_screen].build_view()
-            self.screens[self.current_screen].show()
-            self.screen_lock.release()
 
     # -------------------------------------------------------------------
     # Zynswitch Event Management
@@ -1836,7 +1930,7 @@ class zynthian_gui:
             if self.current_screen == "midi_config" and self.screen_history[-2] != "admin":
                 return True
             if self.current_screen in ("option", "confirm", "keyboard"):
-                parent_views = ("arranger", "zynpad", "pattern_editor", "preset",
+                parent_views = ("arranger", "pattern_editor", "preset",
                                 "bank", "main_menu", "chain_options", "processor_options")
                 if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
                     return True
@@ -1870,6 +1964,27 @@ class zynthian_gui:
             return True
         return False
 
+    def toggle_pated(self):
+        if self.current_screen == "pated_cc":
+            pated_screen = "pattern_editor"
+        elif self.current_screen == "pattern_editor":
+            pated_screen = "pated_cc"
+        else:
+            return
+        cur_pated = self.get_current_screen_obj()
+        pated = self.screens[pated_screen]
+
+        pated.set_sequence_info(cur_pated.seq_info)
+        pated.load_pattern(cur_pated.pattern)
+
+        #pated_obj.bank = cur_pated_obj.bank
+        #pated_obj.sequence = cur_pated_obj.sequence
+        #pated_obj.load_pattern(cur_pated_obj.pattern)
+        #pated_obj.channel = cur_pated_obj.channel
+
+        logging.debug(f"Opening {pated_screen}...")
+        self.show_screen(pated_screen, self.SCREEN_HMODE_REPLACE)
+
     # -------------------------------------------------------------------
     # Switches
     # -------------------------------------------------------------------
@@ -1896,6 +2011,12 @@ class zynthian_gui:
         except:
             return 0
 
+    def zynswitch_disable_autolong(self):
+        self.zynswitch_autolong_disabled = True
+
+    def zynswitch_enable_autolong(self):
+        self.zynswitch_autolong_disabled = False
+
     def zynswitches(self):
         """Process physical switch triggers"""
 
@@ -1908,14 +2029,15 @@ class zynthian_gui:
             except:
                 i += 1
                 continue
-            # Increase the long push limit when push-rotating
-            if self.get_zynswitch_pr_state(i) > 1:
-                zs_long_us = 1000 * 20000
+            # Increase the long push time limit when auto-long push is disabled or push-rotating
+            if self.zynswitch_autolong_disabled or self.get_zynswitch_pr_state(i) > 1:
+                zs_long_us = 20 * 1000000
             else:
                 zs_long_us = zynthian_gui_config.zynswitch_long_us
             # dtus is 0 if switched pressed, dur of last press or -1 if already processed
             dtus = lib_zyncore.get_zynswitch(i, zs_long_us)
             if dtus >= 0:
+                #logging.debug(f"ZYNSWITCH {i}: DTUS={dtus}, AUTOLONG-PUSH TIME LIMIT => {zs_long_us}")
                 self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
             i += 1
 
@@ -1959,6 +2081,10 @@ class zynthian_gui:
         if self.capture_log_fname:
             self.write_capture_log("ZYNSWITCH:L,{}".format(i))
 
+        if callable(getattr(self.screens[self.current_screen], "switch", None)):
+            if self.screens[self.current_screen].switch(i, 'L'):
+                return True
+
         # Standard 4 ZynSwitches
         if i == 0:
             self.cuia_screen_admin()
@@ -2000,7 +2126,7 @@ class zynthian_gui:
                 self.screens[self.current_screen].disable_param_editor()
             except:
                 pass
-            self.show_screen_reset('audio_mixer')
+            self.show_screen_reset('root')
             return True
 
         elif i == 2:
@@ -2090,14 +2216,15 @@ class zynthian_gui:
         zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
         zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
+        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, self.cb_show_message)
         zynsigman.register_queued(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
-
 
     def unregister_signals(self):
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
+        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, self.cb_show_message)
         zynsigman.unregister(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
 
@@ -2115,11 +2242,12 @@ class zynthian_gui:
             if self.state_manager.zynseq.libseq.isMidiRecord():
                 self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
-        elif self.current_screen == 'preset':
-            if zynthian_gui_config.preset_preload_noteon:
-                curproc = self.get_current_processor()
-                if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
-                    self.screens['preset'].preselect_action()
+        # => Now using delayed pre-load (see zynthian_gui_preset.py)
+        #elif self.current_screen == 'preset':
+        #    if zynthian_gui_config.preset_preload_noteon:
+        #        curproc = self.get_current_processor()
+        #        if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
+        #            self.screens['preset'].preselect_action()
         # Note Range Learn
         elif self.current_screen == 'midi_key_range':
             if self.state_manager.midi_learn_state:
@@ -2141,14 +2269,20 @@ class zynthian_gui:
         if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
             self.screens['pattern_editor'].midi_note_off(note)
 
-    def cb_show_file_selector(self, cb_func, fexts=None, dirnames=None, path=None):
-        self.screens["file_selector"].config(cb_func, fexts=fexts, dirnames=dirnames, path=path)
+    def cb_show_file_selector(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):
+        self.screens["file_selector"].config(cb_func, fexts=fexts, dirnames=dirnames, path=path, preload=preload)
         self.show_screen("file_selector")
 
     def cb_set_active_chain(self, active_chain):
         active_chain = self.chain_manager.get_active_chain()
         if active_chain:
             self.zynswitches_midi_setup(active_chain.midi_chan)
+
+    def cb_show_message(self, message):
+        try:
+            self.get_current_screen_obj().set_title(message, None, None, 1)
+        except Exception as e:
+            logging.error(f"Can't show GUI message => {e}")
 
     # ------------------------------------------------------------------
     # Zynpot Thread
@@ -2199,10 +2333,10 @@ class zynthian_gui:
             # Every 4 cycles...
             if j > 4:
                 j = 0
-
                 # Refresh GUI Controllers
                 try:
                     self.screens[self.current_screen].plot_zctrls()
+                    pass
                 except AttributeError:
                     pass
                 except Exception as e:
@@ -2357,17 +2491,18 @@ class zynthian_gui:
             cuia = "unknown"
             try:
                 # Check for long press before release
-                long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
-                for i, ts in enumerate(zynswitch_cuia_ts):
-                    if ts is not None and ts < long_ts:
-                        zynswitch_cuia_ts[i] = None
-                        try:
-                            zpi = zynthian_gui_config.zynpot2switch.index(i)
-                            zp_pr_state = self.zynpot_pr_state[zpi]
-                        except:
-                            zp_pr_state = 0
-                        if zp_pr_state <= 1:
-                            self.zynswitch_long(i)
+                if not self.zynswitch_autolong_disabled:
+                    long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
+                    for i, ts in enumerate(zynswitch_cuia_ts):
+                        if ts is not None and ts < long_ts:
+                            zynswitch_cuia_ts[i] = None
+                            try:
+                                zpi = zynthian_gui_config.zynpot2switch.index(i)
+                                zp_pr_state = self.zynpot_pr_state[zpi]
+                            except:
+                                zp_pr_state = 0
+                            if zp_pr_state <= 1:
+                                self.zynswitch_long(i)
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None
                 if isinstance(event, str):
@@ -2453,7 +2588,8 @@ class zynthian_gui:
                 else:
                     self.callable_ui_action(cuia, params)
 
-                self.state_manager.set_event_flag()
+                if cuia != "power_save":
+                    self.state_manager.set_event_flag()
 
             except Empty:
                 for i in zynswitch_repeat:

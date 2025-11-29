@@ -163,7 +163,7 @@ class zynthian_engine_modui(zynthian_engine):
     # Preset Managament
     # ----------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         self.pedal_presets.clear()
 
         # Get Pedalboard Presets ...

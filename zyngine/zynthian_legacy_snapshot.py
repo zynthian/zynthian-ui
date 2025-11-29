@@ -23,19 +23,20 @@
 #
 # ****************************************************************************
 
-from json import JSONDecoder
+import logging
 from math import ceil
+from json import JSONDecoder, loads
+import base64
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
-from zyngine import zynthian_state_manager
-import zynautoconnect
-import logging
 
 SNAPSHOT_SCHEMA_VERSION = 4
 
+
 class zynthian_legacy_snapshot:
 
-    def __init__(self):
+    def __init__(self, state_manager=None):
+        self.state_manager = state_manager
         self.engine_info = zynthian_chain_manager.get_engine_info()
         self.snapshot = None
 
@@ -76,8 +77,8 @@ class zynthian_legacy_snapshot:
             getattr(self, f'version_{version}')()
         return self.snapshot
 
-    def version_3(self):
-        # Convert snapshot from schema V3 to V4
+    def version_4(self):
+        # Convert snapshot from schema V4 to V5
 
         self.snapshot.setdefault("midi", {"midi_capture": {}, "midi_playback": {}})
         try:
@@ -195,6 +196,24 @@ class zynthian_legacy_snapshot:
                                     zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), dev_ex])
                 """
 
+        # Convert snapshot from schema V3 to V4
+
+        # Convert binary seq to json
+
+        fpath = "/tmp/snapshot.zynseq"
+        try:
+            # Save RIFF data to tmp file
+            b64_bytes = self.snapshot["zynseq_riff_b64"].encode("utf-8")
+            binary_riff_data = base64.decodebytes(b64_bytes)
+            with open(fpath, "wb") as fh:
+                fh.write(binary_riff_data)
+            a = self.state_manager.zynseq.libseq.convertToJson(bytes(fpath, "utf-8")).decode("utf-8")
+            self.state_manager.zynseq.libseq.freeState()
+            self.snapshot["zynseq"] = loads(a)
+            del self.snapshot["zynseq_riff_b64"]
+        except Exception as e:
+            logging.warning(e)
+
     def version_2(self):
         # Convert snapshot from schema V2 to V3
 
@@ -212,12 +231,16 @@ class zynthian_legacy_snapshot:
     def version_1(self):
         # Convert snapshot from schema V1 to V2
 
+        # This conversion needs a running state manager
+        if not self.state_manager:
+            return
+
         # Migrate stored Output Level values
         try:
             amixer_ctrls = self.snapshot["alsa_mixer"]["controllers"]
             for symbol in ["Digital_0", "Digital_1"]:
                 v = amixer_ctrls[symbol]["value"]
-                amixer_ctrls[symbol]["value"] = self.alsa_mixer_processor.controllers_dict[symbol].ticks[v]
+                amixer_ctrls[symbol]["value"] = self.state_manager.alsa_mixer_processor.controllers_dict[symbol].ticks[v]
         except:
             pass
 
@@ -250,8 +273,7 @@ class zynthian_legacy_snapshot:
         }
 
         try:
-            state["zs3"]["zs3-0"]["active_chain"] = int(
-                f"{self.snapshot['index']:02d}") + 1
+            state["zs3"]["zs3-0"]["active_chain"] = int(f"{self.snapshot['index']:02d}") + 1
         except:
             pass
 
@@ -361,8 +383,7 @@ class zynthian_legacy_snapshot:
             try:
                 for input in self.snapshot["audio_capture"][jackname]:
                     if input.startswith("system:capture_"):
-                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"].append(
-                            int(input.split("_")[1]))
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"].append(int(input.split("_")[1]))
             except:
                 pass
 
@@ -527,16 +548,13 @@ class zynthian_legacy_snapshot:
 
             # Fix-up audio outputs
             if chain_id == 0:
-                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(
-                    "system:playback_[1,2]$")
+                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append("system:playback_[1,2]$")
             else:
                 for out in audio_out:
                     if out == "mixer":
-                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(
-                            0)
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(0)
                     elif isinstance(out, int):
-                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(
-                            out)
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(out)
 
             state["zs3"]["zs3-0"]["chains"][chain_id]["midi_out"] = midi_out
             fixed_slots = []

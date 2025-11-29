@@ -88,11 +88,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                 fill='#ff0',
                 width=2
             )
-            pos_border = pos_canvas.create_rectangle(
-                2, 2, 2, 2,
-                width=2,
-                outline=zynthian_gui_config.color_on,
-                state=tkinter.HIDDEN)
+            pos_border = pos_canvas.create_rectangle(2, 2, 2, 2, width=2,
+                                                     outline=zynthian_gui_config.color_on,
+                                                     state=tkinter.HIDDEN)
 
             mute_canvas = tkinter.Canvas(self,
                                          height=self.row_height,
@@ -131,9 +129,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                                                  bd=0,
                                                  highlightthickness=0,
                                                  bg=self.SLIDER_BG)
-        self.input_level_fg = self.input_level_canvas.create_rectangle(
-            0, 0, 0, self.row_height,
-            fill='#0a0')
+        self.input_level_fg = self.input_level_canvas.create_rectangle(0, 0, 0, self.row_height, fill='#0a0')
         self.input_level_label = self.input_level_canvas.create_text(
             self.txt_x, txt_y,
             fill=self.SLIDER_TEXT,
@@ -141,11 +137,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             anchor='w',
             font=(zynthian_gui_config.font_family, self.font_size_sl)
         )
-        self.threshold_line = self.input_level_canvas.create_line(
-            0, 0, 0, self.row_height,
-            fill='#ff0',
-            width=2
-        )
+        self.threshold_line = self.input_level_canvas.create_line(0, 0, 0, self.row_height, fill='#ff0', width=2)
         self.in_gain_marker = self.input_level_canvas.create_polygon(
             -self.tri_size, 0,
             self.tri_size, 0,
@@ -158,10 +150,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                                          bd=0,
                                          highlightthickness=0,
                                          bg=self.SLIDER_BG)
-        self.wet_fg = self.wet_canvas.create_rectangle(
-            0, 0, 0, self.row_height,
-            fill=self.SLIDER_FG
-        )
+        self.wet_fg = self.wet_canvas.create_rectangle(0, 0, 0, self.row_height, fill=self.SLIDER_FG)
         self.wet_label = self.wet_canvas.create_text(
             self.txt_x, txt_y,
             fill=self.SLIDER_TEXT,
@@ -175,10 +164,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                                          bd=0,
                                          highlightthickness=0,
                                          bg=self.SLIDER_BG)
-        self.dry_fg = self.dry_canvas.create_rectangle(
-            0, 0, 0, self.row_height,
-            fill=self.SLIDER_FG
-        )
+        self.dry_fg = self.dry_canvas.create_rectangle(0, 0, 0, self.row_height, fill=self.SLIDER_FG)
         self.dry_label = self.dry_canvas.create_text(
             self.txt_x, txt_y,
             fill=self.SLIDER_TEXT,
@@ -192,10 +178,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                                               bd=0,
                                               highlightthickness=0,
                                               bg=self.SLIDER_BG)
-        self.feedback_fg = self.feedback_canvas.create_rectangle(
-            0, 0, 0, self.row_height,
-            fill=self.SLIDER_FG
-        )
+        self.feedback_fg = self.feedback_canvas.create_rectangle(0, 0, 0, self.row_height, fill=self.SLIDER_FG)
         self.feedback_label = self.feedback_canvas.create_text(
             self.txt_x, txt_y,
             fill=self.SLIDER_TEXT,
@@ -226,8 +209,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                                                bd=0,
                                                relief=tkinter.FLAT,
                                                overrelief=tkinter.FLAT,
-                                               font=(
-                                                   zynthian_gui_config.font_family, fs),
+                                               font=(zynthian_gui_config.font_family, fs),
                                                height=1,
                                                pady=0
                                                )
@@ -238,8 +220,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                 padx = (0, 0)
             else:
                 padx = (0, 1)
-            self.buttons[btn].grid(row=row, column=col,
-                                   sticky='news', padx=padx, pady=(0, 1))
+            self.buttons[btn].grid(row=row, column=col, sticky='news', padx=padx, pady=(0, 1))
             self.button_frame.rowconfigure(row, weight=1, uniform='btn_row')
             self.button_frame.columnconfigure(col, weight=1, uniform='btn_col')
 
@@ -250,23 +231,16 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
         self.button_frame.grid(columnspan=4, sticky='news')
 
         for loop in range(zynthian_engine_sooperlooper.MAX_LOOPS):
-            self.pos_canvas[loop]['canvas'].grid(
-                row=1 + loop, columnspan=3, sticky='news', padx=(0, 1), pady=(0, 1))
-            self.pos_canvas[loop]['mute'].grid(
-                row=1 + loop, column=3, sticky='news', pady=(0, 1))
+            self.pos_canvas[loop]['canvas'].grid(row=1 + loop, columnspan=3, sticky='news', padx=(0, 1), pady=(0, 1))
+            self.pos_canvas[loop]['mute'].grid(row=1 + loop, column=3, sticky='news', pady=(0, 1))
             self.pos_canvas[loop]['canvas'].grid_remove()
             self.pos_canvas[loop]['mute'].grid_remove()
 
-        self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS,
-                             columnspan=2, sticky='news', padx=(0, 1), pady=(0, 1))
-        self.input_level_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS,
-                                     columnspan=2, sticky='news', padx=(0, 1), pady=(0, 1))
-        self.feedback_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS,
-                                  column=2, columnspan=2, sticky='news', pady=(0, 1))
-        self.wet_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS,
-                             columnspan=2, sticky='news', padx=(0, 1), pady=(0, 1))
-        self.dry_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS,
-                             column=2, columnspan=2, sticky='news', pady=(0, 1))
+        self.add_canvas.grid(row=zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(0, 1), pady=(0, 1))
+        self.input_level_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(0, 1), pady=(0, 1))
+        self.feedback_canvas.grid(row=1 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', pady=(0, 1))
+        self.wet_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, columnspan=2, sticky='news', padx=(0, 1), pady=(0, 1))
+        self.dry_canvas.grid(row=2 + zynthian_engine_sooperlooper.MAX_LOOPS, column=2, columnspan=2, sticky='news', pady=(0, 1))
 
         self.symbol_map = {
             self.dry_canvas: 'dry',
@@ -284,27 +258,23 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
     def set_processor(self, processor):
         super().set_processor(processor)
-        self.osc_url = 'osc.udp://localhost:{}'.format(
-            self.processor.engine.SL_PORT)
+        self.osc_url = 'osc.udp://localhost:{}'.format(self.processor.engine.SL_PORT)
 
     def on_size(self, event):
         super().on_size(event)
 
-        self.row_height = (self.height - zynthian_engine_sooperlooper.MAX_LOOPS -
-                           5) // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
+        self.row_height = (self.height - zynthian_engine_sooperlooper.MAX_LOOPS - 5) // (zynthian_engine_sooperlooper.MAX_LOOPS + 5)
         self.rowconfigure(0, minsize=(self.row_height + 1) * 3)
         for row in range(1, zynthian_engine_sooperlooper.MAX_LOOPS + 3):
             self.rowconfigure(row, minsize=self.row_height)
 
         txt_xc = (self.width // 8) - 1
-        txt_y = self.height // (2 *
-                                zynthian_engine_sooperlooper.MAX_LOOPS + 10)
+        txt_y = self.height // (2 * zynthian_engine_sooperlooper.MAX_LOOPS + 10)
         for pc in self.pos_canvas:
             pc['mute'].coords(pc['mute_text'], txt_xc, txt_y)
             pc['canvas'].coords(pc['label'], self.txt_x, txt_y)
         self.add_canvas.coords(self.add_text, txt_xc * 2, txt_y)
-        self.input_level_canvas.coords(
-            self.input_level_label, self.txt_x, txt_y)
+        self.input_level_canvas.coords(self.input_level_label, self.txt_x, txt_y)
         self.wet_canvas.coords(self.wet_label, self.txt_x, txt_y)
         self.dry_canvas.coords(self.dry_label, self.txt_x, txt_y)
         self.feedback_canvas.coords(self.feedback_label, self.txt_x, txt_y)
@@ -312,14 +282,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
     def on_loop_click(self, event):
         for loop, slider in enumerate(self.pos_canvas):
             if event.widget == slider['canvas']:
-                liblo.send(self.osc_url, '/set',
-                           ('s', 'selected_loop_num'), ('f', loop))
+                liblo.send(self.osc_url, '/set', ('s', 'selected_loop_num'), ('f', loop))
                 self.click_timer = Timer(1.4, self.on_click_timer)
                 self.click_timer.start()
                 break
             if event.widget == slider['mute']:
-                liblo.send(self.osc_url, '/sl/{}/hit'.format(loop),
-                           ('s', 'mute'))
+                liblo.send(self.osc_url, '/sl/{}/hit'.format(loop), ('s', 'mute'))
                 break
 
     def on_loop_release(self, event):
@@ -328,8 +296,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
     def on_click_timer(self):
         if self.monitors['loop_count'] > 1:
-            self.zyngui.show_confirm("Remove loop {}?".format(
-                self.selected_loop + 1), self.remove_loop)
+            self.zyngui.show_confirm(f"Remove loop {self.selected_loop + 1}?", self.remove_loop)
 
     def on_add_click(self, event):
         liblo.send(self.osc_url, '/loop_add', ('i', 2), ('f', 30), ('i', 0))
@@ -367,8 +334,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             try:
                 symbol = self.symbol_map[event.widget]
                 zctrl = self.processor.controllers_dict[symbol]
-                zctrl.set_value(
-                    zctrl.value + (event.x - self.slider_press_event.x) / event.widget.winfo_width())
+                zctrl.set_value(zctrl.value + (event.x - self.slider_press_event.x) / event.widget.winfo_width())
                 self.slider_press_event = event
             except Exception as e:
                 logging.warning(e)
@@ -440,20 +406,17 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             self.pos_canvas[loop]['canvas'].coords(
                 self.pos_canvas[loop]['border'], 2, 2, self.pos_canvas[loop]['canvas'].winfo_width() - 2, self.row_height - 2)
             if loop == self.selected_loop:
-                self.pos_canvas[loop]['canvas'].itemconfigure(
-                    self.pos_canvas[loop]['border'], state=tkinter.NORMAL)
+                self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.NORMAL)
             else:
-                self.pos_canvas[loop]['canvas'].itemconfigure(
-                    self.pos_canvas[loop]['border'], state=tkinter.HIDDEN)
+                self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['border'], state=tkinter.HIDDEN)
             x = 0
             if len:
-                x = int(
-                    pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
-            self.pos_canvas[loop]['canvas'].coords(
-                self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
+                x = int(pos / len * self.pos_canvas[loop]['canvas'].winfo_width())
+            self.pos_canvas[loop]['canvas'].coords(self.pos_canvas[loop]['line'], x, 0, x, self.row_height)
             self.pos_canvas[loop]['canvas'].configure(bg=bg)
-            self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'], text='{}/{} {}'.format(
-                f'{pos:.1f}'.zfill(4), f'{len:.1f}'.zfill(4), zynthian_engine_sooperlooper.SL_STATES[state]['name']))
+            self.pos_canvas[loop]['canvas'].itemconfigure(self.pos_canvas[loop]['label'],
+                                                          text='{}/{} {}'.format(f'{pos:.1f}'.zfill(4), f'{len:.1f}'.zfill(4),
+                                                                                 zynthian_engine_sooperlooper.SL_STATES[state]['name']))
             if waiting and (next_state in (SL_STATE_MUTED, SL_STATE_OFF_MUTED) or state in (SL_STATE_MUTED, SL_STATE_OFF_MUTED)):
                 if self.flash_count > 3:
                     self.pos_canvas[loop]['mute']['bg'] = self.BUTTON_ASSERTED
@@ -467,24 +430,17 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
         # Update selected loop's parameters
         try:
             # Update input meters - needs to looks smooth so rapid update
-            self.input_level_canvas.coords(self.input_level_fg, 0, 0, int(
-                self.width * self.monitors['in_peak_meter']), self.row_height)
-            thresh_x = int(self.monitors['rec_thresh']
-                           * self.input_level_canvas.winfo_width())
-            self.input_level_canvas.coords(
-                self.threshold_line, thresh_x, 0, thresh_x, self.row_height)
+            self.input_level_canvas.coords(self.input_level_fg, 0, 0, int(self.width * self.monitors['in_peak_meter']), self.row_height)
+            thresh_x = int(self.monitors['rec_thresh'] * self.input_level_canvas.winfo_width())
+            self.input_level_canvas.coords(self.threshold_line, thresh_x, 0, thresh_x, self.row_height)
             x = int(self.monitors['dry'] * self.dry_canvas.winfo_width())
             self.dry_canvas.coords(self.dry_fg, 0, 0, x, self.row_height)
             x = int(self.monitors['wet'] * self.wet_canvas.winfo_width())
             self.wet_canvas.coords(self.wet_fg, 0, 0, x, self.row_height)
-            x = int(self.monitors['feedback'] *
-                    self.feedback_canvas.winfo_width())
-            self.feedback_canvas.coords(
-                self.feedback_fg, 0, 0, x, self.row_height)
-            x = int(self.monitors['input_gain'] *
-                    self.input_level_canvas.winfo_width())
-            self.input_level_canvas.coords(
-                self.in_gain_marker, x-self.tri_size, 0, x+self.tri_size, 0, x, self.tri_size)
+            x = int(self.monitors['feedback'] * self.feedback_canvas.winfo_width())
+            self.feedback_canvas.coords(self.feedback_fg, 0, 0, x, self.row_height)
+            x = int(self.monitors['input_gain'] * self.input_level_canvas.winfo_width())
+            self.input_level_canvas.coords( self.in_gain_marker, x-self.tri_size, 0, x+self.tri_size, 0, x, self.tri_size)
 
             # Calculate direction of play
             x = int(self.monitors['rate_output'])
@@ -561,8 +517,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             # Check of request to remove a loop
             if 'loop_del' in self.monitors:
                 self.processor.engine.monitors_dict.pop('loop_del')
-                self.zyngui.show_confirm("Remove loop {}?".format(
-                    self.selected_loop + 1), self.remove_loop)
+                self.zyngui.show_confirm("Remove loop {}?".format(self.selected_loop + 1), self.remove_loop)
                 # TODO: This probably removes selected loop rather than last loop which might be expected behaviour
 
         # except KeyError:
@@ -654,17 +609,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
         state = self.monitors['state']
         next_state = self.monitors['next_state']
         waiting = self.monitors['waiting']
-        # logging.debug(f"STATE: {state}, NEXT: {next_state}, WAITING: {waiting}")
+        #logging.debug(f"STATE: {state}, NEXT: {next_state}, WAITING: {waiting}")
 
         # ALT button
         wsl.set_led(leds[0], color_default)
 
         # REC Button
-        if state in (SL_STATE_REC_STARTING, SL_STATE_REC_STOPPING) or next_state in (SL_STATE_RECORDING,
-                                                                                     SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING):
+        if state in (SL_STATE_REC_STARTING, SL_STATE_REC_STOPPING) or next_state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING, SL_STATE_SUBSTITUTING):
             wsl.blink(leds[1], wsl.wscolor_red)
-        elif state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING,
-                       SL_STATE_REPLACING):
+        elif state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING, SL_STATE_SUBSTITUTING):
             if next_state == 'SL_STATE_PLAYING':
                 wsl.blink(leds[1], wsl.wscolor_red)
             else:
@@ -681,8 +634,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
         # PLAY button:
         if next_state in (SL_STATE_PAUSED, SL_STATE_MUTED, SL_STATE_TRIGGER_PLAY, SL_STATE_PLAYING_ONCE):
             wsl.blink(leds[3], wsl.wscolor_green)
-        elif state in (SL_STATE_PLAYING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING,
-                       SL_STATE_REPLACING, SL_STATE_PLAYING_ONCE, SL_STATE_SUBSTITUTING):
+        elif state in (SL_STATE_PLAYING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING, SL_STATE_PLAYING_ONCE, SL_STATE_SUBSTITUTING):
             wsl.set_led(leds[3], wsl.wscolor_green)
         else:
             wsl.set_led(leds[3], color_default)

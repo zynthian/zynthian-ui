@@ -189,7 +189,11 @@ def dev_in_2_dev_out(zmip):
     """
 
     try:
-        name = devices_in[zmip].aliases[0].replace("IN", "OUT")
+        name = devices_in[zmip].aliases[0]
+        if name == "ttymidi:MIDI_in":
+            name = "ttymidi:MIDI_out"
+        else:
+            name = name.replace("IN", "OUT")
         for i, port in enumerate(devices_out):
             if port.aliases[0] == name:
                 return i
@@ -589,7 +593,7 @@ def midi_autoconnect():
     # logger.info("ZynAutoConnect: MIDI ...")
     global zyn_routed_midi
 
-    new_idev = [] # List of newly detected input ports
+    new_idev = []  # List of newly detected input ports
 
     # Create graph of required chain routes as sets of sources indexed by destination
     required_routes = {}
@@ -612,18 +616,32 @@ def midi_autoconnect():
                     devnum = i
                     devices_in[devnum] = hwsp
                     new_idev.append(i)
-                    logger.debug(
-                        f"Connected MIDI-in device {devnum}: {hwsp.name}")
+                    logger.debug(f"Connected MIDI-in device {devnum}: {hwsp.name}")
                     break
         if devnum is not None:
-            required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
             busy_idevs.append(devnum)
+            # Try to connect ctrldev driver's RT MIDI processor between input device and zmip
+            try:
+                driver = state_manager.ctrldev_manager.drivers[devnum]
+            except:
+                driver = None
+            if driver and driver.midiproc:
+                mpjn = driver.midiproc_jackname
+                logger.debug(f"Found a ctrldev MIDI processor for zmip {devnum} => {mpjn}")
+                try:
+                    required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(f"{mpjn}:out_1")
+                    required_routes[f"{mpjn}:in_1"].add(hwsp.name)
+                    continue
+                except:
+                    pass
+            # else => Connect input device to zmip directly
+            required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
 
-    # Delete disconnected input devices from list and unload driver
+
     for i in range(0, max_num_devs):
+        # Delete disconnected input devices from list and unload driver
         if i not in busy_idevs and devices_in[i] is not None:
-            logger.debug(
-                f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
+            logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
             devices_in[i] = None
             state_manager.ctrldev_manager.unload_driver(i)
 
@@ -642,8 +660,7 @@ def midi_autoconnect():
                     devnum = i
                     devices_out[devnum] = hwdp
                     devices_out_name[devnum] = hwdp.aliases[0]
-                    logger.debug(
-                        f"Connected MIDI-out device {devnum}: {hwdp.name}")
+                    logger.debug(f"Connected MIDI-out device {devnum}: {hwdp.name}")
                     break
         if devnum is not None:
             required_routes[hwdp.name].add(f"ZynMidiRouter:dev{devnum}_out")
@@ -652,8 +669,7 @@ def midi_autoconnect():
     # Delete disconnected output devices from list
     for i in range(0, max_num_devs):
         if i not in busy_odevs and devices_out[i] is not None:
-            logger.debug(
-                f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
+            logger.debug(f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
             devices_out[i] = None
             devices_out_name[i] = None
 
@@ -676,8 +692,7 @@ def midi_autoconnect():
                         routes[proc.engine.get_jackname()] = route
 
         for dst_name in routes:
-            dst_ports = jclient.get_ports(
-                re.escape(dst_name), is_input=True, is_midi=True)
+            dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
             if not dst_ports:
                 # Try to get destiny port by alias
                 try:
@@ -686,22 +701,18 @@ def midi_autoconnect():
                     pass
             if dst_ports:
                 for src_name in routes[dst_name]:
-                    src_ports = jclient.get_ports(
-                        src_name, is_output=True, is_midi=True)
+                    src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
                     if src_ports:
-                        required_routes[dst_ports[0].name].add(
-                            src_ports[0].name)
+                        required_routes[dst_ports[0].name].add(src_ports[0].name)
 
         # Add chain MIDI outputs
         if chain.midi_slots and chain.midi_thru:
             dests = []
             for out in chain.midi_out:
                 if out in chain_manager.chains:
-                    chain_midi_first_procs = chain_manager.get_processors(
-                        out, "MIDI Tool", 0)
+                    chain_midi_first_procs = chain_manager.get_processors(out, "MIDI Tool", 0)
                     if not chain_midi_first_procs:
-                        chain_midi_first_procs = chain_manager.get_processors(
-                            out, "Synth", 0)
+                        chain_midi_first_procs = chain_manager.get_processors(out, "Synth", 0)
                     for processor in chain_midi_first_procs:
                         for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
                             dests.append(dst.name)
@@ -716,12 +727,12 @@ def midi_autoconnect():
 
         # Add MIDI router outputs
         if chain.is_midi():
-            src_ports = jclient.get_ports(
-                f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
+            src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
             if src_ports:
                 for dst_proc in chain.get_processors(slot=0):
-                    dst_ports = jclient.get_ports(
-                        dst_proc.get_jackname(True), is_midi=True, is_input=True)
+                    if dst_proc.eng_code == "CL":
+                        continue
+                    dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
                     if dst_ports:
                         src = src_ports[0]
                         dst = dst_ports[0]
@@ -730,8 +741,7 @@ def midi_autoconnect():
     # Add zynseq to MIDI input devices
     idev = state_manager.get_zmip_step_index()
     if devices_in[idev] is None:
-        src_ports = jclient.get_ports(
-            "zynseq:output", is_midi=True, is_output=True)
+        src_ports = jclient.get_ports("zynseq:output", is_midi=True, is_output=True)
         if src_ports:
             devices_in[idev] = src_ports[0]
             update_midi_port_aliases(src_ports[0])
@@ -741,8 +751,7 @@ def midi_autoconnect():
     # Add SMF player to MIDI input devices
     idev = state_manager.get_zmip_seq_index()
     if devices_in[idev] is None:
-        src_ports = jclient.get_ports(
-            "zynsmf:midi_out", is_midi=True, is_output=True)
+        src_ports = jclient.get_ports("zynsmf:midi_out", is_midi=True, is_output=True)
         if src_ports:
             devices_in[idev] = src_ports[0]
             update_midi_port_aliases(src_ports[0])
@@ -764,8 +773,7 @@ def midi_autoconnect():
     for proc in chain_manager.processors.values():
         try:
             if proc.engine.options["ctrl_fb"]:
-                ports = jclient.get_ports(proc.get_jackname(
-                    True), is_midi=True, is_output=True)
+                ports = jclient.get_ports(proc.get_jackname(True), is_midi=True, is_output=True)
                 required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
                 ctrl_fb_procs.append(proc)
                 # logging.debug(f"Routed controller feedback from {proc.get_jackname(True)}")
@@ -827,6 +835,13 @@ def midi_autoconnect():
             except:
                 pass
 
+    # Connect clippy
+    for port in jclient.get_ports("clippy", is_midi=True, is_input=True):
+        try:
+            jclient.connect("zynseq:clippy", port)
+        except:
+            pass # Don't care about already connected ports
+
     # Autoload new drivers
     for i in new_idev:
         state_manager.ctrldev_manager.load_driver(i)
@@ -886,12 +901,10 @@ def audio_autoconnect():
         for dst in routes:
             if dst in sidechain_ports:
                 # This is an exact match so we do want to route exactly this
-                dst_ports = jclient.get_ports(
-                    f"^{dst}$", is_input=True, is_audio=True)
+                dst_ports = jclient.get_ports(f"^{dst}$", is_input=True, is_audio=True)
             else:
                 # This may be a client name that will return all input ports, including side-chain inputs
-                dst_ports = jclient.get_ports(
-                    dst, is_input=True, is_audio=True)
+                dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
                 # Remove side-chain (no route) destinations
                 for port in list(dst_ports):
                     if port.name in sidechain_ports:
@@ -899,8 +912,7 @@ def audio_autoconnect():
             dst_count = len(dst_ports)
 
             for src_name in routes[dst]:
-                src_ports = jclient.get_ports(
-                    src_name, is_output=True, is_audio=True)
+                src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
                 # Auto mono/stereo routing
                 source_count = len(src_ports)
                 if source_count and dst_count:
@@ -935,7 +947,7 @@ def audio_autoconnect():
 
     # Remove mod-ui routes
     for dst in list(required_routes.keys()):
-        if dst.startswith("effect_"):
+        if dst.startswith("mod-monitor:"):
             required_routes.pop(dst)
 
     # Replicate main output to headphones
@@ -1078,14 +1090,14 @@ def update_hw_audio_ports():
 
 def enable_hotplug():
     zynthian_gui_config.hotplug_audio_enabled = True
-    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)})
+    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)}, True)
     update_hw_audio_ports()
     audio_autoconnect()
 
 
 def disable_hotplug():
     zynthian_gui_config.hotplug_audio_enabled = False
-    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)})
+    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)}, True)
     stop_all_alsa_in_out()
 
 
@@ -1094,23 +1106,24 @@ def enable_audio_input_device(device, enable=True):
         if start_alsa_in(device):
             if device in zynthian_gui_config.disabled_audio_in:
                 zynthian_gui_config.disabled_audio_in.remove(device)
+            audio_autoconnect()
     else:
         stop_alsa_in(device)
         if device not in zynthian_gui_config.disabled_audio_in:
             zynthian_gui_config.disabled_audio_in.append(device)
-    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN": ",".join(zynthian_gui_config.disabled_audio_in)})
-
+    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN": ",".join(zynthian_gui_config.disabled_audio_in)}, True)
 
 def enable_audio_output_device(device, enable=True):
     if enable:
         if start_alsa_out(device):
             if device in zynthian_gui_config.disabled_audio_out:
                 zynthian_gui_config.disabled_audio_out.remove(device)
+            audio_autoconnect()
     else:
         stop_alsa_out(device)
         if device not in zynthian_gui_config.disabled_audio_out:
             zynthian_gui_config.disabled_audio_out.append(device)
-    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT": ",".join(zynthian_gui_config.disabled_audio_out)})
+    zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT": ",".join(zynthian_gui_config.disabled_audio_out)}, True)
 
 
 def get_alsa_hotplug_audio_devices(playback=True):
@@ -1222,6 +1235,8 @@ def build_midi_port_name(port):
     returns - Tuple (uid, name)
     """
 
+    if port is None:
+        return "", ""
     if port.name.startswith("ttymidi:MIDI"):
         return port.name, "DIN-5 MIDI"
     elif port.name.startswith("ZynMaster"):
@@ -1232,6 +1247,8 @@ def build_midi_port_name(port):
         return port.name, "MIDI player"
     elif port.name.startswith("ZynMidiRouter:seq_in"):
         return port.name, "Router Feedback"
+    elif port.name.startswith("jackmidiola"):
+        return port.name, "DMX"
     elif port.name.startswith("jacknetumpd:netump_"):
         ep_name = jack.get_property(port.uuid, "UMPEndpointName")
         if ep_name:
@@ -1545,8 +1562,7 @@ def cb_jack_xrun(delayed_usecs: float):
     if not state_manager.power_save_mode and not paused_flag:
         global xruns
         xruns += 1
-        logger.warning(
-            f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
+        logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
         state_manager.status_xrun = True
 
 

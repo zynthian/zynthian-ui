@@ -157,6 +157,7 @@ standalone_engine_info = {
     "FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Sampler", True],
     "SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Sampler", True],
     "LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Sampler", True],
+    "CL": ["Clippy", "Clip launcher", "Audio Generator", "Other", True],
     "BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
     "AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
     "PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
@@ -197,6 +198,7 @@ def init_lilv():
     # Disable language filtering
     # world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
     world.load_all()
+    world.ns.lv2 = lilv.Namespace(world, "http://lv2plug.in/ns/lv2core#")
     world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
     world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
     world.ns.portprops = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-props#")
@@ -204,6 +206,7 @@ def init_lilv():
     world.ns.parameters = lilv.Namespace(world, "http://lv2plug.in/ns/ext/parameters#")
     world.ns.patch = lilv.Namespace(world, "http://lv2plug.in/ns/ext/patch#")
     world.ns.atom = lilv.Namespace(world, "http://lv2plug.in/ns/ext/atom#")
+    world.ns.doap = lilv.Namespace(world, "http://usefulinc.com/ns/doap#")
     world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
 
 # ------------------------------------------------------------------------------
@@ -469,7 +472,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
             'ENABLED': is_engine_enabled(key, False),
             'INDEX': engine_index,
             'URL': engine_uri,
-            'UI': is_plugin_ui(plugin),
+            'UI': get_plugin_ui(plugin),
             'DESCR': engine_descr,
             "QUALITY": engine_quality,
             "COMPLEX": engine_complex,
@@ -514,7 +517,7 @@ def get_engines_by_type():
 # ------------------------------------------------------------------------------
 
 
-def is_plugin_ui(plugin):
+def get_plugin_ui(plugin):
     for uri in plugin.get_data_uris():
         try:
             with open(urllib.parse.unquote(str(uri)[7:])) as f:
@@ -527,6 +530,10 @@ def is_plugin_ui(plugin):
                     res = "GtkUI"
                 elif ttl.find("X11UI") > 0 or ttl.find("X11") > 0:
                     res = "X11UI"
+                elif ttl.find("http://lv2plug.in/ns/extensions/ui#showInterface") > 0:
+                    # Fallback UI method when widget based methods are not available.
+                    # See: https://lv2plug.in/ns/extensions/ui#showInterface
+                    res = "UI"
                 else:
                     res = None
                 if res:
@@ -589,8 +596,11 @@ def get_plugin_description(plugin):
     try:
         res = str(plugin.get_value(world.ns.rdfs.comment)[0]).strip()
     except:
-        logging.debug(f"Can't get plugin {plugin.get_name()} description. Using default.")
-        res = None
+        try:
+            res = str(plugin.get_value(world.ns.doap.description)[0]).strip()
+        except:
+            logging.debug(f"Can't get plugin {plugin.get_name()} description. Using default.")
+            res = None
     return res
 
 # ------------------------------------------------------------------------------
@@ -666,7 +676,7 @@ def _generate_plugin_presets_cache(plugin):
 
         label = world.get(preset, world.ns.rdfs.label, None)
         if label is None:
-            label = preset.split('#')[-1]
+            label = str(preset).split('#')[-1]
             logging.debug(f"Preset <{preset}> has no label! Using '{label}'")
         else:
             label = str(label)
@@ -706,8 +716,7 @@ def _generate_plugin_presets_cache(plugin):
         if len(presets_info[k]['presets']) == 0:
             del (presets_info[k])
         else:
-            presets_info[k]['presets'] = sorted(
-                presets_info[k]['presets'], key=lambda k: k['label'])
+            presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
 
     # Save cache file
     save_plugin_presets_cache(plugin_name, presets_info)
@@ -787,11 +796,13 @@ def get_plugin_ports(plugin_url):
     # Control ports
     for i in range(plugin.get_num_ports()):
         control = plugin.get_port_by_index(i)
+        is_trigger = False
         if control.is_a(lilv.LILV_URI_INPUT_PORT) and control.is_a(lilv.LILV_URI_CONTROL_PORT):
             name = str(control.get_name())
             symbol = str(control.get_symbol())
 
             is_toggled = control.has_property(world.ns.lv2.toggled)
+            is_trigger = control.has_property(world.ns.portprops.trigger)
             is_integer = control.has_property(world.ns.lv2.integer)
             is_enumeration = control.has_property(world.ns.lv2.enumeration)
             is_logarithmic = control.has_property(world.ns.portprops.logarithmic)
@@ -889,11 +900,13 @@ def get_plugin_ports(plugin_url):
                     'max': vmax
                 },
                 'is_toggled': is_toggled,
+                'is_trigger': is_trigger,
                 'is_integer': is_integer,
                 'is_enumeration': is_enumeration,
                 'is_logarithmic': is_logarithmic,
                 'is_path': False,
                 'path_file_types': None,
+                'path_preload': False,
                 'envelope': envelope,
                 'not_on_gui': not_on_gui,
                 'display_priority': display_priority,
@@ -915,6 +928,7 @@ def get_plugin_ports(plugin_url):
             vmin = None
             vmax = None
             is_toggled = False
+            is_trigger = False
             is_integer = False
             is_enumeration = False
             is_logarithmic = False
@@ -922,6 +936,8 @@ def get_plugin_ports(plugin_url):
             path_file_types = world.get(control, world.ns.mod.fileTypes, None)
             if path_file_types is not None:
                 path_file_types = str(path_file_types).split(",")
+            # TODO => Implement LV2 port propierty for path preload => only if really needed!
+            path_preload = True
             envelope = None
             sp = []
         else:
@@ -935,6 +951,7 @@ def get_plugin_ports(plugin_url):
             is_logarithmic = world.get(control, world.ns.portprops.logarithmic, None) is not None
             is_path = False
             path_file_types = None
+            path_preload = False
 
             envelope = None
             for env_type in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
@@ -1005,11 +1022,13 @@ def get_plugin_ports(plugin_url):
                 'max': vmax
             },
             'is_toggled': is_toggled,
+            'is_trigger': is_trigger,
             'is_integer': is_integer,
             'is_enumeration': is_enumeration,
             'is_logarithmic': is_logarithmic,
             'is_path': is_path,
             'path_file_types': path_file_types,
+            'path_preload': path_preload,
             'envelope': envelope,
             'not_on_gui': not_on_gui,
             'display_priority': display_priority,

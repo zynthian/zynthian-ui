@@ -48,6 +48,7 @@ class zynthian_basic_engine:
     # Data dirs
     # ---------------------------------------------------------------------------
 
+    ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
     config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
     data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
     my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
@@ -111,8 +112,7 @@ class zynthian_basic_engine:
                 self.proc.terminate(True)
                 self.proc = None
             except Exception as err:
-                logging.error(
-                    "Can't stop engine {} => {}".format(self.name, err))
+                logging.error("Can't stop engine {} => {}".format(self.name, err))
 
     def proc_get_output(self):
         if self.command_prompt:
@@ -191,6 +191,7 @@ class zynthian_engine(zynthian_basic_engine):
         self.preset_favs = None
         self.preset_favs_fpath = None
         self.show_favs_bank = True
+        self.monitors_dict = {}
 
     def reset(self):
         pass
@@ -215,6 +216,9 @@ class zynthian_engine(zynthian_basic_engine):
     def refresh(self):
         pass
 
+    def get_monitors_dict(self):
+        return self.monitors_dict
+
     # ---------------------------------------------------------------------------
     # OSC Management
     # ---------------------------------------------------------------------------
@@ -222,28 +226,23 @@ class zynthian_engine(zynthian_basic_engine):
     def osc_init(self):
         if self.osc_server is None and self.osc_target_port:
             try:
-                self.osc_target = liblo.Address(
-                    'localhost', self.osc_target_port, self.osc_proto)
-                logging.info("OSC target in port {}".format(
-                    self.osc_target_port))
-                self.osc_server = liblo.ServerThread(
-                    None, self.osc_proto, reg_methods=False)
+                self.osc_target = liblo.Address('localhost', self.osc_target_port, self.osc_proto)
+                logging.info("OSC target in port {}".format(self.osc_target_port))
+                self.osc_server = liblo.ServerThread(None, self.osc_proto, reg_methods=False)
                 # self.osc_server = liblo.Server(None, self.osc_proto, reg_methods=False)
                 self.osc_server_port = self.osc_server.get_port()
-                self.osc_server_url = liblo.Address(
-                    'localhost', self.osc_server_port, self.osc_proto).get_url()
-                logging.info("OSC server running in port {}".format(
-                    self.osc_server_port))
+                self.osc_server_url = liblo.Address('localhost', self.osc_server_port, self.osc_proto).get_url()
+                logging.info("OSC server running in port {}".format(self.osc_server_port))
                 self.osc_add_methods()
                 self.osc_server.start()
             except liblo.AddressError as err:
-                logging.error(
-                    "OSC Server can't be started ({}). Running without OSC feedback.".format(err))
+                logging.error("OSC Server can't be started ({}). Running without OSC feedback.".format(err))
 
     def osc_end(self):
         if self.osc_server:
             try:
                 self.osc_server.stop()
+                self.osc_server.free()
                 self.osc_server = None
                 logging.info("OSC server stopped")
             except Exception as err:
@@ -280,9 +279,15 @@ class zynthian_engine(zynthian_basic_engine):
         for ext in fexts:
             rules.append(fnmatch.translate("*." + ext))
         rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
-        for item in glob.iglob(os.path.join(path, "**"), recursive=True):
-            if rerule.match(item):
-                return True
+        # TODO: Support levels of recrsions instead boolean
+        if recursion:
+            for item in glob.iglob(os.path.join(path, "**"), recursive=True):
+                if rerule.match(item):
+                    return True
+        else:
+            for item in glob.iglob(os.path.join(path, "*"), recursive=False):
+                if rerule.match(item):
+                    return True
         return False
 
     @staticmethod
@@ -292,13 +297,19 @@ class zynthian_engine(zynthian_basic_engine):
             rules.append(fnmatch.translate("*." + ext))
         rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
         res = []
-        for item in glob.iglob(os.path.join(path, "**"), recursive=True):
-            if rerule.match(item):
-                res.append(item)
+        # TODO: Support levels of recrsions instead boolean
+        if recursion:
+            for item in glob.iglob(os.path.join(path, "**"), recursive=True):
+                if rerule.match(item):
+                    res.append(item)
+        else:
+            for item in glob.iglob(os.path.join(path, "*"), recursive=False):
+                if rerule.match(item):
+                    res.append(item)
         return sorted(res, key=str.casefold)
 
     @classmethod
-    def get_filelist(cls, dpath, fext, include_dirs=False, exclude_empty_dirs=True):
+    def get_filelist(cls, dpath, fext, include_dirs=False, exclude_empty_dirs=True, info=None):
         files = []
         dirs = []
         if isinstance(dpath, str):
@@ -322,10 +333,16 @@ class zynthian_engine(zynthian_basic_engine):
                             if dn != '_':
                                 title = dn + '/' + title
                             # print("filelist => " + title)
-                            files.append([os.path.join(dp, f), i, title, dn, f, ext])
+                            row = [os.path.join(dp, f), i, title, dn, f, ext]
+                            if info:
+                                row.append(info[1])
+                            files.append(row)
                             i += 1
                     elif include_dirs and os.path.isdir(path) and (not exclude_empty_dirs or cls.find_some_preset_file(path, fext)):
-                        dirs.append([path, i, "> " + f, dn, f])
+                        row = [path, i, "> " + f, dn, f]
+                        if info:
+                            row.append(info[0])
+                        dirs.append(row)
                         i += 1
             except Exception as e:
                 #logging.warning(f"Can't access directory '{dp}' => {e}")
@@ -362,7 +379,7 @@ class zynthian_engine(zynthian_basic_engine):
 
     # Get bank dir list
     @classmethod
-    def get_bank_dirlist(cls, fexts=None, root_bank_dirs=None, recursion=1, exclude_empty=True, internal_include_empty=False):
+    def get_bank_dirlist(cls, fexts=None, root_bank_dirs=None, recursion=1, exclude_empty=True, internal_include_empty=False, info=None):
         if fexts is None:
             fexts = cls.preset_fexts
         if root_bank_dirs is None:
@@ -371,56 +388,31 @@ class zynthian_engine(zynthian_basic_engine):
                                      recursion=recursion,
                                      exclude_empty=exclude_empty,
                                      internal_include_empty=internal_include_empty,
-                                     dirs_only=True)
+                                     dirs_only=True, info=info)
 
     # Get dir & file list
     @classmethod
-    def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False):
-        res = []
-
+    def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False, info=None):
         if not dirs_only:
             dir_marker = "> "
         else:
             dir_marker = ""
 
-        # External storage banks
+        # Don't overwrite original root_dirs variable!
+        root_dirs = copy.copy(root_dirs)
+        # Add source marker (SD)
+        for i, rd in enumerate(root_dirs):
+            root_dirs[i] = ("SD> " + rd[0], rd[1])
+        # Add external storage to root_dirs
         for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
             if not os.path.isdir(exd):
                 continue
-            sres = []
-            # Add root directory in external storage
-            if not exclude_empty or cls.find_some_preset_file(exd, fexts, 0):
-                sres.append([exd, None, "/", None, "/"])
-            # Walk directories inside root
-            walk = next(os.walk(exd))
-            walk[1].sort()
-            for root_dir in walk[1]:
-                root_path = walk[0] + "/" + root_dir
-                if not exclude_empty or cls.find_some_preset_file(root_path, fexts, recursion + 1):
-                    walk = next(os.walk(root_path))
-                    walk[1].sort()
-                    count = 0
-                    for dir in walk[1]:
-                        dpath = walk[0] + "/" + dir
-                        if not exclude_empty or cls.find_some_preset_file(dpath, fexts, recursion):
-                            title = dir_marker + root_dir + "/" + dir
-                            sres.append([dpath, None, title, None, dir])
-                            count += 1
-                    # If there is no banks inside, the root is the bank
-                    if count == 0:
-                        title = dir_marker + root_dir
-                        sres.append([root_path, None, title, None, root_dir])
+            if not exclude_empty or cls.find_some_preset_file(exd, fexts, recursion + 1):
+                title = f"USB> {os.path.basename(exd)}"
+                root_dirs.insert(0, (title, exd))
 
-            # Add files in root dir
-            if not dirs_only:
-                sres += cls.get_filelist(exd, fexts)
-
-            # Add root's header and items
-            if len(sres):
-                res.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
-                res += sres
-
-        # Internal storage
+        # Generate list
+        res = []
         for root_dir in root_dirs:
             if not os.path.isdir(root_dir[1]):
                 continue
@@ -431,14 +423,17 @@ class zynthian_engine(zynthian_basic_engine):
                 dpath = walk[0] + "/" + dir
                 if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion):
                     title = dir_marker + dir
-                    sres.append([dpath, None, title, None, dir])
+                    row = [dpath, None, title, None, dir]
+                    if info:
+                        row.append(info[0])
+                    sres.append(row)
 
             # Add files in root dir
             if not dirs_only:
-                sres += cls.get_filelist(root_dir[1], fexts)
+                sres += cls.get_filelist(root_dir[1], fexts, info=info)
 
             if len(sres):
-                res.append([None, None, "SD> " + root_dir[0], None, None])
+                res.append([None, None, root_dir[0], None, None])
                 res += sres
 
         return res
@@ -501,15 +496,14 @@ class zynthian_engine(zynthian_basic_engine):
         return self.get_bank_dirlist()
 
     def set_bank(self, processor, bank):
-        self.state_manager.zynmidi.set_midi_bank_msb(
-            processor.get_midi_chan(), bank[1])
+        self.state_manager.zynmidi.set_midi_bank_msb(processor.get_midi_chan(), bank[1])
         return True
 
     # ---------------------------------------------------------------------------
     # Preset Management
     # ---------------------------------------------------------------------------
 
-    def get_preset_list(self, bank):
+    def get_preset_list(self, bank, processor=None):
         logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
     def set_preset(self, processor, preset, preload=False):
@@ -644,18 +638,18 @@ class zynthian_engine(zynthian_basic_engine):
     # + Default implementation uses a static controller definition array
     def get_controllers_dict(self, processor):
         if self._ctrls is not None:
-            # Remove controls that are no longer used
+            # Generate list of symbols
+            symbols = []
+            for ctrl in self._ctrls:
+                symbols.append(ctrl[0])
+            # Reset existing controllers or remove controllers no longer used
             for symbol in list(processor.controllers_dict):
-                d = True
-                for i in self._ctrls:
-                    if symbol == i[0]:
-                        d = False
-                        break
-                if d:
-                    del processor.controllers_dict[symbol]
+                zctrl = processor.controllers_dict[symbol]
+                if symbol in symbols:
+                    zctrl.reset(self, symbol, full=False)
                 else:
-                    processor.controllers_dict[symbol].reset(self, symbol)
-
+                    self.state_manager.chain_manager.remove_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=True)
+                    del processor.controllers_dict[symbol]
             # Regenerate / update controller dictionary
             for ctrl in self._ctrls:
                 options = self.get_ctrl_options(ctrl, processor)
@@ -667,8 +661,8 @@ class zynthian_engine(zynthian_basic_engine):
                 else:
                     zctrl = zynthian_controller(self, ctrl[0], options)
                     processor.controllers_dict[zctrl.symbol] = zctrl
-                    if zctrl.midi_chan is not None and zctrl.midi_cc is not None:
-                        self.state_manager.chain_manager.add_midi_learn(zctrl, processor.chain_id, zctrl.midi_chan, zctrl.midi_cc)
+                    if zctrl.midi_cc is not None and processor.midi_autolearn and zctrl.midi_autolearn:
+                        self.state_manager.chain_manager.add_midi_learn(None, zctrl.midi_cc, zctrl)
 
         return processor.controllers_dict
 

@@ -11,7 +11,6 @@ __all__ = [
     "zynthian_gui_admin",
     "zynthian_gui_snapshot",
     "zynthian_gui_processor_options",
-    "zynthian_gui_subprocessor_options",
     "zynthian_gui_engine",
     "zynthian_gui_midi_chan",
     "zynthian_gui_midi_cc",

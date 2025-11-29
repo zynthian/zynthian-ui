@@ -315,8 +315,8 @@ class zynthian_gui_keyboard():
     # Function to register encoders
     def setup_zynpots(self):
         if zynthian_gui_config.num_zynpots > 3:
-            lib_zyncore.setup_behaviour_zynpot(3, 1)
-            lib_zyncore.setup_behaviour_zynpot(1, 1)
+            lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[2], 1)
+            lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[3], 1)
 
     # Function to handle zynpots events
     def zynpot_cb(self, i, dval):

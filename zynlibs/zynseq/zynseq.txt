@@ -2,7 +2,7 @@ Description of zynseq code
 
 Zynseq is Zynthian's step sequencer. It has a hierarchical structure of C++ classes:
 
-    A scene (previously known as "bank") contains 1 or more sequences
+    A phrase (previously known as "bank") contains 1 or more sequences
     A sequence contains 1 or more tracks
     A track contains 0 or more patterns
     A pattern contains 0 or more step events
@@ -59,9 +59,9 @@ A sequence is a class that acts as a containter for parallel tracks. It provides
     Flag to indicate sequence is empty (may contain empty tracks)
     Sequence name (for UI - not used internally)
 
-A scene is a class that acts as a containter for sequences. It allows the grouping of sequences, e.g. for display as pages, songs, scenes, etc.
+A phrase is a class that acts as a containter for sequences. It allows the grouping of sequences, e.g. for display as pages, scenes, phrase, etc.
 
-A SEQ_EVENT event is a structure describing a MIDI event and time relative to start of pattern. This is derived from the STEP_EVENT context (track, sequence, scene) to provide the data used during playback.
+A SEQ_EVENT event is a structure describing a MIDI event and time relative to start of pattern. This is derived from the STEP_EVENT context (track, sequence, phrase) to provide the data used during playback.
 
 Manipulating Events
 ===================

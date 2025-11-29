@@ -62,7 +62,7 @@ ZynthianState = {
             }, # ... More ports
         },
     },
-    "chains": {  # Dictionary of chains indexed by chain ID
+    "chains": {  # Dictionary of chains indexed by chain id
         "1": {  # Chain 1
             "title": "My first chain",  # Chain title (optional)
             "midi_chan": 0,  # Chain MIDI channel (may be None)
@@ -82,11 +82,11 @@ ZynthianState = {
     "zs3": {  # Dictionary of ZS3's indexed by chan/prog or ZS3-x
         "zs3-0": {  # ZS3 state when snapshot saved
             "title": "Last state",  # ZS3 title
-            "active_chain": "01", # Active chain ID (optional, overides base value)
+            "active_chain": "01", # Active chain id (optional, overides base value)
             "processors": {  # Dictionary of processor settings
                 "1": {  # Processor id:1
-                    "bank_info": ["HB Steinway D", 0, "Grand Steinway D (Hamburg)", "D4:A", "HB Steinway Model D"], # Bank ID
-                    "preset_info": None,  # Preset ID
+                    "bank_info": ["HB Steinway D", 0, "Grand Steinway D (Hamburg)", "D4:A", "HB Steinway Model D"], # Bank id
+                    "preset_info": None,  # Preset id
                     "controllers": {  # Dictionary of controllers (optional, overrides preset default value)
                         "volume": {  # Indexed by controller symbol
                             "value": 96,  # Optional controller value
@@ -133,7 +133,90 @@ ZynthianState = {
         "PT": None,  # Pianoteq configuration
     }, # ... Other engines
     "audio_recorder_armed": [0, 3], # List of audio mixer strip indicies armed for multi-track audio recording
-    "zynseq_riff_b64": "dmVycwAA...", # Binary encoded RIFF data for step sequencer patterns, sequences, etc.
+    "zynseq": {
+        "tempo": 120.0, # Default tempo in BPM
+        "sig": 4, # Default time signature (x/4)
+        "scene": 0, # Selected scene when saved
+        "patns": { # Indexed by pattern id
+            "1": { # Pattern id
+                "steps": 16, # Steps in pattern
+                "beats": 4, # Beats in pattern
+                "scale": 0, # Index of scale to use for this pattern
+                "tonic": 0, # Root note for scale
+                "refNote": 51,
+                "ccnum": [0, 1, ...], # Interpolate CC numbers
+                "quantize": 0, # Amount to quantize
+                "swingDiv": 1, # Swing divisor
+                "swing": 0.0, # Amount of swing to apply to pattern
+                "humanTime": 0.0, # Variation in timing feel
+                "humanVel": 0.0, # Variation in velocity feel
+                "chance": 100, # Probability % of notes within pattern playing
+                "events": [ # List of events in the pattern
+                    {
+                        "step": 0, # Step within pattern
+                        "duration": 1.0, # Duration of event
+                        "offset": 0.0, # Offset from start of step
+                        "command": 144, # MIDI command
+                        "val1Start": 60, # MIDI value 1 at start of event
+                        "val1End": 60, # MIDI value 1 at end of event
+                        "val2Start": 100, # MIDI value 2 at start of event
+                        "val2End": 0, # MIDI value 2 at end of event
+                        "chance": 100, # Probability % of event triggering
+                        "stutCnt": 0, # Quantity of stutters
+                        "stutDur": 1 # Duration of each stutter
+                    }, # ... Other events
+                ]
+            }, # ... Other patterns
+        },
+        "scenes": [ # List of scenes, indexed by scene id
+            { # First scene
+                "name": "Scene 1", # Scene name (optional)
+                "phrases": [ # List of phrases, indexed by phrase number
+                    { # First phrase
+                        "name": "A", # Scene name
+                        "mode": 4, # Scene play mode
+                        "sig": 4, # Time signature override x/4
+                        "tempo": 0, # Tempo override 0=no override
+                        "repeat": 1, # Quantity of repeats
+                        "followAction": 0, # Follow action
+                        "followParam": 0, # Follow action param
+                        "state": 0, # Play state (when snapshot saved)
+                        "sequences": [ # List of sequences in phrase
+                            {
+                                "mode": 4, # Sequence play mode
+                                "group": 0, # Mutex group (0..15, Chain MIDI channel else multi-channel)
+                                "name": "1", # Sequence name
+                                "repeat": 1, # Quantity of repeats
+                                "followAction": 0, # Follow action
+                                "followParam": 0, # Follow action param
+                                "state": 0, # Play state (when snapshot saved)
+                                "tracks": [ # List of tracks in sequence
+                                    {
+                                        "chan": 0, # MIDI channel
+                                        "output": 0, # Jack output
+                                        "map": 0, # Key map
+                                        "patns": { # Indexed by relative start time within sequence
+                                            "0": 3, # Pattern id
+                                            # ... Other patterns
+                                        }
+                                    }, # ... Other tracks
+                                ],
+                                "timebase": [ # List of timebase events
+                                    { # Event
+                                        "bar": 1, # Measure or bar of event
+                                        "tick": 0, # Tick within measure
+                                        "type": 0, # Event type, e.g. tempo
+                                        "value": 80 # Event value
+                                    },
+                                    # ... Other timebase events
+                                ]
+                            }, # ... Other sequences
+                        ],
+                    }, # .. Other phrases
+                ]
+            }, # Other scenes
+        ]
+    },
     "zyngui": {  # Optional UI specific configuration
         "processors": {  # Processor specific config
             "1": {  # Indexed by processor id

@@ -181,15 +181,17 @@ class MultiTouch(object):
     EVENT_FORMAT = str('llHHi')
     EVENT_SIZE = struct.calcsize(EVENT_FORMAT)
 
-    def __init__(self, invert_x_axis=False, invert_y_axis=False):
+    def __init__(self, state_manager, invert_x_axis=False, invert_y_axis=False):
         """Instantiate the touch driver
 
         Creates an instance of the driver attached to the first multitouch hardware discovered.
 
+        state_manager - State Manager object used for disabling powersave mode
         invert_x_axis - True to invert x axis (optional)
         invert_y_axis - True to invert y axis (optional)
         """
 
+        self.state_manager = state_manager
         self._running = False  # True when thread is running
         self.thread = None  # Background thread processing touch events
         self._invert_x = invert_x_axis
@@ -332,6 +334,9 @@ class MultiTouch(object):
         """
 
         now = int(monotonic() * 1000)
+        if self.state_manager.power_save_mode:
+            self.state_manager.set_event_flag()
+            return
         for event in self.events:
             try:
                 event.x = event.x_root - event.offset_x
@@ -344,9 +349,8 @@ class MultiTouch(object):
 
             if event._type == MultitouchTypes.MULTI_PRESS:
                 # Find a widget for the touch event
-                try:
-                    event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
-                except:
+                event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
+                if event.widget is None:
                     gui_obj = zynthian_gui_config.zyngui.get_current_screen_obj()
                     if isinstance(gui_obj, tkinter.Frame):
                         event.widget = gui_obj
@@ -564,7 +568,7 @@ class MultiTouch(object):
 
         widget - Canvas widget
         tagOrId - Tag or object ID to bind event to
-        sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
+        sequence - Event sequence to bind ["press" | "motion" | "release" | "horizontal_drag"]
         function - Callback function
         add - True to append the binding otherwise remove existing bindings (default)
 
@@ -597,7 +601,7 @@ class MultiTouch(object):
 
         widget - Canvas widget
         tagOrId - Tag or object ID to bind event to
-        sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
+        sequence - Event sequence to bind ["press" | "motion" | "release" | "horizontal_drag"]
         function - Callback function (Optional - default None=remove all bindings)
         """
 

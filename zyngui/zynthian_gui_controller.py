@@ -53,13 +53,14 @@ class zynthian_gui_controller(tkinter.Canvas):
 	#  hidden: True to disable GUI display (only use zynpot/zctrl interface)
 	#  selcounter: True to configure as a counter - no value graph and value is 1-based (otherwise zero-based)
 	#  graph: Type of graph to plot [GUI_CTRL_NONE, GUI_CTRL_ARC, GUI_CTRL_TRIANGLE, GUI_CTRL_RECTANGLE] Default: GUI_CTRL_ARC
-	def __init__(self, index, parent, zctrl, hidden=False, selcounter=False, graph=zynthian_gui_config.ctrl_graph, orientation=None):
+	def __init__(self, index, parent, zctrl, hidden=False, selcounter=False, graph_type=zynthian_gui_config.ctrl_graph, orientation=None):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.pickup = False
 
 		self.step = 0
 		self.selector_counter = selcounter
+		self.graph_type = graph_type
 		self.value_plot = 0  # Normalised position of plot start point
 		self.value_print = None
 		self.value_font_size = zynthian_gui_config.font_size
@@ -92,44 +93,45 @@ class zynthian_gui_controller(tkinter.Canvas):
 				bd=0,
 				highlightthickness=0,
 				bg=zynthian_gui_config.color_panel_bg)
-			if graph == self.GUI_CTRL_ARC:
-				self.graph = self.create_arc(0, 0, 1, 1,
-					style=tkinter.ARC,
-					outline=self.color_graph,
-					tags='gui')
-				self.graph_pickup = self.create_arc(0, 0, 1, 1,
-					style=tkinter.ARC,
-					outline=zynthian_gui_config.color_ctrl_tx_off,
-					tags='gui')
-				self.plot_value_func = self.plot_value_arc
-				self.on_size_graph = self.on_size_arc
-			elif graph == self.GUI_CTRL_RECTANGLE:
-				self.rectangle_bg = self.create_rectangle(
-					(0, 0, 0, 0),
-					fill=zynthian_gui_config.color_ctrl_bg_off,
-					width=0
-				)
-				self.rectangle = self.create_rectangle(
-					(0, 0, 0, 0),
-					fill=self.color_graph,
-					width=0
-				)
-				self.plot_value_func = self.plot_value_rectangle
-				self.on_size_graph = self.on_size_rectangle
-			elif graph == self.GUI_CTRL_TRIANGLE:
-				self.triangle_bg = self.create_polygon(
-					(0, 0, 0, 0),
-					fill=zynthian_gui_config.color_ctrl_bg_off
-				)
-				self.triangle = self.create_polygon(
-					(0, 0, 0, 0),
-					fill=self.color_graph
-				)
-				self.plot_value_func = self.plot_value_triangle
-				self.on_size_graph = self.on_size_triangle
-			else:
-				self.plot_value_func = lambda self: False
-				self.on_size_graph = lambda self : False
+			match self.graph_type:
+				case self.GUI_CTRL_ARC:
+					self.graph = self.create_arc(0, 0, 1, 1,
+						style=tkinter.ARC,
+						outline=self.color_graph,
+						tags='gui')
+					self.graph_pickup = self.create_arc(0, 0, 1, 1,
+						style=tkinter.ARC,
+						outline=zynthian_gui_config.color_ctrl_tx_off,
+						tags='gui')
+					self.plot_value_func = self.plot_value_arc
+					self.on_size_graph = self.on_size_arc
+				case self.GUI_CTRL_RECTANGLE:
+					self.graph_pickup = self.create_rectangle(
+						(0, 0, 0, 0),
+						fill=zynthian_gui_config.color_ctrl_bg_off,
+						width=0,
+						tags='gui')
+					self.graph = self.create_rectangle(
+						(0, 0, 0, 0),
+						fill=self.color_graph,
+						width=0,
+						tags='gui')
+					self.plot_value_func = self.plot_value_rectangle
+					self.on_size_graph = self.on_size_rectangle
+				case self.GUI_CTRL_TRIANGLE:
+					self.graph_pickup = self.create_polygon(
+						(0, 0, 0, 0),
+						fill=zynthian_gui_config.color_ctrl_bg_off,
+						tags='gui')
+					self.graph = self.create_polygon(
+						(0, 0, 0, 0),
+						fill=self.color_graph,
+						tags='gui')
+					self.plot_value_func = self.plot_value_triangle
+					self.on_size_graph = self.on_size_triangle
+				case _:
+					self.plot_value_func = lambda self: False
+					self.on_size_graph = lambda self : False
 
 			self.label_title = self.create_text(0, 0,
 				fill=zynthian_gui_config.color_panel_tx,
@@ -244,17 +246,23 @@ class zynthian_gui_controller(tkinter.Canvas):
 		ww = self.winfo_width()
 		hh = self.winfo_height()
 		hrect = int(0.35 * hh)
+		x1 = 4
+		y1 = hh // 2 - hrect // 4
+		x2 = ww - 4
+		y2 = y1 + hrect
 
-		self.title_width = ww - 4
+		self.title_width = x2
 		self.coords(self.label_title, 2, 2)
 		self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
-		vty = hh // 2 - hrect // 4 + self.value_font_size + 4
+		vty = y1 + self.value_font_size + 4
 		vtx = ww // 2
 		self.coords(self.value_text, vtx, vty)
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=ww - 8)
+		if not self.selector_counter:
+			self.coords(self.graph, (x1, y1, x2, y2))
+			self.coords(self.graph_pickup, (x1, y1, x2, y2))
 
-		self.plot_value_rectangle()
 		self.coords(self.midi_bind, ww // 2, hh - 2)
 
 	# Handle resize of triangle graph
@@ -262,8 +270,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 		ww = self.winfo_width()
 		hh = self.winfo_height()
 		htri = int(0.4 * hh)
-		
-		self.title_width = ww - 4
+		x1 = 4
+		y1 = hh // 2 + 3 * htri // 4
+		x2 = ww - 4
+		y2 = y1 - int(htri)
+
+		self.title_width = x2
 		self.coords(self.label_title, 2, 2)
 		self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
@@ -272,7 +284,10 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.coords(self.value_text, vtx, vty)
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=ww - 8)
 
-		self.plot_value_triangle()
+		if not self.selector_counter:
+			self.coords(self.graph, (x1, y1, x2, y1, x2, y2))
+			self.coords(self.graph_pickup, (x1, y1, x2, y1, x2, y2))
+
 		self.coords(self.midi_bind, ww // 2, hh - 2)
 
 	def show(self):
@@ -298,18 +313,27 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 
+	def _set_color_graph(self, color):
+		match self.graph_type:
+			case self.GUI_CTRL_ARC:
+				self.itemconfig(self.graph, outline=color)
+			case self.GUI_CTRL_RECTANGLE:
+				self.itemconfig(self.graph, fill=color)
+			case self.GUI_CTRL_TRIANGLE:
+				self.itemconfig(self.graph, fill=color)
+
 	def set_color_graph(self, color):
 		try:
 			self.color_graph = color
-			self.itemconfig(self.graph, outline=self.color_graph)
+			self._set_color_graph(self.color_graph)
 		except:
 			pass
 
 	def restore_color_graph(self):
-		self.itemconfig(self.graph, outline=self.color_graph)
+		self._set_color_graph(self.color_graph)
 
 	def set_color_readonly(self):
-		self.itemconfig(self.graph, outline=zynthian_gui_config.color_ctrl_bg_off)
+		self._set_color_graph(zynthian_gui_config.color_ctrl_bg_off)
 
 	def enable(self, enable=True):
 		self.enabled = enable
@@ -321,7 +345,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
 			self.color_graph = color
-			self.itemconfig(self.graph, outline=self.color_graph)
+			self._set_color_graph(self.color_graph)
 			#self.itemconfig(self.label_title, fill=color)
 			#self.itemconfig(self.value_text, fill=color)
 		except:
@@ -330,7 +354,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def unset_hl(self):
 		try:
 			self.color_graph = zynthian_gui_config.color_ctrl_bg_on
-			self.itemconfig(self.graph, outline=self.color_graph)
+			self._set_color_graph(self.color_graph)
 			#self.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
 			#self.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
 		except:
@@ -396,7 +420,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.refresh_plot_value = True
 
 	def plot_value(self):
-		if self.shown and self.zctrl and (self.zctrl.is_dirty or self.refresh_plot_value):
+		if self.shown and self.zctrl and self.refresh_plot_value:
 			if not self.hidden:
 				if self.zctrl.readonly:
 					self.set_color_readonly()
@@ -404,7 +428,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.restore_color_graph()
 				self.plot_value_func()
 			self.refresh_plot_value = False
-			self.zctrl.is_dirty = False
 
 	def plot_value_rectangle(self):
 		if not self.selector_counter and not self.zctrl.is_path:
@@ -415,7 +438,16 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y1 = hh // 2 - hrect // 4
 			x2 = 4 + int((ww - 8) * self.value_plot)
 			y2 = y1 + hrect
-			self.coords(self.rectangle, (x1, y1, x2, y2))
+			if self.zctrl:
+				if isinstance(self.zctrl.labels, list):
+					n = len(self.zctrl.labels)
+					if n > 2:
+						xw = max(4, ww // n)
+						x1 = x2 - xw
+				elif self.zctrl.value_range and self.zctrl.value_min < 0 and self.zctrl.value_max >= 0:
+					x1 = 4 + (8 - ww) * self.zctrl.value_min / self.zctrl.value_range
+					x2 = x1 + x2 - 4
+			self.coords(self.graph, (x1, y1, x2, y2))
 		self.itemconfig(self.value_text, text=self.value_print)
 
 	def plot_value_triangle(self):
@@ -427,7 +459,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y1 = hh // 2 + 3 * htri // 4
 			x2 = 4 + int((ww - 8) * self.value_plot)
 			y2 = y1 - int(htri * self.value_plot)
-			self.coords(self.triangle, (x1, y1, x2, y1, x2, y2))
+			self.coords(self.graph, (x1, y1, x2, y1, x2, y2))
 		self.itemconfig(self.value_text, text=self.value_print)
 
 	def plot_value_arc(self):
@@ -442,7 +474,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 						arc_len = max(5, degmax // n)
 						deg0 += degd + arc_len
 						degd = -arc_len
-				elif self.zctrl.value_range and self.zctrl.value_min <= 0 and self.zctrl.value_max >= 0:
+				elif self.zctrl.value_range and self.zctrl.value_min <= 0 >= self.zctrl.value_max:
 					deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
 			self.itemconfig(self.graph, start=deg0, extent=degd)
 		self.itemconfig(self.value_text, text=self.value_print)
@@ -471,24 +503,27 @@ class zynthian_gui_controller(tkinter.Canvas):
 				if self.zyngui.state_manager.midi_learn_state is None:
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
-					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
-			elif self.zctrl.midi_cc_learn:
-				chan = self.zctrl.midi_cc_learn[1]
-				cc = self.zctrl.midi_cc_learn[2]
-				if self.zctrl == self.zyngui.state_manager.zctrl_x:
-					suffix = " X"
-				elif self.zctrl == self.zyngui.state_manager.zctrl_y:
-					suffix = " Y"
-				else:
-					suffix = ""
-				if self.zctrl.midi_cc_learn[0] is None:
-					self.plot_midi_bind(f"{chan + 1}#{cc}{suffix}")
-				else:
-					self.plot_midi_bind(f"{cc}{suffix}")
+					self.plot_midi_bind("??#??", zynthian_gui_config.color_hl)
 			elif self.zctrl == self.zyngui.state_manager.zctrl_x:
-				self.plot_midi_bind("X")
+				self.plot_midi_bind("X", zynthian_gui_config.color_alt2)
 			elif self.zctrl == self.zyngui.state_manager.zctrl_y:
-				self.plot_midi_bind("Y")
+				self.plot_midi_bind("Y", zynthian_gui_config.color_alt2)
+			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
+				key = midi_learn_params[0]
+				cc = key & 0xff
+				match midi_learn_params[1]:
+					case "abs":
+						#zmip = (key >> 16) & 0xff
+						chan = (key >> 8) & 0xff
+						self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_ml)
+					case "chain":
+						chan = (key >> 8) & 0xff
+						if chan < 16:
+							self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_hl)
+						else:
+							self.plot_midi_bind(f"{cc}")
+					case "zynstep":
+						self.plot_midi_bind(f"{cc}")
 			else:
 				self.erase_midi_bind()
 				return False
@@ -616,7 +651,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.format_print = "{:.1f}"
 			# Logarithmic float => It's calculated on-the-fly depending of the displayed value
 
-		#logging.debug(f"ZCTRL '{zctrl.short_name}' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
+		#logging.debug(f"ZCTRL '{zctrl.short_name} ({zctrl.symbol})' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
 		self.setup_zynpot()
 
 	# --------------------------------------------------------------------------
@@ -651,6 +686,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				fine = True
 			else:
 				fine = self.zyngui.alt_mode
+			#logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
 			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False
@@ -677,7 +713,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_ts} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 	def cb_canvas_release(self, event):
-		if self.canvas_push_ts and self.enabled:
+		if self.canvas_push_ts and self.enabled and self.zctrl:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
 			self.canvas_push_ts = None
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
@@ -686,6 +722,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
 						if self.zctrl.is_toggle:
 							self.zctrl.toggle()
+						elif self.zctrl.is_trigger:
+							self.zctrl.set_value(self.zctrl.value_max)
 						elif self.zctrl.is_path:
 							self.zctrl.nudge(1)
 						#self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
@@ -710,7 +748,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 				if self.zctrl:
 					if self.active_motion_axis == 1:
-					# Y-axis drag active
+						# Y-axis drag active
 						if abs(dy) >= self.pixels_per_div:
 							if self.zctrl.range_reversed:
 								self.nudge(-dy // self.pixels_per_div, self.zyngui.alt_mode)
@@ -718,7 +756,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 								self.nudge(dy // self.pixels_per_div, self.zyngui.alt_mode)
 							self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
 					elif self.active_motion_axis == -1:
-					# X-axis drag active
+						# X-axis drag active
 						if abs(dx) >= self.pixels_per_div:
 							if self.zctrl.range_reversed:
 								self.nudge(-dx // self.pixels_per_div, True)
