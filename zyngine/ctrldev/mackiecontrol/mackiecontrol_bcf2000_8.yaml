@@ -1,0 +1,341 @@
+
+
+device_settings:
+  name: Behringer BCF2000 8strips und 0Master
+  number_of_strips: 8
+  masterfader: False
+  masterfader_fader_num: 9
+  xtouch: False
+  touchsensefaders: False
+
+ccnum_buttons:
+  0:
+    name: rec_0
+    command: mkc_rec_0
+  1:
+    name: rec_1
+    command: mkc_rec_1
+  2:
+    name: rec_2
+    command: mkc_rec_2
+  3:
+    name: rec_3
+    command: mkc_rec_3
+  4:
+    name: rec_4
+    command: mkc_rec_4
+  5:
+    name: rec_5
+    command: mkc_rec_5
+  6:
+    name: rec_6
+    command: mkc_rec_6
+  7:
+    name: rec_7
+    command: mkc_rec_7
+  8:
+    name: solo_0
+    command: mkc_solo_0
+  9:
+    name: solo_1
+    command: mkc_solo_1
+  10:
+    name: solo_2
+    command: mkc_solo_2
+  11:
+    name: solo_3
+    command: mkc_solo_3
+  12:
+    name: solo_4
+    command: mkc_solo_4
+  13:
+    name: solo_5
+    command: mkc_solo_5
+  14:
+    name: solo_6
+    command: mkc_solo_6
+  15:
+    name: solo_7
+    command: mkc_solo_7
+  16:
+    name: mute_0
+    command: mkc_mute_0
+  17:
+    name: mute_1
+    command: mkc_mute_1
+  18:
+    name: mute_2
+    command: mkc_mute_2
+  19:
+    name: mute_3
+    command: mkc_mute_3
+  20:
+    name: mute_4
+    command: mkc_mute_4
+  21:
+    name: mute_5
+    command: mkc_mute_5
+  22:
+    name: mute_6
+    command: mkc_mute_6
+  23:
+    name: mute_7
+    command: mkc_mute_7
+  24:
+    name: select_0
+    command: mkc_select_0
+  25:
+    name: select_1
+    command: mkc_select_1
+  26:
+    name: select_2
+    command: mkc_select_2
+  27:
+    name: select_3
+    command: mkc_select_3
+  28:
+    name: select_4
+    command: mkc_select_4
+  29:
+    name: select_5
+    command: mkc_select_5
+  30:
+    name: select_6
+    command: mkc_select_6
+  31:
+    name: select_7
+    command: mkc_select_7
+  32:
+    name: encoderpress_0
+    command: mkc_encoderpress_0
+  33:
+    name: encoderpress_1
+    command: mkc_encoderpress_1
+  34:
+    name: encoderpress_2
+    command: mkc_encoderpress_2
+  35:
+    name: encoderpress_3
+    command: mkc_encoderpress_3
+  36:
+    name: encoderpress_4
+    command: mkc_encoderpress_4
+  37:
+    name: encoderpress_5
+    command: mkc_encoderpress_5
+  38:
+    name: encoderpress_6
+    command: mkc_encoderpress_6
+  39:
+    name: encoderpress_7
+    command: mkc_encoderpress_7
+  40:
+    name: encoderassign_track
+    command: mkc_encoderassign_track
+  41:
+    name: encoderassign_send
+    command: mkc_encoderassign_send
+  42:
+    name: encoderassign_pan
+    command: mkc_encoderassign_pan
+  43:
+    name: encoderassign_plugin
+    command: mkc_encoderassign_plugin
+  44:
+    name: encoderassign_eq
+    command: mkc_encoderassign_eq
+  45:
+    name: encoderassign_inst
+    command: mkc_encoderassign_inst
+  46:
+    name: faderbank_left
+    command: mkc_faderbank_left
+  47:
+    name: faderbank_right
+    command: mkc_faderbank_right
+  48:
+    name: channel_left
+    command: mkc_channel_left
+  49:
+    name: channel_right
+    command: mkc_channel_right
+  50:
+    name: flip
+    command: None
+  51:
+    name: global_view
+    command: mkc_globalview_set
+  52:
+    name: display_namevalue
+    command: None
+  54:
+    name: function_f1
+    command: cuia_SCREEN_PATTERN_EDITOR
+  55:
+    name: function_f2
+    command: cuia_SCREEN_ARRANGER
+  56:
+    name: function_f3
+    command: cuia_SCREEN_ALSA_MIXER
+  57:
+    name: function_f4
+    command: cuia_SCREEN_MIDI_RECORDER
+  58:
+    name: function_f5
+    command: cuia_BANK_PRESET
+  59:
+    name: function_f6
+    command: cuia_CHAIN_CONTROL
+  60:
+    name: function_f7
+    command: cuia_ALL_NOTES_OFF
+  61:
+    name: function_f8
+    command: cuia_ALL_SOUNDS_OFF
+  62:
+    name: viewassign_midi
+    command: mkc_viewassign_midi
+  63:
+    name: viewassign_inputs
+    command: mkc_viewassign_inputs
+  64:
+    name: viewassign_audio
+    command: mkc_viewassign_audio
+  65:
+    name: viewassign_inst
+    command: mkc_viewassign_inst
+  66:
+    name: viewassign_aux
+    command: mkc_viewassign_aux
+  67:
+    name: viewassign_buses
+    command: mkc_viewassign_buses
+  68:
+    name: viewassign_outputs
+    command: mkc_viewassign_outputs
+  69:
+    name: viewassign_user
+    command: mkc_viewassign_user
+  70:
+    name: modify_shift
+    command: mkc_shiftassign_set
+  71:
+    name: modify_option
+    command: None
+  72:
+    name: modify_control
+    command: None
+  73:
+    name: modify_alt
+    command: None
+  74:
+    name: automation_read
+    command: None
+  75:
+    name: automation_write
+    command: None
+  76:
+    name: automation_trim
+    command: None
+  77:
+    name: automation_touch
+    command: None
+  78:
+    name: automation_latch
+    command: None
+  79:
+    name: automation_group
+    command: None
+  80:
+    name: utility_save
+    command: None
+  81:
+    name: utility_undo
+    command: None
+  82:
+    name: utility_cancel
+    command: None
+  83:
+    name: utility_enter
+    command: None
+  84:
+    name: transport_marker
+    command: cuia_SCREEN_MAIN_MENU
+  85:
+    name: transport_nudge
+    command: cuia_SCREEN_ADMIN
+  86:
+    name: transport_cycle
+    command: cuia_SCREEN_AUDIO_MIXER
+  87:
+    name: transport_drop
+    command: cuia_SCREEN_SNAPSHOT
+  88:
+    name: transport_replace
+    command: cuia_SCREEN_ZS3
+  89:
+    name: transport_click
+    command: cuia_SCREEN_ALSA_MIXER
+  90:
+    name: transport_solo
+    command: cuia_SCREEN_ZYNPAD
+  91:
+    name: transport_frwd
+    command: cuia_transport_frwd
+  92:
+    name: transport_ffwd
+    command: mkc_transport_ffwd
+  93:
+    name: transport_stop
+    command: mkc_transport_stop
+  94:
+    name: transport_play
+    command: mkc_transport_play
+  95:
+    name: transport_rec
+    command: mkc_transport_rec
+  96:
+    name: arrow_up
+    command: cuia_ARROW_UP
+  97:
+    name: arrow_down
+    command: cuia_ARROW_DOWN
+  98:
+    name: arrow_left
+    command: cuia_ARROW_LEFT
+  99:
+    name: arrow_right
+    command: cuia_ARROW_RIGHT
+  100:
+    name: select
+    command: ZYNSWITCH_3
+  101:
+    name: scrub
+    command: cuia_BACK
+  104:
+    name: fadertouch_0
+    command: mkc_fadertouch_0
+  105:
+    name: fadertouch_1
+    command: mkc_fadertouch_1
+  106:
+    name: fadertouch_2
+    command: mkc_fadertouch_2
+  107:
+    name: fadertouch_3
+    command: mkc_fadertouch_3
+  108:
+    name: fadertouch_4
+    command: mkc_fadertouch_4
+  109:
+    name: fadertouch_5
+    command: mkc_fadertouch_5
+  110:
+    name: fadertouch_6
+    command: mkc_fadertouch_6
+  111:
+    name: fadertouch_7
+    command: mkc_fadertouch_7
+  112:
+    name: fadertouch_8
+    command: mkc_fadertouch_8
