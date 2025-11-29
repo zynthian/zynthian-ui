@@ -39,6 +39,10 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 # Zynthian Instrument Controller GUI Class
 # ------------------------------------------------------------------------------
 
+MIDI_LEARNING_DISABLED = 0
+MIDI_LEARNING_CHAIN = 1
+MIDI_LEARNING_GLOBAL = 2
+
 class zynthian_gui_control(zynthian_gui_selector):
 
     def __init__(self, selcap='Controllers'):
@@ -48,11 +52,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.ctrl_screens = {}
         self.zcontrollers = []
         self.zgui_controllers = []
-
-        self.modules = {}
-        self.widgets = {}
-        self.current_widget = None
-        self.widget_zctrl = None
+        self.midi_learning = MIDI_LEARNING_DISABLED
 
         self.modules = {}
         self.widgets = {}
@@ -479,7 +479,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.set_mode_control()
             return True
         # If in MIDI-learn mode, back to instrument control
-        elif self.zyngui.state_manager.midi_learn_state is not False:
+        elif self.midi_learning:
             self.exit_midi_learn()
             return True
         else:
@@ -630,13 +630,15 @@ class zynthian_gui_control(zynthian_gui_selector):
     # MIDI learn management
     # --------------------------------------------------------------------------
 
-    def enter_midi_learn(self, mode, preselect=True):
-        if mode is not False:
+    def enter_midi_learn(self, mlmode=MIDI_LEARNING_CHAIN, preselect=True):
+        if mlmode > MIDI_LEARNING_DISABLED:
+            self.midi_learning = mlmode
             self.refresh_midi_bind(preselect)
             self.set_select_path()
 
     def exit_midi_learn(self):
-        if self.zyngui.state_manager.midi_learn_state is not False:
+        if self.midi_learning != MIDI_LEARNING_DISABLED:
+            self.midi_learning = MIDI_LEARNING_DISABLED
             self.zyngui.state_manager.disable_learn_cc()
             self.refresh_midi_bind()
             self.set_select_path()

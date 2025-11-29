@@ -42,11 +42,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.index = 0
         self.chain = None
         self.chain_id = None
+        self.processor = None
 
-    def setup(self, chain_id=None):
+    def setup(self, chain_id=None, proc=None):
         self.index = 0
         self.chain = self.zyngui.chain_manager.get_chain(chain_id)
         self.chain_id = self.chain.chain_id
+        self.processor = proc
 
     def fill_list(self):
         self.list_data = []
@@ -235,6 +237,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             # We don't call setup() because it reset the list position (index)
             self.chain_id = chain_keys[index]
             self.chain = self.zyngui.chain_manager.get_chain(self.chain_id)
+            self.processor = None
             self.set_select_path()
             self.update_list()
 
@@ -248,6 +251,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             # We don't call setup() because it reset the list position (index)
             self.chain_id = chain_keys[index]
             self.chain = self.zyngui.chain_manager.get_chain(self.chain_id)
+            self.processor = None
             self.set_select_path()
             self.update_list()
 
