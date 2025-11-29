@@ -811,9 +811,7 @@ class zynthian_state_manager:
                             self.all_notes_off()
                         else:
                             if self.midi_learn_zctrl:
-                                self.chain_manager.add_midi_learn(
-                                    self.midi_learn_zctrl, self.midi_learn_state, chan, ccnum)
-                                self.disable_learn_cc()
+                                self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, izmip)
                     # Master Note CUIA with ZynSwitch emulation
                     elif evtype == 0x8 or evtype == 0x9:
                         note = str(ev[1] & 0x7F)
@@ -843,23 +841,12 @@ class zynthian_state_manager:
                     ccval = ev[2] & 0x7F
                     # logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan, ccnum, ccval))
                     if ccnum < 120:
-                        if self.midi_learn_zctrl:
-                            if ccnum in [0, 32]:
-                                # Do not learn Bank Select which may be sent with program change
-                                continue
-                            self.chain_manager.add_midi_learn(
-                                self.midi_learn_zctrl, self.midi_learn_state, chan, ccnum)
-                            self.disable_learn_cc()
-                            zynsigman.send_queued(
-                                zynsigman.S_MIDI, zynsigman.SS_MIDI_CC_LEARNED, izmip=izmip, chan=chan, num=ccnum, val=ccval)
-                        else:
-                            self.chain_manager.midi_control_change(
-                                izmip, chan, ccnum, ccval)
-                            """ This is not used so commented out but could be enabled if required.
-                            zynsigman.send_queued(
-                                zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, izmip=izmip, chan=chan, num=ccnum, val=ccval)
-                            """
-
+                        if not self.midi_learn_zctrl:
+                            self.chain_manager.midi_control_change(izmip, chan, ccnum, ccval)
+                            self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
+                            self.audio_player.midi_control_change(chan, ccnum, ccval)
+                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
+                                              izmip=izmip, chan=chan, num=ccnum, val=ccval)
                     # Special CCs >= Channel Mode
                     elif ccnum == 120:
                         self.all_sounds_off_chan(chan)
@@ -1475,11 +1462,6 @@ class zynthian_state_manager:
                     if processor.chain_id in restored_chains:
                         self.set_busy_details(f"restoring {processor.get_basepath()} state")
                         processor.set_state(proc_state)
-                        for symbol, ctrl in proc_state["controllers"].items():
-                            try:
-                                self.chain_manager.add_midi_learn(processor.controllers_dict[symbol], *ctrl["midi_cc"])
-                            except:
-                                pass
                 except Exception as e:
                     logging.error(f"Failed to restore processor {proc_id} state => {e}")
 
@@ -2002,17 +1984,16 @@ class zynthian_state_manager:
         lib_zyncore.set_midi_learning_mode(state is not False)
         self.midi_learn_state = state
 
-    def enable_learn_cc(self, zctrl, mode):
+    def enable_learn_cc(self, zctrl):
         """Enable MIDI CC learning
 
         zctrl : zctrl to learn to
-        mode: 0 for chain, 1 for global
         """
 
         self.disable_learn_pc()
         self.midi_learn_zctrl = zctrl
         self.midi_learn_zctrl.midi_cc_mode_reset()
-        self.set_midi_learn(mode)
+        self.set_midi_learn(True)
 
     def disable_learn_cc(self):
         """Disables MIDI CC learning"""

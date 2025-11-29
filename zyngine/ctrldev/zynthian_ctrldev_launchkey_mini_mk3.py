@@ -188,13 +188,13 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                     else:
                         pot = ccnum - 21
                     chain = self.chain_manager.get_chain_by_position(pot, midi=False)
-                    if chain is None or chain.mixer_chan > 16:
+                    if chain is None or chain.zynmixer_proc.mixer_chan > 16:
                         return True
                     match self.pot_mode:
                         case self.POT_MODE_VOLUME:
-                            self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
+                            self.zynmixer.set_level(chain.zynmixer_proc.mixer_chan, ccval / 127.0)
                         case self.POT_MODE_PAN:
-                            self.zynmixer.set_balance(chain.mixer_chan, 2 * ccval / 127.0 - 1)
+                            self.zynmixer.set_balance(chain.zynmixer_proc.mixer_chan, 2 * ccval / 127.0 - 1)
                         case self.POT_MODE_DEVICE:
                             # Ignore CC on MIDI channel 16 as it may trigger master channel or other unexpected action.
                             return True

@@ -288,10 +288,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def midi_learn_menu_cb(self, options, params):
         if params == 'enable_midi_learn':
-            self.zyngui.close_screen()
+            self.zyngui.replace_screen("control")
             self.zyngui.cuia_toggle_midi_learn()
         elif params == 'enable_global_midi_learn':
-            self.zyngui.close_screen()
+            self.zyngui.replace_screen("control")
             self.zyngui.cuia_toggle_midi_learn()
             self.zyngui.cuia_toggle_midi_learn()
         elif params == 'clean_proc':

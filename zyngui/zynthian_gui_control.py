@@ -668,7 +668,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 self.refresh_midi_bind(True)
             self.set_select_path()
-        elif self.zyngui.state_manager.midi_learn_state is None:
+        elif self.midi_learning == MIDI_LEARNING_GLOBAL:
             self.exit_midi_learn()
         else:
             if i is not None:
@@ -676,18 +676,21 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 self.enter_midi_learn(default_midi_learning_mode, True)
 
-        return self.zyngui.state_manager.midi_learn_state
+        return self.midi_learning
+
+    def get_midi_learn(self):
+        return self.midi_learning
 
     def zctrl_touch(self, i):
-        if self.zyngui.state_manager.midi_learn_state:
-            self.midi_learn(i, self.zyngui.state_manager.midi_learn_state)
+        if self.midi_learning:
+            self.midi_learn(i, self.midi_learning)
 
-    def midi_learn(self, i, mode):
-        if self.mode == 'control' and mode is not False:
+    def midi_learn(self, i, mlmode=MIDI_LEARNING_CHAIN):
+        if self.mode == 'control' and mlmode > MIDI_LEARNING_DISABLED:
             learn_zctrl = self.zgui_controllers[i].zctrl
             if learn_zctrl:
-                self.zyngui.state_manager.enable_learn_cc(learn_zctrl, mode)
-                self.enter_midi_learn(mode, False)
+                self.zyngui.state_manager.enable_learn_cc(learn_zctrl)
+                self.enter_midi_learn(mlmode, False)
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
         if self.midi_learning == MIDI_LEARNING_CHAIN:
@@ -705,7 +708,11 @@ class zynthian_gui_control(zynthian_gui_selector):
         val : CC value
         """
 
-        self.refresh_midi_bind(False)
+        if self.midi_learning and self.zyngui.state_manager.midi_learn_zctrl and num < 120:
+            # Handle MIDI learn for assignable CC
+            # TODO Detect CC relative mode, etc.
+            self.midi_learn_bind(izmip, chan, num)
+            self.zyngui.show_current_screen()
 
     def midi_unlearn(self, param=None):
         if param:
@@ -721,7 +728,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if engine_name:
                 question_str = f"Do you want to clean MIDI-learn for ALL controls in {engine_name}"
                 if curproc.midi_chan is not None and 0 <= curproc.midi_chan < 16:
-                    question_str += f" on MIDI channel {curproc.midi_chan + 1}"
+                    question_str += f"on MIDI channel {curproc.midi_chan + 1}"
                 self.zyngui.show_confirm(question_str + "?", self.midi_unlearn)
             else:
                 logging.error("Can't get processor name.")

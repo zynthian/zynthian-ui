@@ -1492,13 +1492,7 @@ class zynthian_chain_manager:
                     logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
-        # Handle pedal off for chain-mode
-        if cc_num in self.held_zctrls and cc_val == 0:
-            self.held_zctrls[cc_num][0] = False
-            while len(self.held_zctrls[cc_num]) > 1:
-                self.held_zctrls[cc_num].pop().midi_control_change(0)
-
-        exclude_flags = 1 << zmip
+        # Handle absolute CC binding
         try:
             key = (zmip << 16) | key_low
             zctrls = self.absolute_midi_cc_binding[key]
