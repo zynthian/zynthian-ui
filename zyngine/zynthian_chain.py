@@ -226,8 +226,11 @@ class zynthian_chain:
         elif self.chain_id == 0:
             parts.append("Main")
         elif not self.synth_slots and self.audio_thru:
-            parts.append("Audio Input " +
-                         ','.join([str(i) for i in self.audio_in]))
+            if self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
+                parts.append(f"FX Return {self.zynmixer_proc.mixer_chan}")
+            else:
+                parts.append("Audio Input " +
+                    ','.join([str(i) for i in self.audio_in]))
 
         if self.synth_slots:
             proc = self.synth_slots[0][0]

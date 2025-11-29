@@ -46,10 +46,14 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
                                 "Add Instrument Chain",
                                 ["Create a new chain with a MIDI-controlled synth engine. The chain receives MIDI input and generates audio output.",
                                 "midi_instrument.png"]))
-        self.list_data.append((self.add_audiofx_chain, 0,
+        self.list_data.append((self.add_audio_chain, 0,
                                 "Add Audio Chain",
                                 ["Create a new chain for audio FX processing. The chain receives audio input and generates audio output.",
                                 "audio.png"]))
+        self.list_data.append((self.add_audiofx_chain, 0,
+                                "Add Audio FX Loop",
+                                ["Create an effect send and return mixbus",
+                                "effects_loop.png"]))
         self.list_data.append((self.add_midifx_chain, 0,
                                "Add MIDI Chain",
                                ["Create a new chain for MIDI processing. The chain receives MIDI input and generates MIDI output.",
@@ -91,9 +95,13 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
         self.zyngui.modify_chain(
             {"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
 
-    def add_audiofx_chain(self, t='S'):
+    def add_audio_chain(self, t='S'):
         self.zyngui.modify_chain(
             {"type": "Audio Effect", "midi_thru": False, "audio_thru": True})
+
+    def add_audiofx_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True})
 
     def add_midifx_chain(self, t='S'):
         self.zyngui.modify_chain(
