@@ -118,7 +118,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
 
     def add_audiofx_chain(self, t='S'):
         self.zyngui.modify_chain(
-            {"type": "Audio Effect", "midi_thru": True, "audio_thru": True, "mixbus": True})
+            {"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True})
 
     def add_midifx_chain(self, t='S'):
         self.zyngui.modify_chain(

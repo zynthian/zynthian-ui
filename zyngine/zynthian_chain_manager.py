@@ -952,7 +952,7 @@ class zynthian_chain_manager:
                 if send < send_count:
                     # Check that processor has send control
                     if symbol not in processor.controllers_dict:
-                        processor.controllers_dict[symbol] = zynthian_controller(self, symbol, {
+                        processor.controllers_dict[symbol] = zynthian_controller(processor.engine, symbol, {
                             'name': f'send {send + 1} level',
                             'value_max': 1.0,
                             'value_default': 0.0,
@@ -960,7 +960,7 @@ class zynthian_chain_manager:
                             'processor': processor,
                             'graph_path': ["send", send]
                         })
-                        processor.controllers_dict[mode_symbol] = zynthian_controller(self, mode_symbol, {
+                        processor.controllers_dict[mode_symbol] = zynthian_controller(processor.engine, mode_symbol, {
                             'name': f'send {send + 1} mode',
                             'value_max': 1,
                             'value_default': 0,

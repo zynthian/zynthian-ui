@@ -83,7 +83,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.midi_learn, None, "MIDI Learn",
                                    ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
 
-        if self.chain_id != 0 and self.chain.zynmixer_proc and self.chain.zynmixer_proc.eng_code!="MR":
+        if self.chain_id != 0 and self.chain.audio_thru and self.chain.zynmixer_proc and self.chain.zynmixer_proc.eng_code!="MR":
             self.list_data.append((self.chain_audio_capture, None, "Audio In",
                                   ["Manage audio capture sources.", "audio_input.png"]))
 
