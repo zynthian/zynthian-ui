@@ -112,7 +112,7 @@ class zynthian_audio_recorder:
             cmd.append("--port")
             cmd.append("zynmixer_bus:output_00b")
 
-        self.filename = self.get_new_filename()
+        self.filename = self.state_manager.get_new_capture_fpath("wav")
         cmd.append(self.filename)
 
         logging.info(f"STARTING NEW AUDIO RECORD '{self.filename}'...")

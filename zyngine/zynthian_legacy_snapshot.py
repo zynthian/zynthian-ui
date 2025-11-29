@@ -29,6 +29,7 @@ from json import JSONDecoder, loads
 import base64
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
+from zyngine import zynthian_state_manager
 
 SNAPSHOT_SCHEMA_VERSION = 4
 
@@ -196,6 +197,8 @@ class zynthian_legacy_snapshot:
                                     zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), dev_ex])
                 """
 
+
+    def version_3(self):
         # Convert snapshot from schema V3 to V4
 
         # Convert binary seq to json

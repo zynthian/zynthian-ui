@@ -1243,6 +1243,9 @@ class zynthian_chain_manager:
             if "zctrls" in chain_state:
                 self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
 
+            if "zctrls" in chain_state:
+                self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
+
         self.state_manager.end_busy("set_chain_state")
 
     def restore_presets(self):
@@ -1282,10 +1285,7 @@ class zynthian_chain_manager:
         midi_chan : MIDI channel to bind (None / 0xFF to not bind to MIDI channel)
         midi_cc : CC number of CC message
         zctrl : Controller object
-        chain_id: Chain to learn or None for global
-        chan : MIDI channel to bind or None for chain learn
-        midi_cc : CC number
-        exclude_zmips : 32-bit bitwise flags of zmips to filter
+        zmip : ZMIP of absolute learn device (Optional: Default - do not learn absolute)
         """
 
         if zctrl is None:
@@ -1322,14 +1322,7 @@ class zynthian_chain_manager:
                 if zctrl not in self.absolute_midi_cc_binding[key]:
                     self.absolute_midi_cc_binding[key].append(zctrl)
             else:
-                self.chan_midi_cc_binding[key] = [zctrl]
-        else:
-            key = (chain_id << 8) | midi_cc
-            if key in self.chan_midi_cc_binding:
-                self.chain_midi_cc_binding[key].append(zctrl)
-            else:
-                self.chain_midi_cc_binding[key] = [zctrl]
-        zctrl.midi_cc_learn = [chain_id, chan, midi_cc, exclude_zmips]
+                self.absolute_midi_cc_binding[key] = [zctrl]
 
         # ZynStep mapping => MIDI chains only
         if map_zynstep and zctrl.processor and zctrl.processor.midi_chan is not None:

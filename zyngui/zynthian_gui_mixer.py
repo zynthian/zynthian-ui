@@ -247,7 +247,7 @@ class zynthian_gui_mixer_strip:
 
         # Clip Launcher Progress Bar
         self.clip_progress = self.canvas.create_rectangle(x, self.height - self.legend_height, x, self.height - self.legend_height + 4, width=0,
-                             fill=self.legend_txt_color, tags=(f"strip:{id}", f"mixer:{id}"))
+                             fill=self.legend_txt_color, tags=(f"strip:{id}", f"mixer:{id}", f"legend_strip:{id}"))
         # Balance indicator
         self.balance_left = self.canvas.create_rectangle(x, self.balance_top, self.fader_centre_x, self.balance_top + self.balance_height,
                                                     fill=self.left_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"balance:{id}", f"audio_strip:{id}"))
@@ -676,7 +676,7 @@ class zynthian_gui_mixer_strip:
         """
 
         self.chain_id = chain_id
-        self.chain = self.parent.zyngui.chain_manager.get_chain(chain_id)
+        self.chain = self.chain_manager.get_chain(chain_id)
         if self.chain is None:
             self.hide()
             self.chan = None

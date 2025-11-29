@@ -54,6 +54,11 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.current_widget = None
         self.widget_zctrl = None
 
+        self.modules = {}
+        self.widgets = {}
+        self.current_widget = None
+        self.widget_zctrl = None
+
         self.screen_info = None
         self.screen_name = None
         self.screen_type = None
