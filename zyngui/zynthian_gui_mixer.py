@@ -1148,7 +1148,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.set_visible_chains(visible_chains)
 
         self.status_tempo = self.status_canvas.create_text(
-            int(self.status_l - self.status_fs * 2), 2,
+            int(self.status_l - self.status_fs * 3.5), 2,
             anchor=tkinter.NE,
             fill=zynthian_gui_config.color_header_tx,
             font=("forkawesome", int(0.25 * self.status_h)),
@@ -1156,7 +1156,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             state=tkinter.NORMAL)
 
         self.status_timesig = self.status_canvas.create_text(
-            int(self.status_l - self.status_fs * 7), 2,
+            int(self.status_l - self.status_fs * 8.5), 2,
             anchor=tkinter.NE,
             fill=zynthian_gui_config.color_header_tx,
             font=("forkawesome", int(0.25 * self.status_h)),
