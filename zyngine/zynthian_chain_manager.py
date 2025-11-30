@@ -410,8 +410,8 @@ class zynthian_chain_manager:
         """
 
         success = True
-        for chain in list(self.chains.keys()):
-            success &= self.remove_chain(chain, stop_engines, fast_refresh=False)
+        for chain_id in list(self.chains.keys()):
+            success &= self.remove_chain(chain_id, stop_engines, fast_refresh=False)
         self.state_manager.zynseq.refresh_chan2col()
         zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
         return success
@@ -790,8 +790,7 @@ class zynthian_chain_manager:
             id += 1
         return id
 
-    def add_processor(self, chain_id, eng_code, parallel=False, slot=None, proc_id=None, post_fader=False,
-                      fast_refresh=True, eng_config=None, midi_autolearn=True):
+    def add_processor(self, chain_id, eng_code, slot=None, proc_id=None, fast_refresh=True, eng_config=None, midi_autolearn=True):
         """Add a processor to a chain
 
         chain : Chain ID

@@ -31,7 +31,7 @@ import base64
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 from zyngine import zynthian_state_manager
 
-SNAPSHOT_SCHEMA_VERSION = 4
+SNAPSHOT_SCHEMA_VERSION = 5
 
 
 class zynthian_legacy_snapshot:
