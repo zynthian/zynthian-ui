@@ -57,38 +57,31 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
+        self.cols = 8
+        self.rows = 2
         self.shift = False
+        self.pot_mode = self.POT_MODE_VOLUME    # Potentiometer mode
+        self.mixer_toggle = False               # Used to toggle mixer / launcher view
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         # Enable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
         # Set pots to volume control
-        self.pot_mode = self.POT_MODE_VOLUME # Potentiometer mode
+        self.pot_mode = self.POT_MODE_VOLUME
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 15, 9, self.pot_mode)
-        self.cols = 8
-        self.rows = 2
-        self.mixer_toggle = False # Used to toggle mixer / launcher view
+        self.mixer_toggle = False
         super().init()
-        # Register for processor tree changes
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.chain_change)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.chain_change)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.chain_change)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.chain_change)
+        # Register for zynseq updates
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.refresh)
+
 
     def end(self):
-        # Unregister from processor tree changes
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.chain_change)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.chain_change)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.chain_change)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.chain_change)
+        # Unregister for zynseq updates
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.refresh)
         super().end()
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
-
-    def chain_change(self):
-        self.light_off()
-        self.refresh()
 
     def light_off(self):
         for row in range(self.rows):
@@ -96,7 +89,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 self.pad_off(col, row)
 
     def update_seq_state(self, phrase, chan, state=None, mode=None):
-        if self.idev_out is None :
+        if self.idev_out is None:
             return
         try:
             row, col = self.zynseq.get_pad_coords(phrase, chan)
@@ -138,7 +131,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             chan = 0
             vel = 0
             logging.warning(e)
-
         lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
     def pad_off(self, col, row):

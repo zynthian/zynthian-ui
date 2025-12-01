@@ -1163,8 +1163,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             text="[1] 4/4",
             state=tkinter.NORMAL)
 
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.set_tempo)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TIMESIG, self.set_timesig)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_timesig)
 
     def set_visible_chains(self, visible_chains):
         self.fader_width = (self.width - 6) / (visible_chains + 1)

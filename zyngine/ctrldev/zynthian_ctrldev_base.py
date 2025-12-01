@@ -208,11 +208,23 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         # Register for zynseq updates
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
+        # Register for chain add/remove
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+
 
     def end(self):
+        # Unregister from processor tree changes
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         # Unregister from zynseq updates
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
+        # Light off
         self.light_off()
         super().end()
 
@@ -239,11 +251,14 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """
         if self.idev_out is None:
             return
+        self.light_off()
         for row in range(self.rows):
+            #phrase = row + self.zynseq.phrase
+            phrase = row
             for col in range(self.cols):
-                self.update_seq_state(row, col)
-            self.update_seq_state(row, zynseq.PHRASE_CHANNEL)
-
+                chan = self.zynseq.get_chan_from_col(col)
+                self.update_seq_state(phrase, chan)
+            self.update_seq_state(phrase, zynseq.PHRASE_CHANNEL)
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class

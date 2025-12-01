@@ -90,8 +90,9 @@ PHRASE_CHANNEL = 32
 SS_SEQ_PLAY_STATE = 1
 SS_SEQ_REFRESH = 2
 SS_SEQ_PROGRESS = 3
-SS_TEMPO = 4
-SS_TIMESIG = 5
+SS_SEQ_SELECT_PHRASE = 4
+SS_SEQ_TEMPO = 5
+SS_SEQ_TIMESIG = 6
 
 class zynseq(zynthian_engine):
 
@@ -207,11 +208,11 @@ class zynseq(zynthian_engine):
             tempo = self.libseq.getTempo()
             if tempo != self.zctrl_tempo.value:
                 self.zctrl_tempo.value = tempo
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=tempo)
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=tempo)
             timesig = self.libseq.getTimeSig()
             if timesig != self.timesig:
                 self.timesig = timesig
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_TIMESIG, timesig=timesig)
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, timesig=timesig)
             # Iterate state changes
             for i in range(count):
                 if self.pause_update:
@@ -357,7 +358,7 @@ class zynseq(zynthian_engine):
         if zctrl == self.zctrl_tempo:
             self.libseq.setTempo(zctrl.value)
             #self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=zctrl.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=zctrl.value)
 
     def set_midi_channel(self, chan, sequence, track, channel):
         self.libseq.setChannel(chan, sequence, track, channel)
@@ -390,13 +391,13 @@ class zynseq(zynthian_engine):
         try:
             if self.state["tempo"] != self.zctrl_tempo.value:
                 self.zctrl_tempo.value = self.state["tempo"]
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=self.zctrl_tempo.value)
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=self.zctrl_tempo.value)
         except:
             logging.warning("Failed to set tempo")
         try:
             if self.state["sig"] != self.timesig:
                 self.timesig = self.state["ig"]
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_TIMESIG, timesig=self.timesig)
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, timesig=self.timesig)
         except:
             logging.warning("Failed to set timesig")
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
@@ -461,7 +462,7 @@ class zynseq(zynthian_engine):
         if phrase == self.phrase:
             return False
         self.phrase = phrase
-        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE)
 
     def get_pad_coords(self, phrase, chan):
         """
