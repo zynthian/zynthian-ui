@@ -1455,7 +1455,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         strip = self.main_mixbus_strip
         strip.set_chain(0)
         self.chan2strip[(strip.mixer_proc.eng_code=="MR", strip.mixer_proc.mixer_chan)] = self.main_mixbus_strip
-       
+
         self.main_mixbus_strip.draw_control()
         if self.highlighted_strip and self.launcher_mode:
             self.highlighted_strip.highlight_launcher(self.zynseq.phrase)

@@ -70,7 +70,6 @@ class zynthian_chain:
         self.midi_out = []
         self.audio_in = []
         self.audio_out = []
-        self.record_audio = False
 
         self.status = ""  # Arbitary status text => THIS IS NOT USED AT ALL, RIGHT?
 
@@ -578,7 +577,7 @@ class zynthian_chain:
             procs_by_id[proc.id] = proc
         return procs_by_id
 
-    def insert_processor(self, processor, parallel=False, slot=None):
+    def insert_processor(self, processor, slot=None):
         """Insert a processor in the chain
 
         processor : processor object to insert

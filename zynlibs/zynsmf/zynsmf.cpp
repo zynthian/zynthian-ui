@@ -22,7 +22,7 @@ enum playState {
     STOPPING = 3
 };
 
-jack_client_t* g_chanJackClient           = NULL;
+jack_client_t* g_pJackClient           = NULL;
 jack_port_t* g_pMidiInputPort          = NULL;
 jack_port_t* g_pMidiOutputPort         = NULL;
 
@@ -273,7 +273,7 @@ static int onJackSamplerate(jack_nframes_t nFrames, void* args) {
 }
 
 // Handle JACK process callback
-static int onJackProcessChan(jack_nframes_t nFrames, void* notused) {
+static int onJackProcess(jack_nframes_t nFrames, void* notused) {
     static uint8_t nCommand;
     static uint8_t nData1;
     static uint8_t nData2;
@@ -286,8 +286,8 @@ static int onJackProcessChan(jack_nframes_t nFrames, void* notused) {
     static jack_position_t transport_position;
     static double dBeatsPerMinute          = 120.0;
 
-    jack_nframes_t nNow                    = jack_last_frame_time(g_chanJackClient);
-    jack_transport_state_t nTransportState = jack_transport_query(g_chanJackClient, &transport_position);
+    jack_nframes_t nNow                    = jack_last_frame_time(g_pJackClient);
+    jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
 
     // Handle change of tempo
     if (nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute && transport_position.beats_per_minute > 0) {
@@ -470,17 +470,17 @@ static int onJackProcessChan(jack_nframes_t nFrames, void* notused) {
 }
 
 void removeJackClient() {
-    if (g_chanJackClient)
-        jack_client_close(g_chanJackClient);
-    g_chanJackClient = NULL;
+    if (g_pJackClient)
+        jack_client_close(g_pJackClient);
+    g_pJackClient = NULL;
 }
 
 bool createJackClient() {
-    if (!g_chanJackClient) {
+    if (!g_pJackClient) {
         // Initialise JACK client
-        g_chanJackClient = jack_client_open("zynsmf", JackNoStartServer, NULL);
-        if (g_chanJackClient && !jack_set_process_callback(g_chanJackClient, onJackProcessChan, 0) &&
-            !jack_set_sample_rate_callback(g_chanJackClient, onJackSamplerate, 0) && !jack_activate(g_chanJackClient)) {
+        g_pJackClient = jack_client_open("zynsmf", JackNoStartServer, NULL);
+        if (g_pJackClient && !jack_set_process_callback(g_pJackClient, onJackProcess, 0) &&
+            !jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0) && !jack_activate(g_pJackClient)) {
             fprintf(stderr, "Started libzynsmf\n");
             return true;
         }
@@ -496,7 +496,7 @@ bool attachPlayer(Smf* pSmf) {
     if (!createJackClient())
         return false;
     if (!g_pMidiOutputPort)
-        g_pMidiOutputPort = jack_port_register(g_chanJackClient, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
+        g_pMidiOutputPort = jack_port_register(g_pJackClient, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
     if (!g_pMidiOutputPort) {
         removePlayer();
         DPRINTF("Failed to create JACK output port\n");
@@ -504,7 +504,7 @@ bool attachPlayer(Smf* pSmf) {
     }
     DPRINTF("Created new JACK player\n");
     g_pPlayerSmf  = pSmf;
-    g_nSamplerate = jack_get_sample_rate(g_chanJackClient);
+    g_nSamplerate = jack_get_sample_rate(g_pJackClient);
     onJackSamplerate(g_nSamplerate, 0); // Set g_dTicksPerFrame
 
     return true;
@@ -512,7 +512,7 @@ bool attachPlayer(Smf* pSmf) {
 
 void removePlayer() {
     if (g_pMidiOutputPort)
-        jack_port_unregister(g_chanJackClient, g_pMidiOutputPort);
+        jack_port_unregister(g_pJackClient, g_pMidiOutputPort);
     g_pMidiOutputPort = NULL;
     if (!g_pRecorderSmf)
         removeJackClient();
@@ -522,7 +522,7 @@ void removePlayer() {
 void setLoop(bool bLoop) { g_bLoop = bLoop; }
 
 void startPlayback() {
-    if (!g_chanJackClient)
+    if (!g_pJackClient)
         return;
     g_dPosition  = 0.0;
     g_nPlayState = STARTING;
@@ -544,7 +544,7 @@ bool attachRecorder(Smf* pSmf) {
     if (!createJackClient())
         return false;
     if (!g_pMidiInputPort)
-        g_pMidiInputPort = jack_port_register(g_chanJackClient, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+        g_pMidiInputPort = jack_port_register(g_pJackClient, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
     if (!g_pMidiInputPort) {
         removeRecorder();
         DPRINTF("Failed to create JACK input port\n");
@@ -552,14 +552,14 @@ bool attachRecorder(Smf* pSmf) {
     }
     DPRINTF("Created new JACK recorder\n");
     g_pRecorderSmf = pSmf;
-    g_nSamplerate  = jack_get_sample_rate(g_chanJackClient);
+    g_nSamplerate  = jack_get_sample_rate(g_pJackClient);
     onJackSamplerate(g_nSamplerate, 0); // Set g_dRecorderTicksPerFrame
     return true;
 }
 
 void removeRecorder() {
     if (g_pMidiInputPort)
-        jack_port_unregister(g_chanJackClient, g_pMidiInputPort);
+        jack_port_unregister(g_pJackClient, g_pMidiInputPort);
     g_pMidiInputPort = NULL;
     if (!g_pPlayerSmf)
         removeJackClient();
@@ -578,7 +578,7 @@ void startRecording() {
             g_aRecNotes[ch][note] = false;
 
     jack_position_t transport_position;
-    jack_transport_state_t nTransportState = jack_transport_query(g_chanJackClient, &transport_position);
+    jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
     double dBeatsPerMinute                 = transport_position.beats_per_minute;
     g_nMicrosecondsPerQuarterNote          = 60000000.0 / dBeatsPerMinute;
     g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
@@ -597,7 +597,7 @@ void stopRecording() {
                 uint8_t* pData     = new uint8_t[2];
                 *pData             = note;
                 *(pData + 1)       = 0;
-                uint32_t nPosition = jack_frame_time(g_chanJackClient) - g_nRecordStartPosition; // Time of event in samples since start of recording
+                uint32_t nPosition = jack_frame_time(g_pJackClient) - g_nRecordStartPosition; // Time of event in samples since start of recording
                 Event* pEvent      = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, MIDI_NOTE_OFF, 2, pData);
                 g_pRecorderSmf->addEvent(chan, pEvent); // Add event to a track based on its MIDI channel
             }

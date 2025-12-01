@@ -400,7 +400,10 @@ class zynthian_gui:
             if part2 in ("HEARTBEAT", "SETUP"):
                 if src.hostname not in self.osc_clients:
                     try:
-                        if self.state_manager.zynmixer.add_osc_client(src.hostname) < 0:
+                        if self.state_manager.zynmixer_chan.add_osc_client(src.hostname) < 0:
+                            logging.warning("Failed to add OSC client registration {}".format(src.hostname))
+                            return
+                        if self.state_manager.zynmixer_bus.add_osc_client(src.hostname) < 0:
                             logging.warning("Failed to add OSC client registration {}".format(src.hostname))
                             return
                     except:
@@ -1223,6 +1226,7 @@ class zynthian_gui:
         self.state_manager.all_sounds_off()
         sleep(0.1)
         self.state_manager.raw_all_notes_off()
+        zynautoconnect.reset_xruns()
         try:
             self.screens[self.current_screen].set_title("ALL SOUNDS OFF", None, None, 1)
         except:
@@ -1651,10 +1655,10 @@ class zynthian_gui:
             state = self.screens[self.current_screen].toggle_midi_learn()
             self.state_manager.set_midi_learn(state)
         except:
-            if self.state_manager.midi_learn_state is False:
-                self.cuia_enable_midi_learn(params)
-            else:
+            if self.state_manager.midi_learn_state:
                 self.cuia_disable_midi_learn(params)
+            else:
+                self.cuia_enable_midi_learn(params)
 
     def cuia_action_midi_unlearn(self, params=None):
         try:
@@ -1683,11 +1687,9 @@ class zynthian_gui:
 
     # Unlearn all mixer controls
     def cuia_midi_unlearn_mixer(self, params=None):
-        try:
-            #TODO: Implement unlear all mixer controls
-            pass
-        except (AttributeError, TypeError) as err:
-            logging.error(err)
+        for chain in self.chain_manager.chains.values():
+            if chain.zynmixer_proc:
+                self.chain_manager.clean_midi_learn(chain.zynmixer_proc)
 
     def cuia_midi_unlearn_node(self, params=None):
         if params:
@@ -2684,7 +2686,8 @@ class zynthian_gui:
                 if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
                     self.osc_clients.pop(client)
                     try:
-                        self.state_manager.zynmixer.remove_osc_client(client)
+                        self.state_manager.zynmixer_chan.remove_osc_client(client)
+                        self.state_manager.zynmixer_bus.remove_osc_client(client)
                     except:
                         pass
 

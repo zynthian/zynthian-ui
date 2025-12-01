@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Digital Audio Peak Meters
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2024 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 #

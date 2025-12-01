@@ -1505,8 +1505,6 @@ static void lib_exit(void) {
         remove_player(g_vPlayers.front());
     }
     fprintf(stderr, "done!\n");
-    jack_deactivate(g_jack_client);
-    jack_client_close(g_jack_client);
 }
 
 AUDIO_PLAYER* add_player() {

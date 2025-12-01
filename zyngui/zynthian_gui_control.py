@@ -147,7 +147,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not curproc:
             self.processors = []
         else:
-            if curproc.chain_id is None:
+            if curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
                 self.processors = [curproc]
             else:
                 self.processors = self.zyngui.chain_manager.get_processors(curproc.chain_id)
@@ -513,7 +513,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     #  t: Press type ["S"=Short, "B"=Bold, "L"=Long]
     #  returns True if action fully handled or False if parent action should be triggered
     def switch(self, swi, t='S'):
-        if t == 'B' and self.zyngui.state_manager.midi_learn_state is not False:
+        if t == 'B' and self.midi_learning:
             self.midi_learn_options(swi)
             return True
 
@@ -545,7 +545,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if self.mode == 'control':
                     return False
             elif t == 'B':
-                if self.zyngui.state_manager.midi_learn_state is not False:
+                if self.midi_learning and self.zyngui.state_manager.midi_learn_zctrl:
                     self.midi_unlearn_action()
                     return True
 
@@ -580,8 +580,8 @@ class zynthian_gui_control(zynthian_gui_selector):
                 pass
         if self.mode == 'control' and self.zcontrollers:
             if self.zgui_controllers[i].zynpot_cb(dval):
-                if self.zyngui.state_manager.midi_learn_state is not False:
-                    self.midi_learn(i, self.zyngui.state_manager.midi_learn_state)
+                if self.midi_learning:
+                    self.midi_learn(i, self.midi_learning)
         elif self.mode == 'select':
             super().zynpot_cb(i, dval)
 
@@ -876,7 +876,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             #self.refresh_midi_bind()
             self.midi_learn_options(param, keep_selection=True)
         elif parts[0] == "Chain":
-            self.midi_learn(param, self.zyngui.get_current_processor().chain_id)
+            self.midi_learn(param, MIDI_LEARNING_CHAIN)
         elif parts[0] == "Global":
             self.midi_learn(param, MIDI_LEARNING_GLOBAL)
         elif parts[0] == "ZynStep":
@@ -915,22 +915,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             }
             self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
             self.zyngui.show_screen('option')
-        elif option == "MIDI Devices":
-            options = {}
-            for i, device in enumerate(zynautoconnect.devices_in):
-                mask = 1 << i
-                if device:
-                    if param.midi_cc_learn[3] & mask:
-                        options[f"\u2610 {device.aliases[1]}"] = (i, param)
-                    else:
-                        options[f"\u2612 {device.aliases[1]}"] = (i, param)
-            self.zyngui.screens['option'].config(f"Select MIDI devices for ", options, self.set_cc_device, param)
-            self.zyngui.show_screen('option')
-
-    def set_cc_device(self, option, param):
-        mask = 1 << param[0]
-        param[1].midi_cc_learn[3] ^= mask
-        self.midi_learn_options_cb("MIDI Devices", param[1])
 
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])
@@ -963,8 +947,10 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_select_path(self):
         processor = self.zyngui.get_current_processor()
         if processor:
-            if self.mode == 'control' and self.zyngui.state_manager.midi_learn_state is not False:
-                if self.zyngui.state_manager.midi_learn_state is None:
+            if self.mode == 'control' and self.midi_learning:
+                if self.midi_learning == MIDI_LEARNING_CHAIN:
+                    self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")
+                elif self.midi_learning == MIDI_LEARNING_GLOBAL:
                     self.select_path.set(processor.get_basepath() + "/GLOBAL Control MIDI-Learn")
                 else:
                     self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")

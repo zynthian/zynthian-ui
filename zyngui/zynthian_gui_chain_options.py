@@ -55,7 +55,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
         synth_proc_count = self.chain.get_processor_count("Synth")
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
-        audio_proc_count = self.chain.get_processor_count("Audio Effect")
+        audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
         if self.chain.is_midi():
             self.list_data.append((self.chain_note_range, None, "Note Range & Transpose",
@@ -398,6 +398,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def remove_all_procs_cb(self, type=None):
         for processor in self.chain.get_processors(type):
+            if processor.eng_code in ["MI", "MR"]:
+                continue
             self.zyngui.chain_manager.remove_processor(
                 self.chain_id, processor)
         self.build_view()

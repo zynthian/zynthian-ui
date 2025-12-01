@@ -515,6 +515,7 @@ color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#9090ff")
 color_alt = os.environ.get('ZYNTHIAN_UI_COLOR_ALT', "#ff00ff")
 color_alt2 = os.environ.get('ZYNTHIAN_UI_COLOR_ALT2', "#ff9000")
 color_error = os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
+color_warn = os.environ.get('ZYNTHIAN_UI_COLOR_WARN', "#ff9000")
 
 # Color Scheme
 color_panel_bd = color_bg
@@ -531,6 +532,7 @@ color_status_record = color_low_on
 color_status_play_midi = color_alt
 color_status_play_seq = color_alt2
 color_status_error = color_error
+color_status_warn = color_warn
 
 # ------------------------------------------------------------------------------
 # Font Family

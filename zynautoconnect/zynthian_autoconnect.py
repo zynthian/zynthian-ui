@@ -1552,6 +1552,11 @@ def is_running():
         return thread.is_alive()
     return False
 
+def reset_xruns():
+    """Reset the xrun counter"""
+
+    global xruns
+    xruns = 0
 
 def cb_jack_xrun(delayed_usecs: float):
     """Jack xrun callback
@@ -1563,7 +1568,10 @@ def cb_jack_xrun(delayed_usecs: float):
         global xruns
         xruns += 1
         logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
-        state_manager.status_xrun = True
+        if delayed_usecs:
+            state_manager.status_xrun = 2
+        else:
+            state_manager.status_xrun = 1
 
 
 def cb_jack_property_change(subject, key, change):

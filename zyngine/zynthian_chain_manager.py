@@ -186,6 +186,7 @@ class zynthian_chain_manager:
         zmop_index : MIDI router output (Default: None)
         title : Chain title (Default: None)
         chain_pos : Position to insert chain (Default: End)
+        fast_refresh : False to trigger slow autoconnect (Default: Fast autoconnect)
         Returns : Chain ID or None if chain could not be created
         """
 
@@ -298,7 +299,7 @@ class zynthian_chain_manager:
             zmop_index = None
 
         chain_id = self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru,
-                       zmop_index=zmop_index, title=title)
+                       zmop_index=zmop_index, title=title, fast_refresh=False)
 
         # Set CC route state
         zmop_index = self.chains[chain_id].zmop_index
@@ -358,9 +359,6 @@ class zynthian_chain_manager:
                 self.remove_processor(chain_id, processor, False)
             chain.reset()
             if chain_id != 0:
-                if chain.is_audio():
-                    #TODO: Disable audio_recorder.arm
-                    pass
                 self.chains.pop(chain_id)
                 del chain
                 if chain_id in self.ordered_chain_ids:
@@ -495,7 +493,6 @@ class zynthian_chain_manager:
     def get_chain_id_by_mixer_chan(self, chan):
         """Get a chain by the mixer channel"""
 
-        #TODO: This needs refactoring to handle mixbus
         for chain_id, chain in self.chains.items():
             if chain.mixer_proc and chain.mixer_proc.mixer_chan == chan:
                 return chain_id

@@ -277,13 +277,14 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         self.light_off()
         super().end()
 
-    def update_mixer_strip(self, chan, mixbus, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         """Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.
         *SHOULD* be implemented by child class
 
         chan - Mixer strip index
         symbol - Control name
         value - Control value
+        mixbus - True for mixbus mixer. False for chain mixer. (Default: False)
         """
         logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
 
@@ -295,78 +296,60 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         """
         logging.debug(f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
 
-    def set_mixer_level(self, pos, value):
-        """Set chain level (fader)
+    def set_mixer_param(self, param, pos, value):
+        """Set a mixer parameter value
 
-        pos - Chain display position
-        value - Fader/level value
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
+        value - Parameter value
         """
-        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
         if chain:
-            chain.zynmixer_proc.controllers_dict["level"].set_value(value)
+            try:
+                chain.zynmixer_proc.controllers_dict[param].set_value(value)
+            except:
+                logging.warning(f"Failed to set {param} to {value}")
 
-    def set_mixer_balance(self, pos, value):
-        """Set chain balance/pan
+    def get_mixer_param(self, param, pos):
+        """Get a mixer parameter value
 
-        pos - Index of chain display position
-        value - Balance/pan value
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
+        Returns - Parameter value
         """
-        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
-        if chain:
-            chain.zynmixer_proc.controllers_dict["balance"].set_value(value)
 
-    def toggle_mixer_mute(self, pos):
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            try:
+                return chain.zynmixer_proc.controllers_dict[param].get_value()
+            except:
+                logging.warning(f"Failed to get {param}")
+        return 0
+
+    def toggle_mixer_param(self, param, pos):
         """Toggle chain mute
 
-        pos - Chain display position
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
         return - mute state
         """
-        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
         if chain:
-            chain.zynmixer_proc.controllers_dict["mute"].toggle()
-            return chain.zynmixer_proc.controllers_dict["mute"].value
+            try:
+                chain.zynmixer_proc.controllers_dict[param].toggle()
+                return chain.zynmixer_proc.controllers_dict[param].value
+            except:
+                logging.warning(f"Failed to toggle {param}")
         return 0
-
-    def toggle_mixer_solo(self, pos):
-        """Toggle chain solo
-
-        pos - Chain display position
-        return - solo state
-        """
-        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
-        if chain:
-            chain.zynmixer_proc.controllers_dict["solo"].toggle()
-            return chain.zynmixer_proc.controllers_dict["solo"].value
-        return 0
-
-    def set_main_mixer_level(self, value):
-        """Set the mixer level for the main mix chain
-
-        value - Fader/level value
-        """
-        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(value)
-
-    def set_main_mixer_balance(self, value):
-        """Set the mixer balance/pan for the main mix chain
-
-        value - Balance/pan value
-        """
-        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["balance"].set_value(value)
-
-    def toggle_main_mixer_mute(self):
-        """Toggle mute for main mix chain
-
-        return - mute state
-        """
-        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["mute"].toggle()
-        return self.chain_manager.chains[0].zynmixer_proc.controllers_dict["mute"].value
-
-    def toggle_main_mixer_solo(self):
-        """Toggle solo for main mix chain
-
-        return - solo state
-        """
-        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["solo"].toggle()
-        return self.chain_manager.chains[0].zynmixer_proc.controllers_dict["solo"].value
 
 # --------------------------------------------------------------------------

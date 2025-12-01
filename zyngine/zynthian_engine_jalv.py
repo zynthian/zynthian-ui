@@ -922,14 +922,6 @@ class zynthian_engine_jalv(zynthian_engine):
                     "display_priority": 0
                 })
 
-        # Sort by suggested display_priority
-        new_index = sorted(zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
-        zctrls = {k: zctrls[k] for k in new_index}
-
-        # Sort by suggested display_priority => This is done in zynthian_engine!
-        #new_index = sorted(zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
-        #zctrls = {k: zctrls[k] for k in new_index}
-
         return zctrls
 
     def get_monitors_dict(self):

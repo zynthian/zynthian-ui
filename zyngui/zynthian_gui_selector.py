@@ -499,7 +499,4 @@ class zynthian_gui_selector(zynthian_gui_base):
                 elif dts >= zynthian_gui_config.zynswitch_long_seconds:
                     self.zyngui.zynswitch_defered('L', 2)
 
-    def cb_listbox_click(self, t):
-        self.zyngui.zynswitch_defered(t, 3)
-
 # ------------------------------------------------------------------------------

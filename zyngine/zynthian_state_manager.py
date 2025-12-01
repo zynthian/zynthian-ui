@@ -50,7 +50,6 @@ from zynlibs.zynmixer import zynmixer
 from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine import zynthian_legacy_snapshot
 from zyngine.zynthian_legacy_snapshot import zynthian_legacy_snapshot, SNAPSHOT_SCHEMA_VERSION
 from zyngine import zynthian_midi_filter
 
@@ -122,7 +121,7 @@ class zynthian_state_manager:
         self.last_event_ts = monotonic()
 
         # Status
-        self.status_xrun = False
+        self.status_xrun = 0
         self.status_undervoltage = False
         self.overtemp_warning = 75  # Temperature limit before warning overtemperature
         self.status_overtemp = False
@@ -634,10 +633,10 @@ class zynthian_state_manager:
 
                 # Clean some status flags
                 if xruns_status:
-                    self.status_xrun = False
-                    xruns_status = False
+                    self.status_xrun = 0
+                    xruns_status = 0
                 if self.status_xrun:
-                    xruns_status = True
+                    xruns_status = self.status_xrun
 
                 if midi_status:
                     self.status_midi = False
@@ -858,15 +857,13 @@ class zynthian_state_manager:
                     pgm = ev[1] & 0x7F
                     logging.info(f"MIDI PROGRAM CHANGE: CH#{chan}, PRG#{pgm}")
                     # MIDI learn SubSnapShot (ZS3)
-                    send_signal = False
                     if self.midi_learn_pc is not None:
                         # When using internal PC, ignore MIDI channel
                         if izmip == 0xFF:
                             self.save_zs3(f"*/{pgm}")
                         else:
                             self.save_zs3(f"{chan}/{pgm}")
-                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC_LEARNED,
-                                              izmip=izmip, chan=chan, num=pgm)
+                        send_signal = True
                     else:
                         # select SubSnapShot (ZS3)
                         if zynthian_gui_config.midi_prog_change_zs3:
@@ -962,7 +959,6 @@ class zynthian_state_manager:
             'schema_version': SNAPSHOT_SCHEMA_VERSION,
             'last_snapshot_fpath': self.last_snapshot_fpath,
             'midi_profile_state': self.get_midi_profile_state(),
-            "midi": self.get_midi_state(),
             'chains': self.chain_manager.get_state(),
             'zs3': self.zs3,
             'last_zs3_id': self.last_zs3_id
@@ -1981,7 +1977,7 @@ class zynthian_state_manager:
         state : True to enable MIDI learn
         """
 
-        lib_zyncore.set_midi_learning_mode(state is not False)
+        lib_zyncore.set_midi_learning_mode(state)
         self.midi_learn_state = state
 
     def enable_learn_cc(self, zctrl):
@@ -2105,6 +2101,7 @@ class zynthian_state_manager:
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]
+        midi_profile_state["port_names"] = zynautoconnect.get_port_friendly_names()
         return midi_profile_state
 
     def set_midi_profile_state(self, state):
@@ -2131,28 +2128,6 @@ class zynthian_state_manager:
         """Clear MIDI profiles"""
 
         self.reload_midi_config()
-
-    def get_midi_state(self):
-        state = {
-            "midi_capture": {},
-            "midi_playback": {}
-        }
-        for i, device in enumerate(zynautoconnect.devices_in):
-            if device is None:
-                continue
-            state["midi_capture"][i] = {
-                "uid": device.aliases[0],
-                "name": device.aliases[1]
-            }
-        state["midi_playback"] = {}
-        for i, device in enumerate(zynautoconnect.devices_out):
-            if device is None:
-                continue
-            state["midi_playback"][i] = {
-                "uid": device.aliases[0],
-                "name": device.aliases[1]
-            }
-        return state
 
     # ---------------------------------------------------------------------------
     # Global Audio Player

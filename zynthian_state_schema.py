@@ -47,20 +47,9 @@ ZynthianState = {
         "MASTER_PROGRAM_CHANGE_TYPE": "Custom",
         "PLAY_LOOP": "0",
         "FILTER_OUTPUT": "0",
-    },
-    "midi": { # Dictionary of global MIDI configuration
-        "midi_capture": { # Dictionary of MIDI capture ports, indexed by zmip
-            "0": {
-                "uid": "USB-1.1.1 CH345 MIDI IN", # UID of port
-                "name": "VZ-1 IN", # Friendly name
-            }, # ... More ports
-        },
-        "midi_playback": { # Dictionary of MIDI playback ports, indexed by zmop
-            "0": {
-                "uid": "USB-1.1.1 CH345 MIDI OUT", # UID of port
-                "name": "VZ-1 OUT", # Friendly name
-            }, # ... More ports
-        },
+        "port_names": {  # Dictionary of MIDI port friendly names indexed by port uid
+            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",  # Friendly name mapped by uid
+        } # ... More ports
     },
     "chains": {  # Dictionary of chains indexed by chain id
         "1": {  # Chain 1
@@ -89,15 +78,15 @@ ZynthianState = {
                     "preset_info": None,  # Preset id
                     "controllers": {  # Dictionary of controllers (optional, overrides preset default value)
                         "volume": {  # Indexed by controller symbol
-                            "value": 96,  # Optional controller value
-                            "midi_cc": [None, 0, 7, 0], # Optional MIDI CC binding: [chain, chan, cc, zmip_exclude_flags] chain=None for global
-                            "midi_cc_momentary_switch": 1, # Optional switch momentary mode
-                            "midi_cc_debounce": 1 # Optional debounce toggle controls
+                            "value": 96,  # Controller value
+                            "midi_cc_momentary_switch": 1, # Optional momentary toggle
+                            "midi_cc_debounce": 1 # Optional toggle debounce
+                        },
                         } # ... More controllers
                     }, # ... Other parameters
                 } # ... Other controllers
             }, # ... Other processors
-            "chains": {  # Dictionary of chain specific ZS3 config indexed by chain ID
+            "chains": {  # Dictionary of chain specific ZS3 config indexed by chain id
                 "01": {  # Chain 01
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"],# List of chain jack MIDI output destinations (may include aliases)
@@ -111,12 +100,19 @@ ZynthianState = {
                     "transpose_semitone": 0,  # Semitones to transpose chain MIDI
                 },
             }, # ... Other chains
-            "midi_capture": {  # Dictionary of midi input configuration mapped by uid
+            "midi_capture": {  # Dictionary of midi input configuration mapped by port input uid
                 "'ttymidi:MIDI_in'": {
                     "zmip_input_mode": 1, # 1 if active chain mode enabled (stage mode), 0 for multitimbral
                     "disable_ctrldev": 0,  # 1 to disable loading of controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # List of audio inputs, e.g. for aubio (optional)
+                    "midi_cc": {  # Map of MIDI CC mapping, indexed by MIDI channel
+                        "0": {  # Map of controls, indexed by CC number
+                            "121": [  # List of controller configs
+                                [1, "volume"], # Controller config [proc_id, symbol]
+                            ], # ... Other controllers
+                        }, # ... Other CCs
+                    } # ... Other MIDI channels
                 }, # ... Other devices
             },
             "global": {  # Dictionary of global params settable by zs3 indexed by param name

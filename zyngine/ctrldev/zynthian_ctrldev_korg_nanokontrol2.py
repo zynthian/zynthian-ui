@@ -203,7 +203,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 self.idev_out, self.midi_chan, self.transport_play_ccnum, 0)
 
     # Update LED status for a single strip
-    def update_mixer_strip(self, chan, mixbus, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus):
         if self.idev_out is None:
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
@@ -383,9 +383,9 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if ccval > 0:
                     col = self.mute_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        result = self.toggle_main_mixer_mute()
+                        result = self.toggle_main_mixer_param("mute", -1)
                     else:
-                        result = self.toggle_mixer_mute(col)
+                        result = self.toggle_mixer_param("mute", col)
                     # Send LED feedback
                     if self.idev_out is not None:
                         lib_zyncore.dev_send_ccontrol_change(
@@ -395,9 +395,9 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if ccval > 0:
                     col = self.solo_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        result = self.toggle_main_mixer_solo()
+                        result = self.toggle_main_mixer_param("solo", -1)
                     else:
-                        result = self.toggle_mixer_solo(col)
+                        result = self.toggle_mixer_param("solo", col)
                     # Send LED feedback
                     if self.idev_out is not None:
                         lib_zyncore.dev_send_ccontrol_change(
@@ -452,7 +452,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                         return False
                 # else, use knobs to control chain's balance
                 else:
-                    self.set_mixer_balance(col, 2.0 * ccval/127.0 - 1.0)
+                    self.set_mixer_parma("balance", col, 2.0 * ccval/127.0 - 1.0)
                 return True
         # SysEx
         elif ev[0] == 0xF0:

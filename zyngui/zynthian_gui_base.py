@@ -661,8 +661,12 @@ class zynthian_gui_base(tkinter.Frame):
             # Display error flags
             flags = ""
             color = zynthian_gui_config.color_status_error
-            if self.zyngui.state_manager.status_xrun:
+            if self.zyngui.state_manager.status_xrun == 2:
                 color = zynthian_gui_config.color_status_error
+                # flags = "\uf00d"
+                flags = "\uf071"
+            elif self.zyngui.state_manager.status_xrun == 1:
+                color = zynthian_gui_config.color_status_warn
                 # flags = "\uf00d"
                 flags = "\uf071"
             elif self.zyngui.state_manager.status_undervoltage:
