@@ -1213,7 +1213,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # TODO: Update mixer layout
 
     def set_tempo(self, tempo):
-        self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_ml, text=f"{tempo} bpm")
+        self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_ml, text=f"{tempo:.1f} bpm")
         Timer(0.6, self.clear_tempo_highlight).start()
 
     def clear_tempo_highlight(self):
