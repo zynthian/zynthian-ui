@@ -135,15 +135,17 @@ class zynthian_engine_clippy(zynthian_engine):
             self.set_mode(note - 1, zctrl.processor.midi_chan, zctrl.value)
         elif zctrl.symbol.startswith("crop_start"):
             zctrl_crop_end = zctrl.processor.controllers_dict[zctrl.symbol.replace("start", "end")]
-            zctrl_crop_end.value_min = zctrl.value
-            zctrl_crop_end.value_range = zctrl_crop_end.value_max - zctrl_crop_end.value_min
+            if zctrl.value >= zctrl_crop_end.value:
+                zctrl.set_value(zctrl.crop_end.value - 1)
+                return
             self.monitors_dict["crop_start"] = zctrl.value
             self.start_crop_timer(zctrl.processor, note)
             return
         elif zctrl.symbol.startswith("crop_end"):
             zctrl_crop_start = zctrl.processor.controllers_dict[zctrl.symbol.replace("end", "start")]
-            zctrl_crop_start.value_max = zctrl.value
-            zctrl_crop_start.value_range = zctrl_crop_start.value
+            if zctrl.value <= zctrl_crop_start.value:
+                zctrl.set_value(zctrl_crop_start.value + 1)
+                return
             self.monitors_dict["crop_end"] = zctrl.value
             self.start_crop_timer(zctrl.processor, note)
             return
