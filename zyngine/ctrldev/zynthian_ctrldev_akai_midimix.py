@@ -120,9 +120,9 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
         for i in range(0, 8):
             chain = self.chain_manager.get_chain_by_index(col0 + i)
 
-            if chain and chain.mixer_chan is not None:
-                mute = self.zynmixer.get_mute(chain.mixer_chan)
-                solo = self.zynmixer.get_solo(chain.mixer_chan)
+            if chain and chain.zynmixer_proc.mixer_chan is not None:
+                mute = chain.zynmixer_proc.get_mute(chain.zynmixer_proc.mixer_chan)
+                solo = chain.is_solo()
             else:
                 chain = None
                 mute = 0
@@ -134,9 +134,9 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                 else:
                     rec = 0
             else:
-                if chain and chain.mixer_chan is not None:
+                if chain and chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan is not None:
                     rec = self.state_manager.audio_recorder.is_armed(
-                        chain.mixer_chan)
+                        chain.zynmixer_proc.mixer_chan)
                 else:
                     rec = 0
 
@@ -191,15 +191,13 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                 mixer_chan = self.get_mixer_chan_from_device_col(
                     self.solo_notes.index(note))
                 if mixer_chan is not None:
-                    if self.zynmixer.get_solo(mixer_chan):
-                        val = 0
-                    else:
-                        val = 1
-                    self.zynmixer.set_solo(mixer_chan, val, True)
+                    chain = self.chain_manager.get_chain_id_by_mixer_chan(mixer_chan)
+                    if chain is not None:
+                        chain.toggle_solo()
                     # Send LED feedback
                     if self.idev_out is not None:
                         lib_zyncore.dev_send_note_on(
-                            self.idev_out, 0, note, val)
+                            self.idev_out, 0, note, chain.is_solo())
                 elif self.idev_out is not None:
                     # If not associated mixer channel, turn-off the led
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
@@ -230,7 +228,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if ccnum == self.master_ccnum:
-                self.zynmixer.set_level(255, ccval / 127.0)
+                self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(ccval / 127.0)
                 return True
             elif ccnum in self.faders_ccnum:
                 mixer_chan = self.get_mixer_chan_from_device_col(

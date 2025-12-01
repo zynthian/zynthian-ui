@@ -36,6 +36,7 @@ mp.set_start_method('fork')
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
+from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 from zynlibs.zynseq import zynseq
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -268,7 +269,8 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     dev_zynmixer = True		# Can act as a zynmixer trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self.zynmixer = state_manager.zynmixer
+        self.zynmixer = state_manager.zynmixer_chan
+        self.zynmixer_bus = state_manager.zynmixer_bus
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
@@ -278,7 +280,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         zynsigman.register_queued(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         zynsigman.register_queued(
-            zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+            zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
 
     def end(self):
         zynsigman.unregister(
@@ -286,17 +288,18 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         zynsigman.unregister(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         zynsigman.unregister(
-            zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+            zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
         self.light_off()
         super().end()
 
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         """Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.
         *SHOULD* be implemented by child class
 
         chan - Mixer strip index
         symbol - Control name
         value - Control value
+        mixbus - True for mixbus mixer. False for chain mixer. (Default: False)
         """
         logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
 
@@ -308,5 +311,60 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         """
         logging.debug(f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
 
+    def set_mixer_param(self, param, pos, value):
+        """Set a mixer parameter value
+
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
+        value - Parameter value
+        """
+
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            try:
+                chain.zynmixer_proc.controllers_dict[param].set_value(value)
+            except:
+                logging.warning(f"Failed to set {param} to {value}")
+
+    def get_mixer_param(self, param, pos):
+        """Get a mixer parameter value
+
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
+        Returns - Parameter value
+        """
+
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            try:
+                return chain.zynmixer_proc.controllers_dict[param].get_value()
+            except:
+                logging.warning(f"Failed to get {param}")
+        return 0
+
+    def toggle_mixer_param(self, param, pos):
+        """Toggle chain mute
+
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
+        return - mute state
+        """
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            try:
+                chain.zynmixer_proc.controllers_dict[param].toggle()
+                return chain.zynmixer_proc.controllers_dict[param].value
+            except:
+                logging.warning(f"Failed to toggle {param}")
+        return 0
 
 # --------------------------------------------------------------------------

@@ -324,7 +324,6 @@ class zynthian_engine_aeolus(zynthian_engine):
                 chain = chain_manager.get_chain(chain_id)
                 if proc_i:
                     chain.audio_out = []
-                    chain.mixer_chan = None
                 processor.refresh_controllers()
                 proc_i += 1
 

@@ -654,7 +654,7 @@ class MixerHandler(ModeHandlerBase):
             def set_value(c, v): return self._zynmixer.set_mute(c, v, True)
         elif type == "solo":
             value = ccval < 64
-            def set_value(c, v): return self._zynmixer.set_solo(c, v, True)
+            def set_value(c, v): return chain.set_solo(v)
         elif type == "select":
             return self._chain_manager.set_active_chain_by_id(chain.chain_id)
         else:

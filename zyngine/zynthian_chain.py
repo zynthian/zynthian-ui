@@ -4,7 +4,7 @@
 #
 # zynthian chain
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -28,11 +28,8 @@ import logging
 
 # Zynthian specific modules
 import zynautoconnect
+from zyngine.zynthian_processor import zynthian_processor
 from zyncoder.zyncore import lib_zyncore
-
-CHAIN_MODE_SERIES = 0
-CHAIN_MODE_PARALLEL = 1
-
 
 class zynthian_chain:
 
@@ -61,15 +58,14 @@ class zynthian_chain:
         # Synth/generator/special slots (should be single slot)
         self.synth_slots = []
         self.audio_slots = []  # Audio subchain (list of lists of processors)
-        self.fader_pos = 0  # Position of fader in audio effects chain
 
         self.chain_id = chain_id  # Chain's ID
         # Chain's MIDI channel - None for purely audio chain, 0xffff for *All Chains*
         self.midi_chan = midi_chan
-        self.mixer_chan = None
         self.zmop_index = None
         self.midi_thru = midi_thru  # True to pass MIDI if chain empty
         self.audio_thru = audio_thru  # True to pass audio if chain empty
+        self.zynmixer_proc = None # zynmixer (MI/MR) processor
         self.midi_in = []
         self.midi_out = []
         self.audio_in = []
@@ -101,7 +97,10 @@ class zynthian_chain:
             self.audio_thru = True
         else:
             self.title = ""
-            self.audio_in = [1, 2]
+            if self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
+                self.audio_in = [] # We don't want any direct audio input connections to buses
+            elif self.audio_thru:
+                self.audio_in = [1, 2] # Default is to route first 2 audio inputs to audio chains
             self.audio_out = [0]
 
         if self.is_midi():
@@ -110,8 +109,12 @@ class zynthian_chain:
         self.free_zmop()
         self.midi_out = []
 
-        self.current_processor = None
-        self.remove_all_processors()
+        try:
+            self.current_processor = self.audio_slots[0][0]
+            self.current_processor.reset()
+        except:
+            self.current_processor = None
+        self.rebuild_graph()
 
     def get_slots_by_type(self, type):
         """Get the list of slots
@@ -139,15 +142,6 @@ class zynthian_chain:
     # ----------------------------------------------------------------------------
     # Chain Management
     # ----------------------------------------------------------------------------
-
-    def set_mixer_chan(self, chan):
-        """Set chain mixer channel
-
-        chan : Mixer channel 0..Max Channels or None
-        """
-
-        self.mixer_chan = chan
-        self.rebuild_audio_graph()
 
     def set_zmop_options(self):
         if self.zmop_index is not None and len(self.synth_slots) > 0:
@@ -232,8 +226,11 @@ class zynthian_chain:
         elif self.chain_id == 0:
             parts.append("Main")
         elif not self.synth_slots and self.audio_thru:
-            parts.append("Audio Input " +
-                         ','.join([str(i) for i in self.audio_in]))
+            if self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
+                parts.append(f"Effect Return {self.zynmixer_proc.mixer_chan}")
+            else:
+                parts.append("Audio Input " +
+                    ','.join([str(i) for i in self.audio_in]))
 
         if self.synth_slots:
             proc = self.synth_slots[0][0]
@@ -257,13 +254,14 @@ class zynthian_chain:
                     parts.append(preset_name)
 
         if not parts:
-            if self.is_audio():
-                if self.is_midi():
-                    chain_type = "Synth"
-                else:
-                    chain_type = "Audio"
+            if self.synth_slots:
+                chain_type = "Synth"
+            elif self.is_audio():
+                chain_type = "Audio"
             elif self.is_midi():
                 chain_type = "MIDI"
+            else:
+                chain_type = "Chain"
             parts.append(f"{chain_type} Chain {self.chain_id}")
 
         return parts
@@ -299,32 +297,33 @@ class zynthian_chain:
             return
 
         self.audio_routes = {}
-        # Add effects chain routes
-        for i, slot in enumerate(self.audio_slots):
+        # Add audio effects chain routes
+        first_slot_sources = []
+        if self.synth_slots:
+            for proc in self.synth_slots[-1]:
+                first_slot_sources.append(proc.get_jackname())
+        elif self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
+            for am_slot in self.audio_slots:
+                if am_slot[0].eng_code in ("MI", "MR"):
+                    first_slot_sources = [f"zynmixer_chan:send_{am_slot[0].mixer_chan:02d}"]
+                    break
+        elif self.audio_thru:
+            first_slot_sources = self.get_input_pairs()
+        prev_slot_sources = first_slot_sources
+
+        for slot in self.audio_slots:
+            sources = []
             for processor in slot:
-                sources = []
-                if i < self.fader_pos:
-                    if i == 0:
-                        # First slot fed from synth or chain input
-                        if self.synth_slots:
-                            for proc in self.synth_slots[-1]:
-                                sources.append(proc.get_jackname())
-                        elif self.audio_thru:
-                            sources = self.get_input_pairs()
-                        self.audio_routes[processor.get_jackname()] = sources
-                    else:
-                        for prev_proc in self.audio_slots[i - 1]:
-                            sources.append(prev_proc.get_jackname())
-                        self.audio_routes[processor.get_jackname()] = sources
-                else:
-                    # Post fader
-                    if i == self.fader_pos:
-                        self.audio_routes[processor.get_jackname()] = [
-                            f"zynmixer:output_{self.mixer_chan + 1:02d}"]
-                    else:
-                        for prev_proc in self.audio_slots[i - 1]:
-                            sources.append(prev_proc.get_jackname())
-                        self.audio_routes[processor.get_jackname()] = sources
+                jackname = processor.get_jackname()
+                if jackname.startswith("zynmixer"):
+                    jackname += f":output_{processor.mixer_chan:02d}"
+                sources.append(jackname)
+            if sources:
+                for jackname in sources:
+                    if jackname.startswith("zynmixer"):
+                        jackname = jackname.replace("output_", "input_")
+                    self.audio_routes[jackname] = prev_slot_sources.copy()
+                prev_slot_sources = sources
 
         # Add special processor inputs
         if self.is_synth():
@@ -333,37 +332,11 @@ class zynthian_chain:
                 sources = self.get_input_pairs()
                 self.audio_routes[processor.get_jackname()] = sources
 
-        if self.mixer_chan is not None:
-            mixer_source = []
-            if self.fader_pos:
-                # Routing from last audio processor
-                for source in self.audio_slots[self.fader_pos - 1]:
-                    mixer_source.append(source.get_jackname())
-            elif self.synth_slots:
-                # Routing from synth processor
-                for proc in self.synth_slots[0]:
-                    mixer_source.append(proc.get_jackname())
-            elif self.audio_thru:
-                # Routing from capture ports or main chain
-                mixer_source = self.get_input_pairs()
-            # Connect end of pre-fader chain
-            self.audio_routes[f"zynmixer:input_{self.mixer_chan + 1:02d}"] = mixer_source
+        # Connect end of chain
+        # Use end of post fader chain
 
-            # Connect end of post-fader chain
-            if self.fader_pos < len(self.audio_slots):
-                # Use end of post fader chain
-                slot = self.audio_slots[-1]
-                sources = []
-                for processor in slot:
-                    sources.append(processor.get_jackname())
-            else:
-                # Use mixer channel output
-                # if self.mixer_chan < 16: #TODO: Get main mixbus channel from zynmixer
-                #    sources = [] # Do not route - zynmixer will normalise outputs to main mix bus
-                # else:
-                sources = [f"zynmixer:output_{self.mixer_chan + 1:02d}"]
-            for output in self.get_audio_out():
-                self.audio_routes[output] = sources.copy()
+        for output in self.get_audio_out():
+            self.audio_routes[output] = prev_slot_sources.copy()
 
         zynautoconnect.release_lock()
 
@@ -424,8 +397,8 @@ class zynthian_chain:
         # MIDI inputs but it is probably as simple to let autoconnect deal with that.
         for slot in self.audio_slots:
             for proc in slot:
-                self.midi_routes[proc.engine.jackname] = sources
-
+                if proc.eng_code not in ["MI", "MR"]:
+                    self.midi_routes[proc.engine.jackname] = sources
         zynautoconnect.release_lock()
 
     def rebuild_graph(self):
@@ -438,16 +411,6 @@ class zynthian_chain:
         """Get list of audio playback port names"""
 
         return self.audio_out.copy()
-        audio_out = []
-        for output in self.audio_out:
-            if output == 0:
-                if self.mixer_chan < 17:
-                    audio_out.append("zynmixer:input_18")
-                else:
-                    audio_out.append("system:playback_[1,2]$")
-            else:
-                audio_out.append(output)
-        return audio_out
 
     def toggle_audio_out(self, out):
         """Toggle chain audio output
@@ -500,7 +463,7 @@ class zynthian_chain:
     def is_audio(self):
         """Returns True if chain is processes audio"""
 
-        return self.mixer_chan is not None
+        return self.zynmixer_proc is not None
 
     def is_midi(self):
         """Returns True if chain processes MIDI"""
@@ -511,6 +474,24 @@ class zynthian_chain:
         """Returns True if chain contains synth processor"""
 
         return len(self.synth_slots) != 0
+
+    def is_solo(self):
+        """Returns True if chain is audio and solo in zynmixer"""
+        return zynautoconnect.is_solo(self.chain_id)
+
+    def set_solo(self, value):
+        """Sets solo state in zynmixer, if audio chain"""
+        try:
+            self.zynmixer_proc.controllers_dict["solo"].set_value(value)
+        except:
+            pass
+
+    def toggle_solo(self):
+        """Toggles solo state in zynmixer, if audio chain"""
+        try:
+            self.zynmixer_proc.controllers_dict["solo"].toggle()
+        except:
+            pass
 
     # ---------------------------------------------------------------------------
     # Processor management
@@ -529,10 +510,6 @@ class zynthian_chain:
             return len(self.midi_slots)
         elif type == "Audio Effect":
             return len(self.audio_slots)
-        elif type == "Pre Fader":
-            return self.fader_pos
-        elif type == "Post Fader":
-            return len(self.audio_slots) - self.fader_pos
         elif type == "MIDI Synth":
             return len(self.synth_slots)
         else:
@@ -601,32 +578,46 @@ class zynthian_chain:
             procs_by_id[proc.id] = proc
         return procs_by_id
 
-    def insert_processor(self, processor, parallel=False, slot=None):
+    def insert_processor(self, processor, slot=None):
         """Insert a processor in the chain
 
         processor : processor object to insert
-        parallel : True to add in parallel (same slot) else create new slot (Default: series)
-        slot : Position (slot) to insert within subchain (Default: End of chain)
-        Returns : True if processor added to chain
+        slot : Position (slot) to insert within subchain (Default: new slot at end of subchain, pre-fader)
         """
 
         slots = self.get_slots_by_type(processor.type)
         if len(slots) == 0:
+            # Chain is empty so create a new slot for the processor
             slots.append([processor])
         else:
-            if slot is None or slot < 0 or slot > len(slots):
-                slot = len(slots) - 1
-            if parallel:
-                slots[slot].append(processor)
+            if slot is None:
+                # Add processor to a new slot at end of subchain
+                if processor.type == "Audio Effect" and slots[-1][0].eng_code in ("MI", "MR"):
+                        # Audio subchain with no post-fader effects so insert pre-fader
+                        slots.insert(-1, [processor])
+                else:
+                    slots.append([processor])
+            elif slot < 0:
+                # Invalid slot so insert at start of chain
+                slots.insert(0, [processor])
+            elif slot >= len(slots):
+                # Invalid slot so append to end of chain
+                slots.append([processor])
             else:
-                slots.insert(slot + 1, [processor])
+                # Check if this is a mixer slot
+                try:
+                    if slots[slot][0].eng_code in ("MI", "MR"):
+                        slots.insert(slot, [])
+                except:
+                    pass
+                # Add parallel processor to existing slot
+                slots[slot].append(processor)
 
         processor.set_chain(self)
         processor.set_midi_chan(self.midi_chan)
 
         self.set_zmop_options()
         self.current_processor = processor
-        return True
 
     def replace_processor(self, old_processor, new_processor):
         """Replace a processor within a chain
@@ -658,6 +649,9 @@ class zynthian_chain:
         Returns : True on success
         """
 
+        if self.chain_id == 0 and processor.eng_code == "MR":
+            return False
+
         slot = self.get_slot(processor)
         if slot is None:
             logging.error("processor is not in chain!")
@@ -669,8 +663,6 @@ class zynthian_chain:
         slots[slot].remove(processor)
         if len(slots[slot]) == 0:
             slots.pop(slot)
-            if processor.type == "Audio Effect" and slot < self.fader_pos:
-                self.fader_pos -= 1
 
         processor.set_chain(None)
         if processor.engine:
@@ -710,37 +702,43 @@ class zynthian_chain:
             slots = self.get_slots_by_type(processor.type)
             cur_slot = self.get_slot(processor)
             parallel = len(slots[cur_slot]) > 1
-            is_audio = processor.type == "Audio Effect"
+            is_mixer_strip = processor.eng_code in ("MI", "MR")
+
             if up:
-                if parallel:
+                if not parallel and cur_slot == 0:
+                    return False
+                if is_mixer_strip:
+                    slots.pop(cur_slot)
+                    slots.insert(cur_slot - 1, [processor])
+                elif parallel:
                     slots[cur_slot].remove(processor)
-                    slots.insert(cur_slot, [processor])
-                    if is_audio and cur_slot < self.fader_pos:
-                        self.fader_pos += 1
-                elif is_audio and cur_slot == self.fader_pos:
-                    self.fader_pos += 1
+                    if slots[cur_slot][0].eng_code in ("MI", "MR"):
+                        slots.insert(cur_slot - 1, [processor])
+                    else:
+                        slots.insert(cur_slot, [processor])
                 elif cur_slot > 0:
                     slots.pop(cur_slot)
-                    slots[cur_slot - 1].append(processor)
-                    if is_audio and cur_slot < self.fader_pos:
-                        self.fader_pos -= 1
+                    if slots[cur_slot - 1][0].eng_code in ("MI", "MR"):
+                        slots.insert(cur_slot - 1, [processor])
+                    else:
+                        slots[cur_slot - 1].append(processor)
                 else:
                     return False
             else:
-                if parallel:
+                if not parallel and cur_slot + 1 >= len(slots):
+                    return False
+                if is_mixer_strip:
+                    slots.pop(cur_slot)
+                    slots.insert(cur_slot + 1, [processor])
+                elif parallel:
                     slots[cur_slot].remove(processor)
                     slots.insert(cur_slot + 1, [processor])
-                    if is_audio and cur_slot < self.fader_pos:
-                        self.fader_pos += 1
-                elif is_audio and cur_slot + 1 == self.fader_pos:
-                    self.fader_pos -= 1
-                elif cur_slot + 1 < len(slots):
-                    slots.pop(cur_slot)
-                    slots[cur_slot].append(processor)
-                    if is_audio and cur_slot < self.fader_pos:
-                        self.fader_pos -= 1
                 else:
-                    return False
+                    slots.pop(cur_slot)
+                    if slots[cur_slot][0].eng_code in ("MI", "MR"):
+                        slots.insert(cur_slot + 1, [processor])
+                    else:
+                        slots[cur_slot].append(processor)
 
             self.rebuild_graph()
         except:
@@ -864,12 +862,9 @@ class zynthian_chain:
             "midi_chan": self.midi_chan,
             "midi_thru": self.midi_thru,
             "audio_thru": self.audio_thru,
-            "mixer_chan": self.mixer_chan,
             "zmop_index": self.zmop_index,
             "cc_route": cc_route,
-            "slots": slots_states,
-            "fader_pos": self.fader_pos,
-            "zctrls": self.get_zctrls_state()
+            "slots": slots_states
         }
 
         return state

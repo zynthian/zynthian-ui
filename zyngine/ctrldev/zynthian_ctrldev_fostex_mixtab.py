@@ -98,39 +98,33 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
     def set_param(self, cc, val, midi_chan):
         if cc == 7:
             # Main fader
-            self.zynmixer.set_level(255, val / 127.0, True)
+            self.set_mixer_param("level", -1, val / 127)
         if cc < 16 or cc > 31:
             return False
-        chain = self.chain_manager.get_chain_by_position(
-            midi_chan * 8 + cc % 8 , midi=False)
-        if chain is None or chain.mixer_chan is None or chain.mixer_chan > 15:
-            return False
+        strip = midi_chan * 8 + cc % 8
         match int(cc / 8):
             case 2:
                 # Fader
-                self.zynmixer.set_level(chain.mixer_chan, val / 127.0, True)
+                self.set_mixer_param("level", strip, val / 127.0)
             case 3:
                 # Pan
-                self.zynmixer.set_balance(chain.mixer_chan, (val - 64) / 64, True)
+                self.set_mixer_param("balance", strip, (val / 64) - 1)
         return True
 
     def get_param(self, cc, midi_chan):
         if cc == 7:
             # Main fader
-            return int(self.zynmixer.get_level(255) * 127)
+            return int(self.zynmixer_bus.get_level(0) * 127)
         if cc < 16 or cc > 31:
             return None
-        chain = self.chain_manager.get_chain_by_position(
-            midi_chan * 8 + cc % 8 , midi=False)
-        if chain is None or chain.mixer_chan is None or chain.mixer_chan > 15:
-            return None
+        strip = midi_chan * 8 + cc % 8
         match int(cc / 8):
             case 2:
                 # Fader
-                return int(self.zynmixer.get_level(chain.mixer_chan) * 127)
+                return int(self.get_mixer_param("level", strip) * 127)
             case 3:
                 # Pan
-                return int(self.zynmixer.get_balance(chain.mixer_chan) * 64) + 64
+                return int(self.get_mixer_param("balance", strip) * 64) + 64
         return None
 
     def midi_event(self, ev):
@@ -198,7 +192,7 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
             # Let zynthian handle PC
         return False
 
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus):
         #TODO: Blunt refresh of all controls after 2s of inactivity
         if self.feedback_timer:
             self.feedback_timer.cancel()
@@ -212,8 +206,8 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         self.strip2chan = []
         for chain_id in self.chain_manager.ordered_chain_ids:
             chain = self.chain_manager.chains[chain_id]
-            if chain.mixer_chan is not None and chain.mixer_chan < 16:
-                self.strip2chan.append(chain.mixer_chan)
+            if chain.zynmixer_proc is not None and chain.zynmixer_proc.mixer_chan < 16:
+                self.strip2chan.append(chain.zynmixer_proc.mixer_chan)
         main_level = int(self.zynmixer.get_level(255) * 127)
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 7, main_level)
         for strip, chan in enumerate(self.strip2chan):

@@ -30,6 +30,7 @@ from threading import Timer
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
+import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ----------------------------------------------------------------------------
@@ -75,6 +76,7 @@ class zynthian_controller:
         self.value_max = None  # Maximum value of control range
         self.value_range = 0  # Span of permissible values
         # Factor to scale each up/down nudge
+
         # TODO: This is not set if configure is not called or options not passed
         self.nudge_factor = None
         self.nudge_factor_fine = None  # Fine factor to scale
@@ -91,8 +93,7 @@ class zynthian_controller:
             self.path_dir_names = None  # List of directory names to look for files
             self.path_preload = False  # Flag for enable/disable file preload
         self.not_on_gui = False  # True to hint to GUI to show control
-        self.display_priority = 0  # Hint of order in which to display control (higher comes first)
-
+        self.display_priority = float("inf")  # Hint of order in which to display control (higher comes first)
         self.is_dirty = True  # True if control value changed since last UI update
         self.ignore_engine_fb_ts = None  # Ignore next feedback value from the engine until this timestamp is over
 
@@ -598,6 +599,7 @@ class zynthian_controller:
                 state['value'] = self.value
         except:
             state['value'] = self.value
+
         if self.midi_cc_momentary_switch:
             state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
         if self.midi_cc_debounce:

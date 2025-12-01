@@ -43,7 +43,6 @@ MIDI_LEARNING_DISABLED = 0
 MIDI_LEARNING_CHAIN = 1
 MIDI_LEARNING_GLOBAL = 2
 
-
 class zynthian_gui_control(zynthian_gui_selector):
 
     def __init__(self, selcap='Controllers'):
@@ -953,6 +952,8 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")
                 elif self.midi_learning == MIDI_LEARNING_GLOBAL:
                     self.select_path.set(processor.get_basepath() + "/GLOBAL Control MIDI-Learn")
+                else:
+                    self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")
             else:
                 self.select_path.set(processor.get_presetpath())
         else:

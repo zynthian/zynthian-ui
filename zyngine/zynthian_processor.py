@@ -4,7 +4,7 @@
 #
 # zynthian processor
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 # Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -31,7 +31,7 @@ import traceback
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-
+from zyngine import zynthian_controller
 
 class zynthian_processor:
 
@@ -115,7 +115,8 @@ class zynthian_processor:
         """Set engine that this processor uses"""
 
         self.engine = engine
-        self.engine.add_processor(self)
+        if engine:
+            self.engine.add_processor(self)
 
     def get_name(self):
         """Get name of processor"""
@@ -142,6 +143,10 @@ class zynthian_processor:
         """Get ID of the chain to which the processor belongs, if any"""
 
         return self.chain_id
+
+    def reset(self):
+        for zctrl in self.controllers_dict.values():
+            zctrl.reset_value()
 
     # ---------------------------------------------------------------------------
     # MIDI autolearn CC controllers
@@ -810,6 +815,7 @@ class zynthian_processor:
         """Configure processor from state model dictionary
 
         state : Processor state
+        returns : list of cc learn config: [chain, chan, cc, zctrl]
         """
 
         if "bank_subdir_info" in state and state["bank_subdir_info"]:

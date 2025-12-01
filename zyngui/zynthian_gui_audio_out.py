@@ -46,22 +46,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
     def build_view(self):
         self.check_ports = 0
         self.playback_ports = zynautoconnect.get_hw_audio_dst_ports()
-        if super().build_view():
-            zynsigman.register_queued(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
-            return True
-        else:
-            return False
-
-    def hide(self):
-        if self.shown:
-            zynsigman.unregister(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
-            super().hide()
-
-    def update_rec(self, state):
-        # Lock multitrack record config when recorder is recording
-        self.fill_list()
+        return super().build_view()
 
     def set_chain(self, chain):
         self.chain = chain
@@ -127,25 +112,10 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 else:
                     self.list_data.append((processor, processor, "\u2610 " + title, info))
 
-        self.list_data.append((None, None, "> Audio Recorder"))
-        armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
-        if self.zyngui.state_manager.audio_recorder.status:
-            locked = None
-        else:
-            locked = "record"
-        if armed:
-            self.list_data.append((locked, 'record_disable', '\u2612 Record chain', [f"The chain will be recorded as a stereo track within a multitrack audio recording.", "audio_output.png"]))
-        else:
-            self.list_data.append((locked, 'record_enable', '\u2610 Record chain', [f"The chain will be not be recorded as a stereo track within a multitrack audio recording.", "audio_output.png"]))
-
         super().fill_list()
 
     def select_action(self, i, t='S'):
-        if self.list_data[i][0] == 'record':
-            if t == 'S':
-                self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
-                self.fill_list()
-        elif t == 'S':
+        if t == 'S':
             self.chain.toggle_audio_out(self.list_data[i][0])
             self.fill_list()
         elif t == "B":

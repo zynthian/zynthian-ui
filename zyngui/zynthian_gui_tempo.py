@@ -29,9 +29,7 @@ from time import monotonic
 from collections import deque
 
 # Zynthian specific modules
-import zynconf
 from zynlibs.zynaudioplayer import *
-from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base

@@ -529,8 +529,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
     # Initialization
     # ---------------------------------------------------------------------------
 
-    def __init__(self, zyngui=None):
-        super().__init__(zyngui)
+    def __init__(self, state_manager=None):
+        super().__init__(state_manager)
         self.name = "InternetRadio"
         self.nickname = "IR"
         self.jackname = "inetradio"

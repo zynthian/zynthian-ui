@@ -160,7 +160,7 @@ class zynthian_gui:
 
         self.status_counter = 0
 
-        self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+        self.modify_chain_status = {"midi_thru": False, "audio_thru": False}
 
         self.capture_log_ts0 = None
         self.capture_log_fname = None
@@ -394,34 +394,53 @@ class zynthian_gui:
             zynautoconnect.request_audio_connect()
             zynautoconnect.request_midi_connect()
         elif parts[1] in ("MIXER", "DAWOSC"):
+            #TODO: Fix OSC control of zynmixer
             self.state_manager.set_event_flag()
             part2 = parts[2]
             if part2 in ("HEARTBEAT", "SETUP"):
                 if src.hostname not in self.osc_clients:
                     try:
-                        if self.state_manager.zynmixer.add_osc_client(src.hostname) < 0:
+                        if self.state_manager.zynmixer_chan.add_osc_client(src.hostname) < 0:
+                            logging.warning("Failed to add OSC client registration {}".format(src.hostname))
+                            return
+                        if self.state_manager.zynmixer_bus.add_osc_client(src.hostname) < 0:
                             logging.warning("Failed to add OSC client registration {}".format(src.hostname))
                             return
                     except:
                         logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
                         return
                 self.osc_clients[src.hostname] = monotonic()
-                self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 2, True)
+                self.state_manager.zynmixer_chan.enable_dpm(
+                    0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, True)
+                self.state_manager.zynmixer_bus.enable_dpm(
+                    1, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, True)
             else:
-                if part2[:6] == "VOLUME":
-                    self.state_manager.zynmixer.set_level(int(part2[6:]), float(args[0]))
-                if part2[:5] == "FADER":
-                    self.state_manager.zynmixer.set_level(int(part2[5:]), float(args[0]))
-                if part2[:5] == "LEVEL":
-                    self.state_manager.zynmixer.set_level(int(part2[5:]), float(args[0]))
-                elif part2[:7] == "BALANCE":
-                    self.state_manager.zynmixer.set_balance(int(part2[7:]), float(args[0]))
-                elif part2[:4] == "MUTE":
-                    self.state_manager.zynmixer.set_mute(int(part2[4:]), int(args[0]))
-                elif part2[:4] == "SOLO":
-                    self.state_manager.zynmixer.set_solo(int(part2[4:]), int(args[0]))
-                elif part2[:4] == "MONO":
-                    self.state_manager.zynmixer.set_mono(int(part2[4:]), int(args[0]))
+                mixer, param = part2.split("/")
+                if mixer == "bus":
+                    zynmixer = self.state_manager.zynmixer_bus
+                else:
+                    zynmixer = self.state_manager.zynmixer_chan
+                if param[:6] == "VOLUME":
+                    zynmixer.set_level(
+                        int(part2[6:]), float(args[0]))
+                if param[:5] == "FADER":
+                    zynmixer.set_level(
+                        int(part2[5:]), float(args[0]))
+                if param[:5] == "LEVEL":
+                    zynmixer.set_level(
+                        int(part2[5:]), float(args[0]))
+                elif param[:7] == "BALANCE":
+                    zynmixer.set_balance(
+                        int(part2[7:]), float(args[0]))
+                elif param[:4] == "MUTE":
+                    zynmixer.set_mute(
+                        int(part2[4:]), int(args[0]))
+                elif param[:4] == "SOLO":
+                    zynmixer.set_solo(
+                        int(part2[4:]), int(args[0]))
+                elif param[:4] == "MONO":
+                    zynmixer.set_mono(
+                        int(part2[4:]), int(args[0]))
         else:
             logging.warning(f"Not supported OSC call '{path}'")
 
@@ -892,20 +911,20 @@ class zynthian_gui:
                     if chain and old_processor:
                         slot = chain.get_slot(old_processor)
                         processor = self.chain_manager.add_processor(
-                            self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], True, slot)
+                            self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], slot)
                         if processor:
                             self.chain_manager.remove_processor(
                                 self.modify_chain_status["chain_id"], old_processor)
+                            chain.rebuild_graph()
+                            zynautoconnect.autoconnect()
                             self.close_screen("loading")
                             self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                 else:
                     # Adding processor to existing chain
-                    parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
-                    post_fader = "post_fader" in self.modify_chain_status and self.modify_chain_status["post_fader"]
-                    processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"],
-                                                                 self.modify_chain_status["engine"],
-                                                                 parallel=parallel, post_fader=post_fader)
+                    processor = self.chain_manager.add_processor(
+                        self.modify_chain_status["chain_id"], self.modify_chain_status["engine"])
                     if processor:
+                        zynautoconnect.autoconnect()
                         self.close_screen("loading")
                         self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                     else:
@@ -918,6 +937,8 @@ class zynthian_gui:
                         self.modify_chain_status["midi_thru"] = False
                     if "audio_thru" not in self.modify_chain_status:
                         self.modify_chain_status["audio_thru"] = False
+                    if "mixbus" not in self.modify_chain_status:
+                        self.modify_chain_status["mixbus"] = False
                     # Detect MOD-UI special chain and assign dedicated zmop index
                     if self.modify_chain_status["engine"] == "MD":
                         zmop_index = ZMOP_MOD_INDEX
@@ -928,7 +949,7 @@ class zynthian_gui:
                         self.modify_chain_status["midi_chan"],
                         self.modify_chain_status["midi_thru"],
                         self.modify_chain_status["audio_thru"],
-                        zmop_index=zmop_index
+                        zmop_index
                     )
                     if chain_id is None:
                         self.show_screen_reset("root")
@@ -938,7 +959,14 @@ class zynthian_gui:
                         chain_id,
                         self.modify_chain_status["engine"]
                     )
-                    # self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+                    if self.chain_manager.chains[chain_id].synth_slots or self.modify_chain_status["audio_thru"]:
+                        if self.modify_chain_status["mixbus"]:
+                            am_proc = self.chain_manager.add_processor(chain_id, "MR")
+                            self.chain_manager.chains[chain_id].set_title(am_proc.name)
+                        else:
+                            am_proc = self.chain_manager.add_processor(chain_id, "MI")
+                    zynautoconnect.request_audio_connect(True)
+                    zynautoconnect.request_midi_connect(True)
                     if processor and processor.eng_code != "CL":
                         self.close_screen("loading")
                         self.screen_history = []
@@ -1198,6 +1226,7 @@ class zynthian_gui:
         self.state_manager.all_sounds_off()
         sleep(0.1)
         self.state_manager.raw_all_notes_off()
+        zynautoconnect.reset_xruns()
         try:
             self.screens[self.current_screen].set_title("ALL SOUNDS OFF", None, None, 1)
         except:
@@ -1658,10 +1687,9 @@ class zynthian_gui:
 
     # Unlearn all mixer controls
     def cuia_midi_unlearn_mixer(self, params=None):
-        try:
-            self.screens['audio_mixer'].midi_unlearn_all()
-        except (AttributeError, TypeError) as err:
-            logging.error(err)
+        for chain in self.chain_manager.chains.values():
+            if chain.zynmixer_proc:
+                self.chain_manager.clean_midi_learn(chain.zynmixer_proc)
 
     def cuia_midi_unlearn_node(self, params=None):
         if params:
@@ -2658,12 +2686,16 @@ class zynthian_gui:
                 if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
                     self.osc_clients.pop(client)
                     try:
-                        self.state_manager.zynmixer.remove_osc_client(client)
+                        self.state_manager.zynmixer_chan.remove_osc_client(client)
+                        self.state_manager.zynmixer_bus.remove_osc_client(client)
                     except:
                         pass
 
-            if not self.osc_clients and self.current_screen not in ("audio_mixer", "launcher"):
-                self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 2, False)
+            if not self.osc_clients and self.current_screen != "audio_mixer":
+                self.state_manager.zynmixer_chan.enable_dpm(
+                    0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
+                self.state_manager.zynmixer_bus.enable_dpm(
+                    0, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, False)
 
             # Poll
             zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)

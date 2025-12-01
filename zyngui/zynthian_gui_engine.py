@@ -75,7 +75,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
         super().__init__('Engine', True, False)
 
         self.chain_manager = self.zyngui.chain_manager
-        self.engine_info = self.chain_manager.engine_info
         self.engine_info_dirty = False
         self.xswipe_sens = 10
 
@@ -165,7 +164,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         if not eng_code:
             eng_code = self.list_data[self.index][0]
         try:
-            return self.engine_info[eng_code]
+            return self.chain_manager.engine_info[eng_code]
         except:
             logging.info(f"Can't get info for engine '{eng_code}'")
             return {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
@@ -197,9 +196,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
     def get_engines_by_cat(self):
         self.chain_manager.get_engine_info()
-        self.engine_info = self.chain_manager.engine_info
         self.proc_type = self.zyngui.modify_chain_status["type"]
         self.engines_by_cat = self.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
+        for exclude in ["MI", "MR", "MX"]:
+            try:
+                self.engines_by_cat["Other"].pop(exclude)
+            except:
+                pass
         self.engine_cats = list(self.engines_by_cat.keys())
         logging.debug(f"CATEGORIES => {self.engine_cats}")
         # self.engines_by_cat = sorted(self.engines_by_cat.items(), key=lambda kv: "!" if kv[0] is None else kv[0])
@@ -312,34 +315,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
                     self.zyngui.modify_chain_status["engine"] = engine
                     if "chain_id" in self.zyngui.modify_chain_status:
                         # Modifying existing chain
-                        if "processor" in self.zyngui.modify_chain_status:
-                            # Replacing processor
-                            pass
-                        else:
-                            slot_count = self.chain_manager.get_slot_count(
-                                self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"])
-                            if self.zyngui.modify_chain_status["type"] == "Audio Effect":
-                                # Check for fader position
-                                post_fader = "post_fader" in self.zyngui.modify_chain_status and self.zyngui.modify_chain_status["post_fader"]
-                                fader_pos = self.chain_manager.get_chain(self.zyngui.modify_chain_status["chain_id"]).fader_pos
-                                if post_fader and slot_count > fader_pos or not post_fader and slot_count > 0:
-                                    ask_parallel = True
-                                else:
-                                    ask_parallel = False
-                            else:
-                                ask_parallel = slot_count > 0
-                            if ask_parallel:
-                                # Adding to slot with existing processor - choose parallel/series
-                                self.zyngui.screens['option'].config("Chain Mode",
-                                                                     {"Series": False, "Parallel": True},
-                                                                     self.cb_add_parallel)
-                                self.zyngui.show_screen('option')
-                                return
-                            else:
-                                self.zyngui.modify_chain_status["parallel"] = False
+                        pass
                     else:
                         # Adding engine to new chain
-                        self.zyngui.modify_chain_status["parallel"] = False
                         if engine == "AP":
                             # TODO: Better done with engine flag
                             self.zyngui.modify_chain_status["audio_thru"] = False
@@ -375,10 +353,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
             if t == 'S':
                 self.show_details()
                 return True
-
-    def cb_add_parallel(self, option, value):
-        self.zyngui.modify_chain_status['parallel'] = value
-        self.zyngui.modify_chain()
 
     def set_selector(self, zs_hidden=False):
         super().set_selector(zs_hidden)
