@@ -81,7 +81,6 @@ ZynthianState = {
                             "value": 96,  # Controller value
                             "midi_cc_momentary_switch": 1, # Optional momentary toggle
                             "midi_cc_debounce": 1 # Optional toggle debounce
-                        },
                         } # ... More controllers
                     }, # ... Other parameters
                 } # ... Other controllers
@@ -124,11 +123,6 @@ ZynthianState = {
         "1/2": {},  # ZS3 for channel 1, program change 2
         "zs3-1": {},  # Manually saved ZS3 without assigned program change
     }, # ... Other ZS3
-    "engine_config": {  # Engine specific configuration (global for all processor instances of engine
-        "MX": None,  # ALSA mixer configuration
-        "PT": None,  # Pianoteq configuration
-    }, # ... Other engines
-    "audio_recorder_armed": [0, 3], # List of audio mixer strip indicies armed for multi-track audio recording
     "zynseq": {
         "tempo": 120.0, # Default tempo in BPM
         "sig": 4, # Default time signature (x/4)
