@@ -318,6 +318,7 @@ class zynthian_state_manager:
             zynautoconnect.request_midi_connect(True)
             zynautoconnect.request_audio_connect(True)
             zynautoconnect.resume()
+            self.chain_manager.chains[0]
         self.mute(False)
 
     def clean_all(self):

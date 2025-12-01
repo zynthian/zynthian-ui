@@ -111,6 +111,7 @@ class zynthian_chain:
 
         try:
             self.current_processor = self.audio_slots[0][0]
+            self.current_processor.reset()
         except:
             self.current_processor = None
         self.rebuild_graph()

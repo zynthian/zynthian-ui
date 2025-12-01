@@ -144,6 +144,10 @@ class zynthian_processor:
 
         return self.chain_id
 
+    def reset(self):
+        for zctrl in self.controllers_dict.values():
+            zctrl.reset_value()
+
     # ---------------------------------------------------------------------------
     # MIDI autolearn CC controllers
     # ---------------------------------------------------------------------------
