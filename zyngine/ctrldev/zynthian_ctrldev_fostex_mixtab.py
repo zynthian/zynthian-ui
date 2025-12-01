@@ -206,9 +206,9 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         self.strip2chan = []
         for chain_id in self.chain_manager.ordered_chain_ids:
             chain = self.chain_manager.chains[chain_id]
-            if chain.zynmixer_proc is not None and chain.zynmixer_proc.mixer_chan < 16:
+            if chain.zynmixer_proc is not None and chain.zynmixer_proc.eng_code == "MI" and chain.zynmixer_proc.mixer_chan < 16:
                 self.strip2chan.append(chain.zynmixer_proc.mixer_chan)
-        main_level = int(self.zynmixer.get_level(255) * 127)
+        main_level = int(self.zynmixer_bus.get_level(0) * 127)
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 7, main_level)
         for strip, chan in enumerate(self.strip2chan):
             value = int(self.zynmixer.get_level(chan) * 127)
