@@ -449,21 +449,22 @@ class zynseq(zynthian_engine):
             logging.warning(f"Failed to set sequence parameter {param}={value}: {e}")
             return False
 
-    def select_phrase(self, phrase):
+    def select_phrase(self, phrase, force=False):
         """
         Select a phrase
 
         :param: phrase Index of phrase
+        :param: force True to select phrase even if same as currently selected
         """
 
         if (phrase >= self.phrases):
             phrase = self.phrases - 1
         if (phrase < 0):
             phrase = 0
-        if phrase == self.phrase:
+        if not force and phrase == self.phrase:
             return False
         self.phrase = phrase
-        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE)
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
 
     def get_pad_coords(self, phrase, chan):
         """

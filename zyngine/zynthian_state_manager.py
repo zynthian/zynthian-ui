@@ -1343,6 +1343,7 @@ class zynthian_state_manager:
         Returns : True on success
         """
 
+        active_phrase = 0
         if isinstance(zs3_id, str):
             # Try loading exact match
             try:
@@ -1472,6 +1473,8 @@ class zynthian_state_manager:
 
         if "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
+        if "active_phrase" in zs3_state:
+            active_phrase = zs3_state["active_phrase"]
 
         if "midi_capture" in zs3_state:
             self.set_busy_details("restoring midi capture state")
@@ -1505,6 +1508,7 @@ class zynthian_state_manager:
         if zs3_id != 'zs3-0':
             self.last_zs3_id = zs3_id
             #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
+        self.zynseq.select_phrase(active_phrase, True)
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
 
         if autoconnect:

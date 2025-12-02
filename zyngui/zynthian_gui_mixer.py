@@ -1148,15 +1148,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.unregister(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
+                zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
             zynsigman.unregister(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
+                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
             zynsigman.unregister(
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
             zynsigman.unregister(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
+                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.select_phrase_cb)
             super().hide()
 
     def build_view(self):
@@ -1195,15 +1196,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.register_queued(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
+                zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
             zynsigman.register_queued(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
+                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
             zynsigman.register_queued(
                     zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
             zynsigman.register_queued(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
+                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.select_phrase_cb)
         return True
 
     def update_layout(self):
@@ -1333,13 +1335,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.refresh_visible_strips()
         self.set_title()
 
-    def cb_all_notes_off(self, chan=None):
+    def all_notes_off_cb(self, chan=None):
         for strip in self.visible_mixer_strips:
             if strip.chain and strip.chain.is_midi() and (chan is None or strip.chain.midi_chan == chan):
                 for i in range(0, 4):
                     self.main_canvas.itemconfig(strip.pedals[i], state=tkinter.HIDDEN)
 
-    def cb_launcher_play_state(self, phrase, chan, state, mode):
+    def select_phrase_cb(self, phrase):
+        self.set_highlighted_clip_info()
+        self.highlighted_strip.highlight_launcher(phrase)
+
+    def launcher_play_state_cb(self, phrase, chan, state, mode):
         if not self.launcher_mode:
             return
         try:

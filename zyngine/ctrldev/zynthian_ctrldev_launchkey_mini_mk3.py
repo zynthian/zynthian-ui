@@ -60,6 +60,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         super().__init__(state_manager, idev_in, idev_out)
         self.cols = 8
         self.rows = 2
+        self.scroll_v = self.zynseq.phrase
         self.shift = False
         self.pot_mode = self.POT_MODE_VOLUME    # Potentiometer mode
         self.mixer_toggle = False               # Used to toggle mixer / launcher view
@@ -73,12 +74,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.mixer_toggle = False
         super().init()
         # Register for zynseq updates
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.refresh)
-
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.set_phrase_cb)
 
     def end(self):
         # Unregister for zynseq updates
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.refresh)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.set_phrase_cb)
         super().end()
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
@@ -88,6 +88,10 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             for col in range(8):
                 self.pad_off(col, row)
 
+    def set_phrase_cb(self, phrase):
+        self.scroll_v = phrase
+        self.refresh()
+
     def update_seq_state(self, phrase, chan, state=None, mode=None):
         if self.idev_out is None:
             return
@@ -95,7 +99,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             row, col = self.zynseq.get_pad_coords(phrase, chan)
             if col is None:
                 return
-            row -= self.zynseq.phrase
+            row -= self.scroll_v
         except:
             return
         if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
@@ -150,7 +154,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             # Toggle pad
             try:
                 col = (note - 96) % 16
-                row = (note - 96) // 16 + self.zynseq.phrase
+                row = (note - 96) // 16 + self.scroll_v
                 midi_chan = self.zynseq.get_chan_from_col(col)
                 if midi_chan is not None:
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, row, midi_chan)
@@ -177,8 +181,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                         case self.POT_MODE_PAN:
                             self.set_mixer_param("balance", pot, 2 * ccval / 127.0 - 1)
                         case self.POT_MODE_DEVICE:
-                            # Ignore CC on MIDI channel 16 as it may trigger master channel or other unexpected action.
-                            return True
+                            return False
                 elif ccnum == 0x66:
                     # TRACK RIGHT
                     self.state_manager.send_cuia("ARROW_RIGHT")

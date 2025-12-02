@@ -201,6 +201,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.cols = 8
         self.rows = 8
+        self.scroll_v = 0 # Offset of first row of pads
         self.zynseq = state_manager.zynseq
         super().__init__(state_manager, idev_in, idev_out)
 
@@ -254,8 +255,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
             return
         self.light_off()
         for row in range(self.rows):
-            #phrase = row + self.zynseq.phrase
-            phrase = row
+            phrase = row + self.scroll_v
             for col in range(self.cols):
                 chan = self.zynseq.get_chan_from_col(col)
                 self.update_seq_state(phrase, chan)
