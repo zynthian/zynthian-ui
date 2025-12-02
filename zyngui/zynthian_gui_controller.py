@@ -474,7 +474,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 						arc_len = max(5, degmax // n)
 						deg0 += degd + arc_len
 						degd = -arc_len
-				elif self.zctrl.value_range and self.zctrl.value_min <= 0 >= self.zctrl.value_max:
+				elif self.zctrl.value_range and self.zctrl.value_min <= 0 <= self.zctrl.value_max:
 					deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
 			self.itemconfig(self.graph, start=deg0, extent=degd)
 		self.itemconfig(self.value_text, text=self.value_print)
