@@ -208,7 +208,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         super().init()
         # Register for zynseq updates
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
         # Register for chain add/remove
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
@@ -224,7 +224,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         # Unregister from zynseq updates
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
         # Light off
         self.light_off()
         super().end()

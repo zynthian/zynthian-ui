@@ -57,12 +57,12 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
+        super().__init__(state_manager, idev_in, idev_out)
         self.cols = 8
         self.rows = 2
         self.shift = False
         self.pot_mode = self.POT_MODE_VOLUME    # Potentiometer mode
         self.mixer_toggle = False               # Used to toggle mixer / launcher view
-        super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         # Enable session mode on launchkey
@@ -100,14 +100,13 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             return
         if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
             return
-        if state is None or mode is None:
-            state = self.zynseq.libseq.getSequenceState(self.zynseq.scene, phrase, chan)
-            mode = (state >> 8) & 0xff
-            state &= 0xff
+        if state is None:
+            state = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]["state"]
+        repeat = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]["repeat"]
         note = 96 + row * 16 + col
         # chan: 0=static, 1=flashing, 2=pulsing
         try:
-            if mode == 0 or chan >= MAX_NUM_MIDI_CHANS: #TODO: Handle phrase launcher
+            if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
                 vel = 0
                 chan = 0
             elif state == zynseq.SEQ_STOPPED:
@@ -136,13 +135,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     def pad_off(self, col, row):
         note = 96 + row * 16 + col
         lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
-
-    def refresh(self):
-        if self.idev_out is None:
-            return
-        for row in range(self.rows):
-            for col in range(zynseq.PHRASE_CHANNEL + 1):
-                self.update_seq_state(row + self.zynseq.phrase, col)
 
     def midi_event(self, ev):
         if self.state_manager.power_save_mode:

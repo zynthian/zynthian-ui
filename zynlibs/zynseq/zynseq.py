@@ -88,7 +88,7 @@ PHRASE_CHANNEL = 32
 
 # Subsignals are defined inside each module. Here we define zynseq subsignals:
 SS_SEQ_PLAY_STATE = 1
-SS_SEQ_REFRESH = 2
+SS_SEQ_STATE = 2 # Change in overal state (model)
 SS_SEQ_PROGRESS = 3
 SS_SEQ_SELECT_PHRASE = 4
 SS_SEQ_TEMPO = 5
@@ -240,7 +240,7 @@ class zynseq(zynthian_engine):
 
     def enable_channel(self, channel, enable):
         self.libseq.enableChannel(channel, enable)
-        self.refresh_state()
+        self.refresh_state(False)
 
     def insert_phrase(self, scene, phrase=None):
         """ Insert a row of sequences to the current scene
@@ -383,7 +383,7 @@ class zynseq(zynthian_engine):
         except Exception as e:
             logging.error(e)
 
-    def refresh_state(self):
+    def refresh_state(self, send=True):
         self.state = loads(self.libseq.getState().decode("utf-8"))
         self.libseq.freeState()
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
@@ -400,7 +400,8 @@ class zynseq(zynthian_engine):
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, timesig=self.timesig)
         except:
             logging.warning("Failed to set timesig")
-        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
+        if send:
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_STATE)
 
     def refresh_chan2col(self):
         self.chan2col = [None] * LAUNCHER_COLS

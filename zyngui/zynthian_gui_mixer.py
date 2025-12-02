@@ -1152,7 +1152,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.unregister(
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
             zynsigman.unregister(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.cb_launcher_refresh)
+                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
             zynsigman.unregister(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.unregister(
@@ -1199,7 +1199,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.register_queued(
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
             zynsigman.register_queued(
-                    zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.cb_launcher_refresh)
+                    zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
             zynsigman.register_queued(
                 zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.register_queued(
