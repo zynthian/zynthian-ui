@@ -1617,7 +1617,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def edit_pattern(self):
         pated = self.zyngui.screens['pattern_editor']
-        pated.set_sequence_info(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan)
+        pated.refresh_sequence_info()
         pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
         self.zyngui.show_screen("pattern_editor")
         return True

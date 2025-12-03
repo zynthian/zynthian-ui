@@ -1976,7 +1976,7 @@ class zynthian_gui:
         cur_pated = self.get_current_screen_obj()
         pated = self.screens[pated_screen]
 
-        pated.set_sequence_info(cur_pated.seq_info)
+        pated.refresh_sequence_info()
         pated.load_pattern(cur_pated.pattern)
 
         #pated_obj.bank = cur_pated_obj.bank
