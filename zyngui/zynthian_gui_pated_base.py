@@ -220,23 +220,18 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             lib_zyncore.setup_behaviour_zynpot(i, 0)
 
     def get_title(self):
-        title = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
+        seq_name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
         #logging.debug(f"BANK: {bank}, SEQUENCE: {sequence}")
-        try:
-            str(int(title))
-            # Get preset title from synth engine on this MIDI channel
-            midi_chan = self.zynseq.libseq.getChannel(self.zynseq.scene, self.phrase, self.sequence, 0)
-            preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+        if seq_name:
+            try:
+                preset_name = self.zyngui.chain_manager.get_synth_preset_name(self.channel)
+            except:
+                preset_name = ""
             if not preset_name:
-                group = chr(65 + self.zynseq.libseq.getGroup(self.zynseq.scene, self.phrase, self.sequence))
-                title = f"{group}{title}"
-        except:
-            pass
-        if title:
-            title = f"Pattern {self.pattern} ({title})"
+                preset_name = f"MIDI-{self.channel + 1}"
+            return f"{seq_name}: {preset_name}"
         else:
-            title = f"Pattern {self.pattern}"
-        return title
+            return f"Pattern {self.pattern}"
 
     def set_title(self, title=None, color_fg=None, color_bg=None, timeout=None):
         if not title:
@@ -590,10 +585,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
         try:
             self.phrase = self.zynseq.phrase
-            self.sequence = self.zynseq.sequence
+            self.sequence = self.zynseq.chan
             self.channel = self.zynseq.chan
-            self.seq_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["sequences"][self,sequence]
-        except:
+            self.seq_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["sequences"][self.sequence]
+        except Exception as e:
+            logging.warning(f"Unable to refresh sequence info for pattern: {e}")
             self.channel = 0
             self.seq_info = {}
 
