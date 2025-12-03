@@ -259,7 +259,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         if self.idev_out is None:
             return
         self.light_off()
-        logging.debug("\n\n\n************** BIG SEQ STATE REFRESH!!!!!! ***************\n\n\n")
         for row in range(self.rows):
             phrase = row + self.scroll_v
             for col in range(self.cols):
