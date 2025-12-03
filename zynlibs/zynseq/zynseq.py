@@ -231,7 +231,7 @@ class zynseq(zynthian_engine):
                     continue
                 info["state"] = state
                 info["mode"] = mode
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan, state=state, mode=mode)
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan)
         # Update progress
         progress = self.libseq.getProgress()
         for i in range(33):

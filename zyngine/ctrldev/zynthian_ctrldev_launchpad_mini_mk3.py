@@ -30,9 +30,9 @@ from time import sleep
 # Zynthian specific modules
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 from zyngui import zynthian_gui_config
-
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Mini MK3
@@ -72,34 +72,35 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         # Select Keys layout (drums = 0x04, keys = 0x05, user = 0x06, prog = 0x7F)
         self.send_sysex("00 05")
 
-    def update_seq_state(self, phrase, chan, state=None, mode=None):
+    def update_seq_state(self, phrase, chan):
         if self.idev_out is None or chan is None:
             return
-        logging.debug(f"Phrase {phrase}, Chan {chan} =>")
+        #logging.debug(f"Phrase {phrase}, Chan {chan} =>")
         try:
             row, col = self.zynseq.get_pad_coords(phrase, chan)
             if col is None:
                 return
-            #row -= self.zynseq.phrase
+            row -= self.scroll_v
             if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
                 return
         except:
             return
-        if state is None or mode is None:
-            state = self.zynseq.libseq.getSequenceState(self.zynseq.scene, phrase, chan)
-            mode = (state >> 8) & 0xff
-            state &= 0xff
-        logging.debug(f"\t => state={state}, mode={mode}")
+        midi_chan = 0
         try:
-            if state == zynseq.SEQ_STOPPED:
-                midi_chan = 0
+            pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+            state = pad_info["state"]
+            mode = pad_info["mode"]
+            repeat = pad_info["repeat"]
+            # logging.debug(f"\t => state={state}, mode={mode}")
+            if repeat == 0 or mode == 0 or chan >= MAX_NUM_MIDI_CHANS:
+                color = 0
+            elif state == zynseq.SEQ_STOPPED:
                 if chan == zynseq.PHRASE_CHANNEL:
                     color = 0
                 else:
                     color = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
             elif state in (zynseq.SEQ_PLAYING, zynseq.SEQ_CHILD_PLAYING):
                 if chan == zynseq.PHRASE_CHANNEL:
-                    midi_chan = 0
                     color = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
                 else:
                     midi_chan = 2
@@ -111,18 +112,15 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
                 midi_chan = 1
                 color = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
             else:
-                midi_chan = 0
                 color = 0
         except Exception as e:
-            logging.error(e)
-            midi_chan = 0
             color = 0
         # Send MIDI event to controller
         if chan < zynseq.PHRASE_CHANNEL:
-            note = 10 * (8 - phrase) + chan + 1
+            note = 10 * (8 - row) + col + 1
             lib_zyncore.dev_send_note_on(self.idev_out, midi_chan, note, color)
         elif chan == zynseq.PHRASE_CHANNEL:
-            ccnum = 89 - 10 * phrase
+            ccnum = 89 - 10 * row
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, max(midi_chan, 1), ccnum, color)
 
     # Light-Off the pad specified with chan & phrase (column & row)
@@ -142,10 +140,9 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             note = ev[1] & 0x7F
             vel = ev[2] & 0x7F
             if vel > 0:
-                col, row = self.get_note_xy(note)       #  phrase=row
+                col, row = self.get_note_xy(note)
                 chan = self.zynseq.get_chan_from_col(col)
-                #phrase = row + self.zynseq.phrase
-                phrase = row
+                phrase = row + self.scroll_v
                 try:
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, chan)
                 except:
@@ -168,8 +165,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
                     col, row = self.get_note_xy(ccnum)
                     if col == 8:
                         try:
-                            #phrase = row + self.zynseq.phrase
-                            phrase = row
+                            phrase = row + self.scroll_v
                             self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL)
                         except:
                             pass

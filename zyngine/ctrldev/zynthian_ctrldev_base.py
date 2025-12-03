@@ -194,6 +194,8 @@ class zynthian_ctrldev_base:
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
 # ------------------------------------------------------------------------------------------------------------------
+
+
 class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 
     dev_zynpad = True		# Can act as a zynpad trigger device
@@ -201,7 +203,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.cols = 8
         self.rows = 8
-        self.scroll_v = 0 # Offset of first row of pads
+        self.scroll_v = 0  # Offset of first row of pads
         self.zynseq = state_manager.zynseq
         super().__init__(state_manager, idev_in, idev_out)
 
@@ -215,9 +217,12 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
-
+        # Register for snapshot loading
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
 
     def end(self):
+        # Unregister for snapshot loading
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from processor tree changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
@@ -230,7 +235,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         self.light_off()
         super().end()
 
-    def update_seq_state(self, phrase, chan, state=None, mode=None):
+    def update_seq_state(self, phrase, chan):
         """Update hardware indicators for a sequence (pad): playing state etc.
         *SHOULD* be implemented by child class
 
@@ -254,6 +259,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         if self.idev_out is None:
             return
         self.light_off()
+        logging.debug("\n\n\n************** BIG SEQ STATE REFRESH!!!!!! ***************\n\n\n")
         for row in range(self.rows):
             phrase = row + self.scroll_v
             for col in range(self.cols):
@@ -264,6 +270,8 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class
 # ------------------------------------------------------------------------------------------------------------------
+
+
 class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 
     dev_zynmixer = True		# Can act as a zynmixer trigger device

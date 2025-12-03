@@ -1345,7 +1345,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.set_highlighted_clip_info()
         self.highlighted_strip.highlight_launcher(phrase)
 
-    def launcher_play_state_cb(self, phrase, chan, state, mode):
+    def launcher_play_state_cb(self, phrase, chan):
         if not self.launcher_mode:
             return
         try:

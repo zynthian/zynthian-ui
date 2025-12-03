@@ -92,7 +92,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.scroll_v = phrase
         self.refresh()
 
-    def update_seq_state(self, phrase, chan, state=None, mode=None):
+    def update_seq_state(self, phrase, chan):
         if self.idev_out is None:
             return
         try:
@@ -104,12 +104,12 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             return
         if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
             return
-        if state is None:
-            state = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]["state"]
-        repeat = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]["repeat"]
         note = 96 + row * 16 + col
         # chan: 0=static, 1=flashing, 2=pulsing
         try:
+            pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+            state = pad_info["state"]
+            repeat = pad_info["repeat"]
             if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
                 vel = 0
                 chan = 0
