@@ -583,20 +583,16 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Sequence management
     # -------------------------------------------------------------------------
 
-    def set_sequence_info(self, scene, phrase, seq):
+    def refresh_sequence_info(self):
         """
-        Set sequence info for launcher sequences
-
-        :scene: Index of scene
-        :phrase: Index of phrase
-        :seq: Index of sequence
+        Refresh local sequence info for launcher sequences
         """
 
         try:
-            self.phrase = phrase
-            self.sequence = seq
-            self.channel = seq
-            self.seq_info = self.zynseq.state["scenes"][scene]["phrases"][phrase]["sequences"][seq]
+            self.phrase = self.zynseq.phrase
+            self.sequence = self.zynseq.sequence
+            self.channel = self.zynseq.chan
+            self.seq_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["sequences"][self,sequence]
         except:
             self.channel = 0
             self.seq_info = {}
