@@ -691,6 +691,7 @@ class zynthian_chain_manager:
             chain_id = chain.chain_id
 
         self.active_chain_id = chain_id
+        self.state_manager.zynseq.chan = chain.midi_chan
         zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
 
         # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
