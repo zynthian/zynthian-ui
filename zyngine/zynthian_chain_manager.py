@@ -494,7 +494,7 @@ class zynthian_chain_manager:
         """Get a chain by the mixer channel"""
 
         for chain_id, chain in self.chains.items():
-            if chain.mixer_proc and chain.mixer_proc.mixer_chan == chan:
+            if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan:
                 return chain_id
         return None
 
