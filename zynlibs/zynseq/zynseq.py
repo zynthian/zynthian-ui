@@ -178,6 +178,7 @@ class zynseq(zynthian_engine):
         self.chan = 0 # Currently selected channel
         self.phrase = 0 # Currently selected phrase
         self.seq_in_scene = 0  # Quantity of sequence in the selected scene
+        self.playing_sequences = 0 # Quantity of playing sequences
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
         self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
@@ -204,6 +205,7 @@ class zynseq(zynthian_engine):
         states = (ctypes.c_uint32 * size)()
         count = self.libseq.getStateChange(states, size)
         if count:
+            self.playing_sequences = self.libseq.getPlayingSequences()
             # Only check for tempo and time signature changes when change of play state - this works for now but won't if we have dynamic tempo changes
             tempo = self.libseq.getTempo()
             if tempo != self.zctrl_tempo.value:

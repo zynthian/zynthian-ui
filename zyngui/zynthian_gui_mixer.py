@@ -136,7 +136,7 @@ class zynthian_gui_mixer_strip:
         self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
         self.font_clip_state = (zynthian_gui_config.font_family, int(0.8 * font_size))
         self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
-        self.font_icons = (zynthian_gui_config.font_family, int(0.3 * self.width))
+        self.font_icons = ("forkawesome", int(0.3 * self.width))
         self.font_timbase = (zynthian_gui_config.font_family, int(0.45 * font_size))
 
         self.fader_text_limit = self.fader_top + int(0.1 * self.fader_height)
@@ -585,10 +585,13 @@ class zynthian_gui_mixer_strip:
                     else:
                         strip_txt = f"♫ Err"
                 elif self.chain.is_audio():
-                    strip_txt = "\uf130" # Microphone icon
+                    if self.chain.zynmixer_proc.eng_code == "MI":
+                        strip_txt = "\uf130" # Microphone icon
+                    else:
+                        strip_txt = "\uf1de" # Sliders
                     font = self.font_icons
                 else:
-                    strip_txt = "\uf0ae"
+                    strip_txt = ""
                     font = self.font_icons
                     # procs = self.chain.get_processor_count() - 1
                 self.canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
@@ -1251,7 +1254,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.PHRASE_CHANNEL])
             if self.beat != self.zynseq.beat:
                 self.beat = self.zynseq.beat
-                self.status_canvas.itemconfig(self.status_timesig, text=f"[{self.beat}] {self.timesig}/4")
+                self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.timesig}/4")
  
     def plot_zctrls(self):
         """Function to refresh display (fast)

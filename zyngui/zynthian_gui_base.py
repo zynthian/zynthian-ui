@@ -741,7 +741,7 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_seq_rec, state=tkinter.HIDDEN)
 
             # Display SEQ Play flag
-            if self.zyngui.state_manager.zynseq.libseq.getPlayingSequences() > 0:
+            if self.zyngui.state_manager.zynseq.playing_sequences > 0:
                 self.status_canvas.itemconfig(
                     self.status_seq_play, state=tkinter.NORMAL)
             else:

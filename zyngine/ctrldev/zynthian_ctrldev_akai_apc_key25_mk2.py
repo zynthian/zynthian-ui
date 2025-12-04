@@ -1030,7 +1030,7 @@ class PadMatrixHandler(ModeHandlerBase):
             if not in_all_scenes:
                 break
             scene += 1
-            if scene >= 64 or self._libseq.getPlayingSequences() == 0:
+            if scene >= 64 or self._zynseq.playing_sequences == 0:
                 break
 
     def _stop_pattern_record(self):
