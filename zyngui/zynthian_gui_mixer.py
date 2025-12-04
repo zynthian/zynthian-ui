@@ -492,12 +492,13 @@ class zynthian_gui_mixer_strip:
                 case zynseq.SEQ_STOPPED:
                     color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
                     try:
-                        if self.zynseq.libseq.isPatternEmpty(state_seq["tracks"][0]["patns"]["0"]):
-                            state_text = ""
-                        else:
+                        pattern = state_seq["tracks"][0]["patns"]["0"]
+                        if self.zynseq.state["patns"][str(pattern)]["events"]:
                             state_text = "⏹"
+                        else: # Pattern empty
+                            state_text = ""
                     except:
-                        state_text = ""
+                        state_text = "" # Pattern does not exist
                 case _:
                     color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
                     state_text = ""
@@ -1570,8 +1571,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            self.zynseq.libseq.setSequenceTempo(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL, 0)
-            self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][params]["tempo"] = 0.0
+            self.zynseq.set_sequence_param(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL, 0)
             index = option_screen.index
             self.phrase_menu()
             option_screen.select(index - 1)
@@ -1666,7 +1666,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     for processor in clippy_engine.processors:
                         try:
                             pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
-                            note = self.selected_note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
+                            note = self.zynseq.get_pattern_param(pattern, 0, "val1Start")
                             if processor.controllers_dict[f"warp {note}"]:
                                 clippy_engine.set_file(processor, note, phrase=phrase)
                         except:

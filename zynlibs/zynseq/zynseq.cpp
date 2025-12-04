@@ -1036,28 +1036,28 @@ const char* convertToJson(const char* filename) {
                         break;
                 }
                 json eventj;
-                eventj["step"] = fileRead32(pFile);
+                eventj.push_back(fileRead32(pFile)); // step
                 float fDuration, fOffset;
                 if (nVersion > 8) {
-                    eventj["offset"] = fileReadBCD(pFile);
-                    eventj["duration"] = fileReadBCD(pFile);
+                    eventj.push_back(fileReadBCD(pFile)); // offset
+                    eventj.push_back(fileReadBCD(pFile)); // duration
                     nBlockSize -= 4;
                 } else {
-                    eventj["offset"] = 0;
-                    eventj["duration"] = float(fileRead16(pFile)) / 100 + fileRead16(pFile); // fractional + integral (BCD)
+                    eventj.push_back(0);
+                    eventj.push_back(float(fileRead16(pFile)) / 100 + fileRead16(pFile)); // fractional + integral (BCD)
                 }
-                eventj["command"] = fileRead8u(pFile);
-                eventj["val1Start"] = fileRead8u(pFile);
-                eventj["val2Start"] = fileRead8u(pFile);
-                eventj["val1End"] = fileRead8u(pFile);
-                eventj["val2End"] = fileRead8u(pFile);
+                eventj.push_back(fileRead8u(pFile)); // command
+                eventj.push_back(fileRead8u(pFile)); // value 1 start
+                eventj.push_back(fileRead8u(pFile)); // value 2 start
+                eventj.push_back(fileRead8u(pFile)); // value 1 end
+                eventj.push_back(fileRead8u(pFile)); // value 2 end
                 if (nVersion > 7) {
-                    eventj["stutCnt"] = fileRead8u(pFile);
-                    eventj["stutDur"] = fileRead8u(pFile);
+                    eventj.push_back(fileRead8u(pFile)); // stutter count
+                    eventj.push_back(fileRead8u(pFile)); // stutter duration
                     nBlockSize -= 2;
                 }
                 if (nVersion > 8) {
-                    eventj["chance"] = float(fileRead8u(pFile));
+                    eventj.push_back(float(fileRead8u(pFile))); // play chance
                     nBlockSize -= 1;
                 }
                 fileRead8(pFile); // Padding
@@ -1291,18 +1291,18 @@ bool setState(const char* state) {
                 pPattern->setHumanVelo(jPattern.value("humanVel", 0.0));
                 pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
                 for (auto& jEvent: jPattern["events"]) {
-                    uint32_t nStep = jEvent.value("step", 0);
-                    float fDuration = jEvent.value("duration", 1.0);
-                    float fOffset = jEvent.value("offset", 0.0);
-                    uint8_t nCommand = jEvent.value("command", 144);
-                    uint8_t nValue1start = jEvent["val1Start"];
-                    uint8_t nValue2start = jEvent["val2Start"];
+                    uint32_t nStep = jEvent[0];
+                    float fOffset = jEvent[1];
+                    float fDuration = jEvent[2];
+                    uint8_t nCommand = jEvent[3];
+                    uint8_t nValue1start = jEvent[4];
+                    uint8_t nValue2start = jEvent[6];
                     StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
-                    pEvent->setValue1end(jEvent.value("val1End", nValue1start));
-                    pEvent->setValue2end(jEvent.value("val2End", nValue2start));
-                    pEvent->setStutterCount(jEvent.value("stutCnt", 0));
-                    pEvent->setStutterDur(jEvent.value("stutDur", 1));
-                    pEvent->setPlayChance(float(jEvent.value("chance", 100)) / 100);
+                    pEvent->setValue1end(jEvent[5]);
+                    pEvent->setValue2end(jEvent[7]);
+                    pEvent->setStutterCount(jEvent[8]);
+                    pEvent->setStutterDur(jEvent[9]);
+                    pEvent->setPlayChance(float(jEvent[10]) / 100);
                 }
             }
         }
@@ -1432,17 +1432,17 @@ const char* getState() {
             while (StepEvent* pEvent = pPattern->getEventAt(nEvent++)) {
                 json jEvt;
                 // Event Position (step)
-                jEvt["step"] = pEvent->getPosition();
-                jEvt["offset"] = pEvent->getOffset();
-                jEvt["duration"] = pEvent->getDuration();
-                jEvt["command"] = pEvent->getCommand();
-                jEvt["val1Start"] = pEvent->getValue1start();
-                jEvt["val2Start"] = pEvent->getValue2start();
-                jEvt["val1End"] = pEvent->getValue1end();
-                jEvt["val2End"] = pEvent->getValue2end();
-                jEvt["stutCnt"] = pEvent->getStutterCount();
-                jEvt["stutDur"] = pEvent->getStutterDur();
-                jEvt["chance"] = int(pEvent->getPlayChance() * 100);
+                jEvt.push_back(pEvent->getPosition());
+                jEvt.push_back(pEvent->getOffset());
+                jEvt.push_back(pEvent->getDuration());
+                jEvt.push_back(pEvent->getCommand());
+                jEvt.push_back(pEvent->getValue1start());
+                jEvt.push_back(pEvent->getValue1end());
+                jEvt.push_back(pEvent->getValue2start());
+                jEvt.push_back(pEvent->getValue2end());
+                jEvt.push_back(pEvent->getStutterCount());
+                jEvt.push_back(pEvent->getStutterDur());
+                jEvt.push_back(int(pEvent->getPlayChance()) * 100);
                 jPatn["events"].push_back(jEvt);
             }
             jState["patns"][std::to_string(nPattern)] = jPatn;

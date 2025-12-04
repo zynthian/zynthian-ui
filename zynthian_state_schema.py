@@ -127,7 +127,7 @@ ZynthianState = {
         "tempo": 120.0, # Default tempo in BPM
         "sig": 4, # Default time signature (x/4)
         "scene": 0, # Selected scene when saved
-        "patns": { # Indexed by pattern id
+        "patns": { # Map of patterns, indexed by pattern id
             "1": { # Pattern id
                 "steps": 16, # Steps in pattern
                 "beats": 4, # Beats in pattern
@@ -142,19 +142,19 @@ ZynthianState = {
                 "humanVel": 0.0, # Variation in velocity feel
                 "chance": 100, # Probability % of notes within pattern playing
                 "events": [ # List of events in the pattern
-                    {
-                        "step": 0, # Step within pattern
-                        "duration": 1.0, # Duration of event
-                        "offset": 0.0, # Offset from start of step
-                        "command": 144, # MIDI command
-                        "val1Start": 60, # MIDI value 1 at start of event
-                        "val1End": 60, # MIDI value 1 at end of event
-                        "val2Start": 100, # MIDI value 2 at start of event
-                        "val2End": 0, # MIDI value 2 at end of event
-                        "chance": 100, # Probability % of event triggering
-                        "stutCnt": 0, # Quantity of stutters
-                        "stutDur": 1 # Duration of each stutter
-                    }, # ... Other events
+                    [ # List of event parameters
+                        0, # Step within pattern
+                        0.0, # Offset from start of step
+                        1.0, # Duration of event
+                        144, # MIDI command
+                        60, # MIDI value 1 at start of event
+                        60, # MIDI value 1 at end of event
+                        100, # MIDI value 2 at start of event
+                        0, # MIDI value 2 at end of event
+                        0, # Quantity of stutters
+                        1, # Duration of each stutter
+                        100 # Probability % of event triggering
+                    ], # ... Other events
                 ]
             }, # ... Other patterns
         },

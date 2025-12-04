@@ -98,7 +98,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.monitors_dict = {}
         try:
             pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
-            note = self.selected_note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
+            note = self.selected_note = self.zynseq.state.get_pattern_param(pattern, 0, "val1Start")
             if note == 0xff:
                 return
             self._ctrl_screens = [
@@ -210,7 +210,7 @@ class zynthian_engine_clippy(zynthian_engine):
             for phrase_id, phrase_state in enumerate(self.zynseq.state["scenes"][self.zynseq.scene]["phrases"]):
                 try:
                     pattern = phrase_state["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
-                    if note == self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]:
+                    if note == self.zynseq.get_pattern_param(pattern, 0, "val1Start"):
                         phrase = phrase_id
                         break
                 except:
@@ -370,7 +370,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 try:
                     seq_state = phrase_state["sequences"][sequence]
                     pattern = seq_state["tracks"][0]["patns"]["0"]
-                    note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
+                    note = self.zynseq.get_pattern_param(pattern, 0, "val1Start")
                     if note not in notes:
                         notes.append(note)
                 except:
@@ -517,7 +517,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.zynseq.libseq.setTrackOutput(self.zynseq.scene, phrase, processor.midi_chan, 0, 0xfe)
             try:
                 pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
-                note = self.zynseq.state["patns"][str(pattern)]["events"][0]["val1Start"]
+                note = self.zynseq.get_pattern_param(pattern, 0, "val1Start")
                 zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
                         "name": "file",
                         "processor": processor,

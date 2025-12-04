@@ -94,6 +94,21 @@ SS_SEQ_SELECT_PHRASE = 4
 SS_SEQ_TEMPO = 5
 SS_SEQ_TIMESIG = 6
 
+PATTERN_PARAMS = [
+    "step", # Step within pattern
+    "duration", # Duration of event
+    "offset", # Offset from start of step
+    "command", # MIDI command
+    "val1Start", # MIDI value 1 at start of event
+    "val1End", # MIDI value 1 at end of event
+    "val2Start", # MIDI value 2 at start of event
+    "val2End", # MIDI value 2 at end of event
+    "chance", # Probability % of event triggering
+    "stutCnt", # Quantity of stutters
+    "stutDur" # Duration of each stutter
+]
+
+
 class zynseq(zynthian_engine):
 
     # Initiate library - performed by zynseq module
@@ -424,13 +439,14 @@ class zynseq(zynthian_engine):
         return result
 
     def set_sequence_param(self, scene, phrase, sequence, param, value):
-        """ Set a sequence parameter
+        """ Set a sequence parameter value
         
         scene: Index of scene
         phrase: Index of phrase
         sequence: Index of sequence
         param: Name of parameter (camelCase)
-        value: Value to set parameter
+        value: Parameter value
+        Return: True on success
 
         param may be: mode, group, name, repeat, followaction, followParam
         """
@@ -447,9 +463,46 @@ class zynseq(zynthian_engine):
             else:
                 fn(scene, phrase, sequence, value)
             state_seq[param] = value
+            return True
         except Exception as e:
             logging.warning(f"Failed to set sequence parameter {param}={value}: {e}")
-            return False
+        return False
+
+    def get_sequence_param(self, scene, phrase, sequence, param):
+        """ Get a sequence parameter value
+        
+        scene: Index of scene
+        phrase: Index of phrase
+        sequence: Index of sequence
+        param: Name of parameter (camelCase)
+        Returns: Parameter value
+
+        param may be: mode, group, name, repeat, followaction, followParam
+        """
+
+        try:
+            if sequence == PHRASE_CHANNEL:
+                return self.state["scenes"][scene]["phrases"][phrase][param]
+            else:
+                state_seq = self.state["scenes"][scene]["phrases"][phrase]["sequences"][sequence][param]
+        except Exception as e:
+            logging.warning(f"Failed to get sequence parameter {param}: {e}")
+        return 0
+
+    def get_pattern_event(self, pattern, event, param):
+        """ Get a pattern event parameter
+
+        pattern: Index of pattern
+        event: Index of event
+        param: Name of parameter
+        Returns: Parameter value
+        """
+
+        try:
+            idx = PATTERN_PARAMS.index(param)
+            return self.state["patns"][str(pattern)]["events"][event][idx]
+        except Exception as e:
+            logging.warning(f"Failed to set pattern event parameter {param}")
 
     def select_phrase(self, phrase, force=False):
         """
