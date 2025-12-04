@@ -306,9 +306,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
             if i is not None and self.list_data[i][0]:
                 engine = self.list_data[i][0]
                 if self.show_all:
-                    self.engine_info[engine]['ENABLED'] = not self.engine_info[engine]['ENABLED']
-                    if self.engine_info[engine]['EDIT'] == 0:
-                        self.engine_info[engine]['EDIT'] = 1
+                    info = self.chain_manager.engine_info[engine]
+                    info['ENABLED'] = not info['ENABLED']
+                    if info['EDIT'] == 0:
+                        info['EDIT'] = 1
                     self.engine_info_dirty = True
                     self.update_list()
                 else:
