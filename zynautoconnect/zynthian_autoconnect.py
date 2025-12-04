@@ -705,30 +705,40 @@ def midi_autoconnect():
                     if src_ports:
                         required_routes[dst_ports[0].name].add(src_ports[0].name)
 
-        # Add chain MIDI outputs
-        if chain.midi_slots and chain.midi_thru:
-            dests = []
-            for out in chain.midi_out:
-                if out in chain_manager.chains:
-                    chain_midi_first_procs = chain_manager.get_processors(out, "MIDI Tool", 0)
-                    if not chain_midi_first_procs:
-                        chain_midi_first_procs = chain_manager.get_processors(out, "Synth", 0)
-                    for processor in chain_midi_first_procs:
-                        for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
-                            dests.append(dst.name)
-                else:
-                    pass
-                    # dests.append(out)
-            for processor in chain.midi_slots[-1]:
-                src_ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
-                if src_ports:
-                    for dst in dests:
-                        required_routes[dst].add(src_ports[0].name)
-
-        # Add MIDI router outputs
         if chain.is_midi():
+            # Add chain MIDI outputs => Route chain's MIDI output to other chains
+            if chain.midi_thru:
+                dests = []
+                for out in chain.midi_out:
+                    if out in chain_manager.chains:
+                        chain_midi_first_procs = chain_manager.get_processors(out, "MIDI Tool", 0)
+                        if not chain_midi_first_procs:
+                            chain_midi_first_procs = chain_manager.get_processors(out, "Synth", 0)
+                        for processor in chain_midi_first_procs:
+                            for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
+                                dests.append(dst.name)
+                    else:
+                        pass
+                        # dests.append(out)
+                # ... from last MIDI processor (MIDI2MIDI)
+                if chain.midi_slots:
+                    for processor in chain.midi_slots[-1]:
+                        src_ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
+                        if src_ports:
+                            for dst in dests:
+                                required_routes[dst].add(src_ports[0].name)
+                # ... from last audio processor, if it's an audio2MIDI processor
+                if chain.audio_slots:
+                    for processor in chain.audio_slots[-1]:
+                        src_ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
+                        if src_ports:
+                            for dst in dests:
+                                required_routes[dst].add(src_ports[0].name)
+
+            # Add MIDI router outputs => Connects zmop to chain's input
             src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
             if src_ports:
+                # Connect to first slot, excluding clippy
                 for dst_proc in chain.get_processors(slot=0):
                     if dst_proc.eng_code == "CL":
                         continue
