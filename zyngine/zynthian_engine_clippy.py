@@ -97,7 +97,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.selected_phrase = phrase
         self.monitors_dict = {}
         try:
-            pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
+            pattern = self.zynseq.get_pattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
             note = self.selected_note = self.zynseq.state.get_pattern_param(pattern, 0, "val1Start")
             if note == 0xff:
                 return
@@ -219,7 +219,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if 0 < note > 127:
             return
 
-        pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
+        pattern = self.zynseq.ger_pattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
         self.libseq.selectPattern(pattern)
         self.libseq.clearPattern(pattern)
         if path:
@@ -231,7 +231,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Try to determine tempo from filename
             filename = os.path.basename(path)
-            tempo = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["tempo"]
+            tempo = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo")
             if not tempo:
                 tempo = self.zynseq.libseq.getTempo()
             regptn = r"(\d+)\s*(?=bpm|BPM)"
@@ -258,7 +258,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     crop_end = frames
 
                 duration = (crop_end - crop_start) / sr
-                beats_per_bar = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sig"]
+                beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "sig")
                 if beats_per_bar < 1:
                     beats_per_bar = self.zynseq.libseq.getTimeSig()
                 beats = duration * file_tempo / 60
@@ -516,7 +516,7 @@ class zynthian_engine_clippy(zynthian_engine):
         for phrase in range(self.zynseq.phrases):
             self.zynseq.libseq.setTrackOutput(self.zynseq.scene, phrase, processor.midi_chan, 0, 0xfe)
             try:
-                pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
+                pattern = self.zynseq.get_pattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
                 note = self.zynseq.get_pattern_param(pattern, 0, "val1Start")
                 zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
                         "name": "file",

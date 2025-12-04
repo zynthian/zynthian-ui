@@ -142,7 +142,7 @@ ZynthianState = {
                 "humanVel": 0.0, # Variation in velocity feel
                 "chance": 100, # Probability % of notes within pattern playing
                 "events": [ # List of events in the pattern
-                    [ # List of event parameters
+                    [ # List of event parameters (use list for optimisation)
                         0, # Step within pattern
                         0.0, # Offset from start of step
                         1.0, # Duration of event

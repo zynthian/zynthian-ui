@@ -470,7 +470,7 @@ class zynseq(zynthian_engine):
 
     def get_sequence_param(self, scene, phrase, sequence, param):
         """ Get a sequence parameter value
-        
+
         scene: Index of scene
         phrase: Index of phrase
         sequence: Index of sequence
@@ -488,6 +488,23 @@ class zynseq(zynthian_engine):
         except Exception as e:
             logging.warning(f"Failed to get sequence parameter {param}: {e}")
         return 0
+
+    def get_pattern(self, scene, phrase, sequence, track, pos):
+        """ Get the index of a pattern within a sequence
+
+        scene: Index of scene
+        phrase: Index of phrase
+        sequence: Index of sequence
+        track: Index of track
+        pos: Position within track
+        Returns: Pattern index or None on failure
+        """
+
+        try:
+            return self.state["scenes"][scene]["phrases"][phrase]["sequences"][sequence]["tracks"][track]["patns"][str(pos)]
+        except Exception as e:
+            logging.warning(f"Failed to get pattern: {e}")
+        return None
 
     def get_pattern_event(self, pattern, event, param):
         """ Get a pattern event parameter

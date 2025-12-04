@@ -1571,7 +1571,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            self.zynseq.set_sequence_param(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL, 0)
+            self.zynseq.set_sequence_param(self.zynseq.scene, params, zynseq.PHRASE_CHANNEL, "tempo", 0)
             index = option_screen.index
             self.phrase_menu()
             option_screen.select(index - 1)
@@ -1665,7 +1665,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     clippy_engine = self.chain_manager.zyngines["CL"]
                     for processor in clippy_engine.processors:
                         try:
-                            pattern = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][processor.midi_chan]["tracks"][0]["patns"]["0"]
+                            pattern = self.zynseq.get_pattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
                             note = self.zynseq.get_pattern_param(pattern, 0, "val1Start")
                             if processor.controllers_dict[f"warp {note}"]:
                                 clippy_engine.set_file(processor, note, phrase=phrase)

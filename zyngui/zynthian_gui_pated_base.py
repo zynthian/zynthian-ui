@@ -286,6 +286,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
         if self.seq_info:
+            # Restore sequence (was changed to looping mode for pattern editing)
             self.zynseq.libseq.setSequenceFollowAction(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["followAction"])
             self.zynseq.libseq.setSequenceFollowParam(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["followParam"])
             self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["repeat"])
@@ -302,7 +303,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         timeSig = 0
         try:
             phrase = self.seq_info["phrase"]
-            timeSig = self.zynseq.state["scenes"][self.scene]["phrases"][phrase]["timeSig"]
+            timeSig = self.zynseq.get_sequence_param(self.scene, phrase, zynseq.PHRASE_CHANNEL, "timeSig")
         except:
             pass
         if timeSig == 0:
