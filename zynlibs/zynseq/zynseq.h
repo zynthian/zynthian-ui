@@ -962,6 +962,14 @@ void setSequencePlayPosition(uint8_t scene, uint8_t phrase, uint8_t sequence, ui
 */
 uint32_t getSequenceLength(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
+/** @brief  Set sequence length (used mostly for clippy)
+    @param  scene Index of scene containing sequence
+    @param  phrase Index of phrase containing sequence
+    @param  sequence Index of sequence (sequence) of sequence within phrase
+    @param  length Quantity of clock cycles in sequence
+*/
+void setSequenceLength(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t length);
+
 /** @brief  Remove all patterns from sequence
     @param  scene Index of scene
     @param  phrase Index of phrase

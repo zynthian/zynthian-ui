@@ -21,6 +21,8 @@
 
 Sequence::Sequence(Sequence* phraseSequence) {
     m_pPhraseSequence = phraseSequence;
+    for (uint8_t nSeq = 0; nSeq < 32; ++nSeq)
+        m_aChildSequences[nSeq] = nullptr;
     addTrack(); // Ensure new sequences have at least one track
 }
 
@@ -145,8 +147,9 @@ uint8_t Sequence::getPlayState() {
 
 void Sequence::setPlayState(uint8_t state, bool updatePhrase) {
     if (state == CHILD_STOPPING) {
-        for (auto pSequence: m_vChildSequences) {
-            pSequence->setPlayState(STOPPING);
+        for (auto pSequence: m_aChildSequences) {
+            if (pSequence)
+                pSequence->setPlayState(STOPPING);
         }
     }
     if (state == STOPPING && m_nState == STOPPED)
@@ -177,12 +180,10 @@ void Sequence::updatePhraseState() {
     Sequence* pPhraseSequence = m_pPhraseSequence;
     if (!pPhraseSequence)
         pPhraseSequence = this;
-    if (pPhraseSequence->m_vChildSequences.size() == 0)
-        return;
     uint8_t state = pPhraseSequence->getPlayState();
     if (state != STOPPED && state != CHILD_PLAYING && state != CHILD_STOPPING)
         return;
-    for (auto pChildSequence: pPhraseSequence->m_vChildSequences) {
+    for (auto pChildSequence: pPhraseSequence->m_aChildSequences) {
         if (pChildSequence && (pChildSequence->getPlayState() & 1) && state != CHILD_STOPPING) {
             pPhraseSequence->setPlayState(CHILD_PLAYING, false);
             return;
@@ -252,8 +253,9 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock, uin
             }
         } else {
             setPlayState(STOPPED);
-            for (auto pChildSeq: m_vChildSequences) {
-                pChildSeq->setPlayState(STOPPING_SYNC); // stopping_sync so that child sequences stop in sync
+            for (auto pChildSeq: m_aChildSequences) {
+                if (pChildSeq)
+                    pChildSeq->setPlayState(STOPPING_SYNC); // stopping_sync so that child sequences stop in sync
             }
         }
         m_nPosition = 0;
@@ -285,8 +287,10 @@ SEQ_EVENT* Sequence::getEvent() {
     return NULL;
 }
 
-void Sequence::updateLength() {
-    m_nLength = 0;
+void Sequence::updateLength(uint32_t length) {
+    m_nLength = length;
+    if (length)
+        return;
     m_bEmpty = true;
     for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
         uint32_t nTrackLength = (*it).updateLength();
@@ -349,6 +353,22 @@ uint8_t Sequence::getRepeat() {
     return m_nRepeat;
 }
 
+void Sequence::setPlayed(uint8_t played) {
+    m_nCount = played;
+}
+
+uint8_t Sequence::getPlayed() {
+    return m_nCount;
+}
+
 bool Sequence::isPhraseLauncher() {
     return m_pPhraseSequence == nullptr;
+}
+
+void Sequence::setPhrase(uint8_t phrase) {
+    m_nPhrase = phrase;
+}
+
+uint8_t Sequence::getPhrase() {
+    return m_nPhrase;
 }

@@ -293,6 +293,7 @@ class SequenceManager {
     uint32_t fileRead32(FILE* pFile);
     uint16_t fileRead16(FILE* pFile);
     uint8_t fileRead8(FILE* pFile);
+    void refreshPhrases(uint8_t scene);
 
     bool m_bTempoChanged = false;     // True if tempo changed by sequence
     float m_fTempo = DEFAULT_TEMPO;   // Current tempo

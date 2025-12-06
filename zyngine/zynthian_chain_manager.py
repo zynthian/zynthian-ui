@@ -1237,12 +1237,6 @@ class zynthian_chain_manager:
                             slot = self.chains[chain_id].get_slot(processor)
                     slot += 1
 
-            if "zctrls" in chain_state:
-                self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
-
-            if "zctrls" in chain_state:
-                self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
-
         self.state_manager.zynseq.refresh_chan2col()
         self.state_manager.end_busy("set_chain_state")
 

@@ -186,8 +186,9 @@ class Sequence {
     SEQ_EVENT* getEvent();
 
     /** @brief  Updates sequence length from track lengths
+        @param  length Optional length to force sequence to
     */
-    void updateLength();
+    void updateLength(uint32_t length=0);
 
     /** @brief  Get sequence length
         @retval uint32_t Length of sequence (longest track) in clock cycles
@@ -261,12 +262,30 @@ class Sequence {
     */
     uint8_t getRepeat();
 
+    /** @brief Set times played
+    */
+    void setPlayed(uint8_t played);
+
+    /** @brief Get times played
+    */
+    uint8_t getPlayed();
+
     /** @brief  Is this sequence a phrase launcher?
         @retval bool True if phrase launcher
     */
     bool isPhraseLauncher();
 
-    std::vector<Sequence*> m_vChildSequences;   // List of pointers to sequences in phrase
+    /** @brief  Sets phrase the sequence belongs
+        @param  phrase Index of phrase (0xff for none)
+    */
+    void setPhrase(uint8_t phrase);
+
+    /** @brief  Gets phrase the sequence belongs
+        @retval uint8_t Phrase Index of phrase (0xff for none)
+    */
+    uint8_t getPhrase();
+
+    Sequence* m_aChildSequences[32];   // List of pointers to sequences in phrase
 
   private:
     std::vector<Track> m_vTracks;               // Vector of tracks within sequence
@@ -282,6 +301,7 @@ class Sequence {
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
     uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
+    uint8_t m_nPhrase = 0xff;                   // Index of phrase this sequence belongs - 0xff for none
     bool m_bChanged = false;                    // True if sequence content changed
     bool m_bStateChanged = false;               // True if state changed since last clock cycle
     bool m_bEmpty = true;                       // True if all patterns are emtpy (no events)

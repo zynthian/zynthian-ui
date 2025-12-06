@@ -1467,44 +1467,44 @@ const char* getState() {
             jPhrase["followAction"] = pPhrase->getFollowAction();
             jPhrase["followParam"] = pPhrase->getFollowParam();
             jPhrase["state"] = pPhrase->getPlayState();
-            for (const auto& pSequence : pPhrase->m_vChildSequences) {
-                if (!pSequence)
-                    continue;
+            for (const auto& pSequence : pPhrase->m_aChildSequences) {
                 json jSeq;
-                jSeq["mode"] = pSequence->getPlayMode();
-                jSeq["group"] = pSequence->getGroup();
-                jSeq["name"] = pSequence->getName().c_str();
-                jSeq["mode"] = pSequence->getPlayMode();
-                jSeq["repeat"] = pSequence->getRepeat();
-                jSeq["followAction"] = pSequence->getFollowAction();
-                jSeq["followParam"] = pSequence->getFollowParam();
-                jSeq["state"] = pSequence->getPlayState();
-                for (size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack) {
-                    Track* pTrack = pSequence->getTrack(nTrack);
-                    if (pTrack) {
-                        json jTrack;
-                        jTrack["chan"] = pTrack->getChannel();
-                        jTrack["output"] = pTrack->getOutput();
-                        jTrack["map"] = pTrack->getMap();
-                        for (uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern) {
-                            std::string sPos = std::to_string(pTrack->getPatternPositionByIndex(nPattern));
-                            Pattern* pPattern   = pTrack->getPatternByIndex(nPattern);
-                            uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
-                            jTrack["patns"][sPos] = nPatternId;
+                if (pSequence) {
+                    jSeq["mode"] = pSequence->getPlayMode();
+                    jSeq["group"] = pSequence->getGroup();
+                    jSeq["name"] = pSequence->getName().c_str();
+                    jSeq["mode"] = pSequence->getPlayMode();
+                    jSeq["repeat"] = pSequence->getRepeat();
+                    jSeq["followAction"] = pSequence->getFollowAction();
+                    jSeq["followParam"] = pSequence->getFollowParam();
+                    jSeq["state"] = pSequence->getPlayState();
+                    for (size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack) {
+                        Track* pTrack = pSequence->getTrack(nTrack);
+                        if (pTrack) {
+                            json jTrack;
+                            jTrack["chan"] = pTrack->getChannel();
+                            jTrack["output"] = pTrack->getOutput();
+                            jTrack["map"] = pTrack->getMap();
+                            for (uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern) {
+                                std::string sPos = std::to_string(pTrack->getPatternPositionByIndex(nPattern));
+                                Pattern* pPattern   = pTrack->getPatternByIndex(nPattern);
+                                uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
+                                jTrack["patns"][sPos] = nPatternId;
+                            }
+                            jSeq["tracks"].push_back(jTrack);
                         }
-                        jSeq["tracks"].push_back(jTrack);
                     }
-                }
-                Timebase* pTimebase = pSequence->getTimebase();
-                if (pTimebase) {
-                    json jTimebase;
-                    for (uint32_t nIndex = 0; nIndex < pTimebase->getEventQuant(); ++nIndex) {
-                        TimebaseEvent* pEvent = pTimebase->getEvent(nIndex);
-                        jTimebase["bar"] = pEvent->bar;
-                        jTimebase["tick"] = pEvent->clock;
-                        jTimebase["type"] = pEvent->type;
-                        jTimebase["value"] = pEvent->value;
-                        jSeq["timebase"].push_back(jTimebase);
+                    Timebase* pTimebase = pSequence->getTimebase();
+                    if (pTimebase) {
+                        json jTimebase;
+                        for (uint32_t nIndex = 0; nIndex < pTimebase->getEventQuant(); ++nIndex) {
+                            TimebaseEvent* pEvent = pTimebase->getEvent(nIndex);
+                            jTimebase["bar"] = pEvent->bar;
+                            jTimebase["tick"] = pEvent->clock;
+                            jTimebase["type"] = pEvent->type;
+                            jTimebase["value"] = pEvent->value;
+                            jSeq["timebase"].push_back(jTimebase);
+                        }
                     }
                 }
                 jPhrase["sequences"].push_back(jSeq);
@@ -2501,8 +2501,8 @@ uint32_t getStateChange(uint32_t* states, uint32_t size) {
     uint8_t phrase = 0;
     uint8_t channel = 0;
     while (Sequence* pPhraseSequence = g_seqMan.getSequence(g_nScene, phrase, PHRASE_CHANNEL)) {
-        for (uint8_t channel = 0; channel < pPhraseSequence->m_vChildSequences.size(); ++channel) {
-            Sequence* pSequence = pPhraseSequence->m_vChildSequences[channel];
+        for (uint8_t channel = 0; channel < 32; ++channel) {
+            Sequence* pSequence = pPhraseSequence->m_aChildSequences[channel];
             if (pSequence && pSequence->isModified()) {
                 states[count] = (phrase << 24) | (channel << 16) | (pSequence->getState() & 0xffff);
                 if (++count >= size)
@@ -2552,6 +2552,12 @@ uint32_t getSequenceLength(uint8_t scene, uint8_t phrase, uint8_t sequence) {
         return pSequence->getLength();
     }
     return 0;
+}
+
+void setSequenceLength(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t length) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        pSequence->updateLength(length);
 }
 
 void clearSequence(uint8_t scene, uint8_t phrase, uint8_t sequence) {

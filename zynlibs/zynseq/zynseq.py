@@ -199,6 +199,7 @@ class zynseq(zynthian_engine):
         self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
         self.timesig = 4
         self.beat = 0 # Current beat of bar
+        self.clippy = None # Clippy engine object
         self.reset()
 
     # Destroy instance of shared library
@@ -281,6 +282,8 @@ class zynseq(zynthian_engine):
 
     def swap_phrase(self, scene, phrase1, phrase2):
         self.libseq.swapPhrase(scene, phrase1, phrase2)
+        if self.clippy and scene == self.scene:
+            self.clippy.swap_phrase(phrase1, phrase2)
         self.refresh_state()
 
     # Load a zynseq file
@@ -519,7 +522,7 @@ class zynseq(zynthian_engine):
             idx = PATTERN_PARAMS.index(param)
             return self.state["patns"][str(pattern)]["events"][event][idx]
         except Exception as e:
-            logging.warning(f"Failed to set pattern event parameter {param}")
+            logging.warning(f"Failed to get pattern event parameter {param}")
 
     def select_phrase(self, phrase, force=False):
         """
