@@ -148,16 +148,14 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                 return True
             elif note in self.mute_notes:
                 pos = self.get_mixer_pos_from_device_col(self.mute_notes.index(note))
-                self.toggle_mixer_param("mute", pos)
-                val = self.get_mixer_param("mute", pos)
+                val = self.toggle_mixer_param("mute", pos)
                 # Send LED feedback
                 if self.idev_out is not None:
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
                 return True
             elif note in self.solo_notes:
                 pos = self.get_mixer_pos_from_device_col(self.solo_notes.index(note))
-                self.toggle_mixer_param("solo", pos)
-                val = self.get_mixer_param("solo", pos)
+                val = self.toggle_mixer_param("solo", pos)
                 # Send LED feedback
                 if self.idev_out is not None:
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
@@ -168,8 +166,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                     self.chain_manager.set_active_chain_by_index(pos)
                     self.refresh()
                 else:
-                    self.toggle_mixer_param("rec", pos)
-                    val = self.get_mixer_param("rec", pos)
+                    val = self.toggle_mixer_param("rec", pos)
                     # Send LED feedback
                     if self.idev_out is not None:
                         lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)

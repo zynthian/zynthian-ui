@@ -67,7 +67,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self.midimix_bank = 0
+        self.fader_bank = 0
         super().__init__(state_manager, idev_in, idev_out)
 
     def send_sysex(self, data):
@@ -138,95 +138,74 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         # Enable LED control
         self.set_mode_led_external()
         # Register signals
-        zynsigman.register_queued(
-            zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
-        zynsigman.register_queued(
-            zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
-        zynsigman.register_queued(
-            zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
-        zynsigman.register_queued(
-            zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
+        zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
         super().init()
 
     def end(self):
         super().end()
         # Unregister signals
-        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER,
-                             self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
-        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER,
-                             zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
-        zynsigman.unregister(
-            zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
-        zynsigman.unregister(
-            zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
+        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
+        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
 
     def refresh_audio_transport(self, **kwargs):
         if self.shift:
             return
         # REC Button
         if self.state_manager.audio_recorder.rec_proc:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0x7F)
         else:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0)
         # STOP button
-        lib_zyncore.dev_send_ccontrol_change(
-            self.idev_out, self.midi_chan, self.transport_stop_ccnum, 0)
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_stop_ccnum, 0)
         # PLAY button:
         if self.state_manager.status_audio_player:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_play_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_play_ccnum, 0x7F)
         else:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_play_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_play_ccnum, 0)
 
     def refresh_midi_transport(self, **kwargs):
         if not self.shift:
             return
         # REC Button
         if self.state_manager.status_midi_recorder:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0x7F)
         else:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_rec_ccnum, 0)
         # STOP button
-        lib_zyncore.dev_send_ccontrol_change(
-            self.idev_out, self.midi_chan, self.transport_stop_ccnum, 0)
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_stop_ccnum, 0)
         # PLAY button:
         if self.state_manager.status_midi_player:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_play_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_play_ccnum, 0x7F)
         else:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_play_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_play_ccnum, 0)
 
     # Update LED status for a single strip
-    def update_mixer_strip(self, chan, symbol, value, mixbus):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         if self.idev_out is None:
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
         if chain_id:
             col = self.chain_manager.get_chain_index(chain_id)
-            if self.midimix_bank:
+            if self.fader_bank:
                 col -= 8
             if 0 <= col < 8:
                 if symbol == "mute":
-                    lib_zyncore.dev_send_ccontrol_change(
-                        self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
                 elif symbol == "solo":
-                    lib_zyncore.dev_send_ccontrol_change(
-                        self.idev_out, self.midi_chan, self.solo_ccnums[col], value * 0x7F)
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.solo_ccnums[col], value * 0x7F)
                 elif symbol == "rec" and self.rec_mode:
-                    lib_zyncore.dev_send_ccontrol_change(
-                        self.idev_out, self.midi_chan, self.rec_ccnums[col], value * 0x7F)
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.rec_ccnums[col], value * 0x7F)
 
     # Update LED status for active chain
     def update_mixer_active_chain(self, active_chain):
         if self.rec_mode:
             return
-        if self.midimix_bank:
+        if self.fader_bank:
             col0 = 8
         else:
             col0 = 0
@@ -236,8 +215,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 rec = 0x7F
             else:
                 rec = 0
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.rec_ccnums[i], rec)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.rec_ccnums[i], rec)
 
     # Update full LED status
     def refresh(self):
@@ -245,66 +223,45 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
             return
 
         # Bank selection LED
-        if self.midimix_bank:
+        if self.fader_bank:
             col0 = 8
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0)
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_ffwd_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_ffwd_ccnum, 0x7F)
         else:
             col0 = 0
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0x7F)
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.transport_ffwd_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_ffwd_ccnum, 0)
 
         if self.shift:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.cycle_ccnum, 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.cycle_ccnum, 0x7F)
             self.refresh_midi_transport()
         else:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.cycle_ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.cycle_ccnum, 0)
             self.refresh_audio_transport()
 
         # Strips Leds
         for i in range(0, 8):
-            chain = self.chain_manager.get_chain_by_index(col0 + i)
-
-            if chain and chain.zynmixer_proc:
-                mute = chain.zynmixer_proc.controllers_dict['mute'].value * 0x7F
-                solo = chain.zynmixer_proc.controllers_dict['solo'].value * 0x7F
-            else:
-                chain = None
-                mute = 0
-                solo = 0
+            pos = col0 + i
+            chain_id = self.chain_manager.get_chain_id_by_index(pos)
+            mute = self.get_mixer_param("mute", pos)
+            solo = self.get_mixer_param("solo", pos)
 
             if not self.rec_mode:
-                if chain and chain == self.chain_manager.get_active_chain():
-                    rec = 0x7F
+                if chain_id and chain_id == self.chain_manager.get_active_chain().chain_id:
+                    rec = 1
                 else:
                     rec = 0
             else:
-                if chain and chain.zynmixer_proc is not None:
-                    rec = chain.zynmixer_proc.controllers_dict['record'].value * 0x7F
-                else:
-                    rec = 0
+                rec = self.get_mixer_param("record", pos)
 
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.mute_ccnums[i], mute)
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.solo_ccnums[i], solo)
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, self.rec_ccnums[i], rec)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[i], mute * 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.solo_ccnums[i], solo * 0x7F)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.rec_ccnums[i], rec * 0x7F)
 
-    def get_mixer_chan_from_device_col(self, col):
-        if self.midimix_bank:
-            col += 8
-        chain = self.chain_manager.get_chain_by_index(col)
-        if chain and chain.zynmixer_proc:
-            return chain.zynmixer_proc.mixer_chan
-        else:
-            return None
+    def get_mixer_pos_from_device_col(self, col):
+        if self.fader_bank:
+            return col + 8
+        return col
 
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
@@ -347,15 +304,15 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 return True
             elif ccnum == self.transport_frwd_ccnum:
                 if ccval > 0:
-                    if self.midimix_bank == 0:
+                    if self.fader_bank == 0:
                         self.state_manager.send_cuia("BACK")
                     else:
-                        self.midimix_bank = 0
+                        self.fader_bank = 0
                     self.refresh()
                 return True
             elif ccnum == self.transport_ffwd_ccnum:
                 if ccval > 0:
-                    self.midimix_bank = 1
+                    self.fader_bank = 1
                     self.refresh()
                 return True
             elif ccnum == self.transport_play_ccnum:
@@ -383,62 +340,49 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if ccval > 0:
                     col = self.mute_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        result = self.toggle_main_mixer_param("mute", -1)
+                        val = self.toggle_mixer_param("mute", -1)
                     else:
-                        result = self.toggle_mixer_param("mute", col)
+                        pos = self.get_mixer_pos_from_device_col(col)
+                        val = self.toggle_mixer_param("mute", pos)
                     # Send LED feedback
                     if self.idev_out is not None:
-                        lib_zyncore.dev_send_ccontrol_change(
-                            self.idev_out, self.midi_chan, ccnum, result * 0x7F)
+                        lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
                 return True
             elif ccnum in self.solo_ccnums:
                 if ccval > 0:
                     col = self.solo_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        result = self.toggle_main_mixer_param("solo", -1)
+                        val = self.toggle_main_mixer_param("solo", -1)
                     else:
-                        result = self.toggle_mixer_param("solo", col)
+                        pos = self.get_mixer_pos_from_device_col(col)
+                        val = self.toggle_mixer_param("solo", pos)
                     # Send LED feedback
                     if self.idev_out is not None:
-                        lib_zyncore.dev_send_ccontrol_change(
-                            self.idev_out, self.midi_chan, ccnum, result * 0x7F)
+                        lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
                 return True
             elif ccnum in self.rec_ccnums:
                 if ccval > 0:
                     col = self.rec_ccnums.index(ccnum)
+                    pos = self.get_mixer_pos_from_device_col(col)
                     if not self.rec_mode:
-                        if self.midimix_bank:
-                            col += 8
-                        self.chain_manager.set_active_chain_by_index(col)
+                        self.chain_manager.set_active_chain_by_index(pos)
                         self.refresh()
                     else:
-                        mixer_chan = self.get_mixer_chan_from_device_col(col)
-                        if mixer_chan is not None:
-                            self.state_manager.audio_recorder.toggle_arm(
-                                mixer_chan)
-                            # Send LED feedback
-                            if self.idev_out is not None:
-                                val = self.state_manager.audio_recorder.is_armed(
-                                    mixer_chan) * 0x7F
-                                lib_zyncore.dev_send_ccontrol_change(
-                                    self.idev_out, self.midi_chan, ccnum, val)
-                        elif self.idev_out is not None:
-                            # If not associated mixer channel, turn-off the led
-                            lib_zyncore.dev_send_ccontrol_change(
-                                self.idev_out, self.midi_chan, ccnum, 0)
+                        val = self.toggle_mixer_param("record", pos)
+                        # Send LED feedback
+                        if self.idev_out is not None:
+                            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
                 return True
-            # elif ccnum == self.master_ccnum:
-            # self.zynmixer.set_level(zynthian_state_manager.MAIN_MIXBUS_ID, ccval / 127.0)
-            # return True
             elif ccnum in self.faders_ccnum:
                 col = self.faders_ccnum.index(ccnum)
                 # With "shift" ...
                 if self.shift and col == 7:
                     # use last fader to control Main volume (right)
-                    self.set_main_mixer_level(ccval / 127)
+                    self.set_mixer_param("level", -1, ccval / 127)
                 # else, use faders to control chain's volume
                 else:
-                    self.set_main_mixer_level(col, ccval / 127)
+                    pos = self.get_mixer_pos_from_device_col(col)
+                    self.set_mixer_param("level", pos, ccval / 127)
                 return True
             elif ccnum in self.knobs_ccnum:
                 col = self.knobs_ccnum.index(ccnum)
@@ -446,13 +390,14 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if self.shift:
                     # use last knob to control Main balance
                     if col == 7:
-                        self.set_main_mixer_balance(2.0 * ccval / 127.0 - 1.0)
+                        self.set_mixer_param("balance", -1, 2.0 * ccval / 127.0 - 1.0)
                     # pass rest of knob's CC to engine control (MIDI-learn)
                     else:
                         return False
                 # else, use knobs to control chain's balance
                 else:
-                    self.set_mixer_parma("balance", col, 2.0 * ccval/127.0 - 1.0)
+                    pos = self.get_mixer_pos_from_device_col(col)
+                    self.set_mixer_param("balance", pos, 2.0 * ccval/127.0 - 1.0)
                 return True
         # SysEx
         elif ev[0] == 0xF0:
@@ -466,18 +411,13 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
     def light_off(self):
         if self.idev_out is None:
             return
-
         for ccnum in self.mute_ccnums:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, 0)
         for ccnum in self.solo_ccnums:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, 0)
         for ccnum in self.rec_ccnums:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, 0)
         for ccnum in [41, 42, 43, 44, 45, 46, 58, 59, 60, 61, 62]:
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, self.midi_chan, ccnum, 0)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, ccnum, 0)
 
 # ------------------------------------------------------------------------------
