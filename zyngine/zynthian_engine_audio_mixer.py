@@ -24,6 +24,7 @@
 # ********************************************************************
 
 import logging
+#import traceback
 
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
@@ -35,6 +36,7 @@ import zynautoconnect
 # -------------------------------------------------------------------------------
 # zynmixer channel strip engine
 # -------------------------------------------------------------------------------
+
 
 class zynthian_engine_audio_mixer(zynthian_engine):
 
@@ -186,12 +188,12 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
                     chan=zctrl.processor.mixer_chan,
                     symbol="solo", value=zctrl.value,
-                    mixbus=zctrl.processor.eng_code=="MR")
+                    mixbus=(zctrl.processor.eng_code == "MR"))
             else:
-                getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(
-                    zctrl.processor.mixer_chan, zctrl.value)
+                getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
         except Exception as e:
-            logging.warning(e)
+            logging.error(e)
+            #logging.exception(traceback.format_exc())
 
     def get_path(self, processor):
         return processor.name

@@ -637,7 +637,6 @@ def midi_autoconnect():
             # else => Connect input device to zmip directly
             required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
 
-
     for i in range(0, max_num_devs):
         # Delete disconnected input devices from list and unload driver
         if i not in busy_idevs and devices_in[i] is not None:
@@ -850,7 +849,7 @@ def midi_autoconnect():
         try:
             jclient.connect("zynseq:clippy", port)
         except:
-            pass # Don't care about already connected ports
+            pass  # Don't care about already connected ports
 
     # Autoload new drivers
     for i in new_idev:
@@ -938,8 +937,7 @@ def audio_autoconnect():
 
         # Connect global audio player to aux
         if state_manager.audio_player and state_manager.audio_player.jackname:
-            ports = jclient.get_ports(
-                state_manager.audio_player.jackname, is_output=True, is_audio=True)
+            ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
             required_routes[f"zynmixer_bus:input_00a"].add(ports[0].name)
             required_routes[f"zynmixer_bus:input_00b"].add(ports[1].name)
     except Exception as e:
@@ -961,8 +959,7 @@ def audio_autoconnect():
             required_routes.pop(dst)
 
     # Replicate main output to headphones
-    hp_ports = jclient.get_ports(
-        "Headphones:playback", is_input=True, is_audio=True)
+    hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
     if len(hp_ports) >= 2:
         required_routes[hp_ports[0].name] = required_routes[hw_audio_dst_ports[0].name]
         required_routes[hp_ports[1].name] = required_routes[hw_audio_dst_ports[1].name]
@@ -998,10 +995,10 @@ def audio_autoconnect():
                     src_ports = jclient.get_ports(jackname, is_audio=True, is_output=True)
                     if len(src_ports) > 0:
                         required_routes["zynmixer_bus:input_00a"].add(src_ports[0].name)
-                    if len(src_ports) > 1:
-                        required_routes["zynmixer_bus:input_00b"].add(src_ports[1].name)
-                    else:
-                        required_routes["zynmixer_bus:input_00b"].add(src_ports[0].name)
+                        if len(src_ports) > 1:
+                            required_routes["zynmixer_bus:input_00b"].add(src_ports[1].name)
+                        else:
+                            required_routes["zynmixer_bus:input_00b"].add(src_ports[0].name)
 
     # Connect and disconnect routes
     for dst, sources in required_routes.items():
