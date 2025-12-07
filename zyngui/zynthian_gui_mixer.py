@@ -1159,6 +1159,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.unregister(
                 zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
             zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.select_phrase_cb)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
             super().hide()
 
     def build_view(self):
@@ -1207,6 +1208,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.register_queued(
                 zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.select_phrase_cb)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
         return True
 
     def update_layout(self):
@@ -1344,6 +1346,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def select_phrase_cb(self, phrase):
         self.highlighted_strip.highlight_launcher(phrase)
+
+    def audio_recorder_arm_cb(self, channel, arm):
+        self.refresh_visible_strips()
 
     def launcher_play_state_cb(self, phrase, chan):
         if not self.launcher_mode:

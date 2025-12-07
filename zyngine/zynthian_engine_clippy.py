@@ -74,6 +74,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.selected_proc = None
         self.selected_phrase = None
         self.selected_note = None
+        self.tmp_file_idx = 0
 
         self.tempo_timer = None
         self.crop_timer = None
@@ -201,8 +202,11 @@ class zynthian_engine_clippy(zynthian_engine):
                 try:
                     for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
                         processor.controllers_dict[f"{symbol} {idx}"] = processor.controllers_dict[f"{symbol} {idx - 1}"]
+                        processor.controllers_dict[f"{symbol} {idx}"].symbol = f"{symbol} {idx}"
                 except:
                     pass # Ignore unpopulated phrases
+            self.add_controllers(processor, phrase + 1)
+            processor.controllers_dict[f"mode {idx}"].set_value(0)
 
     def remove_phrase(self, phrase):
         """ Remove a phrase
@@ -212,11 +216,15 @@ class zynthian_engine_clippy(zynthian_engine):
 
         for processor in self.processors:
             self.libclippy.removeClip(processor.midi_chan - 16, phrase)
-            for idx in range(phrase + 1, self.zynseq.phrases):
+            self.remove_tmp_file(processor, phrase)
+            for idx in range(phrase + 1, self.zynseq.phrases + 1):
                 try:
                     for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
-                        processor.controllers_dict[f"{symbol} {idx}"] = processor.controllers_dict[f"{symbol} {idx + 1}"]
-                        processor.controllers_dict[f"{symbol} {idx}"].symbol = f"{symbol} {idx}"
+                        if idx < self.zynseq.phrases:
+                            processor.controllers_dict[f"{symbol} {idx}"] = processor.controllers_dict[f"{symbol} {idx + 1}"]
+                            processor.controllers_dict[f"{symbol} {idx}"].symbol = f"{symbol} {idx}"
+                        else:
+                            del processor.controllers_dict[f"{symbol} {idx}"]
                 except:
                     pass # Ignore unpopulated phrases
 
@@ -248,7 +256,10 @@ class zynthian_engine_clippy(zynthian_engine):
         """
 
         note = phrase + 1
-        path = processor.controllers_dict[f"file {note}"].value
+        file_zctrl = processor.controllers_dict[f"file {note}"]
+        path = file_zctrl.value
+        if reset:
+            self.remove_tmp_file(processor, phrase)
 
         if path:
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
@@ -272,18 +283,20 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Configure clip with required beats to play whole file at this tempo
             try:
-                if f"warp {note}" in processor.controllers_dict:
-                    warp_zctrl = processor.controllers_dict[f"warp {note}"]
-                    beats_zctrl = processor.controllers_dict[f"beats {note}"]
-                    beats_value = beats_zctrl.value
-                    warp_value = warp_zctrl.value
-                    crop_start = processor.controllers_dict[f"crop_start {note}"].value
-                    crop_end = processor.controllers_dict[f"crop_end {note}"].value
-                else:
-                    beats_value = 0
-                    warp_value = 1
-                    crop_start = 0
-                    crop_end = frames
+                warp_zctrl = processor.controllers_dict[f"warp {note}"]
+                beats_zctrl = processor.controllers_dict[f"beats {note}"]
+                crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
+                crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
+                if reset:
+                    beats_zctrl.value = 0
+                    warp_zctrl.value = 1
+                    crop_start_zctrl.value = 0
+                    crop_end_zctrl.value = frames
+
+                beats_value = beats_zctrl.value
+                warp_value = warp_zctrl.value
+                crop_start = crop_start_zctrl.value
+                crop_end = crop_end_zctrl.value
 
                 duration = (crop_end - crop_start) / sr
                 beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "sig")
@@ -310,16 +323,15 @@ class zynthian_engine_clippy(zynthian_engine):
                     ratio = factor
                     write_file = True
 
-                dst_path = f"/tmp/clippy_{processor.midi_chan}_{note}.wav"
+                try:
+                    dst_path = file_zctrl.path
+                except:
+                    dst_path = f"/tmp/clippy_{self.tmp_file_idx:04x}.wav"
+                    self.tmp_file_idx += 1
                 if write_file and self.libclippy.copyFile(bytes(path, "utf-8"), bytes(dst_path, "utf-8"), 2, ctypes.c_float(ratio), crop_start, crop_end) == 0:
                     path = dst_path
+                    file_zctrl.path = path
                     #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
-                else:
-                    try:
-                        os.remove(dst_path)
-                        #zctrl_crop_end.value_max = zctrl_crop_end.value_range = data.shape[0]
-                    except:
-                        pass
                 if f"beats {note}" in processor.controllers_dict:
                     if can_warp:
                         beats_zctrl.value = whole_beats
@@ -387,71 +399,71 @@ class zynthian_engine_clippy(zynthian_engine):
                     continue
         self.tempo_mutex = False
 
-    def update_controllers(self, processor, note, frames=100, reset=False):
+    def add_controllers(self, processor, note):
         """ Adds a controllers to processor
 
             processor: Clippy processor object
             note: MIDI note (clip id)
-            frames: Quantity of frames in file
         """
 
         # Add default controllers for each phrase
         zctrls = {}
-        if f"file {note}" not in processor.controllers_dict:
-            zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
-                    "name": "file",
-                    "processor": processor,
-                    "is_path": True,
-                    "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
-            })
-        if f"warp {note}" not in processor.controllers_dict:
-            zctrls[f"warp {note}"] = zynthian_controller(self, f"warp {note}", {
-                    "name": "warp",
-                    "processor": processor,
-                    "is_toggle": True,
-                    "labels": ["off", "on"],
-                    "value": "on"
-            })
-        if f"beats {note}" not in processor.controllers_dict:
-            zctrls[f"beats {note}"] = zynthian_controller(self, f"beats {note}", {
-                "name": "beats",
+        zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
+                "name": "file",
                 "processor": processor,
-                "is_integer": True,
-                "value": 0,
-                "value_min": 0,
-                "value_max": MAX_BEATS
-            })
-        if f"mode {note}" not in processor.controllers_dict:
-            zctrls[f"mode {note}"] = zynthian_controller(self, f"mode {note}", {
-                "name": "mode",
+                "is_path": True,
+                "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
+        })
+        zctrls[f"warp {note}"] = zynthian_controller(self, f"warp {note}", {
+                "name": "warp",
                 "processor": processor,
-                "is_integer": True,
-                "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
-                "value_min": 0,
-                "value_max": 25,
-                "value": 1
-            })
-        if f"gain {note}" not in processor.controllers_dict:
-            zctrls[f"gain {note}"] = zynthian_controller(self, f"gain {note}", {
-                "name": "gain (dB)",
-                "processor": processor,
-                "value_min": -12.0,
-                "value_max": 6.0,
-                "value": 0.0,
-            })
-        if f"crop_start {note}" not in processor.controllers_dict:
-            zctrls[f"crop_start {note}"] = zynthian_controller(self, f"crop_start {note}", {
-                "name": "crop start",
-                "processor": processor,
-                "is_integer": True
-            })
-        if f"crop_end {note}" not in processor.controllers_dict:
-            zctrls[f"crop_end {note}"] = zynthian_controller(self, f"crop_end {note}", {
-                "name": "crop end",
-                "processor": processor,
-                "is_integer": True
-            })
+                "is_toggle": True,
+                "labels": ["off", "on"],
+                "value": "on"
+        })
+        zctrls[f"beats {note}"] = zynthian_controller(self, f"beats {note}", {
+            "name": "beats",
+            "processor": processor,
+            "is_integer": True,
+            "value": 0,
+            "value_min": 0,
+            "value_max": MAX_BEATS
+        })
+        zctrls[f"mode {note}"] = zynthian_controller(self, f"mode {note}", {
+            "name": "mode",
+            "processor": processor,
+            "is_integer": True,
+            "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
+            "value_min": 0,
+            "value_max": 25,
+            "value": 1
+        })
+        zctrls[f"gain {note}"] = zynthian_controller(self, f"gain {note}", {
+            "name": "gain (dB)",
+            "processor": processor,
+            "value_min": -12.0,
+            "value_max": 6.0,
+            "value": 0.0,
+        })
+        zctrls[f"crop_start {note}"] = zynthian_controller(self, f"crop_start {note}", {
+            "name": "crop start",
+            "processor": processor,
+            "is_integer": True
+        })
+        zctrls[f"crop_end {note}"] = zynthian_controller(self, f"crop_end {note}", {
+            "name": "crop end",
+            "processor": processor,
+            "is_integer": True
+        })
+        zctrls[f"zoom {note}"] = zynthian_controller(self, f"zoom {note}", {
+            "name": "zoom",
+            "processor": processor,
+            "ticks": [0, 1, 2],
+            "labels": ["x1", "x2", "x4"]
+        })
+        processor.controllers_dict.update(zctrls)
 
+    def update_controllers(self, processor, note, frames=100, reset=False):
         if reset:
             processor.controllers_dict[f"crop_start {note}"].value_max = frames
             processor.controllers_dict[f"crop_start {note}"].value = 0
@@ -467,14 +479,22 @@ class zynthian_engine_clippy(zynthian_engine):
             ticks.append(val)
             labels.append(f"x{ticks[i]}")
             i += 1
-        zctrls[f"zoom {note}"] = zynthian_controller(self, f"zoom {note}", {
+        processor.controllers_dict[f"zoom {note}"] = zynthian_controller(self, f"zoom {note}", {
             "name": "zoom",
             "processor": processor,
             "ticks": ticks,
             "labels": labels
         })
-        processor.controllers_dict.update(zctrls)
         self.update_nudge(processor, note)
+
+    def remove_tmp_file(self, processor, phrase):
+        note = phrase + 1
+        try:
+            path = processor.controllers_dict[f"file {note}"].path
+            if path.startswith("/tmp"):
+                os.remove(path)
+        except:
+            pass
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -501,7 +521,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.zynseq.enable_channel(processor.midi_chan, True)
         for phrase in range(self.zynseq.phrases):
             note = phrase + 1
-            self.update_controllers(processor, note)
+            self.add_controllers(processor, note)
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
         self.set_phrase(processor, self.zynseq.phrase)
 
@@ -509,6 +529,8 @@ class zynthian_engine_clippy(zynthian_engine):
         self.zynseq.enable_channel(processor.midi_chan, False)
         if self.libclippy.removePlayer(processor.midi_chan - 16) != 0:
             return
+        for phrase in range(self.zynseq.phrases):
+            self.remove_tmp_file(processor, phrase)
         super().remove_processor(processor)
 
     # ---------------------------------------------------------------------------

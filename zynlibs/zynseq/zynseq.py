@@ -269,15 +269,16 @@ class zynseq(zynthian_engine):
         if phrase is None:
             phrase = self.phrases
         self.libseq.insertPhrase(scene, phrase)
-        if scene == self.scene:
-            for chan in range(16, 32):
-                self.set_sequence_param(self.scene, phrase, chan, "repeat", 0)
+        if scene == self.scene and self.clippy:
+            self.clippy.insert_phrase(phrase)
         self.refresh_state()
 
     def remove_phrase(self, scene, phrase):
         if self.phrases < 2:
             return  # TODO: What should be the minimum quantity of launchers?
         self.libseq.removePhrase(scene, phrase)
+        if scene == self.scene and self.clippy:
+            self.clippy.remove_phrase(phrase)
         self.refresh_state()
 
     def swap_phrase(self, scene, phrase1, phrase2):
