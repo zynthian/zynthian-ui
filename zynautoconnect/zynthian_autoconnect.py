@@ -996,9 +996,9 @@ def audio_autoconnect():
                     required_routes["zynmixer_bus:input_00b"].add(f"{jackname}:output_{proc.mixer_chan:02d}b")
                 else:
                     src_ports = jclient.get_ports(jackname, is_audio=True, is_output=True)
-                    if len(src) > 0:
+                    if len(src_ports) > 0:
                         required_routes["zynmixer_bus:input_00a"].add(src_ports[0].name)
-                    if len(src) > 1:
+                    if len(src_ports) > 1:
                         required_routes["zynmixer_bus:input_00b"].add(src_ports[1].name)
                     else:
                         required_routes["zynmixer_bus:input_00b"].add(src_ports[0].name)

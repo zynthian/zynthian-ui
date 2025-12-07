@@ -174,6 +174,12 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     for processor in self.processors:
                         processor.controllers_dict["solo"].set_value(0, False)
                         zynautoconnect.solo(processor.chain_id, 0)
+                    try:
+                        for processor in self.state_manager.chain_manager.zyngines["MI"].processors:
+                            processor.controllers_dict["solo"].set_value(0, False)
+                            zynautoconnect.solo(processor.chain_id, 0)
+                    except:
+                        pass
                 else:
                     zynautoconnect.solo(zctrl.processor.chain_id, zctrl.value)
                 zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
