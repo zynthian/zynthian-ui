@@ -54,6 +54,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         self.name = "AudioMixer"
         self.nickname = "MI"
         self.MAX_NUM_CHANNELS = 0
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, state_manager.audio_recorder.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
 
     def start(self):
         pass
@@ -201,5 +202,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 return f"Mixer Channel {processor.chain_id}"
         return f"Main Mixbus"
 
+    def audio_recorder_cb(self, state):
+        for processor in self.processors:
+            processor.controllers_dict["record"].set_readonly(state)
 
 # -------------------------------------------------------------------------------
