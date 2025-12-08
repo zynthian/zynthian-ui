@@ -339,7 +339,6 @@ class zynthian_legacy_snapshot:
                     "audio_processors": [],  # Temporary list of processors in chain - used to build slots
                     "mixer_chan": midi_chan,
                     "midi_chan": None,
-                    "current_processor": 0,
                     "slots": []
                 }
                 chain_state = {

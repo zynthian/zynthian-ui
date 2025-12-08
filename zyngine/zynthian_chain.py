@@ -862,7 +862,6 @@ class zynthian_chain:
             "midi_chan": self.midi_chan,
             "midi_thru": self.midi_thru,
             "audio_thru": self.audio_thru,
-            "zmop_index": self.zmop_index,
             "cc_route": cc_route,
             "slots": slots_states
         }

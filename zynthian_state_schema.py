@@ -51,78 +51,87 @@ ZynthianState = {
             "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",  # Friendly name mapped by uid
         } # ... More ports
     },
-    "chains": {  # Dictionary of chains indexed by chain id
+    "chains": {  # Dictionary of chains indexed by chain id (id=0 is main mixbus chain)
         "1": {  # Chain 1
-            "title": "My first chain",  # Chain title (optional)
+            "title": "My first chain",  # Optional chain title
             "midi_chan": 0,  # Chain MIDI channel (may be None)
-            "current_processor": 0, # Index of the processor last selected within chain (Should this go in GUI section?)
+            "midi_thru": True, # True if chain passes MIDI
+            "audio_thru": False, # True if chain passes audio
             "slots": [  # List of slots in chain in serial slot order
                 {  # Dictionary of processors in first slot
                     "1": "PT",  # Processor type indexed by processor id
                 }, # ... more processors in this slot
             ], # ... More slots
-            "cc_route": [] # List of MIDI CC to be routed directly to engine (optional)
-        },
-        "0": { # Chain 0 is main mixbus
-        },
-        "-1": { # Chain -1 holds global processors (not in real chain), e.g. alsa mixer
+            "cc_route": [] # Optional list of MIDI CC to be routed directly to engine
         }, # ... More chains
     },
     "zs3": {  # Dictionary of ZS3's indexed by chan/prog or ZS3-x
         "zs3-0": {  # ZS3 state when snapshot saved
             "title": "Last state",  # ZS3 title
-            "active_chain": "01", # Active chain id (optional, overides base value)
+            "active_chain": "1", # Optional active chain id (overides base value)
             "processors": {  # Dictionary of processor settings
                 "1": {  # Processor id:1
                     "bank_info": ["HB Steinway D", 0, "Grand Steinway D (Hamburg)", "D4:A", "HB Steinway Model D"], # Bank id
                     "preset_info": None,  # Preset id
-                    "controllers": {  # Dictionary of controllers (optional, overrides preset default value)
+                    "controllers": {  # Optional dictionary of controllers (overrides preset default value)
                         "volume": {  # Indexed by controller symbol
                             "value": 96,  # Controller value
                             "midi_cc_momentary_switch": 1, # Optional momentary toggle
                             "midi_cc_debounce": 1 # Optional toggle debounce
-                        } # ... More controllers
+                        }, # ... More controllers
+                    "restore": True # Optional False to omit from processor parameters from restore (Default: True)
                     }, # ... Other parameters
                 } # ... Other controllers
             }, # ... Other processors
             "chains": {  # Dictionary of chain specific ZS3 config indexed by chain id
-                "01": {  # Chain 01
+                "1": {  # Chain 1
+                    "restore": True, # Optional False to omit chain from restore (default: True)
+                    "midi_chan": 0, # Override chain MIDI channel TODO: Why???
+                    "midi_learn": {},
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"],# List of chain jack MIDI output destinations (may include aliases)
-                    "midi_thru": False,  # True to allow MIDI pass-through when MIDI chain empty
+                    "midi_thru": False,  # True to allow MIDI pass-through when MIDI chain empty TODO: Override? Why???
                     "audio_in": [0, 1], # List of index of physical input indicies or zynmixer:send
                     "audio_out": [0, "system:playback"], # Targets for chain routing: Chain id | jackport regex | [procid, input port name]
                     "audio_thru": False,  # True to allow audio pass-through when audio chain empty
-                    "note_low": 0,  # Lowest MIDI note chain responds to
-                    "note_high": 127,  # Higheset MIDI note chain responds to
-                    "transpose_octave": 0,  # Octaves to transpose chain MIDI
-                    "transpose_semitone": 0,  # Semitones to transpose chain MIDI
+                    "note_low": 0,  # Optional lowest MIDI note chain responds to
+                    "note_high": 127,  # Optional higheset MIDI note chain responds to
+                    "transpose_octave": 0,  # Optional octaves to transpose chain MIDI
+                    "transpose_semitone": 0,  # Optional semitones to transpose chain MIDI
                 },
             }, # ... Other chains
             "midi_capture": {  # Dictionary of midi input configuration mapped by port input uid
                 "'ttymidi:MIDI_in'": {
-                    "zmip_input_mode": 1, # 1 if active chain mode enabled (stage mode), 0 for multitimbral
-                    "disable_ctrldev": 0,  # 1 to disable loading of controller device driver
+                    "zmip_input_mode": True, # True if active chain mode enabled (stage mode), False for multitimbral
+                    "zmip_system": True, # True to enable MIDI system messages
+                    "zmip_system_rt": True, # True to enable MIDI realtime system messages
+                    "disable_ctrldev": False,  # True to disable loading of controller device driver
+                    "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controoler device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
-                    "audio_in": [0, 1], # List of audio inputs, e.g. for aubio (optional)
-                    "midi_cc": {  # Map of MIDI CC mapping, indexed by MIDI channel
-                        "0": {  # Map of controls, indexed by CC number
-                            "121": [  # List of controller configs
-                                [1, "volume"], # Controller config [proc_id, symbol]
-                            ], # ... Other controllers
-                        }, # ... Other CCs
-                    } # ... Other MIDI channels
+                    "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
+                    "midi_learn": {  # Map of global/absolute MIDI CC binding, indexed by (MIDI channel << 8) | CC
+                        "11": [  # List of controls
+                            [1, "volume"], # Controller config [proc_id, symbol]
+                        ], # ... Other controllers
+                    } # ... Other bindings
                 }, # ... Other devices
             },
             "global": {  # Dictionary of global params settable by zs3 indexed by param name
                 "midi_transpose": 0,  # Semitones to globally transpose
-                "zctrl_x": [0, "volume"], # Mapping of x-axis controller [proc_id, symbol]
-                "zctrl_y": [0, "cutoff"], # Mapping of y-axis controller [proc_id, symbol]
+                "zctrl_x": [0, "volume"], # Optional mapping of x-axis controller [proc_id, symbol]
+                "zctrl_y": [0, "cutoff"], # Optional mapping of y-axis controller [proc_id, symbol]
+                "zynaptik": { # zynaptik configuration
+                    "cvin_volts_octave": 1.0, # CV input volts per octave
+                    "cvin_note0": 0, # CV input note 0 
+                    "cvout_volts_octave": 1.0, # CV output volts per octave
+                    "cvout_note0": 0 # CV output note 0
+                }
             }
         },
         "1/2": {},  # ZS3 for channel 1, program change 2
         "zs3-1": {},  # Manually saved ZS3 without assigned program change
     }, # ... Other ZS3
+    "last_zs3_id": "zs3-0", # Name of zs3 loaded when snapshot saved
     "zynseq": {
         "tempo": 120.0, # Default tempo in BPM
         "sig": 4, # Default time signature (x/4)
@@ -160,7 +169,7 @@ ZynthianState = {
         },
         "scenes": [ # List of scenes, indexed by scene id
             { # First scene
-                "name": "Scene 1", # Scene name (optional)
+                "name": "Scene 1", # Optional scene name
                 "phrases": [ # List of phrases, indexed by phrase number
                     { # First phrase
                         "name": "A", # Scene name
@@ -206,13 +215,5 @@ ZynthianState = {
                 ]
             }, # Other scenes
         ]
-    },
-    "zyngui": {  # Optional UI specific configuration
-        "processors": {  # Processor specific config
-            "1": {  # Indexed by processor id
-                "show_fav_presets": False,  # True if presets displayed
-                "current_screen_index": 8  # Index of last selected controller view page
-            }
-        }
     }
 }

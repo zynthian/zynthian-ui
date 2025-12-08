@@ -354,9 +354,6 @@ class zynthian_state_manager:
     # Internal parameters and core limits
     # -------------------------------------------------------------------------
 
-    def get_max_num_mixer_chans(self):
-        return MAX_NUM_MIXER_CHANS
-
     def get_num_zmop_chains(self):
         return NUM_ZMOP_CHAINS
 
@@ -973,7 +970,7 @@ class zynthian_state_manager:
         if engine_states:
             state["engine_config"] = engine_states
 
-        # Zynseq json
+        # zynseq json
         self.zynseq.refresh_state()
         state['zynseq'] = self.zynseq.state
 
@@ -1014,7 +1011,7 @@ class zynthian_state_manager:
                         except:
                             pass
 
-            for key in ["last_snapshot_fpath", "midi_profile_state", "engine_config", "audio_recorder_armed", "zynseq", "alsa_mixer", "zyngui"]:
+            for key in ["last_snapshot_fpath", "midi_profile_state", "zynseq"]:
                 try:
                     del state[key]
                 except:
@@ -1120,7 +1117,7 @@ class zynthian_state_manager:
 
                     if merge:
                         # Remove elements that are not to be merged
-                        for key in ["last_snapshot_fpath", "last_zs3_id", "midi_profile_state", "audio_recorder_armed", "zynseq", "alsa_mixer", "zyngui"]:
+                        for key in ["last_snapshot_fpath", "last_zs3_id", "midi_profile_state", "zynseq"]:
                             try:
                                 del state[key]
                             except:
@@ -1325,12 +1322,12 @@ class zynthian_state_manager:
     def set_zs3_title(self, zs3_id, title):
         self.zs3[zs3_id]["title"] = title
 
-    def toggle_zs3_chain_restore_flag(self, zs3_id, chain_id):
+    def toggle_zs3_restore_flag(self, zs3_id, type, id):
         zs3_state = self.zs3[zs3_id]
-        if chain_id == "mixer":
-            tstate = zs3_state["mixer"]
-        else:
-            tstate = zs3_state["chains"][chain_id]
+        try:
+            tstate = zs3_state[type][int(id)]
+        except:
+            return
         try:
             tstate["restore"] = not tstate["restore"]
         except:
@@ -1372,15 +1369,12 @@ class zynthian_state_manager:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
                 chain_id = int(chain_id)
-
                 try:
                     restore_flag = chain_state["restore"]
                 except:
                     restore_flag = True
-
                 if not restore_flag:
                     continue
-
                 chain = self.chain_manager.get_chain(chain_id)
                 if chain:
                     restored_chains.append(chain_id)
@@ -1455,6 +1449,12 @@ class zynthian_state_manager:
 
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
+                try:
+                    restore_flag = proc_state["restore"]
+                except:
+                    restore_flag = True
+                if not restore_flag:
+                    continue
                 try:
                     processor = self.chain_manager.processors[int(proc_id)]
                     if processor.chain_id in restored_chains:
@@ -1559,6 +1559,20 @@ class zynthian_state_manager:
             else:
                 title = f"ZS3-{index}"
 
+        # Store persistent config
+        omit_processors = []
+        omit_chains = []
+        if zs3_id in self.zs3:
+            zs3 = self.zs3[zs3_id]
+            if "processors" in zs3:
+                for proc_id, proc in zs3["processors"].items():
+                    if "restore" in proc and not proc["restore"]:
+                        omit_processors.append(proc_id)
+            if "chains" in zs3:
+                for chain_id, chain in zs3["chains"].items():
+                    if "restore" in chain and not chain["restore"]:
+                        omit_chains.append(chain_id)
+
         # Initialise zs3
         self.zs3[zs3_id] = {
             "title": title,
@@ -1571,6 +1585,8 @@ class zynthian_state_manager:
                 "midi_chan": chain.midi_chan,
                 "midi_learn": {}
             }
+            if chain_id in omit_chains:
+                chain_state["restore"] = False
             if chain.is_midi():
                 note_low = lib_zyncore.zmop_get_note_low(chain.zmop_index)
                 if note_low > 0:
@@ -1624,6 +1640,9 @@ class zynthian_state_manager:
                 "preset_subdir_info": processor.preset_subdir_info,
                 "controllers": {}
             }
+            if id in omit_processors:
+                processor_state["restore"] = False
+
             # Add controllers
             for symbol, zctrl in processor.controllers_dict.items():
                 processor_state["controllers"][symbol] = zctrl.get_state()

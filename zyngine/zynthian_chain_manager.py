@@ -259,7 +259,6 @@ class zynthian_chain_manager:
                 cc_route_ct[ccnum] = 1
             lib_zyncore.zmop_set_cc_route(zmop_index, cc_route_ct)
 
-
         chain.rebuild_graph()
         zynautoconnect.request_audio_connect(fast_refresh)
         zynautoconnect.request_midi_connect(fast_refresh)
