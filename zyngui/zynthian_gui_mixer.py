@@ -1345,7 +1345,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def select_phrase_cb(self, phrase):
         self.highlighted_strip.highlight_launcher(phrase)
 
-    def audio_recorder_arm_cb(self, channel, arm):
+    def audio_recorder_arm_cb(self, zynmixer, channel, value):
         self.refresh_visible_strips()
 
     def launcher_play_state_cb(self, phrase, chan):

@@ -1431,6 +1431,25 @@ class zynthian_gui:
         except (AttributeError, TypeError):
             pass
 
+    def cuia_mixer(self, params):
+        """ Set mixer control
+
+        params[0]: Index of mixer strip in display order (-1 for main mixbus)
+        params[1]: parameter symbol
+        params[2]: parameter value
+        """
+        try:
+            if params[0] == -1:
+                chain_id = 0
+            else:
+                chain_id = self.chain_manager.ordered_chain_ids[params[0]]
+            chain = self.chain_manager.chains[chain_id]
+            action = params[1]
+            value = params[2]
+            chain.zynmixer_proc.controllers_dict[action].set_value(value)
+        except:
+            logging.warning(f"Failed to set mixer - bad params? {params}")
+
     # -------------------------------------------------------------------
     # Screen management CUIAs
     # -------------------------------------------------------------------
