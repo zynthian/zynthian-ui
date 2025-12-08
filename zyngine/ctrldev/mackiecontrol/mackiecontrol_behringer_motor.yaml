@@ -281,7 +281,7 @@ ccnum_buttons:
     command: cuia_SCREEN_ZYNPAD
   91:
     name: transport_frwd
-    command: cuia_transport_frwd
+    command: mkc_transport_frwd
   92:
     name: transport_ffwd
     command: mkc_transport_ffwd
