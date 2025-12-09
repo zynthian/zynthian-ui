@@ -1381,10 +1381,6 @@ class zynthian_state_manager:
                 else:
                     continue
 
-                if "midi_chan" in chain_state:
-                    if chain.midi_chan is not None and chain.midi_chan != chain_state['midi_chan']:
-                        self.chain_manager.set_midi_chan(chain_id, chain_state['midi_chan'])
-
                 if chain.zmop_index is not None:
                     if "note_low" in chain_state:
                         lib_zyncore.zmop_set_note_low(chain.zmop_index, chain_state["note_low"])
@@ -1407,8 +1403,6 @@ class zynthian_state_manager:
                     chain.midi_in = chain_state["midi_in"]
                 if "midi_out" in chain_state:
                     chain.midi_out = chain_state["midi_out"]
-                if "midi_thru" in chain_state:
-                    chain.midi_thru = chain_state["midi_thru"]
                 if "audio_in" in chain_state:
                     chain.audio_in = chain_state["audio_in"]
                 chain.audio_out = []
@@ -1421,8 +1415,6 @@ class zynthian_state_manager:
                             chain.audio_out.append("^system:playback_1$|^system:playback_2$")
                         elif out not in chain.audio_out:
                             chain.audio_out.append(out)
-                if "audio_thru" in chain_state:
-                    chain.audio_thru = chain_state["audio_thru"]
                 chain.rebuild_graph()
 
                 # Current (right) chain MIDI-learn state
@@ -1582,7 +1574,6 @@ class zynthian_state_manager:
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
             chain_state = {
-                "midi_chan": chain.midi_chan,
                 "midi_learn": {}
             }
             if chain_id in omit_chains:
@@ -1604,8 +1595,6 @@ class zynthian_state_manager:
                     chain_state["midi_in"] = chain.midi_in.copy()
                 if chain.midi_out:
                     chain_state["midi_out"] = chain.midi_out.copy()
-                if chain.midi_thru:
-                    chain_state["midi_thru"] = chain.midi_thru
             chain_state["audio_in"] = chain.audio_in.copy()
             chain_state["audio_out"] = []
             for out in chain.audio_out:
@@ -1616,8 +1605,6 @@ class zynthian_state_manager:
                             out = [i, port_name]
                             break
                 chain_state["audio_out"].append(out)
-            if chain.audio_thru:
-                chain_state["audio_thru"] = chain.audio_thru
             # Add chain MIDI mapping
             for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
                 if chain_id == (key >> 16) & 0xff:

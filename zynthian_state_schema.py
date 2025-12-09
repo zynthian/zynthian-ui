@@ -71,6 +71,7 @@ ZynthianState = {
             "active_chain": "1", # Optional active chain id (overides base value)
             "processors": {  # Dictionary of processor settings
                 "1": {  # Processor id:1
+                    "restore": True, # Optional False to omit from processor parameters from restore (Default: True)
                     "bank_info": ["HB Steinway D", 0, "Grand Steinway D (Hamburg)", "D4:A", "HB Steinway Model D"], # Bank id
                     "preset_info": None,  # Preset id
                     "controllers": {  # Optional dictionary of controllers (overrides preset default value)
@@ -79,21 +80,24 @@ ZynthianState = {
                             "midi_cc_momentary_switch": 1, # Optional momentary toggle
                             "midi_cc_debounce": 1 # Optional toggle debounce
                         }, # ... More controllers
-                    "restore": True # Optional False to omit from processor parameters from restore (Default: True)
                     }, # ... Other parameters
-                } # ... Other controllers
+                }, # ... Other controllers
             }, # ... Other processors
             "chains": {  # Dictionary of chain specific ZS3 config indexed by chain id
                 "1": {  # Chain 1
                     "restore": True, # Optional False to omit chain from restore (default: True)
-                    "midi_chan": 0, # Override chain MIDI channel TODO: Why???
-                    "midi_learn": {},
+                    "midi_learn": { # Dictionary of MIDI CC binding, indexed by 16-bit encoded [MIDI chan << 8 | CC]
+                        "267": [ # List of control bindings to this CC 
+                            [
+                                1, # Processor id
+                                "volume" # Controller symbol
+                            ], # ... Other controllers
+                        ], # ... Other bindings
+                    },
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"],# List of chain jack MIDI output destinations (may include aliases)
-                    "midi_thru": False,  # True to allow MIDI pass-through when MIDI chain empty TODO: Override? Why???
                     "audio_in": [0, 1], # List of index of physical input indicies or zynmixer:send
-                    "audio_out": [0, "system:playback"], # Targets for chain routing: Chain id | jackport regex | [procid, input port name]
-                    "audio_thru": False,  # True to allow audio pass-through when audio chain empty
+                    "audio_out": [0, "system:playback"], # Lis of targets for chain routing: Chain id | jackport regex | [procid, input port name]
                     "note_low": 0,  # Optional lowest MIDI note chain responds to
                     "note_high": 127,  # Optional higheset MIDI note chain responds to
                     "transpose_octave": 0,  # Optional octaves to transpose chain MIDI
@@ -109,9 +113,12 @@ ZynthianState = {
                     "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controoler device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
-                    "midi_learn": {  # Map of global/absolute MIDI CC binding, indexed by (MIDI channel << 8) | CC
-                        "11": [  # List of controls
-                            [1, "volume"], # Controller config [proc_id, symbol]
+                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 16-bit encoded (MIDI chan, CC)
+                        "11": [  # List of control bindings to this CC
+                            [
+                                1, # Processor id
+                                "volume" # Controller symbol
+                            ]
                         ], # ... Other controllers
                     } # ... Other bindings
                 }, # ... Other devices
