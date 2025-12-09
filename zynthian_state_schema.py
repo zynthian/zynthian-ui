@@ -57,6 +57,7 @@ ZynthianState = {
             "midi_chan": 0,  # Chain MIDI channel (may be None)
             "midi_thru": True, # True if chain passes MIDI
             "audio_thru": False, # True if chain passes audio
+            "zmop_index": 1, # Index of zynmidirouter midi output (zmop) this chain uses
             "slots": [  # List of slots in chain in serial slot order
                 {  # Dictionary of processors in first slot
                     "1": "PT",  # Processor type indexed by processor id
@@ -94,6 +95,7 @@ ZynthianState = {
                             ], # ... Other controllers
                         ], # ... Other bindings
                     },
+                    "midi_chan": 0, # Override chain MIDI channel
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"],# List of chain jack MIDI output destinations (may include aliases)
                     "audio_in": [0, 1], # List of index of physical input indicies or zynmixer:send

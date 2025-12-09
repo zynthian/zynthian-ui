@@ -1381,6 +1381,10 @@ class zynthian_state_manager:
                 else:
                     continue
 
+                if "midi_chan" in chain_state:
+                    if chain.midi_chan is not None and chain.midi_chan != chain_state['midi_chan']:
+                        self.chain_manager.set_midi_chan(chain_id, chain_state['midi_chan'])
+
                 if chain.zmop_index is not None:
                     if "note_low" in chain_state:
                         lib_zyncore.zmop_set_note_low(chain.zmop_index, chain_state["note_low"])
@@ -1591,6 +1595,7 @@ class zynthian_state_manager:
                 transpose_semitone = lib_zyncore.zmop_get_transpose_semitone(chain.zmop_index)
                 if transpose_semitone:
                     chain_state["transpose_semitone"] = transpose_semitone
+                chain_state["midi_chan"] = chain.midi_chan
                 if chain.midi_in:
                     chain_state["midi_in"] = chain.midi_in.copy()
                 if chain.midi_out:

@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import logging
+import random
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -45,6 +46,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         self.chain_id = None
         self.chain = None
         self.processor = None
+        self.last_random = {}
 
     def fill_list(self):
         self.list_data = []
@@ -70,6 +72,11 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
         if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
             self.list_data.append((self.preset_list, None, "Presets"))
+
+        if self.processor.type == "MIDI Synth":
+            self.list_data.append((self.randomize, None, "Randomize"))
+            if self.last_random:
+                self.list_data.append((self.undo_randomize, None, "Undo Randomize"))
 
         self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
 
@@ -98,6 +105,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         try:
             self.chain = self.zyngui.chain_manager.get_chain(chain_id)
             self.chain_id = chain_id
+            if self.processor != processor:
+                self.last_random = {}
             self.processor = processor
         except Exception as e:
             logging.error(e)
@@ -159,6 +168,27 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     def replace(self):
         self.zyngui.modify_chain(
             {"chain_id": self.chain_id, "processor": self.processor, "type": self.processor.type})
+
+    def randomize(self):
+        refresh = not self.last_random
+        for zctrl in self.processor.controllers_dict.values():
+            if zctrl.is_integer:
+                value = random.randint(zctrl.value_min, zctrl.value_max)
+            else:
+                value = random.random() * (zctrl.value_max - zctrl.value_min)
+            self.last_random[zctrl.symbol] = zctrl.value
+            zctrl.set_value(value)
+        if refresh:
+            self.fill_list()
+
+    def undo_randomize(self):
+        for zctrl in self.processor.controllers_dict.values():
+            try:
+                value = self.last_random[zctrl.symbol]
+                self.last_random[zctrl.symbol] = zctrl.value
+                zctrl.set_value(value)
+            except:
+                pass
 
     # Select Path
 
