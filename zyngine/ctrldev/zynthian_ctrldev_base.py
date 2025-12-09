@@ -278,6 +278,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.zynmixer = state_manager.zynmixer_chan
         self.zynmixer_bus = state_manager.zynmixer_bus
+        self.mixer_col_offset = 0
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
@@ -323,8 +324,9 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
-        if chain:
+            #chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+            chain = self.chain_manager.get_chain_by_index(pos)
+        if chain and chain.zynmixer_proc:
             try:
                 chain.zynmixer_proc.controllers_dict[param].set_value(value)
             except:
@@ -341,8 +343,9 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
-        if chain:
+            #chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+            chain = self.chain_manager.get_chain_by_index(pos)
+        if chain and chain.zynmixer_proc:
             try:
                 return chain.zynmixer_proc.controllers_dict[param].get_value()
             except:
@@ -359,8 +362,9 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            chain = self.chain_manager.get_chain_by_position(pos, midi=False)
-        if chain:
+            #chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+            chain = self.chain_manager.get_chain_by_index(pos)
+        if chain and chain.zynmixer_proc:
             try:
                 chain.zynmixer_proc.controllers_dict[param].toggle()
                 return chain.zynmixer_proc.controllers_dict[param].value

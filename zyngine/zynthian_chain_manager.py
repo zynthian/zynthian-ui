@@ -935,7 +935,6 @@ class zynthian_chain_manager:
         self.state_manager.end_busy("remove_processor")
         return success
 
-
     def refresh_fx_send(self):
         send_count = self.state_manager.zynmixer_chan.get_send_count()
         for processor in self.processors.values():

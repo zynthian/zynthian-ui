@@ -190,9 +190,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
         if chain_id:
-            col = self.chain_manager.get_chain_index(chain_id)
-            if self.fader_bank:
-                col -= 8
+            col = self.chain_manager.get_chain_index(chain_id) - self.mixer_col_offset
             if 0 <= col < 8:
                 if symbol == "mute":
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
@@ -205,12 +203,8 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
     def update_mixer_active_chain(self, active_chain):
         if self.rec_mode:
             return
-        if self.fader_bank:
-            col0 = 8
-        else:
-            col0 = 0
         for i in range(0, 8):
-            chain_id = self.chain_manager.get_chain_id_by_index(col0 + i)
+            chain_id = self.chain_manager.get_chain_id_by_index(self.mixer_col_offset + i)
             if chain_id and chain_id == active_chain:
                 rec = 0x7F
             else:
@@ -224,11 +218,9 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 
         # Bank selection LED
         if self.fader_bank:
-            col0 = 8
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0)
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_ffwd_ccnum, 0x7F)
         else:
-            col0 = 0
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0x7F)
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_ffwd_ccnum, 0)
 
@@ -241,7 +233,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 
         # Strips Leds
         for i in range(0, 8):
-            pos = col0 + i
+            pos = self.mixer_col_offset + i
             chain_id = self.chain_manager.get_chain_id_by_index(pos)
             mute = self.get_mixer_param("mute", pos)
             solo = self.get_mixer_param("solo", pos)
@@ -257,11 +249,6 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[i], mute * 0x7F)
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.solo_ccnums[i], solo * 0x7F)
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.rec_ccnums[i], rec * 0x7F)
-
-    def get_mixer_pos_from_device_col(self, col):
-        if self.fader_bank:
-            return col + 8
-        return col
 
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
@@ -308,11 +295,13 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                         self.state_manager.send_cuia("BACK")
                     else:
                         self.fader_bank = 0
+                        self.mixer_col_offset = 0
                     self.refresh()
                 return True
             elif ccnum == self.transport_ffwd_ccnum:
                 if ccval > 0:
                     self.fader_bank = 1
+                    self.mixer_col_offset = 8
                     self.refresh()
                 return True
             elif ccnum == self.transport_play_ccnum:
@@ -342,7 +331,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                     if self.shift and col == 7:
                         val = self.toggle_mixer_param("mute", -1)
                     else:
-                        pos = self.get_mixer_pos_from_device_col(col)
+                        pos = self.mixer_col_offset + col
                         val = self.toggle_mixer_param("mute", pos)
                     # Send LED feedback
                     if self.idev_out is not None:
@@ -352,9 +341,9 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if ccval > 0:
                     col = self.solo_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        val = self.toggle_main_mixer_param("solo", -1)
+                        val = self.toggle_mixer_param("solo", -1)
                     else:
-                        pos = self.get_mixer_pos_from_device_col(col)
+                        pos = self.mixer_col_offset + col
                         val = self.toggle_mixer_param("solo", pos)
                     # Send LED feedback
                     if self.idev_out is not None:
@@ -363,7 +352,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
             elif ccnum in self.rec_ccnums:
                 if ccval > 0:
                     col = self.rec_ccnums.index(ccnum)
-                    pos = self.get_mixer_pos_from_device_col(col)
+                    pos = self.mixer_col_offset + col
                     if not self.rec_mode:
                         self.chain_manager.set_active_chain_by_index(pos)
                         self.refresh()
@@ -381,7 +370,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                     self.set_mixer_param("level", -1, ccval / 127)
                 # else, use faders to control chain's volume
                 else:
-                    pos = self.get_mixer_pos_from_device_col(col)
+                    pos = self.mixer_col_offset + col
                     self.set_mixer_param("level", pos, ccval / 127)
                 return True
             elif ccnum in self.knobs_ccnum:
@@ -396,7 +385,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                         return False
                 # else, use knobs to control chain's balance
                 else:
-                    pos = self.get_mixer_pos_from_device_col(col)
+                    pos = self.mixer_col_offset + col
                     self.set_mixer_param("balance", pos, 2.0 * ccval/127.0 - 1.0)
                 return True
         # SysEx
