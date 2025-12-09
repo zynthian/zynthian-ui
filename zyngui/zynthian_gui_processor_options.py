@@ -105,6 +105,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         try:
             self.chain = self.zyngui.chain_manager.get_chain(chain_id)
             self.chain_id = chain_id
+            if self.processor != processor:
+                self.last_random = {}
             self.processor = processor
         except Exception as e:
             logging.error(e)
