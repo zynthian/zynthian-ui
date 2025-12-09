@@ -231,9 +231,10 @@ class zynthian_chain_manager:
         chain.set_title(title)
 
         # Add to chain index (sorted!)
-        if chain_pos is None:
-            chain_pos = self.get_chain_index(0)
-        self.ordered_chain_ids.insert(chain_pos, chain_id)
+        if chain_id:
+            if chain_pos is None:
+                chain_pos = len(self.ordered_chain_ids)
+            self.ordered_chain_ids.insert(chain_pos, chain_id)
 
         # Set MIDI channel
         self.set_midi_chan(chain_id, midi_chan)
@@ -722,7 +723,7 @@ class zynthian_chain_manager:
         Returns : ID of active chain
         """
 
-        if index < len(self.ordered_chain_ids):
+        if 0 <= index < len(self.ordered_chain_ids):
             return self.set_active_chain_by_id(self.ordered_chain_ids[index])
         else:
             return self.set_active_chain_by_id(0)
@@ -736,7 +737,7 @@ class zynthian_chain_manager:
 
         index = self.get_chain_index(self.active_chain_id)
         index += nudge
-        index = min(index, len(self.ordered_chain_ids) - 1)
+        index = min(index, len(self.ordered_chain_ids))
         index = max(index, 0)
         return self.set_active_chain_by_index(index)
 
@@ -771,7 +772,7 @@ class zynthian_chain_manager:
 
         if chain_id in self.ordered_chain_ids:
             return self.ordered_chain_ids.index(chain_id)
-        return 0
+        return len(self.ordered_chain_ids)
 
     # ------------------------------------------------------------------------
     # Processor Management

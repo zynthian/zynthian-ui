@@ -74,8 +74,6 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
     def __init__(self, state_manager, idev_in, idev_out=None):
         super().__init__(state_manager, idev_in, idev_out)
         self.midi_chan = 0  # Base channel for MIDI messages. +1 for +8 offset, +2 for +16 offset.
-        self.strip2chan = [] # List of mixer channels, indexed by display position
-        self.aux = [False] * 24 # Aux selector state for each chain
         self.feedback_timer = None
 
     def init(self):
@@ -99,6 +97,22 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         if cc == 7:
             # Main fader
             self.set_mixer_param("level", -1, val / 127)
+        if 66 <= cc <= 73:
+            strip = midi_chan * 8 + (cc - 2) % 8
+            # Aux
+            strip = (cc - 66) + (midi_chan * 8)
+            if val < 64:
+                # Aux 1
+                val *=  2
+                param = "send_0"
+            else:
+                val = (val - 64) * 2
+                param = "send_1"
+            try:
+                self.set_mixer_param(param, strip, val / 127.0)
+            except:
+                pass
+            return True
         if cc < 16 or cc > 31:
             return False
         strip = midi_chan * 8 + cc % 8
@@ -172,20 +186,6 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
                     # Send 2 EQ HIGH
                     self.state_manager.send_cuia("ZYNPOT_ABS", [2, val/127])
                     return True
-            if 66 <= cc <= 73:
-                # Aux
-                if val < 64:
-                    # Aux 1
-                    val *=  2
-                    self.aux[(cc - 66) + (midi_chan * 8)] = False
-                else:
-                    val = (val - 64) * 2
-                    self.aux[(cc - 66) + (midi_chan * 8)] = True
-                self.chain_manager.midi_control_change(ev[0], midi_chan, cc, val)
-                self.zynmixer.midi_control_change(midi_chan, cc, val)
-                self.state_manager.alsa_mixer_processor.midi_control_change(midi_chan, cc, val)
-                self.state_manager.audio_player.midi_control_change(midi_chan, cc, val)
-                return True
             return self.set_param(cc, val, midi_chan)
         elif evtype == 0xc:
             pass
@@ -203,17 +203,20 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         if self.feedback_timer:
             self.feedback_timer.cancel()
             self.feedback_timer = None
-        self.strip2chan = []
-        for chain_id in self.chain_manager.ordered_chain_ids:
-            chain = self.chain_manager.chains[chain_id]
-            if chain.zynmixer_proc is not None and chain.zynmixer_proc.eng_code == "MI" and chain.zynmixer_proc.mixer_chan < 16:
-                self.strip2chan.append(chain.zynmixer_proc.mixer_chan)
-        main_level = int(self.zynmixer_bus.get_level(0) * 127)
+        for strip in range(8):
+            chain = self.chain_manager.get_chain_by_index(strip)
+            if chain:
+                mixer = chain.zynmixer_proc
+                if mixer:
+                    zctrl = mixer.controllers_dict["level"]
+                    value = int(zctrl.value * 127)
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(strip / 8), 16 + strip % 8 , value)
+                    zctrl = mixer.controllers_dict["balance"]
+                    value = int(zctrl.value * 64 + 64)
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(strip / 8), 24 + strip % 8 , value)
+
+        zctrl = self.state_manager.main_mixbus_proc.controllers_dict["level"]
+        main_level = int(zctrl.value * 127)
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 7, main_level)
-        for strip, chan in enumerate(self.strip2chan):
-            value = int(self.zynmixer.get_level(chan) * 127)
-            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(strip / 8), 16 + strip % 8 , value)
-            value = int(self.zynmixer.get_balance(chan) * 64 + 64)
-            lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan + int(strip / 8), 24 + strip % 8 , value)
 
 # ------------------------------------------------------------------------------

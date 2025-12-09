@@ -1447,7 +1447,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         strip_index = 0
         if self.launcher_offset + zynthian_gui_config.visible_launchers > self.zynseq.phrases:
             self.launcher_offset = max(0, self.zynseq.phrases - zynthian_gui_config.visible_launchers)
-        for chain_id in self.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
+        for chain_id in self.chain_manager.ordered_chain_ids[self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
             strip = self.visible_mixer_strips[strip_index]
             strip.set_chain(chain_id)
             # strip.draw_control()

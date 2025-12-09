@@ -93,48 +93,50 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.refresh()
 
     def update_seq_state(self, phrase, chan):
+        if chan > 31:
+            return # Do not support main mixbus chain
         if self.idev_out is None:
             return
-        try:
-            row, col = self.zynseq.get_pad_coords(phrase, chan)
-            if col is None:
-                return
-            row -= self.scroll_v
-        except:
-            return
-        if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
-            return
-        note = 96 + row * 16 + col
-        # chan: 0=static, 1=flashing, 2=pulsing
-        try:
-            pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
-            state = pad_info["state"]
-            repeat = pad_info["repeat"]
-            if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
-                vel = 0
-                chan = 0
-            elif state == zynseq.SEQ_STOPPED:
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
-                chan = 0
-            elif state == zynseq.SEQ_PLAYING:
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
-                chan = 2
-            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
-                chan = 1
-            elif state == zynseq.SEQ_STARTING:
-                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
-                lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
-                chan = 1
-            else:
-                vel = 0
-                chan = 0
-        except Exception as e:
-            chan = 0
-            vel = 0
-            logging.warning(e)
-        lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
+        row = phrase - self.scroll_v
+        chain_ids = self.state_manager.chain_manager.midi_chan_2_chain_ids[chan]
+        for id in chain_ids:
+            try:
+                col = self.state_manager.chain_manager.ordered_chain_ids.index(id)
+                if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
+                    continue
+                note = 96 + row * 16 + col
+                # chan: 0=static, 1=flashing, 2=pulsing
+                try:
+                    pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+                    state = pad_info["state"]
+                    repeat = pad_info["repeat"]
+                    if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
+                        vel = 0
+                        chan = 0
+                    elif state == zynseq.SEQ_STOPPED:
+                        vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                        chan = 0
+                    elif state == zynseq.SEQ_PLAYING:
+                        vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                        chan = 2
+                    elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
+                        vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
+                        chan = 1
+                    elif state == zynseq.SEQ_STARTING:
+                        vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
+                        lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
+                        vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                        chan = 1
+                    else:
+                        vel = 0
+                        chan = 0
+                except Exception as e:
+                    chan = 0
+                    vel = 0
+                    logging.warning(e)
+                lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
+            except:
+                pass
 
     def pad_off(self, col, row):
         note = 96 + row * 16 + col
@@ -155,7 +157,8 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             try:
                 col = (note - 96) % 16
                 row = (note - 96) // 16 + self.scroll_v
-                midi_chan = self.zynseq.get_chan_from_col(col)
+                chain_id = self.state_manager.chain_manager.ordered_chain_ids[col]
+                midi_chan = self.state_manager.chain_manager.chains[chain_id].midi_chan
                 if midi_chan is not None:
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, row, midi_chan)
             except:

@@ -261,8 +261,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         self.light_off()
         for row in range(self.rows):
             phrase = row + self.scroll_v
-            for col in range(self.cols):
-                chan = self.zynseq.get_chan_from_col(col)
+            for chan in range(32):
                 self.update_seq_state(phrase, chan)
             self.update_seq_state(phrase, zynseq.PHRASE_CHANNEL)
 
@@ -324,11 +323,12 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            #chain = self.chain_manager.get_chain_by_position(pos, midi=False)
             chain = self.chain_manager.get_chain_by_index(pos)
         if chain and chain.zynmixer_proc:
             try:
-                chain.zynmixer_proc.controllers_dict[param].set_value(value)
+                zctrl = chain.zynmixer_proc.controllers_dict[param]
+                if zctrl.value != value:
+                    zctrl.set_value(value)
             except:
                 logging.warning(f"Failed to set {param} to {value}")
 
@@ -343,7 +343,6 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            #chain = self.chain_manager.get_chain_by_position(pos, midi=False)
             chain = self.chain_manager.get_chain_by_index(pos)
         if chain and chain.zynmixer_proc:
             try:
