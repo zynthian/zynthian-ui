@@ -256,9 +256,9 @@ class zynseq(zynthian_engine):
             self.progress[i] = progress[i]  # TODO: Can we just point at getProgress()?
         self.beat = self.libseq.getBeat()
 
-    def enable_channel(self, channel, enable):
+    def enable_channel(self, channel, enable, refresh=False):
         self.libseq.enableChannel(channel, enable)
-        self.refresh_state(False)
+        self.refresh_state(refresh)
 
     def insert_phrase(self, scene, phrase=None):
         """ Insert a row of sequences to the current scene
