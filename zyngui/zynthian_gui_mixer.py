@@ -130,12 +130,12 @@ class zynthian_gui_mixer_strip:
         self.mono_color = "#B0B0B0"
 
         # font_size = int(0.5 * self.legend_height)
-        font_size = int(0.25 * self.width)
+        font_size = min(int(0.5 * self.legend_height), int(0.25 * self.width))
         self.font = (zynthian_gui_config.font_family, font_size)
         self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
         self.font_clip_state = (zynthian_gui_config.font_family, int(0.8 * font_size))
         self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
-        self.font_icons = ("forkawesome", int(0.3 * self.width))
+        self.font_icons = ("forkawesome", int(1.2 * font_size))
         self.font_timbase = (zynthian_gui_config.font_family, int(0.45 * font_size))
 
         self.fader_text_limit = self.fader_top + int(0.1 * self.fader_height)
@@ -176,7 +176,7 @@ class zynthian_gui_mixer_strip:
             launcher_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_phrase - 1, width=0, state=tkinter.HIDDEN)
             self.canvas.itemconfig(launcher_bg, tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_bg"))
             # Play state text
-            self.canvas.create_text(x + self.fader_width,  ypos - height_phrase // 6, text="", anchor=tkinter.NE, font=self.font_clip_state,
+            self.canvas.create_text(x + self.fader_width - 1,  ypos - 4, text="", anchor=tkinter.NE, font=self.font_clip_state,
                     state=tkinter.HIDDEN, tags=(f"strip:{id}", f"launcher:{id}", f"launcher:{id}_{row}", f"launcher:{id}_{row}_state"))
             # Title text
             self.canvas.create_text(x + self.fader_width // 2, ypos + 0.5 * height_phrase, text="", anchor=tkinter.CENTER,
@@ -186,10 +186,10 @@ class zynthian_gui_mixer_strip:
             self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_icon", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_icon"))
             # Play mode text
-            self.canvas.create_text(x + 2, ypos - height_phrase // 10, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_clip_state,
+            self.canvas.create_text(x + 4, ypos - 4, anchor=tkinter.NW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_clip_state,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_mode_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_mode_text"))
             # Timesig text
-            self.canvas.create_text(x + 2, ypos + height_phrase - 1, anchor=tkinter.SW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_timbase,
+            self.canvas.create_text(x + 3, ypos + height_phrase - 1, anchor=tkinter.SW, state=tkinter.HIDDEN, fill=self.legend_txt_color, font=self.font_timbase,
                                             tags=(f"strip:{id}", f"launcher:{id}", f"launcher_{row}", f"launcher_{row}_timesig_text", f"launcher:{id}_{row}", f"launcher:{id}_{row}_timesig_text"))
             # Tempo text
             self.canvas.create_text(x + self.fader_width - 1, ypos + height_phrase - 1, anchor=tkinter.SE, state=tkinter.HIDDEN, fill=self.legend_txt_color, justify=tkinter.RIGHT, font=self.font_timbase,
@@ -468,7 +468,7 @@ class zynthian_gui_mixer_strip:
                     if "tempo" in state_seq:
                         tempo = state_seq["tempo"]
                         if tempo:
-                            tempo_text = f"{tempo}"
+                            tempo_text = f"{tempo:.1f}"
             match state_seq["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -1165,6 +1165,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         if len(self.visible_mixer_strips) != zynthian_gui_config.visible_mixer_strips or self.visible_launchers != zynthian_gui_config.visible_launchers:
                 self.set_visible_chains(zynthian_gui_config.visible_mixer_strips)
+                self.visible_launchers = zynthian_gui_config.visible_launchers
         #self.launcher_mode = self.zyngui.alt_mode
         if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.moving_phrase:
             self.show_back_button()
