@@ -95,6 +95,7 @@ ZynthianState = {
                             ], # ... Other controllers
                         ], # ... Other bindings
                     },
+                    "midi_chan": 0, # Override chain MIDI channel
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"],# List of chain jack MIDI output destinations (may include aliases)
                     "audio_in": [0, 1], # List of index of physical input indicies or zynmixer:send
