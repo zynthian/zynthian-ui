@@ -57,13 +57,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
-        self.list_data.append((self.show_chain_visualizer, None, "Chain Visualizer",
-                               ["Show a graphical view of the processor chain.", "view.png"]))
-
-        if self.chain.is_midi():
-            self.list_data.append((self.chain_note_range, None, "Note Range & Transpose",
-                                   ["Configure note range and transpose by octaves and semitones.", "note_range.png"]))
-
         if self.chain.is_midi():
             try:
                 if synth_proc_count == 0 or self.chain.synth_slots[0][0].engine.options["midi_chan"]:
@@ -398,9 +391,5 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.select_path.set(f"Chain Options: {self.chain.get_name()}")
         except:
             self.select_path.set("Chain Options")
-
-    # Chain Visualizer
-    def show_chain_visualizer(self):
-        self.zyngui.show_screen("chain_visualizer")
 
 # ------------------------------------------------------------------------------

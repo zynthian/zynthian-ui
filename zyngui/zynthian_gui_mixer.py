@@ -946,8 +946,7 @@ class zynthian_gui_mixer_strip:
         if self.strip_drag_start and not self.dragging:
             delta = event.time - self.strip_drag_start.time
             if delta > 400:
-                zynthian_gui_config.zyngui.screens['chain_options'].setup(self.chain_id)
-                zynthian_gui_config.zyngui.show_screen('chain_options')
+                zynthian_gui_config.zyngui.show_screen('chain_visualizer')
             else:
                 zynthian_gui_config.zyngui.chain_control(self.chain_id)
         self.dragging = False
@@ -1387,8 +1386,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.phrase_menu()
         else:
             # Chain Options
-            self.zyngui.screens['chain_options'].setup(self.chain_manager.active_chain.chain_id)
-            self.zyngui.show_screen('chain_options')
+            self.zyngui.show_screen('chain_visualizer')
 
     # --------------------------------------------------------------------------
     # Mixer Functionality

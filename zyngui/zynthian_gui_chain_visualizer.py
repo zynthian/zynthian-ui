@@ -9,6 +9,8 @@
 
 import logging
 import tkinter
+from time import monotonic
+
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 
@@ -44,6 +46,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.drag_start_y = 0
         self.is_dragging = False
         self.drag_threshold = 5  # pixels to detect drag vs click 
+        self.press_time = None
 
     def start_move_mode(self, processor):
         self.moving_proc = processor
@@ -75,7 +78,9 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        
+        self.canvas.bind("<Button-4>", self.cb_listbox_wheel)
+        self.canvas.bind("<Button-5>", self.cb_listbox_wheel)
+
         self.draw_graph()
         
         if self.moving_proc:
@@ -92,6 +97,13 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                     self._draw_selection()
         
         return True
+
+    def cb_listbox_wheel(self, event):
+        if event.num == 5 or event.delta == -120:
+            self.arrow_down()
+        elif event.num == 4 or event.delta == 120:
+            self.arrow_up()
+        return "break"  # Consume event to stop scrolling of listbox
 
     def draw_graph(self):
         self.canvas.delete("all")
@@ -326,6 +338,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         
         self.selected_node = row_nodes[col_idx]
         self._draw_selection()
+
     def _draw_nodes(self):
         for key, node in self.nodes.items():
             x, y, w, h = node['x'], node['y'], node['w'], node['h']
@@ -437,6 +450,18 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.selected_node = row_nodes[col_idx]
         self._draw_selection()
 
+    def zynpot_cb(self, i, dval):
+        # Parameter editor implemented in base class!
+        if super().zynpot_cb(i, dval):
+            return True
+        if i == 3:
+            if dval > 0:
+                self.arrow_down()
+            elif dval < 0:
+                self.arrow_up()
+            return True
+        return False
+
     def arrow_down(self):
         if self.moving_proc:
             # Persistent Move Mode: Nudge, Refresh, Keep moving_proc
@@ -528,7 +553,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                     # The control screen usually works on active_chain + current_processor ??
                     # Zynthian GUI chain_control can set generic selection.
                     # Or simpler:
-                    zynthian_gui_config.zyngui.chain_control(self.zyngui.chain_manager.active_chain.chain_id)
+                    zynthian_gui_config.zyngui.chain_control(self.zyngui.chain_manager.active_chain.chain_id, proc)
                 elif t == 'B':
                     # Bold press: Options
                     self.zyngui.screens['processor_options'].setup(self.zyngui.chain_manager.active_chain.chain_id, proc)
@@ -549,6 +574,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.start_xview = self.canvas.xview()[0]
         self.start_yview = self.canvas.yview()[0]
         self.is_dragging = False
+        self.press_time = monotonic()
 
     def on_drag(self, event):
         # Calculate pixel delta
@@ -590,6 +616,11 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                 pass
 
     def on_release(self, event):
+        press_type = "S"
+        if self.press_time:
+            if monotonic() > self.press_time + 0.4:
+                self.press_time = None
+                press_type = "B"
         # If dragging, stop.
         if self.is_dragging:
             self.is_dragging = False
@@ -612,5 +643,6 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                     self.moving_proc = None
                     self._draw_selection()
                     return
-                self.on_select(t='S')
+                else:
+                    self.on_select(t=press_type)
 
