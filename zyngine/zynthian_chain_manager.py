@@ -116,7 +116,7 @@ class zynthian_chain_manager:
         self.zyngine_counter = 0  # Appended to engine names for uniqueness
         self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
-        self.active_chain_id = None  # Active chain id
+        self.active_chain = None # Active chain object
         self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
 
         # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
@@ -268,7 +268,7 @@ class zynthian_chain_manager:
         # logging.debug(f"ordered_chain_ids = {self.ordered_chain_ids}")
         # logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
 
-        self.active_chain_id = chain_id
+        self.active_chain = chain
         if fast_refresh:
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
         self.state_manager.end_busy("add_chain")
@@ -368,7 +368,7 @@ class zynthian_chain_manager:
         zynautoconnect.request_midi_connect(fast_refresh)
         if stop_engines:
             self.stop_unused_engines()
-        if self.active_chain_id not in self.chains:
+        if self.active_chain not in self.chains.values():
             if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
@@ -422,7 +422,7 @@ class zynthian_chain_manager:
         """
 
         if chain_id is None:
-            chain_id = self.active_chain_id
+            chain_id = self.active_chain.chain_id
         if not chain_id or chain_id not in self.ordered_chain_ids:
             return
         index = self.ordered_chain_ids.index(chain_id)
@@ -678,7 +678,7 @@ class zynthian_chain_manager:
         """
 
         if chain_id is None:
-            chain_id = self.active_chain_id
+            chain_id = self.active_chain.chain_id
 
         try:
             chain = self.chains[chain_id]
@@ -688,11 +688,10 @@ class zynthian_chain_manager:
         # If no better candidate, set active the first chain (Main)
         if chain is None:
             chain = next(iter(self.chains.values()))
-            chain_id = chain.chain_id
 
-        self.active_chain_id = chain_id
+        self.active_chain = chain
         self.state_manager.zynseq.chan = chain.midi_chan
-        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
+        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain.chain_id)
 
         # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
         if isinstance(chain.zmop_index, int):
@@ -701,7 +700,7 @@ class zynthian_chain_manager:
             except Exception as e:
                 logging.error(e)
 
-        return self.active_chain_id
+        return self.active_chain.chain_id
 
     def set_active_chain_by_object(self, chain_object):
         """Select the active chain
@@ -714,7 +713,7 @@ class zynthian_chain_manager:
             if self.chains[id] == chain_object:
                 self.set_active_chain_by_id(id)
                 break
-        return self.active_chain_id
+        return self.active_chain.chain_id
 
     def set_active_chain_by_index(self, index):
         """Select the active chain by display index
@@ -735,7 +734,7 @@ class zynthian_chain_manager:
         Returns : Chain ID
         """
 
-        index = self.get_chain_index(self.active_chain_id)
+        index = self.get_chain_index(self.active_chain.chain_id)
         index += nudge
         index = min(index, len(self.ordered_chain_ids))
         index = max(index, 0)
@@ -751,7 +750,7 @@ class zynthian_chain_manager:
         return self.next_chain(-nudge)
 
     def rotate_chain(self):
-        if self.active_chain_id > 0:
+        if self.active_chain.chain_id > 0:
             return self.next_chain()
         else:
             return self.set_active_chain_by_index(0)
@@ -759,8 +758,8 @@ class zynthian_chain_manager:
     def get_active_chain(self):
         """Get the active chain object or None if no active chain"""
 
-        if self.active_chain_id in self.chains:
-            return self.chains[self.active_chain_id]
+        if self.active_chain.chain_id in self.chains:
+            return self.chains[self.active_chain.chain_id]
         return None
 
     def get_chain_index(self, chain_id):
@@ -1242,7 +1241,7 @@ class zynthian_chain_manager:
     def restore_presets(self):
         """Restore presets in active chain"""
 
-        for processor in self.get_processors(self.active_chain_id):
+        for processor in self.get_processors(self.active_chain.chain_id):
             processor.restore_preset()
 
     # ----------------------------------------------------------------------------
@@ -1500,13 +1499,13 @@ class zynthian_chain_manager:
         try:
             # Channel-bond
             try:
-                key = (self.active_chain_id << 16) | key_low
+                key = (self.active_chain.chain_id << 16) | key_low
                 zctrls1 = self.chain_midi_cc_binding[key]
             except:
                 zctrls1 = []
             # Channel-unbond
             try:
-                key = (self.active_chain_id << 16) | (0xff << 8) | cc_num
+                key = (self.active_chain.chain_id << 16) | (0xff << 8) | cc_num
                 zctrls2 = self.chain_midi_cc_binding[key]
             except:
                 zctrls2 = []
@@ -1523,7 +1522,7 @@ class zynthian_chain_manager:
         """
 
         if obj == None:
-            obj = self.active_chain_id
+            obj = self.active_chain.chain_id
         if obj == None:
             return
 

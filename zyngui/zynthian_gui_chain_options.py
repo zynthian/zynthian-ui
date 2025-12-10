@@ -57,15 +57,12 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
+        self.list_data.append((self.show_chain_visualizer, None, "Chain Visualizer",
+                               ["Show a graphical view of the processor chain.", "view.png"]))
+
         if self.chain.is_midi():
             self.list_data.append((self.chain_note_range, None, "Note Range & Transpose",
                                    ["Configure note range and transpose by octaves and semitones.", "note_range.png"]))
-            self.list_data.append((self.chain_midi_capture, None, "MIDI In",
-                                   ["Manage MIDI input sources. Enable/disable MIDI sources, toggle active/multi-timbral mode, load controller drivers, etc.", "midi_input.png"]))
-
-        if self.chain.midi_thru:
-            self.list_data.append((self.chain_midi_routing, None, "MIDI Out",
-                                   ["Manage MIDI output routing to external devices and other chains.", "midi_output.png"]))
 
         if self.chain.is_midi():
             try:
@@ -83,14 +80,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.midi_learn, None, "MIDI Learn",
                                    ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
 
-        if self.chain_id != 0 and self.chain.audio_thru and self.chain.zynmixer_proc and self.chain.zynmixer_proc.eng_code!="MR":
-            self.list_data.append((self.chain_audio_capture, None, "Audio In",
-                                  ["Manage audio capture sources.", "audio_input.png"]))
-
-        if self.chain.is_audio():
-            self.list_data.append((self.chain_audio_routing, None, "Audio Out",
-                                   ["Manage audio output routing.", "audio_output.png"]))
-
         # TODO: Catch signal for Audio Recording status change
         if self.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
             if self.zyngui.state_manager.audio_recorder.status:
@@ -101,18 +90,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                     (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
 
         self.list_data.append((None, None, "> Processors"))
-
-        if self.chain.is_midi():
-            # Add MIDI-FX options
-            self.list_data.append((self.midifx_add, None, "Add MIDI-FX",
-                                   ["Add a new MIDI processor to process chain's MIDI input.", "midi_processor.png"]))
-
-        self.list_data += self.generate_chaintree_menu()
-
-        if self.chain.is_audio():
-            # Add Audio-FX options
-            self.list_data.append((self.audiofx_add, None, "Add Audio-FX",
-                                   ["Add a new audio processor to the end of the chain.", "audio_processor.png"]))
 
         if self.chain_id != 0:
             self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
@@ -421,5 +398,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.select_path.set(f"Chain Options: {self.chain.get_name()}")
         except:
             self.select_path.set("Chain Options")
+
+    # Chain Visualizer
+    def show_chain_visualizer(self):
+        self.zyngui.show_screen("chain_visualizer")
 
 # ------------------------------------------------------------------------------

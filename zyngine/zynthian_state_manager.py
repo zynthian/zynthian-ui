@@ -1572,7 +1572,7 @@ class zynthian_state_manager:
         # Initialise zs3
         self.zs3[zs3_id] = {
             "title": title,
-            "active_chain": self.chain_manager.active_chain_id,
+            "active_chain": self.chain_manager.active_chain.chain_id,
             "global": {}
         }
         chain_states = {}
@@ -1740,7 +1740,7 @@ class zynthian_state_manager:
 
         for key, state in self.zs3.items():
             if state["active_chain"] not in self.chain_manager.chains:
-                state["active_chain"] = self.chain_manager.active_chain_id
+                state["active_chain"] = self.chain_manager.active_chain.chain_id
             if "processors" in state:
                 for processor_id in list(state["processors"]):
                     if int(processor_id) not in self.chain_manager.processors:

@@ -61,6 +61,7 @@ from zyngui.zynthian_gui_details import zynthian_gui_details
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
+from zyngui.zynthian_gui_chain_visualizer import zynthian_gui_chain_visualizer
 from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
@@ -465,6 +466,7 @@ class zynthian_gui:
         self.screens['details'] = zynthian_gui_details()
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
+        self.screens['chain_visualizer'] = zynthian_gui_chain_visualizer()
         self.screens['processor_options'] = zynthian_gui_processor_options()
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
@@ -870,13 +872,13 @@ class zynthian_gui:
     def brightness_config(self):
         self.show_screen('brightness_config')
 
-    def midi_in_config(self):
-        self.screens['midi_config'].set_chain(None)
+    def midi_in_config(self, chain=None):
+        self.screens['midi_config'].set_chain(chain)
         self.screens['midi_config'].input = True
         self.show_screen('midi_config')
 
-    def midi_out_config(self):
-        self.screens['midi_config'].set_chain(None)
+    def midi_out_config(self, chain=None):
+        self.screens['midi_config'].set_chain(chain)
         self.screens['midi_config'].input = False
         self.show_screen('midi_config')
 
@@ -996,7 +998,7 @@ class zynthian_gui:
 
     def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_ADD, force_bank_preset=False):
         if chain_id is None:
-            chain_id = self.chain_manager.active_chain_id
+            chain_id = self.chain_manager.active_chain.chain_id
         else:
             self.chain_manager.set_active_chain_by_id(chain_id)
 
@@ -1535,7 +1537,7 @@ class zynthian_gui:
             if self.alt_mode:
                 chain_id = 0
             else:
-                chain_id = self.chain_manager.active_chain_id
+                chain_id = self.chain_manager.active_chain.chain_id
         self.chain_control(chain_id)
 
     cuia_layer_control = cuia_chain_control
@@ -1558,7 +1560,7 @@ class zynthian_gui:
                 else:
                     chain_id = self.chain_manager.get_chain_id_by_index(params[0] - 1)
         except:
-            chain_id = self.chain_manager.active_chain_id
+            chain_id = self.chain_manager.active_chain.chain_id
 
         if chain_id is not None:
             self.screens['chain_options'].setup(chain_id)
@@ -1718,7 +1720,7 @@ class zynthian_gui:
         if params:
             self.chain_manager.clean_midi_learn(params[0])
         else:
-            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
+            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain.chain_id)
 
     # -------------------------------------------------------------------
     # Z2 knob touch

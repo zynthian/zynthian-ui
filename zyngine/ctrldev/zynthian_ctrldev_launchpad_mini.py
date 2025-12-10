@@ -70,7 +70,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         if self.idev_out is None:
             return
         if active_chain is None:
-            active_chain = self.chain_manager.active_chain_id
+            active_chain = self.chain_manager.active_chain.chain_id
         for col in range(self.cols):
             chain_id = self.chain_manager.get_chain_id_by_index(col)
             if chain_id and chain_id == active_chain:
