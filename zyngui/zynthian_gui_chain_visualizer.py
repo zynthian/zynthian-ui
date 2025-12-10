@@ -14,7 +14,16 @@ from time import monotonic
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 
+
 class zynthian_gui_chain_visualizer(zynthian_gui_base):
+    """
+    Visualizer for the Zynthian Audio/MIDI Processor Chain.
+
+    This class handles the graphical representation of the processor chain,
+    including inputs, MIDI tools, synths, audio effects, and outputs.
+    It supports navigation via encoders/keys and mouse/touch interactions for
+    scrolling and selecting processors.
+    """
     
     # Visual constants
     BLOCK_WIDTH = 120
@@ -23,8 +32,14 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
     V_SPACING = 10
     INIT_X = 20
     INIT_Y = 20
-    
+
     def __init__(self):
+        """
+        Initialize the Chain Visualizer.
+
+        Sets up the canvas, data structures for nodes and grid navigation,
+        and initializes mouse drag state variables.
+        """
         super().__init__('Chain Visualizer')
         self.selected_node = None # Format: (type, slot, index)
         self.moving_proc = None # The processor object being moved
@@ -36,7 +51,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.canvas.pack(fill=tkinter.BOTH, expand=True)
         
         # Nodes mapping:
-        self.nodes = {} 
+        self.nodes = {}
         # Grid structure for navigation: list of lists of node_keys
         # grid_cols[col_idx] = [key1, key2, ...] where keys are vertically ordered
         self.grid_cols = [] 
@@ -49,6 +64,12 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.press_time = None
 
     def start_move_mode(self, processor):
+        """
+        Enter 'Move Mode' for a specific processor.
+
+        Args:
+            processor: The processor object to be moved.
+        """
         self.moving_proc = processor
         self.draw_graph() 
         self._sync_selection_to_moving_proc()
@@ -72,14 +93,23 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             pass 
 
     def build_view(self):
+        """
+        Set up the view for the current chain.
+
+        Sets the title, binds input events (mouse/touch), draws the initial graph,
+        and sets the initial selection.
+
+        Returns:
+            bool: Always True.
+        """
         self.set_title(f"Chain: {self.zyngui.chain_manager.active_chain.get_name()}")
         
         # Bind Mouse Events
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        self.canvas.bind("<Button-4>", self.cb_listbox_wheel)
-        self.canvas.bind("<Button-5>", self.cb_listbox_wheel)
+        self.canvas.bind("<Button-4>", self.on_wheel)
+        self.canvas.bind("<Button-5>", self.on_wheel)
 
         self.draw_graph()
         
@@ -98,20 +128,26 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         
         return True
 
-    def cb_listbox_wheel(self, event):
+    def on_wheel(self, event):
         if event.num == 5 or event.delta == -120:
-            self.arrow_down()
+            self._select_node_offset(-1)
         elif event.num == 4 or event.delta == 120:
-            self.arrow_up()
+            self._select_node_offset(1)
         return "break"  # Consume event to stop scrolling of listbox
 
     def draw_graph(self):
+        """
+        Draw the entire processor chain graph on the canvas.
+
+        Clears the canvas and rebuilds the node structure based on the
+        active chain's configuration (Inputs -> MIDI Tools -> Synths ->
+        Audio Effects -> Outputs). Updates the scroll region.
+        """
         self.canvas.delete("all")
         self.nodes = {}
         # Grid structure: grid_rows[row_idx] = [key1, key2, ...] (Items in a row)
         self.grid_rows = [] 
         
-        # ... (Existing Logic for counts) ...
         current_y = self.INIT_Y
         last_out_point = None
 
@@ -131,16 +167,17 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         inputs.append("Chain Options")
 
         if inputs:
-            current_y, _ = self._layout_row(inputs, current_y, None, bg_col="#444444")
+            current_y, _ = self._layout_row(inputs, current_y, None)
             last_out_point = None 
-            
-        # Note Range Row (if needed)
-        if self.zyngui.chain_manager.active_chain.is_midi():
-             current_y, last_out_point = self._layout_row(["Note Range"], current_y, last_out_point, bg_col=c_midi, action="note_range")
 
         # --- MIDI TOOLS ---
+        # Include Note Range if MIDI
+        midi_prepends = []
+        if self.zyngui.chain_manager.active_chain.is_midi():
+             midi_prepends.append({'text': 'Note Range', 'action': 'note_range'})
+
         current_y, last_out_point = self._layout_stage_vertical("MIDI Tool", current_y, last_out_point, 
-            bg_col=c_midi, add_pos='end')
+            bg_col=c_midi, add_pos='end', prepend_items=midi_prepends)
         
         # --- SYNTH ---
         current_y, last_out_point = self._layout_stage_vertical("Synth", current_y, last_out_point, 
@@ -159,7 +196,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             outputs.append("MIDI Output")
             
         if outputs:
-            self._layout_row(outputs, current_y, None, bg_col="#444444") 
+            self._layout_row(outputs, current_y, None) 
 
         self._draw_nodes()
 
@@ -168,22 +205,32 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.canvas.update_idletasks() # Ensure bbox is fresh?
         bbox = self.canvas.bbox("all")
         if bbox:
-            self.canvas.configure(scrollregion=(bbox[0]-20, bbox[1]-20, bbox[2]+20, bbox[3]+20))
+            self.canvas.configure(scrollregion=(bbox[0], bbox[1] - 5, bbox[2], bbox[3] + 5))
         else:
             self.canvas.configure(scrollregion=(0,0,100,100))
             
         self._draw_selection()
-        
-    def _layout_row(self, items, start_y, prev_out_point, bg_col="#000000", action="io"):
+
+    def _layout_row(self, items, start_y, prev_out_point, bg_col=zynthian_gui_config.color_panel_bg, action="io"):
+        """
+        Layout a horizontal row of items (e.g., IO ports, Options).
+
+        Args:
+            items (list): List of text labels for the nodes.
+            start_y (int): Y-coordinate to start drawing.
+            prev_out_point (tuple): (x, y) of the previous stage's output for connecting lines.
+            bg_col (str): Background color for the row section.
+            action (str): Action identifier for the nodes.
+
+        Returns:
+            tuple: (next_start_y, output_point)
+        """
         current_x = self.INIT_X
         slot_height = self.BLOCK_HEIGHT
         row_keys = []
         
         total_content_width = len(items) * self.BLOCK_WIDTH + (len(items)-1) * self.H_SPACING
-        
-        # Start X might want to be centered? 
-        # But left alignment is standard.
-        
+
         for item in items:
             key_suffix = item
             node_key = ('SPECIAL', item)
@@ -197,58 +244,90 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                 'text': item, 'obj': None, 'action': act, 'key': node_key, 'io_type': item,
                 'row_idx': len(self.grid_rows), 'col_idx': len(row_keys)
             }
-            
+
             self.nodes[node_key] = node_data
             row_keys.append(node_key)
             current_x += self.BLOCK_WIDTH + self.H_SPACING
-            
+
         self.grid_rows.append(row_keys)
-        
+
         # Background
-        # Extend full width or just content?
-        # User complained drag is bad and bounds wrong.
-        # Maybe background rect is too big?
-        # "2000" in my previous code was hardcoded width!
-        # BAD.
-        
-        max_width = max(total_content_width + self.INIT_X*2, 600) # Min width 600
-        
-        bg_top = start_y - 5
-        bg_bottom = start_y + self.BLOCK_HEIGHT + 5
+        max_width = max(total_content_width + self.INIT_X*2, self.width)
+        bg_top = start_y
+        bg_bottom = start_y + self.BLOCK_HEIGHT + self.V_SPACING
         self.canvas.create_rectangle(0, bg_top, max_width, bg_bottom, fill=bg_col, outline="", tags="bg")
         self.canvas.tag_lower("bg")
-        
+
         center_x = self.INIT_X + (self.BLOCK_WIDTH / 2)
         out_point = (center_x, start_y + self.BLOCK_HEIGHT)
-        
+
         if prev_out_point:
-             self.canvas.create_line(prev_out_point[0], prev_out_point[1], 
-                                     center_x, start_y,
-                                     fill="#AAAAAA", width=2, tags="lines")
-                                     
+            self.canvas.create_line(prev_out_point[0], prev_out_point[1], 
+                center_x, start_y,
+                fill="#AAAAAA", width=2, tags="lines")
+
         return start_y + self.BLOCK_HEIGHT + self.V_SPACING, out_point
 
-    def _layout_stage_vertical(self, ptype, start_y, prev_out_point, is_synth=False, bg_col="#000000", add_pos=None):
+    def _layout_stage_vertical(self, ptype, start_y, prev_out_point, is_synth=False, bg_col="#000000", add_pos=None, prepend_items=None):
+        """
+        Layout a vertical stage of processors (e.g., MIDI Tools, Synths, Effects).
+
+        Args:
+            ptype (str): Processor type (e.g., "MIDI Tool", "Audio Effect").
+            start_y (int): Y-coordinate to start drawing.
+            prev_out_point (tuple): Connection point from the previous stage.
+            is_synth (bool): specialized flag for Synth stage (handles slots differently).
+            bg_col (str): Background color for the section.
+            add_pos (str): 'start' or 'end' to place an "Add (+)" button.
+            prepend_items (list): List of dicts {'text':..., 'action':...} to add before processors.
+
+        Returns:
+            tuple: (next_start_y, output_point)
+        """
         if is_synth:
             slots = self.zyngui.chain_manager.active_chain.synth_slots
             num_slots = len(slots)
         else:
             num_slots = self.zyngui.chain_manager.active_chain.get_slot_count(ptype)
-            
+
         current_y = start_y
         my_out_point = prev_out_point
         stage_start_y = current_y
         items_added = False
         max_row_width = 0
-        
+
+        if prepend_items:
+            for item in prepend_items:
+                node_key = ("SPECIAL", item['text'])
+                current_x = self.INIT_X
+                
+                # Connection loop
+                if my_out_point:
+                    self.canvas.create_line(my_out_point[0], my_out_point[1], 
+                        current_x + self.BLOCK_WIDTH/2, current_y,
+                        fill="#AAAAAA", width=2, tags="lines")
+
+                node_data = {
+                    'x': current_x, 'y': current_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
+                    'text': item['text'], 'obj': None, 'action': item.get('action'), 'key': node_key,
+                    'row_idx': len(self.grid_rows), 'col_idx': 0
+                }
+                
+                self.nodes[node_key] = node_data
+                self.grid_rows.append([node_key]) # Single item row
+                
+                my_out_point = (current_x + self.BLOCK_WIDTH/2, current_y + self.BLOCK_HEIGHT)
+                current_y += self.BLOCK_HEIGHT + self.V_SPACING
+                items_added = True
+
         def add_special_node(c_y, m_out_p):
             node_key = (ptype, 'ADD')
             current_x = self.INIT_X
             if m_out_p:
                 self.canvas.create_line(m_out_p[0], m_out_p[1], 
-                                        current_x + self.BLOCK_WIDTH/2, c_y,
-                                        fill="#AAAAAA", width=2, tags="lines")
-            
+                    current_x + self.BLOCK_WIDTH/2, c_y,
+                    fill="#AAAAAA", width=2, tags="lines")
+
             node_data = {
                 'x': current_x, 'y': c_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
                 'text': "+", 'obj': None, 'action': 'add', 'key': node_key,
@@ -267,17 +346,17 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                 processors = slots[slot_idx]
             else:
                 processors = self.zyngui.chain_manager.active_chain.get_processors(ptype, slot_idx)
-            
+
             if not processors and not is_synth: continue
             items_added = True
-            
+
             current_row_keys = []
             current_x = self.INIT_X
             in_x = current_x + self.BLOCK_WIDTH/2
             if my_out_point:
                 self.canvas.create_line(my_out_point[0], my_out_point[1], 
-                                        in_x, current_y,
-                                        fill="#AAAAAA", width=2, tags="lines")
+                    in_x, current_y,
+                    fill="#AAAAAA", width=2, tags="lines")
 
             for proc_idx, proc in enumerate(processors):
                 node_key = (ptype, slot_idx, proc_idx)
@@ -290,25 +369,25 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                 self.nodes[node_key] = node_data
                 current_row_keys.append(node_key)
                 current_x += self.BLOCK_WIDTH + self.H_SPACING
-                
+
             if current_x > max_row_width: max_row_width = current_x
-            
+
             if current_row_keys:
                 self.grid_rows.append(current_row_keys)
                 my_out_point = (self.INIT_X + self.BLOCK_WIDTH/2, current_y + self.BLOCK_HEIGHT)
                 current_y += self.BLOCK_HEIGHT + self.V_SPACING
-        
+
         if add_pos == 'end':
             current_y, my_out_point = add_special_node(current_y, my_out_point)
             items_added = True
-            
+
         if items_added:
             bg_top = stage_start_y - 5
             bg_bottom = current_y - 5
-            bg_w = max(max_row_width, 600)
+            bg_w = max(max_row_width, self.width)
             self.canvas.create_rectangle(0, bg_top, bg_w, bg_bottom, fill=bg_col, outline="", tags="bg")
             self.canvas.tag_lower("bg")
-            
+
         return current_y, my_out_point
 
     def on_size(self, event):
@@ -317,30 +396,22 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             self._ensure_visible(self.nodes[self.selected_node])
 
     # Navigation Logic
-    
+
     def _get_current_grid_pos(self):
+        """
+        Get the grid coordinates (col, row) of the currently selected node.
+
+        Returns:
+            tuple: (col_idx, row_idx)
+        """
         if not self.selected_node or self.selected_node not in self.nodes: return 0, 0
         node = self.nodes[self.selected_node]
         return node.get('col_idx', 0), node.get('row_idx', 0)
 
-    def _select_grid_node(self, col_idx, row_idx):
-        if not self.grid_rows: return
-        
-        # Clamp Row
-        if row_idx < 0: row_idx = 0
-        if row_idx >= len(self.grid_rows): row_idx = len(self.grid_rows) - 1
-        
-        row_nodes = self.grid_rows[row_idx]
-        if not row_nodes: return
-        
-        # Clamp Col
-        if col_idx < 0: col_idx = 0
-        if col_idx >= len(row_nodes): col_idx = len(row_nodes) - 1
-        
-        self.selected_node = row_nodes[col_idx]
-        self._draw_selection()
-
     def _draw_nodes(self):
+        """
+        Render all nodes stored in self.nodes to the canvas.
+        """
         for key, node in self.nodes.items():
             x, y, w, h = node['x'], node['y'], node['w'], node['h']
             text = node['text']
@@ -357,6 +428,10 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                                     tags=f"text_{key}")
 
     def _draw_selection(self):
+        """
+        Draw the selection highlight rectangle around the selected node.
+        Also handles the special red highlight for 'Move Mode'.
+        """
         self.canvas.delete("selection")
         if self.selected_node and self.selected_node in self.nodes:
             node = self.nodes[self.selected_node]
@@ -369,9 +444,16 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             self.canvas.create_rectangle(x-2, y-2, x+w+2, y+h+2,
                                          outline=color,
                                          width=3, tags="selection")
+
             self._ensure_visible(node)
 
     def _ensure_visible(self, node):
+        """
+        Scroll the canvas to ensure the specified node is visible.
+
+        Args:
+            node (dict): The node data dictionary containing 'x', 'y', 'w', 'h'.
+        """
         # Margin for scrolling
         MARGIN = 20
         
@@ -435,6 +517,11 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         return node.get('col_idx', 0), node.get('row_idx', 0)
 
     def _select_grid_node(self, col_idx, row_idx):
+        """
+        Select a node based on its grid coordinates.
+
+        Clamps coordinates to valid ranges and updates the selection.
+        """
         if not self.grid_rows: return
 
         # Clamp row
@@ -449,21 +536,53 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         if col_idx >= len(row_nodes): col_idx = len(row_nodes) - 1
         
         self.selected_node = row_nodes[col_idx]
+        if self.nodes[self.selected_node]["obj"]:
+            self.zyngui.chain_manager.active_chain.set_current_processor(self.nodes[self.selected_node]["obj"])
         self._draw_selection()
 
     def zynpot_cb(self, i, dval):
-        # Parameter editor implemented in base class!
         if super().zynpot_cb(i, dval):
             return True
         if i == 3:
-            if dval > 0:
-                self.arrow_down()
-            elif dval < 0:
-                self.arrow_up()
+            self._select_node_offset(dval)
             return True
-        return False
+
+    def _select_node_offset(self, dval):
+            if self.moving_proc:
+                if dval > 0:
+                    self.arrow_down()
+                elif dval < 0:
+                    self.arrow_up()
+                return
+            # Flatten grid into linear list
+            all_nodes = []
+            for row in self.grid_rows:
+                all_nodes.extend(row)
+            if not all_nodes:
+                return
+            # Find current index
+            if self.selected_node:
+                try:
+                    new_idx = all_nodes.index(self.selected_node) + dval
+                except ValueError:
+                    new_idx = dval
+            # Clamp to list bounds
+            if new_idx < 0: new_idx = 0
+            if new_idx >= len(all_nodes): new_idx = len(all_nodes) - 1
+            # Update Selection
+            self.selected_node = all_nodes[new_idx]
+            # Update Active Processor if applicable
+            if self.selected_node in self.nodes:
+                node_data = self.nodes[self.selected_node]
+                if node_data["obj"]:
+                    self.zyngui.chain_manager.active_chain.set_current_processor(node_data["obj"])
+            self._draw_selection()
 
     def arrow_down(self):
+        """
+        Handle arrow down action.
+        Moves selection down or nudges processor if in move mode.
+        """
         if self.moving_proc:
             # Persistent Move Mode: Nudge, Refresh, Keep moving_proc
             proc = self.moving_proc
@@ -474,8 +593,12 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         else:
             c, r = self._get_current_grid_pos()
             self._select_grid_node(c, r + 1)
-        
+
     def arrow_up(self):
+        """
+        Handle arrow up action.
+        Moves selection up or nudges processor if in move mode.
+        """
         if self.moving_proc:
             # Persistent Move Mode: Nudge, Refresh, Keep moving_proc
             proc = self.moving_proc
@@ -486,13 +609,21 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         else:
             c, r = self._get_current_grid_pos()
             self._select_grid_node(c, r - 1)
-        
+
     def arrow_left(self):
+        """
+        Handle arrow left action.
+        Moves selection left.
+        """
         if not self.moving_proc:
             c, r = self._get_current_grid_pos()
             self._select_grid_node(c - 1, r)
 
     def arrow_right(self):
+        """
+        Handle arrow right action.
+        Moves selection right.
+        """
         if not self.moving_proc:
             c, r = self._get_current_grid_pos()
             self._select_grid_node(c + 1, r)
@@ -500,8 +631,17 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
     def switch_select(self, t='S'):
         # Pass type to on_select
         return self.on_select(t)
-    
+
     def on_select(self, t='S'):
+        """
+        Handle selection event (Select/Enter key or Click).
+
+        Args:
+            t (str): Press type ('S' for short, 'B' for bold/long).
+
+        Returns:
+            bool: True if event consumed.
+        """
         # If moving, consume event and exit (User request: Select cancels move)
         if self.moving_proc:
             self.moving_proc = None
@@ -557,7 +697,6 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                     zynthian_gui_config.zyngui.chain_control(self.zyngui.chain_manager.active_chain.chain_id, proc)
                 elif t == 'B':
                     # Bold press: Options
-                    self.zyngui.screens['processor_options'].setup(self.zyngui.chain_manager.active_chain.chain_id, proc)
                     self.zyngui.show_screen("processor_options")
         return True
 
@@ -567,8 +706,11 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             self._draw_selection()
             return True # Consumed
         return False
-        
+
     def on_click(self, event):
+        """
+        Handle mouse button press. Initializes drag state.
+        """
         # Record start position for drag
         self.drag_start_x = event.x
         self.drag_start_y = event.y
@@ -578,6 +720,9 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.press_time = monotonic()
 
     def on_drag(self, event):
+        """
+        Handle mouse drag event. Scrolls the canvas.
+        """
         # Calculate pixel delta
         dx = self.drag_start_x - event.x
         dy = self.drag_start_y - event.y
@@ -617,6 +762,10 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                 pass
 
     def on_release(self, event):
+        """
+        Handle mouse button release.
+        Distinguishes between Click (Select) and Drag end.
+        """
         press_type = "S"
         if self.press_time:
             if monotonic() > self.press_time + 0.4:

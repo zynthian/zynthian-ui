@@ -226,7 +226,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.update_list()
 
     def processor_options(self, subchain, t='S'):
-        self.zyngui.screens['processor_options'].setup(self.chain_id, subchain)
         self.zyngui.show_screen("processor_options")
 
     def chain_midi_chan(self):

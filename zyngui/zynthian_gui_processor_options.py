@@ -81,13 +81,14 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         super().fill_list()
 
     def build_view(self):
-        if self.chain is not None and self.processor is not None:
-            super().build_view()
-            if self.index >= len(self.list_data):
-                self.index = len(self.list_data) - 1
-            return True
-        else:
-            return False
+        if self.chain != self.zyngui.chain_manager.active_chain or self.processor != self.zyngui.chain_manager.active_chain.current_processor:
+            self.chain = self.zyngui.chain_manager.active_chain
+            self.processor = self.zyngui.chain_manager.active_chain.current_processor
+            self.last_random = {}
+        super().build_view()
+        if self.index >= len(self.list_data):
+            self.index = len(self.list_data) - 1
+        return True
 
     def select_action(self, i, t='S'):
         self.index = i
@@ -98,16 +99,6 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             self.list_data[i][0]()
         else:
             self.list_data[i][0](self.list_data[i][1])
-
-    def setup(self, chain_id, processor):
-        try:
-            self.chain = self.zyngui.chain_manager.get_chain(chain_id)
-            self.chain_id = chain_id
-            if self.processor != processor:
-                self.last_random = {}
-            self.processor = processor
-        except Exception as e:
-            logging.error(e)
 
     def show_details(self):
         self.zyngui.screens["engine"].show_details(self.processor.eng_code)
