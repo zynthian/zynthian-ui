@@ -140,16 +140,17 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
 
         # --- MIDI TOOLS ---
         current_y, last_out_point = self._layout_stage_vertical("MIDI Tool", current_y, last_out_point, 
-                                                       bg_col=c_midi, add_pos='end')
+            bg_col=c_midi, add_pos='end')
         
         # --- SYNTH ---
         current_y, last_out_point = self._layout_stage_vertical("Synth", current_y, last_out_point, 
-                                                       is_synth=True, bg_col=c_synth)
+            is_synth=True, bg_col=c_synth)
         
         # --- AUDIO EFFECTS ---
-        current_y, last_out_point = self._layout_stage_vertical("Audio Effect", current_y, last_out_point, 
-                                                       bg_col=c_audio, add_pos='start')
-        
+        if self.zyngui.chain_manager.active_chain.is_audio():
+            current_y, last_out_point = self._layout_stage_vertical("Audio Effect", current_y, last_out_point, 
+                bg_col=c_audio, add_pos='start')
+
         # --- OUTPUT ROW ---
         outputs = []
         if self.zyngui.chain_manager.active_chain.is_audio():
@@ -161,7 +162,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             self._layout_row(outputs, current_y, None, bg_col="#444444") 
 
         self._draw_nodes()
-        
+
         # Configure scroll region
         # Use updatedbbox after drawing
         self.canvas.update_idletasks() # Ensure bbox is fresh?
