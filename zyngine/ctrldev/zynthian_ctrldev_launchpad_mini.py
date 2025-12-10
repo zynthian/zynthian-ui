@@ -77,26 +77,13 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
                 light = self.ACTIVE_COLOUR
             else:
                 light = self.OFF_COLOUR
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, 0, 104 + col, light)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 104 + col, light)
 
-    def update_seq_state(self, phrase, chan):
-        if self.idev_out is None or chan is None:
-            return
-        #logging.debug(f"Phrase {phrase}, Chan {chan} =>")
-        try:
-            row, col = self.zynseq.get_pad_coords(phrase, chan)
-            if col is None:
-                return
-            row -= self.scroll_v
-            if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
-                return
-        except:
-            return
+    def update_pad(self, row, col, pad_info):
         note = 16 * row + col
         midi_chan = 0
+        vel = self.OFF_COLOUR
         try:
-            pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
             state = pad_info["state"]
             mode = pad_info["mode"]
             repeat = pad_info["repeat"]
@@ -113,8 +100,8 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
                 vel = self.STARTING_COLOUR
             else:
                 vel = self.OFF_COLOUR
-        except Exception as e:
-            vel = self.OFF_COLOUR
+        except:
+            pass
         lib_zyncore.dev_send_note_on(self.idev_out, midi_chan, note, vel)
 
     def refresh(self):
@@ -126,16 +113,17 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         evtype = (ev[0] >> 4) & 0x0F
         if evtype == 0x9:
             note = ev[1] & 0x7F
-            col, row = self.get_note_xy(note)  # phrase=row
-            phrase = row + self.scroll_v
+            col, row = self.get_note_xy(note)
             if col == 8:
-                chan = zynseq.PHRASE_CHANNEL
+                midi_chan = zynseq.PHRASE_CHANNEL
             else:
-                chan = self.zynseq.get_chan_from_col(col)
-            try:
-                self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, chan)
-            except:
-                pass
+                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
+            if midi_chan is not None:
+                phrase = row + self.scroll_v
+                try:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
+                except:
+                    pass
             return True
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F

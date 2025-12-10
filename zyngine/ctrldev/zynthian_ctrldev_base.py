@@ -240,11 +240,37 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         *SHOULD* be implemented by child class
 
         phrase - phrase index (row)
-        chan - chan index (col)
-        state - sequence's state
-        mode - sequence's mode
+        chan - zynseq's midi chan
         """
-        logging.debug(f"Update sequence playing state for {type(self).__name__}: NOT IMPLEMENTED!")
+        if chan is None or chan > 31:
+            return  # Do not support main mixbus chain
+        if self.idev_out is None:
+            return
+        row = phrase - self.scroll_v
+        chain_ids = self.chain_manager.midi_chan_2_chain_ids[chan]
+        for id in chain_ids:
+            try:
+                col = self.chain_manager.ordered_chain_ids.index(id)
+                if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
+                    continue
+            except:
+                continue
+            try:
+                pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+            except:
+                pad_info = None
+            self.update_pad(row, col, pad_info)
+
+    def update_pad(self, row, col, pad_info):
+        """Update the pad at row,col
+        *SHOULD* be implemented by child class
+
+        row - row
+        col - column
+        chan - zynseq's midi chan
+        pad_info - dictionary with the pad info
+        """
+        pass
 
     def pad_off(self, col, row):
         """Light-Off the pad specified with column & row

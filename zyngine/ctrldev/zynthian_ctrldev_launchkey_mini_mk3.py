@@ -38,6 +38,7 @@ from zyngine.zynthian_signal_manager import zynsigman
 # Novation Launchkey Mini MK3
 # ------------------------------------------------------------------------------------------------------------------
 
+
 class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
     dev_ids = ["Launchkey Mini MK3 IN 2"]
@@ -92,51 +93,33 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.scroll_v = phrase
         self.refresh()
 
-    def update_seq_state(self, phrase, chan):
-        if chan > 31:
-            return # Do not support main mixbus chain
-        if self.idev_out is None:
-            return
-        row = phrase - self.scroll_v
-        chain_ids = self.state_manager.chain_manager.midi_chan_2_chain_ids[chan]
-        for id in chain_ids:
-            try:
-                col = self.state_manager.chain_manager.ordered_chain_ids.index(id)
-                if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
-                    continue
-                note = 96 + row * 16 + col
-                # chan: 0=static, 1=flashing, 2=pulsing
-                try:
-                    pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
-                    state = pad_info["state"]
-                    repeat = pad_info["repeat"]
-                    if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
-                        vel = 0
-                        chan = 0
-                    elif state == zynseq.SEQ_STOPPED:
-                        vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
-                        chan = 0
-                    elif state == zynseq.SEQ_PLAYING:
-                        vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
-                        chan = 2
-                    elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                        vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
-                        chan = 1
-                    elif state == zynseq.SEQ_STARTING:
-                        vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
-                        lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
-                        vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
-                        chan = 1
-                    else:
-                        vel = 0
-                        chan = 0
-                except Exception as e:
-                    chan = 0
-                    vel = 0
-                    logging.warning(e)
-                lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
-            except:
-                pass
+    def update_pad(self, row, col, pad_info):
+        note = 96 + row * 16 + col
+        chan = 0  # chan: 0=static, 1=flashing, 2=pulsing
+        vel = 0
+        try:
+            state = pad_info["state"]
+            repeat = pad_info["repeat"]
+            if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
+                vel = 0
+                chan = 0
+            elif state == zynseq.SEQ_STOPPED:
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                chan = 0
+            elif state == zynseq.SEQ_PLAYING:
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                chan = 2
+            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
+                vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
+                chan = 1
+            elif state == zynseq.SEQ_STARTING:
+                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
+                lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                chan = 1
+        except Exception as e:
+            pass
+        lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
     def pad_off(self, col, row):
         note = 96 + row * 16 + col
@@ -156,11 +139,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             # Toggle pad
             try:
                 col = (note - 96) % 16
-                row = (note - 96) // 16 + self.scroll_v
-                chain_id = self.state_manager.chain_manager.ordered_chain_ids[col]
-                midi_chan = self.state_manager.chain_manager.chains[chain_id].midi_chan
+                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
                 if midi_chan is not None:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, row, midi_chan)
+                    row = (note - 96) // 16
+                    phrase = row + self.scroll_v
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
             except:
                 pass
         elif evtype == 0xB:
@@ -209,7 +192,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 # SHIFT
                 self.shift = ccval != 0
             elif ccnum == 0 or ccval == 0:
-                return True # Ignore Modulation CC and button release
+                return True  # Ignore Modulation CC and button release
             elif ccnum == 0x68:
                 if self.shift:
                     # UP

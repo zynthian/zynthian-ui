@@ -41,9 +41,7 @@ from zyngui import zynthian_gui_config
 class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
 
     dev_ids = ["Launchpad Pro IN 1"]
-
-    STARTING_COLOUR = 21
-    STOPPING_COLOUR = 5
+    driver_description = "Launcher + arrow keys integration"
 
     def send_sysex(self, data):
         if self.idev_out is not None:
@@ -70,37 +68,17 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
         # Select Notes/Drum layout, page 0 (Chord = 0x2, Note/Drum = 0x4, Scale Settings = 0x5, ...)
         self.send_sysex("22 02")
 
-    # Zynpad Scene LED feedback
-    def refresh_zynpad_bank(self):
-        if self.idev_out is None:
-            return
-        # logging.debug("Updating Launchpad Pro MK2 bank leds")
-        for row in range(0, 8):
-            note = 89 - 10 * row
-            if row == self.zynseq.bank - 1:
-                lib_zyncore.dev_send_ccontrol_change(
-                    self.idev_out, 0, note, 29)
-            else:
-                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
-
-    # Zynpad Pad LED feedback
-    def update_seq_state(self, phrase, chan, state=None, mode=None):
-        if self.idev_out is None:
-            return
-        # logging.debug("Updating LaunchpadPro MK2 pad {}".format(pad))
-        try:
-            row, col = self.zynseq.get_pad_coords(phrase, chan)
-        except:
-            return
+    def update_pad(self, row, col, pad_info):
+        chan = 0
+        vel = 0
         note = 10 * (8 - row) + col + 1
-
-        group = self.zynseq.libseq.getGroup(self.zynseq.bank, chan)
-        if group > 15:
-            return
         try:
-            if mode == 0:
-                chan = 0
-                vel = 0
+            state = pad_info["state"]
+            mode = pad_info["mode"]
+            repeat = pad_info["repeat"]
+            group = pad_info["group"]
+            if repeat == 0 or mode == 0 or group >= MAX_NUM_MIDI_CHANS:
+                pass
             elif state == zynseq.SEQ_STOPPED:
                 chan = 0
                 vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
@@ -113,13 +91,8 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
             elif state == zynseq.SEQ_STARTING:
                 chan = 1
                 vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
-            else:
-                chan = 0
-                vel = 0
         except:
-            chan = 0
-            vel = 0
-        # logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(pad, group, chan, note, vel))
+            pass
         lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
     def midi_event(self, ev):
@@ -131,27 +104,35 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)
-                info = self.zynseq.get_launcher_info(col, row)
-                if info is not None:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, info["sequence"])
+                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
+                if midi_chan is not None:
+                    phrase = row + self.scroll_v
+                    try:
+                        self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
+                    except:
+                        pass
             return True
-        # CC => scene change
+        # CC => arrows & phrases
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if ccval > 0:
                 if ccnum == 91:
-                    self.zyngui.cuia_arrow_up()
+                    self.state_manager.send_cuia("ARROW_UP")
                 elif ccnum == 92:
-                    self.zyngui.cuia_arrow_down()
+                    self.state_manager.send_cuia("ARROW_DOWN")
                 elif ccnum == 93:
-                    self.zyngui.cuia_arrow_left()
+                    self.state_manager.send_cuia("ARROW_LEFT")
                 elif ccnum == 94:
-                    self.zyngui.cuia_arrow_right()
+                    self.state_manager.send_cuia("ARROW_RIGHT")
                 else:
                     col, row = self.get_note_xy(ccnum)
                     if col == 8:
-                        self.zynseq.set_bank(row + 1)
+                        try:
+                            phrase = row + self.scroll_v
+                            self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL)
+                        except:
+                            pass
             return True
 
 # ------------------------------------------------------------------------------

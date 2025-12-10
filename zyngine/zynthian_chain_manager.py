@@ -498,6 +498,14 @@ class zynthian_chain_manager:
                 return chain_id
         return None
 
+    def get_midi_chan_by_index(self, index):
+        """Get chain's MIDI channel by display index"""
+        try:
+            chain_id = self.ordered_chain_ids[index]
+            return self.chains[chain_id].midi_chan
+        except:
+            return None
+
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
     # ------------------------------------------------------------------------
