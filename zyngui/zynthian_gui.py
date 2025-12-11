@@ -497,7 +497,7 @@ class zynthian_gui:
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
         self.screens['launcher'] = self.screens['audio_mixer']
-        self.screens['arranger'] = zynthian_gui_arranger()
+        #self.screens['arranger'] = zynthian_gui_arranger()
         self.screens['pattern_editor'] = zynthian_gui_pated_notes()
         self.screens['pated_cc'] = zynthian_gui_pated_cc()
         self.screens['wifi'] = zynthian_gui_wifi()
