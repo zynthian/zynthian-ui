@@ -153,7 +153,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
 
         # Colors
         c_midi = "#805050" 
-        c_synth = "#508050" 
+        c_synth = "#32a893"
         c_audio = "#505080"
         
         # --- INPUT ROW ---
