@@ -70,7 +70,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             if self.zyngui.chain_manager.get_chain(chain_id) is None:
                 self.wsleds[i + 1] = self.wscolor_off
             else:
-                if self.zyngui.chain_manager.active_chain_id == chain_id:
+                if self.zyngui.chain_manager.active_chain.chain_id == chain_id:
                     # => Light active chain
                     if curscreen == "control":
                         self.wsleds[i + 1] = self.wscolor_active

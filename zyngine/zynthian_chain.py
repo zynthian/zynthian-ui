@@ -606,10 +606,13 @@ class zynthian_chain:
             slots.append([processor])
         else:
             if slot is None:
-                # Add processor to a new slot at end of subchain
-                if processor.type == "Audio Effect" and slots[-1][0].eng_code in ("MI", "MR"):
-                        # Audio subchain with no post-fader effects so insert pre-fader
-                        slots.insert(-1, [processor])
+                # Add processor to a new slot at default position in subchain
+                if processor.type == "Audio Effect":
+                    # Audio subchain default is immediately before fader
+                    for pos in range(len(slots)):
+                        if slots[pos][0].eng_code in ("MI", "MR"):
+                            break
+                    slots.insert(pos, [processor])
                 else:
                     slots.append([processor])
             elif slot < 0:

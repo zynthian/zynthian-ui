@@ -53,11 +53,9 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
         self.list_data.append((self.show_details, None, "Info"))
 
-        if self.can_move_upchain():
-            self.list_data.append((self.move_upchain, None, "Move up chain"))
-        if self.can_move_downchain():
-            self.list_data.append(
-                (self.move_downchain, None, "Move down chain"))
+        # Add Move Option for Visualizer (Not for Synths)
+        if self.processor.type != "MIDI Synth":
+            self.list_data.append((self.start_move, None, "Move"))
 
         if self.processor.eng_code not in ("MI", "MR"):
             if self.processor.type == "MIDI Synth":
@@ -83,13 +81,14 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         super().fill_list()
 
     def build_view(self):
-        if self.chain is not None and self.processor is not None:
-            super().build_view()
-            if self.index >= len(self.list_data):
-                self.index = len(self.list_data) - 1
-            return True
-        else:
-            return False
+        if self.chain != self.zyngui.chain_manager.active_chain or self.processor != self.zyngui.chain_manager.active_chain.current_processor:
+            self.chain = self.zyngui.chain_manager.active_chain
+            self.processor = self.zyngui.chain_manager.active_chain.current_processor
+            self.last_random = {}
+        super().build_view()
+        if self.index >= len(self.list_data):
+            self.index = len(self.list_data) - 1
+        return True
 
     def select_action(self, i, t='S'):
         self.index = i
@@ -100,16 +99,6 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             self.list_data[i][0]()
         else:
             self.list_data[i][0](self.list_data[i][1])
-
-    def setup(self, chain_id, processor):
-        try:
-            self.chain = self.zyngui.chain_manager.get_chain(chain_id)
-            self.chain_id = chain_id
-            if self.processor != processor:
-                self.last_random = {}
-            self.processor = processor
-        except Exception as e:
-            logging.error(e)
 
     def show_details(self):
         self.zyngui.screens["engine"].show_details(self.processor.eng_code)
@@ -137,37 +126,16 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
     # FX-Chain management
 
-    def can_move_upchain(self):
-        slot = self.chain.get_slot(self.processor)
-        if slot is None:
-            return False
-        if slot == 0:
-            slots = self.chain.get_slots_by_type(self.processor.type)
-            return len(slots[0]) > 1
-        return slot is not None and slot > 0
-
-    def move_upchain(self):
-        self.zyngui.chain_manager.nudge_processor(
-            self.chain_id, self.processor, True)
-        self.zyngui.close_screen()
-
-    def can_move_downchain(self):
-        slot = self.chain.get_slot(self.processor)
-        if slot is None:
-            return False
-        slots = self.chain.get_slots_by_type(self.processor.type)
-        if slot >= len(slots) - 1:
-            return len(slots[slot]) > 1
-        return slot is not None and slot + 1 < self.chain.get_slot_count(self.processor.type)
-
-    def move_downchain(self):
-        self.zyngui.chain_manager.nudge_processor(
-            self.chain_id, self.processor, False)
-        self.zyngui.close_screen()
-
     def replace(self):
         self.zyngui.modify_chain(
             {"chain_id": self.chain_id, "processor": self.processor, "type": self.processor.type})
+
+    def start_move(self):
+        visualizer = self.zyngui.screens.get('chain_visualizer')
+        if visualizer:
+            visualizer.start_move_mode(self.processor)
+            self.zyngui.show_screen('chain_visualizer')
+
 
     def randomize(self):
         refresh = not self.last_random

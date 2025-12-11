@@ -558,7 +558,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 logging.debug("MODE CONTROL!!")
                 self.set_mode_control()
         elif t == 'B':
-            self.zyngui.cuia_chain_options()
+            self.show_menu()
         return True
 
     def select(self, index=None, set_zctrl=True):
@@ -618,7 +618,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def show_menu(self):
-        self.zyngui.cuia_chain_options()
+        zynthian_gui_config.zyngui.show_screen('chain_visualizer')
 
     def toggle_menu(self):
         if self.shown:
