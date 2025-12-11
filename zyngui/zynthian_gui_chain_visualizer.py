@@ -26,12 +26,12 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
     """
     
     # Visual constants
-    BLOCK_WIDTH = 120
-    BLOCK_HEIGHT = 40
-    H_SPACING = 30
-    V_SPACING = 10
-    INIT_X = 20
-    INIT_Y = 20
+    BLOCK_WIDTH = 120 # Width of each processor block in pixels
+    BLOCK_HEIGHT = 40 # Height of each processor block in pixels
+    H_SPACING = 30 # Horizontal spacing between processor blocks in pixels
+    V_SPACING = 10 # Vertical spacing between processor blocks in pixels
+    INIT_X = 20 # Initial x position of the first processor block in pixels
+    INIT_Y = 20 # Initial y position of the first processor block in pixels
 
     def __init__(self):
         """
@@ -107,9 +107,8 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
-
         self.draw_graph()
-        
+
         if self.moving_proc:
             self._sync_selection_to_obj(self.moving_proc)
         elif not self.selected_node:
@@ -147,7 +146,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         self.nodes = {}
         # Grid structure: grid_rows[row_idx] = [key1, key2, ...] (Items in a row)
         self.grid_rows = [] 
-        
+
         current_y = self.INIT_Y
         last_out_point = None
 
@@ -155,49 +154,32 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         c_midi = "#805050" 
         c_synth = "#32a893"
         c_audio = "#505080"
-        
-        # --- INPUT ROW ---
-        inputs = []
-        if self.zyngui.chain_manager.active_chain.chain_id != 0 and self.zyngui.chain_manager.active_chain.audio_thru and self.zyngui.chain_manager.active_chain.zynmixer_proc and self.zyngui.chain_manager.active_chain.zynmixer_proc.eng_code != "MR":
-            inputs.append("Audio Input")
-        
-        if self.zyngui.chain_manager.active_chain.is_midi(): 
-            inputs.append("MIDI Input")
-            
-        inputs.append("Chain Options")
 
-        current_y, _ = self._layout_row(inputs, current_y, None)
+        # --- MENU ROW ---
+        current_y, _ = self._add_node("Chain Options", current_y)
         last_out_point = None 
 
-        # --- MIDI TOOLS ---
-        midi_prepends = []
-        if self.zyngui.chain_manager.active_chain.is_midi():
-            midi_prepends.append({'text': 'Note Range', 'action': 'note_range'})
-            current_y, last_out_point = self._layout_stage_vertical("MIDI Tool", current_y, last_out_point, 
-                bg_col=c_midi, add_pos='end', prepend_items=midi_prepends)
+        # --- MIDI ---
+        if self.zyngui.chain_manager.active_chain.is_midi(): 
+            current_y, last_out_point = self._add_node("MIDI Input", current_y)
+            current_y, last_out_point = self._add_node("Note Range", current_y, last_out_point)
+            current_y, last_out_point = self._add_slots("MIDI Tool", current_y, last_out_point)
+        if self.zyngui.chain_manager.active_chain.midi_thru:
+            current_y, last_out_point = self._add_node("MIDI Output", current_y, last_out_point)
 
         # --- SYNTH ---
-        current_y, last_out_point = self._layout_stage_vertical("Synth", current_y, last_out_point, 
-            is_synth=True, bg_col=c_synth)
+        current_y, last_out_point = self._add_slots("MIDI Synth", current_y, last_out_point)
 
-        # --- AUDIO EFFECTS ---
+        # --- AUDIO ---
+        if self.zyngui.chain_manager.active_chain.chain_id != 0 and self.zyngui.chain_manager.active_chain.audio_thru and self.zyngui.chain_manager.active_chain.zynmixer_proc and self.zyngui.chain_manager.active_chain.zynmixer_proc.eng_code != "MR":
+            current_y, last_out_point = self._add_node("Audio Input", current_y)
         if self.zyngui.chain_manager.active_chain.is_audio():
-            current_y, last_out_point = self._layout_stage_vertical("Audio Effect", current_y, last_out_point, 
-                bg_col=c_audio, add_pos='start')
-
-        # --- OUTPUT ROW ---
-        outputs = []
-        if self.zyngui.chain_manager.active_chain.is_audio():
-            outputs.append("Audio Output")
-        if self.zyngui.chain_manager.active_chain.midi_thru:
-            outputs.append("MIDI Output")
-        if outputs:
-            self._layout_row(outputs, current_y, None) 
+            current_y, last_out_point = self._add_slots("Audio Effect", current_y, last_out_point)
+            current_y, last_out_point = self._add_node("Audio Output", current_y, last_out_point) 
 
         self._draw_nodes()
 
         # Configure scroll region
-        # Use updatedbbox after drawing
         self.canvas.update_idletasks() # Ensure bbox is fresh?
         bbox = self.canvas.bbox("all")
         if bbox:
@@ -207,15 +189,14 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
 
         self._draw_selection()
 
-    def _layout_row(self, items, start_y, prev_out_point, bg_col=zynthian_gui_config.color_panel_bg, action="io"):
+    def _add_node(self, title, start_y, prev_out_point=None):
         """
-        Layout a horizontal row of items (e.g., IO ports, Options).
+        Add a node to the graph.
 
         Args:
-            items (list): List of text labels for the nodes.
+            title (str): Title of the node.
             start_y (int): Y-coordinate to start drawing.
             prev_out_point (tuple): (x, y) of the previous stage's output for connecting lines.
-            bg_col (str): Background color for the row section.
             action (str): Action identifier for the nodes.
 
         Returns:
@@ -224,29 +205,18 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         current_x = self.INIT_X
         slot_height = self.BLOCK_HEIGHT
         row_keys = []
-        
-        total_content_width = len(items) * self.BLOCK_WIDTH + (len(items)-1) * self.H_SPACING
-
+        total_content_width = self.BLOCK_WIDTH
         row_idx = len(self.grid_rows)
-        for col_idx, item in enumerate(items):
-            key_suffix = item
-            semantic_key = ('SPECIAL', item)
-            
-            act = action
-            if item in ["Audio Input", "MIDI Input", "Chain Options", "Audio Output", "MIDI Output"]:
-                act = 'io'
-            
-            coord_key = (col_idx, row_idx)
-            
-            node_data = {
-                'x': current_x, 'y': start_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
-                'text': item, 'obj': None, 'action': act, 'key': semantic_key, 'io_type': item,
-                'row_idx': row_idx, 'col_idx': col_idx
-            }
-
-            self.nodes[coord_key] = node_data
-            row_keys.append(coord_key)
-            current_x += self.BLOCK_WIDTH + self.H_SPACING
+        col_idx = 0
+        coord_key = (col_idx, row_idx)            
+        node_data = {
+            'x': current_x, 'y': start_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
+            'text': title, 'obj': None, 'action': 'io', 'io_type': title,
+            'row_idx': row_idx, 'col_idx': col_idx
+        }
+        self.nodes[coord_key] = node_data
+        row_keys.append(coord_key)
+        current_x += self.BLOCK_WIDTH + self.H_SPACING
 
         self.grid_rows.append(row_keys)
 
@@ -254,8 +224,6 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         max_width = max(total_content_width + self.INIT_X*2, self.width)
         bg_top = start_y
         bg_bottom = start_y + self.BLOCK_HEIGHT + self.V_SPACING
-        self.canvas.create_rectangle(0, bg_top, max_width, bg_bottom, fill=bg_col, outline="", tags="bg")
-        self.canvas.tag_lower("bg")
 
         center_x = self.INIT_X + (self.BLOCK_WIDTH / 2)
         out_point = (center_x, start_y + self.BLOCK_HEIGHT)
@@ -267,27 +235,18 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
 
         return start_y + self.BLOCK_HEIGHT + self.V_SPACING, out_point
 
-    def _layout_stage_vertical(self, ptype, start_y, prev_out_point, is_synth=False, bg_col="#000000", add_pos=None, prepend_items=None):
+    def _add_slots(self, ptype, start_y, prev_out_point):
         """
-        Layout a vertical stage of processors (e.g., MIDI Tools, Synths, Effects).
+        Add the processors and slots of each stage of the chain (MIDI Tools, MIDI Synth, Audio Effects).
 
         Args:
             ptype (str): Processor type (e.g., "MIDI Tool", "Audio Effect").
             start_y (int): Y-coordinate to start drawing.
             prev_out_point (tuple): Connection point from the previous stage.
-            is_synth (bool): specialized flag for Synth stage (handles slots differently).
-            bg_col (str): Background color for the section.
-            add_pos (str): 'start' or 'end' to place an "Add (+)" button.
-            prepend_items (list): List of dicts {'text':..., 'action':...} to add before processors.
-
         Returns:
             tuple: (next_start_y, output_point)
         """
-        if is_synth:
-            slots = self.zyngui.chain_manager.active_chain.synth_slots
-            num_slots = len(slots)
-        else:
-            num_slots = self.zyngui.chain_manager.active_chain.get_slot_count(ptype)
+        num_slots = self.zyngui.chain_manager.active_chain.get_slot_count(ptype)
 
         current_y = start_y
         my_out_point = prev_out_point
@@ -295,36 +254,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         items_added = False
         max_row_width = 0
 
-        if prepend_items:
-            for item in prepend_items:
-                semantic_key = ("SPECIAL", item['text'])
-                current_x = self.INIT_X
-                
-                # Connection loop
-                if my_out_point:
-                    self.canvas.create_line(my_out_point[0], my_out_point[1], 
-                        current_x + self.BLOCK_WIDTH/2, current_y,
-                        fill="#AAAAAA", width=2, tags="lines")
-                
-                row_idx = len(self.grid_rows)
-                col_idx = 0
-                coord_key = (col_idx, row_idx)
-
-                node_data = {
-                    'x': current_x, 'y': current_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
-                    'text': item['text'], 'obj': None, 'action': item.get('action'), 'key': semantic_key,
-                    'row_idx': row_idx, 'col_idx': col_idx
-                }
-                
-                self.nodes[coord_key] = node_data
-                self.grid_rows.append([coord_key]) # Single item row
-                
-                my_out_point = (current_x + self.BLOCK_WIDTH/2, current_y + self.BLOCK_HEIGHT)
-                current_y += self.BLOCK_HEIGHT + self.V_SPACING
-                items_added = True
-
-        def add_special_node(c_y, m_out_p):
-            semantic_key = (ptype, 'ADD')
+        def add_add_node(c_y, m_out_p, ptype):
             current_x = self.INIT_X
             if m_out_p:
                 self.canvas.create_line(m_out_p[0], m_out_p[1], 
@@ -337,26 +267,17 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
 
             node_data = {
                 'x': current_x, 'y': c_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
-                'text': "+", 'obj': None, 'action': 'add', 'key': semantic_key,
+                'text': "+", 'obj': None, 'action': 'add', 'io_type': ptype,
                 'row_idx': row_idx, 'col_idx': col_idx
             }
             self.nodes[coord_key] = node_data
             self.grid_rows.append([coord_key])
             return c_y + self.BLOCK_HEIGHT + self.V_SPACING, (current_x + self.BLOCK_WIDTH/2, c_y + self.BLOCK_HEIGHT)
 
-        if add_pos == 'start':
-            current_y, my_out_point = add_special_node(current_y, my_out_point)
-            items_added = True
-
         for slot_idx in range(num_slots):
-            if is_synth:
-                processors = slots[slot_idx]
-            else:
-                processors = self.zyngui.chain_manager.active_chain.get_processors(ptype, slot_idx)
-
-            if not processors and not is_synth: continue
+            processors = self.zyngui.chain_manager.active_chain.get_processors(ptype, slot_idx)
+            if not processors and ptype != "MIDI Synth": continue
             items_added = True
-
             current_row_keys = []
             current_x = self.INIT_X
             in_x = current_x + self.BLOCK_WIDTH/2
@@ -367,14 +288,18 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
 
             row_idx = len(self.grid_rows)
             for proc_idx, proc in enumerate(processors):
+                # Add an add node if immediately before fader
+                if proc.eng_code in ["MR", "MI"]:
+                    current_y, my_out_point =add_add_node(current_y, my_out_point, ptype)
+                    items_added = True
+                    row_idx += 1
                 col_idx = len(current_row_keys)
                 coord_key = (col_idx, row_idx)
-                semantic_key = (ptype, slot_idx, proc_idx)
                 
                 name = proc.get_name() if proc else "Empty"
                 node_data = {
                     'x': current_x, 'y': current_y, 'w': self.BLOCK_WIDTH, 'h': self.BLOCK_HEIGHT,
-                    'text': name, 'obj': proc, 'key': semantic_key,
+                    'text': name, 'obj': proc, 'io_type': ptype,
                     'row_idx': row_idx, 'col_idx': col_idx
                 }
                 self.nodes[coord_key] = node_data
@@ -388,16 +313,14 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
                 my_out_point = (self.INIT_X + self.BLOCK_WIDTH/2, current_y + self.BLOCK_HEIGHT)
                 current_y += self.BLOCK_HEIGHT + self.V_SPACING
 
-        if add_pos == 'end':
-            current_y, my_out_point = add_special_node(current_y, my_out_point)
+        if ptype == 'MIDI Tool':
+            current_y, my_out_point = add_add_node(current_y, my_out_point, ptype)
             items_added = True
 
         if items_added:
             bg_top = stage_start_y - 5
             bg_bottom = current_y - 5
             bg_w = max(max_row_width, self.width)
-            self.canvas.create_rectangle(0, bg_top, bg_w, bg_bottom, fill=bg_col, outline="", tags="bg")
-            self.canvas.tag_lower("bg")
 
         return current_y, my_out_point
 
@@ -423,16 +346,42 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
         """
         Render all nodes stored in self.nodes to the canvas.
         """
+        c_midi = "#805050" 
+        c_synth = "#32a893"
+        c_audio = "#505080"
+
         for key, node in self.nodes.items():
             x, y, w, h = node['x'], node['y'], node['w'], node['h']
             text = node['text']
             
             # Key is now (col, row), make tag safe
             tag_suffix = f"{key[0]}_{key[1]}"
+
+            io_type = node.get('io_type')
+            #TODO: This should just check the stage: MIDI, Audio, Synth
+            match io_type:
+                case 'MIDI Input':
+                    bg_col = c_midi
+                case 'Note Range':
+                    bg_col = c_midi
+                case 'MIDI Tool':
+                    bg_col = c_midi
+                case 'MIDI Output':
+                    bg_col = c_midi
+                case 'MIDI Synth':
+                    bg_col = c_synth
+                case 'Audio Input':
+                    bg_col = c_audio
+                case 'Audio Effect':
+                    bg_col = c_audio
+                case 'Audio Output':
+                    bg_col = c_audio
+                case _:
+                    bg_col = "#888888"
             
             self.canvas.create_rectangle(x, y, x+w, y+h, 
-                                         outline=zynthian_gui_config.color_tx,
-                                         fill=zynthian_gui_config.color_panel_bg,
+                                         outline=bg_col,
+                                         fill=bg_col,
                                          tags=f"node_{tag_suffix}")
             
             self.canvas.create_text(x + w/2, y + h/2,
@@ -683,7 +632,7 @@ class zynthian_gui_chain_visualizer(zynthian_gui_base):
             # Check for Add Action
             if node.get('action') == 'add':
                 if t == 'S': # Only select triggers add
-                    ptype = node['key'][0]
+                    ptype = node['io_type']
                     if ptype == "MIDI Tool":
                         self.zyngui.modify_chain({"type": "MIDI Tool", "chain_id": self.zyngui.chain_manager.active_chain.chain_id})
                     elif ptype == "Audio Effect":
