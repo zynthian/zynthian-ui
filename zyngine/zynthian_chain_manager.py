@@ -435,16 +435,38 @@ class zynthian_chain_manager:
         self.state_manager.zynseq.refresh_chan2col()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
-    def get_chain_count(self):
-        """Get the quantity of chains"""
+    def get_chain_count(self, audio=True, midi=True, synth=True):
+        """Get the quantity of chains
 
-        return len(self.chains)
+        audio : True to include audio chains
+        midi : True to include MIDI chains
+        synth : True to include synth chains
+        return: quantity of chains
+        """
+
+        if audio and midi and synth:
+            return len(self.chains)
+
+        count = 0
+        for chain_id in self.ordered_chain_ids:
+            chain = self.chains[chain_id]
+            if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
+                count += 1
+        return count
 
     def get_chain(self, chain_id):
         """Get a chain object by id"""
 
         try:
             return self.chains[chain_id]
+        except:
+            return None
+
+    def get_chain_id_by_index(self, index):
+        """Get a chain ID by the display index"""
+
+        try:
+            return self.ordered_chain_ids[index]
         except:
             return None
 
@@ -460,7 +482,7 @@ class zynthian_chain_manager:
         """Get a chain by its (display) position
 
         pos : Display position (0..no of chains)
-        audio_only : True to include audio chains
+        audio : True to include audio chains
         midi : True to include MIDI chains
         synth : True to include synth chains
         returns : Chain object or None if not found
@@ -474,21 +496,31 @@ class zynthian_chain_manager:
 
         for chain_id in self.ordered_chain_ids:
             chain = self.chains[chain_id]
-            if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth == synth:
+            if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
                 if pos == 0:
-                    if chain_id:
-                        return self.chains[chain_id]
+                    return chain
                 pos -= 1
 
         return None
 
-    def get_chain_id_by_index(self, index):
-        """Get a chain ID by the display index"""
+    def get_chain_ids_filtered(self, audio=True, midi=True, synth=True):
+        """Get chain list filtered and ordered in display order
 
-        try:
-            return self.ordered_chain_ids[index]
-        except:
-            return None
+        audio : True to include audio chains
+        midi : True to include MIDI chains
+        synth : True to include synth chains
+        returns : List of chains
+        """
+
+        if audio and midi and synth:
+            return self.ordered_chain_ids
+
+        chains_ids_filtered = []
+        for chain_id in self.ordered_chain_ids:
+            chain = self.chains[chain_id]
+            if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
+                chain_ids_filtered.append(chain_id)
+        return chain_ids_filtered
 
     def get_chain_id_by_mixer_chan(self, chan):
         """Get a chain by the mixer channel"""
@@ -497,14 +529,6 @@ class zynthian_chain_manager:
             if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan:
                 return chain_id
         return None
-
-    def get_midi_chan_by_index(self, index):
-        """Get chain's MIDI channel by display index"""
-        try:
-            chain_id = self.ordered_chain_ids[index]
-            return self.chains[chain_id].midi_chan
-        except:
-            return None
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management

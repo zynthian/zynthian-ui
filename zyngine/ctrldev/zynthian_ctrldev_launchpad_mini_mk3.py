@@ -79,17 +79,20 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             state = pad_info["state"]
             mode = pad_info["mode"]
             repeat = pad_info["repeat"]
-            group = pad_info["group"]
+            if col == self.cols:
+                group = 0
+            else:
+                group = pad_info["group"]
             # logging.debug(f"\t => state={state}, mode={mode}")
             if repeat == 0 or mode == 0 or group >= MAX_NUM_MIDI_CHANS:
                 pass
             elif state == zynseq.SEQ_STOPPED:
-                if chan == zynseq.PHRASE_CHANNEL:
+                if col == self.cols:
                     color = 0
                 else:
                     color = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state in (zynseq.SEQ_PLAYING, zynseq.SEQ_CHILD_PLAYING):
-                if chan == zynseq.PHRASE_CHANNEL:
+                if col == self.cols:
                     color = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
                 else:
                     midi_chan = 2
@@ -103,10 +106,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         except Exception as e:
             pass
         # Send MIDI event to controller
-        if chan < zynseq.PHRASE_CHANNEL:
+        if col < self.cols:
             note = 10 * (8 - row) + col + 1
             lib_zyncore.dev_send_note_on(self.idev_out, midi_chan, note, color)
-        elif chan == zynseq.PHRASE_CHANNEL:
+        elif col == self.cols:
             ccnum = 89 - 10 * row
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, max(midi_chan, 1), ccnum, color)
 
@@ -128,7 +131,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)
-                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
+                midi_chan = self.get_filtered_midi_chan_by_index(col)
                 if midi_chan is not None:
                     phrase = row + self.scroll_v
                     try:

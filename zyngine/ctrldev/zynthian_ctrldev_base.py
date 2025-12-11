@@ -64,53 +64,86 @@ class zynthian_ctrldev_base:
 
     @classmethod
     def get_autoload_flag(cls):
+        """Returns autoload flag value"""
+
         return cls.autoload_flag
 
-    # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
+        """Class Constructor
+
+        state_manager - state manager object
+        idev_in - integer
+        idev_out - integer
+        """
+
         self.state_manager = state_manager
         self.chain_manager = state_manager.chain_manager
         # Slot index where the input device is connected, starting from 1 (0 = None)
         self.idev = idev_in
         # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
         self.idev_out = idev_out
+        # Filtered chain list
+        self.chain_ids_filtered = []
+        self.chain_type_filter = [True, True, True]   # [audio, midi, synth]
         # OPTIONAL: real-time MIDI processor (jack client), inserted between the input device and zmip
         self.midiproc_jackname = None
         self.midiproc = None
 
-    # Returns the driver name
     @classmethod
     def get_driver_name(cls):
+        """Returns the driver name"""
+
         if cls.driver_name is None:
             return cls.__name__[17:]
         else:
             return cls.driver_name
 
-    # Returns the driver description
     @classmethod
     def get_driver_description(cls):
+        """Returns the driver description"""
+
         return cls.driver_description
 
-    # Send SysEx universal inquiry.
-    # It's answered by some devices with a SysEx message.
     def send_sysex_universal_inquiry(self):
+        """Send SysEx universal inquiry.
+        It's answered by some devices with a SysEx message."""
+
         if self.idev_out > 0:
             msg = bytes.fromhex("F0 7E 7F 06 01 F7")
             lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 
-    # Initialize control device: setup, register signals, etc
-    # It *SHOULD* be implemented by child class
     def init(self):
+        """Initialize control device: setup, register signals, etc
+        It *SHOULD* be implemented by child class"""
+
         self.init_midiproc()
         self.refresh()
 
-    # End control device: restore initial state, unregister signals, etc
-    # It *SHOULD* be implemented by child class
+        # Register for chain add/remove
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        # Register for snapshot loading
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+
     def end(self):
+        """End control device: restore initial state, unregister signals, etc
+        It *SHOULD* be implemented by child class"""
+
+        # Unregister for snapshot loading
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        # Unregister from processor tree changes
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+
         self.end_midiproc()
 
-    # Spawn midiproc task using multiprocessing API
     def init_midiproc(self):
+        """Spawn midiproc task using multiprocessing API"""
+
         midiproc_task = getattr(self, "midiproc_task", None)
         if callable(midiproc_task):
             try:
@@ -124,8 +157,9 @@ class zynthian_ctrldev_base:
                 logging.exception(traceback.format_exc())
                 #logging.error(e)
 
-    # Terminate middings process
     def end_midiproc(self):
+        """Terminate middings process"""
+
         if self.midiproc:
             try:
                 self.midiproc.terminate()
@@ -136,58 +170,127 @@ class zynthian_ctrldev_base:
             except Exception as e:
                 logging.error(e)
 
-    # The midiproc task itself. It runs in a spawned process.
-    # It must call self._midiproc_task() to reset signal handlers
-    # *COULD* be implemented by child class
     # def midiproc_task(self):
+    #    """The midiproc task itself. It runs in a spawned process.
+    #    It must call self._midiproc_task() to reset signal handlers
+    #    *COULD* be implemented by child class"""
+    #
     #    self.midiproc_task_reset_signal_handlers()
     #    # Implementation goes here!
 
-    # Reset process signal handlers.
-    # It *MUST* be called from midiproc_task, running in a spawned process.
     @staticmethod
     def midiproc_task_reset_signal_handlers():
+        """Reset process signal handlers.
+        It *MUST* be called from midiproc_task, running in a spawned process."""
+
         signal.signal(signal.SIGHUP, signal.SIG_DFL)
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGQUIT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
-    # Refresh full device status (LED feedback, etc)
-    # *COULD* be implemented by child class
-    def refresh(self):
-        pass
-        #logging.debug(f"Refresh LEDs for {type(self).__name__}: NOT IMPLEMENTED!")
+    def get_filtered_chain_id_by_index(self, index):
+        """Get filtered chain ID by index
 
-    # Device MIDI event handler
-    # *COULD* be implemented by child class
+        index - Index in filtered chain list
+        return: integer
+        """
+
+        try:
+            return self.chain_ids_filtered[index]
+        except:
+            return None
+
+    def get_filtered_chain_by_index(self, index):
+        """Get filtered chain by index
+
+        index - Index in filtered chain list
+        return: chain
+        """
+
+        try:
+            return self.chain_manager.chains[self.chain_ids_filtered[index]]
+        except:
+            return None
+
+    def get_filtered_index_by_chain(self, chain):
+        """Get index of chain in the filtered chain list
+
+        chain - chain to find in filtered list
+        return: integer
+        """
+        try:
+            return self.chain_ids_filtered.index(chain.chain_id)
+        except:
+            return -1
+
+    def get_filtered_index_by_chain_id(self, chain_id):
+        """Get index of chain in the filtered chain list
+
+        chain - chain to find in filtered list
+        return: integer
+        """
+        try:
+            return self.chain_ids_filtered.index(chain_id)
+        except:
+            return -1
+
+    def get_filtered_midi_chan_by_index(self, index):
+        """Get filtered chain MIDI channel by index"""
+        try:
+            return self.chain_manager.chains[self.chain_ids_filtered[index]].midi_chan
+        except:
+            return None
+
+
+    def refresh(self):
+        """Refresh full device status (LED feedback, etc)
+        *COULD* be implemented by child class
+        """
+
+        self.chain_ids_filtered = self.chain_manager.get_chain_ids_filtered(self.chain_type_filter[0],
+                                                                            self.chain_type_filter[1],
+                                                                            self.chain_type_filter[2])
+
     def midi_event(self, ev):
+        """Device MIDI event handler
+        *COULD* be implemented by child class
+        """
+
         return False
         #logging.debug(f"MIDI EVENT for '{type(self).__name__}'")
 
-    # Light-Off LEDs
-    # *COULD* be implemented by child class
     def light_off(self):
+        """Light-Off LEDs
+        *COULD* be implemented by child class
+        """
+
         pass
         #logging.debug(f"Lighting Off LEDs for {type(self).__name__}: NOT IMPLEMENTED!")
 
-    # Sleep On
-    # *COULD* be improved by child class
     def sleep_on(self):
+        """Sleep On
+        *COULD* be improved by child class
+        """
+
         self.light_off()
 
-    # Sleep Off
-    # *COULD* be improved by child class
     def sleep_off(self):
+        """Sleep Off
+        *COULD* be improved by child class
+        """
+
         self.refresh()
 
-    # Return driver's state dictionary
-    # *COULD* be implemented by child class
     def get_state(self):
+        """Return driver's state dictionary
+        *COULD* be implemented by child class"""
+
         return None
 
-    # Restore driver's state
-    # *COULD* be implemented by child class
     def set_state(self, state):
+        """Restore driver's state
+        *COULD* be implemented by child class"""
+
         pass
 
 
@@ -212,22 +315,8 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         # Register for zynseq updates
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
-        # Register for chain add/remove
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
-        # Register for snapshot loading
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
 
     def end(self):
-        # Unregister for snapshot loading
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
-        # Unregister from processor tree changes
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         # Unregister from zynseq updates
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
@@ -242,24 +331,37 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         phrase - phrase index (row)
         chan - zynseq's midi chan
         """
-        if chan is None or chan > 31:
-            return  # Do not support main mixbus chain
+        #logging.debug(f"UPDATE SEQ STATE {phrase}, {chan}")
+        if chan is None:
+            return
         if self.idev_out is None:
             return
         row = phrase - self.scroll_v
-        chain_ids = self.chain_manager.midi_chan_2_chain_ids[chan]
-        for id in chain_ids:
+        if row < 0 or row >= self.rows:
+            return
+        # Phrase launcher
+        if chan == 32:
+            col = self.cols
             try:
-                col = self.chain_manager.ordered_chain_ids.index(id)
-                if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
-                    continue
-            except:
-                continue
-            try:
-                pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+                pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
             except:
                 pad_info = None
             self.update_pad(row, col, pad_info)
+        # Sequence/Clip launcher
+        else:
+            chain_ids = self.chain_manager.midi_chan_2_chain_ids[chan]
+            for id in chain_ids:
+                try:
+                    col = self.get_filtered_index_by_chain_id(id)
+                    if col < 0 or col >= self.cols:
+                        continue
+                except:
+                    continue
+                try:
+                    pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+                except:
+                    pad_info = None
+                self.update_pad(row, col, pad_info)
 
     def update_pad(self, row, col, pad_info):
         """Update the pad at row,col
@@ -282,6 +384,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """Refresh full device status (LED feedback, etc)
         *COULD* be implemented by child class
         """
+        super().refresh()
         if self.idev_out is None:
             return
         self.light_off()
@@ -308,13 +411,15 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 
     def init(self):
         super().init()
+        # Register for active chain changes
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        # Register for audio mixer changes
         zynsigman.register_queued(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
 
     def end(self):
+        # Unregister for active chain changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        # Unregister for audio mixer changes
         zynsigman.unregister(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
         self.light_off()
         super().end()
@@ -349,7 +454,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            chain = self.chain_manager.get_chain_by_index(pos)
+            chain = self.get_filtered_chain_by_index(pos)
         if chain and chain.zynmixer_proc:
             try:
                 zctrl = chain.zynmixer_proc.controllers_dict[param]
@@ -369,7 +474,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            chain = self.chain_manager.get_chain_by_index(pos)
+            chain = self.get_filtered_chain_by_index(pos)
         if chain and chain.zynmixer_proc:
             try:
                 return chain.zynmixer_proc.controllers_dict[param].get_value()
@@ -387,8 +492,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if pos < 0:
             chain = self.chain_manager.chains[0]
         else:
-            #chain = self.chain_manager.get_chain_by_position(pos, midi=False)
-            chain = self.chain_manager.get_chain_by_index(pos)
+            chain = self.get_filtered_chain_by_index(pos)
         if chain and chain.zynmixer_proc:
             try:
                 chain.zynmixer_proc.controllers_dict[param].toggle()

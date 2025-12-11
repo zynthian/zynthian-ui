@@ -94,6 +94,8 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         self.refresh()
 
     def update_pad(self, row, col, pad_info):
+        if col == self.cols:  # Phrase launcher not implemented!
+            return
         note = 96 + row * 16 + col
         chan = 0  # chan: 0=static, 1=flashing, 2=pulsing
         vel = 0
@@ -117,7 +119,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
                 vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
                 chan = 1
-        except Exception as e:
+        except:
             pass
         lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
@@ -139,7 +141,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             # Toggle pad
             try:
                 col = (note - 96) % 16
-                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
+                midi_chan = self.get_filtered_midi_chan_by_index(col)
                 if midi_chan is not None:
                     row = (note - 96) // 16
                     phrase = row + self.scroll_v

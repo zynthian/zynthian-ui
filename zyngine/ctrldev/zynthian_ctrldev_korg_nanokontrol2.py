@@ -190,7 +190,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
         if chain_id:
-            col = self.chain_manager.get_chain_index(chain_id) - self.mixer_col_offset
+            col = self.get_filtered_index_by_chain_id(chain_id) - self.mixer_col_offset
             if 0 <= col < 8:
                 if symbol == "mute":
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
@@ -204,7 +204,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         if self.rec_mode:
             return
         for i in range(0, 8):
-            chain_id = self.chain_manager.get_chain_id_by_index(self.mixer_col_offset + i)
+            chain_id = self.get_filtered_chain_id_by_index(self.mixer_col_offset + i)
             if chain_id and chain_id == active_chain:
                 rec = 0x7F
             else:
@@ -213,6 +213,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 
     # Update full LED status
     def refresh(self):
+        super().refresh()
         if self.idev_out is None:
             return
 
@@ -234,7 +235,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         # Strips Leds
         for i in range(0, 8):
             pos = self.mixer_col_offset + i
-            chain_id = self.chain_manager.get_chain_id_by_index(pos)
+            chain_id = self.get_filtered_chain_id_by_index(pos)
             mute = self.get_mixer_param("mute", pos)
             solo = self.get_mixer_param("solo", pos)
 

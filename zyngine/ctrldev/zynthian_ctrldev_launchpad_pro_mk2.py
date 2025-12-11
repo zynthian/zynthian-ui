@@ -76,7 +76,10 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
             state = pad_info["state"]
             mode = pad_info["mode"]
             repeat = pad_info["repeat"]
-            group = pad_info["group"]
+            if col == self.cols:
+                group = 0
+            else:
+                group = pad_info["group"]
             if repeat == 0 or mode == 0 or group >= MAX_NUM_MIDI_CHANS:
                 pass
             elif state == zynseq.SEQ_STOPPED:
@@ -104,7 +107,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)
-                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
+                midi_chan = self.get_filtered_midi_chan_by_index(col)
                 if midi_chan is not None:
                     phrase = row + self.scroll_v
                     try:

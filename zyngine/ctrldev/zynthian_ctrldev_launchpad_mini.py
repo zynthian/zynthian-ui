@@ -87,8 +87,12 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
             state = pad_info["state"]
             mode = pad_info["mode"]
             repeat = pad_info["repeat"]
+            if col == self.cols:
+                group = 0
+            else:
+                group = pad_info["group"]
             # logging.debug(f"\t => state={state}, mode={mode}")
-            if repeat == 0 or mode == 0 or chan >= MAX_NUM_MIDI_CHANS:
+            if repeat == 0 or mode == 0 or group >= MAX_NUM_MIDI_CHANS:
                 vel = self.OFF_COLOUR
             elif state == zynseq.SEQ_STOPPED:
                 vel = self.STOPPED_COLOUR
@@ -117,7 +121,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
             if col == 8:
                 midi_chan = zynseq.PHRASE_CHANNEL
             else:
-                midi_chan = self.chain_manager.get_midi_chan_by_index(col)
+                midi_chan = self.get_filtered_midi_chan_by_index(col)
             if midi_chan is not None:
                 phrase = row + self.scroll_v
                 try:
