@@ -55,7 +55,6 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 		self.sysex_answer_cb = None
 		self.midi_chan = 0x0  # zero is the default don't change
-		self.rec_mode = 0
 		self.shift = False
 
 		self.my_settings = self.load_yaml_config(self.mackie_config_path, self.mackie_config_file)
@@ -121,7 +120,6 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		else:
 			self.fader_touch_active = [True, True, True, True, True, True, True, True, True]
 		self.max_fader_value = 16383.0  # I think this is default Mackie
-		self.first_zyn_channel_fader = 0  # To be able to scroll around the channels
 		self.encoder_assign = 'global_view'  # Set as default
 		self.strip_view = 'global_view'  # Set default
 		self.gui_screen = 'audio_mixer'  # Set as default, it's needed to correct an issue when starting  up
@@ -181,6 +179,15 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			data.append(hex)
 		self.send_syx(data=' '.join(data))
 
+	def update_all_lcd_text(self, text1, text2):
+		data = ['12', '00']
+		text = f"{text1: <56}{text2: <56}"
+		for num in range(56):
+			letter = text[num]
+			hex = letter.encode('utf-8').hex()
+			data.append(hex)
+		self.send_syx(data=' '.join(data))
+
 	def update_top_lcd_text(self, channel, top_text=''):
 		pos_top = ['00', '07', '0e', '15', '1c', '23', '2a', '31']
 		self.update_lcd_text(pos_top[channel], top_text)
@@ -200,13 +207,6 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		pos_bottom = ['38', '3f', '46', '4d', '54', '5b', '62', '69']
 		self.update_lcd_text(pos_bottom[channel], bottom_text)
 
-	def get_master_chain_audio_channel(self):
-		master_chain = self.chain_manager.get_chain(0)
-		if master_chain is not None:
-			return master_chain.mixer_chan
-		else:
-			return 255
-
 	# mkc Functions
 	def buttonled_on(self, ccnum):
 		lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, 127)
@@ -216,57 +216,32 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def rec(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.first_zyn_channel_fader
-			if col < len(self.get_ordered_chain_ids_filtered()):
-				chain = self.get_chain_by_position(col)
-				mixer_chan = chain.mixer_chan
-				if mixer_chan is not None:
-					self.state_manager.audio_recorder.toggle_arm(mixer_chan)
-					# Send LED feedback
-					if self.idev_out is not None:
-						val = self.state_manager.audio_recorder.is_armed(mixer_chan) * 0x7F
-						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, val)
+			col = int(id) + self.mixer_col_offset
+			val = self.toggle_mixer_param("record", col)
+			# Send LED feedback
+			if self.idev_out is not None:
+				lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
 
 	def solo(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.first_zyn_channel_fader
-			if col < len(self.get_ordered_chain_ids_filtered()):
-				chain = self.get_chain_by_position(col)
-				mixer_chan = chain.mixer_chan
-				if mixer_chan is not None:
-					if self.zynmixer.get_solo(mixer_chan):
-						val = 0
-					else:
-						val = 1
-					self.zynmixer.set_solo(mixer_chan, val, True)
-					if self.idev_out is not None:
-						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
-				elif self.idev_out is not None:
-					lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, 0)
+			col = int(id) + self.mixer_col_offset
+			val = self.toggle_mixer_param("solo", col)
+			# Send LED feedback
+			if self.idev_out is not None:
+				lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
 
 	def mute(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.first_zyn_channel_fader
-			if col < len(self.get_ordered_chain_ids_filtered()):
-				chain = self.get_chain_by_position(col)
-				mixer_chan = chain.mixer_chan
-				if mixer_chan is not None:
-					if self.zynmixer.get_mute(mixer_chan):
-						val = 0
-					else:
-						val = 1
-					self.zynmixer.set_mute(mixer_chan, val, True)
-					if self.idev_out is not None:
-						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
-				elif self.idev_out is not None:
-					lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, 0)
+			col = int(id) + self.mixer_col_offset
+			val = self.toggle_mixer_param("mute", col)
+			# Send LED feedback
+			if self.idev_out is not None:
+				lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, ccnum, val * 0x7F)
 
 	def select(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.first_zyn_channel_fader
-			if col < len(self.get_ordered_chain_ids_filtered()):
-				chain = self.get_chain_by_position(col)
-				self.chain_manager.set_active_chain_by_id(chain_id=chain.chain_id)
+			col = int(id) + self.mixer_col_offset
+			self.chain_manager.set_active_chain_by_index(col)
 
 	def encoderpress(self, id, ccnum, ccval):
 		if self.encoder_assign == 'global_view':
@@ -279,6 +254,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def globalview(self, id, ccnum, ccval):
 		self.strip_view = 'global_view'
+		self.chain_type_filter = []
 		self.refresh()
 
 	def encoderassign(self, id, ccnum, ccval):
@@ -291,33 +267,53 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def viewassign(self, id, ccnum, ccval):
 		self.strip_view = id
+		match self.strip_view:
+			case "audio":
+				self.chain_type_filter = ["generator"]
+			case "midi":
+				self.chain_type_filter = ["midi"]
+			case "inst":
+				self.chain_type_filter = ["synth"]
+			case "inputs":
+				self.chain_type_filter = ["audio_in"]
+			case "outputs":
+				self.chain_type_filter = ["audio_out"]
+			case "aux":
+				self.chain_type_filter = ["fxloop"]
+			case "buses":
+				self.chain_type_filter = ["fxloop"]
+			case "user":
+				pass
+			case _:
+				self.chain_type_filter = []
 		self.refresh()
 
 	def faderbank(self, direction, ccnum, ccval):
 		if ccval == 127:
+			n_strips = self.device_settings['number_of_strips']
 			if direction == 'left':
-				if self.first_zyn_channel_fader > 0:
-					self.first_zyn_channel_fader -= self.device_settings['number_of_strips']
-					if self.first_zyn_channel_fader < 0:
-						self.first_zyn_channel_fader = 0
+				if self.mixer_col_offset > 0:
+					self.mixer_col_offset -= n_strips
+					if self.mixer_col_offset < 0:
+						self.mixer_col_offset = 0
 					self.refresh()
 			elif direction == 'right':
-				for n in range(1, int(len(self.get_ordered_chain_ids_filtered()) / self.device_settings[
-					'number_of_strips'] + 1)):
-					if self.first_zyn_channel_fader < self.device_settings['number_of_strips'] * n:
-						self.first_zyn_channel_fader = self.device_settings['number_of_strips'] * n
-						self.refresh()
+				n_chains = len(self.chain_manager.ordered_chain_ids)
+				if self.mixer_col_offset < n_chains - n_strips:
+					self.mixer_col_offset += n_strips
+					self.refresh()
 
 	def channel(self, direction, ccnum, ccval):
 		if ccval == 127:
+			n_strips = self.device_settings['number_of_strips']
 			if direction == 'left':
-				if self.first_zyn_channel_fader > 0:
-					self.first_zyn_channel_fader -= 1
+				if self.mixer_col_offset > 0:
+					self.mixer_col_offset -= 1
 					self.refresh()
 			elif direction == 'right':
-				if self.first_zyn_channel_fader < len(self.get_ordered_chain_ids_filtered()) - self.device_settings[
-					'number_of_strips']:
-					self.first_zyn_channel_fader += 1
+				n_chains = len(self.chain_manager.ordered_chain_ids)
+				if self.mixer_col_offset < n_chains - n_strips:
+					self.mixer_col_offset += 1
 					self.refresh()
 
 	def transport(self, command, ccnum, ccval):
@@ -343,52 +339,21 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 	def shiftassign(self, id, ccnum, ccval):
 		if ccval == 127:
 			self.shift = not self.shift
-			self.rec_mode = self.shift
 			self.refresh()
 
+	def display(self, id, ccnum, ccval):
+		pass
+
 	def fadertouch(self, id, ccnum, ccval):
+		#logging.debug(f"FADERTOUCH => ID {id}, {ccnum}, {ccval}")
 		if ccval == 127:
 			self.fader_touch_active[int(id)] = True
-			#lib_zyncore.dev_send_note_on(self.idev_out, 0, ccnum, 64)
-		elif ccval == 64:
-			self.fader_touch_active[int(id)] = False
-			#lib_zyncore.dev_send_note_on(self.idev_out, 0, ccnum, 127)
-
-	def get_ordered_chain_ids_filtered(self):
-		chain_ids = list(self.chain_manager.ordered_chain_ids)
-		if self.device_settings['masterfader']:
-			try:
-				chain_ids.pop()
-			except:
-				pass
-		if self.strip_view == 'global_view':
-			return chain_ids
-		ordered_chain_ids_filtered = []
-		for chain_id in chain_ids:
-			chain = self.chain_manager.chains[chain_id]
-			if self.strip_view == 'midi' and chain.is_midi() and not chain.is_synth():
-				ordered_chain_ids_filtered.append(chain_id)
-			elif self.strip_view == 'audio' and chain.is_audio() and not chain.is_synth():
-				ordered_chain_ids_filtered.append(chain_id)
-			elif self.strip_view == 'inst' and chain.is_synth():
-				ordered_chain_ids_filtered.append(chain_id)
-		return ordered_chain_ids_filtered
-
-	def get_chain_by_position(self, pos):
-		ordered_chain_ids_filtered = self.get_ordered_chain_ids_filtered()
-		if pos < len(ordered_chain_ids_filtered):
-			return self.chain_manager.chains[ordered_chain_ids_filtered[pos]]
 		else:
-			return None
-
-	def get_mixer_chan_from_device_col(self, col):
-		chain = self.get_chain_by_position(col)
-		if chain is not None:
-			if chain.is_audio() or chain.synth_slots:
-				return chain.mixer_chan
-		return None
+			self.fader_touch_active[int(id)] = False
 
 	def init_fader_touch(self):
+		if self.idev_out is None:
+			return
 		for ccnum in self.faderstouch_ccnum:
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, ccnum, 127)
 
@@ -402,6 +367,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
 		super().init()
 		self.init_fader_touch()
+		self.update_all_lcd_text("Zynthian CTRLDEV driver for Mackie Control", "Enjoy and play the waves")
 
 	def end(self):
 		super().end()
@@ -475,43 +441,40 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		return bottom_text
 
 	# Update LED and Fader status for a single strip
-	def update_mixer_strip(self, chan, symbol, value):
-		logging.debug(f"update_mixer_strip made chan: {chan} symbol: {symbol} value: {value} ")
+	def update_mixer_strip(self, chan, symbol, value, mixbus=False):
 		if self.idev_out is None:
 			return
-
-		chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
-		logging.debug(f'chain_id: {chain_id}')
-
+		if mixbus:
+			chain_id = chan
+		else:
+			chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
+		#logging.debug(f"update_mixer_strip chan: {chan} symbol: {symbol} value: {value}, mixbus: {mixbus} => chain ID: {chain_id}")
 		if chain_id is not None:
 			# Master Strip Level
-			if chain_id == 0 and symbol == "level" and self.device_settings['masterfader']:
-				if not self.fader_touch_active[self.device_settings['masterfader_fader_num']]:
+			if chain_id == 0 and self.device_settings['masterfader']:
+				if symbol == "level" and not self.fader_touch_active[self.device_settings['masterfader_fader_num']]:
 					lib_zyncore.dev_send_pitchbend_change(self.idev_out, self.device_settings['masterfader_fader_num'], int(value * self.max_fader_value))
 				return
 			else:
-				if not (chain_id == 0 and self.device_settings['masterfader']):
-					logging.debug(f'get_ordered_chain_ids_filtered: {self.get_ordered_chain_ids_filtered()}')
-					col = self.get_ordered_chain_ids_filtered().index(chain_id)
-					col -= self.first_zyn_channel_fader
-					if 0 <= col < self.device_settings['number_of_strips']:
-						logging.debug(f'update_mixer_strip chain_id: {chain_id}')
-						if symbol == "mute":
-							lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
-						elif symbol == "solo":
-							lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.solo_ccnums[col], value * 0x7F)
-						elif symbol == "rec":
-							lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.rec_ccnums[col], value * 0x7F)
-						elif symbol == "balance":
-							if self.encoder_assign == "pan":
-								self.update_bottom_lcd_text(col, f'{int(value * 100)}%')
-						elif symbol == "level":
-							if not self.fader_touch_active[col]:
-								lib_zyncore.dev_send_pitchbend_change(self.idev_out, col, int(value * self.max_fader_value))
+				col = self.get_filtered_index_by_chain_id(chain_id) - self.mixer_col_offset
+				if 0 <= col < self.device_settings['number_of_strips']:
+					if symbol == "mute":
+						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
+					elif symbol == "solo":
+						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.solo_ccnums[col], value * 0x7F)
+					elif symbol == "rec":
+						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.rec_ccnums[col], value * 0x7F)
+					elif symbol == "balance":
+						if self.encoder_assign == "pan":
+							self.update_bottom_lcd_text(col, f'{int(value * 100)}%')
+					elif symbol == "level":
+						if not self.fader_touch_active[col]:
+							lib_zyncore.dev_send_pitchbend_change(self.idev_out, col, int(value * self.max_fader_value))
 
 	# Update LED status for active chain
 	def update_mixer_active_chain(self, active_chain):
-		logging.debug(f'update_mixer_active_chain: {active_chain}')
+		if self.idev_out is None:
+			return
 		if active_chain == 0:
 			left_led, right_led = [77 - 48, 77 - 48]
 		else:
@@ -521,21 +484,18 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 		# Set correct select led, if within the mixer range
 		for i in range(0, self.device_settings['number_of_strips']):
-			sel = 0
-			try:
-				ordered_chain_ids_filtered = self.get_ordered_chain_ids_filtered()
-				chain_id = ordered_chain_ids_filtered[i + self.first_zyn_channel_fader]
-				if chain_id == active_chain:
-					sel = 0x7F
-					if active_chain == 0 and self.device_settings['masterfader']:
-						sel = 0
-			except:
+			chain_id = self.get_filtered_chain_id_by_index(self.mixer_col_offset + i)
+			if chain_id == active_chain:
+				sel = 0x7F
+				if chain_id == 0 and self.device_settings['masterfader']:
+					sel = 0
+			else:
 				sel = 0
 			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.select_ccnums[i], sel)
 
 	# Update full LED, Faders and Display status
 	def refresh(self):
-		logging.debug(f"~~~ refresh ~~~")
+		super().refresh()
 		if self.idev_out is None:
 			return
 
@@ -563,70 +523,53 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 		# Master Channel Strip
 		if self.device_settings['masterfader']:
-			master_chain = self.chain_manager.get_chain(0)
-			if master_chain is not None:
-				zyn_volume_main = self.zynmixer.get_level(master_chain.mixer_chan)  # The Master Chain doesn't have a mixer_chan defined
-				logging.debug(f'Master Channel Volume Level: {zyn_volume_main}')
-				lib_zyncore.dev_send_pitchbend_change(self.idev_out, self.device_settings['masterfader_fader_num'], int(zyn_volume_main * self.max_fader_value))
+			val = self.get_mixer_param("level", -1)
+			lib_zyncore.dev_send_pitchbend_change(self.idev_out, self.device_settings['masterfader_fader_num'], int(val * self.max_fader_value))
 
 		# Strips Leds, Faders and Displays
-		col0 = self.first_zyn_channel_fader
 		self.gernerate_top_lcd_text()
 		if self.shift:
-			lib_zyncore.dev_send_note_on(
-				self.idev_out, self.midi_chan, self.shift_ccnum, 127)
+			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.shift_ccnum, 127)
 			self.refresh_midi_transport()
 		else:
-			lib_zyncore.dev_send_note_on(
-				self.idev_out, self.midi_chan, self.shift_ccnum, 0)
+			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.shift_ccnum, 0)
 			self.refresh_audio_transport()
 
 		for i in range(0, self.device_settings['number_of_strips']):
-			rec = 0
-			mute = 0
-			solo = 0
-			sel = 0
-			bottom_text = '       '
-			zyn_volume = 0
+			pos = self.mixer_col_offset + i
 
-			chain = self.get_chain_by_position(col0 + i)
+			mute = self.get_mixer_param("mute", pos)
+			solo = self.get_mixer_param("solo", pos)
+			rec = self.get_mixer_param("record", pos)
+			volume = self.get_mixer_param("level", pos)
 
-			if chain is not None:
-				if chain.mixer_chan is not None:
-					mute = self.zynmixer.get_mute(chain.mixer_chan) * 0x7F
-					solo = self.zynmixer.get_solo(chain.mixer_chan) * 0x7F
+			# Select LED and Left/Right LED Chain Number
+			chain_id = self.get_filtered_chain_id_by_index(pos)
+			if chain_id == self.chain_manager.get_active_chain().chain_id:
+				sel = 1
+				if chain_id == 0:
+					left_led, right_led = [77 - 48, 77 - 48]
+				else:
+					left_led, right_led = list(f"{chain_id:02}")
+				lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 75, int(left_led) + 48)
+				lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 74, int(right_led) + 48)
+			else:
+				sel = 0
 
-				# LEDs
-				if chain.mixer_chan is not None:
-					rec = self.state_manager.audio_recorder.is_armed(chain.mixer_chan) * 0x7F
+			# Chain LCD-Displays
+			top_text = f'CH {pos + 1}'
+			try:
+				bottom_text = self.get_lcd_bottom_text(i, self.chain_manager.chains[chain_id])
+			except:
+				bottom_text = '       '
 
-				# Select LED and Left/Right LED Chain Number
-				if chain == self.chain_manager.get_active_chain():
-					sel = 0x7F
-					if chain.chain_id == 0:
-						left_led, right_led = [77 - 48, 77 - 48]
-					else:
-						left_led, right_led = list(f"{chain.chain_id:02}")
-					lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 75, int(left_led) + 48)
-					lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, 74, int(right_led) + 48)
-
-				# Chain LCD-Displays
-				top_text = f'CH {i + 1 + self.first_zyn_channel_fader}'
-				bottom_text = self.get_lcd_bottom_text(i, chain)
-
-				# Chain Volume
-				if chain.is_audio() or chain.synth_slots:
-					zyn_volume = self.zynmixer.get_level(chain.mixer_chan)
-					if zyn_volume == None:
-						zyn_volume = 0
-
-			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.mute_ccnums[i], mute)
-			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.solo_ccnums[i], solo)
-			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.rec_ccnums[i], rec)
-			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.select_ccnums[i], sel)
+			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.mute_ccnums[i], mute * 0x7F)
+			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.solo_ccnums[i], solo * 0x7F)
+			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.rec_ccnums[i], rec * 0x7F)
+			lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.select_ccnums[i], sel * 0x7F)
+			lib_zyncore.dev_send_pitchbend_change(self.idev_out, i, int(volume * self.max_fader_value))
+			self.update_top_lcd_text(i, top_text)
 			self.update_bottom_lcd_text(i, bottom_text)
-			lib_zyncore.dev_send_pitchbend_change(self.idev_out, i, int(zyn_volume * self.max_fader_value))
-		logging.debug(f"~~~ end refresh ~~~")
 
 	def midi_event(self, ev):
 		evtype = (ev[0] >> 4) & 0x0F
@@ -634,58 +577,51 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		# TODO: Faders move to a funtion
 		if evtype == 14:
 			fader_channel = ev[0] - 0xE0
-			logging.debug(f'midi_event fader_channel: {fader_channel}')
+			#logging.debug(f'fader_channel {fader_channel}')
 			if self.fader_touch_active[fader_channel]:
-				logging.debug(f'{self.fader_touch_active}')
 				mackie_vol_level = (ev[2] * 128 + ev[1])
 				zyn_vol_level = mackie_vol_level / self.max_fader_value
-				if fader_channel == self.device_settings['masterfader_fader_num'] and self.device_settings['masterfader']:
-					self.zynmixer.set_level(self.get_master_chain_audio_channel(), zyn_vol_level)
-					lib_zyncore.dev_send_pitchbend_change(self.idev_out, fader_channel, mackie_vol_level)
+				if self.device_settings['masterfader'] and fader_channel == self.device_settings['masterfader_fader_num']:
+					pos = -1
 				else:
-					mixer_chan = self.get_mixer_chan_from_device_col(fader_channel + self.first_zyn_channel_fader)
-					if mixer_chan is not None:
-						self.zynmixer.set_level(mixer_chan, zyn_vol_level)
-						lib_zyncore.dev_send_pitchbend_change(self.idev_out, fader_channel, mackie_vol_level)
-
+					pos = self.mixer_col_offset + fader_channel
+				self.set_mixer_param("level", pos, zyn_vol_level)
+				if self.idev_out is not None:
+					lib_zyncore.dev_send_pitchbend_change(self.idev_out, fader_channel, mackie_vol_level)
 			return True
 
 		# TODO: Encoders move to function
 		elif evtype == 11:
 			ccnum = ev[1] & 0x7F
 			ccval = ev[2] & 0x7F
-			logging.debug(f'Got encoders ccnum: {ccnum}, ccval: {ccval}')
+			#logging.debug(f'Got encoders ccnum: {ccnum}, ccval: {ccval}')
 			if ccnum in self.encoders_ccnum:
 				# Encoders Zynthian 1 to 8
 				if self.encoder_assign == 'global_view':
 					if ccnum in self.encoders_ccnum[:4]:  # first 4 encoders
 						encoder_num = self.encoders_ccnum.index(ccnum)
 						if ccval > 64:  # Encoder turned left
-							for interation in range(ccval - 64):
-								self.state_manager.send_cuia("ZYNPOT", params=[encoder_num, -1])
-						else:  # Encoder turned rigth
-							for interation in range(ccval):
-								self.state_manager.send_cuia("ZYNPOT", params=[encoder_num, 1])
+							ccval = 64 - ccval
+						else:			# Encoder turned rigth
+							pass
+						self.state_manager.send_cuia("ZYNPOT", params=[encoder_num, ccval])
 					return True
-
 				# Encoder PAN
 				if self.encoder_assign == 'pan':
 					col = self.encoders_ccnum.index(ccnum)
-					chain = self.get_chain_by_position(col + self.first_zyn_channel_fader)
-					mixer_chan = chain.mixer_chan
-					if mixer_chan is not None:
-						balance_value = self.zynmixer.get_balance(mixer_chan)
-						# encoder_num = ccnum - self.encoders_ccnum[0] + self.first_zyn_channel_fader
-						if ccval > 64:  # Encoder turned left
-							new_balance_value = round(balance_value - (ccval - 64) / 100.0, 2)
-							if new_balance_value < -1.0:
-								new_balance_value = -1.0
-						else:  # Encoder turned right
-							new_balance_value = balance_value + ccval / 100.0
-							if new_balance_value > 1.0:
-								new_balance_value = 1.0
-						self.zynmixer.set_balance(mixer_chan, new_balance_value, True)
-						self.update_bottom_lcd_text(col, f'{round(new_balance_value * 100, 0)}%')
+					pos = self.mixer_col_offset + col
+					balance_value = self.get_mixer_param("balance", pos)
+					# encoder_num = ccnum - self.encoders_ccnum[0] + self.mixer_col_offset
+					if ccval > 64:  # Encoder turned left
+						new_balance_value = round(balance_value - (ccval - 64) / 100.0, 2)
+						if new_balance_value < -1.0:
+							new_balance_value = -1.0
+					else:           # Encoder turned right
+						new_balance_value = round(balance_value + ccval / 100.0, 2)
+						if new_balance_value > 1.0:
+							new_balance_value = 1.0
+					self.set_mixer_param("balance", col, new_balance_value)
+					self.update_bottom_lcd_text(col, f'{round(new_balance_value * 100, 0)}%')
 				return True
 
 			elif ccnum == self.scroll_encoder:
@@ -707,34 +643,29 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		elif ev[0] != 0xF0:
 			ccnum = ev[1] & 0x7F
 			ccval = ev[2] & 0x7F
-			logging.debug(f"midid_event - evtype:{evtype} ccnum:{ccnum} ccval:{ccval}")
+			#logging.debug(f"midid_event - evtype:{evtype} ccnum:{ccnum} ccval:{ccval}")
 
 			# Catch all the ccnum buttons listed in the yaml file
 			if ccnum in self.my_settings['ccnum_buttons'].keys():
-				logging.debug(f'Got ccnum: {ccnum}')
 				event = self.my_settings['ccnum_buttons'][ccnum]
-				logging.debug(f'got event: {event}')
-				cmd = event['command']
-				logging.debug(f'got command: {cmd}')
 				if self.shift and 'shiftcmd' in event.keys():
 					cmd = event['shiftcmd']
-
+				else:
+					cmd = event['command']
+				logging.debug(f'Got ccnum {ccnum}, event {event} => command {cmd}')
 				if cmd.startswith('cuia') and ccval == 127:
-					logging.debug(f'got cuia command: {cmd}')
 					self.state_manager.send_cuia(cmd.lstrip('cuia_'))
 					return True
-
 				elif cmd.startswith('ZYNSWITCH'):
 					if ccval == 127:
 						self.state_manager.send_cuia("ZYNSWITCH", params=[cmd.lstrip('ZYNSWITCH_'), 'P'])
 					else:
 						self.state_manager.send_cuia("ZYNSWITCH", params=[cmd.lstrip('ZYNSWITCH_'), 'R'])
 					return True
-
 				elif cmd.startswith('mkc'):
-					func_and_value = cmd.split('_')
-					my_method_ref = getattr(zynthian_ctrldev_mackiecontrol, func_and_value[1])  # my function
-					my_method_ref(self, func_and_value[2], ccnum, ccval)  # called with value
+					parts = cmd.split('_')
+					my_func = getattr(zynthian_ctrldev_mackiecontrol, parts[1])  # my function
+					my_func(self, parts[2], ccnum, ccval)  # call function with arguments
 					return True
 
 		# SysEx

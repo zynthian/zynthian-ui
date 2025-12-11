@@ -62,7 +62,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
     # Update LED status for a single strip
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
-        if self.idev_out is None:
+        if self.idev_out is None or mixbus:  # Nothing to update on master strip
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
         if chain_id:

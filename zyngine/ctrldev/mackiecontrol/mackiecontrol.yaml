@@ -167,25 +167,28 @@ ccnum_buttons:
     command: mkc_globalview_set
   52:
     name: display_namevalue
-    command: None
+    command: mkc_display_namevalue
+  53:
+    name: display_smptebeats
+    command: mkc_display_smptebeats
   54:
     name: function_f1
-    command: cuia_SCREEN_PATTERN_EDITOR
+    command: cuia_SCREEN_ADMIN
   55:
     name: function_f2
-    command: cuia_SCREEN_ARRANGER
+    command: cuia_SCREEN_ALSA_MIXER
   56:
     name: function_f3
-    command: cuia_SCREEN_ALSA_MIXER
+    command: cuia_AUDIO_FILE_LIST
   57:
     name: function_f4
     command: cuia_SCREEN_MIDI_RECORDER
   58:
     name: function_f5
-    command: cuia_BANK_PRESET
+    command: None
   59:
     name: function_f6
-    command: cuia_CHAIN_CONTROL
+    command: None
   60:
     name: function_f7
     command: cuia_ALL_NOTES_OFF
@@ -218,16 +221,16 @@ ccnum_buttons:
     command: mkc_viewassign_user
   70:
     name: modify_shift
-    command: mkc_shiftassign_set
+    command: mkc_shiftassign_toggle
   71:
     name: modify_option
-    command: None
+    command: cuia_MENU
   72:
     name: modify_control
-    command: None
+    command: cuia_CHAIN_CONTROL
   73:
     name: modify_alt
-    command: None
+    command: cuia_TOGGLE_ALT_MODE
   74:
     name: automation_read
     command: None
@@ -248,37 +251,37 @@ ccnum_buttons:
     command: None
   80:
     name: utility_save
-    command: None
+    command: cuia_SCREEN_SNAPSHOT
   81:
     name: utility_undo
-    command: None
+    command: cuia_SCREEN_ZS3
   82:
     name: utility_cancel
-    command: None
+    command: cuia_BACK
   83:
     name: utility_enter
-    command: None
+    command: ZYNSWITCH_3
   84:
     name: transport_marker
-    command: cuia_SCREEN_MAIN_MENU
+    command: cuia_SCREEN_AUDIO_MIXER
   85:
     name: transport_nudge
-    command: cuia_SCREEN_ADMIN
+    command: cuia_SCREEN_LAUNCHER
   86:
     name: transport_cycle
-    command: cuia_SCREEN_AUDIO_MIXER
+    command: cuia_SCREEN_MAIN_MENU
   87:
     name: transport_drop
-    command: cuia_SCREEN_SNAPSHOT
+    command: cuia_SCREEN_CONTROL
   88:
     name: transport_replace
-    command: cuia_SCREEN_ZS3
+    command: cuia_BANK_PRESET
   89:
     name: transport_click
-    command: cuia_SCREEN_ALSA_MIXER
+    command: cuia_TEMPO
   90:
     name: transport_solo
-    command: cuia_SCREEN_ZYNPAD
+    command: cuia_SCREEN_ADMIN
   91:
     name: transport_frwd
     command: cuia_transport_frwd
@@ -312,6 +315,12 @@ ccnum_buttons:
   101:
     name: scrub
     command: cuia_BACK
+  102:
+    name: key_102
+    command: None
+  103:
+    name: key_103
+    command: None
   104:
     name: fadertouch_0
     command: mkc_fadertouch_0

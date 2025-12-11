@@ -461,19 +461,34 @@ class zynthian_chain:
         zynautoconnect.request_midi_connect(True)
 
     def is_audio(self):
-        """Returns True if chain is processes audio"""
+        """Returns True if chain has audio output"""
 
         return self.zynmixer_proc is not None
 
     def is_midi(self):
-        """Returns True if chain processes MIDI"""
+        """Returns True if chain has MIDI input"""
 
         return self.zmop_index is not None
 
     def is_synth(self):
         """Returns True if chain contains synth processor"""
 
-        return len(self.synth_slots) != 0
+        return self.zmop_index and len(self.synth_slots) != 0
+
+    def is_generator(self):
+        """Returns True if chain is a generator => """
+
+        return self.zynmixer_proc and self.synth_slots and self.synth_slots[0][0].type == "Audio Generator"
+
+    def is_fxloop(self):
+        """Returns True if chain is a FX loop chain"""
+
+        return self.zynmixer_proc and not self.synth_slots and self.zynmixer_proc.eng_code != "MI"
+
+    def is_audio_in(self):
+        """Returns True if chain is a pure audio input"""
+
+        return self.zynmixer_proc and not self.synth_slots and self.zynmixer_proc.eng_code == "MI"
 
     def is_solo(self):
         """Returns True if chain is audio and solo in zynmixer"""

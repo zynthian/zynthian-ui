@@ -240,7 +240,7 @@ class zynthian_chain_manager:
         self.set_midi_chan(chain_id, midi_chan)
 
         # Setup MIDI routing
-        if isinstance(midi_chan, int):
+        if isinstance(midi_chan, int) and (0 <= midi_chan < 16 or midi_chan == 0xffff):
             # Restore zmop_index if it's free for assignment
             if zmop_index is None or not self.is_free_zmop_index(zmop_index):
                 zmop_index = self.get_next_free_zmop_index()
@@ -503,31 +503,54 @@ class zynthian_chain_manager:
 
         return None
 
-    def get_chain_ids_filtered(self, audio=True, midi=True, synth=True):
+    def get_chain_ids_filtered(self, filter=None):
         """Get chain list filtered and ordered in display order
 
-        audio : True to include audio chains
-        midi : True to include MIDI chains
-        synth : True to include synth chains
+        filter : A list of chain types to filter => ["audio", "midi", "synth", "generator"]
         returns : List of chains
         """
 
-        if audio and midi and synth:
+        if not filter:
             return self.ordered_chain_ids
 
-        chains_ids_filtered = []
+        chain_ids_filtered = []
         for chain_id in self.ordered_chain_ids:
             chain = self.chains[chain_id]
-            if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
-                chain_ids_filtered.append(chain_id)
+            for type in filter:
+                match type:
+                    case "midi":
+                        if chain.is_midi():
+                            chain_ids_filtered.append(chain_id)
+                            break
+                    case "audio_out":
+                        if chain.is_audio():
+                            chain_ids_filtered.append(chain_id)
+                            break
+                    case "audio_in":
+                        if chain.is_audio_in():
+                            chain_ids_filtered.append(chain_id)
+                            break
+                    case "synth":
+                        if chain.is_synth():
+                            chain_ids_filtered.append(chain_id)
+                            break
+                    case "generator":
+                        if chain.is_generator():
+                            chain_ids_filtered.append(chain_id)
+                            break
+                    case "fxloop":
+                        if chain.is_fxloop():
+                            chain_ids_filtered.append(chain_id)
+                            break
         return chain_ids_filtered
 
     def get_chain_id_by_mixer_chan(self, chan):
         """Get a chain by the mixer channel"""
 
         for chain_id, chain in self.chains.items():
-            if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan:
-                return chain_id
+            if chain_id > 0:        # Exclude Master Chain (mixbus=True)
+                if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan:
+                    return chain_id
         return None
 
     # ------------------------------------------------------------------------

@@ -216,7 +216,6 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         super().refresh()
         if self.idev_out is None:
             return
-
         # Bank selection LED
         if self.fader_bank:
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.transport_frwd_ccnum, 0)
@@ -234,18 +233,22 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 
         # Strips Leds
         for i in range(0, 8):
-            pos = self.mixer_col_offset + i
-            chain_id = self.get_filtered_chain_id_by_index(pos)
+            # With shift, master strip in last column
+            if self.shift and i == 7:
+                pos = -1
+                chain_id = 0
+            else:
+                pos = self.mixer_col_offset + i
+                chain_id = self.get_filtered_chain_id_by_index(pos)
             mute = self.get_mixer_param("mute", pos)
             solo = self.get_mixer_param("solo", pos)
-
-            if not self.rec_mode:
-                if chain_id and chain_id == self.chain_manager.get_active_chain().chain_id:
+            if self.rec_mode:
+                rec = self.get_mixer_param("record", pos)
+            else:
+                if chain_id == self.chain_manager.get_active_chain().chain_id:
                     rec = 1
                 else:
                     rec = 0
-            else:
-                rec = self.get_mixer_param("record", pos)
 
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[i], mute * 0x7F)
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.solo_ccnums[i], solo * 0x7F)

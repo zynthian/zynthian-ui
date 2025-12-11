@@ -84,7 +84,7 @@ class zynthian_ctrldev_base:
         self.idev_out = idev_out
         # Filtered chain list
         self.chain_ids_filtered = []
-        self.chain_type_filter = [True, True, True]   # [audio, midi, synth]
+        self.chain_type_filter = []  # List of chain types to include (empty for all) => [midi, audio, synth, generator]
         # OPTIONAL: real-time MIDI processor (jack client), inserted between the input device and zmip
         self.midiproc_jackname = None
         self.midiproc = None
@@ -241,15 +241,13 @@ class zynthian_ctrldev_base:
         except:
             return None
 
-
     def refresh(self):
         """Refresh full device status (LED feedback, etc)
         *COULD* be implemented by child class
         """
 
-        self.chain_ids_filtered = self.chain_manager.get_chain_ids_filtered(self.chain_type_filter[0],
-                                                                            self.chain_type_filter[1],
-                                                                            self.chain_type_filter[2])
+        self.chain_ids_filtered = self.chain_manager.get_chain_ids_filtered(self.chain_type_filter)
+        logging.debug(f"Filtered Chains {self.chain_type_filter}: {self.chain_ids_filtered}")
 
     def midi_event(self, ev):
         """Device MIDI event handler
