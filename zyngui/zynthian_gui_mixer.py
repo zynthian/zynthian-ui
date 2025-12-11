@@ -571,28 +571,33 @@ class zynthian_gui_mixer_strip:
                 self.canvas.itemconfig(
                     self.legend_strip_txt, text="Main", font=self.font)
             else:
-                font = self.font
                 if self.parent.moving_chain and self.chain_id == self.chain_manager.active_chain_id:
+                    font = self.font
                     strip_txt = f"⇦⇨"
-                elif self.chain.synth_slots and self.chain.synth_slots[0][0].type == "Audio Generator":
-                    strip_txt = "\uf028" # Speaker icon
+                elif self.chain.is_generator():
                     font = self.font_icons
-                elif isinstance(self.chain.midi_chan, int):
+                    strip_txt = "\uf028"  # Speaker icon
+                elif self.chain.is_midi():
+                    font = self.font
+                    if self.chain.audio_thru:
+                        strip_txt = "\uf130♫"   # Add microphone icon for MIDI+Audio chains
+                    else:
+                        strip_txt = "♫ "
                     if 0 <= self.chain.midi_chan < 16:
-                        strip_txt = f"♫ {self.chain.midi_chan + 1}"
+                        strip_txt += f"{self.chain.midi_chan + 1}"
                     elif self.chain.midi_chan == 0xffff:
-                        strip_txt = f"♫ All"
+                        strip_txt += f"All"
                     else:
-                        strip_txt = f"♫ Err"
+                        strip_txt += f"Err"
                 elif self.chain.is_audio():
+                    font = self.font_icons
                     if self.chain.zynmixer_proc.eng_code == "MI":
-                        strip_txt = "\uf130" # Microphone icon
+                        strip_txt = "\uf130"  # Microphone icon
                     else:
-                        strip_txt = "\uf1de" # Sliders
-                    font = self.font_icons
+                        strip_txt = "\uf1de"  # Sliders
                 else:
-                    strip_txt = ""
                     font = self.font_icons
+                    strip_txt = ""
                     # procs = self.chain.get_processor_count() - 1
                 self.canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
             if self.parent.launcher_mode:
