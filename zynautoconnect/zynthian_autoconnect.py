@@ -738,7 +738,10 @@ def midi_autoconnect():
             src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
             if src_ports:
                 # Connect to first slot, excluding clippy
-                for dst_proc in chain.get_processors(slot=0):
+                procs = chain.get_processors(type="MIDI Tool", slot=0)
+                if not procs:
+                    procs = chain.get_processors(type="Synth", slot=0)
+                for dst_proc in procs:
                     if dst_proc.eng_code == "CL":
                         continue
                     dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
