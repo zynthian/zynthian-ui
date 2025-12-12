@@ -55,9 +55,9 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
                                 "Add Audio Clip Chain",
                                 ["Create a new chain with audio clip launcher. The chain receives trigger/stop events from the sequencer and generates audio output.",
                                 "audio.png"]))
-        self.list_data.append((self.add_audiofx_chain, 0,
-                                "Add Aux Audio Chain",
-                                ["Create an auxiliar chain (send mixbus) for processing audio.",
+        self.list_data.append((self.add_mixbus_chain, 0,
+                               "Add Mixbus Chain",
+                               ["Create a mixbus chain for processing audio (FX send).",
                                 "effects_loop.png"]))
         self.list_data.append((self.add_midifx_chain, 0,
                                "Add MIDI Chain",
@@ -124,7 +124,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
         self.zyngui.modify_chain(
             {"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None})
 
-    def add_audiofx_chain(self, t='S'):
+    def add_mixbus_chain(self, t='S'):
         self.zyngui.modify_chain(
             {"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True})
 
