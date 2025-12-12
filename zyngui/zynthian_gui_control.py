@@ -618,7 +618,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def show_menu(self):
-        zynthian_gui_config.zyngui.show_screen('chain_visualizer')
+        zynthian_gui_config.zyngui.show_screen('chain_manager')
 
     def toggle_menu(self):
         if self.shown:

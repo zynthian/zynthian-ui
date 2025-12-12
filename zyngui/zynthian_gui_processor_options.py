@@ -43,8 +43,6 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
     def reset(self):
         self.index = 0
-        self.chain_id = None
-        self.chain = None
         self.processor = None
         self.last_random = {}
 
@@ -53,10 +51,10 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
         self.list_data.append((self.show_details, None, "Info"))
 
-        # Add Move Option for Visualizer (Not for Synths)
         if self.processor.type != "MIDI Synth":
             self.list_data.append((self.start_move, None, "Move"))
 
+        self.list_data.append((self.processor_add, None, "Add"))
         if self.processor.eng_code not in ("MI", "MR"):
             if self.processor.type == "MIDI Synth":
                 eng_options = self.processor.engine.get_options()
@@ -67,6 +65,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
             if self.processor.type == "MIDI Tool" or self.processor.type == "Audio Effect":
                 self.list_data.append((self.processor_remove, None, "Remove"))
+                self.list_data.append((self.processor_duplicate, None, "Duplicate"))
 
         if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
             self.list_data.append((self.preset_list, None, "Presets"))
@@ -81,8 +80,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         super().fill_list()
 
     def build_view(self):
-        if self.chain != self.zyngui.chain_manager.active_chain or self.processor != self.zyngui.chain_manager.active_chain.current_processor:
-            self.chain = self.zyngui.chain_manager.active_chain
+        if self.processor != self.zyngui.chain_manager.active_chain.current_processor:
             self.processor = self.zyngui.chain_manager.active_chain.current_processor
             self.last_random = {}
         super().build_view()
@@ -103,17 +101,34 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     def show_details(self):
         self.zyngui.screens["engine"].show_details(self.processor.eng_code)
 
+    def processor_add(self):
+        try:
+            chain_idx, row, column = self.zyngui.screens["chain_manager"].selected_node
+            slot = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]["slot"]            
+        except:
+            slot = None
+        self.zyngui.modify_chain({
+            "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
+            "type": self.processor.type,
+            "midi_thru": self.processor.midi_chan is not None,
+            "audio_thru": self.processor.type == "Audio Effect",
+            "slot": slot
+        })
+        self.processor = self.zyngui.chain_manager.active_chain.current_processor
+
     def processor_remove(self):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)
 
     def do_remove(self, unused=None):
         self.zyngui.chain_manager.remove_processor(
-            self.chain_id, self.processor)
+            self.zyngui.chain_manager.active_chain.chain_id, self.processor)
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
-        self.chain = None
-        self.chain_id = None
         self.processor = None
+        self.zyngui.close_screen()
+
+    def processor_duplicate(self):
+        #TODO: Inplement duplicate
         self.zyngui.close_screen()
 
     def preset_list(self):
@@ -127,15 +142,18 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     # FX-Chain management
 
     def replace(self):
-        self.zyngui.modify_chain(
-            {"chain_id": self.chain_id, "processor": self.processor, "type": self.processor.type})
-
-    def start_move(self):
-        visualizer = self.zyngui.screens.get('chain_visualizer')
-        if visualizer:
-            visualizer.start_move_mode(self.processor)
-            self.zyngui.show_screen('chain_visualizer')
-
+        self.zyngui.modify_chain({
+            "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
+            "processor": self.processor,
+            "type": self.processor.type
+        })
+    def start_move(self, proc=None):
+        chain_gui = self.zyngui.screens.get('chain_manager')
+        if chain_gui:
+            if proc is None:
+                proc = self.processor
+            chain_gui.start_move_mode(proc)
+            self.zyngui.show_screen('chain_manager')
 
     def randomize(self):
         refresh = not self.last_random

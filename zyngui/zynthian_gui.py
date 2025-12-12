@@ -61,7 +61,7 @@ from zyngui.zynthian_gui_details import zynthian_gui_details
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
-from zyngui.zynthian_gui_chain_visualizer import zynthian_gui_chain_visualizer
+from zyngui.zynthian_gui_chain_manager import zynthian_gui_chain_manager
 from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
@@ -466,7 +466,7 @@ class zynthian_gui:
         self.screens['details'] = zynthian_gui_details()
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
-        self.screens['chain_visualizer'] = zynthian_gui_chain_visualizer()
+        self.screens['chain_manager'] = zynthian_gui_chain_manager()
         self.screens['processor_options'] = zynthian_gui_processor_options()
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
@@ -923,8 +923,12 @@ class zynthian_gui:
                             self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                 else:
                     # Adding processor to existing chain
+                    if "slot" in self.modify_chain_status:
+                        slot = self.modify_chain_status["slot"]
+                    else:
+                        slot = None
                     processor = self.chain_manager.add_processor(
-                        self.modify_chain_status["chain_id"], self.modify_chain_status["engine"])
+                        self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], slot)
                     if processor:
                         zynautoconnect.autoconnect()
                         self.close_screen("loading")
