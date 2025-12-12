@@ -529,7 +529,7 @@ class ZynMixer():
             return
         self.set_ms(channel, not self.get_ms(channel))
 
-    def set_send(self, channel, send, level):
+    def set_send_level(self, channel, send, level):
         """
         Sets an effect send level of a mixer strip
 
@@ -547,7 +547,7 @@ class ZynMixer():
             return
         self.lib_zynmixer.setSend(channel, send, level)
 
-    def get_send(self, channel, send):
+    def get_send_level(self, channel, send):
         """
         Gets a send level of a mixer strip
 

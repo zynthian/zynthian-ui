@@ -68,7 +68,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
             port_names = [("Main mixbus", 0, ["Send audio from this chain to the main mixbus", "audio_output.png"])]
             self.list_data.append((None, None, "> Chain inputs"))
             for chain_id, chain in self.zyngui.chain_manager.chains.items():
-                if chain_id != 0 and chain != self.chain and not chain.is_fxloop() and (chain.audio_thru or chain.is_special()):
+                if chain != self.chain and not chain.is_mixbus() and (chain.audio_thru or chain.is_special()):
                     if self.zyngui.chain_manager.will_audio_howl(self.chain.chain_id, chain_id):
                         prefix = "∞ "
                     else:

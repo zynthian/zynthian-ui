@@ -784,7 +784,7 @@ int8_t addStrip() {
             continue;
         struct channel_strip* strip = malloc(sizeof(struct channel_strip));
         if (strip == NULL) {
-            fprintf(stderr, "Failed to allocate memory for ne channel strip.\n");
+            fprintf(stderr, "Failed to allocate memory for channel strip.\n");
             return -1;
         }
         char name[11];
