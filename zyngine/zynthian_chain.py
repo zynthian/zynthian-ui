@@ -480,6 +480,11 @@ class zynthian_chain:
 
         return self.zynmixer_proc and self.synth_slots and self.synth_slots[0][0].type == "Audio Generator"
 
+    def is_special(self):
+        """Returns True if chain is a special chain => """
+
+        return self.zynmixer_proc and self.synth_slots and self.synth_slots[0][0].type == "Special"
+
     def is_fxloop(self):
         """Returns True if chain is a FX loop chain"""
 
