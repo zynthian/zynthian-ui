@@ -571,7 +571,7 @@ class zynthian_gui_mixer_strip:
                 self.canvas.itemconfig(
                     self.legend_strip_txt, text="Main", font=self.font)
             else:
-                if self.parent.moving_chain and self.chain_id == self.chain_manager.active_chain_id:
+                if self.parent.moving_chain and self.chain == self.chain_manager.active_chain:
                     font = self.font
                     strip_txt = f"⇦⇨"
                 elif self.chain.is_generator():

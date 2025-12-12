@@ -279,9 +279,9 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			case "outputs":
 				self.chain_type_filter = ["audio_out"]
 			case "aux":
-				self.chain_type_filter = ["fxloop"]
+				self.chain_type_filter = ["mixbus"]
 			case "buses":
-				self.chain_type_filter = ["fxloop"]
+				self.chain_type_filter = ["mixbus"]
 			case "user":
 				pass
 			case _:

@@ -320,7 +320,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             match proc.type:
                 case "MIDI Input" | "MIDI Output" | "MIDI Effect":
                     color = c_midi
-                case "MIDI Synth":
+                case "MIDI Synth" | "Audio Generator":
                     color = c_synth
                 case "Audio Input" | "Audio Output" | "Audio Effect":
                     color = c_audio
@@ -446,16 +446,41 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.selected_node = node_pos
         elif not self.selected_node:
             self.selected_node = [0, 0, 0]
+        chain_idx, row, col = self.selected_node
         if not proc:
-            proc = self.nodes[self.selected_node[0]][self.selected_node[1]][self.selected_node[2]]["proc"]
+            try:
+                proc = self.nodes[chain_idx][row][col]["proc"]
+            except Exception as e:
+                logging.warning(e)
+
+        node = self.get_node(self.selected_node)
+        try:
+            chain_id = node.get("chain_id")
+        except Exception as e:
+            logging.warning(e)
+        self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
         if proc:
             self.zyngui.chain_manager.active_chain.set_current_processor(proc)
         self._draw_selection()
-        chain_idx, row, col = self.selected_node
-        node = self.get_node(self.selected_node)
-        chain_id = node.get("chain_id")
         chain = self.zyngui.chain_manager.chains[chain_id]
         self.set_title(f"Chain: {chain.get_name()}")
+
+    def move_processor(self, chain_idx, chain_offset):
+        if self.moving_proc.eng_code in ["MI", "MR"]:
+            return
+        try:
+            node = self.get_node(self.selected_node)
+            ordered_chains = self.zyngui.chain_manager.ordered_chain_ids + [0]
+            chain_id = ordered_chains[chain_idx]
+            chain = self.zyngui.chain_manager.chains[chain_id]
+            chain_dest_id = ordered_chains[chain_idx + chain_offset]
+            chain_dst = self.zyngui.chain_manager.chains[chain_dest_id]
+            #TODO: Constrain which chains a process may be moved to
+            chain.remove_processor(self.moving_proc)
+            chain_dst.insert_processor(self.moving_proc, node.get("slot"))
+        except:
+            pass
+        self.build_graph(self.moving_proc)
 
     def arrow_down(self):
         """
@@ -494,12 +519,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Handle arrow left action.
         Moves selection left or nudges processor if in move mode.
         """
+        chain_idx, row, col = self.selected_node
         if self.moving_proc:
-            proc = self.moving_proc
-            self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, proc, True)
-            self.build_graph(proc)
+            self.move_processor(chain_idx, -1)
         else:
-            chain_idx, row, col = self.selected_node
             col -= 1
             if col < 0:
                 # Beginning of row, try previous chain
@@ -515,12 +538,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Handle arrow right action.
         Moves selection right or nudges processor if in move mode.
         """
+        chain_idx, row, col = self.selected_node
         if self.moving_proc:
-            proc = self.moving_proc
-            self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, proc, False)
-            self.build_graph(proc)
+            self.move_processor(chain_idx, 1)
         else:
-            chain_idx, row, col = self.selected_node
             col += 1
             if col >= len(self.nodes[chain_idx][row]):
                 # End of row, try next chain
@@ -573,6 +594,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if i == 3:
             self.select_offset(dval)
             return True
+        elif i == 2:
+            if dval > 0:
+                self.arrow_right()
+            elif dval < 0:
+                self.arrow_left()
 
     def back_action(self):
         if self.moving_proc:

@@ -25,6 +25,7 @@
 
 import logging
 import random
+from copy import copy
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -129,6 +130,9 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
     def processor_duplicate(self):
         #TODO: Inplement duplicate
+        #TODO: This does not work (shallow copy shares zctrls) and depp copy fails.
+        proc = copy(self.processor)
+        self.zyngui.chain_manager.active_chain.insert_processor(proc)
         self.zyngui.close_screen()
 
     def preset_list(self):

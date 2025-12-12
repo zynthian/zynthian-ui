@@ -47,12 +47,16 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
                                 ["Create a new chain with a MIDI-controlled synth engine. The chain receives MIDI input and generates audio output.",
                                 "midi_instrument.png"]))
         self.list_data.append((self.add_audio_chain, 0,
-                                "Add Audio Chain",
+                                "Add Audio Input Chain",
                                 ["Create a new chain for audio FX processing. The chain receives audio input and generates audio output.",
+                                "microphone.png"]))
+        self.list_data.append((self.add_clippy_chain, 0,
+                                "Add Audio Clip Chain",
+                                ["Create a new chain with audio clip launcher. The chain receives trigger/stop events from the sequencer and generates audio output.",
                                 "audio.png"]))
-        self.list_data.append((self.add_audiofx_chain, 0,
-                                "Add Audio FX Loop",
-                                ["Create an effect send and return mixbus",
+        self.list_data.append((self.add_mixbus_chain, 0,
+                                "Add Mixbus Chain",
+                                ["Create a mixbus chain for processing audio (FX send).",
                                 "effects_loop.png"]))
         self.list_data.append((self.add_midifx_chain, 0,
                                "Add MIDI Chain",
@@ -60,7 +64,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
                                 "midi_logo.png"]))
         self.list_data.append((self.add_midiaudiofx_chain, 0,
                                 "Add MIDI+Audio Chain",
-                                ["Create a new chain for combined audio + MIDI processing. The chain receives audio & MIDI input and generates audio & MIDI output. Use it with vocoders, autotune, etc.",
+                                ["Create a new chain for combined audio + MIDI processing. The chain receives audio & MIDI input and generates audio & MIDI output. Vocoders, autotune, etc.",
                                 "midi_audio.png"]))
         self.list_data.append((self.add_generator_chain, 0,
                                 "Add Audio Generator Chain",
@@ -68,7 +72,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
                                 "audio_generator.png"]))
         self.list_data.append((self.add_special_chain, 0,
                                 "Add Special Chain",
-                                ["Create a new chain for special processing. The chain receives audio & MIDI input and generates audio & MIDI output. use it for MOD-UI, puredata, etc.",
+                                ["Create a new chain for special processing. The chain receives audio & MIDI input and generates audio & MIDI output. MOD-UI, puredata, etc.",
                                 "special_chain.png"]))
 
         self.list_data.append((None, 0, "> REMOVE"))
@@ -99,7 +103,11 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
         self.zyngui.modify_chain(
             {"type": "Audio Effect", "midi_thru": False, "audio_thru": True})
 
-    def add_audiofx_chain(self, t='S'):
+    def add_clippy_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None})
+
+    def add_mixbus_chain(self, t='S'):
         self.zyngui.modify_chain(
             {"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True})
 

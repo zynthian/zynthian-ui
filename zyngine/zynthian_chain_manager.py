@@ -427,7 +427,7 @@ class zynthian_chain_manager:
             return
         index = self.ordered_chain_ids.index(chain_id)
         pos = index + offset
-        pos = min(pos, len(self.ordered_chain_ids) - 2)
+        pos = min(pos, len(self.ordered_chain_ids) - 1)
         pos = max(pos, 0)
         if pos == index:
             return
@@ -538,8 +538,8 @@ class zynthian_chain_manager:
                         if chain.is_generator():
                             chain_ids_filtered.append(chain_id)
                             break
-                    case "fxloop":
-                        if chain.is_fxloop():
+                    case "mixbus":
+                        if chain.is_mixbus():
                             chain_ids_filtered.append(chain_id)
                             break
         return chain_ids_filtered
@@ -901,7 +901,7 @@ class zynthian_chain_manager:
         if eng_code in ("MI", "MR"):
             chain.zynmixer_proc = processor
             # Add FX sends to existing chains
-            self.refresh_fx_send()
+            self.refresh_mixbus_sends()
 
         # Update group chains
         for src_chain in self.chains.values():
@@ -979,8 +979,9 @@ class zynthian_chain_manager:
                 self.stop_unused_engines()
 
             if processor.eng_code == "MR":
+                self.chains[chain_id].zynmixer_proc = None
                 # Remove FX sends from existing chains
-                self.refresh_fx_send()
+                self.refresh_mixbus_sends()
 
             # Update chain routing (may have effected lots of chains)
             for chain in self.chains.values():
@@ -990,45 +991,73 @@ class zynthian_chain_manager:
         self.state_manager.end_busy("remove_processor")
         return success
 
-    def refresh_fx_send(self):
-        send_count = self.state_manager.zynmixer_chan.get_send_count()
+    def refresh_mixbus_sends(self):
+        def remove_send_zctrl(processor, send):
+            try:
+                logging.debug(f"Trying to remove send {send} controllers")
+                level_symbol = f"send_{send}_level"
+                mode_symbol = f"send_{send}_mode"
+                del processor.controllers_dict[level_symbol]
+                del processor.controllers_dict[mode_symbol]
+                for key in list(processor.ctrl_screens_dict.keys()):
+                    if key.startswith(f"send {send + 1}"):
+                        processor.ctrl_screens_dict.pop(key, None)
+            except:
+                return False
+            return True
+
+        mixbus_chain_ids = self.get_chain_ids_filtered(["mixbus"])
+        mixbus_chain_ids.sort()
         for processor in self.processors.values():
             if processor.eng_code != "MI":
                 continue
             send = 0
-            while True:
-                symbol = f"send_{send}"
+            for chain_id in mixbus_chain_ids:
+                if chain_id == 0:  # Exclude main mixbus
+                    continue
+                chain = self.chains[chain_id]
+                # Remove send controllers that doesn't exist anymore
+                if not chain.zynmixer_proc:
+                    remove_send_zctrl(processor, send)
+                    send += 1
+                    continue
+                level_symbol = f"send_{send}_level"
                 mode_symbol = f"send_{send}_mode"
-                if send < send_count:
-                    # Check that processor has send control
-                    if symbol not in processor.controllers_dict:
-                        processor.controllers_dict[symbol] = zynthian_controller(processor.engine, symbol, {
-                            'name': f'send {send + 1} level',
-                            'value_max': 1.0,
-                            'value_default': 0.0,
-                            'value': processor.zynmixer.get_send(processor.mixer_chan, send),
-                            'processor': processor,
-                            'graph_path': ["send", send]
-                        })
-                        processor.controllers_dict[mode_symbol] = zynthian_controller(processor.engine, mode_symbol, {
-                            'name': f'send {send + 1} mode',
-                            'value_max': 1,
-                            'value_default': 0,
-                            'value': processor.zynmixer.get_send(processor.mixer_chan, send),
-                            'labels': ['post fader', 'pre fader'],
-                            'processor': processor,
-                            'graph_path': ["send_mode", send]
-                        })
-                        processor.ctrl_screens_dict[f"send {send + 1}"] = [processor.controllers_dict[symbol], processor.controllers_dict[f"{symbol}_mode"]]
+                name_prefix = f"send {send + 1}"
+                # Generate a decent title for the ctrl_screen
+                ctrl_screen_title = name_prefix
+                if chain.title:
+                    chain_name = chain.title
                 else:
-                    # Check that processor does not have send control
-                    try:
-                        del processor.controllers_dict[symbol]
-                        del processor.controllers_dict[mode_symbol]
-                        del processor.ctrl_screens_dict[f"send {send + 1}"]
-                    except:
-                        break
+                    chain_name = chain.get_processors("Audio Effect")[0].get_name()
+                if chain_name:
+                    ctrl_screen_title += f" - {chain_name}"
+                # Create new send controllers if not in processor's controllers_dict
+                if level_symbol not in processor.controllers_dict:
+                    processor.controllers_dict[level_symbol] = zynthian_controller(processor.engine, level_symbol, {
+                        'name': f'{name_prefix} level',
+                        'value_max': 1.0,
+                        'value_default': 0.0,
+                        'value': processor.zynmixer.get_send_level(processor.mixer_chan, send),
+                        'processor': processor,
+                        'graph_path': ["send_level", send]
+                    })
+                    processor.controllers_dict[mode_symbol] = zynthian_controller(processor.engine, mode_symbol, {
+                        'name': f'{name_prefix} mode',
+                        'value_max': 1,
+                        'value_default': 0,
+                        'value': processor.zynmixer.get_send_mode(processor.mixer_chan, send),
+                        'labels': ['post fader', 'pre fader'],
+                        'processor': processor,
+                        'graph_path': ["send_mode", send]
+                    })
+                    # Add the control screen
+                    processor.ctrl_screens_dict[ctrl_screen_title] = [processor.controllers_dict[level_symbol], processor.controllers_dict[mode_symbol]]
                 send += 1
+            # Remove send controllers that doesn't exist anymore
+            while remove_send_zctrl(processor, send):
+                send += 1
+
 
     def get_slot_count(self, chain_id, type=None):
         """Get the quantity of slots in a chain

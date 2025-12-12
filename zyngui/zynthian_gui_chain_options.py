@@ -86,7 +86,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.list_data.append((self.rename_chain, None, "Rename chain",
                                ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
         if self.chain_id:
-            if len(self.zyngui.chain_manager.ordered_chain_ids) > 2:
+            if len(self.zyngui.chain_manager.ordered_chain_ids) > 1:
                 self.list_data.append((self.move_chain, None, "Move chain ⇦ ⇨",
                                        ["Reposition the chain in the mixer view.", "move_left_right.png"]))
         super().fill_list()

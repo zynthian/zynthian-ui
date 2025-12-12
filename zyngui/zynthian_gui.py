@@ -907,16 +907,14 @@ class zynthian_gui:
                 # Modifying an existing chain
                 if "processor" in self.modify_chain_status:
                     # Replacing processor in existing chain
-                    chain = self.chain_manager.get_chain(
-                        self.modify_chain_status["chain_id"])
+                    chain = self.chain_manager.get_chain(self.modify_chain_status["chain_id"])
                     old_processor = self.modify_chain_status["processor"]
                     if chain and old_processor:
                         slot = chain.get_slot(old_processor)
-                        processor = self.chain_manager.add_processor(
-                            self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], slot)
+                        processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"],
+                                                                     self.modify_chain_status["engine"], slot)
                         if processor:
-                            self.chain_manager.remove_processor(
-                                self.modify_chain_status["chain_id"], old_processor)
+                            self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
                             self.close_screen("loading")
@@ -927,8 +925,8 @@ class zynthian_gui:
                         slot = self.modify_chain_status["slot"]
                     else:
                         slot = None
-                    processor = self.chain_manager.add_processor(
-                        self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], slot)
+                    processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"],
+                                                                 self.modify_chain_status["engine"], slot)
                     if processor:
                         zynautoconnect.autoconnect()
                         self.close_screen("loading")
@@ -961,10 +959,7 @@ class zynthian_gui:
                         self.show_screen_reset("root")
                         self.show_info("Failed to create chain", 1500)
                         return
-                    processor = self.chain_manager.add_processor(
-                        chain_id,
-                        self.modify_chain_status["engine"]
-                    )
+                    processor = self.chain_manager.add_processor(chain_id, self.modify_chain_status["engine"])
                     if self.chain_manager.chains[chain_id].synth_slots or self.modify_chain_status["audio_thru"]:
                         if self.modify_chain_status["mixbus"]:
                             am_proc = self.chain_manager.add_processor(chain_id, "MR")
@@ -976,8 +971,7 @@ class zynthian_gui:
                     if processor and processor.eng_code != "CL":
                         self.close_screen("loading")
                         self.screen_history = []
-                        self.chain_control(
-                            chain_id, processor, force_bank_preset=True)
+                        self.chain_control(chain_id, processor, force_bank_preset=True)
                     else:
                         # Created empty chain
                         # self.chain_manager.set_active_chain_by_id(chain_id)

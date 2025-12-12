@@ -65,7 +65,7 @@ class zynthian_chain:
         self.zmop_index = None
         self.midi_thru = midi_thru  # True to pass MIDI if chain empty
         self.audio_thru = audio_thru  # True to pass audio if chain empty
-        self.zynmixer_proc = None # zynmixer (MI/MR) processor
+        self.zynmixer_proc = None  # zynmixer (MI/MR) processor
         self.midi_in = []
         self.midi_out = []
         self.audio_in = []
@@ -229,8 +229,7 @@ class zynthian_chain:
             if self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
                 parts.append(f"Effect Return {self.zynmixer_proc.mixer_chan}")
             else:
-                parts.append("Audio Input " +
-                    ','.join([str(i) for i in self.audio_in]))
+                parts.append("Audio Input " + ','.join([str(i) for i in self.audio_in]))
 
         if self.synth_slots:
             proc = self.synth_slots[0][0]
@@ -480,10 +479,15 @@ class zynthian_chain:
 
         return self.zynmixer_proc and self.synth_slots and self.synth_slots[0][0].type == "Audio Generator"
 
-    def is_fxloop(self):
-        """Returns True if chain is a FX loop chain"""
+    def is_special(self):
+        """Returns True if chain is a special chain => """
 
-        return self.zynmixer_proc and not self.synth_slots and self.zynmixer_proc.eng_code != "MI"
+        return self.zynmixer_proc and self.synth_slots and self.synth_slots[0][0].type == "Special"
+
+    def is_mixbus(self):
+        """Returns True if chain is an Aux Mixbus chain"""
+
+        return self.zynmixer_proc and not self.synth_slots and self.zynmixer_proc.eng_code == "MR"
 
     def is_audio_in(self):
         """Returns True if chain is a pure audio input"""

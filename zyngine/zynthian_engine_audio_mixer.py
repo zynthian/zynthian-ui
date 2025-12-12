@@ -43,14 +43,14 @@ class zynthian_engine_audio_mixer(zynthian_engine):
     # Controller Screens
     _ctrl_screens = [
         ['main', ['level', 'balance', 'mute', 'solo']],
-        ['aux', ['mono', 'phase', 'ms', 'record']]
+        ['options', ['mono', 'phase', 'ms', 'record']]
     ]
 
     # Function to initialize library
     def __init__(self, state_manager):
         super().__init__(state_manager)
         self.type = "Audio Effect"
-        self.name = "AudioMixer"
+        self.name = "Mixer"
         self.nickname = "MI"
         self.MAX_NUM_CHANNELS = 0
         zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, state_manager.audio_recorder.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
@@ -134,12 +134,12 @@ class zynthian_engine_audio_mixer(zynthian_engine):
             processor.zynmixer = self.state_manager.zynmixer_bus
             processor.jackname = "zynmixer_bus"
             if processor.chain_id:
-                # FX chain
+                # Aux Mixbus
                 processor.mixer_chan = self.state_manager.zynmixer_bus.add_strip()
                 send = self.state_manager.zynmixer_chan.add_send()
                 if processor.mixer_chan != send:
-                    logging.warning("FX send/return index mismatch")
-                processor.name = f"Effect Return {self.state_manager.zynmixer_chan.get_send_count()}"
+                    logging.warning("Aux Mixbus index mismatch")
+                processor.name = f"Aux Mixbus {self.state_manager.zynmixer_chan.get_send_count()}"
             else:
                 # Main mixbus
                 processor.mixer_chan = 0
@@ -149,7 +149,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
             processor.zynmixer = self.state_manager.zynmixer_chan
             processor.jackname = "zynmixer_chan"
             processor.mixer_chan = self.state_manager.zynmixer_chan.add_strip()
-            processor.name = f"Mixer Channel Strip {processor.mixer_chan + 1}"
+            processor.name = f"Mixer Channel {processor.mixer_chan + 1}"
         processor.refresh_controllers()
         return
 
@@ -195,7 +195,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         return processor.name
         if processor.chain_id:
             if processor.eng_code == "MR":
-                return f"FX Send {processor.chain_id}"
+                return f"Aux Mixbus {processor.chain_id}"
             else:
                 return f"Mixer Channel {processor.chain_id}"
         return f"Main Mixbus"
