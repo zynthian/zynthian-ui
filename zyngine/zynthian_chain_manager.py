@@ -980,6 +980,7 @@ class zynthian_chain_manager:
                 self.stop_unused_engines()
 
             if processor.eng_code == "MR":
+                self.chains[chain_id].zynmixer_proc = None
                 # Remove FX sends from existing chains
                 self.refresh_mixbus_sends()
 
@@ -992,7 +993,22 @@ class zynthian_chain_manager:
         return success
 
     def refresh_mixbus_sends(self):
+        def remove_send_zctrl(processor, send):
+            try:
+                logging.debug(f"Trying to remove send {send} controllers")
+                level_symbol = f"send_{send}_level"
+                mode_symbol = f"send_{send}_mode"
+                del processor.controllers_dict[level_symbol]
+                del processor.controllers_dict[mode_symbol]
+                for key in list(processor.ctrl_screens_dict.keys()):
+                    if key.startswith(f"send {send + 1}"):
+                        processor.ctrl_screens_dict.pop(key, None)
+            except:
+                return False
+            return True
+
         mixbus_chain_ids = self.get_chain_ids_filtered(["mixbus"])
+        mixbus_chain_ids.sort()
         for processor in self.processors.values():
             if processor.eng_code != "MI":
                 continue
@@ -1001,6 +1017,11 @@ class zynthian_chain_manager:
                 if chain_id == 0:  # Exclude main mixbus
                     continue
                 chain = self.chains[chain_id]
+                # Remove send controllers that doesn't exist anymore
+                if not chain.zynmixer_proc:
+                    remove_send_zctrl(processor, send)
+                    send += 1
+                    continue
                 level_symbol = f"send_{send}_level"
                 mode_symbol = f"send_{send}_mode"
                 name_prefix = f"send {send + 1}"
@@ -1034,19 +1055,10 @@ class zynthian_chain_manager:
                     # Add the control screen
                     processor.ctrl_screens_dict[ctrl_screen_title] = [processor.controllers_dict[level_symbol], processor.controllers_dict[mode_symbol]]
                 send += 1
-            # Remove controllers from sends that doesn't exist
-            while True:
-                try:
-                    level_symbol = f"send_{send}_level"
-                    mode_symbol = f"send_{send}_mode"
-                    del processor.controllers_dict[level_symbol]
-                    del processor.controllers_dict[mode_symbol]
-                    for key in list(processor.ctrl_screens_dict.keys()):
-                        if key.startswith(f"send {send}"):
-                            processor.ctrl_screens_dict.pop(key, None)
-                except:
-                    break
+            # Remove send controllers that doesn't exist anymore
+            while remove_send_zctrl(processor, send):
                 send += 1
+
 
     def get_slot_count(self, chain_id, type=None):
         """Get the quantity of slots in a chain
