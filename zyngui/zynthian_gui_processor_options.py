@@ -50,29 +50,28 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     def fill_list(self):
         self.list_data = []
 
-        self.list_data.append((self.show_details, None, "Info"))
+        self.list_data.append((self.show_details, None, "Processor info"))
 
-        if self.processor.type != "MIDI Synth":
-            self.list_data.append((self.start_move, None, "Move"))
-
-        self.list_data.append((self.processor_add, None, "Add"))
+        if self.processor.type not in ("MIDI Synth", "Audio Generator"):
+            if self.processor.chain.get_processor_count(self.processor.type) > 1:
+                self.list_data.append((self.start_move, None, "Move processor"))
+            self.list_data.append((self.processor_add, None, "Add another processor to chain"))
         if self.processor.eng_code not in ("MI", "MR"):
             if self.processor.type == "MIDI Synth":
                 eng_options = self.processor.engine.get_options()
                 if eng_options['replace']:
-                    self.list_data.append((self.replace, None, "Replace"))
+                    self.list_data.append((self.replace, None, "Replace processor"))
             else:
-                self.list_data.append((self.replace, None, "Replace"))
+                self.list_data.append((self.replace, None, "Replace procssor"))
 
             if self.processor.type == "MIDI Tool" or self.processor.type == "Audio Effect":
-                self.list_data.append((self.processor_remove, None, "Remove"))
-                self.list_data.append((self.processor_duplicate, None, "Duplicate"))
+                self.list_data.append((self.processor_remove, None, "Remove processor from chain"))
 
         if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
-            self.list_data.append((self.preset_list, None, "Presets"))
+            self.list_data.append((self.preset_list, None, "Show processor presets"))
 
         if self.processor.type == "MIDI Synth":
-            self.list_data.append((self.randomize, None, "Randomize"))
+            self.list_data.append((self.randomize, None, "Randomize processor parameters"))
             if self.last_random:
                 self.list_data.append((self.undo_randomize, None, "Undo Randomize"))
 
@@ -128,13 +127,6 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         self.processor = None
         self.zyngui.close_screen()
 
-    def processor_duplicate(self):
-        #TODO: Inplement duplicate
-        #TODO: This does not work (shallow copy shares zctrls) and depp copy fails.
-        proc = copy(self.processor)
-        self.zyngui.chain_manager.active_chain.insert_processor(proc)
-        self.zyngui.close_screen()
-
     def preset_list(self):
         self.zyngui.cuia_bank_preset(self.processor)
 
@@ -152,12 +144,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             "type": self.processor.type
         })
     def start_move(self, proc=None):
-        chain_gui = self.zyngui.screens.get('chain_manager')
-        if chain_gui:
-            if proc is None:
-                proc = self.processor
-            chain_gui.start_move_mode(proc)
-            self.zyngui.show_screen('chain_manager')
+        self.zyngui.screens.get('chain_manager').start_move_mode()
+        self.zyngui.show_screen('chain_manager')
 
     def randomize(self):
         refresh = not self.last_random

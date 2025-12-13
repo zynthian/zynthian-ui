@@ -419,6 +419,7 @@ class zynthian_chain_manager:
 
         chain_id - Chain id
         offset - Position to move to relative to current position (+/-)
+        Returns - New position of chain
         """
 
         if chain_id is None:
@@ -430,10 +431,11 @@ class zynthian_chain_manager:
         pos = min(pos, len(self.ordered_chain_ids) - 1)
         pos = max(pos, 0)
         if pos == index:
-            return
+            return pos
         self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
         self.state_manager.zynseq.refresh_chan2col()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
+        return pos
 
     def get_chain_count(self, audio=True, midi=True, synth=True):
         """Get the quantity of chains
