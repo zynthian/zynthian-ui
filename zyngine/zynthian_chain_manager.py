@@ -995,7 +995,6 @@ class zynthian_chain_manager:
     def refresh_mixbus_sends(self):
         def remove_send_zctrl(processor, send):
             try:
-                logging.debug(f"Trying to remove send {send} controllers")
                 level_symbol = f"send_{send}_level"
                 mode_symbol = f"send_{send}_mode"
                 del processor.controllers_dict[level_symbol]
