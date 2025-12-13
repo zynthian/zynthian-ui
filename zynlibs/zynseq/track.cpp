@@ -178,15 +178,19 @@ SEQ_EVENT* Track::getEvent() {
             if (nCommand == MIDI_NOTE_ON) {
 				// Real-time quantization (step quantization
 				uint8_t qn = pPattern->getQuantizeNotes();
-				if (qn > 0) {
-					// Quantize to step boundary
-					//if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
-					//else m_fEventOffset = 0.0;
-					// Quantize to step fraction boundary (1/qn => 1/2, 1/3, 1/4, 1/6, 1/8, ...)
+				// Quantize to step boundary (qn = 1)
+				if (qn == 1) {
+					if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
+					else m_fEventOffset = 0.0;
+				}
+				// Quantize to step fraction boundary (1/qn => 1/2, 1/3, 1/4, 1/6, 1/8, ...)
+				else if (qn > 1) {
+					float os = m_fEventOffset;
 					float m = m_fEventOffset * qn;
 					uint8_t mi = (int)m;
-					if ((m - mi) > 0.5) m_fEventOffset = (float)(mi + 1) / qn;
-					else m_fEventOffset = (float)mi / qn;
+					if ((m - mi) > 0.5) m_fEventOffset = (float)(mi + 1) / (float)qn;
+					else m_fEventOffset = (float)mi / (float)qn;
+					//printf("Event %d with Offset %f => Quantized (1/%d) to %f\n", pEvent->getPosition(), os, qn, m_fEventOffset);
 				}
 				// Swing => Add to offset
 				uint32_t swingDiv = pPattern->getSwingDiv();
