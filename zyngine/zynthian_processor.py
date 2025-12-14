@@ -617,7 +617,10 @@ class zynthian_processor:
         try:
             return self.ctrl_screens_dict[key]
         except:
-            return None
+            keys = list(self.ctrl_screens_dict)
+            if keys:
+                return self.ctrl_screens_dict[keys[0]]
+        return []
 
     def get_current_screen_index(self):
         """Get index of last selected controller screen

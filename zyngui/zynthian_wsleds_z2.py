@@ -102,7 +102,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         if curscreen in ("control", "audio_player"):
             self.wsleds[9] = self.wscolor_active
         elif curscreen in ("preset", "bank"):
-            if self.zyngui.current_processor.get_show_fav_presets():
+            if self.zyngui.get_current_processor().get_show_fav_presets():
                 self.blink(9, self.wscolor_active2)
             else:
                 self.wsleds[9] = self.wscolor_active2

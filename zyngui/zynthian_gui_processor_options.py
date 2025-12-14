@@ -80,8 +80,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         super().fill_list()
 
     def build_view(self):
-        if self.processor != self.zyngui.chain_manager.active_chain.current_processor:
-            self.processor = self.zyngui.chain_manager.active_chain.current_processor
+        if self.processor != self.zyngui.get_current_processor():
+            self.processor = self.zyngui.get_current_processor()
             self.last_random = {}
         super().build_view()
         if self.index >= len(self.list_data):
@@ -114,7 +114,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             "audio_thru": self.processor.type == "Audio Effect",
             "slot": slot
         })
-        self.processor = self.zyngui.chain_manager.active_chain.current_processor
+        self.processor = self.zyngui.get_current_processor()
 
     def processor_remove(self):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)

@@ -1782,6 +1782,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.toggle_launcher_mode()
                 return True
 
+        elif swi == 2:
+            if t == "S":
+                self.zyngui.show_screen("tempo")
+                return True
+
         elif swi == 3:
             return self.switch_select(t)
 

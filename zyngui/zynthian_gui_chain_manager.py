@@ -75,6 +75,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.H_SPACING = 10 # Horizontal spacing between processor blocks in pixels
         self.V_SPACING = 10 # Vertical spacing between processor blocks in pixels
 
+        self.last_active_proc = None # The last processor to be selected
+
     def start_move_mode(self):
         """
         Enter 'Move Mode' for a specific processor.
@@ -109,12 +111,16 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
-        self.build_graph()
+        if self.zyngui.get_current_processor() != self.last_active_proc:
+            self.build_graph(self.zyngui.chain_manager.active_chain.current_processor)
+        else:
+            self.build_graph()
         return True
 
     def hide(self):
         if self.shown:
             self.moving_chain = False
+            self.last_active_proc = self.zyngui.get_current_processor()
             super().hide()
 
     def on_press(self, event):
@@ -487,7 +493,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         chain_id = node.get("chain_id")
         self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
         if type(proc) != str:
-            self.zyngui.chain_manager.active_chain.set_current_processor(proc)
+            self.zyngui.set_current_processor(proc)
         self._draw_selection()
         chain = self.zyngui.chain_manager.chains[chain_id]
         self.set_title(f"Chain: {chain.get_name()}")

@@ -63,7 +63,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.screen_name = None
         self.screen_type = None
         self.screen_title = None
-        self.screen_processor = None  # TODO: Refactor
 
         self.buttonbar_config = [
             ("arrow_left", '<< Prev'),
@@ -184,6 +183,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                 screen_list = processor.get_ctrl_screens()
                 procname = processor.engine.name.split('/')[-1]
                 self.list_data.append((None, None, f"> {procname}"))
+                i += 1
+                if processor == curproc:
+                    self.index = i + curproc.get_current_screen_index()
                 for cscr in screen_list:
                     try:
                         self.list_data.append((screen_list[cscr][0].group_symbol, i, cscr, processor, j))
@@ -191,7 +193,6 @@ class zynthian_gui_control(zynthian_gui_selector):
                         j += 1
                     except Exception as e:
                         logging.error(f"Can't add control page '{cscr}' for processor '{procname}' => {e}")
-                self.index = curproc.get_current_screen_index()
                 self.get_screen_info()
         super().fill_list()
 
@@ -207,7 +208,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.screen_info:
                 if len(self.screen_info) >= 5:
                     self.screen_title = self.screen_info[2]
-                    self.screen_processor = self.screen_info[3]
                     self.screen_type = None
                     return True
             else:
@@ -215,7 +215,6 @@ class zynthian_gui_control(zynthian_gui_selector):
                 # logging.info("Can't get screen info!!")
         self.screen_title = ""
         self.screen_type = None
-        self.screen_processor = self.zyngui.get_current_processor()
         return False
 
     def get_screen_type(self):
@@ -371,9 +370,10 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_controller_screen(self):
         # Get screen info
         if self.get_screen_info():
-            if self.screen_processor:
-                self.zyngui.chain_manager.get_active_chain().set_current_processor(self.screen_processor)
-                self.zyngui.current_processor = self.screen_processor
+            try:
+                self.zyngui.set_current_processor(self.screen_info[3])
+            except Exception as e:
+                logging.warning(f"Failed to set current processor {e}")
 
             # Get controllers for the current screen
             # Chain controllers
@@ -381,13 +381,13 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zcontrollers = self.screen_info[5]
             # Processor controllers
             else:
-                self.zyngui.get_current_processor().set_current_screen_index(self.index)
-                self.zcontrollers = self.screen_processor.get_ctrl_screen(self.screen_title)
+                self.zyngui.get_current_processor().set_current_screen_index(self.screen_info[4])
+                self.zcontrollers = self.zyngui.get_current_processor().get_ctrl_screen(self.screen_title)
 
             # Show the widget for the current processor
             if self.mode == 'control':
                 self.get_screen_type()
-                self.show_widget(self.screen_processor)
+                self.show_widget(self.zyngui.get_current_processor())
 
         else:
             self.zcontrollers = []
@@ -565,6 +565,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         super().select(index, set_zctrl)
         #if self.mode == 'select':
         self.set_controller_screen()
+        self.set_select_path()
         #self.set_selector_screen()
 
     def zynpot_abs(self, i, val):

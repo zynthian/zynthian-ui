@@ -1079,8 +1079,17 @@ class zynthian_gui:
             curproc.set_show_fav_presets(True)
             self.show_screen("preset")
 
+    def set_current_processor(self, processor):
+        try:
+            self.chain_manager.get_active_chain().current_processor = processor
+        except:
+            pass
+        self.current_processor = processor
+
     def get_current_processor(self):
-        """Get the currently selected processor object"""
+        """ Get the currently selected processor object
+            This may not be within a chain.
+        """
         if self.current_processor:
             return self.current_processor
         try:
