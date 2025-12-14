@@ -110,6 +110,8 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             return self.icons[icon_fname]
 
     def _draw_nodes(self):
+        if self.width == 1:
+            return # Not yet resized
         self.canvas.delete("all")
         self.icons = {}
         x = self.SPACING
@@ -123,7 +125,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
                 img = self.get_icon(node["icon"])
                 if img:
                     self.canvas.create_image(x, y, image=img, anchor="nw")
-            text_id = self.canvas.create_text(
+            self.canvas.create_text(
                 x + 3 * self.BLOCK_WIDTH / 4, y + self.BLOCK_HEIGHT / 2,
                 text=node["title"],
                 fill="white",
@@ -137,7 +139,6 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
                 y += self.BLOCK_HEIGHT + self.SPACING
 
         # Configure scroll region
-        self.canvas.update_idletasks()
         bbox = self.canvas.bbox("all")
         if bbox:
             self.canvas.configure(scrollregion=(bbox[0] - self.SPACING, bbox[1] - self.SPACING, bbox[2] + self.SPACING, bbox[3] + self.SPACING))
@@ -155,13 +156,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.canvas.itemconfig(node_tag, outline="yellow", width=2)
 
         #Scroll the canvas to ensure the selected node is visible.
-        
         # Get node's coords
         x0, y0, x1, y1 = self.canvas.bbox(node_tag)
-
         # Get view coords
-        vw = self.canvas.winfo_width()
-        vh = self.canvas.winfo_height()
+        vw = self.width
+        vh = self.height
         vx0 = self.canvas.canvasx(0)
         vy0 = self.canvas.canvasy(0)
         vx1 = self.canvas.canvasx(vw)

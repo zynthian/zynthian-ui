@@ -375,6 +375,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.create_line(x0, y0, x1, y1, fill="#AAAAAA", width=2, tags="lines")
 
     def _draw_graph(self, sel_proc=None):
+        if self.width == 1:
+            return # Not yet resized
         self.canvas.delete("all")
         self.node2pos = {} # Dict of nodes, mapped by gui object (background rectangle)
         divider_height = self.rows * (self.BLOCK_HEIGHT + self.V_SPACING)
@@ -434,7 +436,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.lower(main_bg)
 
         # Configure scroll region
-        self.canvas.update_idletasks() # Ensure bbox is fresh?
+        self.canvas.update_idletasks()
         bbox = self.canvas.bbox("all")
         if bbox:
             self.canvas.configure(scrollregion=(bbox[0], bbox[1] - 5, bbox[2], bbox[3] + 5))
@@ -461,7 +463,30 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.canvas.itemconfig(node_id, outline=color, width=2)
         except:
             pass
-        self._ensure_visible()
+
+        #Scroll the canvas to ensure the selected node is visible.
+        # Get node's coords
+        x0, y0, x1, y1 = self.canvas.bbox(node_id)
+        # Get view coords
+        vw = self.width
+        vh = self.height
+        vx0 = self.canvas.canvasx(0)
+        vy0 = self.canvas.canvasy(0)
+        vx1 = self.canvas.canvasx(vw)
+        vy1 = self.canvas.canvasy(vh)
+        b0, b1, b2, b3 = self.canvas.bbox("all")
+        w = b2 - b0
+        h = b3 - b1
+        # Scroll horizontally
+        if x0 < vx0:
+            self.canvas.xview_moveto((x0 - b0) / w)
+        elif x1 > vx1:
+            self.canvas.xview_moveto((x1 - vw) / w)
+        # Scroll vertically
+        if y0 < vy0:
+            self.canvas.yview_moveto((y0 - b1) / h)
+        elif y1 > vy1:
+            self.canvas.yview_moveto((y1 - vh) / h)
 
     def _get_node(self, node_pos):
         try:
@@ -764,34 +789,3 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.H_SPACING = 2 * (self.BLOCK_WIDTH // 28)
         self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 8)
         self._draw_graph()
-
-    def _ensure_visible(self):
-        """
-        Scroll the canvas to ensure the selected node is visible.
-        """
-        
-        # Get node's coords
-        chain_idx, row, col = self.selected_node
-        node = self.nodes[chain_idx][row][col]
-        x0, y0, x1, y1 = self.canvas.bbox(node["id"])
-
-        # Get view coords
-        vw = self.canvas.winfo_width()
-        vh = self.canvas.winfo_height()
-        vx0 = self.canvas.canvasx(0)
-        vy0 = self.canvas.canvasy(0)
-        vx1 = self.canvas.canvasx(vw)
-        vy1 = self.canvas.canvasy(vh)
-        b0, b1, b2, b3 = self.canvas.bbox("all")
-        w = b2 - b0
-        h = b3 - b1
-        # Scroll horizontally
-        if x0 < vx0:
-            self.canvas.xview_moveto((x0 - b0) / w)
-        elif x1 > vx1:
-            self.canvas.xview_moveto((x1 - vw) / w)
-        # Scroll vertically
-        if y0 < vy0:
-            self.canvas.yview_moveto((y0 - b1) / h)
-        elif y1 > vy1:
-            self.canvas.yview_moveto((y1 - vh) / h)

@@ -143,7 +143,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def do_rename_chain(self, title):
         self.chain.title = title
-        self.zyngui.show_screen_reset('root')
+        self.zyngui.show_screen_reset('chain_manager')
 
     def export_chain(self):
         options = {}
