@@ -436,7 +436,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.lower(main_bg)
 
         # Configure scroll region
-        self.canvas.update_idletasks()
         bbox = self.canvas.bbox("all")
         if bbox:
             self.canvas.configure(scrollregion=(bbox[0], bbox[1] - 5, bbox[2], bbox[3] + 5))
@@ -481,12 +480,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if x0 < vx0:
             self.canvas.xview_moveto((x0 - b0) / w)
         elif x1 > vx1:
-            self.canvas.xview_moveto((x1 - vw) / w)
+            self.canvas.xview_moveto((x1 + self.H_SPACING - vw) / w)
         # Scroll vertically
         if y0 < vy0:
             self.canvas.yview_moveto((y0 - b1) / h)
         elif y1 > vy1:
-            self.canvas.yview_moveto((y1 - vh) / h)
+            self.canvas.yview_moveto((y1 + self.V_SPACING - vh) / h)
 
     def _get_node(self, node_pos):
         try:
