@@ -62,6 +62,7 @@ from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
 from zyngui.zynthian_gui_chain_manager import zynthian_gui_chain_manager
+from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
 from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
@@ -467,6 +468,7 @@ class zynthian_gui:
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
         self.screens['chain_manager'] = zynthian_gui_chain_manager()
+        self.screens['selector_grid'] = zynthian_gui_selector_grid()
         self.screens['processor_options'] = zynthian_gui_processor_options()
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()

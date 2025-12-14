@@ -41,12 +41,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     scrolling, selecting and operating on processors.
     """
 
-    # Visual constants
-    BLOCK_WIDTH = 120 # Width of each processor block in pixels
-    BLOCK_HEIGHT = 40 # Height of each processor block in pixels
-    H_SPACING = 10 # Horizontal spacing between processor blocks in pixels
-    V_SPACING = 10 # Vertical spacing between processor blocks in pixels
-
     def __init__(self):
         """
         Initialize the Chain View.
@@ -436,7 +430,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.lower(main_bg)
 
         # Configure scroll region
-        # Use updatedbbox after drawing
         self.canvas.update_idletasks() # Ensure bbox is fresh?
         bbox = self.canvas.bbox("all")
         if bbox:

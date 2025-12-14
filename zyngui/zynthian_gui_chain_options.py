@@ -62,6 +62,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                 self.list_data.append(
                     (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
 
+        self.list_data.append((self.add_chain, None, "Insert new chain",
+                               ["Create a new chain.",
+                                "midi_instrument.png"]))
+
         if self.chain.chain_id != 0:
             self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                    ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
@@ -200,6 +204,59 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
     def chain_remove_confirmed(self, params=None):
         self.zyngui.chain_manager.remove_chain(self.chain.chain_id)
         self.zyngui.show_screen_reset('root')
+
+    def add_chain(self, params=None):
+        config = []
+        config.append({
+            "title": "Synth",
+            "icon": "midi_instrument.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "MIDI Synth", "midi_thru": False, "audio_thru": False}]
+        })
+        config.append({
+            "title": "Audio",
+            "icon": "microphone.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True}]
+        })
+        config.append({
+            "title": "Clip",
+            "icon": "audio.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None}]
+        })
+        config.append({
+            "title": "Mixbus",
+            "icon": "effects_loop.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True}]
+        })
+        config.append({
+            "title": "MIDI",
+            "icon": "midi_logo.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "MIDI Tool", "midi_thru": True, "audio_thru": False}]
+        })
+        config.append({
+            "title": "MIDI\n+\nAudio",
+            "icon": "midi_audio.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "Audio Effect", "midi_thru": True, "audio_thru": True}]
+        })
+        config.append({
+            "title": "Audio Generator",
+            "icon": "audio_generator.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False}]
+        })
+        config.append({
+            "title": "Special",
+            "icon": "special_chain.png",
+            "action": self.zyngui.modify_chain,
+            "action_params": [{"type": "Special", "midi_thru": True, "audio_thru": True}]
+        })
+        self.zyngui.screens["selector_grid"].setup(config)
+        self.zyngui.show_screen("selector_grid")
 
     # FX-Chain management
 
