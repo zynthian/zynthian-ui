@@ -111,7 +111,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
-        if self.zyngui.get_current_processor() != self.last_active_proc:
+        if self.selected_node[0] != self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id) or self.zyngui.get_current_processor() != self.last_active_proc:
             self.build_graph(self.zyngui.chain_manager.active_chain.current_processor)
         else:
             self.build_graph()
@@ -119,7 +119,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
     def hide(self):
         if self.shown:
-            self.moving_chain = False
+            self.end_moving_chain()
             self.last_active_proc = self.zyngui.get_current_processor()
             super().hide()
 
@@ -273,10 +273,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             row = 0
 
             # Add chain option button
-            if chain_id:
-                self._add_node(chain_idx, row, f"Chain {chain_idx + 1}\nOptions", chain_id, "chain_options")
-            else:
-                self._add_node(chain_idx, row, f"Main\nOptions", chain_id, "chain_options")
+            name = self._get_name(chain.get_name(), self.BLOCK_WIDTH)
+            self._add_node(chain_idx, row, f"{name}\nOptions", chain_id, "chain_options")
             row += 1
             # Add MIDI input
             if chain.is_midi():
@@ -515,6 +513,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             pass
         self.build_graph(self.moving_proc)
 
+    def start_moving_chain(self):
+        self.moving_chain = True
+        if zynthian_gui_config.enable_touch_navigation:
+            self.show_back_button(True)
+        self._draw_graph(self.moving_proc)
+
     def end_moving_chain(self):
         if not self.moving_chain:
             return
@@ -706,8 +710,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 chain = self.zyngui.chain_manager.active_chain
                 if proc == "chain_options":
                     if chain.chain_id != 0:
-                        self.moving_chain = True
-                        self._draw_graph()
+                        self.start_moving_chain()
                     return True
                 if proc in ("midi_out", "audio_out"):
                     slot = None

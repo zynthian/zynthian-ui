@@ -135,12 +135,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                 f"Do you want to clean MIDI-learn for ALL controls in ALL processors within chain {self.chain.chain_id:02d}?", self.zyngui.chain_manager.clean_midi_learn, self.chain.chain_id)
 
     def move_chain(self):
-        if "chain_manager" in self.zyngui.screen_history:
-            self.zyngui.screens["chain_manager"].moving_chain = True
-            self.zyngui.show_screen_reset('chain_manager')
-        else:
-            self.zyngui.screens["audio_mixer"].moving_chain = True
-            self.zyngui.show_screen_reset('root')
+        self.zyngui.screens["chain_manager"].start_moving_chain()
+        self.zyngui.show_screen_reset('chain_manager')
 
     def rename_chain(self):
         self.zyngui.show_keyboard(self.do_rename_chain, self.chain.title)

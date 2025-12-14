@@ -571,10 +571,7 @@ class zynthian_gui_mixer_strip:
                 self.canvas.itemconfig(
                     self.legend_strip_txt, text="Main", font=self.font)
             else:
-                if self.parent.moving_chain and self.chain == self.chain_manager.active_chain:
-                    font = self.font
-                    strip_txt = f"⇦⇨"
-                elif self.chain.is_generator():
+                if self.chain.is_generator():
                     font = self.font_icons
                     strip_txt = "\uf028"  # Speaker icon
                 elif self.chain.is_midi():
@@ -956,7 +953,6 @@ class zynthian_gui_mixer_strip:
                 zynthian_gui_config.zyngui.chain_control(self.chain_id)
         self.dragging = False
         self.strip_drag_start = None
-        self.parent.end_moving_chain()
 
     def on_strip_motion(self, event):
         """ Function to handle legend strip drag
@@ -971,9 +967,7 @@ class zynthian_gui_mixer_strip:
                 return
             # Dragged more than one strip width
             self.dragging = True
-            if self.parent.moving_chain:
-                self.chain_manager.move_chain(offset)
-            elif self.parent.mixer_strip_offset - offset >= 0 and self.parent.mixer_strip_offset - offset + len(self.parent.visible_mixer_strips) <= len(self.chain_manager.chains):
+            if self.parent.mixer_strip_offset - offset >= 0 and self.parent.mixer_strip_offset - offset + len(self.parent.visible_mixer_strips) <= len(self.chain_manager.chains):
                 self.parent.mixer_strip_offset -= offset
             self.strip_drag_start.x = event.x
             self.parent.refresh_visible_strips()
@@ -1011,7 +1005,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         self.chan2strip = {} # Map of audio strips, indexed by [is_mixbus, mixer_channel]
         self.highlighted_strip = None  # highligted mixer strip object
-        self.moving_chain = False  # True if moving a chain left/right
         self.moving_phrase = False # True if moving a launcher phrase up/down
 
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
@@ -1130,7 +1123,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle hiding display
         """
         if self.shown:
-            self.moving_chain = self.moving_phrase = False
             if not self.zyngui.osc_clients:
                 self.zyngui.state_manager.zynmixer_chan.enable_dpm(
                     0, self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
@@ -1171,7 +1163,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.set_visible_chains(zynthian_gui_config.visible_mixer_strips)
                 self.visible_launchers = zynthian_gui_config.visible_launchers
         #self.launcher_mode = self.zyngui.alt_mode
-        if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.moving_phrase:
+        if zynthian_gui_config.enable_touch_navigation and self.moving_phrase:
             self.show_back_button()
 
         self.set_title()
@@ -1716,10 +1708,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         if super().switch_select(type):
             return True
-        if self.moving_chain:
-            self.end_moving_chain()
-            return True
-        elif self.moving_phrase:
+        if self.moving_phrase:
             self.end_moving_phrase()
             return True
         elif type == "S":
@@ -1745,9 +1734,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         returns True if event is managed, False if it's not
         """
 
-        if self.moving_chain:
-            self.end_moving_chain()
-            return True
         if self.moving_phrase:
             self.end_moving_phrase()
             return True
@@ -1774,7 +1760,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif swi == 1:
             # This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
             # Moving the "learn" button to back is not an option. It's a labeled button on V4!!
-            if t == "S" and not self.moving_chain and not self.moving_phrase:
+            if t == "S" and not self.moving_phrase:
                 if self.highlighted_strip is not None and not self.back_action():
                     self.highlighted_strip.toggle_mute()
                 return True
@@ -1831,10 +1817,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         # Knob#4 moves chain selection
         elif i == 3:
-            if self.moving_chain:
-                self.chain_manager.move_chain(dval)
-                self.refresh_visible_strips()
-            elif self.moving_phrase:
+            if self.moving_phrase:
                 self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase + dval) #TODO: This swaps, not moves
                 self.select_launcher(self.zynseq.phrase +dval)
                 #self.zynseq.phrase += dval
@@ -1845,20 +1828,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def arrow_left(self):
         """ Function to handle CUIA ARROW_LEFT
         """
-        if self.moving_chain:
-            self.chain_manager.move_chain(-1)
-            self.refresh_visible_strips()
-        else:
-            self.chain_manager.previous_chain()
+        self.chain_manager.previous_chain()
 
     def arrow_right(self):
         """ Function to handle CUIA ARROW_RIGHT
         """
-        if self.moving_chain:
-            self.chain_manager.move_chain(1)
-            self.refresh_visible_strips()
-        else:
-            self.chain_manager.next_chain()
+        self.chain_manager.next_chain()
 
     def arrow_up(self, nudge=1):
         """ Function to handle CUIA ARROW_UP
@@ -1931,15 +1906,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.highlighted_strip.highlight_launcher(phrase)
         if refresh_strips:
             self.refresh_visible_strips()
-
-    def end_moving_chain(self):
-        if not self.moving_chain:
-            return
-        if zynthian_gui_config.enable_touch_navigation:
-            self.show_back_button(False)
-        self.moving_chain = False
-        self.strip_drag_start = None
-        self.refresh_visible_strips()
 
     def end_moving_phrase(self):
         if zynthian_gui_config.enable_touch_navigation:
