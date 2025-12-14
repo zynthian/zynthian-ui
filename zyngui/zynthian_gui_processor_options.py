@@ -62,7 +62,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
                 if eng_options['replace']:
                     self.list_data.append((self.replace, None, "Replace processor"))
             else:
-                self.list_data.append((self.replace, None, "Replace procssor"))
+                self.list_data.append((self.replace, None, "Replace processor"))
 
             if self.processor.type == "MIDI Tool" or self.processor.type == "Audio Effect":
                 self.list_data.append((self.processor_remove, None, "Remove processor from chain"))

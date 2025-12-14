@@ -339,7 +339,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     color = c_audio
         else:
             match proc.type:
-                case "MIDI Input" | "MIDI Output" | "MIDI Effect":
+                case "MIDI Input" | "MIDI Output" | "MIDI Tool":
                     color = c_midi
                 case "MIDI Synth" | "Audio Generator":
                     color = c_synth
