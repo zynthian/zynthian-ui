@@ -224,13 +224,19 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.nodes.append([])
         while len(self.nodes[chain_idx]) <= row:
             self.nodes[chain_idx].append([])
+        if type(proc) == str:
+            proc_type = proc
+        else:
+            proc_type = proc.type
         self.nodes[chain_idx][row].append({
             "title": title, # Title shown in GUI
             "chain_id": chain_id, # zynthian chain_id (not necessarily display position)
             "proc": proc, # Processor object or symbol for non-processor nodes
             "slot": slot, # Processor slot
             "idx": idx, # Index of (parallel) processor within slot
-            "pos": [chain_idx, row, len(self.nodes[chain_idx][row])] # Position of node within graph
+            "pos": [chain_idx, row, len(self.nodes[chain_idx][row])], # Position of node within graph
+            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_output", "audio_out"),
+            "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_input", "audio_in")
         })
 
     def _get_name(self, text, max_width):
@@ -385,30 +391,36 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             start_id = end_id = None
             y = self.H_SPACING // 2
             cols_in_chain = 1 # max number of parallel processors
-            for row in chain:
+            for row_idx, row in enumerate(chain):
                 x = chain_offset
                 for col, node in enumerate(row):
                     self._draw_node(node, x, y)
+                    # Create interconnect lines
+                    if row_idx > 0:
+                        x0 = x + self.BLOCK_WIDTH // 2
+                        is_dst = node.get("is_dst", False)
+                        if col < len(chain[row_idx - 1]):
+                            is_src = chain[row_idx - 1][col].get("is_src", False)
+                        else:
+                            is_src = False
+                        if is_dst:
+                            y0 = y - self.V_SPACING // 2
+                            if is_src:
+                                self.canvas.create_line(x0, y, x0, y - self.V_SPACING, fill="#AAAAAA", width=2, tags="lines")
+                            else:
+                                self.canvas.create_line(x0, y, x0, y0, fill="#AAAAAA", width=2, tags="lines")
+                            if col > 0:
+                                self.canvas.create_line(x0, y0, x0 - self.BLOCK_WIDTH - self.H_SPACING, y0, width=2, fill="#AAAAAA", tags="lines")
+                        if row_idx < len(chain) - 1 and col >= len(chain[row_idx + 1]):
+                            y0 = y + self.BLOCK_HEIGHT
+                            y1 = y0 + self.V_SPACING // 2
+                            self.canvas.create_line(x0, y0, x0, y1, fill="#AAAAAA", width=2, tags="lines")
+                            self.canvas.create_line(x0, y1, x0 - self.BLOCK_WIDTH - self.H_SPACING, y1, width=2, fill="#AAAAAA", tags="lines")
+
                     x += self.BLOCK_WIDTH + self.H_SPACING
                     if col >= cols_in_chain:
                         cols_in_chain = col + 1
                 y += self.BLOCK_HEIGHT + self.V_SPACING
-
-                # Look for nodes for lines
-                proc = row[0].get("proc")
-                if type(proc) != str:
-                    proc = proc.type
-                if start_id is None:
-                    if proc in ("MIDI Synth", "Audio Generator", "Audio Effect", "midi_input", "midi_key_range", "audio_in"):
-                        start_id = row[0].get("id")
-                elif end_id is None:
-                    if proc in ("MIDI Synth", "MIDI Output", "audio_out"):
-                        end_id = row[0].get("id")
-                if start_id and end_id:
-                    self._draw_line(start_id, end_id)
-                    end_id = None
-                    if proc not in ("MIDI Synth", "Audio Generator"):
-                        start_id = None
 
             if self.moving_chain and self.selected_node[0] == chain_idx:
                 # Highlight chain being moved
@@ -431,6 +443,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             width=0,
             fill="#666666"
         )
+
 
         self.canvas.lower("lines")
         self.canvas.lower(main_bg)
@@ -508,6 +521,14 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         elif not self.selected_node:
             self.selected_node = [0, 0, 0]
         chain_idx, row, col = self.selected_node
+        # Range check
+        if chain_idx > len(self.zyngui.chain_manager.ordered_chain_ids):
+            chain_idx = len(self.zyngui.chain_manager.ordered_chain_ids) - 1
+        if row >= len(self.nodes[chain_idx]):
+            row = len(self.nodes[chain_idx]) - 1
+        if col >= len(self.nodes[chain_idx][row]):
+            col = len(self.nodes[chain_idx][row]) - 1
+        self.selected_node = [chain_idx, row, col]
         if not proc:
             proc = self.nodes[chain_idx][row][col]["proc"]
 
@@ -736,9 +757,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     if chain.chain_id != 0:
                         self.start_moving_chain()
                     return True
-                if proc in ("midi_out", "audio_out"):
+                if proc in ("midi_output", "audio_out"):
                     slot = None
-                elif proc in ("midi_in", "audio_in"):
+                elif proc in ("midi_input", "audio_in"):
                     slot = -1
                 else:
                     slot = 0
