@@ -950,12 +950,17 @@ class zynthian_gui:
                         zmop_index = ZMOP_MOD_INDEX
                     else:
                         zmop_index = None
+                    if "pos" in self.modify_chain_status:
+                        pos = self.modify_chain_status["pos"]
+                    else:
+                        pos = None
                     chain_id = self.chain_manager.add_chain(
                         None,
                         self.modify_chain_status["midi_chan"],
                         self.modify_chain_status["midi_thru"],
                         self.modify_chain_status["audio_thru"],
-                        zmop_index
+                        zmop_index,
+                        chain_pos=pos
                     )
                     if chain_id is None:
                         self.show_screen_reset("root")
@@ -977,7 +982,7 @@ class zynthian_gui:
                     else:
                         # Created empty chain
                         # self.chain_manager.set_active_chain_by_id(chain_id)
-                        self.show_screen_reset("root")
+                        self.show_screen_reset("chain_manager")
                 else:
                     # Select MIDI channel
                     logging.debug(self.modify_chain_status)

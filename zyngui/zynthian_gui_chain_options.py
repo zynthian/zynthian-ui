@@ -202,54 +202,55 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.zyngui.show_screen_reset('root')
 
     def add_chain(self, params=None):
+        pos = self.zyngui.chain_manager.get_chain_index(self.chain.chain_id)
         config = []
         config.append({
             "title": "Synth",
             "icon": "midi_instrument.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "MIDI Synth", "midi_thru": False, "audio_thru": False}]
+            "action_params": [{"type": "MIDI Synth", "midi_thru": False, "audio_thru": False, "pos": pos}]
         })
         config.append({
             "title": "Audio",
             "icon": "microphone.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True}]
+            "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "pos": pos}]
         })
         config.append({
             "title": "Clip",
             "icon": "audio.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None}]
+            "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None, "pos": pos}]
         })
         config.append({
             "title": "Mixbus",
             "icon": "effects_loop.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True}]
+            "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True, "pos": pos}]
         })
         config.append({
             "title": "MIDI",
             "icon": "midi_logo.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "MIDI Tool", "midi_thru": True, "audio_thru": False}]
+            "action_params": [{"type": "MIDI Tool", "midi_thru": True, "audio_thru": False, "pos": pos}]
         })
         config.append({
             "title": "MIDI\n+\nAudio",
             "icon": "midi_audio.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "Audio Effect", "midi_thru": True, "audio_thru": True}]
+            "action_params": [{"type": "Audio Effect", "midi_thru": True, "audio_thru": True, "pos": pos}]
         })
         config.append({
             "title": "Audio Generator",
             "icon": "audio_generator.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False}]
+            "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "pos": pos}]
         })
         config.append({
             "title": "Special",
             "icon": "special_chain.png",
             "action": self.zyngui.modify_chain,
-            "action_params": [{"type": "Special", "midi_thru": True, "audio_thru": True}]
+            "action_params": [{"type": "Special", "midi_thru": True, "audio_thru": True, "pos": pos}]
         })
         self.zyngui.screens["selector_grid"].setup(config)
         self.zyngui.show_screen("selector_grid")

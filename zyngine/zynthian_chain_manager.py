@@ -417,8 +417,8 @@ class zynthian_chain_manager:
     def move_chain(self, offset, chain_id=None):
         """Move a chain's position
 
-        chain_id - Chain id
         offset - Position to move to relative to current position (+/-)
+        chain_id - Chain id
         Returns - New position of chain
         """
 
