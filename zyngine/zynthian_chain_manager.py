@@ -112,7 +112,6 @@ class zynthian_chain_manager:
         self.state_manager = state_manager
 
         self.chains = {}  # Map of chain objects indexed by chain id
-        self.ordered_chain_ids = []  # List of chain IDs in mixer display order
         self.zyngine_counter = 0  # Appended to engine names for uniqueness
         self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
@@ -231,10 +230,8 @@ class zynthian_chain_manager:
         chain.set_title(title)
 
         # Add to chain index (sorted!)
-        if chain_id:
-            if chain_pos is None:
-                chain_pos = len(self.ordered_chain_ids)
-            self.ordered_chain_ids.insert(chain_pos, chain_id)
+        if chain_pos is not None:
+            self.move_chain(chain_id, chain_pos)
 
         # Set MIDI channel
         self.set_midi_chan(chain_id, midi_chan)
@@ -265,10 +262,9 @@ class zynthian_chain_manager:
         zynautoconnect.request_midi_connect(fast_refresh)
 
         logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, zmop_index={chain.zmop_index}")
-        # logging.debug(f"ordered_chain_ids = {self.ordered_chain_ids}")
-        # logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
 
         self.active_chain = chain
+        self.chains[0] = self.chains.pop(0) # Move main chain to end
         if fast_refresh:
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
         self.state_manager.end_busy("add_chain")
@@ -361,15 +357,13 @@ class zynthian_chain_manager:
             if chain_id != 0:
                 self.chains.pop(chain_id)
                 del chain
-                if chain_id in self.ordered_chain_ids:
-                    self.ordered_chain_ids.remove(chain_id)
 
         zynautoconnect.request_audio_connect(fast_refresh)
         zynautoconnect.request_midi_connect(fast_refresh)
         if stop_engines:
             self.stop_unused_engines()
         if self.active_chain not in self.chains.values():
-            if chain_pos + 1 >= len(self.ordered_chain_ids):
+            if chain_pos + 1 >= len(self.chains):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
 
@@ -387,7 +381,7 @@ class zynthian_chain_manager:
 
         if update_fxreturns:
             i = 1
-            for chain_id in self.ordered_chain_ids:
+            for chain_id in self.chains:
                 chain = self.chains[chain_id]
                 if chain.title.startswith("Effect Return "):
                     chain.title = f"Effect Return {i}"
@@ -414,25 +408,42 @@ class zynthian_chain_manager:
         zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
         return success
 
-    def move_chain(self, offset, chain_id=None):
-        """Move a chain's position
+    def nudge_chain(self, offset):
+        """Move active chain's position relative to current position
 
         offset - Position to move to relative to current position (+/-)
-        chain_id - Chain id
         Returns - New position of chain
+        """
+
+        try:
+            pos = list(self.chains).index(self.active_chain.chain_id) + offset
+        except:
+            return None
+        return self.move_chain(self.active_chain.chain_id, pos)
+
+    def move_chain(self, chain_id, pos):
+        """Move a chain's position
+
+        chain_id - Chain id
+        pos - Position to move to
+        Returns - New position of chain or None on failure
         """
 
         if chain_id is None:
             chain_id = self.active_chain.chain_id
-        if not chain_id or chain_id not in self.ordered_chain_ids:
-            return
-        index = self.ordered_chain_ids.index(chain_id)
-        pos = index + offset
-        pos = min(pos, len(self.ordered_chain_ids) - 1)
+        if not chain_id or chain_id not in self.chains:
+            return None
+        index = list(self.chains).index(chain_id)
+        pos = min(pos, len(self.chains) - 2)
         pos = max(pos, 0)
         if pos == index:
             return pos
-        self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
+        
+        value = self.chains.pop(chain_id)
+        items = list(self.chains.items())
+        items.insert(pos, (chain_id, value))
+        self.chains = dict(items)
+
         self.state_manager.zynseq.refresh_chan2col()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
         return pos
@@ -450,8 +461,7 @@ class zynthian_chain_manager:
             return len(self.chains)
 
         count = 0
-        for chain_id in self.ordered_chain_ids:
-            chain = self.chains[chain_id]
+        for chain in self.chains.items():
             if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
                 count += 1
         return count
@@ -468,7 +478,7 @@ class zynthian_chain_manager:
         """Get a chain ID by the display index"""
 
         try:
-            return self.ordered_chain_ids[index]
+            return list(self.chains)[index]
         except:
             return None
 
@@ -476,7 +486,7 @@ class zynthian_chain_manager:
         """Get a chain object by its display index"""
 
         try:
-            return self.chains[self.ordered_chain_ids[index]]
+            return self.chains[self.get_chain_id_by_index(index)]
         except:
             return None
 
@@ -491,13 +501,12 @@ class zynthian_chain_manager:
         """
 
         if audio and midi and synth:
-            if pos < len(self.ordered_chain_ids):
-                return self.chains[self.ordered_chain_ids[pos]]
+            if pos < len(self.chains):
+                return self.get_chain_by_index(pos)
             else:
                 return None
 
-        for chain_id in self.ordered_chain_ids:
-            chain = self.chains[chain_id]
+        for chain in self.chains.values():
             if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
                 if pos == 0:
                     return chain
@@ -513,11 +522,10 @@ class zynthian_chain_manager:
         """
 
         if not filter:
-            return self.ordered_chain_ids
+            return list(self.chains)
 
         chain_ids_filtered = []
-        for chain_id in self.ordered_chain_ids:
-            chain = self.chains[chain_id]
+        for chain_id, chain in self.chains.items():
             for type in filter:
                 match type:
                     case "midi":
@@ -775,12 +783,12 @@ class zynthian_chain_manager:
     def set_active_chain_by_index(self, index):
         """Select the active chain by display index
 
-        index : Index of chain in ordered_chain_ids
+        index : Index of chain in display order
         Returns : ID of active chain
         """
 
-        if 0 <= index < len(self.ordered_chain_ids):
-            return self.set_active_chain_by_id(self.ordered_chain_ids[index])
+        if 0 <= index < len(self.chains):
+            return self.set_active_chain_by_id(self.get_chain_id_by_index(index))
         else:
             return self.set_active_chain_by_id(0)
 
@@ -793,8 +801,8 @@ class zynthian_chain_manager:
 
         index = self.get_chain_index(self.active_chain.chain_id)
         index += nudge
-        index = min(index, len(self.ordered_chain_ids))
         index = max(index, 0)
+        index = min(index, len(self.chains) - 1)
         return self.set_active_chain_by_index(index)
 
     def previous_chain(self, nudge=1):
@@ -826,9 +834,9 @@ class zynthian_chain_manager:
         returns : Index or 0 if not found
         """
 
-        if chain_id in self.ordered_chain_ids:
-            return self.ordered_chain_ids.index(chain_id)
-        return len(self.ordered_chain_ids)
+        if chain_id in self.chains:
+            return list(self.chains).index(chain_id)
+        return len(self.chains) - 1
 
     # ------------------------------------------------------------------------
     # Processor Management
@@ -1262,7 +1270,7 @@ class zynthian_chain_manager:
         """Get dictionary of chain slot states indexed by chain id"""
 
         state = {}
-        for chain_id in self.ordered_chain_ids:
+        for chain_id in self.chains:
             state[chain_id] = self.chains[chain_id].get_state()
         return state
 

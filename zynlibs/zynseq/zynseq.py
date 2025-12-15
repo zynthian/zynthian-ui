@@ -427,8 +427,8 @@ class zynseq(zynthian_engine):
     def refresh_chan2col(self):
         self.chan2col = [None] * LAUNCHER_COLS
         col = 0
-        for id in self.state_manager.chain_manager.ordered_chain_ids:
-            midi_chan = self.state_manager.chain_manager.chains[id].midi_chan
+        for chain in self.state_manager.chain_manager.chains.values():
+            midi_chan = chain.midi_chan
             if midi_chan is not None and midi_chan < 33 and self.chan2col[midi_chan] is None:
                 self.chan2col[midi_chan] = col
                 col += 1

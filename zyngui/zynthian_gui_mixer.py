@@ -66,7 +66,6 @@ class zynthian_gui_mixer_strip:
         width: Width of fader
         height: Height of fader
         """
-
         self.parent = parent
         self.zyngui = parent.zyngui
         self.state_manager = parent.state_manager
@@ -77,7 +76,6 @@ class zynthian_gui_mixer_strip:
         self.width = width
         self.height = height
         self.hidden = False
-        self.chain_id = None
         self.chain = None
         self.hidden = True
 
@@ -405,7 +403,7 @@ class zynthian_gui_mixer_strip:
         tempo_text = ""
         row = phrase - self.parent.launcher_offset
         disabled = False
-        if self.chain_id == 0:
+        if self.chain.chain_id == 0:
             state_seq = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
         elif type(self.chan) is not int:
             state_seq = None # This will raise an exception later and draw empty block
@@ -424,7 +422,7 @@ class zynthian_gui_mixer_strip:
             disabled |= state_seq["repeat"] == 0
             if disabled:
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
-            elif self.chain_id == 0:
+            elif self.chain.chain_id == 0:
                 color = zynthian_gui_config.PAD_COLOUR_PHRASE
             else:
                 color = zynthian_gui_config.LAUNCHER_COLOUR[self.chan]["rgb"]
@@ -459,7 +457,7 @@ class zynthian_gui_mixer_strip:
                 else:
                     title = "⏹"
                     mode_image = self.parent.mode_icons["empty"]
-                if self.chain_id == 0:
+                if self.chain.chain_id == 0:
                     # Phrase launcher
                     if "sig" in state_seq:
                         sig = state_seq["sig"]
@@ -510,7 +508,7 @@ class zynthian_gui_mixer_strip:
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_bg", fill=color)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_state", text=state_text, fill=color_state)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_title", text=title)
-        if self.chain_id:
+        if self.chain.chain_id:
             # Chain sequence launcher
             self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode_text", state=tkinter.HIDDEN)
             self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_timebase_text", state=tkinter.HIDDEN)
@@ -567,7 +565,7 @@ class zynthian_gui_mixer_strip:
             return
 
         if control is None:
-            if self.chain_id == 0:
+            if self.chain.chain_id == 0:
                 self.canvas.itemconfig(
                     self.legend_strip_txt, text="Main", font=self.font)
             else:
@@ -675,18 +673,17 @@ class zynthian_gui_mixer_strip:
         if bg:
             self.canvas.itemconfig(self.fader_bg_color, fill=bg)
 
-    def set_chain(self, chain_id):
+    def set_chain(self, chain):
         """ Function to set chain associated with mixer strip
         chain: Chain object
         """
 
-        self.chain_id = chain_id
-        self.chain = self.chain_manager.get_chain(chain_id)
+        self.chain = chain
         if self.chain is None:
             self.hide()
             self.chan = None
         else:
-            if self.chain_id == 0:
+            if self.chain.chain_id == 0:
                 self.chan = 32
             else:
                 self.chan = self.chain.midi_chan
@@ -751,7 +748,7 @@ class zynthian_gui_mixer_strip:
         """
         if self.chain.zynmixer_proc:
             self.chain.zynmixer_proc.controllers_dict['solo'].set_value(value)
-            if self.chain_id == 0:
+            if self.chain.chain_id == 0:
                 self.parent.refresh_visible_strips()
 
     def toggle_mute(self):
@@ -775,7 +772,7 @@ class zynthian_gui_mixer_strip:
             phrase = self.parent.zynseq.phrase
         self.canvas.itemconfig(f"launcher_sel", state=tkinter.HIDDEN)
         if phrase is not None and self.chain is not None:
-            if self.chain_id == self.parent.chain_manager.active_chain.chain_id:
+            if self.chain.chain_id == self.parent.chain_manager.active_chain.chain_id:
                 if phrase >= self.zynseq.phrases:
                     self.canvas.itemconfig(f"legend_sel:{self.parent.highlighted_strip.fader_bg}", state=tkinter.NORMAL)
                 else:
@@ -950,7 +947,7 @@ class zynthian_gui_mixer_strip:
             if delta > 400:
                 zynthian_gui_config.zyngui.show_screen('chain_manager')
             else:
-                zynthian_gui_config.zyngui.chain_control(self.chain_id)
+                zynthian_gui_config.zyngui.chain_control(self.chain.chain_id)
         self.dragging = False
         self.strip_drag_start = None
 
@@ -1094,7 +1091,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in range(len(self.visible_mixer_strips)):
             self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height)
         self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
-        self.main_mixbus_strip.set_chain(0)
+        self.main_mixbus_strip.set_chain(self.chain_manager.chains[0])
 
         self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
 
@@ -1390,12 +1387,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     # --------------------------------------------------------------------------
 
     def highlight_active_chain(self, refresh=False, chain_id=None):
-        """ Higlights active chain, redrawing strips if required
+        """ Highlights active chain, redrawing strips if required
         """
         if chain_id is None:
             chain_id = self.chain_manager.active_chain.chain_id
         try:
-            active_index = self.chain_manager.ordered_chain_ids.index(chain_id)
+            active_index = list(self.chain_manager.chains).index(chain_id)
         except:
             active_index = 0
         if active_index < self.mixer_strip_offset:
@@ -1442,13 +1439,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         strip_index = 0
         if self.launcher_offset + zynthian_gui_config.visible_launchers > self.zynseq.phrases:
             self.launcher_offset = max(0, self.zynseq.phrases - zynthian_gui_config.visible_launchers)
-        for chain_id in self.chain_manager.ordered_chain_ids[self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
+        for chain in list(self.chain_manager.chains.values())[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
             strip = self.visible_mixer_strips[strip_index]
-            strip.set_chain(chain_id)
+            strip.set_chain(chain)
             # strip.draw_control()
             if strip.chain.is_audio():
                 self.chan2strip[(strip.chain.zynmixer_proc.eng_code=="MR", strip.chain.zynmixer_proc.mixer_chan)] = strip
-            if chain_id == self.chain_manager.active_chain.chain_id:
+            if chain.chain_id == self.chain_manager.active_chain.chain_id:
                 active_strip = strip
             strip_index += 1
 
@@ -1458,7 +1455,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             strip.zctrls = None
 
         strip = self.main_mixbus_strip
-        strip.set_chain(0)
+        strip.set_chain(self.chain_manager.chains[0])
         self.chan2strip[(strip.chain.zynmixer_proc.eng_code=="MR", strip.chain.zynmixer_proc.mixer_chan)] = self.main_mixbus_strip
 
         self.main_mixbus_strip.draw_control()
@@ -1625,7 +1622,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         return True
 
     def edit_clip(self):
-        if self.highlighted_strip.chain_id == 0:
+        if self.highlighted_strip.chain.chain_id == 0:
             self.item_menu()
             return True
         if type(self.highlighted_strip.chain.midi_chan) is int and self.highlighted_strip.chain.midi_chan < zynseq.PHRASE_CHANNEL:
@@ -1889,7 +1886,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             strip = self.highlighted_strip
         if strip != self.highlighted_strip:
             #TODO: Careful of looping code
-            self.update_active_chain(strip.chain_id)
+            self.update_active_chain(strip.chain.chain_id)
         refresh_strips = False
         offset = self.launcher_offset
         # This could be simplified, but it works ;-)

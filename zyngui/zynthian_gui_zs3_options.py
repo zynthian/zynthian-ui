@@ -118,7 +118,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         options = {"Toggle All Mixer": ""}
         mixer_list = []
 
-        for idx, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
+        for idx, chain_id in enumerate(self.zyngui.chain_manager.chains):
             chain = self.zyngui.chain_manager.get_chain(chain_id)
             if chain is None:
                 continue

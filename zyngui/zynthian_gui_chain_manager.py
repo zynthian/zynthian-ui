@@ -275,11 +275,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """
         self.nodes = []
 
-        chain_ids = self.zyngui.chain_manager.ordered_chain_ids + [0]
         self.rows = 0
-        for chain_idx in range(len(chain_ids)):
-            chain_id = chain_ids[chain_idx]
-            chain = self.zyngui.chain_manager.chains[chain_id]
+        for chain_idx, chain in enumerate(self.zyngui.chain_manager.chains.values()):
+            chain_id = chain.chain_id
             row = 0
 
             # Add chain option button
@@ -464,18 +462,17 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Draw selection cursor.
         """
         self.canvas.itemconfig("node", outline="")
-        if self.moving_chain:
-            return
         if not self.selected_node:
             self.selected_node = [0, 0, 0]
         if self.moving_proc:
-            color = "red"
-        else:
             color = "yellow"
+        else:
+            color = "white"
         try:
             chain_idx, col_idx, row_idx = self.selected_node
             node_id = self.nodes[chain_idx][col_idx][row_idx]["id"]
-            self.canvas.itemconfig(node_id, outline=color, width=2)
+            if not self.moving_chain:
+                self.canvas.itemconfig(node_id, outline=color, width=2)
         except:
             pass
 
@@ -525,8 +522,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.selected_node = [0, 0, 0]
         chain_idx, row, col = self.selected_node
         # Range check
-        if chain_idx > len(self.zyngui.chain_manager.ordered_chain_ids):
-            chain_idx = len(self.zyngui.chain_manager.ordered_chain_ids) - 1
+        if chain_idx >= len(self.zyngui.chain_manager.chains):
+            chain_idx = len(self.zyngui.chain_manager.chains) - 1
         if row >= len(self.nodes[chain_idx]):
             row = len(self.nodes[chain_idx]) - 1
         if col >= len(self.nodes[chain_idx][row]):
@@ -549,7 +546,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         try:
             node = self._get_node(self.selected_node)
-            ordered_chains = self.zyngui.chain_manager.ordered_chain_ids + [0]
+            ordered_chains = list(self.zyngui.chain_manager.chains)
             chain_id = ordered_chains[chain_idx]
             chain = self.zyngui.chain_manager.chains[chain_id]
             chain_dest_id = ordered_chains[chain_idx + chain_offset]
@@ -622,7 +619,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if self.moving_proc:
             self.move_processor(chain_idx, -1)
         elif self.moving_chain:
-            self.selected_node[0] = self.zyngui.chain_manager.move_chain(-1)
+            self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(-1)
             self.build_graph()
         else:
             col -= 1
@@ -644,7 +641,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if self.moving_proc:
             self.move_processor(chain_idx, 1)
         elif self.moving_chain:
-            self.selected_node[0] = self.zyngui.chain_manager.move_chain(1)
+            self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(1)
             self.build_graph()
         else:
             col += 1
@@ -666,7 +663,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 self.arrow_up()
             return
         if self.moving_chain:
-            self.selected_node[0] = self.zyngui.chain_manager.move_chain(dval)
+            self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(dval)
             self.build_graph()
             return
 

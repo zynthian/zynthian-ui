@@ -2311,7 +2311,7 @@ class zynthian_state_manager:
         # Start VNC for Engine's native GUIs
         if not zynconf.is_service_active("vncserver1"):
             # Save state and stop engines
-            if self.chain_manager.get_chain_count() > 0:
+            if self.chain_manager.get_chain_count() > 1:
                 self.save_last_state_snapshot()
                 restore_state = True
             else:

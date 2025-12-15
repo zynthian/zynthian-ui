@@ -298,7 +298,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 						self.mixer_col_offset = 0
 					self.refresh()
 			elif direction == 'right':
-				n_chains = len(self.chain_manager.ordered_chain_ids)
+				n_chains = len(self.chain_manager.chains)
 				if self.mixer_col_offset < n_chains - n_strips:
 					self.mixer_col_offset += n_strips
 					self.refresh()
@@ -311,7 +311,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 					self.mixer_col_offset -= 1
 					self.refresh()
 			elif direction == 'right':
-				n_chains = len(self.chain_manager.ordered_chain_ids)
+				n_chains = len(self.chain_manager.chains)
 				if self.mixer_col_offset < n_chains - n_strips:
 					self.mixer_col_offset += 1
 					self.refresh()

@@ -1458,7 +1458,7 @@ class zynthian_gui:
             if params[0] == -1:
                 chain_id = 0
             else:
-                chain_id = self.chain_manager.ordered_chain_ids[params[0]]
+                chain_id = list(self.chain_manager.chains)[params[0]]
             chain = self.chain_manager.chains[chain_id]
             action = params[1]
             value = params[2]
