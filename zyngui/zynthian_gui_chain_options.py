@@ -62,7 +62,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                 self.list_data.append(
                     (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
 
-        self.list_data.append((self.add_chain, None, "Insert new chain",
+        self.list_data.append((self.add_chain, None, "Add new chain",
                                ["Create a new chain.",
                                 "midi_instrument.png"]))
 

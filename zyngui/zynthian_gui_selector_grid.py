@@ -248,9 +248,9 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             return True
         elif i == 2:
             if dval > 0:
-                self.arrow_right()
+                self.arrow_down()
             elif dval < 0:
-                self.arrow_left()
+                self.arrow_up()
 
     def on_press(self, event):
         """
