@@ -339,7 +339,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
         # Draw node background
         proc = node.get("proc")
-        color = "#373737"
+        color = "#505050"
         title = node.get("title")
         if type(proc) is str:
             match proc:
@@ -492,16 +492,16 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         b0, b1, b2, b3 = self.canvas.bbox("all")
         w = b2 - b0
         h = b3 - b1
-        # Scroll horizontally
+        # Scroll horizontally to show selected block plus 20% of next block to indicate if more scrolling possible
         if x0 < vx0:
-            self.canvas.xview_moveto((x0 - b0) / w)
+            self.canvas.xview_moveto((x0 - b0 - 0.3 * self.BLOCK_WIDTH) / w)
         elif x1 > vx1:
-            self.canvas.xview_moveto((x1 + self.H_SPACING - vw) / w)
+            self.canvas.xview_moveto((x1 - vw + 0.3 * self.BLOCK_WIDTH) / w)
         # Scroll vertically
         if y0 < vy0:
-            self.canvas.yview_moveto((y0 - b1) / h)
+            self.canvas.yview_moveto((y0 - b1 - 0.3 * self.BLOCK_HEIGHT) / h)
         elif y1 > vy1:
-            self.canvas.yview_moveto((y1 + self.V_SPACING - vh) / h)
+            self.canvas.yview_moveto((y1 - vh + 0.3 * self.BLOCK_HEIGHT + self.V_SPACING) / h)
 
     def _get_node(self, node_pos):
         try:
