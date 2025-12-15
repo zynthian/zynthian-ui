@@ -494,9 +494,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         h = b3 - b1
         # Scroll horizontally to show selected block plus 20% of next block to indicate if more scrolling possible
         if x0 < vx0:
-            self.canvas.xview_moveto((x0 - b0 - 0.3 * self.BLOCK_WIDTH) / w)
+            self.canvas.xview_moveto((x0 - b0 - 0.2 * self.BLOCK_WIDTH) / w)
         elif x1 > vx1:
-            self.canvas.xview_moveto((x1 - vw + 0.3 * self.BLOCK_WIDTH) / w)
+            self.canvas.xview_moveto((x1 - vw + 0.2 * self.BLOCK_WIDTH) / w)
         # Scroll vertically
         if y0 < vy0:
             self.canvas.yview_moveto((y0 - b1 - 0.3 * self.BLOCK_HEIGHT) / h)
