@@ -213,7 +213,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                     if self.mixer_toggle:
                         self.state_manager.send_cuia("show_screen", ["launcher"])
                     else:
-                        self.state_manager.send_cuia("show_screen", ["audio_mixer"])
+                        self.state_manager.send_cuia("show_screen", ["mixer"])
                     self.mixer_toggle = not self.mixer_toggle
         elif evtype == 0xC:
             val1 = ev[1] & 0x7F

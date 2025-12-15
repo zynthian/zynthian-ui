@@ -488,7 +488,7 @@ class zynthian_gui:
         self.screens['zs3_options'] = zynthian_gui_zs3_options()
         self.screens['tempo'] = zynthian_gui_tempo()
         self.screens['admin'] = zynthian_gui_admin()
-        self.screens['audio_mixer'] = zynthian_gui_mixer()
+        self.screens['mixer'] = zynthian_gui_mixer()
 
         # Create the right main menu screen
         if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
@@ -500,7 +500,7 @@ class zynthian_gui:
         self.screens['audio_player'] = self.screens['control']
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
-        self.screens['launcher'] = self.screens['audio_mixer']
+        self.screens['launcher'] = self.screens['mixer']
         #self.screens['arranger'] = zynthian_gui_arranger()
         self.screens['pattern_editor'] = zynthian_gui_pated_notes()
         self.screens['pated_cc'] = zynthian_gui_pated_cc()
@@ -511,7 +511,7 @@ class zynthian_gui:
         self.screens['control_test'] = zynthian_gui_control_test()
 
         # Root screen
-        self.screens['root'] = self.screens['audio_mixer']
+        self.screens['root'] = self.screens['mixer']
         #self.screens['root'] = self.screens['none']
 
         # Create Zynaptik-related screens
@@ -602,7 +602,7 @@ class zynthian_gui:
         # Show initial screen
         self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
 
-        #self.screens['root'] = self.screens['audio_mixer']
+        #self.screens['root'] = self.screens['mixer']
 
     def hide_screens(self, exclude=None):
         if not exclude:
@@ -632,10 +632,10 @@ class zynthian_gui:
                 if self.screens[screen].launcher_mode:
                     screen = "launcher"
                 else:
-                    screen = "audio_mixer"
+                    screen = "mixer"
             except:
                 pass
-        elif screen == "audio_mixer":
+        elif screen == "mixer":
             self.screens[screen].set_launcher_mode(False)
         elif screen == "launcher":
             self.screens[screen].set_launcher_mode(True)
@@ -656,7 +656,7 @@ class zynthian_gui:
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
 
-        root_screens = ("root", "audio_mixer", "launcher")
+        root_screens = ("root", "mixer", "launcher")
         if screen in root_screens and self.current_screen in root_screens:
             dummy_show = True
         else:
@@ -664,7 +664,7 @@ class zynthian_gui:
 
         if not dummy_show and not self.screens[screen].build_view():
             self.screen_lock.release()
-            # self.show_screen_reset("audio_mixer")
+            # self.show_screen_reset("mixer")
             self.close_screen()
             return
 
@@ -1484,8 +1484,8 @@ class zynthian_gui:
     def cuia_screen_admin(self, params=None):
         self.show_screen("admin")
 
-    def cuia_screen_audio_mixer(self, params=None):
-        self.show_screen("audio_mixer")
+    def cuia_screen_mixer(self, params=None):
+        self.show_screen("mixer")
 
     def cuia_screen_snapshot(self, params=None):
         self.show_screen("snapshot")
@@ -1772,7 +1772,7 @@ class zynthian_gui:
             if i == 2 and t == 'S':
                 self.zynswitch_short(i)
                 return
-        elif self.current_screen in ("audio_mixer", "launcher"):
+        elif self.current_screen in ("mixer", "launcher"):
             if t == 'S':
                 self.zynswitch_short(i)
                 return
@@ -2726,7 +2726,7 @@ class zynthian_gui:
                     except:
                         pass
 
-            if not self.osc_clients and self.current_screen != "audio_mixer":
+            if not self.osc_clients and self.current_screen != "mixer":
                 self.state_manager.zynmixer_chan.enable_dpm(
                     0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
                 self.state_manager.zynmixer_bus.enable_dpm(

@@ -1129,7 +1129,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.zyngui.state_manager.zynmixer_bus.enable_dpm(
                     1, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, False)
             zynsigman.unregister(
-                zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+                zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.unregister(
                 zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.unregister(
@@ -1179,7 +1179,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.setup_zynpots()
         if not self.shown:
             zynsigman.register(
-                zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+                zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.register_queued(
                 zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.register_queued(
@@ -1482,7 +1482,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def toggle_launcher_mode(self):
         if self.launcher_mode:
-            self.zyngui.show_screen("audio_mixer")
+            self.zyngui.show_screen("mixer")
         else:
             self.zyngui.show_screen("launcher")
 

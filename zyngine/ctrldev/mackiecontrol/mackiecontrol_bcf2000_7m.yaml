@@ -266,7 +266,7 @@ ccnum_buttons:
     command: cuia_SCREEN_ADMIN
   86:
     name: transport_cycle
-    command: cuia_SCREEN_AUDIO_MIXER
+    command: cuia_SCREEN_MIXER
   87:
     name: transport_drop
     command: cuia_SCREEN_SNAPSHOT

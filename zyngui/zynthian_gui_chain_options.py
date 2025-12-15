@@ -212,7 +212,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
     def all_chains_remove_confirmed(self, params=None):
         self.index = 0
         self.zyngui.clean_chains()
-        self.zyngui.show_screen_reset('chain_manager')
+        self.zyngui.show_screen_reset('chain_manager') #TODO: Do we want to return to chain manager or mixer view?
 
     def insert_chain(self, params=None):
         pos = self.zyngui.chain_manager.get_chain_index(self.chain.chain_id)

@@ -122,7 +122,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		self.max_fader_value = 16383.0  # I think this is default Mackie
 		self.encoder_assign = 'global_view'  # Set as default
 		self.strip_view = 'global_view'  # Set default
-		self.gui_screen = 'audio_mixer'  # Set as default, it's needed to correct an issue when starting  up
+		self.gui_screen = 'mixer'  # Set as default, it's needed to correct an issue when starting  up
 		# TODO: add to yaml file
 		self.encoders_ccnum = [16, 17, 18, 19, 20, 21, 22, 23]
 		self.scroll_encoder = 60
@@ -627,13 +627,13 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			elif ccnum == self.scroll_encoder:
 				if ccval > 64:
 					for i in range(ccval - 64):
-						if self.gui_screen in ['audio_mixer']:
+						if self.gui_screen in ['mixer']:
 							self.state_manager.send_cuia("ARROW_LEFT")
 						else:
 							self.state_manager.send_cuia('ARROW_UP')
 				else:
 					for i in range(ccval):
-						if self.gui_screen in ['audio_mixer']:
+						if self.gui_screen in ['mixer']:
 							self.state_manager.send_cuia('ARROW_RIGHT')
 						else:
 							self.state_manager.send_cuia('ARROW_DOWN')

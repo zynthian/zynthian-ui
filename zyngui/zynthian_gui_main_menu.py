@@ -184,10 +184,6 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
         logging.info("MIDI Recorder/Player")
         self.zyngui.show_screen("midi_recorder")
 
-    def audio_mixer_learn(self, t='S'):
-        logging.info("Audio Mixer Learn")
-        self.zyngui.screens["audio_mixer"].midi_learn_menu()
-
     def audio_levels(self, t='S'):
         logging.info("Audio Levels")
         self.zyngui.show_screen("alsa_mixer")

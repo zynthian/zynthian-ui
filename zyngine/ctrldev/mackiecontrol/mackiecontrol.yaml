@@ -263,7 +263,7 @@ ccnum_buttons:
     command: ZYNSWITCH_3
   84:
     name: transport_marker
-    command: cuia_SCREEN_AUDIO_MIXER
+    command: cuia_SCREEN_MIXER
   85:
     name: transport_nudge
     command: cuia_SCREEN_LAUNCHER

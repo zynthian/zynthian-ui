@@ -96,7 +96,7 @@ NoteCuiaDefault = {
     "57": "SELECT",
     "60": "SCREEN_MAIN_MENU",
     "62": "SCREEN_ADMIN",
-    "64": "SCREEN_AUDIO_MIXER",
+    "64": "SCREEN_MIXER",
     "65": "SCREEN_SNAPSHOT",
     "67": "SCREEN_ALSA_MIXER",
     "69": "SCREEN_MIDI_RECORDER",

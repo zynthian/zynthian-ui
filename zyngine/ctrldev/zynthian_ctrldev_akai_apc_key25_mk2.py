@@ -269,7 +269,7 @@ class DeviceHandler(ModeHandlerBase):
 
         self._btn_actions = {
             BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
-            BTN_MIX_LEVEL:      ("SCREEN_AUDIO_MIXER", "SCREEN_ALSA_MIXER"),
+            BTN_MIX_LEVEL:      ("SCREEN_MIXER", "SCREEN_ALSA_MIXER"),
             BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET", "SCREEN_scene"),
             BTN_ZS3_SHOT:       ("SCREEN_ZS3", "SCREEN_SNAPSHOT"),
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
@@ -384,7 +384,7 @@ class DeviceHandler(ModeHandlerBase):
             "option":         (BTN_OPT_ADMIN, 0),
             "main_menu":      (BTN_OPT_ADMIN, 0),
             "admin":          (BTN_OPT_ADMIN, 1),
-            "audio_mixer":    (BTN_MIX_LEVEL, 0),
+            "mixer":    (BTN_MIX_LEVEL, 0),
             "alsa_mixer":     (BTN_MIX_LEVEL, 1),
             "control":        (BTN_CTRL_PRESET, 0),
             "engine":         (BTN_CTRL_PRESET, 0),
@@ -1847,7 +1847,7 @@ class StepSeqHandler(ModeHandlerBase):
         # Update sequence's chain volume
         elif ccnum == KNOB_2:
             self._show_screen_briefly(
-                screen="audio_mixer", cuia="SCREEN_AUDIO_MIXER", timeout=1500)
+                screen="mixer", cuia="SCREEN_MIXER", timeout=1500)
             chain_id = self._get_chain_id_by_sequence(
                 self._zynseq.scene, self._selected_seq)
             chain = self._chain_manager.chains.get(chain_id)

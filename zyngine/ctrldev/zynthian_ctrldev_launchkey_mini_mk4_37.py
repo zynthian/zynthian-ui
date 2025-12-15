@@ -89,7 +89,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         # Register callbacks for real-time updates using zynsigman
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.update_pad_leds)
-        zynsigman.register_queued(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+        zynsigman.register_queued(zynsigman.S_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_screen_change)
 
     def refresh(self):
@@ -115,7 +115,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         # Unregister signal callbacks
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.update_pad_leds)
-        zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+        zynsigman.unregister(zynsigman.S_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_screen_change)
         super().end()
         # Disable DAW mode on launchkey
@@ -347,7 +347,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                                         new_index = (current_index + delta) % len(processor.preset_list)
                                         processor.set_preset(new_index)
                                         self.state_manager.send_cuia("refresh_screen", ["control"])
-                                        self.state_manager.send_cuia("refresh_screen", ["audio_mixer"])
+                                        self.state_manager.send_cuia("refresh_screen", ["mixer"])
                             except Exception as e:
                                 logging.warning(f"Preset browsing error: {e}")
                         return True

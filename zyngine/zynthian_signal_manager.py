@@ -42,7 +42,7 @@ class zynthian_signal_manager:
     S_AUDIO_PLAYER = 5
     S_SMF_RECORDER = 6
     S_ALSA_MIXER = 7
-    S_AUDIO_MIXER = 8
+    S_MIXER = 8
     S_STEPSEQ = 9
     S_CUIA = 10
     S_GUI = 11

@@ -357,7 +357,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             # Update sequence's chain volume
             elif ccnum == KNOB_2:
                 self._show_screen_briefly(
-                    screen="audio_mixer", cuia="SCREEN_AUDIO_MIXER", timeout=1500)
+                    screen="mixer", cuia="SCREEN_MIXER", timeout=1500)
                 chain_id = self._get_chain_id_by_sequence(
                     self._zynseq.bank, self._selected_seq)
                 chain = self._chain_manager.chains.get(chain_id)

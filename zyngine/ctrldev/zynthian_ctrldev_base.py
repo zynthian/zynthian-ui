@@ -412,13 +412,13 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         # Register for active chain changes
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
         # Register for audio mixer changes
-        zynsigman.register_queued(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
+        zynsigman.register_queued(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
 
     def end(self):
         # Unregister for active chain changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
         # Unregister for audio mixer changes
-        zynsigman.unregister(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
+        zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
         self.light_off()
         super().end()
 

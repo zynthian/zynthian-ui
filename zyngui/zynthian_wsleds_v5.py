@@ -60,7 +60,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
             self.wsleds[0] = self.wscolor_default
 
         # Audio Mixer / ALSA Mixer
-        if curscreen == "audio_mixer":
+        if curscreen == "mixer":
             self.wsleds[1] = self.wscolor_active
         elif curscreen == "alsa_mixer":
             self.wsleds[1] = self.wscolor_active2

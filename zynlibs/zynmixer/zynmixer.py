@@ -202,7 +202,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setLevel(channel, ctypes.c_float(level))
-        zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="level", value=level, mixbus=self.mixbus)
 
     def get_level(self, channel):
@@ -239,7 +239,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setBalance(channel, balance)
-        zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="balance", value=balance, mixbus=self.mixbus)
 
     def get_balance(self, channel):
@@ -275,7 +275,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setMute(channel, mute)
-        zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="mute", value=mute, mixbus=self.mixbus)
 
     # Function to get mute for a channel
@@ -327,7 +327,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setPhase(channel, phase)
-        zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="phase", value=phase, mixbus=self.mixbus)
 
     def get_phase(self, channel):
@@ -380,7 +380,7 @@ class ZynMixer():
         if channel is None or 0 >= mode > 1:
             return
         self.lib_zynmixer.setSendMode(channel, send, mode)
-        zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="send_mode", value=mode, mixbus=self.mixbus)
 
     def get_send_mode(self, channel, send):
@@ -419,7 +419,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setMono(channel, mono)
-        zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="mono", value=mono, mixbus=self.mixbus)
 
     def get_mono(self, channel):

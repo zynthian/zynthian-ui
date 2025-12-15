@@ -251,7 +251,7 @@ class ModeHandlerBase:
         "option":         "MENU",
         "main_menu":      "MENU",
         "admin":          "SCREEN_ADMIN",
-        "audio_mixer":    "SCREEN_AUDIO_MIXER",
+        "mixer":          "SCREEN_MIXER",
         "alsa_mixer":     "SCREEN_ALSA_MIXER",
         "control":        "SCREEN_CONTROL",
         "preset":         "PRESET",
@@ -426,7 +426,7 @@ class ModeHandlerBase:
 
         # If screen is audio mixer, there is no 'back', so try to get the screen
         # name. Not all screens may be mapped, so it will fail there (only corner-cases).
-        if screen == "audio_mixer":
+        if screen == "mixer":
             prev_screen = self.SCREEN_CUIA_MAP.get(
                 self._current_screen, "BACK")
 
