@@ -62,11 +62,15 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                 self.list_data.append(
                     (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
 
-        self.list_data.append((self.add_chain, None, "Add new chain",
-                               ["Create a new chain.",
+        self.list_data.append((self.insert_chain, None, "Insert new chain",
+                               ["Create a new chain and insert immediately before the selected chain.",
                                 "midi_instrument.png"]))
 
-        if self.chain.chain_id != 0:
+        if self.chain.chain_id == 0:
+            self.list_data.append((self.remove_all_chains, None, "Remove all chains",
+                                ["Clean all chains while keeping sequencer data.",
+                                "delete_chains.png"]))
+        else:
             self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                    ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
             if synth_proc_count * midi_proc_count + audio_proc_count == 0:
@@ -75,7 +79,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             else:
                 self.list_data.append((self.remove_cb, None, "Remove...",
                                        ["Remove chain or processors.", "delete_chains.png"]))
-        elif audio_proc_count > 0:
+        if audio_proc_count > 0:
             self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
                                    ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
 
@@ -199,9 +203,18 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def chain_remove_confirmed(self, params=None):
         self.zyngui.chain_manager.remove_chain(self.chain.chain_id)
-        self.zyngui.show_screen_reset('root')
+        self.zyngui.show_screen_reset('chain_manager')
 
-    def add_chain(self, params=None):
+    def remove_all_chains(self, params=None):
+        self.zyngui.show_confirm(
+            "Do you really want to remove ALL chains?", self.all_chains_remove_confirmed)
+
+    def all_chains_remove_confirmed(self, params=None):
+        self.index = 0
+        self.zyngui.clean_chains()
+        self.zyngui.show_screen_reset('chain_manager')
+
+    def insert_chain(self, params=None):
         pos = self.zyngui.chain_manager.get_chain_index(self.chain.chain_id)
         config = []
         config.append({
