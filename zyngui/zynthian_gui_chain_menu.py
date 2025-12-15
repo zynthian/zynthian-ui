@@ -51,7 +51,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector_info):
                                 ["Create a new chain for audio FX processing. The chain receives audio input and generates audio output.",
                                 "microphone.png"]))
         self.list_data.append((self.add_clippy_chain, 0,
-                                "Add Audio Clip Chain",
+                                "Add Clip Chain",
                                 ["Create a new chain with audio clip launcher. The chain receives trigger/stop events from the sequencer and generates audio output.",
                                 "audio.png"]))
         self.list_data.append((self.add_mixbus_chain, 0,

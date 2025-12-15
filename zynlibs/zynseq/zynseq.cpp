@@ -388,8 +388,14 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nLastBeatFrame = 0;
                 g_nBeat = 1;
                 break;
-
             case MIDI_CONTINUE:
+                // For analog clock source => update tempo on each bar
+                if (g_nClockSource & TRANSPORT_CLOCK_ANALOG) {
+                    if (nLastBeatFrame)
+                        setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
+                    //DPRINTF("BPM = 60 * %u / (%u + %u - %u) = %f\n", g_nSampleRate, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
+                    nLastBeatFrame = nNow + midiEvent.time;
+                }
                 g_bMutex = false;
                 transportStart("zynseq");
                 while (g_bMutex)
