@@ -201,11 +201,15 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         # Use canvasx/y to account for scrolling
         x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
         
-        # Find closest node or clicked node
+        # Find clicked node
         items = self.canvas.find_overlapping(x, y, x, y)
-        try:
-            node = self.node2pos[items[0]]
-        except:
+        node = None
+        for obj_id in items:
+            try:
+                node = self.node2pos[obj_id]
+            except:
+                pass
+        if node is None:
             return
         self.select_node(node["pos"])
         self.on_select(t=press_type)
@@ -443,7 +447,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             width=0,
             fill="#666666"
         )
-
 
         self.canvas.lower("lines")
         self.canvas.lower(main_bg)
