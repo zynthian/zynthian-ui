@@ -50,32 +50,40 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     def fill_list(self):
         self.list_data = []
 
-        self.list_data.append((self.show_details, None, "Processor info"))
-
+        # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator"):
             if self.processor.chain.get_processor_count(self.processor.type) > 1:
-                self.list_data.append((self.start_move, None, "Move processor"))
-            self.list_data.append((self.processor_add, None, "Add another processor to chain"))
+                self.list_data.append((self.start_move, None, "Move"))
+
+        # Replace and Remove processor
         if self.processor.eng_code not in ("MI", "MR"):
             if self.processor.type == "MIDI Synth":
                 eng_options = self.processor.engine.get_options()
                 if eng_options['replace']:
-                    self.list_data.append((self.replace, None, "Replace processor"))
+                    self.list_data.append((self.replace, None, "Replace"))
             else:
-                self.list_data.append((self.replace, None, "Replace processor"))
+                self.list_data.append((self.replace, None, "Replace"))
 
             if self.processor.type == "MIDI Tool" or self.processor.type == "Audio Effect":
-                self.list_data.append((self.processor_remove, None, "Remove processor from chain"))
+                self.list_data.append((self.processor_remove, None, "Remove"))
 
         if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
-            self.list_data.append((self.preset_list, None, "Show processor presets"))
+            self.list_data.append((self.preset_list, None, "Presets"))
 
         if self.processor.type == "MIDI Synth":
-            self.list_data.append((self.randomize, None, "Randomize processor parameters"))
+            self.list_data.append((self.randomize, None, "Randomize parameters"))
             if self.last_random:
                 self.list_data.append((self.undo_randomize, None, "Undo Randomize"))
 
         self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
+        # Processor info
+        self.list_data.append((self.show_details, None, "Info"))
+
+        self.list_data.append((None, None, "Add to Chain ..."))
+        if self.processor.type in ("MIDI Synth", "MIDI Tool"):
+            self.list_data.append((self.add_midi_processor, None, "New MIDI Processor"))
+        if self.processor.type in ("MIDI Synth", "Audio Effect", "Audio Generator"):
+            self.list_data.append((self.add_audio_processor, None, "New Audio Processor"))
 
         super().fill_list()
 
@@ -101,7 +109,9 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     def show_details(self):
         self.zyngui.screens["engine"].show_details(self.processor.eng_code)
 
-    def processor_add(self):
+    def add_processor(self, proc_type=None):
+        if proc_type is None:
+            proc_type = self.processor.type
         try:
             chain_idx, row, column = self.zyngui.screens["chain_manager"].selected_node
             slot = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]["slot"]            
@@ -109,12 +119,18 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             slot = None
         self.zyngui.modify_chain({
             "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
-            "type": self.processor.type,
+            "type": proc_type,
             "midi_thru": self.processor.midi_chan is not None,
-            "audio_thru": self.processor.type == "Audio Effect",
+            "audio_thru": proc_type == "Audio Effect",
             "slot": slot
         })
         self.processor = self.zyngui.get_current_processor()
+
+    def add_midi_processor(self):
+        self.add_processor("MIDI Tool")
+
+    def add_audio_processor(self):
+        self.add_processor("Audio Effect")
 
     def processor_remove(self):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)
@@ -143,6 +159,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             "processor": self.processor,
             "type": self.processor.type
         })
+
     def start_move(self, proc=None):
         self.zyngui.screens.get('chain_manager').start_move_mode()
         self.zyngui.show_screen('chain_manager')

@@ -63,13 +63,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                     (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
 
         self.list_data.append((self.insert_chain, None, "Insert new chain",
-                               ["Create a new chain and insert immediately before the selected chain.",
-                                "midi_instrument.png"]))
+                               ["Create a new chain and insert immediately before the selected chain.", "midi_instrument.png"]))
 
         if self.chain.chain_id == 0:
             self.list_data.append((self.remove_all_chains, None, "Remove all chains",
-                                ["Clean all chains while keeping sequencer data.",
-                                "delete_chains.png"]))
+                                   ["Clean all chains while keeping sequencer data.", "delete_chains.png"]))
         else:
             self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                    ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
