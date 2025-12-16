@@ -1310,9 +1310,9 @@ void enableChannel(uint8_t channel, bool enable);
 bool isChannelEnabled(uint8_t channel);
 
 /** @brief  Get quantity of frames in each clock cycle
-    @retval double Quantity of frames
+    @retval jack_nframes_t Quantity of frames
 */
-double getFramesPerClock(double dTempo);
+jack_nframes_t getFramesPerClock(double dTempo);
 
 /* Phrase handling */
 

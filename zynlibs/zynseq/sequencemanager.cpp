@@ -191,13 +191,13 @@ void SequenceManager::updateAllSequenceLengths() {
     }
 }
 
-bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
+bool SequenceManager::clock(std::pair<uint32_t, uint32_t> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
     static uint32_t barPos = 0;
     uint32_t nTime = timeinfo.first;
-    double dSamplesPerClock = timeinfo.second;
+    int32_t nSamplesPerClock = timeinfo.second;
     ++barPos;
     if(bSync)
         barPos = 0;
@@ -239,7 +239,7 @@ bool SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<ui
                 nPlayState = STOPPED;
             }
         } else if (nPlayState != STOPPED && nPlayState != CHILD_PLAYING) {
-            uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock, m_nTimeSig);
+            uint8_t nEventType = pSequence->clock(nTime, bSync, nSamplesPerClock, m_nTimeSig);
 
             if (nEventType & CLOCK_TRIG_MIDI) {
                 // A step event

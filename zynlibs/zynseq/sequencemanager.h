@@ -108,10 +108,9 @@ class SequenceManager {
         @param  timeinfo Pair: Offset since JACK epoch for start of next period, duration of clock cycle in frames
         @param  pSchedule Pointer to the schedule to populate with events
         @param  bSync True indicates a sync pulse
-        @param  dSamplesPerClock Quantity of samples in each clock cycle
         @retval bool True if sequences or phrase playing
     */
-    bool clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync);
+    bool clock(std::pair<uint32_t, uint32_t> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync);
 
     /** @brief  Get pointer to sequence
         @param  scene Index of scene
