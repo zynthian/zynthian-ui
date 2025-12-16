@@ -233,12 +233,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         else:
             proc_type = proc.type
         self.nodes[chain_idx][row].append({
-            "title": title, # Title shown in GUI
-            "chain_id": chain_id, # zynthian chain_id (not necessarily display position)
-            "proc": proc, # Processor object or symbol for non-processor nodes
-            "slot": slot, # Processor slot
-            "idx": idx, # Index of (parallel) processor within slot
-            "pos": [chain_idx, row, len(self.nodes[chain_idx][row])], # Position of node within graph
+            "title": title,  # Title shown in GUI
+            "chain_id": chain_id,  # zynthian chain_id (not necessarily display position)
+            "proc": proc,  # Processor object or symbol for non-processor nodes
+            "slot": slot,  # Processor slot
+            "idx": idx,  # Index of (parallel) processor within slot
+            "pos": [chain_idx, row, len(self.nodes[chain_idx][row])],  # Position of node within graph
             "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_output", "audio_out"),
             "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_input", "audio_in")
         })
@@ -697,10 +697,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def zynpot_cb(self, i, dval):
         if super().zynpot_cb(i, dval):
             return True
-        if i == 3:
+        if i == 2:
             self.select_offset(dval)
             return True
-        elif i == 2:
+        elif i == 3:
             if dval > 0:
                 self.arrow_right()
             elif dval < 0:
@@ -775,7 +775,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     "slot": slot
                 })
                 return True
-            match(proc):
+            match proc:
                 case "chain_options":
                     pass
                 case "midi_key_range":
