@@ -251,7 +251,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
         else:
             self.last_tap_ts = now
             if self.clk_source_zctrl.value >= 3:
-                lib_zyncore.zmop_send_midi_event(17, bytes.fromhex(f"F8"), 3)
+                lib_zyncore.zynstep_send_clock()
                 logging.debug("TAP SYNCING (BEAT + TEMPO)!")
             else:
                 self.tap_buf.append(tap_dur)
