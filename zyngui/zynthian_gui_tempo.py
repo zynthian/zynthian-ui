@@ -99,6 +99,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
         # Create graphic elements
         self.info_canvas = tkinter.Canvas(self.main_frame, height=1, width=1,
                                           bg=zynthian_gui_config.color_panel_bg, bd=0, highlightthickness=0)
+
         self.main_frame.rowconfigure(2, weight=1)
         if zynthian_gui_config.layout['columns'] == 3:
             self.info_canvas.grid(row=0, column=1, rowspan=2, padx=(2, 2), sticky='news')
@@ -233,7 +234,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
         else:
             self.last_tap_ts = now
             if self.clk_source_zctrl.value >= 3:
-                lib_zyncore.zmop_send_midi_event(17, bytes.fromhex(f"F8"), 3)
+                lib_zyncore.zynstep_send_clock()
                 logging.debug("TAP SYNCING (BEAT + TEMPO)!")
             else:
                 self.tap_buf.append(tap_dur)
