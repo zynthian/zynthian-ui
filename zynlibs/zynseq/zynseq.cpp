@@ -100,7 +100,7 @@ jack_nframes_t g_nFramesPerClock      = getFramesPerClock(g_dTempo);  // it shou
 uint16_t g_nClock                     = 0;         // Quantity of clocks since start of beat
 uint16_t g_nMidiClock                 = 0;         // Quantity of *RECEIVED* MIDI clocks since start of beat
 uint16_t g_nAnalogClock               = 0;         // Quantity of *RECEIVED* ANALOG clocks since start of beat
-int8_t g_nAnalogClocksBeat            = 2;         // Number of analog clocks per beat (Analog Clock Divisor)
+int8_t g_nAnalogClocksBeat            = 1;         // Number of analog clocks per beat (Analog Clock Divisor)
 uint8_t g_nClockSource                = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
 bool g_bSendMidiClock                 = false;                    // True to send MIDI clock
 jack_nframes_t g_nFramesSinceLastBeat = 0;                        // Quantity of frames since last beat
@@ -401,7 +401,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 else if (g_nClockSource & TRANSPORT_CLOCK_ANALOG) {
                     if (nLastBeatFrame)
                         setTempo(60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
-                    //printf("BPM = 60 * %u / (%u * (%u + %u - %u)) = %f\n", g_nSampleRate, g_nAnalogClocksBeat, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
+                    printf("BPM = 60 * %u / (%u * (%u + %u - %u)) = %f\n", g_nSampleRate, g_nAnalogClocksBeat, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
                     nLastBeatFrame = nNow + midiEvent.time;
 
                     // Adjust time of next clock in queue, so it keep aligned with analog pulse
@@ -2484,4 +2484,11 @@ void setClockSource(uint8_t source) {
     g_bMutex = true;
     std::swap(g_qClockPos, qEmpty);
     g_bMutex = false;
+}
+
+uint8_t getAnalogClocksBeat() { return g_nAnalogClocksBeat; }
+
+void setAnalogClocksBeat(uint8_t analog_clock_divisor) {
+	if (analog_clock_divisor > 0) g_nAnalogClocksBeat = analog_clock_divisor;
+	else g_nAnalogClocksBeat = 1;
 }
