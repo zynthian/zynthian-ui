@@ -228,10 +228,10 @@ class zynthian_state_manager:
         # Start VNC as configured
         self.default_vncserver()
 
+        self.chain_manager.add_chain(0)
         self.ctrldev_manager = zynthian_ctrldev_manager(self)
         zynautoconnect.start(self)
         self.jack_period = self.get_jackd_blocksize() / self.get_jackd_samplerate()
-        self.chain_manager.add_chain(0)
         self.main_mixbus_proc = self.chain_manager.add_processor(0, "MR", 0, MAIN_MIXBUS_ID)
         self.reload_midi_config()
         self.create_audio_player()
@@ -2104,6 +2104,22 @@ class zynthian_state_manager:
             zynthian_gui_config.transport_clock_source = val
             zynconf.update_midi_profile({
                 "ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE": str(int(val))
+            })
+
+    def get_transport_analog_clock_divisor(self):
+        return self.zynseq.libseq.getAnalogClocksBeat()
+
+    def set_transport_analog_clock_divisor(self, val=None, save_config=False):
+        if val is None:
+            val = zynthian_gui_config.transport_clock_source
+
+        self.zynseq.libseq.setAnalogClocksBeat(val)
+
+        # Save config
+        if save_config:
+            zynthian_gui_config.transport_analog_clock_divisor = val
+            zynconf.update_midi_profile({
+                "ZYNTHIAN_MIDI_TRANSPORT_ANALOG_CLOCK_DIVISOR": str(int(val))
             })
 
     # -------------------------------------------------------------------

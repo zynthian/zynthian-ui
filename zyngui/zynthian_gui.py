@@ -1487,6 +1487,9 @@ class zynthian_gui:
     def cuia_screen_mixer(self, params=None):
         self.show_screen("mixer")
 
+    def cuia_screen_audio_mixer(self, params=None):
+        self.show_screen("mixer")
+
     def cuia_screen_snapshot(self, params=None):
         self.show_screen("snapshot")
 
