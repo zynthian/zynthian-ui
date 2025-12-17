@@ -1297,6 +1297,16 @@ uint8_t getClockSource();
 */
 void setClockSource(uint8_t source);
 
+/** @brief  Get analog clock divisor
+    @retval uint8_t Analog Clocks per Beat (Analog Clock Divisor)
+*/
+uint8_t getAnalogClocksBeat();
+
+/** @brief  Set analog clock divisor
+    @param  Analog Clocks per Beat
+*/
+void setAnalogClocksBeat(uint8_t analog_clock_divisor);
+
 /** @brief  Enable a channel
     @param  channel MIDI channel
     @param  bool True to enable

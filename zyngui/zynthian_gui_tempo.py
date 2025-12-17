@@ -29,6 +29,7 @@ from time import monotonic
 from collections import deque
 
 # Zynthian specific modules
+from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynaudioplayer import *
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
@@ -95,9 +96,10 @@ class zynthian_gui_tempo(zynthian_gui_base):
         if not self.clk_source_zgui_ctrl:
             self.clk_source_zctrl = zynthian_controller(self, 'clock_source',
                                                         {'name': 'Clock Source',
-                                                         'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'],
-                                                         'ticks': [0, 1, 2, 3],
-                                                         'value': self.state_manager.get_transport_clock_source()})
+                                                         'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue Beat',
+                                                                    'Analogue Beat/2', 'Analogue Beat/3', 'Analogue Beat/4'],
+                                                         'ticks': [0, 1, 2, 3, 4, 5, 6],
+                                                         'value': self.get_clk_source_value()})
             self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
             self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
@@ -200,8 +202,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def send_controller_value(self, zctrl):
         if self.shown:
             if zctrl == self.clk_source_zctrl:
-                self.state_manager.set_transport_clock_source(zctrl.value, save_config=True)
-                logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
+                self.set_clk_source_value(zctrl.value)
                 self.replot = True
 
             elif zctrl == self.mtr_enable_zctrl:
@@ -214,6 +215,22 @@ class zynthian_gui_tempo(zynthian_gui_base):
                 logging.debug("SETTING METRONOME VOLUME: {}".format(zctrl.value))
                 self.replot = True
 
+    def get_clk_source_value(self):
+        cs = self.state_manager.get_transport_clock_source()
+        if cs == 3:
+            cs += self.state_manager.get_transport_analog_clock_divisor() - 1
+            if cs > 6:
+                cs = 3
+        return cs
+
+    def set_clk_source_value(self, val):
+        if val >= 3:
+            self.state_manager.set_transport_analog_clock_divisor(val - 2, save_config=True)
+            logging.debug("SETTING ANALOG CLOCK DIVISOR: {}".format(val - 2))
+            val = 3
+        self.state_manager.set_transport_clock_source(val, save_config=True)
+        logging.debug("SETTING CLOCK SOURCE: {}".format(val))
+
     def tap(self):
         now = monotonic()
         tap_dur = now - self.last_tap_ts
@@ -225,7 +242,10 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.tap_buf.append(tap_dur)
             logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
             bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
-            self.zynseq.set_tempo(bpm)
+            if self.clk_source_zctrl.value < 3:
+                self.zynseq.set_tempo(bpm)
+            else:
+                lib_zyncore.zmop_send_midi_event(17, bytes.fromhex(f"F8"), 3)
             logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
 
     def refresh_bpm_value(self):
