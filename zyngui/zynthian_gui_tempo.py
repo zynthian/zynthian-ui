@@ -63,12 +63,40 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.tap_buf = None
         self.last_tap_ts = 0
 
+        # Create zctrl objects
         self.zgui_ctrls = []
-        self.bpm_zgui_ctrl = None
-        self.clk_source_zgui_ctrl = None
-        self.mtr_enable_zgui_ctrl = None
-        self.mtr_volume_zgui_ctrl = None
 
+        self.bpm_zctrl = self.zynseq.zctrl_tempo
+        self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
+        self.zgui_ctrls.append(self.bpm_zgui_ctrl)
+
+        self.clk_source_zctrl = zynthian_controller(self, 'clock_source',
+                                                    {'name': 'Clock Source',
+                                                     'labels': ['Internal', 'Internal Send', 'MIDI', 'Sync Beat',
+                                                                'Sync Beat/2', 'Sync Beat/3', 'Sync Beat/4'],
+                                                     'ticks': [0, 1, 2, 3, 4, 5, 6],
+                                                     'value': self.get_clk_source_value()})
+        self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
+        self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
+
+        self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable',
+                                                    {'name': 'Metronome On/Off',
+                                                     'labels': ['Off', 'On'],
+                                                     'ticks': [0, 1],
+                                                     'is_toggle': True,
+                                                     'value': self.libseq.isMetronomeEnabled()})
+        self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
+        self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
+
+        self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume',
+                                                    {'name': 'Metronome Volume',
+                                                      'value_min': 0,
+                                                      'value_max': 100,
+                                                      'value': int(100 * self.libseq.getMetronomeVolume())})
+        self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
+        self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
+
+        # Create graphic elements
         self.info_canvas = tkinter.Canvas(self.main_frame, height=1, width=1,
                                           bg=zynthian_gui_config.color_panel_bg, bd=0, highlightthickness=0)
         self.main_frame.rowconfigure(2, weight=1)
@@ -86,42 +114,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.replot = True
 
     def set_zctrls(self):
-        if not self.bpm_zgui_ctrl:
-            self.bpm_zctrl = self.zynseq.zctrl_tempo
-            self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
-            self.zgui_ctrls.append(self.bpm_zgui_ctrl)
-        else:
-            self.bpm_zgui_ctrl.refresh_plot_value = True
-
-        if not self.clk_source_zgui_ctrl:
-            self.clk_source_zctrl = zynthian_controller(self, 'clock_source',
-                                                        {'name': 'Clock Source',
-                                                         'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue Beat',
-                                                                    'Analogue Beat/2', 'Analogue Beat/3', 'Analogue Beat/4'],
-                                                         'ticks': [0, 1, 2, 3, 4, 5, 6],
-                                                         'value': self.get_clk_source_value()})
-            self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
-            self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
-
-        if not self.mtr_enable_zgui_ctrl:
-            self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable',
-                                                        {'name': 'Metronome On/Off',
-                                                         'labels': ['Off', 'On'],
-                                                         'ticks': [0, 1],
-                                                         'is_toggle': True,
-                                                         'value': self.libseq.isMetronomeEnabled()})
-            self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
-            self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
-
-        if not self.mtr_volume_zgui_ctrl:
-            self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume',
-                                                        {'name': 'Metronome Volume',
-                                                          'value_min': 0,
-                                                          'value_max': 100,
-                                                          'value': int(100 * self.libseq.getMetronomeVolume())})
-            self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
-            self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
-
+        self.bpm_zgui_ctrl.refresh_plot_value = True
         layout = zynthian_gui_config.layout
         for zgui_ctrl in self.zgui_ctrls:
             i = zgui_ctrl.index
@@ -239,14 +232,15 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.tap_buf = deque(maxlen=self.NUM_TAPS)
         else:
             self.last_tap_ts = now
-            self.tap_buf.append(tap_dur)
-            logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
-            bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
-            if self.clk_source_zctrl.value < 3:
-                self.zynseq.set_tempo(bpm)
-            else:
+            if self.clk_source_zctrl.value >= 3:
                 lib_zyncore.zmop_send_midi_event(17, bytes.fromhex(f"F8"), 3)
-            logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
+                logging.debug("TAP SYNCING (BEAT + TEMPO)!")
+            else:
+                self.tap_buf.append(tap_dur)
+                logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
+                bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
+                self.zynseq.set_tempo(bpm)
+                logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
 
     def refresh_bpm_value(self):
         self.bpm_zctrl.set_value(self.libseq.getTempo(), send=False)

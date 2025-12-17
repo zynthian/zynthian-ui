@@ -404,8 +404,10 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     // DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
                     if (g_nMidiClock == 0) {
                         // Update tempo on each beat
-                        if (nLastBeatFrame)
-                            setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
+                        if (nLastBeatFrame) {
+                        	double new_tempo = 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame);
+                        	if (new_tempo > 20.0) setTempo(new_tempo);
+                        }
                         // DPRINTF("BPM = 60 * %u / (%u + %u - %u) = %f\n", g_nSampleRate, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate /
                         // (nNow + midiEvent.time - nLastBeatFrame));
                         nLastBeatFrame = nNow + midiEvent.time;
@@ -422,7 +424,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 else if (g_nClockSource & TRANSPORT_CLOCK_ANALOG) {
                     if (nLastBeatFrame)
                         setTempo(60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
-                    printf("BPM = 60 * %u / (%u * (%u + %u - %u)) = %f\n", g_nSampleRate, g_nAnalogClocksBeat, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
+                    //printf("BPM = 60 * %u / (%u * (%u + %u - %u)) = %f\n", g_nSampleRate, g_nAnalogClocksBeat, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
                     nLastBeatFrame = nNow + midiEvent.time;
 
                     // Adjust time of next clock in queue, so it keep aligned with analog pulse
