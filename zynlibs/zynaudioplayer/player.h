@@ -43,6 +43,14 @@ static void __attribute__((constructor)) lib_init(void);
 /** @brief  Library destructor (initalisation) */
 static void __attribute__((destructor)) lib_exit(void);
 
+/** @brief  Init jack client and ports
+ *   @retval bool True if success
+ */
+bool init_jack();
+
+/** @brief  Init jack client and ports */
+void stop_jack();
+
 /** @brief  Check if a codec is supported
  *   @param  codec name of codec (file extension, e.g. wav)
  *   @retval int 1 if supported
