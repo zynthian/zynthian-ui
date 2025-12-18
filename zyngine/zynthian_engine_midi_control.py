@@ -24,8 +24,8 @@
 import logging
 
 import zynautoconnect
-from . import zynthian_engine
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine import zynthian_engine
 
 # ------------------------------------------------------------------------------
 # MIDI Controller Engine Class

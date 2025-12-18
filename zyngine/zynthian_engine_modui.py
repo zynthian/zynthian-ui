@@ -35,8 +35,8 @@ from threading import Thread
 from collections import OrderedDict
 
 # Zynthian specific modules
-from . import zynthian_engine
-from . import zynthian_controller
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_controller import zynthian_controller
 
 # ------------------------------------------------------------------------------
 # MOD-UI Engine Class

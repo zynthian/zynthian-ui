@@ -27,8 +27,8 @@ import logging
 from time import sleep
 
 import zynautoconnect
-from . import zynthian_engine
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine import zynthian_engine
 
 # ------------------------------------------------------------------------------
 # SysEx Manager Engine Class

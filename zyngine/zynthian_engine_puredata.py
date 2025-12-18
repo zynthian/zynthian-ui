@@ -32,9 +32,8 @@ from time import sleep
 from os.path import isfile, join
 
 import zynautoconnect
-from . import zynthian_engine
-from . import zynthian_basic_engine
-from . import zynthian_controller
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_controller import zynthian_controller
 
 # ------------------------------------------------------------------------------
 # Puredata Engine Class

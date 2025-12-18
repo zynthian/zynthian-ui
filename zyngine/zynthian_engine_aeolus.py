@@ -32,9 +32,9 @@ from os.path import exists as file_exists
 
 # Zynthian specific modules
 import zynautoconnect
-from . import zynthian_engine
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_processor import zynthian_processor
 
 # ------------------------------------------------------------------------------

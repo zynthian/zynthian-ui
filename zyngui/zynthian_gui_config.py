@@ -30,6 +30,7 @@ import logging
 # Zynthian specific modules
 import zynconf
 
+
 def get_env_int(env_var, default_val=0):
     try:
         return int(os.environ.get(env_var, str(default_val)))
@@ -40,6 +41,7 @@ def get_env_int(env_var, default_val=0):
 # ------------------------------------------------------------------------------
 # Log level and debuging
 # ------------------------------------------------------------------------------
+
 
 debug_thread = get_env_int('ZYNTHIAN_DEBUG_THREAD', 0)
 

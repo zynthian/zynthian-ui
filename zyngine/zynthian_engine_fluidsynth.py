@@ -30,11 +30,11 @@ import logging
 import oyaml as yaml
 from subprocess import check_output
 
+import zynconf
 import zynautoconnect
-from . import zynthian_engine
-from . import zynthian_controller
-from zyngui import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_controller import zynthian_controller
 
 # ------------------------------------------------------------------------------
 # FluidSynth Engine Class
@@ -174,7 +174,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         logging.debug(f"LOADING BANK FILES ...")
 
         # External storage banks
-        for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
+        for exd in zynconf.get_external_storage_dirs(cls.ex_data_dir):
             flist = cls.find_all_preset_files(exd, cls.preset_fexts, recursion=recursion)
             if not exclude_empty or len(flist) > 0:
                 banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])

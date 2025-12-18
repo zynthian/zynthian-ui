@@ -34,9 +34,9 @@ from Levenshtein import distance
 from subprocess import check_output
 from collections import OrderedDict
 
-from . import zynthian_engine_sfz
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine_sfz import zynthian_engine_sfz
 
 # ------------------------------------------------------------------------------
 # Linuxsampler Exception Classes
