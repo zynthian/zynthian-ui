@@ -1093,7 +1093,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
         self.main_mixbus_strip.set_chain(self.chain_manager.chains[0])
 
-        self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
+        self.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
 
         self.refresh_visible_strips()
 
@@ -1121,36 +1121,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         if self.shown:
             if not self.zyngui.osc_clients:
-                self.zyngui.state_manager.zynmixer_chan.enable_dpm(
-                    0, self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
-                self.zyngui.state_manager.zynmixer_bus.enable_dpm(
-                    1, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, False)
-            zynsigman.unregister(
-                zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
-            zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
-            zynsigman.unregister(
-                zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
-            zynsigman.unregister(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.unregister(
-                zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.unregister(
-                zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
-            zynsigman.unregister(
-                zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-            zynsigman.unregister(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-            zynsigman.unregister(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
-            zynsigman.unregister(
-                zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+                self.state_manager.zynmixer_chan.enable_dpm(0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
+                self.state_manager.zynmixer_bus.enable_dpm(1, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, False)
+            zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
+            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
             zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.select_phrase_cb)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
             zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
+            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
             super().hide()
 
     def build_view(self):
@@ -1165,8 +1149,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         self.set_title()
         if zynthian_gui_config.enable_dpm:
-            self.zyngui.state_manager.zynmixer_chan.enable_dpm(0, self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, True)
-            self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, True)
+            self.state_manager.zynmixer_chan.enable_dpm(0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, True)
+            self.state_manager.zynmixer_bus.enable_dpm(0, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, True)
         else:
             # Reset all DPM which will not be updated by refresh
             for strip in self.visible_mixer_strips:
@@ -1175,32 +1159,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.highlight_active_chain(True)
         self.setup_zynpots()
         if not self.shown:
-            zynsigman.register(
-                zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
-            zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
-            zynsigman.register_queued(
-                zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
-            zynsigman.register_queued(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.register_queued(
-                zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.register_queued(
-                zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
-            zynsigman.register_queued(
-                zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-            zynsigman.register_queued(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-            zynsigman.register_queued(
-                    zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
-            zynsigman.register_queued(
-                zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.register(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
+            zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.select_phrase_cb)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
             zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
+            zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
         return True
 
     def update_layout(self):
@@ -1230,17 +1200,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.shown:
             super().refresh_status()
             # Update main chain DPM
-            state = self.zyngui.state_manager.zynmixer_bus.get_dpm_states(0, 0)[0]
+            state = self.state_manager.zynmixer_bus.get_dpm_states(0, 0)[0]
             self.main_mixbus_strip.draw_dpm(state)
             # Update other chains DPM
             if zynthian_gui_config.enable_dpm:
-                chan_states = self.zyngui.state_manager.zynmixer_chan.get_dpm_states(
-                    0, self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1)
-                mixbus_states = self.zyngui.state_manager.zynmixer_bus.get_dpm_states(
-                    0, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1)
+                chan_states = self.state_manager.zynmixer_chan.get_dpm_states(
+                    0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1)
+                mixbus_states = self.state_manager.zynmixer_bus.get_dpm_states(
+                    0, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1)
                 for strip in self.visible_mixer_strips:
                     if not strip.hidden and strip.chain.is_audio():
-                        if strip.chain.zynmixer_proc.zynmixer == self.zyngui.state_manager.zynmixer_chan:
+                        if strip.chain.zynmixer_proc.zynmixer == self.state_manager.zynmixer_chan:
                             strip.draw_dpm(chan_states[strip.chain.zynmixer_proc.mixer_chan])
                         else:
                             strip.draw_dpm(mixbus_states[strip.chain.zynmixer_proc.mixer_chan])

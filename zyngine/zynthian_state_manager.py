@@ -877,8 +877,7 @@ class zynthian_state_manager:
                                 chan = self.chain_manager.get_active_chain().midi_chan
                             send_signal = self.chain_manager.set_midi_prog_preset(chan, pgm)
                     if send_signal:
-                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC,
-                                        izmip=izmip, chan=chan, num=pgm)
+                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, izmip=izmip, chan=chan, num=pgm)
 
                 # Note Off
                 elif evtype == 0x8:
