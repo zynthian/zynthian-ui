@@ -33,9 +33,9 @@ import pexpect
 import fnmatch
 from time import sleep
 
+import zynconf
 import zynautoconnect
-from . import zynthian_controller
-from zyngui import zynthian_gui_config
+import zyngine.zynthian_controller as zynthian_controller
 
 # --------------------------------------------------------------------------------
 # Basic Engine Class: Spawn a process & manage IPC communication using pexpect
@@ -404,7 +404,7 @@ class zynthian_engine(zynthian_basic_engine):
         for i, rd in enumerate(root_dirs):
             root_dirs[i] = ("SD> " + rd[0], rd[1])
         # Add external storage to root_dirs
-        for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
+        for exd in zynconf.get_external_storage_dirs(cls.ex_data_dir):
             if not os.path.isdir(exd):
                 continue
             if not exclude_empty or cls.find_some_preset_file(exd, fexts, recursion + 1):

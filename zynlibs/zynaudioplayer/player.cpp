@@ -1487,9 +1487,7 @@ bool init_jack() {
 }
 
 static void lib_init(void) {
-    if (!init_jack())
-        fprintf(stderr, "libzynaudioplayer failed to initialise jack client\n");
-    fprintf(stderr, "Started libzynaudioplayer using %s\n", sf_version_string());
+    fprintf(stderr, "Loaded libzynaudioplayer using %s\n", sf_version_string());
 }
 
 void stop_jack() {

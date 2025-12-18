@@ -36,10 +36,10 @@ from threading import Thread
 from subprocess import Popen, check_output, STDOUT, PIPE
 
 import zynautoconnect
-from . import zynthian_lv2
-from . import zynthian_engine
-from . import zynthian_controller
 from zyncoder.zyncore import lib_zyncore
+import zyngine.zynthian_lv2 as zynthian_lv2
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_controller import zynthian_controller
 from zyngine.ctrlinfo import *
 
 # ------------------------------------------------------------------------------

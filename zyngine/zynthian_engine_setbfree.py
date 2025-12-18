@@ -28,10 +28,10 @@ import copy
 import shutil
 import logging
 
-from zyncoder.zyncore import lib_zyncore
-from . import zynthian_engine
-from zyngine.zynthian_processor import zynthian_processor
 import zynautoconnect
+from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_processor import zynthian_processor
 
 # ------------------------------------------------------------------------------
 # setBfree Engine Class

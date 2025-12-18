@@ -21,14 +21,14 @@
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
 # ******************************************************************************
-import os.path
+
 import re
-import copy
+import os.path
 import logging
 import oyaml as yaml
 
 from zyncoder.zyncore import lib_zyncore
-from . import zynthian_engine
+from zyngine.zynthian_engine import zynthian_engine
 
 # ------------------------------------------------------------------------------
 # SFZ extensions class

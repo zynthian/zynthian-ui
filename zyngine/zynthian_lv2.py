@@ -175,12 +175,9 @@ rpi5_plugins = [
     "http://theusualsuspects.lv2.OsTIrus"
 ]
 
-ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(
-    os.environ.get('ZYNTHIAN_SYS_DIR'))
-ENGINE_CONFIG_FILE = "{}/engine_config.json".format(
-    os.environ.get('ZYNTHIAN_CONFIG_DIR'))
-JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(
-    os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
+ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 
 engines = None
 engines_by_type = None

@@ -27,10 +27,8 @@
 import os
 import logging
 from subprocess import Popen
-from datetime import datetime
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------

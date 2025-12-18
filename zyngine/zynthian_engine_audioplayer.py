@@ -29,11 +29,12 @@ import logging
 from glob import glob
 from subprocess import check_output, STDOUT
 
-from . import zynthian_engine
-from zynlibs.zynaudioplayer import *
+import zynconf
+from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
-from zyngui import zynthian_gui_config
+
+from zynlibs.zynaudioplayer import *
 
 # ------------------------------------------------------------------------------
 # Audio Player Engine Class
@@ -88,15 +89,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def start(self):
-        self.jackname = zynaudioplayer.get_jack_client_name()
-        zynsigman.register_queued(
-            zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+        if zynaudioplayer.init():
+            self.jackname = zynaudioplayer.get_jack_client_name()
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+        else:
+            raise Exception("Can't start zynaudioplayer!")
 
     def stop(self):
         try:
             zynaudioplayer.stop()
-            zynsigman.unregister(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
         except Exception as e:
             logging.error("Failed to close audio player: %s", e)
 
@@ -410,7 +412,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
     def load_latest(self, processor):
 
         bank_dirs = [self.root_bank_dirs[0][1] + "/capture"]
-        bank_dirs += zynthian_gui_config.get_external_storage_dirs(zynthian_engine.ex_data_dir)
+        bank_dirs += zynconf.get_external_storage_dirs(zynthian_engine.ex_data_dir)
 
         wav_fpaths = []
         for bank_dir in bank_dirs:

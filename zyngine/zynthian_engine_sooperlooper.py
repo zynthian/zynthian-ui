@@ -22,19 +22,17 @@
 #
 # ******************************************************************************
 
-from collections import OrderedDict
-import logging
-
-from . import zynthian_engine
 import os
+import logging
 from glob import glob
-from subprocess import Popen, DEVNULL
-from time import sleep, monotonic
 from threading import Timer
+from time import sleep, monotonic
+from subprocess import Popen, DEVNULL
 
-from . import zynthian_controller
 from zynconf import ServerPort
+from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_controller import zynthian_controller
 
 # ------------------------------------------------------------------------------
 # Sooper Looper State Codes
@@ -66,6 +64,7 @@ SL_STATE_OFF_MUTED = 20
 # ------------------------------------------------------------------------------
 # Sooper Looper Engine Class
 # ------------------------------------------------------------------------------
+
 
 class zynthian_engine_sooperlooper(zynthian_engine):
 
