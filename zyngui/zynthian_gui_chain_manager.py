@@ -102,7 +102,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """
         self.set_title(f"Chain: {self.zyngui.chain_manager.active_chain.get_name()}")
 
-        if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.moving_proc:
+        if zynthian_gui_config.enable_touch_navigation:
             self.show_back_button()
 
         # Bind Mouse Events
@@ -604,15 +604,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
     def start_moving_chain(self):
         self.moving_chain = True
-        if zynthian_gui_config.enable_touch_navigation:
-            self.show_back_button(True)
         self._draw_graph(self.moving_proc)
 
     def end_moving_chain(self):
         if not self.moving_chain:
             return
-        if zynthian_gui_config.enable_touch_navigation:
-            self.show_back_button(False)
         self.moving_chain = False
         self.strip_drag_start = None
         self.canvas.delete("chain_move")

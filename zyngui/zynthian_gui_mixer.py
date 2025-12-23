@@ -206,7 +206,7 @@ class zynthian_gui_launcher_pad():
         except:
             color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
             color_state = "#F0F0F0"
-            title = "---"
+            title = ""
             state_text = ""
         self.canvas.itemconfig(self.pad, fill=color)
         self.canvas.itemconfig(self.play_state, text=state_text, fill=color_state)
@@ -249,7 +249,7 @@ class zynthian_gui_launcher_pad():
             self.on_clip_long_press()
 
     def on_clip_motion(self, event):
-        dY = int((event.y - self.touch_y) / self.gui_mixer.self.launcher_height)
+        dY = int((event.y - self.touch_y) / self.gui_mixer.launcher_height)
         if dY:
             self.drag_axis = 1
             self.touch_y = event.y
@@ -1845,10 +1845,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # Knob#4 moves chain selection
         elif i == 3:
             if self.moving_phrase:
-                self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase + dval) #TODO: This swaps, not moves
-                self.select_launcher(self.zynseq.phrase +dval)
-                #self.zynseq.phrase += dval
-                self.build_launchers()
+                if dval < 0:
+                    self.arrow_up(-dval)
+                elif dval > 0:
+                    self.arrow_down(-dval)
             else:
                 self.chain_manager.next_chain(dval)
 

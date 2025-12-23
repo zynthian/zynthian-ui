@@ -351,6 +351,8 @@ class zynthian_chain_manager:
                     for mc in range(16):
                         self.midi_chan_2_chain_ids[mc].remove(chain_id)
                         lib_zyncore.ui_send_ccontrol_change(mc, 120, 0)
+            if self.pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
+                self.pinned_chains -= 1
 
             update_fxreturns = False
             if chain.zynmixer_proc:
@@ -374,8 +376,6 @@ class zynthian_chain_manager:
             if chain_pos + 1 >= len(self.chains):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
-        if self.pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
-            self.pinned_chains -= 1
 
         # Disable launcher sequences if not used by other chain
         if midi_chan is not None:
