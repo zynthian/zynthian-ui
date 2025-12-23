@@ -627,18 +627,12 @@ class zynthian_gui:
             else:
                 screen = "root"
 
-        if screen == "root":
-            try:
-                if self.screens[screen].launcher_mode:
-                    screen = "launcher"
-                else:
-                    screen = "mixer"
-            except:
-                pass
-        elif screen == "mixer":
+        if screen == "mixer":
             self.screens[screen].set_launcher_mode(False)
+            screen = "root"
         elif screen == "launcher":
             self.screens[screen].set_launcher_mode(True)
+            screen = "root"
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.alsa_mixer_processor
@@ -2313,7 +2307,7 @@ class zynthian_gui:
         self.screens["file_selector"].config(cb_func, fexts=fexts, dirnames=dirnames, path=path, preload=preload)
         self.show_screen("file_selector")
 
-    def cb_set_active_chain(self, active_chain):
+    def cb_set_active_chain(self, active_chain_id):
         active_chain = self.chain_manager.get_active_chain()
         if active_chain:
             self.zynswitches_midi_setup(active_chain.midi_chan)

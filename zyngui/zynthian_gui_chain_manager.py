@@ -111,7 +111,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
-        if self.selected_node[0] != self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id) or self.zyngui.get_current_processor() != self.last_active_proc:
+        if self.nodes and (self.selected_node[0] != self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id) or self.zyngui.get_current_processor() != self.last_active_proc):
             self.build_graph(self.zyngui.chain_manager.active_chain.current_processor)
         else:
             self.build_graph()
@@ -385,12 +385,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def _draw_graph(self, sel_proc=None):
         if self.width == 1:
             return # Not yet resized
+        div = self.zyngui.chain_manager.get_pinned_pos()
         self.canvas.delete("all")
         self.node2pos = {} # Dict of nodes, mapped by gui object (background rectangle)
         divider_height = self.rows * (self.BLOCK_HEIGHT + self.V_SPACING)
         chain_offset = 0
         for chain_idx, chain in enumerate(self.nodes):
-            start_id = end_id = None
             y = self.H_SPACING // 2
             cols_in_chain = 1 # max number of parallel processors
             for row_idx, row in enumerate(chain):
@@ -435,15 +435,21 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 )
 
             x = chain_offset - self.H_SPACING / 2
+            if chain_idx == div:
+                x_div = x
             self.canvas.create_line(x, 0, x, divider_height, fill="#666666", width=1, tags="lines")
             chain_offset += (self.BLOCK_WIDTH + self.H_SPACING) * cols_in_chain
 
-        # Background for main mixbus
+        # Background for pinned chains
+        try:
+            x = x_div
+        except:
+            pass
         main_bg = self.canvas.create_rectangle(
-            x, 0, x + self.BLOCK_WIDTH + self.H_SPACING, divider_height,
+            x, 0, chain_offset, divider_height,
             outline="",
             width=0,
-            fill="#666666"
+            fill="#333333"
         )
 
         self.canvas.lower("lines")
@@ -477,6 +483,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             pass
 
         #Scroll the canvas to ensure the selected node is visible.
+        self.canvas.update_idletasks() # Ensure all redrawing has completed
         # Get node's coords
         x0, y0, x1, y1 = self.canvas.bbox(node_id)
         # Get view coords
@@ -491,14 +498,45 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         h = b3 - b1
         # Scroll horizontally to show selected block plus 20% of next block to indicate if more scrolling possible
         if x0 < vx0:
-            self.canvas.xview_moveto((x0 - b0 - 0.2 * self.BLOCK_WIDTH) / w)
+            target_x = (x0 - b0 - 0.2 * self.BLOCK_WIDTH) / w
         elif x1 > vx1:
-            self.canvas.xview_moveto((x1 - vw + 0.2 * self.BLOCK_WIDTH) / w)
+            target_x = (x1 - vw + 0.2 * self.BLOCK_WIDTH) / w
+        else:
+            target_x = None
         # Scroll vertically
         if y0 < vy0:
-            self.canvas.yview_moveto((y0 - b1 - 0.3 * self.BLOCK_HEIGHT) / h)
+            target_y = target_y=(y0 - b1 - 0.3 * self.BLOCK_HEIGHT) / h
         elif y1 > vy1:
-            self.canvas.yview_moveto((y1 - vh + 0.3 * self.BLOCK_HEIGHT + self.V_SPACING) / h)
+            target_y = target_y=(y1 - vh + 0.3 * self.BLOCK_HEIGHT + self.V_SPACING) / h
+        else:
+            target_y = None
+        if target_x or target_y:
+            if self.shown:
+                self.smooth_scroll_to(self.canvas, target_x, target_y)
+            else:
+                if target_x is not None:
+                    self.canvas.xview_moveto(target_x)
+                if target_y is not None:
+                    self.canvas.yview_moveto(target_y)
+
+    def smooth_scroll_to(self, canvas, target_x=None, target_y=None, steps=30, delay=10):
+        start_x, start_y = canvas.xview()[0], canvas.yview()[0]
+        dx = dy = 0
+        if target_x is not None:
+            dx = (target_x - start_x) / steps
+        if target_y is not None:
+            dy = (target_y - start_y) / steps
+
+        def step(i=0):
+            if i >= steps:
+                return
+            if target_x is not None:
+                canvas.xview_moveto(start_x + dx * i)
+            if target_y is not None:
+                canvas.yview_moveto(start_y + dy * i)
+            canvas.after(delay, step, i + 1)
+
+        step()
 
     def _get_node(self, node_pos):
         try:
@@ -508,7 +546,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             pass
         return None
 
+    def select_chain_options_node(self):
+        chain_idx = self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id)
+        self.selected_node = [chain_idx, 0, 0]
+
     def select_node(self, node_pos=None, proc=None):
+        if not self.nodes:
+            return
         if proc:
             for chain_idx, chain in enumerate(self.nodes):
                 for row_idx, row in enumerate(chain):
@@ -754,7 +798,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if t == "B":
                 chain = self.zyngui.chain_manager.active_chain
                 if proc == "chain_options":
-                    if chain.chain_id != 0:
+                    if chain.chain_id == 0:
+                        self.zyngui.show_screen(proc)
+                    else:
                         self.start_moving_chain()
                     return True
                 if proc in ("midi_output", "audio_out"):
@@ -800,12 +846,15 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 self.zyngui.show_screen("processor_options")
         return True
 
-    def on_size(self, event):
-        super().on_size(event)
+    def update_layout(self):
+        super().update_layout()
         self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
         # Formual 2 * (x // y) ensures even values which helps with spacing and dividers
         self.BLOCK_WIDTH = 2 * (self.width // 12)
         self.BLOCK_HEIGHT = 2 * (self.height // 16)
         self.H_SPACING = 2 * (self.BLOCK_WIDTH // 28)
         self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 8)
+        shown = self.shown
+        self.shown = False
         self._draw_graph()
+        self.shown = shown
