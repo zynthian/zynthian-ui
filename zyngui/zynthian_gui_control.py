@@ -220,29 +220,39 @@ class zynthian_gui_control(zynthian_gui_selector):
         return False
 
     def get_screen_type(self):
-        """
-        if self.screen_title:
-                # Some heuristics to detect ADSR control screens ...
-                # TODO: This should be improved by marking ADSR groups!!
-                if " Env" in self.screen_title or " ADSR" in self.screen_title or\
-                                ("attack" in self.zcontrollers[0].name.lower() and
-                                "decay" in self.zcontrollers[1].name.lower() and
-                                "sustain" in self.zcontrollers[2].name.lower() and
-                                "release" in self.zcontrollers[3].name.lower()):
-                        self.screen_type = "envelope"
-        """
+
         self.widget_zctrl = None
+
+        # First pass: envelope or audio file
         for zctrl in self.zcontrollers:
             if hasattr(zctrl, "envelope"):
                 self.screen_type = "envelope"
-                break
-            if zctrl.is_path and (set(zctrl.path_file_types) & {"wav", "aiff", "flac", "mp3", "ogg"}):
+                return self.screen_type
+
+            if zctrl.is_path and (set(zctrl.path_file_types) &
+                                  {"wav", "aiff", "flac", "mp3", "ogg"}):
                 self.screen_type = "audio_file"
                 self.widget_zctrl = zctrl
-                break
+                return self.screen_type
+
+        # Second pass: filter detection
+        has_cutoff = False
+        has_resonance = False
+
+        for zctrl in self.zcontrollers:
+            symbol = zctrl.symbol.lower()
+            if 'cutoff' in symbol or 'freq' in symbol:
+                has_cutoff = True
+            elif 'resonance' in symbol or 'res' in symbol or symbol == 'q':
+                has_resonance = True
+
+        if has_cutoff and has_resonance:
+            self.screen_type = "filter"
         else:
             self.screen_type = None
+
         return self.screen_type
+     
 
     def fill_listbox(self):
         super().fill_listbox()
