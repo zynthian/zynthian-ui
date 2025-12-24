@@ -304,7 +304,7 @@ class zynthian_gui_mixer_strip():
         self.fader_text_limit = int(0.1 * self.height)
         self.dragging = False
 
-        self.balance_top = self.fader_bottom
+        self.balance_top = self.button_height * 2
         self.balance_control_centre = int(self.width / 2)
         # Width of each half of balance control
         self.balance_control_width = int(self.width / 4)
@@ -345,8 +345,8 @@ class zynthian_gui_mixer_strip():
             self.mute_text = self.header.create_text(x + self.width / 2, self.button_height * 1.5, text="M", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"mute_{id}"))
 
             # Balance indicator
-            self.balance_left = self.body.create_rectangle(x, self.balance_top, x + self.fader_centre_x, self.balance_top + self.balance_height, fill=self.gui_mixer.left_color, width=0, tags=(f"balance_{id}"))
-            self.balance_right = self.body.create_rectangle(x+self.fader_centre_x + 1, self.balance_top, x+self.width, self.balance_top + self.balance_height,
+            self.balance_left = self.header.create_rectangle(x, self.balance_top, x + self.fader_centre_x, self.balance_top + self.balance_height, fill=self.gui_mixer.left_color, width=0, tags=(f"balance_{id}"))
+            self.balance_right = self.header.create_rectangle(x+self.fader_centre_x + 1, self.balance_top, x+self.width, self.balance_top + self.balance_height,
                 fill=self.gui_mixer.right_color, width=0, tags=(f"balance_{id}"))
 
         # Draw the elements that are always displayed
@@ -387,8 +387,8 @@ class zynthian_gui_mixer_strip():
         self.body.tag_bind(f"fader_{id}", "<B1-Motion>", self.on_fader_motion)
         self.body.tag_bind(f"fader_{id}", "<Button-4>", self.on_fader_wheel_up)
         self.body.tag_bind(f"fader_{id}", "<Button-5>", self.on_fader_wheel_down)
-        self.body.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
-        self.body.tag_bind(f"balance_{id}", "<Button-5>", self.on_balance_wheel_down)
+        self.header.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
+        self.header.tag_bind(f"balance_{id}", "<Button-5>", self.on_balance_wheel_down)
         self.header.tag_bind(f"mute_{id}", "<ButtonRelease-1>", self.on_mute_release)
         self.header.tag_bind(f"solo_{id}", "<ButtonRelease-1>", self.on_solo_release)
         self.footer.tag_bind(f"legend_strip_{id}", "<ButtonRelease-1>", self.on_strip_release)
@@ -414,22 +414,22 @@ class zynthian_gui_mixer_strip():
         if balance is None:
             return
         if balance > 0:
-            self.body.coords(self.balance_left,
+            self.header.coords(self.balance_left,
                 self.x + balance * self.width / 2, self.balance_top,
                 self.x + self.width / 2, self.balance_top + self.balance_height)
-            self.body.coords(self.balance_right,
+            self.header.coords(self.balance_right,
                 self.x + self.width / 2, self.balance_top,
                 self.x + self.width, self.balance_top + self.balance_height)
         else:
-            self.body.coords(self.balance_left,
+            self.header.coords(self.balance_left,
                 self.x, self.balance_top,
                 self.x + self.width / 2, self.balance_top + self.balance_height)
-            self.body.coords(self.balance_right,
+            self.header.coords(self.balance_right,
                 self.x + self.width / 2, self.balance_top,
                 self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
 
-        self.body.itemconfig(self.balance_left, fill=self.gui_mixer.left_color)
-        self.body.itemconfig(self.balance_right, fill=self.gui_mixer.right_color)
+        self.header.itemconfig(self.balance_left, fill=self.gui_mixer.left_color)
+        self.header.itemconfig(self.balance_right, fill=self.gui_mixer.right_color)
 
     """Draws the mixer strip level"""
     def draw_level(self):
@@ -782,7 +782,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chain_frame.rowconfigure(0, weight=0)
         self.chain_frame.rowconfigure(1, weight=1)
         self.chain_frame.rowconfigure(2, weight=0)
-        # Header (solo, mute)
+        # Header (solo, mute, balance)
         self.chain_header = tkinter.Canvas(self.chain_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
         self.chain_header.grid(row=0, column=0, sticky="news")
         # Body, vertical scroll (faders, launchers)
@@ -954,9 +954,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.font_timbase = (zynthian_gui_config.font_family, int(0.45 * font_size))
 
         # Set fixed height rows
-        self.header_height = 2 * self.button_height
+        self.header_height = 2 * self.button_height + self.balance_height
         self.footer_height = self.legend_height
         self.body_height = self.height - self.header_height - self.footer_height
+        self.mixer_height = self.body_height
         self.chain_header.configure(height=self.header_height)
         self.chain_footer.configure(height=self.footer_height)
         self.pinned_header.configure(height=self.header_height)
@@ -1288,7 +1289,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             pass
         if self.launcher_mode:
             # Scroll to ensure launcher is visible
-            launcher_top = phrase * self.launcher_height + self.body_height
+            launcher_top = phrase * self.launcher_height + self.mixer_height
             launcher_bottom = launcher_top + self.launcher_height
             canvas_height = self.chain_body.winfo_height()
             view_top = self.chain_body.canvasy(0)
