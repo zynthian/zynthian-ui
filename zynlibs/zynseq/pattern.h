@@ -9,7 +9,7 @@
 
 #define FLAG_CC_INTERPOLATION 1
 
-const static uint32_t PPQN = 24;
+extern uint32_t PPQN;
 
 /** StepEvent class provides an individual step event .
  *   The event may be part of a scene, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern
