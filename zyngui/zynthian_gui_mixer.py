@@ -390,8 +390,9 @@ class zynthian_gui_mixer_strip():
         self.header.tag_bind(f"fader_{id}", "<B1-Motion>", self.on_fader_motion)
         self.header.tag_bind(f"fader_{id}", "<Button-4>", self.on_fader_wheel_up)
         self.header.tag_bind(f"fader_{id}", "<Button-5>", self.on_fader_wheel_down)
-        self.header.tag_bind(self.fader_horizontal, "<Button-4>", self.on_fader_wheel_up)
-        self.header.tag_bind(self.fader_horizontal, "<Button-5>", self.on_fader_wheel_down)
+        if self.chain.zynmixer_proc:
+            self.header.tag_bind(self.fader_horizontal, "<Button-4>", self.on_fader_wheel_up)
+            self.header.tag_bind(self.fader_horizontal, "<Button-5>", self.on_fader_wheel_down)
         self.header.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
         self.header.tag_bind(f"balance_{id}", "<Button-5>", self.on_balance_wheel_down)
         self.header.tag_bind(f"mute_{id}", "<ButtonRelease-1>", self.on_mute_release)
@@ -856,8 +857,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
         self.pending_refresh_queue = set()
 
-        # Quantity of visible launchers (rows) - Used to check if config has changed
-        self.visible_launchers = zynthian_gui_config.visible_launchers
         # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 
         self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
@@ -984,7 +983,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         else:
             visible_launchers = zynthian_gui_config.visible_launchers
         
-        self.launcher_height = 0.9 * self.body_height / visible_launchers
+        self.launcher_height = self.body_height / (visible_launchers + 0.2)
 
         # Clip Mode Icons
         empty_icon = tkinter.PhotoImage()
@@ -1305,7 +1304,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 new_y = launcher_top - 0.3 * self.launcher_height
             elif launcher_bottom > view_bottom:
                 # Scroll down
-                new_y = launcher_bottom - 0.3 * self.launcher_height
+                new_y = launcher_top - (zynthian_gui_config.visible_launchers - 1) * self.launcher_height - 0.2 * self.launcher_height
             else:
                 return  # already fully visible
             self.scroll_canvas(self.chain_body, None, new_y / content_height, self.shown)
@@ -1449,18 +1448,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         dx = self.press_event.x - event.x
         dy = self.press_event.y - event.y
         if not self.is_dragging:
-            if abs(dx) > DRAG_THRESHOLD or abs(dy) > DRAG_THRESHOLD:
+            if event.widget == self.pinned_body and abs(dy) > DRAG_THRESHOLD:
+                self.is_dragging = True
+            elif event.widget == self.chain_footer and abs(dx) > DRAG_THRESHOLD:
                 self.is_dragging = True
             else:
                 return
         try:
             sr = event.widget.bbox("all")
-            sr_w = sr[2] - sr[0]
-            sr_h = sr[3] - sr[1]
-            canvas_w = event.widget.winfo_width()
-            canvas_h = event.widget.winfo_height()
             # Horizontal Move
             if event.widget == self.chain_footer:
+                sr_w = sr[2] - sr[0]
+                canvas_w = event.widget.winfo_width()
                 if sr_w > canvas_w:
                     d_fract_x = dx / float(sr_w)
                     xview = self.start_xview + d_fract_x
@@ -1468,10 +1467,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.chain_body.xview_moveto(xview)
                     self.chain_footer.xview_moveto(xview)
              # Vertical Move
-            if self.launcher_mode:
+            elif event.widget == self.pinned_body:
+                sr_h = sr[3] - sr[1]
+                canvas_h = event.widget.winfo_height()
                 if sr_h > canvas_h:
                     d_fract_y = dy / float(sr_h)
-                    yview = max(self.start_yview + d_fract_y, canvas_h / sr_h)
+                    yview = self.start_yview + d_fract_y
                     self.chain_body.yview_moveto(yview)
                     self.pinned_body.yview_moveto(yview)
         except Exception as e:
