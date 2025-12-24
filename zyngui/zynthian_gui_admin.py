@@ -546,11 +546,13 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def visible_chains_cb(self, value):
         zynconf.save_config({"ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS": str(value)})
         zynthian_gui_config.visible_mixer_strips = value
+        self.zyngui.screens["mixer"].update_layout()
         self.update_list()
 
     def visible_launchers_cb(self, value):
         zynconf.save_config({"ZYNTHIAN_UI_VISIBLE_LAUNCHERS": str(value)})
         zynthian_gui_config.visible_launchers = value
+        self.zyngui.screens["mixer"].update_layout()
         self.update_list()
 
     # -------------------------------------------------------------------------
