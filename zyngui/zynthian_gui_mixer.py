@@ -37,12 +37,10 @@ from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynaudioplayer import *
 from zyngine.zynthian_signal_manager import zynsigman
 from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
-
 from . import zynthian_gui_base
 from . import zynthian_gui_config
 from zynlibs.zynseq import zynseq
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
-from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
@@ -226,10 +224,9 @@ class zynthian_gui_launcher_pad():
     def on_clip_release(self, event):
         if not self.gui_mixer.press_event or self.gui_mixer.is_dragging:
             return
-        self.gui_mixer.chain_manager.set_active_chain_by_object(self.chain)
-        self.gui_mixer.select_launcher(self.phrase)
         ts = event.time - self.gui_mixer.press_event.time
         ts /= 1000.0
+        self.gui_mixer.update_active_chain(self.chain.chain_id, True)
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
             self.on_clip_short_press()
         elif ts < zynthian_gui_config.zynswitch_long_seconds:
@@ -390,16 +387,13 @@ class zynthian_gui_mixer_strip():
         self.body.tag_bind(f"fader_{id}", "<B1-Motion>", self.on_fader_motion)
         self.body.tag_bind(f"fader_{id}", "<Button-4>", self.on_fader_wheel_up)
         self.body.tag_bind(f"fader_{id}", "<Button-5>", self.on_fader_wheel_down)
-        self.body.tag_bind(f"balance_{id}", "<ButtonPress-1>", self.on_balance_press)
         self.body.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
         self.body.tag_bind(f"balance_{id}", "<Button-5>", self.on_balance_wheel_down)
         self.header.tag_bind(f"mute_{id}", "<ButtonRelease-1>", self.on_mute_release)
         self.header.tag_bind(f"solo_{id}", "<ButtonRelease-1>", self.on_solo_release)
-        self.footer.tag_bind(f"legend_strip_{id}", "<ButtonPress-1>", self.on_strip_press)
         self.footer.tag_bind(f"legend_strip_{id}", "<ButtonRelease-1>", self.on_strip_release)
         self.footer.tag_bind(f"legend_strip_{id}", "<Button-4>", self.gui_mixer.on_wheel)
         self.footer.tag_bind(f"legend_strip_{id}", "<Button-5>", self.gui_mixer.on_wheel)
-        self.footer.tag_bind(f"legend_strip_{id}", "<Motion>", self.on_strip_motion)
 
         self.draw_control()
 
@@ -528,9 +522,7 @@ class zynthian_gui_mixer_strip():
             self.draw_fader_text()
 
         if self.chain.zynmixer_proc:
-            if self.gui_mixer.launcher_mode:
-                pass
-            elif control in [None, 'level']:
+            if control in [None, 'level']:
                 self.draw_level()
 
             if control in [None, 'solo']:
@@ -698,98 +690,53 @@ class zynthian_gui_mixer_strip():
     # Function to handle mouse wheel down over fader
     # event: Mouse event
     def on_fader_wheel_down(self, event):
-        self.nudge_volume(-1)
+        if not event.state:
+            self.nudge_volume(-1)
 
     def on_fader_wheel_up(self, event):
         """ Function to handle mouse wheel up over fader
-        event: Mouse event
+        Args:
+            event: Mouse event
         """
-        self.nudge_volume(1)
 
-    def on_balance_press(self, event):
-        """ Function to handle mouse click / touch of balance
-        event: Mouse event
-        """
-        pass
+        if not event.state:
+            self.nudge_volume(1)
 
     def on_balance_wheel_down(self, event):
         """  Function to handle mouse wheel down over balance
-        event: Mouse event
+        Args:
+            event: Mouse event
         """
-        self.nudge_balance(-1)
+
+        if not event.state:
+            self.nudge_balance(-1)
 
     def on_balance_wheel_up(self, event):
         """ Function to handle mouse wheel up over balance
-        event: Mouse event
+        Args:
+            event: Mouse event
         """
-        self.nudge_balance(1)
 
-    def on_launcher_wheel(self, event):
-        """  Function to handle mouse wheel over launcher
-        event: Mouse event
-        """
-        if event.num == 4:
-            self.gui_mixer.arrow_up()
-        else:
-            self.gui_mixer.arrow_down()
-
-    def on_strip_press(self, event):
-        """ Function to handle mixer strip press
-        event: Mouse event
-        """
-        if zynthian_gui_config.zyngui.cb_touch(event):
-            return "break"
-
-        self.strip_drag_start = event
-        #self.start_xview = self.footer.xview()[0]
-        #self.is_dragging = False
-        if self.chain:
-            self.chain_manager.set_active_chain_by_object(self.chain)
+        if not event.state:
+            self.nudge_balance(1)
 
     def on_strip_release(self, event):
         """ Function to handle legend strip release
+        Args:
+            event: Mouse event
         """
         if zynthian_gui_config.zyngui.cb_touch_release(event):
-            return "break"
+            return "break" #TODO: "break" does not work with tab binding!
+        if not self.gui_mixer.press_event:
+            return
 
-        if self.strip_drag_start and not self.gui_mixer.is_dragging:
-            delta = event.time - self.strip_drag_start.time
+        if not self.gui_mixer.is_dragging:
+            delta = event.time - self.gui_mixer.press_event.time
+            self.gui_mixer.press_event = None
             if delta > 400:
                 zynthian_gui_config.zyngui.show_screen('chain_manager')
             else:
                 zynthian_gui_config.zyngui.chain_control(self.chain.chain_id)
-        #self.is_dragging = False
-        self.strip_drag_start = None
-
-    def on_strip_motion(self, event):
-        """ Function to handle legend strip drag
-        Args:
-            event: Mouse event
-        """
-        return
-
-        if not self.strip_drag_start:
-            return
-        # Check threshold
-        dx = self.strip_drag_start.x - event.x
-        if not self.is_dragging:
-            if abs(dx) < DRAG_THRESHOLD:
-                return
-            else:
-                self.is_dragging = True
-        try:
-            sr = self.footer.bbox("all")
-            sr_w = sr[2] - sr[0]
-            canvas_w = self.footer.winfo_width()
-            # Horizontal Move
-            if sr_w > canvas_w:
-                d_fract_x = dx / float(sr_w)
-                self.header.xview_moveto(self.start_xview + d_fract_x)
-                self.body.xview_moveto(self.start_xview + d_fract_x)
-                self.footer.xview_moveto(self.start_xview + d_fract_x)
-        except Exception as e:
-            logging.warning(f"Drag scroll error: {e}")
-            pass
 
     def on_mute_release(self, event):
         """ Function to handle mute button release
@@ -802,7 +749,6 @@ class zynthian_gui_mixer_strip():
         event: Mouse event
         """
         self.toggle_solo()
-
 
 
 # ------------------------------------------------------------------------------
@@ -866,12 +812,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # Add mixbus frame to main frame
         self.pinned_frame.grid(row=0, column=1, sticky="nes", padx=(4,0))
 
-        self.chain_body.bind("<Button-1>", self.on_chain_body_press)
-        self.chain_body.bind("<B1-Motion>", self.on_chain_body_motion)
-        self.chain_body.bind("<ButtonRelease-1>", self.on_chain_body_release)
-        self.pinned_body.bind("<Button-1>", self.on_chain_body_press)
-        self.pinned_body.bind("<B1-Motion>", self.on_chain_body_motion)
-        self.pinned_body.bind("<ButtonRelease-1>", self.on_chain_body_release)
+        self.chain_body.bind("<Button-1>", self.on_body_press)
+        self.chain_body.bind("<B1-Motion>", self.on_body_motion)
+        self.chain_body.bind("<ButtonRelease-1>", self.on_body_release)
+        self.chain_body.bind("<Button-4>", self.on_body_wheel_up)
+        self.chain_body.bind("<Button-5>", self.on_body_wheel_down)
+        self.pinned_body.bind("<Button-1>", self.on_body_press)
+        self.pinned_body.bind("<B1-Motion>", self.on_body_motion)
+        self.pinned_body.bind("<ButtonRelease-1>", self.on_body_release)
+        self.pinned_body.bind("<Button-4>", self.on_body_wheel_up)
+        self.pinned_body.bind("<Button-5>", self.on_body_wheel_down)
+        self.chain_footer.bind("<Button-1>", self.on_body_press)
+        self.chain_footer.bind("<B1-Motion>", self.on_body_motion)
+        self.chain_footer.bind("<ButtonRelease-1>", self.on_body_release)
 
         self.ctrl_order = zynthian_gui_config.layout['ctrl_order'] # List of encoder indices
 
@@ -1098,12 +1051,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.state_changed:
             return # Avoid refreshing controls whilst rebuilding state
         for strip in self.chain_strips:
-            strip.draw_control()
             for launcher in strip.launchers:
                 launcher.draw()
+        self.highlight_launcher()
 
     def refresh_mixer_controls(self):
-        self.highlight_active_chain()
+        for strip in self.chain_strips:
+            strip.draw_control()
+        self.highlight_chain(self.chain_manager.active_chain.chain_id)
 
     def init_dpmeter(self):
         self.dpm_a = self.dpm_b = None
@@ -1127,8 +1082,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def build_view(self):
         """ Function to handle showing display"""
         try:
-            self.build_mixer()
-            self.highlight_active_chain()
+            self.build_mixer() #TODO: Don't do full rebuild
         except Exception as e:
             logging.warning(e)
         self.set_launcher_mode()
@@ -1274,10 +1228,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in self.chain_strips:
             self.pending_refresh_queue.add((strip, "play"))
 
-    def update_active_chain(self, active_chain_id):
+    def update_active_chain(self, active_chain_id, send=False):
         """ Function to handle active chain changes
+        Args:
+            chain_id: Active chain id
+            send: True to set chain manager active chain
         """
-        self.highlight_active_chain()
+
+        if send:
+            self.chain_manager.set_active_chain_by_id(active_chain_id)
+        self.highlight_chain(active_chain_id)
         self.select_launcher()
         for cc in (64, 66, 67, 69):
             self.midi_cc_cb(0, 0, cc, 0)
@@ -1351,7 +1311,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def audio_recorder_arm_cb(self, zynmixer, channel, value):
         for strip in self.chain_strips:
             if strip.chain.zynmixer_proc == zynmixer:
-                strip.draw_control()
+                strip.draw_control("record")
                 break
 
     def launcher_play_state_cb(self, phrase, chan):
@@ -1394,13 +1354,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     # Selection and scrolling
     # --------------------------------------------------------------------------
 
-    def highlight_active_chain(self):
-        """ Highlights active chain, redrawing strips if required
+    def highlight_chain(self, chain_id):
+        """ Highlights chain, redrawing strips if required
         """
 
         if not self.chain_strips:
             return
-        chain_id = self.chain_manager.active_chain.chain_id
         try:
             self.active_index = list(self.chain_manager.chains).index(chain_id)
             self.highlighted_strip = self.chain_strips[self.active_index]
@@ -1474,13 +1433,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         else:
             step(steps)
 
-    def on_chain_body_press(self, event):
+    def on_body_press(self, event):
         self.press_event = event
         self.start_xview = event.widget.xview()[0]
         self.start_yview = event.widget.yview()[0]
         self.is_dragging = False
 
-    def on_chain_body_motion(self, event):
+    def on_body_motion(self, event):
         if not self.press_event:
             return
         # Check threshold
@@ -1498,14 +1457,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             canvas_w = event.widget.winfo_width()
             canvas_h = event.widget.winfo_height()
             # Horizontal Move
-            if event.widget == self.chain_body:
+            if event.widget in (self.chain_body, self.chain_footer):
                 if sr_w > canvas_w:
                     d_fract_x = dx / float(sr_w)
                     xview = self.start_xview + d_fract_x
                     self.chain_header.xview_moveto(xview)
                     self.chain_body.xview_moveto(xview)
                     self.chain_footer.xview_moveto(xview)
-                # Vertical Move
+             # Vertical Move
             if self.launcher_mode:
                 if sr_h > canvas_h:
                     d_fract_y = dy / float(sr_h)
@@ -1515,9 +1474,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         except Exception as e:
             pass
 
-    def on_chain_body_release(self, event):
+    def on_body_release(self, event):
         self.press_event = None
         self.is_dragging = False
+    
+    def on_body_wheel_up(self, event):
+        if event.state:
+            self.arrow_right()
+        elif self.launcher_mode:
+            self.arrow_up()
+
+    def on_body_wheel_down(self, event):
+        if event.state:
+            self.arrow_left()
+        elif self.launcher_mode:
+            self.arrow_down()
     
     # --------------------------------------------------------------------------
     # Launcher Functionality
@@ -1559,8 +1530,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         repeat = info["repeat"]
         follow_action = info["followAction"]
         follow_phrase = info["followParam"]
-        pattern = self.zynseq.libseq.getPattern(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, 0, 0)
-        self.zynseq.libseq.selectPattern(pattern)
         title = f"Phrase options ({name})"
         if repeat == 0:
             options["Duration (DISABLED)"] = repeat
@@ -1938,7 +1907,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if phrase == self.zynseq.phrase:
             return
         self.zynseq.select_phrase(phrase)
-        self.highlight_launcher(phrase)
 
     def end_moving_phrase(self):
         if zynthian_gui_config.enable_touch_navigation:
