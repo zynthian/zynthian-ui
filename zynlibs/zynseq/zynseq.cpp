@@ -349,12 +349,14 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     Remove events from schedule
 */
 int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
+    // Transport & Clock
+    jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
+    jack_position_t transportPosition;         // JACK transport position structure populated each cycle and checked for transport progress
+    jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transportPosition);
+
     static jack_nframes_t nLastBeatFrame = 0;  // Frames since jack epoch of last quarter note used to calc tempo of external clock
     static std::pair<jack_nframes_t, jack_nframes_t> lastClock;
-
-    jack_nframes_t nNow                        = jack_last_frame_time(g_pJackClient);
-    jack_position_t transportPosition;         // JACK transport position structure populated each cycle and checked for transport progress
-    jack_transport_state_t nState              = jack_transport_query(g_pJackClient, &transportPosition);
+    //static double dLast = nNow;
 
     // Metronome output buffer
     jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
@@ -366,12 +368,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     unsigned char* pBuffer;
     jack_midi_clear_buffer(pOutputBuffer);
     jack_midi_clear_buffer(pClippyBuffer);
-    jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
-    static double dLast = nNow;
-    jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transportPosition);
-
-    jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
-    memset(pOutMetronome, 0, sizeof(jack_default_audio_sample_t) * nFrames);
 
     // Process MIDI input
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
@@ -538,10 +534,10 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 						// Calculate duration from note start, in number of clocks
                         double dDur =  pos_clocks - (double(startEvents[nNum1].start) + startEvents[nNum1].offset) * g_pPattern->getClocksPerStep();
                         // If duration is negative => note crossed sequence end => fix it!
-                        if (dDur < 0.0) dDur += pPattern->getLength();
+                        if (dDur < 0.0) dDur += g_pPattern->getLength();
                         if (dDur < 1.0) dDur = 1.0;
                         // Calculate duration in steps
-                        dDur /= pPattern->getClocksPerStep();
+                        dDur /= g_pPattern->getClocksPerStep();
                         // Add note to pattern
                         g_pPattern->addNote(startEvents[nNum1].start, nNum1, startEvents[nNum1].velocity, dDur, startEvents[nNum1].offset);
                         // Reset note in event buffer
@@ -652,8 +648,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
                 g_nMetronomePtr = 0;
                 nClockOffset = g_qClockPos.front().first - nNow;
-                DPRINTF("Beat %u of %u clock %u timestamp: %f (%f)\n", g_nBeat, g_nTimeSig, g_nClock, g_qClockPos.front().first, g_qClockPos.front().first - dLast);
-                dLast = g_qClockPos.front().first;
+                //DPRINTF("Beat %u of %u clock %u timestamp: %f (%f)\n", g_nBeat, g_nTimeSig, g_nClock, g_qClockPos.front().first, g_qClockPos.front().first - dLast);
+                //dLast = g_qClockPos.front().first;
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g.
