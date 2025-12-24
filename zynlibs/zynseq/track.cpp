@@ -192,12 +192,14 @@ SEQ_EVENT* Track::getEvent() {
 					else m_fEventOffset = (float)mi / (float)qn;
 					//printf("Event %d with Offset %f => Quantized (1/%d) to %f\n", pEvent->getPosition(), os, qn, m_fEventOffset);
 				}
-				// Swing => Add to offset
-				uint32_t swingDiv = pPattern->getSwingDiv();
-				float swingAmount = pPattern->getSwingAmount();
-				if ((m_nNextStep + swingDiv) % (2 * swingDiv) == 0) {
-					m_fEventOffset += swingAmount;
-				}
+                // Swing => Add to offset
+                uint32_t swingDiv = pPattern->getSwingDiv();
+                float swingAmount = pPattern->getSwingAmount();
+                uint32_t swingStep = m_nNextStep + swingDiv;
+                if (m_fEventOffset > 0.5) swingStep++;
+                if (swingStep % (2 * swingDiv) == 0) {
+                    m_fEventOffset += swingAmount;
+                }
 				// Time humanization => Add to offset
 				float humanTime = pPattern->getHumanTime();
 				if (humanTime > 0.0)

@@ -2128,7 +2128,7 @@ class zynthian_state_manager:
     def get_midi_profile_state(self):
         """Get MIDI profile state as an ordered dictionary"""
 
-        midi_profile_state = OrderedDict()
+        midi_profile_state = {}
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]
