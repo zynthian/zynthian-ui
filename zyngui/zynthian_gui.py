@@ -1962,7 +1962,7 @@ class zynthian_gui:
                 return True
 
     def is_current_screen_menu(self):
-        if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
+        if self.current_screen in ("main_menu", "engine", "chain_manager", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
                                    "audio_out", "midi_prog") or self.current_screen.endswith("_options"):
             return True
         if len(self.screen_history) > 1:
