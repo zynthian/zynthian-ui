@@ -22,7 +22,6 @@
 #
 # ******************************************************************************
 
-from collections import OrderedDict
 import copy
 import json
 import socket

@@ -32,7 +32,6 @@ import traceback
 from time import sleep
 from subprocess import check_output
 from threading import Thread
-from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngine.zynthian_engine import zynthian_engine
@@ -83,9 +82,9 @@ class zynthian_engine_modui(zynthian_engine):
     def reset(self):
         super().reset()
         self.graph = {}
-        self.plugin_info = OrderedDict()
-        self.plugin_zctrls = OrderedDict()
-        self.pedal_presets = OrderedDict()
+        self.plugin_info = {}
+        self.plugin_zctrls = {}
+        self.pedal_presets = {}
         self.pedal_preset_noun = 'snapshot'
 
     def get_jackname(self):
@@ -240,7 +239,7 @@ class zynthian_engine_modui(zynthian_engine):
         if self.preset_favs is None:
             self.load_preset_favs()
 
-        result = OrderedDict()
+        result = {}
         for k, v in self.preset_favs.items():
             if v[1][0] in [p[0] for p in processor.preset_list]:
                 result[k] = v

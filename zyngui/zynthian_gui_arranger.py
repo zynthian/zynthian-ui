@@ -30,7 +30,6 @@ import tkinter.font as tkfont
 from time import monotonic, sleep
 from threading import Timer
 from math import sqrt
-from collections import OrderedDict
 import os
 
 # Zynthian specific modules
@@ -172,7 +171,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
     # Function to add menus
     def show_menu(self):
         self.disable_param_editor()
-        options = OrderedDict()
+        options = {}
         options[f'Tempo ({self.zynseq.libseq.getTempo():0.1f})'] = 'Tempo'
         options['Beats per bar ({})'.format(
             self.zyngui.state_manager.zynseq.libseq.getTimeSig())] = 'Beats per bar'
@@ -346,7 +345,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
     def select_smf(self, params=None):
         file_list = zynthian_engine.get_filelist(os.environ.get(
             'ZYNTHIAN_MY_DATA_DIR', '/zynthian/zynthian-my-data') + '/capture', 'mid')
-        options = OrderedDict()
+        options = {}
         for i in file_list:
             options[i[4]] = i[0]
         self.zyngui.screens['option'].config(

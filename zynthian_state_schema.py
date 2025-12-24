@@ -224,5 +224,8 @@ ZynthianState = {
                 ]
             }, # Other scenes
         ]
+    },
+    "gui": { # Optional GUI configuration
+        "pinned_chains": 1 # Quantity of chains pinned to right edge (including main mixbus)
     }
 }

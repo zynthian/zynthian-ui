@@ -66,8 +66,8 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.drag_threshold = 5  # pixels to detect drag vs click 
         self.press_time = None # Time of touch used for bold press detection
 
-    def on_size(self, event):
-        super().on_size(event)
+    def update_layout(self):
+        super().update_layout()
         self.font = (zynthian_gui_config.font_family, int(0.024 * self.height))
         # Formual 2 * (x // y) ensures even values which helps with spacing and dividers
         self.SPACING = 2 * (self.width // (self.columns * 16))

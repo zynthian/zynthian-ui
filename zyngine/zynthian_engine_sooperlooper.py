@@ -367,11 +367,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
         ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
         self.custom_gui_fpath = f"{ui_dir}/zyngui/zynthian_widget_sooperlooper.py"
-        self.monitors_dict = OrderedDict({
+        self.monitors_dict = {
             "state": 0,
             "next_state": -1,
             "loop_count": 0
-        })
+        }
         self.pedal_time = 0  # Time single pedal was asserted
         self.pedal_taps = 0  # Quantity of taps on single pedal
         self.single_pedal_timer = None # Timer used for long pedal press

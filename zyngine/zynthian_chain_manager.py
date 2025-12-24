@@ -91,8 +91,9 @@ class zynthian_chain_manager:
     SS_ADD_CHAIN = 3
     SS_REMOVE_CHAIN = 4
     SS_REMOVE_ALL_CHAINS = 5
-    SS_ADD_PROCESSOR = 6
-    SS_REMOVE_PROCESSOR = 7
+    SS_RENAME_CHAIN = 6
+    SS_ADD_PROCESSOR = 7
+    SS_REMOVE_PROCESSOR = 8
 
     engine_info = None
     single_processor_engines = ["BF", "MD", "PT", "AE", "SL", "IR"]
@@ -117,6 +118,7 @@ class zynthian_chain_manager:
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain = None  # Active chain object => This should NEVER be None!!!
         self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
+        self.pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
         # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
         self.absolute_midi_cc_binding = {}
@@ -198,6 +200,9 @@ class zynthian_chain_manager:
                 chain_id += 1
         chain_id = int(chain_id)
 
+        if chain_pos is None:
+            chain_pos = len(self.chains) - 1
+
         # If Main chain ...
         if chain_id == 0:  # main
             midi_thru = False
@@ -224,14 +229,18 @@ class zynthian_chain_manager:
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
         if not chain:
             return None
+
+        # Insert chain into dict
+        items = list(self.chains.items())
+        items.insert(chain_pos, (chain_id, chain))
+        self.chains = dict(items)
         self.chains[chain_id] = chain
+        # Update pinned chains
+        if self.pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
+            self.pinned_chains += 1
 
         # Setup chain
         chain.set_title(title)
-
-        # Add to chain index (sorted!)
-        if chain_pos is not None:
-            self.move_chain(chain_id, chain_pos)
 
         # Set MIDI channel
         self.set_midi_chan(chain_id, midi_chan)
@@ -264,7 +273,6 @@ class zynthian_chain_manager:
         logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, zmop_index={chain.zmop_index}")
 
         self.active_chain = chain
-        self.chains[0] = self.chains.pop(0) # Move main chain to end
         if fast_refresh:
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
         self.state_manager.end_busy("add_chain")
@@ -343,6 +351,8 @@ class zynthian_chain_manager:
                     for mc in range(16):
                         self.midi_chan_2_chain_ids[mc].remove(chain_id)
                         lib_zyncore.ui_send_ccontrol_change(mc, 120, 0)
+            if self.pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
+                self.pinned_chains -= 1
 
             update_fxreturns = False
             if chain.zynmixer_proc:
@@ -405,8 +415,19 @@ class zynthian_chain_manager:
         for chain_id in list(self.chains.keys()):
             success &= self.remove_chain(chain_id, stop_engines, fast_refresh=False)
         self.state_manager.zynseq.refresh_chan2col()
+        self.pinned_chains = 1
         zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
         return success
+
+    def set_chain_title(self, chain_id, title):
+        try:
+            chain = self.chains[chain_id]
+            if chain.get_title() == title:
+                return
+            chain.set_title(title)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_RENAME_CHAIN, chain_id=chain_id, title=title)
+        except:
+            pass
 
     def nudge_chain(self, offset):
         """Move active chain's position relative to current position
@@ -434,8 +455,17 @@ class zynthian_chain_manager:
         if not chain_id or chain_id not in self.chains:
             return None
         index = list(self.chains).index(chain_id)
+        div = self.get_pinned_pos()
+        if index < div and pos >= div:
+            self.pinned_chains += 1
+            pos -= 1
+        elif index >= div and pos < div:
+            if self.pinned_chains > 1:
+                self.pinned_chains -= 1
+            pos += 1
         pos = min(pos, len(self.chains) - 2)
         pos = max(pos, 0)
+
         if pos == index:
             return pos
         
@@ -562,6 +592,23 @@ class zynthian_chain_manager:
                 if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan:
                     return chain_id
         return None
+
+    def set_pinned(self, count):
+        """ Set the quantity of pinned chains
+        Args:
+            count: Quantity of chains to pin to right hand edge of UI
+        """
+
+        if count:
+            self.pinned_chains = count
+
+    def get_pinned_pos(self):
+        """ Get the index of the first pinned chain
+        Returns:
+            Position of first pinned chain
+        """
+
+        return max(0, len(self.chains) - self.pinned_chains)
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
@@ -756,7 +803,7 @@ class zynthian_chain_manager:
 
         self.active_chain = chain
         self.state_manager.zynseq.chan = chain.midi_chan
-        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain.chain_id)
+        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
 
         # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
         if isinstance(chain.zmop_index, int):

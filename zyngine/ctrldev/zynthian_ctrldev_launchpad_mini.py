@@ -66,7 +66,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         col = note % 16
         return col, row
 
-    def update_active_chain(self, active_chain=None):
+    def update_active_chain(self, active_chain_id=None):
         if self.idev_out is None:
             return
         if active_chain is None:

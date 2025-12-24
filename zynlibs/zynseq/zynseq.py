@@ -279,12 +279,18 @@ class zynseq(zynthian_engine):
         self.libseq.removePhrase(scene, phrase)
         if scene == self.scene and self.clippy:
             self.clippy.remove_phrase(phrase)
+        if self.phrase == phrase:
+            self.phrase = max(0, self.phrase - 1)
         self.refresh_state()
 
     def swap_phrase(self, scene, phrase1, phrase2):
         self.libseq.swapPhrase(scene, phrase1, phrase2)
         if self.clippy and scene == self.scene:
             self.clippy.swap_phrase(phrase1, phrase2)
+        if self.phrase == phrase1:
+            self.phrase = phrase2
+        elif self.phrase == phrase2:
+            self.phrase = phrase1
         self.refresh_state()
 
     # Load a zynseq file

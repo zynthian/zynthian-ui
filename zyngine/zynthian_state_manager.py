@@ -958,7 +958,10 @@ class zynthian_state_manager:
             'midi_profile_state': self.get_midi_profile_state(),
             'chains': self.chain_manager.get_state(),
             'zs3': self.zs3,
-            'last_zs3_id': self.last_zs3_id
+            'last_zs3_id': self.last_zs3_id,
+            'gui': {
+                'pinned_chains': self.chain_manager.pinned_chains
+            }
         }
 
         engine_states = {}
@@ -1194,6 +1197,10 @@ class zynthian_state_manager:
                 # After loading initial state, enable midi autolearn in all processors
                 for proc in self.chain_manager.processors.values():
                     proc.set_midi_autolearn(True)
+
+                # GUI
+                if "gui" in state:
+                    self.chain_manager.set_pinned(state["gui"].get("pinned_chains", 1))
 
             # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1

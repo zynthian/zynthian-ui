@@ -433,7 +433,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         """
         logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
 
-    def update_mixer_active_chain(self, active_chain):
+    def update_mixer_active_chain(self, active_chain_id):
         """Update hardware indicators for active_chain
         *SHOULD* be implemented by child class
 

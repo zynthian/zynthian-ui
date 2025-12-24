@@ -84,9 +84,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.list_data.append((self.rename_chain, None, "Rename chain",
                                ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
         if self.chain.chain_id:
-            if len(self.zyngui.chain_manager.chains) > 2:
-                self.list_data.append((self.move_chain, None, "Move chain",
-                                       ["Reposition the chain in the mixer view.", "move_left_right.png"]))
+            self.list_data.append((self.move_chain, None, "Move chain",
+                                    ["Reposition the chain in the mixer view.", "move_left_right.png"]))
         super().fill_list()
 
     def fill_listbox(self):
@@ -144,7 +143,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.zyngui.show_keyboard(self.do_rename_chain, self.chain.title)
 
     def do_rename_chain(self, title):
-        self.chain.title = title
+        self.zyngui.chain_manager.set_chain_title(self.chain.chain_id, title)
         self.zyngui.show_screen_reset('chain_manager')
 
     def export_chain(self):
