@@ -1186,8 +1186,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.beat = self.zynseq.beat
                 self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.timesig}/4")
             for strip in self.chain_strips:
-                if strip.chain.midi_chan is not None and strip.chain.midi_chan < 16:
-                    if self.zyngui.state_manager.status_midi_ch & (1 << strip.chain.midi_chan):
+                if strip.chain.midi_chan is not None:
+                    if strip.chain.midi_chan < 16:
+                        midi_act = self.zyngui.state_manager.status_midi_ch & (1 << strip.chain.midi_chan)
+                    elif strip.chain.midi_chan > 32:
+                        midi_act = self.zyngui.state_manager.status_midi_ch != 0
+                    else:
+                        midi_act = False
+                    if midi_act:
                         strip.footer.itemconfig(strip.midi_indicator, state=tkinter.NORMAL)
                     else:
                         strip.footer.itemconfig(strip.midi_indicator, state=tkinter.HIDDEN)

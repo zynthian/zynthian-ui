@@ -512,6 +512,7 @@ class zynthian_gui:
 
         # Root screen
         self.screens['root'] = self.screens['mixer']
+        self.screens['launcher'] = self.screens['mixer']
         #self.screens['root'] = self.screens['none']
 
         # Create Zynaptik-related screens
