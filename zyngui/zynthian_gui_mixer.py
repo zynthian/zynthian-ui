@@ -115,7 +115,7 @@ class zynthian_gui_launcher_pad():
         disabled = False
         if self.chain.chain_id == 0:
             state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
-        elif type(self.chain.midi_chan) is not int:
+        elif self.chain.midi_chan is None or self.chain.midi_chan > 15:
             state_seq = None # This will raise an exception later and draw empty block
         else:
             state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]["sequences"][self.chain.midi_chan]
