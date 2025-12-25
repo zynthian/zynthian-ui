@@ -355,7 +355,7 @@ class zynthian_gui_mixer_strip():
 
         # Legend strip at bottom of screen
         self.legend_strip_bg = self.footer.create_rectangle(x, 0, x + self.width, self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=("legend", f"legend_strip_{id}"))
-        self.legend_strip_txt = self.footer.create_text(x + self.centre_x, self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}"), font=self.gui_mixer.font)
+        self.legend_strip_txt = self.footer.create_text(self.centre_x, self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}"), font=self.gui_mixer.font)
 
         # MIDI pedal indicators
         self.pedals = []
