@@ -299,15 +299,13 @@ class zynthian_gui_mixer_strip():
         self.button_height = self.gui_mixer.button_height
         self.legend_height = self.gui_mixer.legend_height
         self.balance_height = self.gui_mixer.balance_height
+        self.balance_width = (self.width - 2) / 2 # Width of each half of the balance indicator
         self.solo_y = 0
         self.mute_y = self.button_height
         self.balance_y = self.mute_y + self.button_height
         self.fader_y = self.balance_y + self.balance_height
         self.fader_bottom = self.fader_y + self.gui_mixer.fader_height
-        self.balance_control_centre = int(self.width / 2)
-        # Width of each half of balance control
-        self.balance_control_width = int(self.width / 4)
-        self.balance_centre_x = int(self.width * 0.5)
+        self.centre_x = x + int(self.width * 0.5)
         self.fader_text_limit = int(0.1 * self.gui_mixer.fader_height)
         self.dragging = False
 
@@ -341,9 +339,8 @@ class zynthian_gui_mixer_strip():
             self.mute_text = self.header.create_text(x + self.width / 2, self.mute_y + self.button_height * 0.5, text="M", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"mute_{id}"))
 
             # Balance indicator
-            self.balance_left = self.header.create_rectangle(x, self.balance_y, x + self.balance_centre_x, self.fader_y, fill=self.gui_mixer.left_color, width=0, tags=(f"balance_{id}"))
-            self.balance_right = self.header.create_rectangle(x + self.balance_centre_x + 1, self.balance_y, x + self.width, self.fader_y + self.balance_height,
-                fill=self.gui_mixer.right_color, width=0, tags=(f"balance_{id}"))
+            self.balance_bg = self.header.create_rectangle(self.x + 1, self.balance_y, self.x + self.width - 1, self.fader_y, fill=self.gui_mixer.balance_bg_color, width=0, tags=(f"balance_{id}"))
+            self.balance_fg = self.header.create_rectangle(self.centre_x - 1, self.balance_y, self.centre_x + 1, self.fader_y, fill=self.gui_mixer.balance_fg_color, width=0, tags=(f"balance_{id}"))
             # Fader
             self.fader_overlay = self.header.create_rectangle(x, self.fader_y, x + self.width, self.fader_bottom, fill=self.gui_mixer.fader_color, width=0, tags=("fader", "fader_overlay", f"fader_{id}"))
             self.fader_horizontal = self.header.create_rectangle(x, self.fader_y, x + self.width, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal"), state=tkinter.HIDDEN)
@@ -358,7 +355,7 @@ class zynthian_gui_mixer_strip():
 
         # Legend strip at bottom of screen
         self.legend_strip_bg = self.footer.create_rectangle(x, 0, x + self.width, self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=("legend", f"legend_strip_{id}"))
-        self.legend_strip_txt = self.footer.create_text(x + self.balance_centre_x, self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}"), font=self.gui_mixer.font)
+        self.legend_strip_txt = self.footer.create_text(x + self.centre_x, self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}"), font=self.gui_mixer.font)
 
         # MIDI pedal indicators
         self.pedals = []
@@ -420,22 +417,12 @@ class zynthian_gui_mixer_strip():
         if balance is None:
             return
         if balance > 0:
-            self.header.coords(self.balance_left,
-                self.x + balance * self.width / 2, self.balance_y,
-                self.x + self.width / 2, self.balance_y + self.balance_height)
-            self.header.coords(self.balance_right,
-                self.x + self.width / 2, self.balance_y,
-                self.x + self.width, self.balance_y + self.balance_height)
+            x = self.centre_x + balance * self.balance_width + 1
         else:
-            self.header.coords(self.balance_left,
-                self.x, self.balance_y,
-                self.x + self.width / 2, self.balance_y + self.balance_height)
-            self.header.coords(self.balance_right,
-                self.x + self.width / 2, self.balance_y,
-                self.x + self.width * balance / 2 + self.width, self.balance_y + self.balance_height)
-
-        self.header.itemconfig(self.balance_left, fill=self.gui_mixer.left_color)
-        self.header.itemconfig(self.balance_right, fill=self.gui_mixer.right_color)
+            x = self.centre_x + balance * self.balance_width - 1
+        self.header.coords(self.balance_fg,
+            self.centre_x, self.balance_y,
+            x, self.balance_y + self.balance_height)
 
     """Draws the mixer strip level"""
     def draw_level(self):
@@ -607,6 +594,7 @@ class zynthian_gui_mixer_strip():
         """
         if self.chain.zynmixer_proc:
             self.chain.zynmixer_proc.controllers_dict["balance"].set_value(value)
+
     def get_balance(self):
         """ Function to get balance value
         """
@@ -945,8 +933,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.legend_bg_color_hl = zynthian_gui_config.color_on
         self.button_bgcol = zynthian_gui_config.color_panel_bg
         self.button_txcol = zynthian_gui_config.color_tx
-        self.left_color = "#00AA00"
-        self.right_color = "#00EE00"
+        self.balance_bg_color = "#008800"
+        self.balance_fg_color = "#00EE00"
         self.high_color = "#CCCCCC"  # yellow
         self.rec_color = "#CC0000"  # red
         self.mute_color = zynthian_gui_config.color_on  # "#3090F0"
