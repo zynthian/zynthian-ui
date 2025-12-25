@@ -131,6 +131,7 @@ class zynthian_state_manager:
         self.status_midi_player = False
         self.last_midi_file = None
         self.status_midi = False
+        self.status_midi_ch = 0 # 16-bit MIDI activity indicator, 1-bit per MIDI
         self.status_midi_clock = False
         self.update_available = False  # True when updates available from repositories
         self.checking_for_updates = False  # True whilst checking for updates
@@ -638,6 +639,7 @@ class zynthian_state_manager:
 
                 if midi_status:
                     self.status_midi = False
+                    self.status_midi_ch = 0
                     midi_status = False
                 if self.status_midi:
                     midi_status = True
@@ -895,6 +897,7 @@ class zynthian_state_manager:
 
                 # Flag MIDI event
                 self.status_midi = True
+                self.status_midi_ch |= (1 << chan)
                 self.last_event_flag = True
 
         except Exception as err:

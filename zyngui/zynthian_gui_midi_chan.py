@@ -112,7 +112,6 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
             self.zyngui.chain_manager.set_midi_chan(
                 self.zyngui.chain_manager.active_chain.chain_id, selchan)
             zynautoconnect.request_midi_connect(True)
-            self.zyngui.screens['root'].refresh_visible_strips()
             self.zyngui.close_screen()
 
     def midi_chan_activity(self, chan):

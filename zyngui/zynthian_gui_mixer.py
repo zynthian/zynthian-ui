@@ -362,14 +362,22 @@ class zynthian_gui_mixer_strip():
         for col in range(4):
             self.pedals.append(
                 self.footer.create_rectangle(
-                    int(x + self.fader_width / 4 * col),
+                    int(x + self.width / 5 * col),
                     self.legend_height - 4,
-                    int(x + self.fader_width / 4 * (col + 1)),
+                    int(x + self.width / 5 * (col + 1)),
                     self.legend_height,
                     fill="yellow",
                     state=tkinter.HIDDEN
                 )
             )
+        self.midi_indicator = self.footer.create_rectangle(
+            int(x + self.width / 5 * 4),
+            self.legend_height - 4,
+            int(x + self.width),
+            self.legend_height,
+            fill=zynthian_gui_config.color_status_midi,
+            state=tkinter.HIDDEN
+        )
 
         # Clip Launcher Progress Bar
         self.clip_progress = self.footer.create_rectangle(x, 0, x, 4, width=0, fill=self.gui_mixer.legend_txt_color, tags=(f"legend_strip_{id}"))
@@ -657,10 +665,10 @@ class zynthian_gui_mixer_strip():
         self.dragging = False
         if zynthian_gui_config.zyngui.cb_touch(event):
             return "break"
-        self.fader_start_value = self.chain.zynmixer_proc.controllers_dict['level'].value
-        self.fader_press_event = event
-        if self.chain:
-            self.chain_manager.set_active_chain_by_object(self.chain)
+        if self.chain.is_audio():
+            self.fader_start_value = self.chain.zynmixer_proc.controllers_dict['level'].value
+            self.fader_press_event = event
+        self.chain_manager.set_active_chain_by_object(self.chain)
 
     # Function to handle fader press
     # event: Mouse event
@@ -727,10 +735,12 @@ class zynthian_gui_mixer_strip():
         if not self.gui_mixer.press_event:
             return
 
+        self.chain_manager.set_active_chain_by_id(self.chain.chain_id)
         if not self.gui_mixer.is_dragging:
             delta = event.time - self.gui_mixer.press_event.time
             self.gui_mixer.press_event = None
             if delta > 400:
+                self.zyngui.screens['chain_manager'].select_chain_options_node()
                 zynthian_gui_config.zyngui.show_screen('chain_manager')
             else:
                 zynthian_gui_config.zyngui.chain_control(self.chain.chain_id)
@@ -1175,6 +1185,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.beat != self.zynseq.beat:
                 self.beat = self.zynseq.beat
                 self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.timesig}/4")
+            for strip in self.chain_strips:
+                if strip.chain.midi_chan is not None and strip.chain.midi_chan < 16:
+                    if self.zyngui.state_manager.status_midi_ch & (1 << strip.chain.midi_chan):
+                        strip.footer.itemconfig(strip.midi_indicator, state=tkinter.NORMAL)
+                    else:
+                        strip.footer.itemconfig(strip.midi_indicator, state=tkinter.HIDDEN)
  
     def plot_zctrls(self):
         """Function to refresh display (fast)
