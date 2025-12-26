@@ -1087,7 +1087,7 @@ class zynthian_state_manager:
         self.end_busy("save snapshot")
         return True
 
-    def load_snapshot(self, fpath, load_chains=True, load_sequences=True, merge=False):
+    def load_snapshot(self, fpath, load_chains=True, load_sequences=True, load_ctrldev=False, merge=False):
         """Loads a snapshot from file
 
         fpath : Full path and filename of snapshot file
@@ -1217,7 +1217,7 @@ class zynthian_state_manager:
                 zs3 = self.sanitize_zs3_from_json(state["zs3"])
                 if not merge:
                     self.zs3 = zs3
-                self.load_zs3(zs3["zs3-0"], autoconnect=False)
+                self.load_zs3(zs3["zs3-0"], autoconnect=False, load_ctrldev=load_ctrldev)
                 try:
                     mute |= self.zs3["zs3-0"]["mixer"]["chan_16"]["mute"]
                 except:
@@ -1337,7 +1337,7 @@ class zynthian_state_manager:
 
     def load_last_state_snapshot(self):
         if isfile(self.last_state_snapshot_fpath):
-            return self.load_snapshot(self.last_state_snapshot_fpath)
+            return self.load_snapshot(self.last_state_snapshot_fpath, load_ctrldev=True)
 
     def delete_last_state_snapshot(self):
         try:
@@ -1377,7 +1377,7 @@ class zynthian_state_manager:
         except:
             tstate["restore"] = False
 
-    def load_zs3(self, zs3_id, autoconnect=True):
+    def load_zs3(self, zs3_id, autoconnect=True, load_ctrldev=False):
         """Restore a ZS3
 
         zs3_id : ID of ZS3 to restore or zs3 dict
@@ -1533,7 +1533,7 @@ class zynthian_state_manager:
 
         if "midi_capture" in zs3_state:
             self.set_busy_details("restoring midi capture state")
-            self.set_midi_capture_state(zs3_state['midi_capture'])
+            self.set_midi_capture_state(zs3_state['midi_capture'], load_ctrldev=load_ctrldev)
 
         if "global" in zs3_state:
             if "midi_transpose" in zs3_state["global"]:
@@ -1951,7 +1951,7 @@ class zynthian_state_manager:
 
         return mcstate
 
-    def set_midi_capture_state(self, mcstate=None):
+    def set_midi_capture_state(self, mcstate=None, load_ctrldev=False):
         """Set midi input (capture) state: flags, chain routing, etc.
 
         mcstate : dictionary with state. None for reset state to defaults.
@@ -1984,8 +1984,11 @@ class zynthian_state_manager:
                     # TODO: Use ctrldev_driver=None to disable driver
                     if state["disable_ctrldev"]:
                         self.ctrldev_manager.unload_driver(izmip, True)
-                    else:
+                    elif load_ctrldev:
                         self.ctrldev_manager.load_driver(izmip, state["ctrldev_driver"])
+                    else:
+                        pass
+                        # self.ctrldev_manager.load_driver(izmip, state["ctrldev_driver"])
                 except:
                     pass
                 try:
