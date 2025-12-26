@@ -1240,6 +1240,12 @@ class zynthian_state_manager:
                 for proc in self.chain_manager.processors.values():
                     proc.set_midi_autolearn(True)
 
+            if load_ctrldev and not load_chains:
+                zs3 = self.sanitize_zs3_from_json(state["zs3"])
+                if not merge:
+                    self.zs3 = zs3
+                self.load_ctrldev(zs3["zs3-0"])
+
             # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1
             if basename(fpath) != "last_state.zss":
@@ -1559,6 +1565,78 @@ class zynthian_state_manager:
                     lib_zyncore.zynaptik_cvout_set_note0(zynaptik_config["cvout_note0"])
                 except:
                     pass
+
+        if zs3_id != 'zs3-0':
+            self.last_zs3_id = zs3_id
+            #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
+        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
+
+        if autoconnect:
+            zynautoconnect.request_midi_connect(True)
+            zynautoconnect.request_audio_connect(True)
+        return True
+
+    def load_ctrldev(self, zs3_id, autoconnect=True, load_ctrldev=True):
+        """Restore ctrldev from a zs3
+
+        zs3_id : ID of ZS3 to restore or zs3 dict
+        Returns : True on success
+        """
+
+        if isinstance(zs3_id, str):
+            # Try loading exact match
+            try:
+                zs3_state = self.zs3[zs3_id]
+            except:
+                # else ignore MIDI channel => try loading "program change" match
+                try:
+                    zs3_id = f"*/{zs3_id.split('/')[1]}"
+                    zs3_state = self.zs3[zs3_id]
+                except:
+                    logging.info(f"Not found ZS3 matching '{zs3_id}'")
+                    return False
+        else:
+            try:
+                zs3_state = zs3_id
+                zs3_id = self.last_zs3_id
+                if zs3_id is None:
+                    zs3_id = "zs3-0"
+            except:
+                zs3_id = "zs3-0"
+
+        if "midi_capture" in zs3_state:
+            self.set_busy_details("restoring midi capture state")
+            """Set midi input (capture) state: flags, chain routing, etc.
+
+            mcstate : dictionary with state. None for reset state to defaults.
+            """
+            mcstate = zs3_state['midi_capture']
+            if mcstate:
+                ctrldev_state_drivers = {}
+                for uid, state in mcstate.items():
+                    #logging.debug(f"MCSTATE {uid} => {state}")
+                    izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
+                    if izmip is None:
+                        continue
+                    zynautoconnect.update_midi_in_dev_mode(izmip)
+                    try:
+                        # TODO: Use ctrldev_driver=None to disable driver
+                        if state["disable_ctrldev"]:
+                            self.ctrldev_manager.unload_driver(izmip, True)
+                        else:
+                            self.ctrldev_manager.load_driver(izmip, state["ctrldev_driver"])
+                    except:
+                        pass
+                    try:
+                        ctrldev_state_drivers[uid] = state["ctrldev_state"]
+                    except:
+                        pass
+
+                self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
+
+            else:
+                zynautoconnect.reset_midi_in_dev_all()
+
 
         if zs3_id != 'zs3-0':
             self.last_zs3_id = zs3_id

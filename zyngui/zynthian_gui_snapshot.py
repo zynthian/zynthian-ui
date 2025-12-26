@@ -295,6 +295,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             "Load Replace Chains": [param, ["Load chains from snapshot, replacing current state.", "snapshot_chains.png"]],
             "Load Merge Chains": [param, ["Load chains from snapshot, merging with current state.", "snapshot_chains.png"]],
             "Load Replace Sequences": [param, ["Load sequences from snapshot, replacing current state", "snapshot_sequences.png"]],
+            "Load MIDI device drivers": [param, ["Load MIDI device drivers from snapshot, replacing current drivers", "midi_input.png"]],
             "Save Overwriting": [param, ["Save current state, overwriting this snapshot.", "snapshot_overwrite.png"]]
         }
         budir = dirname(fpath) + "/.backup"
@@ -327,6 +328,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         elif option == "Load Replace Sequences":
             # self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
             self.load_snapshot_sequences(fpath)
+        elif option == "Load MIDI device drivers":
+            # self.zyngui.show_confirm("Loading ctrldev drivers from '%s' will destroy current drivers..." % (fname), self.load_snapshot_ctrldev, fpath)
+            self.load_snapshot_ctrldev(fpath)
         elif option == "Save Overwriting":
             # self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
             self.save_snapshot(fpath)
@@ -366,6 +370,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             self.sm.save_last_state_snapshot()
         self.sm.load_snapshot(fpath, load_chains=False)
         self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
+
+    def load_snapshot_ctrldev(self, fpath):
+        if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
+            self.sm.save_last_state_snapshot()
+        self.sm.load_snapshot(fpath, load_chains=False, load_sequences=False, load_ctrldev=True)
+        self.zyngui.show_screen('audio_mixer', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
     def restore_backup_cb(self, fname, fpath):
         logging.debug("Restoring snapshot backup '{}'".format(fname))
