@@ -31,8 +31,7 @@ class zyn_headless:
         self.chain_manager = self.state_manager.chain_manager
 
         if zynthian_gui_config.restore_last_state:
-            snapshot_loaded = self.state_manager.load_snapshot(
-                "/zynthian/zynthian-my-data/snapshots/last_state.zss")
+            snapshot_loaded = self.state_manager.load_last_state_snapshot()
 
         self.state_manager.init_midi()
         self.state_manager.init_midi_services()
