@@ -346,8 +346,8 @@ class zynthian_gui_mixer_strip():
             self.fader_horizontal = self.header.create_rectangle(x, self.fader_y, x + self.width, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal"), state=tkinter.HIDDEN)
 
             # DPM
-            self.dpm_a = zynthian_gui_dpm(0, self.header, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, True, "fader")
-            self.dpm_b = zynthian_gui_dpm(1, self.header, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, True, "fader")
+            self.dpm_a = zynthian_gui_dpm(0, self.header, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, True)
+            self.dpm_b = zynthian_gui_dpm(1, self.header, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, True)
 
         # Draw the elements that are always displayed
         self.fader_text = self.header.create_text(x, self.fader_bottom - 2, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
@@ -407,6 +407,21 @@ class zynthian_gui_mixer_strip():
         self.footer.tag_bind(f"legend_strip_{id}", "<Button-5>", self.gui_mixer.on_wheel)
 
         self.draw_control()
+
+    def set_launcher_mode(self, mode):
+        try:
+            if mode:
+                self.dpm_a.move(self.dpm_a_x0, 0, self.dpm_width, self.balance_y)
+                self.dpm_b.move(self.dpm_b_x0, 0, self.dpm_width, self.balance_y)
+                self.header.coords(self.solo, self.x, self.solo_y, self.dpm_a_x0, self.mute_y)
+                self.header.coords(self.mute, self.x, self.mute_y, self.dpm_a_x0, self.balance_y)
+            else:
+                self.dpm_a.move(self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+                self.dpm_b.move(self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+                self.header.coords(self.solo, self.x, self.solo_y, self.x + self.width, self.mute_y)
+                self.header.coords(self.mute, self.x, self.mute_y, self.x + self.width, self.balance_y)
+        except:
+            pass # meters not yet created?
 
     def draw_dpm(self, state):
         """ Function to draw the DPM level meter for a mixer strip
@@ -943,7 +958,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.legend_bg_color_hl = zynthian_gui_config.color_on
         self.button_bgcol = zynthian_gui_config.color_panel_bg
         self.button_txcol = zynthian_gui_config.color_tx
-        self.balance_bg_color = "#008800"
+        self.balance_bg_color = "#888888"
         self.balance_fg_color = "#00EE00"
         self.high_color = "#CCCCCC"  # yellow
         self.rec_color = "#CC0000"  # red
@@ -1515,6 +1530,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.launcher_mode = False
         else:
             self.launcher_mode = launcher_mode
+
+        for strip in self.chain_strips:
+            strip.set_launcher_mode(launcher_mode)
 
         if self.launcher_mode:
             self.cb_launcher_refresh()

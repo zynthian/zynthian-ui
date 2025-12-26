@@ -43,27 +43,29 @@ class zynthian_gui_dpm():
         tags : Optional list of tags for external control of GUI
         """
 
-        self.enabled = False
-        self.mono = False
-        self.channel = channel  # Audio channel 0=A, 1=B
+        self.channel = channel
         self.parent = parent
+        self.vertical = vertical
+        self.tags = tags
+
+        # initial geometry
         self.x0 = x0
         self.y0 = y0
         self.width = width
         self.height = height
-        self.vertical = vertical
+        self.x1 = x0 + width
+        self.y1 = y0 + height
 
+        # dB constants
         self.overdB = -3
         self.highdB = -10
         self.lowdB = -50
         self.zerodB = -10
 
-        self.mono = False
-
-        self.hold_thickness = 1
+        # Colors
         self.low_color = "#00AA00"
         self.low_hold_color = "#00FF00"
-        self.high_color = "#CCCC00"  # yellow
+        self.high_color = "#CCCC00"
         self.high_hold_color = "#FFFF00"
         self.over_color = "#CC0000"
         self.over_hold_color = "#FF0000"
@@ -72,47 +74,91 @@ class zynthian_gui_dpm():
         self.line_color = "#999999"
         self.bg_color = color_panel_bg
 
-        if self.vertical:
-            self.x1 = x0 + width
-            self.y1 = y0 + height
-            self.y_over = int(self.y0 + self.height * self.overdB / self.lowdB)
-            self.y_high = int(self.y0 + self.height * self.highdB / self.lowdB)
-            self.y_low = y0 + height
-            y_zero = int(self.y0 + self.height * self.zerodB / self.lowdB)
+        self.hold_thickness = 1
+        self.mono = False
 
-            self.bg_over = self.parent.create_rectangle(
-                self.x0, self.y0, self.x1, self.y_over, width=0, fill=self.over_color, tags=tags)
-            self.bg_high = self.parent.create_rectangle(
-                self.x0, self.y_over, self.x1, self.y_high, width=0, fill=self.high_color, tags=tags)
-            self.bg_low = self.parent.create_rectangle(
-                self.x0, self.y_high, self.x1, self.y_low, width=0, fill=self.low_color, tags=tags)
-            self.overlay = self.parent.create_rectangle(
-                self.x0, self.y0, self.x1, self.y1, width=0, fill=self.bg_color, tags=tags)
-            self.hold = self.parent.create_rectangle(
-                self.x0, self.y_low, self.x1, self.y_low, width=0, fill=self.low_color, tags=tags, state=HIDDEN)
-            self.parent.create_line(
-                self.x0, y_zero, self.x1, y_zero, fill=self.line_color, tags=tags)
+        # ---------------------------------------------
+        # Compute bounds for initial position
+        # ---------------------------------------------
+        coords = self._compute_bounds()
+
+        # ---------------------------------------------
+        # Create canvas items
+        # ---------------------------------------------
+        self.bg_over = parent.create_rectangle(*coords['bg_over'], width=0, fill=self.over_color, tags=tags)
+        self.bg_high = parent.create_rectangle(*coords['bg_high'], width=0, fill=self.high_color, tags=tags)
+        self.bg_low = parent.create_rectangle(*coords['bg_low'], width=0, fill=self.low_color, tags=tags)
+        self.overlay = parent.create_rectangle(*coords['overlay'], width=0, fill=self.bg_color, tags=tags)
+        self.hold = parent.create_rectangle(*coords['hold'], width=0, fill=self.low_color, tags=tags, state=HIDDEN)
+        self.zero_line = parent.create_line(*coords['line'], fill=self.line_color, tags=tags)
+
+    # --------------------------------------------------
+    # Helper to compute bounds
+    # --------------------------------------------------
+    def _compute_bounds(self):
+        """ Compute all item coordinates and thresholds based on current geometry """
+        x0, y0, x1, y1 = self.x0, self.y0, self.x1, self.y1
+        width, height = self.width, self.height
+
+        if self.vertical:
+            self.y_over = int(y0 + height * self.overdB / self.lowdB)
+            self.y_high = int(y0 + height * self.highdB / self.lowdB)
+            self.y_low = y1
+            self.y_zero = int(y0 + height * self.zerodB / self.lowdB)
+
+            coords = {
+                'bg_over': (x0, y0, x1, self.y_over),
+                'bg_high': (x0, self.y_over, x1, self.y_high),
+                'bg_low': (x0, self.y_high, x1, self.y_low),
+                'overlay': (x0, y0, x1, y1),
+                'hold': (x0, self.y_low, x1, self.y_low),
+                'line': (x0, self.y_zero, x1, self.y_zero)
+            }
 
         else:
-            self.x1 = x0 + width
-            self.y1 = y0 + height
-            self.x_over = int(self.x1 - self.width * self.overdB / self.lowdB)
-            self.x_high = int(self.x1 - self.width * self.highdB / self.lowdB)
+            self.x_over = int(x1 - width * self.overdB / self.lowdB)
+            self.x_high = int(x1 - width * self.highdB / self.lowdB)
             self.x_low = x0
-            x_zero = int(self.x1 - self.width * self.zerodB / self.lowdB)
+            self.x_zero = int(x1 - width * self.zerodB / self.lowdB)
 
-            self.bg_over = self.parent.create_rectangle(
-                self.x_over, self.y0, self.x1, self.y1, width=0, fill=self.over_color, tags=tags)
-            self.bg_high = self.parent.create_rectangle(
-                self.x_high, self.y0, self.x_over, self.y1, width=0, fill=self.high_color, tags=tags)
-            self.bg_low = self.parent.create_rectangle(
-                self.x_low, self.y0, self.x_high, self.y1, width=0, fill=self.low_color, tags=tags)
-            self.overlay = self.parent.create_rectangle(
-                self.x0, self.y0, self.x1, self.y1, width=0, fill=self.bg_color, tags=tags)
-            self.hold = self.parent.create_rectangle(
-                self.x_low, self.y0, self.x_low, self.y1, width=0, fill=self.low_color, tags=tags, state=HIDDEN)
-            self.parent.create_line(
-                x_zero, self.y0, x_zero, self.y1, fill=self.line_color, tags=tags)
+            coords = {
+                'bg_over': (self.x_over, y0, x1, y1),
+                'bg_high': (self.x_high, y0, self.x_over, y1),
+                'bg_low': (self.x_low, y0, self.x_high, y1),
+                'overlay': (x0, y0, x1, y1),
+                'hold': (self.x_low, y0, self.x_low, y1),
+                'line': (self.x_zero, y0, self.x_zero, y1)
+            }
+
+        return coords
+
+    # --------------------------------------------------
+    # Move method reuses same computation
+    # --------------------------------------------------
+    def move(self, x0, y0, width, height):
+        """ Move the meter to another part of the screen
+        Args:
+            x0: New x coordinate
+            y0: New y coordinate
+            width: New width
+            height: New height
+        """
+
+        self.x0 = x0
+        self.y0 = y0
+        self.width = width
+        self.height = height
+        self.x1 = x0 + width
+        self.y1 = y0 + height
+
+        coords = self._compute_bounds()
+
+        self.parent.coords(self.bg_over, *coords['bg_over'])
+        self.parent.coords(self.bg_high, *coords['bg_high'])
+        self.parent.coords(self.bg_low, *coords['bg_low'])
+        self.parent.coords(self.overlay, *coords['overlay'])
+        self.parent.coords(self.hold, *coords['hold'])
+        self.parent.coords(self.zero_line, *coords['line'])
 
     def set_enable(self, enable):
         self.enabled = enable
