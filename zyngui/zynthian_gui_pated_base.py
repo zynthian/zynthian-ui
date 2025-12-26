@@ -413,7 +413,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def toggle_menu(self):
         if self.shown:
             self.show_menu()
-        elif self.zyngui.current_screen == "option":
+        elif self.zyngui.get_current_screen() == "option":
             self.zyngui.close_screen()
 
     def save_last_menu_option(self):

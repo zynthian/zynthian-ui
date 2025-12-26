@@ -234,7 +234,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
     def toggle_menu(self):
         if self.shown:
             self.show_menu()
-        elif self.zyngui.current_screen == "option":
+        elif self.zyngui.get_current_screen() == "option":
             self.close_screen()
 
     def smf_options_cb(self, option, smf):

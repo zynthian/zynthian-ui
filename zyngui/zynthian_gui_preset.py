@@ -169,7 +169,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
     def toggle_menu(self):
         if self.shown:
             self.show_menu()
-        elif self.zyngui.current_screen == "option":
+        elif self.zyngui.get_current_screen() == "option":
             self.close_screen()
 
     def preset_options_cb(self, option, preset):

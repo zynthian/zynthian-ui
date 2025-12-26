@@ -48,7 +48,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
                               8, 9, 10, 11, 12]
 
     def update_wsleds(self):
-        curscreen = self.zyngui.current_screen
+        curscreen = self.zyngui.get_current_screen()
         curscreen_obj = self.zyngui.get_current_screen_obj()
 
         # Menu
@@ -133,7 +133,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             self.wsleds[13] = self.wscolor_default
 
         if self.zyngui.alt_mode and curscreen != "midi_recorder":
-            self.zyngui.screens["midi_recorder"].update_wsleds(wsleds)
+            self.zyngui.screens["midi_recorder"].update_wsleds(self.wsleds)
         else:
             # REC Button
             if self.zyngui.state_manager.audio_recorder.rec_proc:

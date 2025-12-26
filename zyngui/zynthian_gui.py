@@ -113,6 +113,7 @@ class zynthian_gui:
     SS_GUI_SHOW_FILE_SELECTOR = 3
     SS_GUI_TOGGLE_ALT_MODE = 4
     SS_GUI_SHOW_MESSAGE = 5
+    SS_GUI_LAUNCHER_MODE = 6
 
     # Screen Modes
     SCREEN_HMODE_NONE = 0
@@ -624,7 +625,7 @@ class zynthian_gui:
 
         if screen is None:
             if self.current_screen:
-                screen = self.current_screen
+                screen = self.get_current_screen()
             else:
                 screen = "root"
         if screen == "root":
@@ -712,7 +713,7 @@ class zynthian_gui:
         """ Closes the current screen or optionally the specified screen """
 
         if screen is None:
-            screen = self.current_screen
+            screen = self.get_current_screen()
         self.prune_screen_history(screen, soft=False)
         try:
             last_screen = self.screen_history.pop()
@@ -721,6 +722,8 @@ class zynthian_gui:
 
         if last_screen not in self.screens:
             logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
+            last_screen = "root"
+        elif last_screen in ("mixer", "launcher"):
             last_screen = "root"
         logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
         self.show_screen(last_screen)
@@ -759,6 +762,13 @@ class zynthian_gui:
             self.show_screen(screen, hmode)
         else:
             self.close_screen()
+
+    def get_current_screen(self):
+        if self.current_screen in ("mixer", "launcher", "root"):
+            screen = ("mixer", "launcher")[self.screens["mixer"]]
+        else:
+            screen = self.current_screen
+        return screen
 
     def get_current_screen_obj(self):
         try:

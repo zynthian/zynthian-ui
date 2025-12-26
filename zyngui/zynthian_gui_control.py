@@ -624,7 +624,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def toggle_menu(self):
         if self.shown:
             self.show_menu()
-        elif self.zyngui.current_screen.endswith("_options"):
+        elif self.zyngui.get_current_screen().endswith("_options"):
             self.zyngui.close_screen()
 
     # --------------------------------------------------------------------------

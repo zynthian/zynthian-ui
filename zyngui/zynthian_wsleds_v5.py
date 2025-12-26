@@ -48,7 +48,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
                               4, 11, 12, 19]
 
     def update_wsleds(self):
-        curscreen = self.zyngui.current_screen
+        curscreen = self.zyngui.get_current_screen()
         curscreen_obj = self.zyngui.get_current_screen_obj()
 
         # Menu / Admin

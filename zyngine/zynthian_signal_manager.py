@@ -51,12 +51,14 @@ class zynthian_signal_manager:
     SS_CUIA_REFRESH = 0
     SS_CUIA_MIDI_EVENT = 1
 
+    #TODO: These are duplicates of definitions within zyngui!!!
     SS_GUI_SHOW_SCREEN = 0
     SS_GUI_SHOW_SIDEBAR = 1
     SS_GUI_CONTROL_MODE = 2
     SS_GUI_SHOW_FILE_SELECTOR = 3
     SS_GUI_TOGGLE_ALT_MODE = 4
     SS_GUI_SHOW_MESSAGE = 5
+    SS_GUI_LAUNCHER_MODE = 6
 
     SS_MIDI_ALL = 0
     SS_MIDI_CC = 1

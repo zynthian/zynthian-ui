@@ -142,7 +142,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
     def toggle_menu(self):
         if self.shown:
             self.show_menu()
-        elif self.zyngui.current_screen == "option":
+        elif self.zyngui.get_current_screen() == "option":
             self.close_screen()
 
     def bank_options_cb(self, option, bank):

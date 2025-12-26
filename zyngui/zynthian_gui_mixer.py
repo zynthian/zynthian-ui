@@ -1350,7 +1350,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def toggle_menu(self):
         if self.shown:
             self.zyngui.toggle_screen("main_menu")
-        elif self.zyngui.current_screen == "option":
+        elif self.zyngui.get_current_screen() == "option":
             self.zyngui.close_screen()
 
     def item_menu(self):
@@ -1532,6 +1532,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.pinned_header.itemconfig("fader_horizontal", state=tkinter.HIDDEN)
             self.chain_header.itemconfig("fader", state=tkinter.NORMAL)
             self.chain_header.itemconfig("fader_horizontal", state=tkinter.HIDDEN)
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
 
     def toggle_launcher_mode(self):
         self.set_launcher_mode(not self.launcher_mode)
