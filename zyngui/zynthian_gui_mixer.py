@@ -355,7 +355,13 @@ class zynthian_gui_mixer_strip():
             tags=("fader", f"fader_{id}"), justify=tkinter.LEFT)
 
         # Legend strip at bottom of screen
-        self.legend_strip_bg = self.footer.create_rectangle(x, 0, x + self.width, self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=("legend", f"legend_strip_{id}"))
+        if self.chain.chain_id == 0:
+            tags = ("legend", f"legend_strip_{id}", "legend_strip_main")
+        elif self.chain.zynmixer_proc and self.chain.zynmixer_proc.eng_code=="MR":
+            tags = ("legend", f"legend_strip_{id}", "legend_strip_bus")
+        else:
+            tags = ("legend", f"legend_strip_{id}")
+        self.legend_strip_bg = self.footer.create_rectangle(x, 0, x + self.width, self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=tags)
         self.legend_strip_txt = self.footer.create_text(self.centre_x, self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}"), font=self.gui_mixer.font)
 
         # MIDI pedal indicators
@@ -587,16 +593,6 @@ class zynthian_gui_mixer_strip():
     # Mixer Strip functionality
     # --------------------------------------------------------------------------
 
-    def set_fader_color(self, fg, bg=None):
-        """ Function to set fader colors
-        fg: Fader foreground color
-        bg: Fader background color (optional - Default: Do not change background color)
-        """
-        if self.chain.zynmixer_proc:
-            self.header.itemconfig(self.fader_overlay, fill=fg)
-            if bg:
-                self.header.itemconfig(self.gui_mixer.fader_bg_color, fill=bg)
-
     def set_volume(self, value):
         """ Function to set volume value
         value: Volume value (0..1)
@@ -809,10 +805,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chain_frame.rowconfigure(0, weight=1)
         self.chain_frame.rowconfigure(1, weight=0)
         self.chain_frame.rowconfigure(2, weight=0)
-        # Header (solo, mute, balance)
+        # Header (solo, mute, balance, etc.)
         self.chain_header = tkinter.Canvas(self.chain_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
         self.chain_header.grid(row=0, column=0, sticky="news")
-        # Body, vertical scroll (faders, launchers)
+        # Body, vertical scroll (launchers)
         self.chain_body = tkinter.Canvas(self.chain_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
         #self.chain_body.grid(row=1, column=0, sticky="news")
         # Footer (legend strip)
@@ -821,22 +817,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # Add chain frame to main frame
         self.chain_frame.grid(row=0, column=0, sticky="news")
 
-        # Column 1, mixbus
+        # Column 1, pinned chains (including main mixbus)
         self.pinned_frame = tkinter.Frame(self.main_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
         self.pinned_frame.columnconfigure(0, weight=1)
         self.pinned_frame.rowconfigure(0, weight=1)
         self.pinned_frame.rowconfigure(1, weight=0)
         self.pinned_frame.rowconfigure(2, weight=0)
-        # Header (solo, mute)
+        # Header (solo, mute, balance, etc.)
         self.pinned_header = tkinter.Canvas(self.pinned_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
         self.pinned_header.grid(row=0, column=0, sticky="ns")
-        # Body, vertical scroll (faders, launchers)
+        # Body, vertical scroll (launchers)
         self.pinned_body = tkinter.Canvas(self.pinned_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
-        #self.pinned_body.grid(row=1, column=0, sticky="ns")
         # Footer (legend strip)
         self.pinned_footer = tkinter.Canvas(self.pinned_frame, bd=0, highlightthickness=0, bg=zynthian_gui_config.color_panel_bg)
         self.pinned_footer.grid(row=2, column=0, sticky="ns")
-        # Add mixbus frame to main frame
+        # Add frame to host pinned chains to main frame (4 pixel demarcation of pinned chains)
         self.pinned_frame.grid(row=0, column=1, sticky="nes", padx=(4,0))
 
         self.chain_body.bind("<Button-1>", self.on_body_press)
@@ -961,6 +956,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.legend_txt_color = zynthian_gui_config.color_tx
         self.legend_bg_color = zynthian_gui_config.color_panel_bg
         self.legend_bg_color_hl = zynthian_gui_config.color_on
+        self.main_legend_bg_color = "#550000"
+        self.bus_legend_bg_color = "#000055"
         self.button_bgcol = zynthian_gui_config.color_panel_bg
         self.button_txcol = zynthian_gui_config.color_tx
         self.balance_bg_color = "#888888"
@@ -1401,6 +1398,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.highlighted_strip = self.chain_strips[-1]
 
         self.chain_footer.itemconfig("legend", fill=self.fader_bg_color)
+        self.pinned_footer.itemconfig("legend_strip_main", fill=self.main_legend_bg_color)
+        self.chain_footer.itemconfig("legend_strip_bus", fill=self.bus_legend_bg_color)
+        self.pinned_footer.itemconfig("legend_strip_bus", fill=self.bus_legend_bg_color)
         self.highlighted_strip.footer.itemconfig(self.highlighted_strip.legend_strip_bg, fill=self.legend_bg_color_hl)
         self.chain_header.itemconfig("fader_overlay", fill=self.fader_color)
         if self.highlighted_strip.chain.is_audio():
