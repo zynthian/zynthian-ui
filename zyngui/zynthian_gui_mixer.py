@@ -397,8 +397,6 @@ class zynthian_gui_mixer_strip():
 
 
         # Bind events to gui elements
-        self.zyngui.multitouch.tag_bind(self.header, self.fader_bg, "press", self.on_fader_press)
-        self.zyngui.multitouch.tag_bind(self.header, self.fader_bg, "motion", self.on_fader_motion)
         self.header.tag_bind(f"fader_{id}", "<ButtonPress-1>", self.on_fader_press)
         self.header.tag_bind(f"fader_{id}", "<ButtonRelease-1>", self.on_fader_release)
         self.header.tag_bind(f"fader_{id}", "<B1-Motion>", self.on_fader_motion)

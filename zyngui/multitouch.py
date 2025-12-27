@@ -88,7 +88,7 @@ class Touch(object):
 
     @property
     def position(self):
-        """Current position of touch event  as tuple (x,y)"""
+        """Current position of touch event as tuple (x,y)"""
 
         return (self.x, self.y)
 
