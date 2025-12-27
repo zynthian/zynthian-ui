@@ -847,6 +847,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chain_footer.bind("<Button-1>", self.on_body_press)
         self.chain_footer.bind("<B1-Motion>", self.on_body_motion)
         self.chain_footer.bind("<ButtonRelease-1>", self.on_body_release)
+        self.pinned_footer.bind("<Button-1>", self.on_body_press)
+        self.pinned_footer.bind("<B1-Motion>", self.on_body_motion)
+        self.pinned_footer.bind("<ButtonRelease-1>", self.on_body_release)
 
         self.ctrl_order = zynthian_gui_config.layout['ctrl_order'] # List of encoder indices
 
