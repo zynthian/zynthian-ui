@@ -318,7 +318,7 @@ class zynthian_gui_mixer_strip():
 
         self.fader_width = self.width - self.dpm_width * 2 - 2
 
-        self.fader_press_event = None #TODO: Factor out
+        self.fader_press_event = None
         self.launchers = [] # List of launcher button objects, indexed by phrase
 
         #Create GUI elements
@@ -346,10 +346,11 @@ class zynthian_gui_mixer_strip():
             self.fader_horizontal = self.header.create_rectangle(x, self.fader_y, x + self.width, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal"), state=tkinter.HIDDEN)
 
             # DPM
-            self.dpm_a = zynthian_gui_dpm(0, self.header, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, True)
-            self.dpm_b = zynthian_gui_dpm(1, self.header, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, True)
+            self.dpm_bg = self.header.create_rectangle(self.dpm_a_x0, self.dpm_y0, self.x + self.width + self.dpm_width, self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
+            self.dpm_a = zynthian_gui_dpm(0, self.header, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+            self.dpm_b = zynthian_gui_dpm(1, self.header, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
 
-        # Draw the elements that are always displayed
+        # Chain title
         self.fader_text = self.header.create_text(x, self.fader_bottom - 2, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
             tags=("fader", f"fader_{id}"), justify=tkinter.LEFT)
 
@@ -366,6 +367,7 @@ class zynthian_gui_mixer_strip():
                     self.legend_height - 4,
                     int(x + self.width / 5 * (col + 1)),
                     self.legend_height,
+                    width=0,
                     fill="yellow",
                     state=tkinter.HIDDEN
                 )
@@ -375,6 +377,7 @@ class zynthian_gui_mixer_strip():
             self.legend_height - 4,
             int(x + self.width),
             self.legend_height,
+            width=0,
             fill=zynthian_gui_config.color_status_midi,
             state=tkinter.HIDDEN
         )
@@ -388,8 +391,8 @@ class zynthian_gui_mixer_strip():
 
 
         # Bind events to gui elements
-        #self.zyngui.multitouch.tag_bind(self.body, self.fader, "press", self.on_fader_press)
-        #self.zyngui.multitouch.tag_bind(self.body, self.fader, "motion", self.on_fader_motion)
+        self.zyngui.multitouch.tag_bind(self.header, self.fader_bg, "press", self.on_fader_press)
+        self.zyngui.multitouch.tag_bind(self.header, self.fader_bg, "motion", self.on_fader_motion)
         self.header.tag_bind(f"fader_{id}", "<ButtonPress-1>", self.on_fader_press)
         self.header.tag_bind(f"fader_{id}", "<ButtonRelease-1>", self.on_fader_release)
         self.header.tag_bind(f"fader_{id}", "<B1-Motion>", self.on_fader_motion)
@@ -411,15 +414,17 @@ class zynthian_gui_mixer_strip():
     def set_launcher_mode(self, mode):
         try:
             if mode:
+                self.header.coords(self.dpm_bg, self.dpm_a_x0, 0, self.x + self.width, self.balance_y)
                 self.dpm_a.move(self.dpm_a_x0, 0, self.dpm_width, self.balance_y)
                 self.dpm_b.move(self.dpm_b_x0, 0, self.dpm_width, self.balance_y)
-                self.header.coords(self.solo, self.x, self.solo_y, self.dpm_a_x0, self.mute_y)
-                self.header.coords(self.mute, self.x, self.mute_y, self.dpm_a_x0, self.balance_y)
+                #self.header.coords(self.solo, self.x, self.solo_y, self.dpm_a_x0, self.mute_y)
+                #self.header.coords(self.mute, self.x, self.mute_y, self.dpm_a_x0, self.balance_y)
             else:
+                self.header.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
                 self.dpm_a.move(self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
                 self.dpm_b.move(self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
-                self.header.coords(self.solo, self.x, self.solo_y, self.x + self.width, self.mute_y)
-                self.header.coords(self.mute, self.x, self.mute_y, self.x + self.width, self.balance_y)
+                #self.header.coords(self.solo, self.x, self.solo_y, self.x + self.width, self.mute_y)
+                #self.header.coords(self.mute, self.x, self.mute_y, self.x + self.width, self.balance_y)
         except:
             pass # meters not yet created?
 

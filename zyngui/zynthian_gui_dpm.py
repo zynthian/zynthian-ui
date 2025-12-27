@@ -41,6 +41,7 @@ class zynthian_gui_dpm():
         height : height of widget
         vertical : True for vertical orientation else horizontal orientation
         tags : Optional list of tags for external control of GUI
+        fill: Optional background colour (default: None / transparent)
         """
 
         self.channel = channel
