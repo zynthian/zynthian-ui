@@ -180,8 +180,8 @@ SEQ_EVENT* Track::getEvent() {
             m_fEventOffset = pEvent->getOffset();
             // Real-time quantization (step quantization => TODO quantize to step divisors: 1/2, 1/3, 1/4, 1/6, 1/8, ...)
             if (pPattern->getQuantizeNotes()) {
-            	if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
-            	else m_fEventOffset = 0.0;
+                if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
+                else m_fEventOffset = 0.0;
 			}
             // Swing => Add to offset
             uint32_t swingDiv = pPattern->getSwingDiv();
