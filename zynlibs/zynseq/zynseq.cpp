@@ -501,7 +501,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             uint8_t nNum1 = midiEvent.buffer[1];
             uint8_t nNum2 = midiEvent.buffer[2];
 
-
             // Real Time Capture (while playing)
             if (nPlayState) {
                 // Note on event
