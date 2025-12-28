@@ -866,10 +866,11 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def update_seq_state(self, phrase, chan, state=None, mode=None, refresh=True):
         try:
-            row, col = self._zynseq.get_pad_coords(phrase, chan)
+            chain_id = self._chain_manager.midi_chan_2_chain_ids
+            col = self._chain_manager.get_chain_index(chain_id)
         except:
             return
-        idx = col * self._rows + row
+        idx = col * self._rows + phrase
         if idx >= len(self._pads):
             return
         btn = self._pads[idx]

@@ -196,7 +196,6 @@ class zynseq(zynthian_engine):
         self.playing_sequences = 0 # Quantity of playing sequences
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
-        self.chan2col = [None] * LAUNCHER_COLS # Maps MIDI channel to launcher column
         self.timesig = 4
         self.beat = 0 # Current beat of bar
         self.clippy = None # Clippy engine object
@@ -414,7 +413,6 @@ class zynseq(zynthian_engine):
         self.state = loads(self.libseq.getState().decode("utf-8"))
         self.libseq.freeState()
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
-        self.refresh_chan2col()
         try:
             if self.state["tempo"] != self.zctrl_tempo.value:
                 self.zctrl_tempo.value = self.state["tempo"]
@@ -429,15 +427,6 @@ class zynseq(zynthian_engine):
             logging.warning("Failed to set timesig")
         if send:
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_STATE)
-
-    def refresh_chan2col(self):
-        self.chan2col = [None] * LAUNCHER_COLS
-        col = 0
-        for chain in self.state_manager.chain_manager.chains.values():
-            midi_chan = chain.midi_chan
-            if midi_chan is not None and midi_chan < 33 and self.chan2col[midi_chan] is None:
-                self.chan2col[midi_chan] = col
-                col += 1
 
     def set_state(self, state):
         result = self.libseq.setState(bytes(dumps(state), "utf-8"))
@@ -547,38 +536,5 @@ class zynseq(zynthian_engine):
             return False
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
-
-    def get_pad_coords(self, phrase, chan):
-        """
-        Get the coordinates of a sequence in the displayed launcher grid
-
-        :param phrase: Index of phrase (row)
-        :param chan: MIDI channel of sequence
-        :returns: [row, col] Row and column in the grid or None if not found
-        .. note::
-            Column is the chain position, starting from 0 at left side of mixer view
-            Row is same as phrase - should be changed to offer scroll position
-        """
-
-        try:
-            #TODO: Lookup horizontal and vertical scroll poisition
-            row = phrase
-            return row, self.chan2col[chan]
-        except:
-            return None
-
-    def get_chan_from_col(self, col):
-        """
-        Get the MIDI channel of a column of launchers
-        
-        :param col: Index of column on hardware launcher (display order, MIDI chains only)
-        :returns: MIDI channel or None if invalid
-        """
-
-        try:
-            return self.chan2col.index(col)
-        except:
-            return None
-
 
 # -------------------------------------------------------------------------------

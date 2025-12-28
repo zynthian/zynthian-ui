@@ -55,12 +55,13 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
         if self.idev_out is None:
             return
         try:
-            row, col = self.zynseq.get_pad_coords(phrase, chan)
+            chain_id = self._chain_manager.midi_chan_2_chain_ids
+            col = self._chain_manager.get_chain_index(chain_id)
         except:
             return
-        if row > 3 or col > 3:
+        if phrase > 3 or col > 3:
             return
-        note = col * 4 + row
+        note = col * 4 + phrase
         if note > 15:
             return
         try:
