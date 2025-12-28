@@ -854,3 +854,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.shown = False
         self._draw_graph()
         self.shown = shown
+
+    def toggle_menu(self):
+        if self.shown:
+            self.zyngui.show_screen("admin")

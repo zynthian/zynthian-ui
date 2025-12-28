@@ -765,7 +765,7 @@ class zynthian_gui:
 
     def get_current_screen(self):
         if self.current_screen in ("mixer", "launcher", "root"):
-            screen = ("mixer", "launcher")[self.screens["mixer"]]
+            screen = ("mixer", "launcher")[self.screens["mixer"].launcher_mode]
         else:
             screen = self.current_screen
         return screen
@@ -1495,10 +1495,13 @@ class zynthian_gui:
         self.show_screen("admin")
 
     def cuia_screen_mixer(self, params=None):
-        self.show_screen("mixer")
+        self.show_screen_reset("mixer")
+
+    def cuia_screen_chain_manager(self, params=None):
+        self.show_screen("chain_manager")
 
     def cuia_screen_audio_mixer(self, params=None):
-        self.show_screen("mixer")
+        self.show_screen_reset("mixer")
 
     def cuia_screen_snapshot(self, params=None):
         self.show_screen("snapshot")
@@ -1514,7 +1517,10 @@ class zynthian_gui:
         self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
     def cuia_screen_launcher(self, params=None):
-        self.show_screen("launcher")
+        if self.current_screen == "mixer" and self.screens["mixer"].launcher_mode:
+            self.show_screen("pattern_editor")
+        else:
+            self.show_screen_reset("launcher")
 
     def cuia_screen_zynpad(self, params=None):
         self.show_screen("launcher")
@@ -1601,7 +1607,7 @@ class zynthian_gui:
             if callable(toggle_menu_func):
                 toggle_menu_func()
                 return
-        self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+        self.toggle_screen("chain_manager", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
     def cuia_bank_preset(self, params=None):
         if self.is_shown_alsa_mixer():

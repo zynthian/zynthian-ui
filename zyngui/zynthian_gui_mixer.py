@@ -1025,6 +1025,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chain_header.delete("all")
         self.chain_body.delete("all")
         self.chain_footer.delete("all")
+        self.pinned_header.delete("all")
+        self.pinned_body.delete("all")
+        self.pinned_footer.delete("all")
         div = self.chain_manager.get_pinned_pos()
         x0 = x1 = 0
         for idx, chain in enumerate(list(self.chain_manager.chains.values())):
@@ -1367,7 +1370,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def toggle_menu(self):
         if self.shown:
-            self.zyngui.toggle_screen("main_menu")
+            self.zyngui.toggle_screen("chain_manager")
         elif self.zyngui.get_current_screen() == "option":
             self.zyngui.close_screen()
 
