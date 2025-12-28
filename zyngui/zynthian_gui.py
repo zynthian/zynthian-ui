@@ -630,12 +630,13 @@ class zynthian_gui:
                 screen = "root"
         if screen == "root":
             try:
-                if self.screens[screen].launcher_mode:
+                if self.screens["mixer"].launcher_mode:
                     screen = "launcher"
                 else:
                     screen = "mixer"
             except:
-                pass
+                logging.warning("Mixer view not yet created!")
+                screen = "mixer"
         elif screen == "mixer":
             self.screens[screen].set_launcher_mode(False)
         elif screen == "launcher":
