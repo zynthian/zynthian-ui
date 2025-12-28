@@ -182,7 +182,7 @@ SEQ_EVENT* Track::getEvent() {
             if (pPattern->getQuantizeNotes()) {
                 if (m_fEventOffset > 0.5) m_fEventOffset = 1.0;
                 else m_fEventOffset = 0.0;
-			}
+            }
             // Swing => Add to offset
             uint32_t swingDiv = pPattern->getSwingDiv();
             float swingAmount = pPattern->getSwingAmount();

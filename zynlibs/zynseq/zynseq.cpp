@@ -407,8 +407,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (g_nMidiClock == 0) {
                         // Update tempo on each beat
                         if (nLastBeatFrame) {
-                        	double new_tempo = 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame);
-                        	if (new_tempo > 20.0) setTempo(new_tempo);
+                            double new_tempo = 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame);
+                            if (new_tempo > 20.0) setTempo(new_tempo);
                         }
                         // DPRINTF("BPM = 60 * %u / (%u + %u - %u) = %f\n", g_nSampleRate, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate /
                         // (nNow + midiEvent.time - nLastBeatFrame));
@@ -433,21 +433,21 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (!g_qClockPos.empty()) {
                         uint16_t target_clock = (g_nAnalogClock * PPQN / g_nAnalogClocksBeat) % PPQN;
                         //printf("Clock => %u, Target Clock => %u\n",  g_nClock, target_clock);
-						// Analog clock is advanced => Move next clock in queue to Now
-						if (g_nClock > target_clock) {
-							g_nClock = target_clock;
-							g_qClockPos.back().first = nLastBeatFrame;
-							//printf("Next Clock advanced to %lu\n",  g_qClockPos.back().first);
-						}
-						// Analog clock is delayed => Delay next clock in queue
-						else if (g_nClock < target_clock) {
-							g_nClock = target_clock;
-							g_qClockPos.back().first = nLastBeatFrame + g_nFramesPerClock;
-							//printf("Next Clock delayed to %lu\n",  g_qClockPos.back().first);
-						}
-					}
-					g_nAnalogClock ++;
-					if (g_nAnalogClock >= g_nAnalogClocksBeat) g_nAnalogClock = 0;
+                        // Analog clock is advanced => Move next clock in queue to Now
+                        if (g_nClock > target_clock) {
+                            g_nClock = target_clock;
+                            g_qClockPos.back().first = nLastBeatFrame;
+                            //printf("Next Clock advanced to %lu\n",  g_qClockPos.back().first);
+                        }
+                        // Analog clock is delayed => Delay next clock in queue
+                        else if (g_nClock < target_clock) {
+                            g_nClock = target_clock;
+                            g_qClockPos.back().first = nLastBeatFrame + g_nFramesPerClock;
+                            //printf("Next Clock delayed to %lu\n",  g_qClockPos.back().first);
+                        }
+                    }
+                    g_nAnalogClock ++;
+                    if (g_nAnalogClock >= g_nAnalogClocksBeat) g_nAnalogClock = 0;
                 }
                 break;
             /*
@@ -471,9 +471,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         if (bPatternRecording) {
             uint32_t nStep     = getPatternPlayhead();
             uint8_t nPlayState = g_pSequence->getPlayState();
-			uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
-			uint8_t nNum1 = midiEvent.buffer[1];
-			uint8_t nNum2 = midiEvent.buffer[2];
+            uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
+            uint8_t nNum1 = midiEvent.buffer[1];
+            uint8_t nNum2 = midiEvent.buffer[2];
 
             // Real Time Capture (while playing)
             if (nPlayState) {
@@ -505,7 +505,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         //printf("NOTE OFF Clock Fraction => %d / %u = %f)\n", fpos, g_nFramesPerClock, dclk);
                         // Clocks from start of sequence until this event
                         double pos_clocks = double(g_pSequence->getPlayPosition()) + dclk;
-						// Calculate duration from note start, in number of clocks
+                        // Calculate duration from note start, in number of clocks
                         double dDur =  pos_clocks - (double(startEvents[nNum1].start) + startEvents[nNum1].offset) * pPattern->getClocksPerStep();
                         // If duration is negative => note crossed sequence end => fix it!
                         if (dDur < 0.0) dDur += pPattern->getLength();
@@ -522,30 +522,30 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 }
                 // CC event
                 else if (nCommand == MIDI_CONTROL) {
-	                // Manage sustain pedal (CC64)
-    	            if (nNum1 == 64) {
-                    	if (nNum2 > 0 && g_nSustainValue == 0) {
-                        	g_nSustainValue = nNum2;
-                        	g_nSustainStart = nStep;
-                        	// Add pedal press
-                        	pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
-                        	setPatternModified(pPattern, true, false);
-                    	} else if (nNum2 == 0) {
-                        	if (g_nSustainValue > 0) {
-								// Add pedal release
-								pPattern->addControl(nStep, 64, 0, 0);
-								setPatternModified(pPattern, true, false);
-								// The next should be improved to be functional!
-								// Remove old pedals inside the new one => "Overdubbing" sustain pedal is a mess!
-								//pPattern->removeControlInterval(g_nSustainStart + 1, nStep - 1, 64);
-							}
-                        	g_nSustainValue = 0;
-                    	}
-                    	// else => Other cases must be bouncing or pedal "artifacts" that we ignore
+                    // Manage sustain pedal (CC64)
+                    if (nNum1 == 64) {
+                        if (nNum2 > 0 && g_nSustainValue == 0) {
+                            g_nSustainValue = nNum2;
+                            g_nSustainStart = nStep;
+                            // Add pedal press
+                            pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
+                            setPatternModified(pPattern, true, false);
+                        } else if (nNum2 == 0) {
+                            if (g_nSustainValue > 0) {
+                                // Add pedal release
+                                pPattern->addControl(nStep, 64, 0, 0);
+                                setPatternModified(pPattern, true, false);
+                                // The next should be improved to be functional!
+                                // Remove old pedals inside the new one => "Overdubbing" sustain pedal is a mess!
+                                //pPattern->removeControlInterval(g_nSustainStart + 1, nStep - 1, 64);
+                            }
+                            g_nSustainValue = 0;
+                        }
+                        // else => Other cases must be bouncing or pedal "artifacts" that we ignore
                     // Manage rest of CCs
                     } else {
-                    	pPattern->addControl(nStep, nNum1, nNum2, nNum2);
-                    	setPatternModified(pPattern, true, false);
+                        pPattern->addControl(nStep, nNum1, nNum2, nNum2);
+                        setPatternModified(pPattern, true, false);
                     }
                 }
             }
@@ -586,15 +586,15 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
     }
 
-	// Reset pedal if pattern recording is off
-	if (!bPatternRecording && g_nSustainValue > 0) {
-		g_nSustainValue = 0;
+    // Reset pedal if pattern recording is off
+    if (!bPatternRecording && g_nSustainValue > 0) {
+        g_nSustainValue = 0;
     }
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
     //!@todo Interpolate events across frame, e.g. CC variations
 
-	//if (g_qClockPos.size() > 1) printf("Queued clocks = %d!!\n", g_qClockPos.size());
+    //if (g_qClockPos.size() > 1) printf("Queued clocks = %d!!\n", g_qClockPos.size());
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
     if (nState == JackTransportRolling) {
@@ -680,7 +680,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         auto it = g_mSchedule.begin();
         jack_nframes_t nTime = 0;
         while (it != g_mSchedule.end()) {
-        	bool bSkip = false;
+            bool bSkip = false;
             if (it->first >= nNow + nFrames)
                 break; // Event scheduled beyond this buffer
             if (it->first < nNow) {
@@ -701,32 +701,32 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (nType < 0xF0)
                         nType &= 0xF0;
                     switch (nType) {
-                    	case MIDI_PROGRAM:
-                    	case MIDI_CHAN_PRESSURE:
-                    	case MIDI_TIMECODE:
-                    	case MIDI_SONG:
-                        	nSize = 2;
-                        	break;
+                        case MIDI_PROGRAM:
+                        case MIDI_CHAN_PRESSURE:
+                        case MIDI_TIMECODE:
+                        case MIDI_SONG:
+                            nSize = 2;
+                            break;
                         case MIDI_CONTROL:
-                        	// Skip sustain events if recording and sustain is pressed
-                        	if (it->second->value1 == 64 && g_nSustainValue > 0)
-                        		bSkip = true;
-                        	nSize = 3;
-                    	default:
-                        	nSize = 3;
+                            // Skip sustain events if recording and sustain is pressed
+                            if (it->second->value1 == 64 && g_nSustainValue > 0)
+                                bSkip = true;
+                            nSize = 3;
+                        default:
+                            nSize = 3;
                     }
                 }
                 if (!bSkip) {
-					pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
-					if (pBuffer == NULL)
-						break; // Exceeded buffer size (or other issue)
-					pBuffer[0] = it->second->command;
-					if (nSize > 1)
-						pBuffer[1] = it->second->value1;
-					if (nSize > 2)
-						pBuffer[2] = it->second->value2;
-					DPRINTF("Sending MIDI event %x,%x,%x at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
-				}
+                    pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
+                    if (pBuffer == NULL)
+                        break; // Exceeded buffer size (or other issue)
+                    pBuffer[0] = it->second->command;
+                    if (nSize > 1)
+                        pBuffer[1] = it->second->value1;
+                    if (nSize > 2)
+                        pBuffer[2] = it->second->value2;
+                    DPRINTF("Sending MIDI event %x,%x,%x at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
+                }
                 delete it->second;
                 it->second = NULL;
             }
@@ -2550,6 +2550,6 @@ void setClockSource(uint8_t source) {
 uint8_t getAnalogClocksBeat() { return g_nAnalogClocksBeat; }
 
 void setAnalogClocksBeat(uint8_t analog_clock_divisor) {
-	if (analog_clock_divisor > 0) g_nAnalogClocksBeat = analog_clock_divisor;
-	else g_nAnalogClocksBeat = 1;
+    if (analog_clock_divisor > 0) g_nAnalogClocksBeat = analog_clock_divisor;
+    else g_nAnalogClocksBeat = 1;
 }
