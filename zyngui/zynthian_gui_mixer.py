@@ -871,8 +871,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
         self.pending_refresh_queue = set()
 
-        # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
-
         self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
 
         self.status_tempo = self.status_canvas.create_text(
