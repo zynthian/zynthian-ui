@@ -429,8 +429,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (g_nMidiClock == 0) {
                         // Update tempo on each beat
                         if (nLastBeatFrame) {
-                        	double new_tempo = 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame);
-                        	if (new_tempo > 20.0) setTempo(new_tempo);
+                            double new_tempo = 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame);
+                            if (new_tempo > 20.0) setTempo(new_tempo);
                         }
                         // DPRINTF("BPM = 60 * %u / (%u + %u - %u) = %f\n", g_nSampleRate, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate /
                         // (nNow + midiEvent.time - nLastBeatFrame));
@@ -455,21 +455,21 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (!g_qClockPos.empty()) {
                         uint16_t target_clock = (g_nAnalogClock * PPQN / g_nAnalogClocksBeat) % PPQN;
                         //printf("Clock => %u, Target Clock => %u\n",  g_nClock, target_clock);
-						// Analog clock is advanced => Move next clock in queue to Now
-						if (g_nClock > target_clock) {
-							g_nClock = target_clock;
-							g_qClockPos.back().first = nLastBeatFrame;
-							//printf("Next Clock advanced to %lu\n",  g_qClockPos.back().first);
-						}
-						// Analog clock is delayed => Delay next clock in queue
-						else if (g_nClock < target_clock) {
-							g_nClock = target_clock;
-							g_qClockPos.back().first = nLastBeatFrame + g_nFramesPerClock;
-							//printf("Next Clock delayed to %lu\n",  g_qClockPos.back().first);
-						}
-					}
-					g_nAnalogClock ++;
-					if (g_nAnalogClock >= g_nAnalogClocksBeat) g_nAnalogClock = 0;
+                        // Analog clock is advanced => Move next clock in queue to Now
+                        if (g_nClock > target_clock) {
+                            g_nClock = target_clock;
+                            g_qClockPos.back().first = nLastBeatFrame;
+                            //printf("Next Clock advanced to %lu\n",  g_qClockPos.back().first);
+                        }
+                        // Analog clock is delayed => Delay next clock in queue
+                        else if (g_nClock < target_clock) {
+                            g_nClock = target_clock;
+                            g_qClockPos.back().first = nLastBeatFrame + g_nFramesPerClock;
+                            //printf("Next Clock delayed to %lu\n",  g_qClockPos.back().first);
+                        }
+                    }
+                    g_nAnalogClock ++;
+                    if (g_nAnalogClock >= g_nAnalogClocksBeat) g_nAnalogClock = 0;
                 }
                 break;
             /*
@@ -498,8 +498,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             uint32_t nStep = getPatternPlayhead();
             uint8_t nPlayState = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayState();
             uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
-			uint8_t nNum1 = midiEvent.buffer[1];
-			uint8_t nNum2 = midiEvent.buffer[2];
+            uint8_t nNum1 = midiEvent.buffer[1];
+            uint8_t nNum2 = midiEvent.buffer[2];
 
 
             // Real Time Capture (while playing)
@@ -531,7 +531,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         //printf("NOTE OFF Clock Fraction => %d / %u = %f)\n", fpos, g_nFramesPerClock, dclk);
                         // Clocks from start of sequence until this event
                         double pos_clocks = double(g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition()) + dclk;
-						// Calculate duration from note start, in number of clocks
+                        // Calculate duration from note start, in number of clocks
                         double dDur =  pos_clocks - (double(startEvents[nNum1].start) + startEvents[nNum1].offset) * g_pPattern->getClocksPerStep();
                         // If duration is negative => note crossed sequence end => fix it!
                         if (dDur < 0.0) dDur += g_pPattern->getLength();
@@ -562,8 +562,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                                 g_pPattern->addControl(nStep, 64, 0, 0);
                                 // The next should be improved to be functional!
                                 // Remove old pedals => "Overdubbing" sustain pedal is a mess!
-	                            //g_pPattern->removeControlInterval(0, g_pPattern->getSteps() - 1, 64);
-	                            setPatternModified(g_pPattern, true, false);
+                                //g_pPattern->removeControlInterval(0, g_pPattern->getSteps() - 1, 64);
+                                setPatternModified(g_pPattern, true, false);
                             }
                             g_nSustainValue = 0;
                         }
@@ -572,7 +572,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     } else {
                         // Remove old CCs => "Overdubbing" CC is a mess!
                         if (g_nLastStepCC < nStep)
-                        	g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, nNum1);
+                            g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, nNum1);
                         // Add new CC event
                         g_pPattern->addControl(nStep, nNum1, nNum2, nNum2);
                         g_nLastStepCC = nStep;
@@ -625,7 +625,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
     //!@todo Interpolate events across frame, e.g. CC variations
 
-	//if (g_qClockPos.size() > 1) printf("Queued clocks = %d!!\n", g_qClockPos.size());
+    //if (g_qClockPos.size() > 1) printf("Queued clocks = %d!!\n", g_qClockPos.size());
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
     if (nTransportState == JackTransportRolling) {
@@ -2054,7 +2054,7 @@ void removeNote(uint32_t step, uint8_t note) {
 
 void clearNotes() {
     if (g_pPattern) {
-    	setPatternModified(g_pPattern, true, false);
+        setPatternModified(g_pPattern, true, false);
         g_pPattern->clearNotes();
         g_bDirty = true;
     }
@@ -2115,7 +2115,7 @@ void removeControl(uint32_t step, uint8_t control) {
 
 void clearControl(uint8_t control) {
     if (g_pPattern) {
-    	setPatternModified(g_pPattern, true, false);
+        setPatternModified(g_pPattern, true, false);
         g_pPattern->clearControl(control);
         g_bDirty = true;
     }
@@ -3089,8 +3089,8 @@ void setClockSource(uint8_t source) {
 uint8_t getAnalogClocksBeat() { return g_nAnalogClocksBeat; }
 
 void setAnalogClocksBeat(uint8_t analog_clock_divisor) {
-	if (analog_clock_divisor > 0) g_nAnalogClocksBeat = analog_clock_divisor;
-	else g_nAnalogClocksBeat = 1;
+    if (analog_clock_divisor > 0) g_nAnalogClocksBeat = analog_clock_divisor;
+    else g_nAnalogClocksBeat = 1;
 }
 
 void enableChannel(uint8_t channel, bool enable) {
