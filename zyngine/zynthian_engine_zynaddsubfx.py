@@ -30,9 +30,9 @@ from string import Template
 from os.path import isfile, join
 from subprocess import check_output
 
-from . import zynthian_engine
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_engine import zynthian_engine
 
 # ------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class

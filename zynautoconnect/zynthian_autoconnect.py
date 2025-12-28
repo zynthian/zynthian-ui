@@ -720,7 +720,12 @@ def midi_autoconnect():
             src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
             if src_ports:
                 # Connect to first slot, excluding clippy
-                for dst_proc in chain.get_processors(slot=0):
+                procs = chain.get_processors(type="MIDI Tool", slot=0)
+                if not procs:
+                    procs = chain.get_processors(type="Synth", slot=0)
+                for dst_proc in procs:
+                    if dst_proc.eng_code == "CL":
+                        continue
                     dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
                     if dst_ports:
                         src = src_ports[0]
@@ -1056,6 +1061,7 @@ def enable_audio_input_device(device, enable=True):
         if device not in zynthian_gui_config.disabled_audio_in:
             zynthian_gui_config.disabled_audio_in.append(device)
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN": ",".join(zynthian_gui_config.disabled_audio_in)}, True)
+
 
 def enable_audio_output_device(device, enable=True):
     if enable:

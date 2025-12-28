@@ -83,12 +83,12 @@ class Track {
     /** @brief  Handle clock signal
      *   @param  nTime Time (quantity of samples since JACK epoch)
      *   @param  nPosition Play position within sequence in clock cycles
-     *   @param  dSamplesPerClock Samples per clock
+     *   @param  nSamplesPerClock Samples per clock
      *   @param  bSync True if sync point
      *   @retval uint8_t 1 if a step needs processing for this track
      *   @note   Tracks are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
      */
-    uint8_t clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock, bool bSync);
+    uint8_t clock(uint32_t nTime, uint32_t nPosition, uint32_t nSamplesPerClock, bool bSync);
 
     /** @brief  Gets next event at current clock cycle
      *   @retval SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
@@ -207,7 +207,7 @@ class Track {
     uint32_t m_nLastClockTime = 0;            // Time of last clock pulse (sample)
     uint32_t m_nNextStep      = 0;            // Postion within pattern (step)
     uint32_t m_nTrackLength   = 0;            // Quantity of clock cycles in track (last pattern start + length)
-    double m_dSamplesPerClock;                // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
+    uint32_t m_nSamplesPerClock;              // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
     bool m_bSolo    = false;                  // True if track is solo
     bool m_bMute    = false;                  // True if track is muted
     bool m_bChanged = true;                   // True if state changed since last hasChanged()

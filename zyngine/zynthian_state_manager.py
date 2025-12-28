@@ -2153,6 +2153,22 @@ class zynthian_state_manager:
                 "ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE": str(int(val))
             })
 
+    def get_transport_analog_clock_divisor(self):
+        return self.zynseq.libseq.getAnalogClocksBeat()
+
+    def set_transport_analog_clock_divisor(self, val=None, save_config=False):
+        if val is None:
+            val = zynthian_gui_config.transport_clock_source
+
+        self.zynseq.libseq.setAnalogClocksBeat(val)
+
+        # Save config
+        if save_config:
+            zynthian_gui_config.transport_analog_clock_divisor = val
+            zynconf.update_midi_profile({
+                "ZYNTHIAN_MIDI_TRANSPORT_ANALOG_CLOCK_DIVISOR": str(int(val))
+            })
+
     # -------------------------------------------------------------------
     # MIDI profile
     # -------------------------------------------------------------------
@@ -2160,7 +2176,7 @@ class zynthian_state_manager:
     def get_midi_profile_state(self):
         """Get MIDI profile state as an ordered dictionary"""
 
-        midi_profile_state = OrderedDict()
+        midi_profile_state = {}
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]

@@ -32,12 +32,12 @@ import logging
 import requests
 from time import sleep
 from xml.etree import ElementTree
-from collections import OrderedDict
-from subprocess import Popen, DEVNULL, PIPE, check_output, run
+from subprocess import Popen, PIPE, check_output
 
-from . import zynthian_engine
-from . import zynthian_controller
 from zynconf import ServerPort
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_controller import zynthian_controller
+
 
 """ Map of parameters to expose in UI
     0: Symbol used in MIDI mapping file

@@ -29,7 +29,7 @@ import shutil
 import logging
 from subprocess import check_output
 
-from . import zynthian_engine_sfz
+from zyngine.zynthian_engine_sfz import zynthian_engine_sfz
 
 # ------------------------------------------------------------------------------
 # Sfizz Engine Class

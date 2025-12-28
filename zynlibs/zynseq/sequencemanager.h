@@ -83,7 +83,7 @@ class SequenceManager {
      *   @param  dSamplesPerClock Quantity of samples in each clock cycle
      *   @retval size_t Quantity of playing sequences
      */
-    size_t clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync);
+    size_t clock(std::pair<uint32_t, uint32_t> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync);
 
     /** @brief  Get pointer to sequence
      *   @param  bank Index of bank containing sequence

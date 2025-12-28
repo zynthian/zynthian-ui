@@ -115,7 +115,7 @@ void Sequence::setPlayState(uint8_t state) {
 
 uint32_t Sequence::getState() { return (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
 
-uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
+uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint32_t nSamplesPerClock) {
     m_nCurrentTrack = 0;
     uint8_t nReturn = 0;
     uint8_t nState  = m_nState;
@@ -143,7 +143,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
         // Still playing so iterate through tracks
         for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-            nReturn |= (*it).clock(nTime, m_nPosition, dSamplesPerClock, bSync);
+            nReturn |= (*it).clock(nTime, m_nPosition, nSamplesPerClock, bSync);
         ++m_nPosition;
     }
     if (m_nPosition >= m_nLength) {

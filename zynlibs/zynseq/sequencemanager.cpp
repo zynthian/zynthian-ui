@@ -150,19 +150,19 @@ void SequenceManager::updateAllSequenceLengths() {
             (*itSeq)->updateLength();
 }
 
-size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
+size_t SequenceManager::clock(std::pair<uint32_t, uint32_t> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
     uint32_t nTime          = timeinfo.first;
-    double dSamplesPerClock = timeinfo.second;
+    uint32_t nSamplesPerClock = timeinfo.second;
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
         Sequence* pSequence = getSequence(it->first, it->second);
         if (pSequence->getPlayState() == STOPPED) {
             it = m_vPlayingSequences.erase(it);
             continue;
         }
-        uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock);
+        uint8_t nEventType = pSequence->clock(nTime, bSync, nSamplesPerClock);
         if (nEventType & 1) {
             // A step event
             while (SEQ_EVENT* pEvent = pSequence->getEvent()) {

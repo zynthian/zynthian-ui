@@ -23,18 +23,18 @@
 # ******************************************************************************
 
 from collections import OrderedDict
-import logging
-import json
 import copy
-from subprocess import Popen, STDOUT, PIPE
+import json
 import socket
-from threading import Thread, Timer
-from os.path import basename
+import logging
 from os import listdir
+from os.path import basename
 from time import sleep, monotonic
+from threading import Thread, Timer
+from subprocess import Popen, STDOUT, PIPE
 
-from . import zynthian_engine
 import zynautoconnect
+from zyngine.zynthian_engine import zynthian_engine
 
 
 # ------------------------------------------------------------------------------

@@ -217,8 +217,7 @@ class zynthian_ctrldev_manager():
 
     def set_state_drivers(self, state):
         for uid, dstate in state.items():
-            izmip = zynautoconnect.get_midi_in_devid_by_uid(
-                uid, zynthian_gui_config.midi_usb_by_port)
+            izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
             if izmip is not None and izmip in self.drivers:
                 try:
                     self.drivers[izmip].set_state(dstate)
