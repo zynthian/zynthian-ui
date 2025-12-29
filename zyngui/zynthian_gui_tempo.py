@@ -36,6 +36,7 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_controller
 from zyngine.zynthian_signal_manager import zynsigman
+from zynlibs.zynseq.zynseq import SS_SEQ_METRO
 
 # ------------------------------------------------------------------------------
 # Zynthian Tempo GUI Class
@@ -79,20 +80,11 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
         self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
-        self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable',
-                                                    {'name': 'Metronome On/Off',
-                                                     'labels': ['Off', 'On'],
-                                                     'ticks': [0, 1],
-                                                     'is_toggle': True,
-                                                     'value': self.libseq.isMetronomeEnabled()})
+        self.mtr_enable_zctrl = self.zynseq.zctrl_metro_enable
         self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
         self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
 
-        self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume',
-                                                    {'name': 'Metronome Volume',
-                                                      'value_min': 0,
-                                                      'value_max': 100,
-                                                      'value': int(100 * self.libseq.getMetronomeVolume())})
+        self.mtr_volume_zctrl = self.zynseq.zctrl_metro_volume
         self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
         self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
 
@@ -159,6 +151,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
                                self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
             zynsigman.register(zynsigman.S_STATE_MAN,
                                self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+            zynsigman.register(zynsigman.S_STEPSEQ, SS_SEQ_METRO, self.metronome_cb)
             self.cb_status_audio_player()
             self.cb_status_audio_recorder()
             self.cb_status_midi_player()
@@ -177,6 +170,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
                                      self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
                 zynsigman.unregister(zynsigman.S_STATE_MAN,
                                      self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+                zynsigman.unregister(zynsigman.S_STEPSEQ, SS_SEQ_METRO, self.metronome_cb)
         return super().hide()
 
     def zynpot_cb(self, i, dval):
@@ -199,15 +193,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
                 self.set_clk_source_value(zctrl.value)
                 self.replot = True
 
-            elif zctrl == self.mtr_enable_zctrl:
-                self.libseq.enableMetronome(zctrl.value)
-                logging.debug("SETTING METRONOME ENABLE: {}".format(zctrl.value))
-                self.replot = True
-
-            elif zctrl == self.mtr_volume_zctrl:
-                self.libseq.setMetronomeVolume(zctrl.value/100.0)
-                logging.debug("SETTING METRONOME VOLUME: {}".format(zctrl.value))
-                self.replot = True
+    def metronome_cb(self, enable, volume):
+        self.replot = True
 
     def get_clk_source_value(self):
         cs = self.state_manager.get_transport_clock_source()

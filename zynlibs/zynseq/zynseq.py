@@ -93,6 +93,7 @@ SS_SEQ_PROGRESS = 3
 SS_SEQ_SELECT_PHRASE = 4
 SS_SEQ_TEMPO = 5
 SS_SEQ_TIMESIG = 6
+SS_SEQ_METRO = 7
 
 PATTERN_PARAMS = [
     "step", # Step within pattern
@@ -178,13 +179,26 @@ class zynseq(zynthian_engine):
             self.libseq = None
             print("Can't initialise zynseq library: %s" % str(e))
 
-        self.zctrl_tempo = zynthian_controller(self, 'bpm', {  # It was changed from 'tempo'
+        self.zctrl_tempo = zynthian_controller(self, 'bpm', {
             'name': 'BPM',
             'is_integer': False,
             'value_min': 10.0,
             'value_max': 420,
             'value': self.libseq.getTempo(),
             'nudge_factor': 1.0
+        })
+        self.zctrl_metro_enable = zynthian_controller(self, 'metronome_enable', {
+                'name': 'Metronome On/Off',
+                'labels': ['Off', 'On'],
+                'ticks': [0, 1],
+                'is_toggle': True,
+                'value': self.libseq.isMetronomeEnabled()
+        })
+        self.zctrl_metro_volume = zynthian_controller(self, 'metronome_volume', {
+            'name': 'Metronome Volume',
+            'value_min': 0,
+            'value_max': 100,
+            'value': int(100 * self.libseq.getMetronomeVolume())
         })
 
         # Cache sequence info for launchers to reduce access to libseq
@@ -385,6 +399,12 @@ class zynseq(zynthian_engine):
             self.libseq.setTempo(zctrl.value)
             #self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=zctrl.value)
+        elif zctrl == self.zctrl_metro_enable:
+            self.libseq.enableMetronome(zctrl.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, enable=zctrl.value, volume=self.zctrl_metro_volume.value)
+        elif zctrl == self.zctrl_metro_volume:
+            self.libseq.setMetronomeVolume(zctrl.value / 100.0)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, enable=self.zctrl_metro_enable.value, volume=zctrl.value)
 
     def set_midi_channel(self, chan, sequence, track, channel):
         self.libseq.setChannel(chan, sequence, track, channel)

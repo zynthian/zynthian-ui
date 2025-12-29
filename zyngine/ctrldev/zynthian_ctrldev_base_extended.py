@@ -268,8 +268,6 @@ class ModeHandlerBase:
     def __init__(self, state_manager):
         self._state_manager = state_manager
         self._chain_manager = state_manager.chain_manager
-        self._zynmixer = state_manager.zynmixer
-        self._zynmixer_bus = state_manager.zynmixer_bus
         self._zynseq = state_manager.zynseq
 
         self._timer = None

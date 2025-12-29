@@ -566,10 +566,10 @@ class zynthian_gui_mixer_strip():
                 if self.chain.zynmixer_proc.controllers_dict['record'].value:
                     if self.state_manager.audio_recorder.status:
                         self.footer.itemconfig(
-                            self.record_indicator, fill=self.rec_color, state=tkinter.NORMAL)
+                            self.record_indicator, fill=self.gui_mixer.rec_color, state=tkinter.NORMAL)
                     else:
                         self.footer.itemconfig(
-                            self.record_indicator, fill=self.high_color, state=tkinter.NORMAL)
+                            self.record_indicator, fill=self.gui_mixer.high_color, state=tkinter.NORMAL)
                 else:
                     self.footer.itemconfig(
                         self.record_indicator, state=tkinter.HIDDEN)
@@ -1041,9 +1041,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if chain.zynmixer_proc:
                 self.chan2strip[chain.zynmixer_proc.eng_code=="MR", chain.zynmixer_proc.mixer_chan] = self.chain_strips[idx]
         # Fix width of pinned canvas
-        self.pinned_header.configure(width=self.strip_width * (self.chain_manager.pinned_chains))
-        self.pinned_body.configure(width=self.strip_width * (self.chain_manager.pinned_chains))
-        self.pinned_footer.configure(width=self.strip_width * (self.chain_manager.pinned_chains))
+        self.pinned_header.configure(width=self.strip_width * (self.chain_manager.get_pinned_count()))
+        self.pinned_body.configure(width=self.strip_width * (self.chain_manager.get_pinned_count()))
+        self.pinned_footer.configure(width=self.strip_width * (self.chain_manager.get_pinned_count()))
 
         self.build_launchers()
         # Update scroll region (body done by build_launchers)
@@ -1339,11 +1339,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.scroll_canvas(self.chain_body, None, new_y / content_height, self.shown)
             self.scroll_canvas(self.pinned_body, None, new_y / content_height, self.shown)
 
-    def audio_recorder_arm_cb(self, zynmixer, channel, value):
-        for strip in self.chain_strips:
-            if strip.chain.zynmixer_proc == zynmixer:
-                strip.draw_control("record")
-                break
+    def audio_recorder_arm_cb(self, channel, mixbus, value):
+        pos = self.chain_manager.get_pos_by_mixer_chan(channel, mixbus)
+        try:
+            self.chain_strips[pos].draw_control("record")
+        except:
+            pass
 
     def launcher_play_state_cb(self, phrase, chan):
         if not self.launcher_mode:

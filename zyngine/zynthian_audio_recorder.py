@@ -27,9 +27,11 @@
 import os
 import logging
 from subprocess import Popen
+from datetime import datetime
 
 # Zynthian specific modules
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
 # Zynthian Audio Recorder Class
@@ -71,16 +73,19 @@ class zynthian_audio_recorder:
         else:
             src = f"{processor.jackname}:output_{processor.mixer_chan:02d}"
         if arm:
-            self.armed.add(src)
-            zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                self.SS_AUDIO_RECORDER_ARM, zynmixer=processor.zynmixer, channel=processor.mixer_chan, value=True)
+            try:
+                self.armed.add(src)
+                zynsigman.send(zynsigman.S_AUDIO_RECORDER,
+                    self.SS_AUDIO_RECORDER_ARM, channel=processor.mixer_chan, mixbus=processor.eng_code=="MR", value=True)
+            except:
+                logging.info(f"{src} not armed")
         else:
             try:
                 self.armed.remove(src)
                 zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                            self.SS_AUDIO_RECORDER_ARM, zynmixer=processor.zynmixer, channel=processor.mixer_chan, value=False)
+                    self.SS_AUDIO_RECORDER_ARM, channel=processor.mixer_chan, mixbus=processor.eng_code=="MR", value=False)
             except:
-                logging.info("%s not armed", src)
+                logging.info(f"{src} not unarmed")
 
     def toggle_arm(self, channel, mixbus):
         self.arm(channel, mixbus, not self.is_armed(channel, mixbus))

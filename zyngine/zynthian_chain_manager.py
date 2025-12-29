@@ -117,13 +117,13 @@ class zynthian_chain_manager:
         self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain = None  # Active chain object => This should NEVER be None!!!
-        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
-        self.pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
+        self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
         # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
         self.absolute_midi_cc_binding = {}
         # Map of list of zctrls indexed by 24-bit CHAIN,CHAN,CC
         self.chain_midi_cc_binding = {}
+        self._rebuild_optimisation_cache()
 
     # ------------------------------------------------------------------------
     # Engine Management
@@ -236,8 +236,8 @@ class zynthian_chain_manager:
         self.chains = dict(items)
         self.chains[chain_id] = chain
         # Update pinned chains
-        if self.pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
-            self.pinned_chains += 1
+        if self._pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
+            self._pinned_chains += 1
 
         # Setup chain
         chain.set_title(title)
@@ -340,17 +340,12 @@ class zynthian_chain_manager:
             chain = self.chains[chain_id]
             if isinstance(chain.midi_chan, int):
                 if chain.midi_chan < MAX_NUM_MIDI_CHANS:
-                    try:
-                        self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
-                    except:
-                        pass
                     lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
                 elif chain.midi_chan == 0xffff:
                     for mc in range(16):
-                        self.midi_chan_2_chain_ids[mc].remove(chain_id)
                         lib_zyncore.ui_send_ccontrol_change(mc, 120, 0)
-            if self.pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
-                self.pinned_chains -= 1
+            if self._pinned_chains > 1 and chain_pos >= self.get_pinned_pos():
+                self._pinned_chains -= 1
 
             update_fxreturns = False
             if chain.zynmixer_proc:
@@ -365,6 +360,8 @@ class zynthian_chain_manager:
             if chain_id != 0:
                 self.chains.pop(chain_id)
                 del chain
+
+        self._rebuild_optimisation_cache()
 
         zynautoconnect.request_audio_connect(fast_refresh)
         zynautoconnect.request_midi_connect(fast_refresh)
@@ -411,7 +408,7 @@ class zynthian_chain_manager:
         success = True
         for chain_id in list(self.chains.keys()):
             success &= self.remove_chain(chain_id, stop_engines, fast_refresh=False)
-        self.pinned_chains = 1
+        self._pinned_chains = 1
         zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
         return success
 
@@ -455,11 +452,11 @@ class zynthian_chain_manager:
         index = list(self.chains).index(chain_id)
         div = self.get_pinned_pos()
         if index < div and pos >= div:
-            self.pinned_chains += 1
+            self._pinned_chains += 1
             pos -= 1
         elif index >= div and pos < div:
-            if self.pinned_chains > 1:
-                self.pinned_chains -= 1
+            if self._pinned_chains > 1:
+                self._pinned_chains -= 1
             pos += 1
         pos = min(pos, len(self.chains) - 2)
         pos = max(pos, 0)
@@ -491,13 +488,36 @@ class zynthian_chain_manager:
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
         return pos
 
-    def get_chain_count(self, audio=True, midi=True, synth=True):
-        """Get the quantity of chains
+    # --- Chain getter functions ---
 
-        audio : True to include audio chains
-        midi : True to include MIDI chains
-        synth : True to include synth chains
-        return: quantity of chains
+    def get_active_chain(self):
+        """Get the active chain object or None if no active chain
+
+        Returns: Chain object or None on failure
+        """
+
+        if self.active_chain.chain_id in self.chains:
+            return self.chains[self.active_chain.chain_id]
+        return None
+
+    def get_chain_index(self, chain_id):
+        """ Get the index of a chain from its displayed order
+        Args:
+            chain_id: Chain id
+            Returns: Index of chain or last chain if chain_id not found
+        """
+
+        if chain_id in self.chains:
+            return list(self.chains).index(chain_id)
+        return len(self.chains) - 1
+
+    def get_chain_count(self, audio=True, midi=True, synth=True):
+        """ Get the quantity of chains
+        Args:
+            audio : True to include audio chains
+            midi : True to include MIDI chains
+            synth : True to include synth chains
+        Returns: Quantity of chains
         """
 
         if audio and midi and synth:
@@ -510,44 +530,55 @@ class zynthian_chain_manager:
         return count
 
     def get_chain(self, chain_id):
-        """Get a chain object by id"""
+        """ Get a chain object by its id
+        Args:
+            chain_id: Chain identifier (int)
+        Returns: Chain object or None on failure
+        """
 
         try:
             return self.chains[chain_id]
-        except:
+        except KeyError:
             return None
 
     def get_chain_id_by_index(self, index):
-        """Get a chain ID by the display index"""
+        """ Get a chain ID its display index
+        Args:
+            index: Display position
+        Returns: Chain identifier (int) or None on failure
+        Note: You may use negative index to count back from end, e.g. index=-1 for last chain (which is always the main mixbus)
+        """
 
         try:
             return list(self.chains)[index]
-        except:
+        except KeyError:
             return None
 
     def get_chain_by_index(self, index):
-        """Get a chain object by its display index"""
+        """ Get a chain object by its display index
+        Args:
+            index: Display position
+        Returns: Chain object or None on failure
+        Note: You may use negative index to count back from end, e.g. index=-1 for last chain (which is always the main mixbus)
+        """
 
         try:
             return self.chains[self.get_chain_id_by_index(index)]
-        except:
+        except KeyError:
             return None
 
     def get_chain_by_position(self, pos, audio=True, midi=True, synth=True):
-        """Get a chain by its (display) position
-
-        pos : Display position (0..no of chains)
-        audio : True to include audio chains
-        midi : True to include MIDI chains
-        synth : True to include synth chains
-        returns : Chain object or None if not found
+        """ Get a chain by its (display) position with option to filter
+        Args:
+            pos : Display position (0..no of chains)
+            audio : True to include audio chains
+            midi : True to include MIDI chains
+            synth : True to include synth chains
+        Returns : Chain object or None if not found
         """
 
         if audio and midi and synth:
-            if pos < len(self.chains):
-                return self.get_chain_by_index(pos)
-            else:
-                return None
+            return self.get_chain_by_index(pos)
 
         for chain in self.chains.values():
             if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
@@ -558,10 +589,11 @@ class zynthian_chain_manager:
         return None
 
     def get_chain_ids_filtered(self, filter=None):
-        """Get chain list filtered and ordered in display order
-
-        filter : A list of chain types to filter => ["audio", "midi", "synth", "generator"]
-        returns : List of chains
+        """ Get chain list filtered and ordered in display order
+        Args:
+            filter : A list of chain types to filter => ["audio", "midi", "synth", "generator"]
+        Returns : List of chain identifiers
+        Note: filter list may be a list or a comma separted string, e.g. "audio,synth"
         """
 
         if not filter:
@@ -597,23 +629,92 @@ class zynthian_chain_manager:
                             break
         return chain_ids_filtered
 
-    def get_chain_id_by_mixer_chan(self, chan):
-        """Get a chain by the mixer channel"""
+    def get_chain_id_by_mixer_chan(self, chan, mixbus=False):
+        """ Get a chain by the mixer channel
+        Args:
+            chan: Mixer channel index
+            mixbus: True to look for mixbus channels
+        Returns: Chain identifier or None on failure
+        """
 
-        for chain_id, chain in self.chains.items():
-            if chain_id > 0:        # Exclude Master Chain (mixbus=True)
-                if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan:
-                    return chain_id
+        #TODO: Optimise
+        if mixbus:
+            eng_code = "MR"
+        else:
+            eng_code = "MI"
+        for idx, chain in enumerate(self.chains.values()):
+            if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan and chain.zynmixer_proc.eng_code == eng_code:
+                return idx
         return None
 
+    def get_pos_by_mixer_chan(self, chan, mixbus=False):
+        """ Get display position of a chain by the mixer channel
+        Args:
+            chan: Mixer channel index
+            mixbus: True to look for mixbus channels
+        Returns: Chain position or None on failure
+        """
+
+        try:
+            return self._mixer_chan_2_pos[mixbus][chan]
+        except:
+            return None
+
+    def get_pos_by_midi_chan(self, chan):
+        """ Get a list of display positions (columns) for chains with specified MIDI channel
+        
+        Args:
+            chan: MIDI channel
+        Returns: List of display positions (columns). May be empty list.
+        """
+
+        try:
+            return self._midi_chan_2_pos[chan]
+        except IndexError:
+            return []
+
+    def get_chain_ids_by_midi_chan(self, chan):
+        """ Get a list of chain identifiers for chains with specified MIDI channel
+        
+        Args:
+            chan: MIDI channel
+        Returns: List of chain identifiers. May be empty list.
+        """
+
+        try:
+            return self._midi_chan_2_chain_ids[chan]
+        except IndexError:
+            return []
+
+    def _rebuild_optimisation_cache(self):
+        self._midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)] # List of lists of chain ids, indexed by midi channel.
+        self._midi_chan_2_pos = [list() for _ in range(MAX_NUM_MIDI_CHANS)] # List of lists of chain positions, indexed by midi channel.
+        self._mixer_chan_2_pos = [{},{}] # Map of chain positions, indexed by mixer chan. First map is for chains. Second map is for mixbuses.
+        for pos, chain in enumerate(self.chains.values()):
+            try:
+                self._midi_chan_2_chain_ids[chain.midi_chan].append(chain.chain_id)
+                self._midi_chan_2_pos[chain.midi_chan].append(pos)
+            except:
+                pass
+            if chain.zynmixer_proc:
+                self._mixer_chan_2_pos[chain.zynmixer_proc.eng_code == "MR"][chain.zynmixer_proc.mixer_chan] = pos
+
+    # --- Pinned chain managment---
     def set_pinned(self, count):
         """ Set the quantity of pinned chains
         Args:
             count: Quantity of chains to pin to right hand edge of UI
+        Note: Includes main mixbus which must always be pinned, so minimum count is 1
         """
 
         if count:
-            self.pinned_chains = count
+            self._pinned_chains = count
+
+    def get_pinned_count(self):
+        """ Get the quantity of pinned chains
+        Returns: Quantity of pinned chains
+        """
+        return self._pinned_chains
 
     def get_pinned_pos(self):
         """ Get the index of the first pinned chain
@@ -621,7 +722,7 @@ class zynthian_chain_manager:
             Position of first pinned chain
         """
 
-        return max(0, len(self.chains) - self.pinned_chains)
+        return max(0, len(self.chains) - self._pinned_chains)
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
@@ -879,24 +980,6 @@ class zynthian_chain_manager:
             return self.next_chain()
         else:
             return self.set_active_chain_by_index(0)
-
-    def get_active_chain(self):
-        """Get the active chain object or None if no active chain"""
-
-        if self.active_chain.chain_id in self.chains:
-            return self.chains[self.active_chain.chain_id]
-        return None
-
-    def get_chain_index(self, chain_id):
-        """Get the index of a chain from its displayed order
-
-        chain_id : Chain id
-        returns : Index or 0 if not found
-        """
-
-        if chain_id in self.chains:
-            return list(self.chains).index(chain_id)
-        return len(self.chains) - 1
 
     # ------------------------------------------------------------------------
     # Processor Management
@@ -1597,7 +1680,7 @@ class zynthian_chain_manager:
         # Handle bank change (CC0/32)
         # TODO: Validate and optimise bank change code
         if zynthian_gui_config.midi_bank_change:
-            for chain_id in self.midi_chan_2_chain_ids[midi_chan]:
+            for chain_id in self._midi_chan_2_chain_ids[midi_chan]:
                 chain = self.chains[chain_id]
                 if cc_num == 0:
                     for processor in chain.get_processors():
@@ -1730,16 +1813,11 @@ class zynthian_chain_manager:
             # ALL MIDI channels
             elif chain.midi_chan == 0xffff:
                 midi_chans = list(range(MAX_NUM_MIDI_CHANS))
-            # Remove from dictionary
-            for mc in midi_chans:
-                try:
-                    self.midi_chan_2_chain_ids[mc].remove(chain_id)
-                except:
-                    pass
 
+        self._rebuild_optimisation_cache()
         chain.set_midi_chan(midi_chan)
         for mc in range(16):
-            if not self.midi_chan_2_chain_ids[mc]:
+            if not self._midi_chan_2_chain_ids[mc]:
                 self.state_manager.zynseq.enable_channel(mc, False)
         self.state_manager.zynseq.enable_channel(midi_chan, True, True)
 
@@ -1752,13 +1830,7 @@ class zynthian_chain_manager:
             # ALL MIDI channels
             elif midi_chan == 0xffff:
                 midi_chans = list(range(MAX_NUM_MIDI_CHANS))
-            # Add to dictionary
-            for mc in midi_chans:
-                try:
-                    self.midi_chan_2_chain_ids[mc].append(chain_id)
-                    # logging.debug(f"Adding chain ID {chain_id} to MIDI channel {mc}")
-                except:
-                    pass
+            self._rebuild_optimisation_cache()
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""
@@ -1799,7 +1871,7 @@ class zynthian_chain_manager:
         """
 
         try:
-            return len(self.midi_chan_2_chain_ids[chan])
+            return len(self._midi_chan_2_chain_ids[chan])
         except:
             return 0
 
@@ -1836,12 +1908,12 @@ class zynthian_chain_manager:
         Returns : Processor or None on failure
         """
         # Try to find a Synth processor in the specified MIDI channel ...
-        for chain_id in self.midi_chan_2_chain_ids[midi_chan]:
+        for chain_id in self._midi_chan_2_chain_ids[midi_chan]:
             processors = self.get_processors(chain_id, "MIDI Synth")
             if len(processors) > 0:
                 return processors[0]
         # If not synth processors, try other processor types...
-        for chain_id in self.midi_chan_2_chain_ids[midi_chan]:
+        for chain_id in self._midi_chan_2_chain_ids[midi_chan]:
             processors = self.get_processors(chain_id)
             if len(processors) > 0:
                 return processors[0]

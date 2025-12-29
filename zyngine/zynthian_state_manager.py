@@ -963,7 +963,7 @@ class zynthian_state_manager:
             'zs3': self.zs3,
             'last_zs3_id': self.last_zs3_id,
             'gui': {
-                'pinned_chains': self.chain_manager.pinned_chains
+                'pinned_chains': self.chain_manager.get_pinned_count()
             }
         }
 

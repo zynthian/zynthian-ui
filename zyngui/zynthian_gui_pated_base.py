@@ -268,7 +268,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
         # Set active the first chain with pattern's MIDI chan
         try:
-            chain_id = self.zyngui.chain_manager.midi_chan_2_chain_ids[self.channel][0]
+            chain_id = self.zyngui.chain_manager.get_chain_ids_by_midi_chan(self.channel)[0]
             self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
         except:
             logging.error(f"Couldn't set active chain to channel {self.channel}.")

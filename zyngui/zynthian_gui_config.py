@@ -673,11 +673,28 @@ LAUNCHER_COLOUR = [
     {"rgb": "#CA92d4", "launchpad": 70,  "apc": 78},  #13:light purple
     {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 32},  #14:green-blue
     {"rgb": "#3F94A2", "launchpad": 32,  "apc": 92},  #15:teal
-    {"rgb": "#F5B169", "launchpad": 126, "apc": 109}  #16:light orange
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 109}, #16:light orange
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 41},  #17:blue
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 74},  #18:yellow
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #19:magenta
+    {"rgb": "#23C497", "launchpad": 18,  "apc": 86},  #20:lime green
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 61},  #21:orange
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 67},  #22:deep purple
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 95},  #23:hot pink
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 90},  #24:cyan
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 26},  #25:grey
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 99},  #26:light brown
+    {"rgb": "#7BC783", "launchpad": 28,  "apc": 90},  #27:turquise
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 2},   #28:pink
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 78},  #29:light purple
+    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 32},  #30:green-blue
+    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 92},  #31:teal
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 109}, #32:light orange
+    {"rgb": "#7F7F7F", "launchpad": 1,   "apc": 2}    #33:grey
 ]
 #TODO: Choose clip launcher colours
-LAUNCHER_COLOUR += LAUNCHER_COLOUR
 
+LAUNCHER_PLAYING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STOPPING_COLOUR = {"rgb": "#D00000", "launchpad": 5, "apc": 72} #red
 

@@ -55,7 +55,8 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
         if self.idev_out is None:
             return
         try:
-            chain_id = self._chain_manager.midi_chan_2_chain_ids
+            #TODO: FIXME - Can we use default function from parent?
+            chain_id = self._chain_manager.get_chain_ids_by_midi_chan(chan)[0]
             col = self._chain_manager.get_chain_index(chain_id)
         except:
             return

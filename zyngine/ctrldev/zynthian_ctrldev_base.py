@@ -302,9 +302,11 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     dev_zynpad = True		# Can act as a zynpad trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self.cols = 8
-        self.rows = 8
-        self.scroll_v = 0  # Offset of first row of pads
+        self.cols = 8 # Quatity of columns of physical launcher buttons
+        self.rows = 8 # Quatity of rows of physical launcher buttons
+        self.phrase_launcher_col = self.cols # Index of column used as phrase launcher
+        self.scroll_v = 0 # Offset of first row of pads
+        self.scroll_h = 0 # Offset of first column of pads
         self.zynseq = state_manager.zynseq
         super().__init__(state_manager, idev_in, idev_out)
 
@@ -330,16 +332,14 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         chan - zynseq's midi chan
         """
         #logging.debug(f"UPDATE SEQ STATE {phrase}, {chan}")
-        if chan is None:
-            return
-        if self.idev_out is None:
+        if chan is None or self.idev_out is None:
             return
         row = phrase - self.scroll_v
         if row < 0 or row >= self.rows:
             return
         # Phrase launcher
         if chan == 32:
-            col = self.cols
+            col = self.phrase_launcher_col
             try:
                 pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
             except:
@@ -347,19 +347,14 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
             self.update_pad(row, col, pad_info)
         # Sequence/Clip launcher
         else:
-            chain_ids = self.chain_manager.midi_chan_2_chain_ids[chan]
-            for id in chain_ids:
-                try:
-                    col = self.get_filtered_index_by_chain_id(id)
-                    if col < 0 or col >= self.cols:
-                        continue
-                except:
-                    continue
-                try:
-                    pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
-                except:
-                    pad_info = None
-                self.update_pad(row, col, pad_info)
+            try:
+                pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+            except IndexError:
+                pad_info = None
+            for idx in self.chain_manager.get_pos_by_midi_chan(chan):
+                col = idx - self.scroll_h
+                if 0 <= col < self.cols:
+                    self.update_pad(row, col, pad_info)
 
     def update_pad(self, row, col, pad_info):
         """Update the pad at row,col
