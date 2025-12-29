@@ -43,7 +43,7 @@ ENC_MODE_PAN    = 0
 ENC_MODE_SENDS  = 1
 ENC_MODE_USER   = 2
 
-LED_CLIP_LAUNCH     = 0x00  # First clip launcher RGB LED (0x30-0x27)
+LED_CLIP_LAUNCH     = 0x00  # First clip launcher RGB LED (0x00-0x27)
 LED_RECORD_ARM      = 0x30  # Record arm LED (Tracks: MIDI channel 0-7. 0=off, 1-127=Rred)
 LED_SOLO            = 0x31  # Solo LED (Tracks: MIDI channel 0-7. 0=off, 1-127=blue)
 LED_ACTIVATOR       = 0x32  # Activator LED (Tracks: MIDI channel 0-7. 0=off, 1-127=orange)
@@ -190,10 +190,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
 
     def light_off(self):
-        for led in range(0x41):
-            for chan in range(8):
-                lib_zyncore.dev_send_note_off(self.idev_out, chan, led, 0)
-        for led in range(0x50, 0x5E):
+        for led in range(0x28):
             lib_zyncore.dev_send_note_off(self.idev_out, 0, led, 0)
 
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
@@ -202,15 +199,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 # Main chain
                 pass
             else:
-                if mixbus:
-                    idx = - chan
-                else:
-                    idx = chan
                 try:
                     now = monotonic()
                     if now < self.last_cc_send + 0.1:
                         return
-                    pos = self.chan2pos[idx]
+                    pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus)
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, pos + 48, int((value + 1.0) * 63))
                 except:
                     pass
@@ -237,14 +230,6 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
 
     def update_state(self):
         self.chains = list(self.chain_manager.chains.values())
-        self.chan2pos = {} # Position of chain, indexed by its mixer position with mixbus being negative
-        for pos, chain in enumerate(self.chains):
-            if chain.zynmixer_proc is None:
-                self.chan2pos.append(None)
-            elif chain.zynmixer_proc.eng_code == "MI":
-                self.chan2pos[chain.zynmixer_proc.mixer_chan] = pos
-            elif chain.chain_id != 0:
-                self.chan2pos[-chain.zynmixer_proc.mixer_chan] = pos
         self.set_enc_mode(self.enc_mode)
 
     def on_audio_rec(self, state):
@@ -281,7 +266,6 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             return True
         evtype = (ev[0] >> 4) & 0x0F
         chan = ev[0] & 0x0f
-        logging.warning(f"midi_event: {ev}")
         now = monotonic()
         if evtype == 0xb:
             cc = ev[1]
@@ -310,11 +294,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                             pass
                 elif self.enc_mode == ENC_MODE_SENDS:
                     if pos < len(self.chains) - 1:
+                        send_id = self.chain_manager.get_send_id(self.shift)
                         try:
-                            if self.shift:
-                                self.chains[pos].zynmixer_proc.controllers_dict["send_1_level"].set_value(val / 127)
-                            else:
-                                self.chains[pos].zynmixer_proc.controllers_dict["send_0_level"].set_value(val / 127)
+                            self.chains[pos].zynmixer_proc.controllers_dict[f"send_{send_id}_level"].set_value(val / 127)
                         except:
                             pass
                 elif self.enc_mode == ENC_MODE_USER:

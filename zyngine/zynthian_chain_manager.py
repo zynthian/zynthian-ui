@@ -484,7 +484,7 @@ class zynthian_chain_manager:
                     except:
                         pass
                     send += 1
-            self.refresh_mixbus_sends()
+        self.refresh_mixbus_sends()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
         return pos
 
@@ -686,10 +686,24 @@ class zynthian_chain_manager:
         except IndexError:
             return []
 
+    def get_send_id(self, idx):
+        """ Get chain identifier for an effects send/return mixbus
+        
+        Args:
+            idx: Index of the effect send/return/mixbus
+        Returns:
+            Chain identifier or None on failure.
+        """
+        try:
+            return self._sends[idx]
+        except IndexError:
+            return None
+
     def _rebuild_optimisation_cache(self):
         self._midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)] # List of lists of chain ids, indexed by midi channel.
         self._midi_chan_2_pos = [list() for _ in range(MAX_NUM_MIDI_CHANS)] # List of lists of chain positions, indexed by midi channel.
         self._mixer_chan_2_pos = [{},{}] # Map of chain positions, indexed by mixer chan. First map is for chains. Second map is for mixbuses.
+        self._sends = [] # List of FX send/return mixbus chain_ids
         for pos, chain in enumerate(self.chains.values()):
             try:
                 self._midi_chan_2_chain_ids[chain.midi_chan].append(chain.chain_id)
@@ -698,6 +712,10 @@ class zynthian_chain_manager:
                 pass
             if chain.zynmixer_proc:
                 self._mixer_chan_2_pos[chain.zynmixer_proc.eng_code == "MR"][chain.zynmixer_proc.mixer_chan] = pos
+                if chain.zynmixer_proc.eng_code == "MR":
+                    self._mixer_chan_2_pos[1][chain.zynmixer_proc.mixer_chan] = pos
+                    if chain.chain_id:
+                        self._sends.append(chain.chain_id)
 
     # --- Pinned chain managment---
     def set_pinned(self, count):
