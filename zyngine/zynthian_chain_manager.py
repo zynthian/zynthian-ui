@@ -662,7 +662,7 @@ class zynthian_chain_manager:
 
     def get_pos_by_midi_chan(self, chan):
         """ Get a list of display positions (columns) for chains with specified MIDI channel
-        
+
         Args:
             chan: MIDI channel
         Returns: List of display positions (columns). May be empty list.
@@ -675,7 +675,7 @@ class zynthian_chain_manager:
 
     def get_chain_ids_by_midi_chan(self, chan):
         """ Get a list of chain identifiers for chains with specified MIDI channel
-        
+
         Args:
             chan: MIDI channel
         Returns: List of chain identifiers. May be empty list.

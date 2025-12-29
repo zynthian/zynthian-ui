@@ -286,36 +286,39 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         if evtype == 0xb:
             cc = ev[1]
             val = ev[2]
-            if cc == CC_FADER:
-                # Volume faders
-                try:
-                    if cc == 0x0e:
-                        # Main chain
-                        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
-                    else:
+            if cc == CC_MAIN_FADER:
+                self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
+            elif cc == CC_FADER:
+                if chan < len(self.chains) - 1:
+                    try:
                         self.chains[chan].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
-                except:
-                    pass
+                    except:
+                        pass
             elif cc == CC_TEMPO:
                 dval = relative_to_signed(val)
                 if self.shift:
                     dval *= 0.1
                 self.zynseq.nudge_tempo(dval)
             elif CC_TRACK_1 <= cc <= CC_TRACK_8:
+                pos = cc - 48
                 if self.enc_mode == ENC_MODE_PAN:
-                    try:
-                        self.chains[cc - 48].zynmixer_proc.controllers_dict["balance"].set_value(val / 64.0 - 1.0)
-                        self.last_cc_send = now
-                    except:
-                        pass
+                    if pos < len(self.chains) - 1:
+                        try:
+                            self.chains[pos].zynmixer_proc.controllers_dict["balance"].set_value(val / 64.0 - 1.0)
+                            self.last_cc_send = now
+                        except:
+                            pass
                 elif self.enc_mode == ENC_MODE_SENDS:
-                    try:
-                        if self.shift:
-                            self.chains[cc - 48].zynmixer_proc.controllers_dict["send_1_level"].set_value(val / 127)
-                        else:
-                            self.chains[cc - 48].zynmixer_proc.controllers_dict["send_0_level"].set_value(val / 127)
-                    except:
-                        pass
+                    if pos < len(self.chains) - 1:
+                        try:
+                            if self.shift:
+                                self.chains[pos].zynmixer_proc.controllers_dict["send_1_level"].set_value(val / 127)
+                            else:
+                                self.chains[pos].zynmixer_proc.controllers_dict["send_0_level"].set_value(val / 127)
+                        except:
+                            pass
+                elif self.enc_mode == ENC_MODE_USER:
+                    pass #TODO: Handle user mode encoders
             elif cc == CC_DEVICE_1:
                 # Only way to detect a chain has been selected when all of its device controls are sent
                 self.chain_manager.set_active_chain_by_index(chan)
@@ -458,6 +461,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         try:
             state = pad_info["state"]
             repeat = pad_info["repeat"]
+            led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group]["apc"]
             if repeat == 0:
                 led_colour = 0 # Off
                 led_mode = RGB_MODE_PRIMARY
@@ -468,9 +472,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR["apc"]
                 led_mode = RGB_MODE_PULSE_2
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["apc"]
                 led_mode = RGB_MODE_BLINK_4
             elif state == zynseq.SEQ_STARTING:
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["apc"]
                 led_mode = RGB_MODE_BLINK_8
             elif state == zynseq.SEQ_CHILD_PLAYING:
