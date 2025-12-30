@@ -59,7 +59,6 @@ LED_DEVICE_VIEW     = 0x40  # Clip/dev. view LED (Tracks: MIDI channel 0-8. 0=of
 LED_DETAIL_VIEW     = 0x41  # Detail view LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_CROSSOVER_AB    = 0x42  # (Track: MIDI channel 0-7. 0=off, 1=Yellow, 2-127=Orange) NO LED ON DEVICE!
 LED_MASTER          = 0x50  # Master LED (0=off, 1-127=on)
-LED_STOP_ALL_CLIPS  = 0x51  # Stop all clips LED (None) NO LED ON DEVICE
 LED_SCENE_LAUNCH_1  = 0x52  # Launch scene 1 RGB LED
 LED_SCENE_LAUNCH_2  = 0x53  # Launch scene 2 RGB LED
 LED_SCENE_LAUNCH_3  = 0x54  # Launch scene 3 RGB LED
@@ -72,6 +71,7 @@ LED_METRONOME       = 0x5A  # Metronome LED (0=off, 1-127=on)
 LED_PLAY            = 0x5B  # Play LED (0=off, 1-127=on)
 LED_RECORD          = 0x5D  # Record LED (0=off, 1-127=on)
 
+BTN_STOP_ALL_CLIPS  = 0x51  # Stop all clips
 BTN_UP              = 0x5E  # Up button
 BTN_DOWN            = 0x5F  # Down button
 BTN_RIGHT           = 0x60  # Right button
@@ -156,7 +156,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         super().__init__(state_manager, idev_in, idev_out)
         self.cols = 8
         self.rows = 5
-        self.scroll_v = self.zynseq.phrase
+        self.scroll_v = 0
         self.shift = False
         self.enc_mode = ENC_MODE_PAN # Chain encoder mode
         self.last_cc_send = 0 # Time of last sent feedback CC - used to avoid feedback interference
@@ -225,11 +225,18 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         else:
             lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 1)
             return
-        if pos is not None and pos <= self.cols:
-            lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 1)
+        if pos is None:
+            return
+        old_scroll = self.scroll_h
+        self.scroll_h = (pos // self.cols) * self.cols
+        new_pos = pos % self.cols
+        if old_scroll != self.scroll_h:
+            self.update_state()
+        lib_zyncore.dev_send_note_on(self.idev_out, new_pos, LED_TRACK_SEL, 1)
 
     def update_state(self):
         self.chains = list(self.chain_manager.chains.values())
+        self.refresh()
         self.set_enc_mode(self.enc_mode)
 
     def on_audio_rec(self, state):
@@ -309,11 +316,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             note = ev[1]
             if note < 0x30:
                 # Launcher pad
-                col = note % 8
+                col = note % 8 + self.scroll_h
                 row = note // 8
                 try:
                     midi_chan = int(self.chains[col].midi_chan)
-                    phrase = 4 - row
+                    phrase = self.rows - 1 - row + self.scroll_v
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
                 except:
                     pass
@@ -354,6 +361,15 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_METRONOME, 1)
                 else:
                     self.zynseq.zctrl_metro_enable.set_value(False)
+            elif note == BTN_STOP_ALL_CLIPS:
+                if self.last_press and now > self.last_press + BOLD_PRESS_TIME:
+                    # PANIC!
+                    self.state_manager.all_notes_off()
+                else:
+                    for midi_chan in range(MAX_NUM_MIDI_CHANS + 1):
+                        for phrase in range(self.zynseq.phrases):
+                            self.zynseq.libseq.setPlayState(self.zynseq.scene, phrase, midi_chan, zynseq.SEQ_STOPPED)
+                self.last_press = None
             # BACK & SELECT emulation
             elif note == LED_DEVICE_ON:
                 self.state_manager.send_cuia("ZYNSWITCH", (1, "R"))
@@ -398,10 +414,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_METRONOME, 0)
                 else:
                     self.zynseq.zctrl_metro_enable.set_value(True)
-            elif note == LED_STOP_ALL_CLIPS:
-                for midi_chan in range(MAX_NUM_MIDI_CHANS):
-                    for phrase in range(self.zynseq.phrases):
-                        self.zynseq.libseq.setPlayState(self.zynseq.scene, phrase, midi_chan, zynseq.SEQ_STOPPING)
+            elif note == BTN_STOP_ALL_CLIPS:
+                self.last_press = now
             elif note == LED_CLIP_STOP:
                 try:
                     midi_chan = self.chains[chan].midi_chan
@@ -434,7 +448,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             return
         led_mode = RGB_MODE_PRIMARY
         led_colour = 0
-        group = 33
+        group = 32
         try:
             group = pad_info["group"]
         except KeyError:
@@ -463,9 +477,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 led_mode = RGB_MODE_BLINK_8
             elif state == zynseq.SEQ_CHILD_PLAYING:
                 led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR["apc"]
+                led_mode = RGB_MODE_PULSE_2
             elif state == zynseq.SEQ_CHILD_STOPPING:
-                led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR["apc"]
-                led_mode = RGB_MODE_BLINK_8
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                led_colour = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["apc"]
+                led_mode = RGB_MODE_BLINK_4
         except:
             pass
         lib_zyncore.dev_send_note_on(self.idev_out, led_mode, note, led_colour)

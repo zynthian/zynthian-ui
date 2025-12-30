@@ -658,41 +658,44 @@ PAD_COLOUR_STOPPING = '#D00000'
 PAD_COLOUR_STOPPED = '#E0E0E0'
 PAD_COLOUR_PHRASE = '#707070'
 LAUNCHER_COLOUR = [
-    {"rgb": "#0000FF", "launchpad": 79,  "apc": 41},  #1:blue
-    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 74},  #2:yellow
+    # MIDI Channels 1..16 (offset 0..15)
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #1:blue
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #2:yellow
     {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #3:magenta
-    {"rgb": "#23C497", "launchpad": 18,  "apc": 86},  #4:lime green
-    {"rgb": "#FF5400", "launchpad": 9,   "apc": 61},  #5:orange
-    {"rgb": "#874CFF", "launchpad": 49,  "apc": 67},  #6:deep purple
-    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 95},  #7:hot pink
-    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 90},  #8:cyan
-    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 26},  #9:grey
-    {"rgb": "#C9A869", "launchpad": 125, "apc": 99},  #10:light brown
-    {"rgb": "#7BC783", "launchpad": 28,  "apc": 90},  #11:turquise
-    {"rgb": "#EB8895", "launchpad": 4,   "apc": 2},   #12:pink
-    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 78},  #13:light purple
-    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 32},  #14:green-blue
-    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 92},  #15:teal
-    {"rgb": "#F5B169", "launchpad": 126, "apc": 109}, #16:light orange
-    {"rgb": "#0000FF", "launchpad": 79,  "apc": 41},  #17:blue
-    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 74},  #18:yellow
-    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #19:magenta
-    {"rgb": "#23C497", "launchpad": 18,  "apc": 86},  #20:lime green
-    {"rgb": "#FF5400", "launchpad": 9,   "apc": 61},  #21:orange
-    {"rgb": "#874CFF", "launchpad": 49,  "apc": 67},  #22:deep purple
-    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 95},  #23:hot pink
-    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 90},  #24:cyan
-    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 26},  #25:grey
-    {"rgb": "#C9A869", "launchpad": 125, "apc": 99},  #26:light brown
-    {"rgb": "#7BC783", "launchpad": 28,  "apc": 90},  #27:turquise
-    {"rgb": "#EB8895", "launchpad": 4,   "apc": 2},   #28:pink
-    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 78},  #29:light purple
-    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 32},  #30:green-blue
-    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 92},  #31:teal
-    {"rgb": "#F5B169", "launchpad": 126, "apc": 109}, #32:light orange
-    {"rgb": "#7F7F7F", "launchpad": 1,   "apc": 2}    #33:grey
+    {"rgb": "#23C497", "launchpad": 18,  "apc": 33},  #4:lime green
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60},  #5:orange
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80},  #6:deep purple
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57},  #7:hot pink
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37},  #8:cyan
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1},   #9:grey
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 127}, #10:light brown
+    {"rgb": "#7BC783", "launchpad": 28,  "apc": 16},  #11:turquise
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4},   #12:pink
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69},  #13:light purple
+    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 20},  #14:green-blue
+    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 65},  #15:teal
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 10},  #16:light orange
+    # Clip launchers 1..16 (offset 16..31)
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 10},  #17:light orange
+    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 65},  #18:teal
+    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 20},  #19:green-blue
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69},  #20:light purple
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4},   #21:pink
+    {"rgb": "#7BC783", "launchpad": 28,  "apc": 16},  #22:turquise
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 127}, #23:light brown
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1},   #24:grey
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37},  #25:cyan
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57},  #26:hot pink
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80},  #27:deep purple
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60},  #28:orange
+    {"rgb": "#23C497", "launchpad": 18,  "apc": 33},  #29:lime green
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #30:magenta
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #31:yellow
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #32:blue
+    # Main / phrase launchers (offset 32)
+    {"rgb": "#707070", "launchpad": 1,   "apc": 1}    #33:dark grey
 ]
-#TODO: Choose clip launcher colours
+#TODO: Choose clip launcher colours (currently just reversed 1-16)
 
 LAUNCHER_PLAYING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green

@@ -688,7 +688,7 @@ class zynthian_chain_manager:
 
     def get_send_id(self, idx):
         """ Get chain identifier for an effects send/return mixbus
-        
+
         Args:
             idx: Index of the effect send/return/mixbus
         Returns:
