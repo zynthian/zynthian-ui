@@ -115,7 +115,7 @@ class zynthian_gui_launcher_pad():
         disabled = False
         if self.chain.chain_id == 0:
             state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
-        elif self.chain.midi_chan is None or self.chain.midi_chan > 15:
+        elif self.chain.midi_chan is None or self.chain.midi_chan > 31:
             state_seq = None # This will raise an exception later and draw empty block
         else:
             state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]["sequences"][self.chain.midi_chan]
@@ -303,7 +303,7 @@ class zynthian_gui_mixer_strip():
         self.fader_y = parent.fader_y
         self.legend_y = parent.legend_y
         self.centre_x = x + int(self.width * 0.5)
-        self.fader_text_limit = int(0.1 * self.gui_mixer.fader_height)
+        self.fader_text_limit = int(0.95 * self.gui_mixer.fader_height)
         self.dragging = False
 
         # Digital Peak Meter (DPM) parameters
@@ -466,12 +466,11 @@ class zynthian_gui_mixer_strip():
         for i, label in enumerate(label_parts):
             self.canvas.itemconfig(self.fader_text, text=label)
             bounds = self.canvas.bbox(self.fader_text)
-            if bounds and bounds[1] < self.fader_text_limit:
-                while bounds and bounds[1] < self.fader_text_limit:
+            if bounds and bounds[3] - bounds[1] > self.fader_text_limit:
+                while bounds and bounds[3] - bounds[1] > self.fader_text_limit:
                     label = label[:-1]
                     self.canvas.itemconfig(self.fader_text, text=label)
                     bounds = self.canvas.bbox(self.fader_text)
-                label_parts[i] = label + "..."
                 label_parts[i] = label + "..."
         self.canvas.itemconfig(self.fader_text, text="\n".join(label_parts))
 
@@ -807,7 +806,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.press_event = None
         self.dragging = False # True if click/touch dragging 
         self._scroll_gen = 0 # Identifier for current scroll job - avoid concurrent thread conflicts
-        self._scroll_x = 0 # Current horizontal scroll offset in pixels
         self._scroll_y = 0 # Current vertial scroll offset in pixels
 
         self.launcher_mode = self.zyngui.alt_mode
