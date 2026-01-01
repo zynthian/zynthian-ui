@@ -64,11 +64,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.rows = 0 # Quantity of rows in longest chain
 
         # Mouse Drag State
-        self.drag_start_x = 0
-        self.drag_start_y = 0
-        self.is_dragging = False
+        self.press_event = None
+        self.dragging = False
         self.drag_threshold = 5  # pixels to detect drag vs click 
-        self.press_time = None # Time of touch used for bold press detection
         self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
         self.BLOCK_WIDTH = 120 # Width of each processor block in pixels
         self.BLOCK_HEIGHT = 40 # Height of each processor block in pixels
@@ -76,18 +74,23 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.V_SPACING = 10 # Vertical spacing between processor blocks in pixels
 
         self.last_active_proc = None # The last processor to be selected
+        self.long_press_id = None
 
-    def start_move_mode(self):
+    def start_move_mode(self, processor=None):
         """
         Enter 'Move Mode' for a specific processor.
 
         Args:
-            processor: The processor object to be moved.
+            processor: The processor object to be moved. Default: Current processor of current chain.
         """
-        chain = self.zyngui.chain_manager.active_chain
-        if chain.chain_id == 0:
-            return
-        self.moving_proc = chain.current_processor
+
+        if processor:
+            self.moving_proc = processor
+        else:
+            chain = self.zyngui.chain_manager.active_chain
+            if chain.chain_id == 0:
+                return
+            self.moving_proc = chain.current_processor
         self.select_node(proc=self.moving_proc)
 
     def build_view(self):
@@ -107,7 +110,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
         # Bind Mouse Events
         self.canvas.bind("<Button-1>", self.on_press)
-        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<B1-Motion>", self.on_motion)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
@@ -130,56 +133,109 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             event: Mouse event
         """
         # Record start position for drag
-        self.drag_start_x = event.x
-        self.drag_start_y = event.y
-        self.start_xview = self.canvas.xview()[0]
-        self.start_yview = self.canvas.yview()[0]
-        self.is_dragging = False
-        self.press_time = monotonic()
+        self.press_event = event
+        self.dragging = False
+        # Find clicked node
+        x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+        self.clicked_node = self.get_node_at(x, y)
+        self.select_node(node=self.clicked_node)
+        self.long_press_id = self.canvas.after(800, self.on_long_press)
 
-    def on_drag(self, event):
+    def on_long_press(self):
+        if not self.long_press_id:
+            return
+        self.long_press_id = None
+        node = self._get_node(self.selected_node)
+
+        if "proc" in node:
+            proc = node["proc"]
+        if proc == "chain_options":
+            if node["chain_id"] == 0:
+                self.zyngui.show_screen(proc)
+            else:
+                self.start_moving_chain()
+        elif type(proc) != str:
+            self.start_move_mode(node["proc"])
+
+    def get_node_at(self, x, y):
+        items = self.canvas.find_overlapping(x, y, x, y)
+        for obj_id in items:
+            try:
+                node = self.node2pos[obj_id]
+                return node
+            except:
+                pass
+        return None
+
+    def on_motion(self, event):
         """
         Handle mouse drag event. Scrolls the canvas.
         Args:
             event: Mouse event
         """
         # Calculate pixel delta
-        dx = self.drag_start_x - event.x
-        dy = self.drag_start_y - event.y
-        
+        dx = self.press_event.x - event.x
+        dy = self.press_event.y - event.y
+
         # Check threshold
-        if not self.is_dragging:
+        if not self.dragging:
             if abs(dx) > self.drag_threshold or abs(dy) > self.drag_threshold:
-                self.is_dragging = True
-        
-        if self.is_dragging:
-            # Scroll Canvas manually using moveto
-            # We need the total scrollable size to convert pixels to fraction
-            try:
-                # scrollregion is "x1 y1 x2 y2" string or tuple
-                sr = self.canvas.cget("scrollregion")
-                if isinstance(sr, str):
-                    sr = [float(x) for x in sr.split()]
-                
-                sr_w = sr[2] - sr[0]
-                sr_h = sr[3] - sr[1]
-                
-                can_w = self.canvas.winfo_width()
-                can_h = self.canvas.winfo_height()
-                
-                # Horizontal Move
-                if sr_w > can_w:
-                    d_fract_x = dx / float(sr_w)
-                    self.canvas.xview_moveto(self.start_xview + d_fract_x)
-                
-                # Vertical Move
-                if sr_h > can_h:
-                    d_fract_y = dy / float(sr_h)
-                    self.canvas.yview_moveto(self.start_yview + d_fract_y)
-                    
-            except Exception as e:
-                logging.warning(f"Drag scroll error: {e}")
-                pass
+                self.dragging = True
+
+        if self.dragging:
+            if self.moving_chain:
+                x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+                node = self.get_node_at(x, y)
+                if node and node["chain_id"] != self.clicked_node["chain_id"]:
+                    if event.x > self.press_event.x:
+                        self.arrow_right()
+                    else:
+                        self.arrow_left()
+                    self.press_event.x = event.x
+                    self.clicked_node = node
+            elif self.moving_proc:
+                x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+                node = self.get_node_at(x, y)
+                if node and self.clicked_node and node != self.clicked_node:
+                    if node["chain_id"] != self.clicked_node["chain_id"]:
+                        if event.x > self.press_event.x:
+                            self.arrow_right()
+                        else:
+                            self.arrow_left()
+                    else:
+                        if event.y > self.press_event.y:
+                            self.arrow_down()
+                        else:
+                            self.arrow_up()
+                    self.press_event.x = event.x
+                    self.press_event.y = event.y
+                    self.clicked_node = node
+            else:
+                # Scroll Canvas manually using moveto
+                # We need the total scrollable size to convert pixels to fraction
+                try:
+                    # scrollregion is "x1 y1 x2 y2" string or tuple
+                    sr = self.canvas.cget("scrollregion")
+                    if isinstance(sr, str):
+                        sr = [float(x) for x in sr.split()]
+                    sr_w = sr[2] - sr[0]
+                    sr_h = sr[3] - sr[1]
+                    can_w = self.canvas.winfo_width()
+                    can_h = self.canvas.winfo_height()
+
+                    # Horizontal Move
+                    if sr_w > can_w:
+                        d_fract_x = dx / float(sr_w)
+                        self.canvas.xview_moveto(self.start_xview + d_fract_x)
+
+                    # Vertical Move
+                    if sr_h > can_h:
+                        d_fract_y = dy / float(sr_h)
+                        self.canvas.yview_moveto(self.start_yview + d_fract_y)
+
+                except Exception as e:
+                    logging.warning(f"Drag scroll error: {e}")
+                    pass
 
     def on_release(self, event):
         """
@@ -187,14 +243,20 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Args:
             event: Mouse event
         """
+        if self.long_press_id:
+            self.canvas.after_cancel(self.long_press_id)
+            self.long_press_id = None
+        else:
+            return
         press_type = "S"
-        if self.press_time:
-            if monotonic() > self.press_time + 0.4:
+        if self.press_event:
+            if event.time > self.press_event.time + 400:
                 self.press_time = None
                 press_type = "B"
+        self.clicked_node = None
         # If dragging, stop.
-        if self.is_dragging:
-            self.is_dragging = False
+        if self.dragging:
+            self.dragging = False
             return
 
         # Handle Click Selection
@@ -202,16 +264,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
         
         # Find clicked node
-        items = self.canvas.find_overlapping(x, y, x, y)
-        node = None
-        for obj_id in items:
-            try:
-                node = self.node2pos[obj_id]
-            except:
-                pass
+        node = self.get_node_at(x, y)
         if node is None:
             return
-        self.select_node(node["pos"])
+        #self.select_node(node["pos"])
         self.on_select(t=press_type)
 
     def _add_node(self, chain_idx, row, title, chain_id, proc="", slot=None, idx=None):
@@ -550,10 +606,20 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         chain_idx = self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id)
         self.selected_node = [chain_idx, 0, 0]
 
-    def select_node(self, node_pos=None, proc=None):
+    def get_node_pos(self, node):
+        for chain_idx, c in enumerate(self.nodes):
+            for row_idx, r in enumerate(c):
+                for col_idx, n in enumerate(r):
+                    if n == node:
+                        return [chain_idx, row_idx, col_idx]
+        return [0, 0, 0]
+
+    def select_node(self, node_pos=None, node=None, proc=None):
         if not self.nodes:
             return
-        if proc:
+        if node:
+            self.selected_node = self.get_node_pos(node)
+        elif proc:
             for chain_idx, chain in enumerate(self.nodes):
                 for row_idx, row in enumerate(chain):
                     for node_idx, node in enumerate(row):
