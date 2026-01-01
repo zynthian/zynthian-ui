@@ -1471,8 +1471,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.left_canvas.xview_moveto(xview)
              # Vertical Move
             elif self.press_event.widget == self.right_canvas:
-                self.scroll_canvas(0, self._scroll_y + dy, False)
-                self.press_event.y = event.y
+                if not self.launcher_mode:
+                    return
+                if self.moving_phrase:
+                    #TODO: Improve view edge handling
+                    dP = int(dy / self.launcher_height)
+                    if dP > 0:
+                        self.arrow_up()
+                        self.press_event.y = event.y
+                    elif dP < 0:
+                        self.arrow_down()
+                        self.press_event.y = event.y
+                else:
+                    self.scroll_canvas(0, self._scroll_y + dy, False)
+                    self.press_event.y = event.y
         except Exception as e:
             pass
 
