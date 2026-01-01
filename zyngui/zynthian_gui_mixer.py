@@ -699,7 +699,6 @@ class zynthian_gui_mixer_strip():
                 self.dragging = True
         if self.dragging:
             self.set_volume(self.fader_start_value + (self.fader_press_event.y - event.y) / self.gui_mixer.fader_height)
-        return "break"
 
     # Function to handle mouse wheel down over fader
     # event: Mouse event
@@ -1488,6 +1487,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         Note: Use modifier key to alter behaviour
         """
 
+        if event.y < self.launcher_y:
+            return
         if event.num == 4:
             if event.state or event.y > self.legend_y:
                 self.arrow_right()
