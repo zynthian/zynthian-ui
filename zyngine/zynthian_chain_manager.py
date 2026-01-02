@@ -1191,14 +1191,13 @@ class zynthian_chain_manager:
                 if page.startswith("send "):
                     processor.ctrl_screens_dict.pop(page)
             # Create each send page
-            send = 0
-            for chain_id in mixbus_chain_ids:
+            for send_idx, chain_id in enumerate(mixbus_chain_ids):
                 if chain_id == 0:  # Exclude main mixbus
                     continue
                 chain = self.chains[chain_id]
                 level_symbol = f"send_{chain_id}_level"
                 mode_symbol = f"send_{chain_id}_mode"
-                name_prefix = f"send {send + 1}"
+                name_prefix = f"send {send_idx + 1}"
                 # Generate a decent title for the ctrl_screen
                 ctrl_screen_title = name_prefix
                 if chain.title:
@@ -1214,6 +1213,7 @@ class zynthian_chain_manager:
                     processor.controllers_dict[mode_symbol].name = f"{name_prefix} mode"
                     processor.controllers_dict[mode_symbol].short_name = f"{name_prefix} mode"
                 else:
+                    send = chain.zynmixer_proc.mixer_chan - 1
                     processor.controllers_dict[level_symbol] = zynthian_controller(processor.engine, level_symbol, {
                         'name': f'{name_prefix} level',
                         'value_max': 1.0,
@@ -1233,7 +1233,6 @@ class zynthian_chain_manager:
                     })
                 # Add the control screen
                 processor.ctrl_screens_dict[ctrl_screen_title] = [processor.controllers_dict[level_symbol], processor.controllers_dict[mode_symbol]]
-                send += 1
             # Remove send controllers that doesn't exist anymore
             for symbol in list(processor.controllers_dict):
                 if not symbol.startswith("send_"):

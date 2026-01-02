@@ -164,7 +164,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
     def send_controller_value(self, zctrl):
         try:
             if zctrl.symbol.startswith("send"):
-                getattr(zctrl.processor.zynmixer, f'set_{zctrl.graph_path[0]}')(
+                getattr(zctrl.processor.zynmixer, f"set_{zctrl.graph_path[0]}")(
                     zctrl.processor.mixer_chan, zctrl.graph_path[1], zctrl.value)
             elif zctrl.symbol == "record":
                 #TODO: Use jackname to arm

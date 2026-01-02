@@ -1693,7 +1693,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.highlighted_strip.chain.midi_chan > 15:
                 proc = self.highlighted_strip.chain.get_processors()[0]
                 proc.engine.set_phrase(proc, self.zynseq.phrase)
-                self.zyngui.chain_control()
+                self.zyngui.chain_control(self.highlighted_strip.chain.chain_id, proc)
                 return True
             else:
                 return self.edit_pattern()
