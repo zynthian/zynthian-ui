@@ -95,6 +95,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.moving_proc = None
         self.select_node(proc=self.moving_proc)
 
+    def end_moving_processor(self):
+        """ Exit processor move mode
+        """
+
+        self.moving_proc = None
+
     def build_view(self):
         """
         Set up the view for the current chain.
@@ -125,6 +131,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def hide(self):
         if self.shown:
             self.end_moving_chain()
+            self.end_moving_processor()
             self.last_active_proc = self.zyngui.get_current_processor()
             super().hide()
 
@@ -679,13 +686,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             chain = self.zyngui.chain_manager.chains[chain_id]
             chain_dest_id = ordered_chains[chain_idx + chain_offset]
             chain_dst = self.zyngui.chain_manager.chains[chain_dest_id]
+            # Constrain which chains a process may be moved to
             if self.moving_proc.type == "MIDI Tool":
                 if not chain_dst.is_midi():
                     return
             elif self.moving_proc.type == "Audio Effect":
                 if not chain_dst.is_audio():
                     return
-            #TODO: Constrain which chains a process may be moved to
             chain.remove_processor(self.moving_proc)
             chain_dst.insert_processor(self.moving_proc, node.get("slot"))
         except:
@@ -746,8 +753,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Moves selection left or nudges processor if in move mode.
         """
         chain_idx, row, col = self.selected_node
-        if self.moving_proc and chain_idx:
-            self.move_processor(chain_idx, -1)
+        if self.moving_proc:
+            if chain_idx:
+                self.move_processor(chain_idx, -1)
         elif self.moving_chain:
             self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(-1)
             self.build_graph()
@@ -844,7 +852,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
     def back_action(self):
         if self.moving_proc:
-            self.moving_proc = None
+            self.end_moving_processor()
             self.select_node()
             return True # Consumed
         if self.moving_chain:
@@ -871,7 +879,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 return True
 
         if self.moving_proc:
-            self.moving_proc = None
+            self.end_moving_processor()
             self.select_node()
             if t == "S":
                 return True
