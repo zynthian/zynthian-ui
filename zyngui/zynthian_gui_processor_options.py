@@ -60,7 +60,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             if self.processor.type == "MIDI Synth":
                 eng_options = self.processor.engine.get_options()
                 if eng_options['replace']:
-                    self.list_data.append((self.replace, None, "Replace"))
+                    self.list_data.append((self.replace, None, f"Replace {self.processor.name}"))
             else:
                 self.list_data.append((self.replace, None, "Replace"))
 
@@ -81,9 +81,9 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
         self.list_data.append((None, None, "Add to Chain ..."))
         if self.processor.type in ("MIDI Synth", "MIDI Tool"):
-            self.list_data.append((self.add_midi_processor, None, "New MIDI Processor"))
+            self.list_data.append((self.add_midi_processor, None, "Insert MIDI Processor"))
         if self.processor.type in ("MIDI Synth", "Audio Effect", "Audio Generator"):
-            self.list_data.append((self.add_audio_processor, None, "New Audio Processor"))
+            self.list_data.append((self.add_audio_processor, None, "Insert Audio Processor"))
 
         super().fill_list()
 
@@ -114,7 +114,15 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             proc_type = self.processor.type
         try:
             chain_idx, row, column = self.zyngui.screens["chain_manager"].selected_node
-            slot = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]["slot"]            
+            node = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]
+            proc = node["proc"]
+            if proc.type == "MIDI Synth":
+                if proc_type == "Audio Effect":
+                    slot = -1
+                else:
+                    slot = None
+            else:
+                slot = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]["slot"]
         except:
             slot = None
         self.zyngui.modify_chain({

@@ -76,7 +76,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.last_active_proc = None # The last processor to be selected
         self.long_press_id = None
 
-    def start_move_mode(self, processor=None):
+    def start_moving_processor(self, processor=None):
         """
         Enter 'Move Mode' for a specific processor.
 
@@ -91,6 +91,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if chain.chain_id == 0:
                 return
             self.moving_proc = chain.current_processor
+        if self.moving_proc and not self.zyngui.chain_manager.can_move_processor(self.moving_proc):
+            self.moving_proc = None
         self.select_node(proc=self.moving_proc)
 
     def build_view(self):
@@ -155,7 +157,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             else:
                 self.start_moving_chain()
         elif type(proc) != str:
-            self.start_move_mode(node["proc"])
+            self.start_moving_processor(node["proc"])
 
     def get_node_at(self, x, y):
         items = self.canvas.find_overlapping(x, y, x, y)
@@ -661,6 +663,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             chain = self.zyngui.chain_manager.chains[chain_id]
             chain_dest_id = ordered_chains[chain_idx + chain_offset]
             chain_dst = self.zyngui.chain_manager.chains[chain_dest_id]
+            if self.moving_proc.type == "MIDI Tool":
+                if not chain_dst.is_midi():
+                    return
+            elif self.moving_proc.type == "Audio Effect":
+                if not chain_dst.is_audio():
+                    return
             #TODO: Constrain which chains a process may be moved to
             chain.remove_processor(self.moving_proc)
             chain_dst.insert_processor(self.moving_proc, node.get("slot"))
@@ -722,7 +730,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Moves selection left or nudges processor if in move mode.
         """
         chain_idx, row, col = self.selected_node
-        if self.moving_proc:
+        if self.moving_proc and chain_idx:
             self.move_processor(chain_idx, -1)
         elif self.moving_chain:
             self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(-1)
@@ -827,15 +835,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         return self.on_select(t)
 
     def on_select(self, t='S'):
-        """
-        Handle selection event (Select/Enter key or Click).
-
+        """ Handle selection event (Select/Enter key or Click).
         Args:
             t (str): Press type ('S' for short, 'B' for bold/long).
-
         Returns:
             bool: True if event consumed.
         """
+
         # If moving, consume event and exit
         if self.moving_chain:
             self.end_moving_chain()
@@ -856,55 +862,36 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         chain_idx, col_idx, row_idx = self.selected_node
         node = self.nodes[chain_idx][col_idx][row_idx]
         proc = node.get("proc")
-        if type(proc) == str:
-            if t == "B":
+        if t == "B":
+            if type(proc) == str:
                 chain = self.zyngui.chain_manager.active_chain
                 if proc == "chain_options":
-                    if chain.chain_id == 0:
-                        self.zyngui.show_screen(proc)
-                    else:
+                    if chain.chain_id != 0:
                         self.start_moving_chain()
-                    return True
-                if proc in ("midi_output", "audio_out"):
-                    slot = None
-                elif proc in ("midi_input", "audio_in"):
-                    slot = -1
-                else:
-                    slot = 0
-                if proc.startswith("midi"):
-                    proc_type = "MIDI Tool"
-                else:
-                    proc_type = "Audio Effect"
-                self.zyngui.modify_chain({
-                    "chain_id": chain.chain_id,
-                    "type": proc_type,
-                    "midi_thru": chain.midi_chan is not None,
-                    "audio_thru": proc_type == "Audio Effect",
-                    "slot": slot
-                })
                 return True
-            match proc:
-                case "chain_options":
-                    pass
-                case "midi_key_range":
-                    self.zyngui.screens['midi_key_range'].config(self.zyngui.chain_manager.active_chain)
-                case "midi_input":
-                    self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
-                    self.zyngui.screens['midi_config'].input = True
-                    proc = 'midi_config'
-                case "midi_output":
-                    self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
-                    self.zyngui.screens['midi_config'].input = False
-                    proc = 'midi_config'
-                case "audio_in":
-                    pass
-                case "audio_out":
-                    pass
-            self.zyngui.show_screen(proc)
-        else:
-            if t == 'S':
-                zynthian_gui_config.zyngui.chain_control(self.zyngui.chain_manager.active_chain.chain_id, proc)
-            elif t == 'B':
+            else:
+                self.start_moving_processor(proc)
+        elif t == "S":
+            if type(proc) == str:
+                match proc:
+                    case "chain_options":
+                        pass
+                    case "midi_key_range":
+                        self.zyngui.screens['midi_key_range'].config(self.zyngui.chain_manager.active_chain)
+                    case "midi_input":
+                        self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
+                        self.zyngui.screens['midi_config'].input = True
+                        proc = 'midi_config'
+                    case "midi_output":
+                        self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
+                        self.zyngui.screens['midi_config'].input = False
+                        proc = 'midi_config'
+                    case "audio_in":
+                        pass
+                    case "audio_out":
+                        pass
+                self.zyngui.show_screen(proc)
+            else:
                 self.zyngui.show_screen("processor_options")
         return True
 
