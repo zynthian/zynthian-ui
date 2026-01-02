@@ -321,6 +321,8 @@ class zynthian_gui_mixer_strip():
         #Create GUI elements
         id = self.chain.chain_id
 
+        # Block background to hide scrolling launchers, etc.
+        self.audio_bg = self.canvas.create_rectangle(x, self.solo_y, x + self.width, parent.launcher_y, fill=self.gui_mixer.button_bgcol, width=0)
         # Fader background defines height of fader
         self.fader_bg = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_bg_color, width=0, tags=("fader", f"fader_{id}"))
         # Audio mixer elements
@@ -952,7 +954,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         else:
             visible_launchers = zynthian_gui_config.visible_launchers
         
-        self.launcher_height = int(self.fader_height / (visible_launchers + 0.2))
+        self.launcher_height = int((self.legend_y - self.launcher_y) / (visible_launchers + 0.2))
 
         # Clip Mode Icons
         empty_icon = tkinter.PhotoImage()
@@ -1277,10 +1279,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         if launcher_top < view_top:
             # Scroll up
-            new_y = launcher_top - 0.3 * self.launcher_height
+            new_y = launcher_top - 0.15 * self.launcher_height
         elif launcher_bottom > view_bottom:
             # Scroll down
-            new_y = launcher_bottom + 0.3 * self.launcher_height - self.fader_height
+            new_y = launcher_bottom + 0.15 * self.launcher_height - self.legend_y + self.launcher_y
         else:
             return  # already fully visible
         self.scroll_canvas(None, new_y, self.shown)
