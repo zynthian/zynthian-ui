@@ -31,6 +31,7 @@ from tkinter import font
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 
+DRAG_THRESHOLD = 5
 
 class zynthian_gui_chain_manager(zynthian_gui_base):
     """
@@ -66,7 +67,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         # Mouse Drag State
         self.press_event = None
         self.dragging = False
-        self.drag_threshold = 5  # pixels to detect drag vs click 
         self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
         self.BLOCK_WIDTH = 120 # Width of each processor block in pixels
         self.BLOCK_HEIGHT = 40 # Height of each processor block in pixels
@@ -134,16 +134,22 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Args:
             event: Mouse event
         """
+
         # Record start position for drag
         self.press_event = event
         self.dragging = False
         # Find clicked node
         x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+        self.start_xview = self.canvas.xview()[0]
+        self.start_yview = self.canvas.yview()[0]
         self.clicked_node = self.get_node_at(x, y)
-        self.select_node(node=self.clicked_node)
-        self.long_press_id = self.canvas.after(800, self.on_long_press)
+        if self.clicked_node:
+            self.select_node(node=self.clicked_node)
+            self.long_press_id = self.canvas.after(800, self.on_long_press)
 
     def on_long_press(self):
+        """ Handle press and hold"""
+
         if not self.long_press_id:
             return
         self.long_press_id = None
@@ -175,14 +181,18 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Args:
             event: Mouse event
         """
+
         # Calculate pixel delta
         dx = self.press_event.x - event.x
         dy = self.press_event.y - event.y
 
         # Check threshold
         if not self.dragging:
-            if abs(dx) > self.drag_threshold or abs(dy) > self.drag_threshold:
+            if abs(dx) > DRAG_THRESHOLD or abs(dy) > DRAG_THRESHOLD:
                 self.dragging = True
+                if self.long_press_id:
+                    self.canvas.after_cancel(self.long_press_id)
+                    self.long_press_id = None
 
         if self.dragging:
             if self.moving_chain:
@@ -198,19 +208,25 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             elif self.moving_proc:
                 x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
                 node = self.get_node_at(x, y)
+                if not node:
+                    # Dragged into space
+                    pass
                 if node and self.clicked_node and node != self.clicked_node:
                     if node["chain_id"] != self.clicked_node["chain_id"]:
                         if event.x > self.press_event.x:
                             self.arrow_right()
                         else:
                             self.arrow_left()
+                    elif dy > self.BLOCK_HEIGHT:
+                        if self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, self.moving_proc, True):
+                            self.build_graph(self.moving_proc)
+                            self.press_event.y = event.y
+                    elif dy < -self.BLOCK_HEIGHT:
+                        if self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, self.moving_proc, False):
+                            self.build_graph(self.moving_proc)
+                            self.press_event.y = event.y
                     else:
-                        if event.y > self.press_event.y:
-                            self.arrow_down()
-                        else:
-                            self.arrow_up()
-                    self.press_event.x = event.x
-                    self.press_event.y = event.y
+                        return
                     self.clicked_node = node
             else:
                 # Scroll Canvas manually using moveto
@@ -570,15 +586,15 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             target_y = None
         if target_x or target_y:
             if self.shown:
-                self.smooth_scroll_to(self.canvas, target_x, target_y)
+                self.smooth_scroll_to(target_x, target_y)
             else:
                 if target_x is not None:
                     self.canvas.xview_moveto(target_x)
                 if target_y is not None:
                     self.canvas.yview_moveto(target_y)
 
-    def smooth_scroll_to(self, canvas, target_x=None, target_y=None, steps=30, delay=10):
-        start_x, start_y = canvas.xview()[0], canvas.yview()[0]
+    def smooth_scroll_to(self, target_x=None, target_y=None, steps=30, delay=10):
+        start_x, start_y = self.canvas.xview()[0], self.canvas.yview()[0]
         dx = dy = 0
         if target_x is not None:
             dx = (target_x - start_x) / steps
@@ -589,10 +605,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if i >= steps:
                 return
             if target_x is not None:
-                canvas.xview_moveto(start_x + dx * i)
+                self.canvas.xview_moveto(start_x + dx * i)
             if target_y is not None:
-                canvas.yview_moveto(start_y + dy * i)
-            canvas.after(delay, step, i + 1)
+                self.canvas.yview_moveto(start_y + dy * i)
+            self.canvas.after(delay, step, i + 1)
 
         step()
 
@@ -803,10 +819,16 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Args:
             event: The mouse wheel event.
         """
-        if event.num == 5 or event.delta == -120:
-            self.select_offset(1)
-        elif event.num == 4 or event.delta == 120:
-            self.select_offset(-1)
+        if event.state:
+            if event.num == 5:
+                self.arrow_right()
+            else:
+                self.arrow_left()
+        else:
+            if event.num == 5:
+                self.arrow_up()
+            else:
+                self.arrow_down()
 
     def zynpot_cb(self, i, dval):
         if super().zynpot_cb(i, dval):
