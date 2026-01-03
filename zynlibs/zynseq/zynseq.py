@@ -83,6 +83,7 @@ class zynseq(zynthian_engine):
     SS_SEQ_PLAY_STATE = 1
     SS_SEQ_REFRESH = 2
     SS_SEQ_PROGRESS = 3
+    SS_SEQ_METRONOME_STATE = 4
 
     # Initiate library - performed by zynseq module
     def __init__(self, state_manager=None):
