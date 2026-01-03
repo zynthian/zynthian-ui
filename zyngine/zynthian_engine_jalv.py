@@ -97,6 +97,8 @@ class zynthian_engine_jalv(zynthian_engine):
         'https://butoba.net/homepage/mimid.html': [ "-D" ]
     }
 
+    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia"]
+
     # ------------------------------------------------------------------------------
     # Native formats configuration (used by zynapi_install, preset converter, etc.)
     # ------------------------------------------------------------------------------
@@ -117,7 +119,11 @@ class zynthian_engine_jalv(zynthian_engine):
         # "Helm": "helm"
     }
 
-    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia"]
+    plugin2native_presets_dir = {
+        "TAL U-No-LX-V2": "/zynthian/zynthian-my-data/presets/TAL-U-No-LX",
+        "Vavra": "/zynthian/zynthian-my-data/presets/Vavra",
+        "Xenia": "/zynthian/zynthian-my-data/presets/Xenia"
+    }
 
     # ---------------------------------------------------------------------------
     # Custom controller pages
@@ -125,8 +131,10 @@ class zynthian_engine_jalv(zynthian_engine):
 
     plugin_ctrl_info = {
         "ctrls": {
+            'breath': [2, 64],
             'volume': [7, 98],
             'panning': [10, 64],
+            'expression': [11, 127],
             'modulation wheel': [1, 0],
             'filter cutoff': [74, 64],
             'filter resonance': [71, 64]
@@ -146,6 +154,11 @@ class zynthian_engine_jalv(zynthian_engine):
             'Noize Mak3r': [],
             'Obxd': ['modulation wheel'],
             'Pianoteq 7 Stage': [],
+            'Pianoteq 8 Stage': [],
+            'Pianoteq 9 Stage': [],
+            'Pianoteq 7': [],
+            'Pianoteq 8': [],
+            'Pianoteq 9': [],
             'Raffo Synth': [],
             'Red Zeppelin 5': [],
             'reMID': ['volume'],
@@ -980,8 +993,7 @@ class zynthian_engine_jalv(zynthian_engine):
     def refresh_zynapi_instance(cls):
         if cls.zynapi_instance:
             zynthian_lv2.generate_presets_cache_workaround()
-            zynthian_lv2.generate_plugin_presets_cache(
-                cls.zynapi_instance.plugin_url)
+            zynthian_lv2.generate_plugin_presets_cache(cls.zynapi_instance.plugin_url)
             eng_code = cls.zynapi_instance.nickname
             cls.zynapi_instance.stop()
             cls.zynapi_instance = cls(eng_code, None, True)
@@ -1081,9 +1093,8 @@ class zynthian_engine_jalv(zynthian_engine):
                 return
 
         # Else, try to convert from native format ...
-        if os.path.isdir(dpath) or ext[1:].lower() == native_ext:
-            preset2lv2_cmd = "cd /tmp; preset2lv2 {} \"{}\"".format(
-                cls.zynapi_get_preset2lv2_format(), dpath)
+        if native_ext and (os.path.isdir(dpath) or ext[1:].lower() == native_ext):
+            preset2lv2_cmd = f"cd /tmp; preset2lv2 {cls.zynapi_get_preset2lv2_format()} \"{dpath}\""
             try:
                 res = check_output(preset2lv2_cmd, stderr=STDOUT, shell=True).decode("utf-8")
                 for bname in re.compile("Bundle '(.*)' generated").findall(res):
@@ -1093,10 +1104,19 @@ class zynthian_engine_jalv(zynthian_engine):
                     shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
                 cls.refresh_zynapi_instance()
             except Exception as e:
-                raise Exception(
-                    "Conversion from {} to LV2 failed! => {}".format(native_ext, e))
+                raise Exception("Conversion from {} to LV2 failed! => {}".format(native_ext, e))
+
+        # Else, try to copy to the native preset directory and run the preset regeneration script ...
         else:
-            raise Exception("Unknown preset format: {}".format(native_ext))
+            try:
+                native_presets_dir = cls.plugin2native_presets_dir[cls.zynapi_instance.plugin_name]
+                parts = os.path.split(dpath)
+                shutil.rmtree(native_presets_dir + "/" + parts[1], ignore_errors=True)
+                shutil.move(dpath, native_presets_dir)
+                check_output(f"regenerate_lv2_presets.sh \"{cls.zynapi_instance.plugin_url}\" NO_LV2_CACHE_REGENERATION", shell=True)
+                cls.refresh_zynapi_instance()
+            except:
+                raise Exception("Unknown preset format: {}".format(native_ext))
 
     @classmethod
     def zynapi_get_formats(cls):
