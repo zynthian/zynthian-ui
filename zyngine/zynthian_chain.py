@@ -629,6 +629,8 @@ class zynthian_chain:
                 slots[slot].append(processor)
 
         processor.set_chain(self)
+        if processor.engine:
+            processor.engine.add_processor(processor)
         processor.set_midi_chan(self.midi_chan)
 
         self.set_zmop_options()
@@ -698,8 +700,6 @@ class zynthian_chain:
                 self.current_processor = self.midi_slots[0][0]
             else:
                 self.current_processor = None
-
-        # del processor => I don't think this is needed nor right?? (Jofemodo)
         return True
 
     def remove_all_processors(self):

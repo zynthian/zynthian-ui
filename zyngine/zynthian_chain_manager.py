@@ -524,7 +524,7 @@ class zynthian_chain_manager:
             return len(self.chains)
 
         count = 0
-        for chain in self.chains.items():
+        for chain in self.chains.values():
             if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth() == synth:
                 count += 1
         return count
@@ -1086,6 +1086,24 @@ class zynthian_chain_manager:
         # Success!! => Return processor
         return processor
 
+    def can_move_processor(self, processor):
+        """ Can processor be moved?
+        Args:
+            Processor: Processor object
+        Returns: True if processor can be moved within chain or to another chain
+        """
+
+        if not processor or processor.type == "MIDI Synth":
+            return False
+        if processor.type == "Audio Effect" and processor.eng_code not in ["MI", "MR"] and self.get_chain_count(True, False, True) > 1:
+            return True
+        elif processor.type == "MIDI Tool" and self.get_chain_count(False, True, True) > 1:
+            return True
+        slots = processor.chain.get_slots_by_type(processor.type)
+        if len(slots) > 1 or len(slots) and len(slots[0]) > 1:
+            return True
+        return False
+
     def nudge_processor(self, chain_id, processor, up):
         if chain_id not in self.chains:
             return False
@@ -1173,14 +1191,13 @@ class zynthian_chain_manager:
                 if page.startswith("send "):
                     processor.ctrl_screens_dict.pop(page)
             # Create each send page
-            send = 0
-            for chain_id in mixbus_chain_ids:
+            for send_idx, chain_id in enumerate(mixbus_chain_ids):
                 if chain_id == 0:  # Exclude main mixbus
                     continue
                 chain = self.chains[chain_id]
                 level_symbol = f"send_{chain_id}_level"
                 mode_symbol = f"send_{chain_id}_mode"
-                name_prefix = f"send {send + 1}"
+                name_prefix = f"send {send_idx + 1}"
                 # Generate a decent title for the ctrl_screen
                 ctrl_screen_title = name_prefix
                 if chain.title:
@@ -1196,6 +1213,7 @@ class zynthian_chain_manager:
                     processor.controllers_dict[mode_symbol].name = f"{name_prefix} mode"
                     processor.controllers_dict[mode_symbol].short_name = f"{name_prefix} mode"
                 else:
+                    send = chain.zynmixer_proc.mixer_chan - 1
                     processor.controllers_dict[level_symbol] = zynthian_controller(processor.engine, level_symbol, {
                         'name': f'{name_prefix} level',
                         'value_max': 1.0,
@@ -1215,7 +1233,6 @@ class zynthian_chain_manager:
                     })
                 # Add the control screen
                 processor.ctrl_screens_dict[ctrl_screen_title] = [processor.controllers_dict[level_symbol], processor.controllers_dict[mode_symbol]]
-                send += 1
             # Remove send controllers that doesn't exist anymore
             for symbol in list(processor.controllers_dict):
                 if not symbol.startswith("send_"):
