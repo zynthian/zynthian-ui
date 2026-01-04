@@ -97,7 +97,7 @@ class zynthian_engine_jalv(zynthian_engine):
         'https://butoba.net/homepage/mimid.html': [ "-D" ]
     }
 
-    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia"]
+    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia", "JE8086"]
 
     # ------------------------------------------------------------------------------
     # Native formats configuration (used by zynapi_install, preset converter, etc.)
