@@ -83,13 +83,13 @@ class zynthian_gui_launcher_pad():
         # Launcher pad (background)
         self.pad = self.canvas.create_rectangle(x, y, x + self.width - 1, y + self.height - 1, width=3, fill=zynthian_gui_config.color_panel_bg, tags=("launcher", "launcher_pad", f"strip_{id}", f"launcher_{id}_{phrase}"))
         # Play state text
-        self.play_state = self.canvas.create_text(x + self.width - 1,  y - 4, text="", anchor=tkinter.NE, font=self.gui_mixer.font_clip_state, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.play_state = self.canvas.create_text(x + self.width - 3,  y - 3, text="", anchor=tkinter.NE, font=self.gui_mixer.font_clip_state, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
         # Title text
         self.title =  self.canvas.create_text(x + self.width // 2, y + 0.5 * self.height, text="", anchor=tkinter.CENTER,
             font=self.gui_mixer.font_clip_title, fill=self.gui_mixer.legend_txt_color,
             tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
         # Play mode image
-        self.mode_icon = self.canvas.create_image(x + 3, y, anchor=tkinter.NW, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.mode_icon = self.canvas.create_image(x + 3, y + 2, anchor=tkinter.NW, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
         # Play mode text
         self.mode_text = self.canvas.create_text(x + 4, y - 4, anchor=tkinter.NW, fill=self.gui_mixer.legend_txt_color, font=self.gui_mixer.font_clip_state, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}")   )
         # Timesig text
@@ -116,7 +116,7 @@ class zynthian_gui_launcher_pad():
         if self.chain.chain_id == 0:
             state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
         elif self.chain.midi_chan is None or self.chain.midi_chan > 31:
-            state_seq = None # This will raise an exception later and draw empty block
+            state_seq = None  # This will raise an exception later and draw empty block
         else:
             state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]["sequences"][self.chain.midi_chan]
         try:
@@ -194,7 +194,7 @@ class zynthian_gui_launcher_pad():
                         pattern = state_seq["tracks"][0]["patns"]["0"]
                         if self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]:
                             state_text = "⏹"
-                        else: # Pattern empty
+                        else:  # Pattern empty
                             state_text = ""
                     except:
                         state_text = "" # Pattern does not exist
@@ -1573,11 +1573,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             options["Duration (DISABLED)"] = repeat
         else:
             if repeat == 1:
-                options["Duration (1 bar)"] = repeat
+                unit = "bar"
             else:
-                options[f"Duration ({repeat} bars)"] = repeat
+                unit = "bars"
+            options[f"Duration ({repeat} {unit})"] = repeat
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
-                options[f"Follow action (None)"] = 0
+                options[f"Follow action (NONE)"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
                 match follow_phrase:
                     case 0:  # Loop
@@ -1592,7 +1593,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 options[f"Tempo ({info['tempo']})"] = info['tempo']
                 options["Remove tempo"] = self.zynseq.phrase
             if 'sig' not in info or not info['sig']:
-                options[f"Time signature (None)"] = 0
+                options[f"Time signature (NONE)"] = 0
             else:
                 options[f"Time signature ({info['sig']}/4)"] = info["sig"]
         options[f"Edit name ({name})"] = name
@@ -1660,9 +1661,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
             labels = ["NONE", "LOOP"]
-            if (self.zynseq.phrase < self.zynseq.phrases - 1):
+            if self.zynseq.phrase < self.zynseq.phrases - 1:
                 labels.append("NEXT")
-            if (self.zynseq.phrase > 0):
+            if self.zynseq.phrase > 0:
                 labels.append("PREV")
             option_screen.enable_param_editor(option_screen, "follow", {
                 "name": "Follow action",

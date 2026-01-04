@@ -318,12 +318,19 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if timesig > 1:
             bars = n_beats // timesig
             if bars > 0:
+                if bars == 1:
+                    bars_text = "1 bar"
+                else:
+                    bars_text = f"{bars} bars"
                 rest_beats = n_beats % timesig
                 if rest_beats:
-                    return f"{bars} bars + {rest_beats} beats"
+                    return f"{bars_text} + {rest_beats} beats"
                 else:
-                    return f"{bars} bars"
-        return f"{n_beats} beats"
+                    return bars_text
+        if n_beats == 1:
+            return "1 beat"
+        else:
+            return f"{n_beats} beats"
 
     def get_menu_options(self):
         menu_options = {}
@@ -353,7 +360,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                     else:
                         options[f"Play mode (PLAY {repeat} TIMES)"] = "Playmode"
             else:
-                options["Follow action (DISABLED)"] = "Playmode"
+                options["Play mode (DISABLED)"] = "Playmode"
             name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
             options[f"Name ({name})"] = 'Rename sequence'
             program_change = self.zynseq.libseq.getProgramChange(0)
@@ -371,7 +378,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options[f"Length ({self.get_pattern_length()})"] = 'Length'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         qn = self.zynseq.libseq.getQuantizeNotes()
-        if qn == 0:
+        if qn <= 0:
             qval = "DISABLED"
         elif qn == 1:
             qval = "1 step"
@@ -488,17 +495,15 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 labels = ["DISABLED", "LOOP", "ONESHOT"]
                 for i in range(2, 25):
                     labels.append(f"PLAY {i} TIMES")
-
                 follow_action = self.seq_info["followAction"]
                 follow_param = self.seq_info["followParam"]
                 repeat = self.seq_info["repeat"]
                 if repeat == 0:
-                    value = 0 # disabled
+                    value = 0  # disabled
                 elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE and follow_param == 0:
                     value = 1
                 else:
                     value = 1 + repeat
-
                 self.enable_param_editor(self, "playmode", {'name': 'Playmode', 'value': value, 'labels': labels},
                                          assert_cb=self.assert_playmode)
             case "Rename sequence":
@@ -613,7 +618,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.seq_info["followAction"] = action
         self.seq_info["followParam"] = param
         self.seq_info["repeat"] = repeat
-
 
     def rename_sequence(self, name):
         self.zynseq.set_sequence_param(self.zynseq.scene, self.phrase, self.sequence, "name", name)
