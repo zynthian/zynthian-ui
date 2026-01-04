@@ -551,7 +551,7 @@ class zynthian_chain_manager:
 
         try:
             return list(self.chains)[index]
-        except KeyError:
+        except IndexError:
             return None
 
     def get_chain_by_index(self, index):
