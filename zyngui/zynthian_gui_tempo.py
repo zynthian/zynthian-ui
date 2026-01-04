@@ -176,6 +176,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def zynpot_cb(self, i, dval):
         if i < 4:
             self.zgui_ctrls[i].zynpot_cb(dval)
+            if self.zgui_ctrls[i].zctrl.is_dirty:
+                self.replot = True
             return True
         else:
             return False
@@ -183,6 +185,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def zynpot_abs(self, i, val):
         if i < 4:
             self.zgui_ctrls[i].zynpot_abs(val)
+            if self.zgui_ctrls[i].zctrl.is_dirty:
+                self.replot = True
             return True
         else:
             return False
