@@ -580,7 +580,7 @@ class zynthian_gui:
         if zynthian_gui_config.control_test_enabled:
             init_screen = "control_test"
         else:
-            init_screen = "main_menu"
+            init_screen = "chain_manager"
             # Try to load "last_state" snapshot...
             if zynthian_gui_config.restore_last_state:
                 snapshot_loaded = self.state_manager.load_last_state_snapshot()
@@ -1129,13 +1129,13 @@ class zynthian_gui:
         if self.chain_manager.get_chain_count() > 1:
             self.state_manager.save_last_state_snapshot()
         self.state_manager.clean_all()
-        self.show_screen_reset('main_menu')
+        self.show_screen_reset('chain_manager')
 
     def clean_chains(self):
         if self.chain_manager.get_chain_count() > 1:
             self.state_manager.save_last_state_snapshot()
         self.state_manager.clean_chains()
-        self.show_screen_reset('main_menu')
+        self.show_screen_reset('chain_manager')
 
     def clean_sequences(self):
         if self.chain_manager.get_chain_count() > 1:
@@ -1263,7 +1263,7 @@ class zynthian_gui:
         if params == ['CONFIRM']:
             self.clean_all()
             # TODO: Should send signal so that UI can react
-            self.show_screen_reset('main_menu')
+            self.show_screen_reset('chain_manager')
 
     # Audio & MIDI Recording/Playback actions
     def cuia_start_audio_record(self, params=None):
