@@ -712,7 +712,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             setTempo(tempo);
         }
         if (g_seqMan.isTimeSigChanged()) {
-            uint8_t newTimeSig = g_seqMan.getTimeSig();
+            uint8_t newTimeSig = g_seqMan.getTimeSig(true);
             if (newTimeSig > 1)
                 g_nTimeSig = newTimeSig;
         }
@@ -1343,7 +1343,7 @@ bool setState(const char* state) {
         g_seqMan.init();
 
         g_dTempo = j.value("tempo", g_dTempo); //!@todo Do we want to reset tempo to default or use previous if not in state?
-        g_nTimeSig = j.value("bpb", 4);
+        setTimeSig(j.value("bpb", 4));
 
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {

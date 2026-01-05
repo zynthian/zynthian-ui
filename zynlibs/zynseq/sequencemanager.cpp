@@ -303,11 +303,17 @@ bool SequenceManager::clock(std::pair<uint32_t, uint32_t> timeinfo, std::multima
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
             continue;
         }
-        if (nGroup < 32 && pSequence->getLength())
-            m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
-        else if (nGroup == 32)
-            m_aGroupProgress[32] = (100 * barPos / PPQN_INTERNAL  / m_nTimeSig);
-
+        if (pSequence->getPlayState() & 0x01) {
+            if (nGroup < 32 && pSequence->getLength())
+                m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
+            else if (nGroup == 32) {
+                uint8_t nTimeSig = pSequence->getTimeSig();
+                if (nTimeSig)
+                    m_aGroupProgress[32] = (100 * barPos / (nTimeSig * PPQN_INTERNAL));
+                else
+                    m_aGroupProgress[32] = (100 * barPos / (m_nTimeSig * PPQN_INTERNAL));
+            }
+        }
         ++nSequence;
     }
 

@@ -68,6 +68,7 @@ SEQ_MODE_START_SYNC      = 0 # Start at next sync
 SEQ_MODE_START_IMMEDIATE = 4 # Start immediately
 # Bits 8..15 hold repeats. 0 for disabled.
 
+# Bit 0 indicates playing
 SEQ_STOPPED = 0
 SEQ_PLAYING = 1
 SEQ_STARTING = 2
@@ -75,7 +76,7 @@ SEQ_STOPPING = 3
 SEQ_FORCED_STOP = 4
 SEQ_STOPPING_SYNC = 5
 SEQ_CHILD_PLAYING = 6
-SEQ_CHILD_STOPPING = 7
+SEQ_CHILD_STOPPING = 8
 
 FOLLOW_ACTION_NONE  = 0
 FOLLOW_ACTION_RELATIVE = 1

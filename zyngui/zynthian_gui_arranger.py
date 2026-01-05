@@ -174,7 +174,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         options = {}
         options[f'Tempo ({self.zynseq.libseq.getTempo():0.1f})'] = 'Tempo'
         options['Beats per bar ({})'.format(
-            self.zyngui.state_manager.zynseq.libseq.getTimeSig())] = 'Beats per bar'
+            self.zyngui.state_manager.zynseq.timesig)] = 'Beats per bar'
         options[f'Phrase ({self.zynseq.scene})'] = 'Phrase'
         options['> ARRANGER'] = None
         if self.zynseq.libseq.isMuted(self.zynseq.scene, self.sequence, self.track):
@@ -215,7 +215,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.show_screen('tempo')
         elif params == 'Beats per bar':
             self.enable_param_editor(self, 'timesig', {'name': 'Beats per bar', 'value_min': 1,
-                                     'value_max': 64, 'value_default': 4, 'value': self.zynseq.libseq.getTimeSig()})
+                                     'value_max': 64, 'value_default': 4, 'value': self.zynseq.timesig})
         elif params == 'Phrase':
             self.enable_param_editor(self, 'phrase', {
                                      'name': 'Phrase', 'value_min': 1, 'value_max': 64, 'value': self.zynseq.scene})
@@ -384,7 +384,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
         steps_per_beat = 24
         ticks_per_step = ticks_per_beat / steps_per_beat
-        beats_in_pattern = self.zynseq.libseq.getTimeSig()
+        beats_in_pattern = self.zynseq.timesig
         ticks_in_pattern = beats_in_pattern * ticks_per_beat
         clocks_per_step = 1  # For 24 steps per beat
         ticks_per_clock = ticks_per_step / clocks_per_step
@@ -716,8 +716,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
     # Toggle playback of selected sequence
     def toggle_play(self):
         # if self.zynseq.libseq.getPlayState(self.zynseq.scene, self.sequence) == zynseq.SEQ_STOPPED:
-        # bars = int(self.selected_cell[0] / self.zynseq.libseq.getTimeSig())
-        # pos = bars * self.zynseq.libseq.getTimeSig() * self.clocks_per_division
+        # bars = int(self.selected_cell[0] / self.zynseq.timesig)
+        # pos = bars * self.zynseq.timesig * self.clocks_per_division
         # if self.zynseq.libseq.getSequenceLength(self.zynseq.scene, self.sequence) > pos:
         # self.zynseq.libseq.setSequencePlayPosition(self.zynseq.scene, self.sequence, pos)
         self.zynseq.libseq.togglePlayState(self.zynseq.scene, self.sequence)
@@ -980,7 +980,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         font = tkfont.Font(size=self.small_font_size)
         tempo_y = font.metrics('linespace')
         offset = 0 - int(self.col_offset % self.horizontal_zoom)
-        for bar in range(offset, self.horizontal_zoom, self.zynseq.libseq.getTimeSig()):
+        for bar in range(offset, self.horizontal_zoom, self.zynseq.timesig):
             self.grid_canvas.create_line(
                 bar * self.column_width, 0, bar * self.column_width, self.grid_height, fill='#808080', tags='barlines')
             if bar:

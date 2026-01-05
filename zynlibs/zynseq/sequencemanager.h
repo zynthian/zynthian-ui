@@ -218,10 +218,10 @@ class SequenceManager {
     bool isTimeSigChanged();
 
     /** @brief  Get current time signature (beats in bar)
-        @param  clear True to clear current sig changed flag (default: true)
+        @param  clear True to clear current sig changed flag (default: false)
         @retval uint8_t Current time signature
     */
-    uint8_t getTimeSig(bool clear = true);
+    uint8_t getTimeSig(bool clear = false);
 
     /** @brief  Set current time signature (beats in bar)
         @param  sig Current time signature (in quarter notes)

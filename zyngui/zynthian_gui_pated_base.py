@@ -307,7 +307,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         except:
             pass
         if timeSig == 0:
-            timeSig = self.zynseq.libseq.getTimeSig()
+            timeSig = self.zynseq.timesig
         return timeSig
 
     def get_pattern_length(self, n_beats=None, timesig=None):

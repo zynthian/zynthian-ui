@@ -1140,22 +1140,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 mixbus_states = self.zyngui.state_manager.zynmixer_bus.get_dpm_states(
                     0, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1)
                 for strip in self.chain_strips:
-                    if strip.chain.is_audio():
-                        if strip.chain.zynmixer_proc.zynmixer == self.zyngui.state_manager.zynmixer_chan:
-                            strip.draw_dpm(chan_states[strip.chain.zynmixer_proc.mixer_chan])
-                        else:
-                            strip.draw_dpm(mixbus_states[strip.chain.zynmixer_proc.mixer_chan])
-                    if strip.chain.midi_chan is not None and strip.chain.midi_chan <= 32:
-                        strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
+                    if zynthian_gui_config.enable_dpm:
+                        if strip.chain.is_audio():
+                            if strip.chain.zynmixer_proc.zynmixer == self.zyngui.state_manager.zynmixer_chan:
+                                strip.draw_dpm(chan_states[strip.chain.zynmixer_proc.mixer_chan])
+                            else:
+                                strip.draw_dpm(mixbus_states[strip.chain.zynmixer_proc.mixer_chan])
             else:
                 # Update main chain DPM
                 state = self.state_manager.zynmixer_bus.get_dpm_states(0, 0)[0]
                 self.chain_strips[-1].draw_dpm(state)
-                self.chain_strips[-1].update_clip_progress(self.zynseq.progress[zynseq.PHRASE_CHANNEL])
             if self.beat != self.zynseq.beat:
                 self.beat = self.zynseq.beat
                 self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.timesig}/4")
             for strip in self.chain_strips:
+                # Update MIDI activity indicators
                 if strip.chain.midi_chan is not None:
                     if strip.chain.midi_chan < 16:
                         midi_act = self.zyngui.state_manager.status_midi_ch & (1 << strip.chain.midi_chan)
@@ -1167,7 +1166,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         strip.canvas.itemconfig(strip.midi_indicator, state=tkinter.NORMAL)
                     else:
                         strip.canvas.itemconfig(strip.midi_indicator, state=tkinter.HIDDEN)
- 
+                # Update progress indicators
+                if strip.chain.midi_chan is not None and strip.chain.midi_chan < 32:
+                    strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
+                elif strip.chain.chain_id == 0:
+                    strip.update_clip_progress(self.zynseq.progress[32])
+
     def plot_zctrls(self):
         """Function to refresh display (fast)
         """

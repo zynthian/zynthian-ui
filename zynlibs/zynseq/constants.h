@@ -59,7 +59,7 @@
 #define FORCED_STOP 4   // Sequence is stopped immediately
 #define STOPPING_SYNC 5 // Sequence is playing waiting to stop at next sync point
 #define CHILD_PLAYING 6 // Child (of phrase launcher) sequence is playing
-#define CHILD_STOPPING 7 // Child (of phrase launcher) sequence is stopping
+#define CHILD_STOPPING 8 // Child (of phrase launcher) sequence is stopping
 
 // Follow action
 enum FOLLOW_ACTION {
