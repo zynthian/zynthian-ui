@@ -102,14 +102,15 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         try:
             state = pad_info["state"]
             repeat = pad_info["repeat"]
+            group = pad_info["group"]
             if repeat == 0 or chan >= MAX_NUM_MIDI_CHANS:
                 vel = 0
                 chan = 0
             elif state == zynseq.SEQ_STOPPED:
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
                 chan = 0
             elif state == zynseq.SEQ_PLAYING:
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
                 chan = 2
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
                 vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
@@ -117,7 +118,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             elif state == zynseq.SEQ_STARTING:
                 vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
                 lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
-                vel = zynthian_gui_config.LAUNCHER_COLOUR[chan]["launchpad"]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
                 chan = 1
         except:
             pass
