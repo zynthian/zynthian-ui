@@ -122,12 +122,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def select_action(self, i, t='S'):
         self.index = i
-        if self.list_data[i][0] is None:
-            pass
-        elif self.list_data[i][1] is None:
+        try:
             self.list_data[i][0]()
-        else:
-            self.list_data[i][0](self.list_data[i][1], t)
+        except:
+            pass
 
     def midi_learn(self):
         options = {}
