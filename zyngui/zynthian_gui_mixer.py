@@ -1569,6 +1569,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         follow_action = info["followAction"]
         follow_phrase = info["followParam"]
         title = f"Phrase options ({name})"
+        options["> Manipulate this phrase"] = None
         if repeat == 0:
             options["Duration (DISABLED)"] = repeat
         else:
@@ -1597,7 +1598,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             else:
                 options[f"Beats per bar ({info['bpb']})"] = info["bpb"]
         options[f"Edit name ({name})"] = name
-        options["Manipulate phrase"] = None
+        options["> Manipulate global phrases"] = None
         options["Insert phrase"] = phrase
         if self.zynseq.phrases > 1:
             options["Remove phrase"] = phrase
