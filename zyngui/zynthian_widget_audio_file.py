@@ -59,15 +59,19 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.samplerate = None
         self.duration = 0.0
 
-        self.refreshing = False
+        self.refreshing = False # Flag to avoid multiple threads refreshing waveform
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
         self.waveform_height = 1  # ratio of height for y offset of zoom overview display
         self.offset = 0  # Frames from start of file that waveform display starts
+        self.auto_offset = 0 # 1 to calc offset from crop_start. 2 to calc offest from crop_end.
         self.zoom = 1
         self.v_zoom = 1
+        self.crop_start = 0
+        self.crop_end = 0
 
         self.bg_color = zynthian_gui_config.color_bg
         self.waveform_color = zynthian_gui_config.color_info
+        self.bg_crop_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 30)
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
         self.widget_canvas = tkinter.Canvas(self,
@@ -84,6 +88,18 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             justify=tkinter.CENTER,
             fill=zynthian_gui_config.color_tx_off,
             text="No file loaded"
+        )
+        self.crop_start_rect = self.widget_canvas.create_rectangle(
+            0, 0, 0, self.height,
+            fill=self.bg_crop_color,
+            stipple="gray50",
+            tags="overlay"
+        )
+        self.crop_end_rect = self.widget_canvas.create_rectangle(
+            self.width, 0, self.width, self.height,
+            fill=self.bg_crop_color,
+            stipple="gray50",
+            tags="overlay"
         )
         self.info_rect = self.widget_canvas.create_rectangle(
             0,
@@ -169,24 +185,16 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     # fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
                     self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
                     self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
-                #self.update_cue_markers()
-                frames = self.frames / 2
-                labels = ['x1']
-                values = [1]
-                z = 1
-                while frames > self.width:
-                    z *= 2
-                    labels.append(f"x{z}")
-                    values.append(z)
-                    frames /= 2
-                #zctrl = self.processor.controllers_dict['zoom']
-                #zctrl.set_options({'labels': labels, 'ticks': values, 'value_max': values[-1]}
-                #self.draw_waveform(0, self.frames)
+                self.offset = 0
+                self.auto_offset = 0
+                self.crop_start = 0
+                self.crop_end = self.frames
             except MemoryError:
                 logging.warning(f"Failed to show waveform - file too large")
                 self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
                 self.sf = None
             except Exception as e:
+                logging.warning(f"Failed to show waveform: {e}")
                 self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
                 self.sf = None
             self.refreshing = False
@@ -197,8 +205,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             self.sf = None
 
-        self.update()
-
     def draw_waveform(self, start, length):
         if self.sf is None:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
@@ -206,8 +212,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             return
 
-        start = min(self.frames, max(0, start))
-        length = min(self.frames - start, length)
+        length = min(self.frames, length)
+        start = min(start, (self.frames - length))
         steps_per_peak = 16
         data = [[] for i in range(self.channels)]
         large_file = self.frames * self.channels > 24000000
@@ -231,15 +237,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         else:
             self.sf.seek(start)
             a_data = self.sf.read(length, always_2d=True)
-            frames_per_pixel = len(a_data) // self.width
-            step = max(1, frames_per_pixel // steps_per_peak)
+            frames_per_pixel = len(a_data) / self.width
+            step = max(1, frames_per_pixel / steps_per_peak)
             # Limit read blocks for larger files
             block_size = min(frames_per_pixel, 1024)
-
-        if frames_per_pixel < 1:
-            self.refresh_waveform = False
-            self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
-            return
 
         v1 = [0.0 for i in range(self.channels)]
         v2 = [0.0 for i in range(self.channels)]
@@ -258,13 +259,15 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 # For each audio channel
                 v1[0:] = [0.0] * self.channels
                 v2[0:] = [0.0] * self.channels
-                for frame in range(offset1, offset2, step):
+                frame = offset1
+                while int(frame) < int(offset2):
                     # Find peak audio within block of audio represented by this x-axis pixel
-                    av = a_data[frame][channel] * self.v_zoom
+                    av = a_data[int(frame)][channel] * self.v_zoom
                     if av < v1[channel]:
                         v1[channel] = av
                     if av > v2[channel]:
                         v2[channel] = av
+                    frame += step
                 data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0),
                                   x, y_offsets[channel] + int(v2[channel] * y0))
 
@@ -278,10 +281,11 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.itemconfig(f"overlay", state=tkinter.NORMAL)
 
     def refresh_gui(self):
-        if self.refreshing:
-            return
+        #if self.refreshing:
+        #    return
         self.refreshing = True
         refresh_info = False
+        update_markers = False
 
         try:
             if self.zctrl != self.zyngui_control.widget_zctrl:
@@ -290,8 +294,36 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.refreshing = False
             return
 
+        if "zoom" in self.monitors and self.zoom != self.monitors["zoom"]:
+            self.zoom = self.monitors["zoom"]
+            self.refresh_waveform = True
+
+        if "offset" in self.monitors:
+            if self.offset != self.monitors["offset"]:
+                self.offset = self.monitors["offset"]
+                self.refresh_waveform = True
+                self.auto_offset = 0
+        else:
+            if self.auto_offset == 0:
+                self.auto_offset = 1
+
+        if "crop_start" in self.monitors and self.crop_start != self.monitors["crop_start"]:
+                self.crop_start = self.monitors["crop_start"]
+                update_markers = True
+                self.refresh_waveform = True
+                if self.auto_offset:
+                    self.auto_offset = 1
+
+        if "crop_end" in self.monitors and self.crop_end != self.monitors["crop_end"]:
+                self.crop_end = self.monitors["crop_end"]
+                update_markers = True
+                self.refresh_waveform = True
+                if self.auto_offset:
+                    self.auto_offset = 2
+
         try:
             if self.zctrl and self.fpath != self.zctrl.value:
+                # Audio file changed so reload waveform from file audio data
                 self.fpath = self.zctrl.value
                 self.fname = basename(self.fpath)
                 waveform_thread = Thread(target=self.load_file, name="waveform image")
@@ -299,9 +331,29 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 return
 
             if self.refresh_waveform:
-                self.draw_waveform(self.offset, int(self.frames / self.zoom))
+                length = self.frames // self.zoom
+                if self.auto_offset == 1:
+                    # Centre on start crop marker
+                    self.offset = self.crop_start - length // 2
+                elif self.auto_offset == 2:
+                    # Centre on end crop marker
+                    self.offset = self.crop_end - length // 2
+                # Ensure whoe waveform can be drawn
+                self.offset = min(self.offset, self.frames - length)
+                self.offset = max(self.offset, 0)
+                self.draw_waveform(self.offset, length)
                 refresh_info = True
+                update_markers = True
                 self.refresh_waveform = False
+
+            if update_markers and self.frames:
+                h = self.waveform_height
+                f = self.width / self.frames * self.zoom
+                x = int(f * (self.crop_start - self.offset))
+                self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
+                x = int(f * (self.crop_end - self.offset))
+                self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
+                refresh_info = True
 
             if refresh_info:
                 time = self.duration

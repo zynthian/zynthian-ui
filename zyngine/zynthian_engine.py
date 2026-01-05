@@ -191,6 +191,7 @@ class zynthian_engine(zynthian_basic_engine):
         self.preset_favs = None
         self.preset_favs_fpath = None
         self.show_favs_bank = True
+        self.monitors_dict = {}
 
     def reset(self):
         pass
@@ -214,6 +215,9 @@ class zynthian_engine(zynthian_basic_engine):
 
     def refresh(self):
         pass
+
+    def get_monitors_dict(self):
+        return self.monitors_dict
 
     # ---------------------------------------------------------------------------
     # OSC Management
@@ -642,9 +646,9 @@ class zynthian_engine(zynthian_basic_engine):
             for symbol in list(processor.controllers_dict):
                 zctrl = processor.controllers_dict[symbol]
                 if symbol in symbols:
-                    zctrl.reset(self, symbol)
+                    zctrl.reset(self, symbol, full=False)
                 else:
-                    self.state_manager.chain_manager.remove_midi_learn_from_zctrl(zctrl)
+                    self.state_manager.chain_manager.remove_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=True)
                     del processor.controllers_dict[symbol]
             # Regenerate / update controller dictionary
             for ctrl in self._ctrls:

@@ -273,8 +273,8 @@ void* file_thread_fn(void* param) {
             }
             SF_INSTRUMENT inst;
             if (sf_command(pFile, SFC_GET_INSTRUMENT, &inst, sizeof(inst)) == SF_TRUE) {
-                fprintf(stderr, "File instrument info: gain: %d, detune:%d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n", inst.gain,
-                        inst.detune, inst.velocity_lo, inst.velocity_hi, inst.basenote, inst.detune, inst.key_lo, inst.key_hi);
+                fprintf(stderr, "File instrument info: gain: %d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n", inst.gain,
+                        inst.velocity_lo, inst.velocity_hi, inst.basenote, inst.detune, inst.key_lo, inst.key_hi);
                 pPlayer->gain = pow(10, (float(inst.gain) / 20));
                 for (int i = 0; i < inst.loop_count; ++i) {
                     fprintf(stderr, "\tLoop %d: mode:%s, start: %d, end:%d, count:%u\n", i, loopModes[inst.loops[i].mode - 800], inst.loops[i].start,

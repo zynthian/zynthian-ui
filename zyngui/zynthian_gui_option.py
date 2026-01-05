@@ -47,18 +47,27 @@ class zynthian_gui_option(zynthian_gui_selector_info):
         self.close_on_select = True
         super().__init__("Menu")
 
-    def config(self, title, options, cb_select, close_on_select=True, click_type=False, index=0):
-        self.title = title
+    def config(self, title, options, cb_select, close_on_select=True, click_type=False, index=None):
+        reset_index = False
+        if title != self.title:
+            self.title = title
+            reset_index = True
         if callable(options):
             self.options_cb = options
+            reset_index = True
             self.options = None
         else:
             self.options_cb = None
+            if len(options) != len(self.options):
+                reset_index = True
             self.options = options
         self.cb_select = cb_select
         self.close_on_select = close_on_select
         self.click_type = click_type
-        if index is not None:
+        if index is None:
+            if reset_index:
+                self.index = 0
+        else:
             self.index = index
 
     def config_file_list(self, title, dpaths, fpat, cb_select, close_on_select=True, click_type=False):

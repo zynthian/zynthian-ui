@@ -487,8 +487,8 @@ class zynthian_engine_jalv(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def add_processor(self, processor):
-        super().add_processor(processor)
         self.set_midi_chan(processor)
+        super().add_processor(processor)
 
     def get_name(self, processor=None):
         return self.plugin_name
@@ -913,9 +913,27 @@ class zynthian_engine_jalv(zynthian_engine):
                 #logging.error(e)
                 logging.exception(traceback.format_exc())
 
-        # Sort by suggested display_priority => This is done in zynthian_engine!
-        #new_index = sorted(zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
-        #zctrls = {k: zctrls[k] for k in new_index}
+        if self.type == "Audio Effect":
+            if "bypass" in zctrls:
+                zctrls["bypass"].labels = ["inline", "bypass"]
+                zctrls["bypass"].is_toggle = True
+                zctrls["bypass"].display_priority = 0
+            elif "BYPASS" in zctrls:
+                zctrls["BYPASS"].labels = ["inline", "bypass"]
+                zctrls["BYPASS"].is_toggle = True
+                zctrls["BYPASS"].display_priority = 0
+            else:
+                # Add jack-routing bypass control
+                zctrls["bypass"] = zynthian_controller(self, 'bypass', {
+                    'name': "bypass",
+                    'is_toggle': True,
+                    'value_max': 1,
+                    'value_default': 0,
+                    'value': 0,
+                    'processor': self,
+                    'labels': ['inline', 'bypass'],
+                    "display_priority": 0
+                })
 
         return zctrls
 

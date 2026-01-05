@@ -63,16 +63,18 @@ class fake_port:
         self.aliases = [name, name]
 
     def set_alias(self, alias):
-        pass
+        if len(self.aliases < 2):
+            self.aliases.append(alias)
 
     def unset_alias(self, alias):
-        pass
+        try:
+            self.aliases.remove(alias)
+        except:
+            pass
 
 # -------------------------------------------------------------------------------
 # Define some Constants and Global Variables
 # -------------------------------------------------------------------------------
-
-MAIN_MIX_CHAN = 17 				# TODO: Get this from mixer
 
 jclient = None					# JACK client
 thread = None					# Thread to check for changed MIDI ports
@@ -91,6 +93,7 @@ hw_midi_src_ports = []
 # List of hardware MIDI destination ports (including network, aubionotes, etc.)
 hw_midi_dst_ports = []
 hw_audio_dst_ports = []			# List of physical audio output ports
+solo_chain_ids = []             # List of chain ids for chains with solo enabled
 sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
 sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
 alsa_audio_srcs = {}			# Map of alsa_in processes, indexed by alsa device name
@@ -284,20 +287,21 @@ def get_midi_in_devid_by_uid(uid, mapped=False):
     mapped : True to use physical port mapping
     """
 
-    for i, port in enumerate(devices_in):
-        try:
-            if mapped:
-                if port.aliases[0] == uid:
-                    return i
-            else:
-                uid_parts = uid.split('/', 1)
-                if len(uid_parts) > 1:
-                    if uid_parts[1] == port.aliases[0].split('/', 1)[1]:
+    for devices in (devices_in, devices_out):
+        for i, port in enumerate(devices):
+            try:
+                if mapped:
+                    if port.aliases[0] == uid:
                         return i
-                elif port.aliases[0] == uid:
-                    return i
-        except:
-            pass
+                else:
+                    uid_parts = uid.split('/', 1)
+                    if len(uid_parts) > 1:
+                        if uid_parts[1] == port.aliases[0].split('/', 1)[1]:
+                            return i
+                    elif port.aliases[0] == uid:
+                        return i
+            except:
+                pass
     return None
 
 
@@ -402,6 +406,21 @@ def get_sidechain_portnames(jackname=None):
             pass
     return result
 
+def solo(chain_id, value):
+    global solo_chain_ids
+    if chain_id == 0:
+        solo_chain_ids = []
+    elif value:
+        if chain_id not in solo_chain_ids:
+            solo_chain_ids.append(chain_id)
+            request_audio_connect(True)
+    else:
+        if chain_id in solo_chain_ids:
+            solo_chain_ids.remove(chain_id)
+            request_audio_connect(True)
+
+def is_solo(chain_id):
+    return chain_id in solo_chain_ids
 
 # ------------------------------------------------------------------------------
 
@@ -618,7 +637,6 @@ def midi_autoconnect():
             # else => Connect input device to zmip directly
             required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
 
-
     for i in range(0, max_num_devs):
         # Delete disconnected input devices from list and unload driver
         if i not in busy_idevs and devices_in[i] is not None:
@@ -829,6 +847,13 @@ def midi_autoconnect():
             except:
                 pass
 
+    # Connect clippy
+    for port in jclient.get_ports("clippy", is_midi=True, is_input=True):
+        try:
+            jclient.connect("zynseq:clippy", port)
+        except:
+            pass  # Don't care about already connected ports
+
     # Autoload new drivers
     for i in new_idev:
         state_manager.ctrldev_manager.load_driver(i)
@@ -862,30 +887,29 @@ def audio_autoconnect():
 
     # Chain audio routing
     for chain_id in chain_manager.chains:
+        chain = chain_manager.get_chain(chain_id)
+        if not chain.is_audio():
+            continue
         routes = chain_manager.get_chain_audio_routing(chain_id)
-        normalise = 0 in chain_manager.chains[chain_id].audio_out and chain_manager.chains[0].fader_pos == 0 and len(
-            chain_manager.chains[chain_id].audio_slots) == chain_manager.chains[chain_id].fader_pos
-        state_manager.zynmixer.normalise(chain_manager.chains[chain_id].mixer_chan, normalise)
+        #if chain_id == 0 and solo_chain_ids:
+        #    routes["zynmixer_bus:input_00"] = solo_chain_ids.copy()
         for dst in list(routes):
             if isinstance(dst, int):
                 # Destination is a chain
                 route = routes.pop(dst)
                 dst_chain = chain_manager.get_chain(dst)
                 if dst_chain:
-                    if dst_chain.audio_slots and dst_chain.fader_pos:
-                        for proc in dst_chain.audio_slots[0]:
-                            routes[proc.get_jackname()] = route
-                    elif dst_chain.is_synth():
+                    if dst_chain.is_synth():
                         proc = dst_chain.synth_slots[0][0]
                         if proc.type == "Special":
                             routes[proc.get_jackname()] = route
                     else:
-                        if dst == 0:
-                            for name in list(route):
-                                if name.startswith('zynmixer:output'):
-                                    # Use mixer internal normalisation
-                                    route.remove(name)
-                        routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
+                        for proc in chain_manager.chains[dst].audio_slots[0]:
+                            #TODO: Handle empty chain
+                            jackname = proc.get_jackname()
+                            if jackname.startswith("zynmixer"):
+                                jackname += f":input_{proc.mixer_chan:02d}"
+                            routes[jackname] = route
         for dst in routes:
             if dst in sidechain_ports:
                 # This is an exact match so we do want to route exactly this
@@ -909,16 +933,18 @@ def audio_autoconnect():
                         dst = dst_ports[min(i, dst_count - 1)]
                         required_routes[dst.name].add(src.name)
 
-    # Connect metronome to aux
-    required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}a"].add("zynseq:metronome")
-    required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}b"].add("zynseq:metronome")
+    try:
+        # Connect metronome to aux
+        required_routes[f"zynmixer_bus:input_00a"].add("zynseq:metronome")
+        required_routes[f"zynmixer_bus:input_00b"].add("zynseq:metronome")
 
-    # Connect global audio player to aux
-    if state_manager.audio_player and state_manager.audio_player.jackname:
-        ports = jclient.get_ports(
-            state_manager.audio_player.jackname, is_output=True, is_audio=True)
-        required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}a"].add(ports[0].name)
-        required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}b"].add(ports[1].name)
+        # Connect global audio player to aux
+        if state_manager.audio_player and state_manager.audio_player.jackname:
+            ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
+            required_routes[f"zynmixer_bus:input_00a"].add(ports[0].name)
+            required_routes[f"zynmixer_bus:input_00b"].add(ports[1].name)
+    except Exception as e:
+        logging.warning(e)
 
     # Connect inputs to aubionotes
     if zynthian_gui_config.midi_aubionotes_enabled:
@@ -936,11 +962,46 @@ def audio_autoconnect():
             required_routes.pop(dst)
 
     # Replicate main output to headphones
-    hp_ports = jclient.get_ports(
-        "Headphones:playback", is_input=True, is_audio=True)
+    hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
     if len(hp_ports) >= 2:
         required_routes[hp_ports[0].name] = required_routes[hw_audio_dst_ports[0].name]
         required_routes[hp_ports[1].name] = required_routes[hw_audio_dst_ports[1].name]
+
+    # Enable zynmixer internal normalised routes and remove corresponding jack graph connections
+    if "zynmixer_bus:input_00a" in required_routes and "zynmixer_bus:input_00b" in required_routes:
+        for chan in range(state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
+            bus_route_a = f"zynmixer_bus:output_{chan:02d}a"
+            bus_route_b = f"zynmixer_bus:output_{chan:02d}b"
+            if bus_route_a in required_routes["zynmixer_bus:input_00a"] and bus_route_b in required_routes["zynmixer_bus:input_00b"]:
+                required_routes["zynmixer_bus:input_00a"].remove(bus_route_a)
+                required_routes["zynmixer_bus:input_00b"].remove(bus_route_b)
+                state_manager.zynmixer_bus.normalise(chan, 1)
+            else:
+                state_manager.zynmixer_bus.normalise(chan, 0)
+
+    # Handle solo
+    if solo_chain_ids:
+        for chan in range(state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
+            state_manager.zynmixer_bus.normalise(chan, 0)
+        required_routes["zynmixer_bus:input_00a"] = set()
+        required_routes["zynmixer_bus:input_00b"] = set()
+        for chain_id in solo_chain_ids:
+            chain = chain_manager.get_chain(chain_id)
+            if not chain or not chain.audio_slots:
+                continue
+            for proc in chain.audio_slots[-1]:
+                jackname = proc.get_jackname()
+                if jackname.startswith("zynmixer"):
+                    required_routes["zynmixer_bus:input_00a"].add(f"{jackname}:output_{proc.mixer_chan:02d}a")
+                    required_routes["zynmixer_bus:input_00b"].add(f"{jackname}:output_{proc.mixer_chan:02d}b")
+                else:
+                    src_ports = jclient.get_ports(jackname, is_audio=True, is_output=True)
+                    if len(src_ports) > 0:
+                        required_routes["zynmixer_bus:input_00a"].add(src_ports[0].name)
+                        if len(src_ports) > 1:
+                            required_routes["zynmixer_bus:input_00b"].add(src_ports[1].name)
+                        else:
+                            required_routes["zynmixer_bus:input_00b"].add(src_ports[0].name)
 
     # Connect and disconnect routes
     for dst, sources in required_routes.items():
@@ -1158,8 +1219,8 @@ def audio_connect_ffmpeg(timeout=2.0):
         try:
             # TODO: Do we want post fader, post effects feed?
             #  => It's just for recording video tutorials, but if the recorded video is about post-fader effects ...
-            jclient.connect(f"zynmixer:output_{MAIN_MIX_CHAN}a", "ffmpeg:input_1")
-            jclient.connect(f"zynmixer:output_{MAIN_MIX_CHAN}b", "ffmpeg:input_2")
+            jclient.connect("zynmixer_bus:output_00a", "ffmpeg:input_1")
+            jclient.connect("zynmixer_bus:output_00b", "ffmpeg:input_2")
             return
         except:
             sleep(0.1)
@@ -1197,6 +1258,8 @@ def build_midi_port_name(port):
         return port.name, "MIDI player"
     elif port.name.startswith("ZynMidiRouter:seq_in"):
         return port.name, "Router Feedback"
+    elif port.name.startswith("jackmidiola"):
+        return port.name, "DMX"
     elif port.name.startswith("jacknetumpd:netump_"):
         ep_name = jack.get_property(port.uuid, "UMPEndpointName")
         if ep_name:
@@ -1500,6 +1563,11 @@ def is_running():
         return thread.is_alive()
     return False
 
+def reset_xruns():
+    """Reset the xrun counter"""
+
+    global xruns
+    xruns = 0
 
 def cb_jack_xrun(delayed_usecs: float):
     """Jack xrun callback
@@ -1511,7 +1579,10 @@ def cb_jack_xrun(delayed_usecs: float):
         global xruns
         xruns += 1
         logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
-        state_manager.status_xrun = True
+        if delayed_usecs:
+            state_manager.status_xrun = 2
+        else:
+            state_manager.status_xrun = 1
 
 
 def cb_jack_property_change(subject, key, change):

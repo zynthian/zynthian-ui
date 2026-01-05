@@ -4,7 +4,7 @@
 #
 # Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer#one)
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
@@ -35,7 +35,6 @@ from threading import Thread
 from zynlibs.zynaudioplayer import *
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
-from zyngui import zynthian_gui_config
 from zyngui.multitouch import MultitouchTypes
 
 # ------------------------------------------------------------------------------
@@ -431,7 +430,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
                 v_offset = chan * y0
                 pair = chan // 2
                 fill = bg_colors[pair % 2]
-                # fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)]
+                # fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
                 self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, width=0, fill=fill, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
                 self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
                 self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)

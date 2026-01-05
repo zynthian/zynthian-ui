@@ -108,6 +108,14 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.filling_list = True
         self.list_data = []
 
+        self.list_data.append((None, 0, "> MIXER"))
+        self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
+                               ["Quantity of chains shown in mixer",
+                                None]))
+        self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
+                               ["Quantity of launchers shown in mixer",
+                                None]))
+
         self.list_data.append((None, 0, "> MIDI"))
         self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices",
                                ["Configure MIDI input devices.", "midi_input.png"]))
@@ -477,6 +485,16 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         zynthian_gui_config.enable_dpm = not zynthian_gui_config.enable_dpm
         self.update_list()
 
+    def visible_chains(self):
+        self.enable_param_editor(self, "Visible chains",
+                                 {'value_min': 4, 'value_max': 16, 'value': zynthian_gui_config.visible_mixer_strips},
+                                 self.visible_chains_cb)
+
+    def visible_launchers(self):
+        self.enable_param_editor(self, "Visible launchers",
+                                 {'value_min': 4, 'value_max': 16, 'value': zynthian_gui_config.visible_launchers},
+                                 self.visible_launchers_cb)
+
     def toggle_snapshot_mixer_settings(self):
         if zynthian_gui_config.snapshot_mixer_settings:
             logging.info("Mixer Settings on Snapshots OFF")
@@ -524,6 +542,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def touch_navigation_cb_confirmed(self, value=""):
         zynconf.save_config({"ZYNTHIAN_UI_TOUCH_NAVIGATION2": value})
         self.restart_gui()
+
+    def visible_chains_cb(self, value):
+        zynconf.save_config({"ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS": str(value)})
+        zynthian_gui_config.visible_mixer_strips = value
+        self.zyngui.screens["mixer"].update_layout()
+        self.update_list()
+
+    def visible_launchers_cb(self, value):
+        zynconf.save_config({"ZYNTHIAN_UI_VISIBLE_LAUNCHERS": str(value)})
+        zynthian_gui_config.visible_launchers = value
+        self.zyngui.screens["mixer"].update_layout()
+        self.update_list()
 
     # -------------------------------------------------------------------------
     # Global Transpose editing

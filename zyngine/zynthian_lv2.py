@@ -5,7 +5,7 @@
 #
 # zynthian LV2
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -48,6 +48,7 @@ class EngineType(Enum):
     AUDIO_EFFECT = "Audio Effect"
     AUDIO_GENERATOR = "Audio Generator"
     SPECIAL = "Special"
+    GLOBAL = "Global"
     # UNKNOWN = "Unknown"
 
 
@@ -156,6 +157,7 @@ standalone_engine_info = {
     "FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Sampler", True],
     "SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Sampler", True],
     "LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Sampler", True],
+    "CL": ["Clippy", "Clip launcher", "Audio Generator", "Other", True],
     "BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
     "AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
     "PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
@@ -499,6 +501,11 @@ def get_engines_by_type():
     for key, info in engines.items():
         engines_by_type[info['TYPE']][key] = info
 
+    try:
+        del engines_by_type["Global"]
+    except:
+        pass
+
     return engines_by_type
 
 # ------------------------------------------------------------------------------
@@ -705,8 +712,7 @@ def _generate_plugin_presets_cache(plugin):
         if len(presets_info[k]['presets']) == 0:
             del (presets_info[k])
         else:
-            presets_info[k]['presets'] = sorted(
-                presets_info[k]['presets'], key=lambda k: k['label'])
+            presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
 
     # Save cache file
     save_plugin_presets_cache(plugin_name, presets_info)
@@ -868,6 +874,13 @@ def get_plugin_ports(plugin_url):
             except:
                 vdef = vmin
 
+            if  symbol == "BYPASS" and plugin_url.startswith("http://guitarix"):
+                # Invert bypass for guitarix effects
+                is_toggled = True
+                vmin = 1
+                vmax = 0
+                vdef = 0
+
             ports_info[i] = {
                 'index': i,
                 'symbol': symbol,
@@ -898,6 +911,7 @@ def get_plugin_ports(plugin_url):
             #logging.debug("CONTROL PORT {} => {}".format(i, ports_info[i]))
 
     # Property parameters
+    i = len(ports_info)
     for control in world.find_nodes(plugin.get_uri(), world.ns.patch.writable, None):
         symbol = world.get_symbol(control)
         name = str(world.get(control, world.ns.rdfs.label, None))

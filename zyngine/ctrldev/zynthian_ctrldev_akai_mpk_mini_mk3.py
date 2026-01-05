@@ -396,8 +396,8 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
                 self._change_handler(self._config_handler)
             elif program == PROG_OPEN_MIXER:
                 self.state_manager.send_cuia(
-                    "SCREEN_ALSA_MIXER" if self._current_screen == "audio_mixer" else
-                    "SCREEN_AUDIO_MIXER"
+                    "SCREEN_ALSA_MIXER" if self._current_screen == "mixer" else
+                    "SCREEN_MIXER"
                 )
             elif program == PROG_OPEN_ZYNPAD:
                 self.state_manager.send_cuia({
@@ -532,7 +532,7 @@ class MixerHandler(ModeHandlerBase):
 
             # This will happend when FULL LEVEL is on (or with a very strong press)
             if ccval == 127:
-                if self._current_screen in ["audio_mixer", "zynpad"]:
+                if self._current_screen in ["mixer", "zynpad"]:
                     self._pads_action = FN_SELECT
                     return self._change_chain(ccnum, ccval)
 
@@ -563,7 +563,7 @@ class MixerHandler(ModeHandlerBase):
             elif self.CC_PAD_START_B <= ccnum <= self.CC_PAD_END_B:
                 self._chains_bank = 1
 
-            if self._current_screen in ["audio_mixer", "zynpad"]:
+            if self._current_screen in ["mixer", "zynpad"]:
                 if ccnum in (self.CC_PAD_VOLUME_A, self.CC_PAD_VOLUME_B):
                     self._knobs_function = FN_VOLUME
                 elif ccnum in (self.CC_PAD_PAN_A, self.CC_PAD_PAN_B):
@@ -575,7 +575,7 @@ class MixerHandler(ModeHandlerBase):
 
         # Is a Knob rotation
         elif self.CC_KNOBS_START <= ccnum <= self.CC_KNOBS_END:
-            if self._current_screen in ["audio_mixer", "zynpad"]:
+            if self._current_screen in ["mixer", "zynpad"]:
                 if self._knobs_function == FN_VOLUME:
                     self._update_volume(ccnum, ccval)
                 elif self._knobs_function == FN_PAN:
@@ -654,7 +654,7 @@ class MixerHandler(ModeHandlerBase):
             def set_value(c, v): return self._zynmixer.set_mute(c, v, True)
         elif type == "solo":
             value = ccval < 64
-            def set_value(c, v): return self._zynmixer.set_solo(c, v, True)
+            def set_value(c, v): return chain.set_solo(v)
         elif type == "select":
             return self._chain_manager.set_active_chain_by_id(chain.chain_id)
         else:
@@ -953,8 +953,9 @@ class PatternHandler(ModeHandlerBase):
         if self.CC_PAD_START <= ccnum <= self.CC_PAD_END:
             if ccval == 127 and self._current_screen == "zynpad":
                 pad = ccnum - self.CC_PAD_START
-                seq = self._zynseq.get_pad_from_xy(pad // 4, pad % 4)
-                self._libseq.togglePlayState(self._zynseq.bank, seq)
+                info = self._zynseq.get_launcher_info(pad // 4, pad % 4)
+                if info is not None:
+                    self._libseq.togglePlayState(self._zynseq.scene, info['phrase'], info["sequence"])
                 return
 
         if ccnum in (self.CC_PAD_SHIFT_A, self.CC_PAD_SHIFT_B):

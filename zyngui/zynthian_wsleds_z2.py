@@ -44,10 +44,11 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         # + BACK/SEL => 18, 20
         # + F1-F5 => 8, 9, 10, 11, 12 (display's bottom buttons)
         self.custom_wsleds = [13, 14, 17, 15, 19,
-                              21, 22, 23, 18, 20, 8, 9, 10, 11, 12]
+                              21, 22, 23, 18, 20,
+                              8, 9, 10, 11, 12]
 
     def update_wsleds(self):
-        curscreen = self.zyngui.current_screen
+        curscreen = self.zyngui.get_current_screen()
         curscreen_obj = self.zyngui.get_current_screen_obj()
 
         # Menu
@@ -69,7 +70,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             if self.zyngui.chain_manager.get_chain(chain_id) is None:
                 self.wsleds[i + 1] = self.wscolor_off
             else:
-                if self.zyngui.chain_manager.active_chain_id == chain_id:
+                if self.zyngui.chain_manager.active_chain.chain_id == chain_id:
                     # => Light active chain
                     if curscreen == "control":
                         self.wsleds[i + 1] = self.wscolor_active
@@ -89,41 +90,38 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         else:
             self.wsleds[7] = self.wscolor_default
 
-        # Zynpad screen:
-        if curscreen == "zynpad":
+        # Zynseq: Launcher / Pattern Editor / Arranger
+        if curscreen == "launcher":
             self.wsleds[8] = self.wscolor_active
+        elif curscreen in ("pattern_editor", "pated_cc", "arranger"):
+            self.wsleds[8] = self.wscolor_active2
         else:
             self.wsleds[8] = self.wscolor_default
 
-        # Pattern Editor/Arranger screen:
-        if curscreen == "pattern_editor":
+        # Control / Preset / Bank Screens:
+        if curscreen in ("control", "audio_player"):
             self.wsleds[9] = self.wscolor_active
-        elif curscreen == "arranger":
-            self.wsleds[9] = self.wscolor_active2
+        elif curscreen in ("preset", "bank"):
+            if self.zyngui.get_current_processor().get_show_fav_presets():
+                self.blink(9, self.wscolor_active2)
+            else:
+                self.wsleds[9] = self.wscolor_active2
         else:
             self.wsleds[9] = self.wscolor_default
 
-        # Control / Preset Screen:
-        if curscreen in ("control", "audio_player"):
+        # ZS3 / Snapshot screens:
+        if curscreen == "zs3":
             self.wsleds[10] = self.wscolor_active
-        elif curscreen in ("preset", "bank"):
-            if self.zyngui.current_processor.get_show_fav_presets():
-                self.blink(10, self.wscolor_active2)
-            else:
-                self.wsleds[10] = self.wscolor_active2
+        elif curscreen == "snapshot":
+            self.wsleds[10] = self.wscolor_active2
         else:
             if self.zyngui.alt_mode:
                 self.wsleds[10] = self.wscolor_alt
             else:
                 self.wsleds[10] = self.wscolor_default
 
-        # ZS3/Snapshot screen:
-        if curscreen == "zs3":
-            self.wsleds[11] = self.wscolor_active
-        elif curscreen == "snapshot":
-            self.wsleds[11] = self.wscolor_active2
-        else:
-            self.wsleds[11] = self.wscolor_default
+        # ???:
+        self.wsleds[11] = self.wscolor_default
 
         # ???:
         self.wsleds[12] = self.wscolor_default
@@ -135,7 +133,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             self.wsleds[13] = self.wscolor_default
 
         if self.zyngui.alt_mode and curscreen != "midi_recorder":
-            self.zyngui.screens["midi_recorder"].update_wsleds(wsleds)
+            self.zyngui.screens["midi_recorder"].update_wsleds(self.wsleds)
         else:
             # REC Button
             if self.zyngui.state_manager.audio_recorder.rec_proc:
@@ -171,7 +169,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         self.wsleds[23] = self.wscolor_yellow
 
         # Audio Mixer / ALSA Mixer
-        if curscreen == "audio_mixer":
+        if curscreen == "mixer":
             self.wsleds[24] = self.wscolor_active
         elif curscreen == "alsa_mixer":
             self.wsleds[24] = self.wscolor_active2

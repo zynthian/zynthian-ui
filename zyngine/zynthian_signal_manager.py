@@ -42,7 +42,7 @@ class zynthian_signal_manager:
     S_AUDIO_PLAYER = 5
     S_SMF_RECORDER = 6
     S_ALSA_MIXER = 7
-    S_AUDIO_MIXER = 8
+    S_MIXER = 8
     S_STEPSEQ = 9
     S_CUIA = 10
     S_GUI = 11
@@ -51,11 +51,14 @@ class zynthian_signal_manager:
     SS_CUIA_REFRESH = 0
     SS_CUIA_MIDI_EVENT = 1
 
+    #TODO: These are duplicates of definitions within zyngui!!!
     SS_GUI_SHOW_SCREEN = 0
     SS_GUI_SHOW_SIDEBAR = 1
     SS_GUI_CONTROL_MODE = 2
     SS_GUI_SHOW_FILE_SELECTOR = 3
-    SS_GUI_SHOW_MESSAGE = 4
+    SS_GUI_TOGGLE_ALT_MODE = 4
+    SS_GUI_SHOW_MESSAGE = 5
+    SS_GUI_LAUNCHER_MODE = 6
 
     SS_MIDI_ALL = 0
     SS_MIDI_CC = 1

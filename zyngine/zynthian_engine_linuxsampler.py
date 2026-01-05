@@ -32,7 +32,6 @@ from time import sleep
 from os.path import isfile
 from Levenshtein import distance
 from subprocess import check_output
-from collections import OrderedDict
 
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
@@ -168,7 +167,7 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
             self.state_manager.end_busy("linux_sampler")
             return None
         lines = result.decode().split("\r\n")
-        result = OrderedDict()
+        result = {}
         for line in lines:
             # logging.debug("LSCP RECEIVE => %s" % line)
             if line[0:2] == "OK":

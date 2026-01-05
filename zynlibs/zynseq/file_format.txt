@@ -1,6 +1,6 @@
 zynseq file format (RIFF)
 =========================
-Version 10
+Version 11
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
@@ -8,9 +8,10 @@ RIFF Header: (Version block must be first. If ommitted assume version 0.)
 	Block ID: "vers"
 	Block size: 32-bit big endian
 Block:
-	File format version [32]
+	File format version [4]
     Tempo [2]
-    Time signature (beats per bar) [2]
+    Time signature (beats per bar) [1]
+	Padding [1]
 	MIDI channel for triggers and tallies [1]
 	Trigger JACK input [1] (Not yet implemented)
 	Trigger JACK output [1] (Not yet implemented)
@@ -28,12 +29,13 @@ Block:
 	Map / scale [1] (Added in V1)
 	Scale tonic [1] (Added in V1)
 	Reference note [1] (Added in V5. May be used to remember location in pattern editor)
+	CC interpolation mode [128] (Added in V11. Interpolation mode for each CC number from 0 to 127)
 	Quantize notes [1] (Added in V9)
     Swing Divisor [1] (Added in V9)
     Swing Amount [4] (Added in V9. BCD with 4 decimal positions)
-    Timing Humanization (Added in V9. BCD with 4 decimal positions)
-    Velocity Humanization (Added in V9. BCD with 4 decimal positions)
-	Play Chance (Added in V9. BCD with 4 decimal positions)
+    Timing Humanization [4] (Added in V9. BCD with 4 decimal positions)
+    Velocity Humanization [4] (Added in V9. BCD with 4 decimal positions)
+	Play Chance [4] (Added in V9. BCD with 4 decimal positions)
 	Padding [1] (Added in V5)
 	Events: (quantity deduced from block length)
 		Start step [4]
@@ -47,40 +49,42 @@ Block:
 		Stutter count [1]
 		Stutter duration [1]
 		Play chance [1] (Added in V9)
-		Unused padding [1] = 0
 
 RIFF Header:
 	Block ID: "bank"
 	Block size: 32-bit big endian
 Block:
 	Bank ID [1]
-    Padding [1]
-    Quantity of sequences (grid size) [4]
-    Sequences:
-        Play mode [1]
-        Group [1]
+	Quantity of phrases [1]
+	Quantity of sequences in each phrase [1]
+	Padding[1]
+	Sequences (Phrase sequence, followed by child (chain) sequences):
+		Play mode [1]
+		Repeats [1]
+		Group [1]
 		Trigger note [1] (This seems like wrong place but makes code much simpler)
-		Padding [1]
+		Follow action [1] (Added in v11)
+		Follow action param[2] (Added in v11)
+		Padding [1] (Added in v11)
 		Name [16] (Since V6)
-        Quantity of tracks [4]
-        Tracks:
-            Type [1] (Added in v10. 0=MIDI, 1=Audio)
-            Chain ID [1] (Added in v10. 0=None)
-            MIDI channel [1]
-            MIDI channel [1]
-            JACK output [1]
-            Keymap [1] (bits scale: 0..200, 254=map)
-            Padding [1]
-            Quantity of patterns [2]
-            Patterns:
-                Start time [4]
-                Pattern ID [4]
-        Quantity of timebase events [4]
-        Timebase events:
-            Event measure [2]
-            Event tick [2]
-            Event command [2] [0x0001: Tempo, 0x0002: Time signature]
-            Event data [2] (maybe variable data in future?)
+		Quantity of tracks [4]
+		Tracks:
+			Type [1] (Added in v10. 0=MIDI, 1=Audio)
+			Chain ID [1] (Added in v10. 0=None)
+			MIDI channel [1]
+			JACK output [1]
+			Keymap [1] (bits scale: 0..200, 254=map)
+			Padding [1]
+			Quantity of patterns [2]
+			Patterns:
+				Start time [4]
+				Pattern ID [4]
+		Quantity of timebase events [4]
+		Timebase events:
+			Event measure [2]
+			Event tick [2]
+			Event command [2] [0x0001: Tempo, 0x0002: Time signature]
+			Event data [2] (maybe variable data in future?)
 
 RIFF Header: (user defined scales) NOT IMPLEMENTED
 	Block ID: 'scal'
@@ -91,7 +95,6 @@ Block:
 	Notes:
 		Note offset [1]
 	Pad if necessary [0/1]
-
 
 **Patterns must be stored (or loaded) before sequences which rely on references to patterns**
 

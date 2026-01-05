@@ -36,7 +36,6 @@ from zyngine.zynthian_chain import *
 from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui import zynthian_gui
 from zyngui import zynthian_gui_keybinding
-from zynlibs.zynseq import *
 
 # ******************************************************************************
 # ------------------------------------------------------------------------------
@@ -73,13 +72,6 @@ if zynthian_gui_config.num_zynpots > 0:
 # Reparent Top Window using GTK XEmbed protocol features
 # ------------------------------------------------------------------------------
 
-
-def flushflush():
-    for i in range(1000):
-        print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
-    zynthian_gui_config.top.after(200, flushflush)
-
-
 if zynthian_gui_config.wiring_layout == "EMULATOR":
     top_xid = zynthian_gui_config.top.winfo_id()
     print("Zynthian GUI XID: " + str(top_xid))
@@ -89,9 +81,8 @@ if zynthian_gui_config.wiring_layout == "EMULATOR":
         zynthian_gui_config.top.geometry('-10000-10000')
         zynthian_gui_config.top.overrideredirect(True)
         zynthian_gui_config.top.wm_withdraw()
-        flushflush()
-        zynthian_gui_config.top.after(
-            1000, zynthian_gui_config.top.wm_deiconify)
+        #flush()
+        zynthian_gui_config.top.after(1000, zynthian_gui_config.top.wm_deiconify)
 
 
 # ------------------------------------------------------------------------------

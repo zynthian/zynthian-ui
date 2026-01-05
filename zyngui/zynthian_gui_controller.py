@@ -503,11 +503,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 				if self.zyngui.screens["control"].get_midi_learn() > 1:
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
-					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
+					self.plot_midi_bind("??#??", zynthian_gui_config.color_hl)
 			elif self.zctrl == self.zyngui.state_manager.zctrl_x:
-				self.plot_midi_bind("X")
+				self.plot_midi_bind("X", zynthian_gui_config.color_alt2)
 			elif self.zctrl == self.zyngui.state_manager.zctrl_y:
-				self.plot_midi_bind("Y")
+				self.plot_midi_bind("Y", zynthian_gui_config.color_alt2)
 			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
 				key = midi_learn_params[0]
 				cc = key & 0xff
@@ -651,7 +651,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.format_print = "{:.1f}"
 			# Logarithmic float => It's calculated on-the-fly depending of the displayed value
 
-		#logging.debug(f"ZCTRL '{zctrl.short_name}' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
+		#logging.debug(f"ZCTRL '{zctrl.short_name} ({zctrl.symbol})' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
 		self.setup_zynpot()
 
 	# --------------------------------------------------------------------------
@@ -686,6 +686,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				fine = True
 			else:
 				fine = self.zyngui.alt_mode
+			#logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
 			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False
@@ -712,7 +713,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_ts} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 	def cb_canvas_release(self, event):
-		if self.canvas_push_ts and self.enabled:
+		if self.canvas_push_ts and self.enabled and self.zctrl:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
 			self.canvas_push_ts = None
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")

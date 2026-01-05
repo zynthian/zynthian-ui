@@ -4,7 +4,7 @@
 #
 # zynthian processor
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 # Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -24,13 +24,14 @@
 # *****************************************************************************
 
 import os
+import re
 import copy
 import logging
 import traceback
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-
+from zyngine import zynthian_controller
 
 class zynthian_processor:
 
@@ -114,7 +115,8 @@ class zynthian_processor:
         """Set engine that this processor uses"""
 
         self.engine = engine
-        self.engine.add_processor(self)
+        if engine:
+            self.engine.add_processor(self)
 
     def get_name(self):
         """Get name of processor"""
@@ -141,6 +143,10 @@ class zynthian_processor:
         """Get ID of the chain to which the processor belongs, if any"""
 
         return self.chain_id
+
+    def reset(self):
+        for zctrl in self.controllers_dict.values():
+            zctrl.reset_value()
 
     # ---------------------------------------------------------------------------
     # MIDI autolearn CC controllers
@@ -611,7 +617,10 @@ class zynthian_processor:
         try:
             return self.ctrl_screens_dict[key]
         except:
-            return None
+            keys = list(self.ctrl_screens_dict)
+            if keys:
+                return self.ctrl_screens_dict[keys[0]]
+        return []
 
     def get_current_screen_index(self):
         """Get index of last selected controller screen
@@ -698,6 +707,49 @@ class zynthian_processor:
                 zctrls.append(zctrl)
         return zctrls
 
+    # ---------------------------------------------------------------------------
+    # Keymap management
+    # ---------------------------------------------------------------------------
+
+    # Returns a keymap name if the keymap can be generated
+    def get_keymap_name(self):
+        if self.engine.name.startswith("Jalv/"):
+            logging.debug(f"KEYMAP PLUGIN NAME => {self.engine.plugin_name}")
+            if self.engine.plugin_name == "Fabla":
+                return "Fabla - " + self.preset_name
+        return None
+
+    # Returns keymap if possible
+    def get_keymap(self):
+        if self.engine.name.startswith("Jalv/"):
+            if self.engine.plugin_name == "Fabla":
+                return self.get_keymap_fabla()
+        return None
+
+    def get_keymap_fabla(self):
+        keymap = []
+        base_note = int(self.controllers_dict[f"base_note"].get_value())
+        for i in range(64):
+            try:
+                fpath = self.controllers_dict[f"pad_fpath_{i + 1}"].get_value()
+            except:
+                continue
+            try:
+                name = os.path.splitext(os.path.basename(fpath))[0].strip()
+                if name:
+                    name = re.sub("^\d*_*", '', name)
+                    keymap.append({
+                        "note": base_note + i,
+                        "name": name,
+                        "colour": "white"
+                    })
+            except Exception as e:
+                logging.error(f"Can't add keymap element {i}, {fpath} => {e}")
+        return keymap
+
+    # QUESTION: Should we move here the code for generating keymaps (midnam files & scales) from pattern editor?
+    # It makes sense ...
+
     # ----------------------------------------------------------------------------
     # MIDI processing
     # ----------------------------------------------------------------------------
@@ -766,6 +818,7 @@ class zynthian_processor:
         """Configure processor from state model dictionary
 
         state : Processor state
+        returns : list of cc learn config: [chain, chan, cc, zctrl]
         """
 
         if "bank_subdir_info" in state and state["bank_subdir_info"]:

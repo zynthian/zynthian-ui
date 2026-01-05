@@ -88,7 +88,7 @@ class Touch(object):
 
     @property
     def position(self):
-        """Current position of touch event  as tuple (x,y)"""
+        """Current position of touch event as tuple (x,y)"""
 
         return (self.x, self.y)
 
@@ -568,7 +568,7 @@ class MultiTouch(object):
 
         widget - Canvas widget
         tagOrId - Tag or object ID to bind event to
-        sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
+        sequence - Event sequence to bind ["press" | "motion" | "release" | "horizontal_drag"]
         function - Callback function
         add - True to append the binding otherwise remove existing bindings (default)
 
@@ -601,7 +601,7 @@ class MultiTouch(object):
 
         widget - Canvas widget
         tagOrId - Tag or object ID to bind event to
-        sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
+        sequence - Event sequence to bind ["press" | "motion" | "release" | "horizontal_drag"]
         function - Callback function (Optional - default None=remove all bindings)
         """
 

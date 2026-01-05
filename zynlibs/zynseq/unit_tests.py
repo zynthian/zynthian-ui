@@ -80,7 +80,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getSteps(), steps_in_pattern)
         self.assertEqual(libseq.getBeatType(), beat_type)
         self.assertEqual(libseq.getStepsPerBeat(), steps_per_beat)
-        self.assertEqual(libseq.getBeatsInPattern(), beats_in_pattern)
+        self.assertEqual(libseq.getBeatsInPattern(0), beats_in_pattern)
         self.assertEqual(libseq.getClocksPerStep(), clocks_per_step)
         self.assertEqual(libseq.getPatternLength(
             libseq.getPatternIndex()), clocks_per_step * steps_in_pattern)
@@ -223,7 +223,7 @@ class TestLibZynSeq(unittest.TestCase):
     # Impact on other elements of changing patterns
     def test_af00_change_pattern_length(self):
         sequence = libseq.getSequence(1,1)
-        libseq.clearSong(1)
+        libseq.clearScene(1)
         self.assertEqual(libseq.getSequenceLength(sequence), 0)
         libseq.selectPattern(1)
         libseq.clear()
@@ -523,7 +523,7 @@ class TestLibZynSeq(unittest.TestCase):
     # MIDI playback channel
     def test_ah03_playback_channel(self):
         self.assertEqual(client.transport_state, jack.STOPPED)
-        libseq.selectSong(2)
+        libseq.selectScene(2)
         sequence = libseq.getSequence(1002,libseq.addTrack(1002))
         libseq.addPattern(sequence,0,100,True)
         libseq.setPlayMode(sequence, play_mode["ONESHOT"])
@@ -542,7 +542,7 @@ class TestLibZynSeq(unittest.TestCase):
     # MIDI trigger inputs
     def test_ah04_trigger(self):
         global send_midi
-        libseq.selectSong(1)
+        libseq.selectScene(1)
         sequence = libseq.getSequence(1001,libseq.addTrack(1001))
         libseq.clearSequence(sequence) #TODO: Do we need to clear sequence - should check it is clear by default
         libseq.selectPattern(999)
@@ -584,7 +584,7 @@ class TestLibZynSeq(unittest.TestCase):
     def test_ah06_groups(self):
         client.transport_stop()
         sleep(0.3)
-        libseq.selectSong(2)
+        libseq.selectScene(2)
         libseq.selectPattern(1)
         libseq.clear()
         libseq.setBeatsInPattern(4)
@@ -630,12 +630,12 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayState(sequenceA1), play_state["STOPPED"])
         self.assertEqual(libseq.getPlayState(sequenceA2), play_state["STOPPED"])
         self.assertEqual(libseq.getPlayState(sequenceB1), play_state["STOPPED"])
-    # Song management
-    def test_ai00_song(self):
+    # Scene management
+    def test_ai00_Scene(self):
         client.transport_stop()
-        libseq.selectSong(5)
-        self.assertEqual(libseq.getSong(), 5)
-        libseq.clearSong(5)
+        libseq.selectScene(5)
+        self.assertEqual(libseq.getScene(), 5)
+        libseq.clearScene(5)
         self.assertEqual(libseq.getTracks(5), 0)
         self.assertEqual(libseq.addTrack(5), 0)
         self.assertEqual(libseq.addTrack(5), 1)
@@ -643,13 +643,13 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.removeTrack(5,0)
         self.assertEqual(libseq.getTracks(5), 1)
         self.assertNotEqual(libseq.getSequence(5,0), 0)
-        libseq.clearSong(6)
+        libseq.clearScene(6)
         self.assertEqual(libseq.getTracks(6), 0)
-        libseq.copySong(5, 6)
+        libseq.copyScene(5, 6)
         self.assertEqual(libseq.getTracks(6), 1)
-        #TODO: Check content of copied song
+        #TODO: Check content of copied scene
     def test_ai01_timesig(self):
-        libseq.selectSong(5)
+        libseq.selectScene(5)
         self.assertEqual(libseq.getTimeSigAt(5, 0), 0x0404) # Default time signature should be 4/4
         sleep(0.1)
         self.assertEqual(client.transport_state, jack.STOPPED)
@@ -733,7 +733,7 @@ class TestLibZynSeq(unittest.TestCase):
         client.transport_stop()
         sleep(0.1)
         self.assertEqual(client.transport_state, jack.STOPPED)
-        libseq.selectSong(5)
+        libseq.selectScene(5)
         self.assertEqual(libseq.getTempoAt(5, 1, 0), 120) # Default tempo should be 120
         sequence = libseq.getSequence(1005,libseq.addTrack(1005))
         libseq.clearSequence(sequence)
@@ -789,7 +789,7 @@ class TestLibZynSeq(unittest.TestCase):
     def test_ai02_tempo(self):
         global last_rx
         libseq.enableDebug()
-        libseq.selectSong(1)
+        libseq.selectScene(1)
         sleep(0.1)
         self.assertEqual(client.transport_state, jack.STOPPED)
         sequence = libseq.getSequence(1001,libseq.addTrack(1001))
@@ -824,6 +824,6 @@ class TestLibZynSeq(unittest.TestCase):
             self.assertTrue(min_time < time2-time1 < max_time)
 '''
 
-# TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setSongPosition, getSongPosition, startSong, pauseSong, toggleSong, solo, transportXXX
+# TOOO Check beat type, sendMidiXXX (or remove), isScenePlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setScenePosition, getScenePosition, startScene, pauseScene, toggleScene, solo, transportXXX
 
 unittest.main()

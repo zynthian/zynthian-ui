@@ -1,6 +1,6 @@
 /*  Defines Timebase class providing tempo / time signature map
  *
- *   Copyright (c) 2020 Brian Walton
+ *   Copyright (c) 2020-2025 Brian Walton
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,17 +27,19 @@ Timebase::~Timebase() {
         delete *it;
 }
 
-uint16_t Timebase::getTempo(uint16_t bar, uint16_t clock) {
-    uint16_t nValue = DEFAULT_TEMPO;
+float Timebase::getTempo(uint16_t bar, uint16_t clock) {
+    float fValue = 0.0f;
+    if (bar < 1)
+        bar = 1;
     for (auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         if ((*it)->type == TIMEBASE_TYPE_TEMPO && ((*it)->bar < bar || (*it)->bar == bar && (*it)->clock <= clock))
-            nValue = (*it)->value;
+            fValue = (*it)->value / 100.0;
     }
-    return nValue;
+    return fValue;
 }
-#include <stdio.h>
+
 uint16_t Timebase::getTimeSig(uint16_t bar, uint16_t clock) {
-    uint16_t nValue = 4;
+    uint16_t nValue = 0;
     for (auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         if ((*it)->type == TIMEBASE_TYPE_TIMESIG && ((*it)->bar < bar || (*it)->bar == bar && (*it)->clock <= clock))
             nValue = (*it)->value;
@@ -57,10 +59,10 @@ void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uin
             break; // Found point to insert
     }
     TimebaseEvent* pEvent = new TimebaseEvent;
-    pEvent->bar           = bar;
-    pEvent->clock         = clock;
-    pEvent->type          = type;
-    pEvent->value         = value;
+    pEvent->bar = bar;
+    pEvent->clock = clock;
+    pEvent->type = type;
+    pEvent->value = value;
     m_vEvents.insert(it, pEvent);
 }
 

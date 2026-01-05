@@ -38,11 +38,7 @@ from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def __init__(self):
-        self.chain = None
         super().__init__('Audio In')
-
-    def set_chain(self, chain):
-        self.chain = chain
 
     def build_view(self):
         self.check_ports = 0
@@ -67,7 +63,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
                 suffix = f" ({scp.aliases[0]})"
             else:
                 suffix = ""
-            if i + 1 in self.chain.audio_in:
+            if i + 1 in self.zyngui.chain_manager.active_chain.audio_in:
                 self.list_data.append(
                     (i + 1, scp.name, f"\u2612 Audio input {i + 1}{suffix}",
                     [f"Audio input {i + 1} is connected to this chain.", "audio_input.png"]))
@@ -83,7 +79,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def select_action(self, i, t='S'):
         if t == 'S':
-            self.chain.toggle_audio_in(self.list_data[i][0])
+            self.zyngui.chain_manager.active_chain.toggle_audio_in(self.list_data[i][0])
             self.fill_list()
         elif t == "B":
             if not self.list_data[i][1].startswith("system:"):

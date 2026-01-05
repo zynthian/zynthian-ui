@@ -83,7 +83,7 @@ overall_result &= test(
     'Enable test mode', '/cuia/test_mode', 1, 'TEST_MODE: \[1\]\r\n')
 
 # Show mixer then clean so we know where we are starting from
-cuia('/cuia/show_view', 'audio_mixer')
+cuia('/cuia/show_view', 'mixer')
 
 overall_result &= test('Clean all', '/cuia/clean_all',
                        'CONFIRM', 'TEST_MODE: zyngui.zynthian_gui_main\r\n', 10)
@@ -119,17 +119,17 @@ overall_result &= test('Mixer: short select', '/cuia/switch_select_short',
                        None, 'TEST_MODE: zyngui.zynthian_gui_control\r\n')
 
 # Test F2
-cuia('/cuia/show_view', 'audio_mixer')
+cuia('/cuia/show_view', 'mixer')
 overall_result &= test('Mixer: bold layer', '/cuia/switch_layer_bold',
                        None, 'TEST_MODE: zyngui.zynthian_gui_main\r\n')
 
 # Test H2
-cuia('/cuia/show_view', 'audio_mixer')
+cuia('/cuia/show_view', 'mixer')
 overall_result &= test('Mixer: bold snap/learn', '/cuia/switch_snapshot_bold',
                        None, 'TEST_MODE: zyngui.zynthian_gui_snapshot\r\n')
 
 # Test I2
-cuia('/cuia/show_view', 'audio_mixer')
+cuia('/cuia/show_view', 'mixer')
 overall_result &= test('Mixer: bold select', '/cuia/switch_select_bold',
                        None, 'TEST_MODE: zyngui.zynthian_gui_layer_options\r\n')
 

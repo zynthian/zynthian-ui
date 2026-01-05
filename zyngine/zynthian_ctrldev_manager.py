@@ -28,6 +28,7 @@ import os
 import glob
 import logging
 import importlib
+import traceback
 from pathlib import Path
 
 # Zynthian specific modules
@@ -155,6 +156,7 @@ class zynthian_ctrldev_manager():
             return True
         except Exception as e:
             logging.error(f"Can't load ctrldev driver '{driver_class.get_driver_name()}' for '{dev_id}' => {e}")
+            logging.exception(traceback.format_exc())
             return False
 
     def unload_driver(self, izmip, disable=False):
@@ -169,8 +171,8 @@ class zynthian_ctrldev_manager():
         if izmip in self.drivers:
             dev_id = zynautoconnect.get_midi_in_devid(izmip)
             uid = zynautoconnect.get_midi_in_uid(izmip)
+            # Drop the driver instance from the list
             driver = self.drivers[izmip]
-            # Drop from the list => Unload driver!
             self.drivers.pop(izmip)
             # Restore route to chains
             if driver.unroute_from_chains:

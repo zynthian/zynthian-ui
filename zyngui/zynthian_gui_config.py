@@ -508,7 +508,7 @@ color_tx = os.environ.get('ZYNTHIAN_UI_COLOR_TX', "#ffffff")
 color_tx_off = os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF', "#e0e0e0")
 color_on = os.environ.get('ZYNTHIAN_UI_COLOR_ON', "#ff0000")
 color_off = os.environ.get('ZYNTHIAN_UI_COLOR_OFF', "#5a626d")
-color_hl = os.environ.get('ZYNTHIAN_UI_COLOR_HL', "#00b000")
+color_hl = os.environ.get('ZYNTHIAN_UI_COLOR_HL', "#00c000")
 color_ml = os.environ.get('ZYNTHIAN_UI_COLOR_ML', "#f0f000")
 color_low_on = os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON', "#b00000")
 color_panel_bg = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG', "#3a424d")
@@ -518,6 +518,7 @@ color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#9090ff")
 color_alt = os.environ.get('ZYNTHIAN_UI_COLOR_ALT', "#ff00ff")
 color_alt2 = os.environ.get('ZYNTHIAN_UI_COLOR_ALT2', "#ff9000")
 color_error = os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
+color_warn = os.environ.get('ZYNTHIAN_UI_COLOR_WARN', "#ff9000")
 
 # Color Scheme
 color_panel_bd = color_bg
@@ -534,6 +535,7 @@ color_status_record = color_low_on
 color_status_play_midi = color_alt
 color_status_play_seq = color_alt2
 color_status_error = color_error
+color_status_warn = color_warn
 
 # ------------------------------------------------------------------------------
 # Font Family
@@ -609,6 +611,7 @@ restore_last_state = get_env_int('ZYNTHIAN_UI_RESTORE_LAST_STATE', 0)
 snapshot_mixer_settings = get_env_int('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', 0)
 show_cpu_status = get_env_int('ZYNTHIAN_UI_SHOW_CPU_STATUS', 0)
 visible_mixer_strips = get_env_int('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS', 0)
+visible_launchers = get_env_int('ZYNTHIAN_UI_VISIBLE_LAUNCHERS', 8)
 ctrl_graph = get_env_int('ZYNTHIAN_UI_CTRL_GRAPH', 1)
 control_test_enabled = get_env_int('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0)
 power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
@@ -647,39 +650,56 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES', "").spl
 # Sequence states
 # ------------------------------------------------------------------------------
 
-PAD_COLOUR_DISABLED = '#303030'
-PAD_COLOUR_DISABLED_LIGHT = '#505050'
-PAD_COLOUR_STARTING = '#ffbb00'
-PAD_COLOUR_PLAYING = '#00d000'
-PAD_COLOUR_STOPPING = 'red'
-PAD_COLOUR_GROUP = [
-    '#662426',			# Red Granate
-    '#3c6964',			# Blue Aguamarine
-    '#4d6817',			# Green Pistacho
-    '#664980',			# Lila
-    '#4C709A',			# Mid Blue
-    '#4C94CC',			# Sky Blue
-    '#006000',			# Dark Green
-    '#B7AA5E',  		# Ocre
-    '#996633',  		# Maroon
-    '#746360',			# Dark Grey
-    '#D07272',			# Pink
-    '#000060',			# Blue sat.
-    '#048C8C',			# Turquesa
-    '#f46815',			# Orange
-    '#BF9C7C',			# Light Maroon
-    '#56A556',			# Light Green
-    '#FC6CB4',			# 7 medium
-    '#CC8464',			# 8 medium
-    '#4C94CC',			# 9 medium
-    '#B454CC',			# 10 medium
-    '#B08080',			# 11 medium
-    '#0404FC', 			# 12 light
-    '#9EBDAC',			# 13 light
-    '#FF13FC',			# 14 light
-    '#3080C0',			# 15 light
-    '#9C7CEC'			# 16 light
+PAD_COLOUR_DISABLED = '#707070'
+PAD_COLOUR_DISABLED_LIGHT = '#909090'
+PAD_COLOUR_STARTING = '#FFBB00'
+PAD_COLOUR_PLAYING = '#00FF00'
+PAD_COLOUR_STOPPING = '#FF0000'
+PAD_COLOUR_STOPPED = '#E0E0E0'
+PAD_COLOUR_PHRASE = '#707070'
+LAUNCHER_COLOUR = [
+    # MIDI Channels 1..16 (offset 0..15)
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #1:blue
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #2:yellow
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #3:magenta
+    {"rgb": "#23C497", "launchpad": 18,  "apc": 33},  #4:lime green
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60},  #5:orange
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80},  #6:deep purple
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57},  #7:hot pink
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37},  #8:cyan
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1},   #9:grey
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 127}, #10:light brown
+    {"rgb": "#7BC783", "launchpad": 28,  "apc": 16},  #11:turquise
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4},   #12:pink
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69},  #13:light purple
+    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 20},  #14:green-blue
+    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 65},  #15:teal
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 10},  #16:light orange
+    # Clip launchers 1..16 (offset 16..31)
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 10},  #17:light orange
+    {"rgb": "#3F94A2", "launchpad": 32,  "apc": 65},  #18:teal
+    {"rgb": "#4CFFB7", "launchpad": 29,  "apc": 20},  #19:green-blue
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69},  #20:light purple
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4},   #21:pink
+    {"rgb": "#7BC783", "launchpad": 28,  "apc": 16},  #22:turquise
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 127}, #23:light brown
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1},   #24:grey
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37},  #25:cyan
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57},  #26:hot pink
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80},  #27:deep purple
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60},  #28:orange
+    {"rgb": "#23C497", "launchpad": 18,  "apc": 33},  #29:lime green
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #30:magenta
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #31:yellow
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #32:blue
+    # Main / phrase launchers (offset 32)
+    {"rgb": "#707070", "launchpad": 1,   "apc": 1}    #33:dark grey
 ]
+#TODO: Choose clip launcher colours (currently just reversed 1-16)
+
+LAUNCHER_PLAYING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
+LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
+LAUNCHER_STOPPING_COLOUR = {"rgb": "#D00000", "launchpad": 5, "apc": 72} #red
 
 
 def color_variant(hex_color, brightness_offset=1):
@@ -694,7 +714,8 @@ def color_variant(hex_color, brightness_offset=1):
     return "#" + "".join([hex(i)[2:].zfill(2) for i in new_rgb_int])
 
 
-PAD_COLOUR_GROUP_LIGHT = [color_variant(c, 40) for c in PAD_COLOUR_GROUP]
+for i, value in enumerate(LAUNCHER_COLOUR):
+    LAUNCHER_COLOUR[i]["rgb_light"] = color_variant(value["rgb"], 40)
 
 # ------------------------------------------------------------------------------
 # X11 Related Stuff
@@ -731,7 +752,7 @@ if "zynthian_main.py" in sys.argv[0]:
                 display_height = 240
 
         # Global font size
-        font_size = get_env_int('ZYNTHIAN_UI_FONT_SIZE', None)
+        font_size = get_env_int('ZYNTHIAN_UI_FONT_SIZE', 16)
         if not font_size:
             font_size = int(display_width / 40)
 

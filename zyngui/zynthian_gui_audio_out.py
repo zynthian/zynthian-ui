@@ -40,31 +40,12 @@ from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
     def __init__(self):
-        self.chain = None
         super().__init__('Audio Out')
 
     def build_view(self):
         self.check_ports = 0
         self.playback_ports = zynautoconnect.get_hw_audio_dst_ports()
-        if super().build_view():
-            zynsigman.register_queued(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
-            return True
-        else:
-            return False
-
-    def hide(self):
-        if self.shown:
-            zynsigman.unregister(
-                zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
-            super().hide()
-
-    def update_rec(self, state):
-        # Lock multitrack record config when recorder is recording
-        self.fill_list()
-
-    def set_chain(self, chain):
-        self.chain = chain
+        return super().build_view()
 
     def refresh_status(self):
         super().refresh_status()
@@ -78,13 +59,13 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
     def fill_list(self):
         self.list_data = []
-        if self.chain.chain_id:
+        if self.zyngui.chain_manager.active_chain.chain_id:
             # Normal chain so add mixer / chain targets
             port_names = [("Main mixbus", 0, ["Send audio from this chain to the main mixbus", "audio_output.png"])]
             self.list_data.append((None, None, "> Chain inputs"))
             for chain_id, chain in self.zyngui.chain_manager.chains.items():
-                if chain_id != 0 and chain != self.chain and chain.audio_thru or chain.is_synth() and chain.synth_slots[0][0].type == "Special":
-                    if self.zyngui.chain_manager.will_audio_howl(self.chain.chain_id, chain_id):
+                if chain_id != 0 and chain != self.zyngui.chain_manager.active_chain and chain.audio_thru or chain.is_synth() and chain.synth_slots[0][0].type == "Special":
+                    if self.zyngui.chain_manager.will_audio_howl(self.zyngui.chain_manager.active_chain.chain_id, chain_id):
                         prefix = "∞ "
                     else:
                         prefix = ""
@@ -98,12 +79,12 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                         logging.info(e)
                         pass
             for title, processor, info in port_names:
-                if processor in self.chain.audio_out:
+                if processor in self.zyngui.chain_manager.active_chain.audio_out:
                     self.list_data.append((processor, processor, "\u2612 " + title, info))
                 else:
                     self.list_data.append((processor, processor, "\u2610 " + title, info))
 
-        if self.chain.is_audio():
+        if self.zyngui.chain_manager.active_chain.is_audio():
             port_names = []
             # Direct physical outputs
             self.list_data.append((None, None, "> Direct Outputs"))
@@ -122,31 +103,16 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                     port_names.append((f"Output {i + 2}{suffix}", f"^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio output {i + 2} as mono.", "audio_output.png"]))
                     port_names.append((f"Outputs {i + 1}+{i + 2} (stereo)", f"^{self.playback_ports[i].name}$|^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio outputs {i + 1} & {i + 2} as stereo.", "audio_output.png"]))
             for title, processor, info in port_names:
-                if processor in self.chain.audio_out:
+                if processor in self.zyngui.chain_manager.active_chain.audio_out:
                     self.list_data.append((processor, processor, "\u2612 " + title, info))
                 else:
                     self.list_data.append((processor, processor, "\u2610 " + title, info))
 
-        self.list_data.append((None, None, "> Audio Recorder"))
-        armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
-        if self.zyngui.state_manager.audio_recorder.status:
-            locked = None
-        else:
-            locked = "record"
-        if armed:
-            self.list_data.append((locked, 'record_disable', '\u2612 Record chain', [f"The chain will be recorded as a stereo track within a multitrack audio recording.", "audio_output.png"]))
-        else:
-            self.list_data.append((locked, 'record_enable', '\u2610 Record chain', [f"The chain will be not be recorded as a stereo track within a multitrack audio recording.", "audio_output.png"]))
-
         super().fill_list()
 
     def select_action(self, i, t='S'):
-        if self.list_data[i][0] == 'record':
-            if t == 'S':
-                self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
-                self.fill_list()
-        elif t == 'S':
-            self.chain.toggle_audio_out(self.list_data[i][0])
+        if t == 'S':
+            self.zyngui.chain_manager.active_chain.toggle_audio_out(self.list_data[i][0])
             self.fill_list()
         elif t == "B":
             if not self.list_data[i][1].startswith("^system:"):

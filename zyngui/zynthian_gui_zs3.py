@@ -159,7 +159,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     def toggle_menu(self):
         if self.shown:
             self.show_menu()
-        elif self.zyngui.current_screen == "zs3_options":
+        elif self.zyngui.get_current_screen() == "zs3_options":
             self.zyngui.close_screen()
 
     def enable_midi_learn(self):

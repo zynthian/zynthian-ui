@@ -213,6 +213,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 else:
                     int_devices.append(i)
 
+        if self.chain and self.input:
+            midi_chan = self.chain.midi_chan + 1
+            if midi_chan > 16:
+                midi_chan = "ALL"
+            self.list_data.append(("MIDI Channel", None, f"MIDI Channel ({midi_chan})",
+                [f"Select the MIDI channel this chain recieves.", "midi_settings.png"]))
+            self.list_data.append(("MIDI CC", None, f"MIDI CC",
+                [f"Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
+
         self.list_data.append((None, None, "Internal Devices"))
         nint = len(self.list_data)
 
@@ -268,10 +277,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
         if not self.input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
-            for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
+            for i, chain_id in enumerate(self.zyngui.chain_manager.chains):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
-                if chain and chain.is_midi() and chain != self.chain:
-                    if self.zyngui.chain_manager.will_midi_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
+                if chain and chain.is_midi() and chain != self.chain and chain.midi_chan < 16:
+                    if self.zyngui.chain_manager.will_midi_howl(self.zyngui.chain_manager.active_chain.chain_id, chain_id):
                         prefix = "∞ "
                     else:
                         prefix = ""
@@ -289,6 +298,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
     def select_action(self, i, t='S'):
         if t == 'S':
             action = self.list_data[i][0]
+            if action == "MIDI Channel":
+                self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_all=True)
+                self.zyngui.show_screen('midi_chan')
+                return
+            elif action == "MIDI CC":
+                self.zyngui.screens['midi_cc'].set_chain(self.chain)
+                self.zyngui.show_screen('midi_cc')
+                return
             wait = 2  # Delay after starting service to allow jack ports to update
             if action == "stop_jacknetumpd":
                 self.zyngui.state_manager.stop_netump(wait=wait)

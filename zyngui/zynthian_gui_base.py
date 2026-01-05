@@ -188,6 +188,7 @@ class zynthian_gui_base(tkinter.Frame):
 
         # Topbar parameter editor
         self.param_editor_zctrl = None
+        self.param_editor_assert_cb = None
 
         # Main Frame
         self.main_frame = tkinter.Frame(self, bg=zynthian_gui_config.color_bg)
@@ -210,9 +211,9 @@ class zynthian_gui_base(tkinter.Frame):
         self.set_select_path()
         self.cb_scroll_select_path()
 
-        # TODO: Consolidate set_title and set_select_path, etc.
-        self.disable_param_editor()
         self.bind("<Configure>", self.on_size)
+
+        # TODO: Consolidate set_title and set_select_path, etc.
 
     def show_back_button(self, show=True):
         if show:
@@ -403,7 +404,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.zyngui.callable_ui_action('screen_zynpad')
+        self.zyngui.callable_ui_action('screen_launcher')
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):
@@ -438,7 +439,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default status bold touch action
     def status_bold_touch_action(self):
-        if self.zyngui.current_screen == 'zs3':
+        if self.zyngui.get_current_screen() == 'zs3':
             self.zyngui.callable_ui_action('screen_snapshot')
         else:
             self.zyngui.callable_ui_action('screen_zs3')
@@ -630,30 +631,28 @@ class zynthian_gui_base(tkinter.Frame):
             state=tkinter.HIDDEN)
 
     def init_dpmeter(self):
-        last_chan = self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1
         width = int(self.status_l - 2 * self.status_rh - 1)
         height = int(self.status_h / 4 - 2)
-        self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, last_chan, 0, self.status_canvas,
-                                      0, 0, width, height, False, ("status_dpm"))
-        self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, last_chan, 1, self.status_canvas,
-                                      0, height + 2, width, height, False, ("status_dpm"))
+        self.dpm_a = zynthian_gui_dpm(0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
+        self.dpm_b = zynthian_gui_dpm(1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 
     def refresh_status(self):
         if self.shown:
-            last_chan = self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1
-            mute = self.zyngui.state_manager.zynmixer.get_mute(last_chan)
-            if True:  # mute != self.main_mute:
+            mute = self.zyngui.state_manager.zynmixer_bus.get_mute(0)
+            if mute != self.main_mute:
                 self.main_mute = mute
                 if mute:
-                    self.status_canvas.itemconfigure(self.status_mute, state=tkinter.NORMAL)
-                    if self.dpm_a:
-                        self.status_canvas.itemconfigure('status_dpm', state=tkinter.HIDDEN)
+                    self.status_canvas.itemconfigure(
+                        self.status_mute, state=tkinter.NORMAL)
+                    self.status_canvas.itemconfigure(
+                        'status_dpm', state=tkinter.HIDDEN)
                 else:
-                    self.status_canvas.itemconfigure(self.status_mute, state=tkinter.HIDDEN)
-                    if self.dpm_a:
-                        self.status_canvas.itemconfigure('status_dpm', state=tkinter.NORMAL)
+                    self.status_canvas.itemconfigure(
+                        self.status_mute, state=tkinter.HIDDEN)
+                    self.status_canvas.itemconfigure(
+                        'status_dpm', state=tkinter.NORMAL)
             if not mute and self.dpm_a:
-                state = self.zyngui.state_manager.zynmixer.get_dpm_states(last_chan, last_chan)[0]
+                state = self.zyngui.state_manager.zynmixer_bus.get_dpm_states(0, 0)[0]
                 self.dpm_a.refresh(state[0], state[2], state[4])
                 self.dpm_b.refresh(state[1], state[3], state[4])
 
@@ -662,8 +661,12 @@ class zynthian_gui_base(tkinter.Frame):
             # Display error flags
             flags = ""
             color = zynthian_gui_config.color_status_error
-            if self.zyngui.state_manager.status_xrun:
+            if self.zyngui.state_manager.status_xrun == 2:
                 color = zynthian_gui_config.color_status_error
+                # flags = "\uf00d"
+                flags = "\uf071"
+            elif self.zyngui.state_manager.status_xrun == 1:
+                color = zynthian_gui_config.color_status_warn
                 # flags = "\uf00d"
                 flags = "\uf071"
             elif self.zyngui.state_manager.status_undervoltage:
@@ -738,7 +741,7 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_seq_rec, state=tkinter.HIDDEN)
 
             # Display SEQ Play flag
-            if self.zyngui.state_manager.zynseq.libseq.getPlayingSequences() > 0:
+            if self.zyngui.state_manager.zynseq.playing_sequences > 0:
                 self.status_canvas.itemconfig(
                     self.status_seq_play, state=tkinter.NORMAL)
             else:
@@ -801,10 +804,9 @@ class zynthian_gui_base(tkinter.Frame):
                 self.disable_param_editor()
                 return True
             elif typ == 'B':
-                self.param_editor_zctrl.set_value(
-                    self.param_editor_zctrl.value_default)
-            self.update_param_editor()
-            return True
+                self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
+                self.update_param_editor()
+                return True
 
     def back_action(self):
         if self.param_editor_zctrl:
@@ -892,8 +894,7 @@ class zynthian_gui_base(tkinter.Frame):
         else:
             self.format_print = "{}: {}"
 
-        self.label_select_path.config(
-            bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
+        self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
         self.init_buttonbar([("ZYNPOT 3,-1", "-1"), ("ZYNPOT 3,+1", "+1"),
                             ("ZYNPOT 3,-10", "-10"), ("ZYNPOT 3,+10", "+10"), (3, "OK")])
         self.update_param_editor()
@@ -917,10 +918,8 @@ class zynthian_gui_base(tkinter.Frame):
     def update_param_editor(self):
         if self.param_editor_zctrl:
             if self.param_editor_zctrl.labels:
-                self.select_path.set("{}: {}".format(
-                    self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
+                self.select_path.set(f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}")
             else:
-                self.select_path.set(self.format_print.format(
-                    self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+                self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
 
 # ------------------------------------------------------------------------------

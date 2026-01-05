@@ -3,6 +3,7 @@ __all__ = [
     "zynthian_controller",
     "zynthian_lv2",
     "zynthian_engine",
+    "zynthian_engine_audio_mixer",
     "zynthian_engine_sfz",
     "zynthian_engine_zynaddsubfx",
     "zynthian_engine_linuxsampler",
@@ -18,6 +19,7 @@ __all__ = [
     "zynthian_engine_audioplayer",
     "zynthian_engine_sooperlooper",
     "zynthian_engine_inet_radio",
+    "zynthian_engine_clippy",
     "zynthian_engine_sysex",
     "zynthian_engine_midi_control",
     "zynthian_midi_filter",
@@ -26,6 +28,7 @@ __all__ = [
 from zyngine.zynthian_controller import *
 from zyngine.zynthian_lv2 import *
 from zyngine.zynthian_engine import *
+from zyngine.zynthian_engine_audio_mixer import *
 from zyngine.zynthian_engine_sfz import *
 from zyngine.zynthian_engine_zynaddsubfx import *
 from zyngine.zynthian_engine_linuxsampler import *
@@ -41,6 +44,7 @@ from zyngine.zynthian_engine_alsa_mixer import *
 from zyngine.zynthian_engine_audioplayer import *
 from zyngine.zynthian_engine_sooperlooper import *
 from zyngine.zynthian_engine_inet_radio import *
+from zyngine.zynthian_engine_clippy import *
 from zyngine.zynthian_engine_sysex import *
 from zyngine.zynthian_engine_midi_control import *
 from zyngine.zynthian_midi_filter import *
