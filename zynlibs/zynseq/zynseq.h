@@ -1123,21 +1123,21 @@ void setSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence, float tem
 */
 float getSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
-/** @brief  Set sequence time signature
+/** @brief  Set sequence beats per bar (time signature)
     @param  scene Index of scene
     @param  phrase Index of phrase
     @param  sequence Index of sequence
-    @param  sig Time signature or 0to disable
+    @param  sig Beats per bar (time signature) or 0 to disable
 */
-void setSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t sig);
+void setSequenceBpb(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t bpb);
 
-/** @brief  Get sequence tempo
+/** @brief  Get sequence beats per bar (time signature)
     @param  scene Index of scene
     @param  phrase Index of phrase
     @param  sequence Index of sequence
-    @retval uint8_t Time signature (beats per bar) or 0 if disabled
+    @retval uint8_t Beats per bar (time signature) or 0 if disabled
 */
-uint8_t getSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence);
+uint8_t getSequenceBpb(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
 /** @brief  Set sequence follow action
     @param  scene Index of scene

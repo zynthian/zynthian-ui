@@ -143,7 +143,7 @@ ZynthianState = {
     "last_zs3_id": "zs3-0", # Name of zs3 loaded when snapshot saved
     "zynseq": {
         "tempo": 120.0, # Default tempo in BPM
-        "sig": 4, # Default time signature (x/4)
+        "bpb": 4, # Default beats per bar (time signature)
         "scene": 0, # Selected scene when saved
         "patns": { # Map of patterns, indexed by pattern id
             "1": { # Pattern id
@@ -183,7 +183,7 @@ ZynthianState = {
                     { # First phrase
                         "name": "A", # Scene name
                         "mode": 4, # Scene play mode
-                        "sig": 4, # Time signature override x/4
+                        "bpb": 4, # Beats per bar (time signature) override
                         "tempo": 0, # Tempo override 0=no override
                         "repeat": 1, # Quantity of repeats
                         "followAction": 0, # Follow action

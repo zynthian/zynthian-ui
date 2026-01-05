@@ -1055,7 +1055,7 @@ const char* convertToJson(const char* filename) {
                 return "{}";
             }
             j["tempo"] = fileRead16(pFile); //!@todo save and load tempo as fraction of BPM
-            j["sig"] = fileRead16(pFile);
+            j["bpb"] = fileRead16(pFile);
             fileRead8u(pFile); // No longer use trigger channel
             fileRead8u(pFile); // No longer use trigger input
             fileRead8u(pFile); // No longer use trigger output
@@ -1345,7 +1345,7 @@ bool setState(const char* state) {
         g_seqMan.init();
 
         g_dTempo = j.value("tempo", g_dTempo); //!@todo Do we want to reset tempo to default or use previous if not in state?
-        g_nTimeSig = j.value("sig", 4);
+        g_nTimeSig = j.value("bpb", 4);
 
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {
@@ -1399,7 +1399,7 @@ bool setState(const char* state) {
                         pPhrase->setName(jPhrase["name"]);
                     if (jPhrase.contains("mode"))
                         pPhrase->setPlayMode(jPhrase["mode"]);
-                    pPhrase->setTimeSig(jPhrase.value("sig", 0));
+                    pPhrase->setTimeSig(jPhrase.value("bpb", 0));
                     pPhrase->setTempo(jPhrase.value("tempo", 0));
                     if (jPhrase.contains("repeat"))
                         pPhrase->setRepeat(jPhrase["repeat"]);
@@ -1485,7 +1485,7 @@ const char* getState() {
     uint8_t nScene = getScene();
     json jState;
     jState["tempo"] = g_dTempo;
-    jState["sig"] = g_nTimeSig;
+    jState["bpb"] = g_nTimeSig;
     jState["scene"] = nScene;
     // Iterate through patterns
     uint32_t nPattern = 0;
@@ -1539,7 +1539,7 @@ const char* getState() {
             //!@todo Optimise - do not save default values
             jPhrase["name"] = pPhrase->getName().c_str();
             jPhrase["mode"] = pPhrase->getPlayMode();
-            jPhrase["sig"] = pPhrase->getTimeSig();
+            jPhrase["bpb"] = pPhrase->getTimeSig();
             jPhrase["tempo"] = pPhrase->getTempo();
             jPhrase["repeat"] = pPhrase->getRepeat();
             jPhrase["followAction"] = pPhrase->getFollowAction();
@@ -2489,13 +2489,13 @@ float getSequenceTempo(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     return 0.0f;
 }
 
-void setSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t sig) {
+void setSequenceBpb(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t bpb) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence)
-        pSequence->setTimeSig(sig);
+        pSequence->setTimeSig(bpb);
 }
 
-uint8_t getSequenceSig(uint8_t scene, uint8_t phrase, uint8_t sequence) {
+uint8_t getSequenceBpb(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence)
         return pSequence->getTimeSig();

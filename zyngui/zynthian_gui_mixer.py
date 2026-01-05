@@ -161,10 +161,10 @@ class zynthian_gui_launcher_pad():
                     mode_image = self.gui_mixer.mode_icons["empty"]
                 if self.chain.chain_id == 0:
                     # Phrase launcher
-                    if "sig" in state_seq:
-                        sig = state_seq["sig"]
+                    if "bpb" in state_seq:
+                        sig = state_seq["bpb"]
                         if sig:
-                            timesig_text = f"{state_seq['sig']}/4"
+                            timesig_text = f"{state_seq['bpb']}/4"
                     if "tempo" in state_seq:
                         tempo = state_seq["tempo"]
                         if tempo:
@@ -1592,10 +1592,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             else:
                 options[f"Tempo ({info['tempo']})"] = info['tempo']
                 options["Remove tempo"] = self.zynseq.phrase
-            if 'sig' not in info or not info['sig']:
-                options[f"Time signature (NONE)"] = 0
+            if "bpb" not in info or not info["bpb"]:
+                options[f"Beats per bar (NONE)"] = 0
             else:
-                options[f"Time signature ({info['sig']}/4)"] = info["sig"]
+                options[f"Beats per bar ({info['bpb']})"] = info["bpb"]
         options[f"Edit name ({name})"] = name
         options["Manipulate phrase"] = None
         options["Insert phrase"] = phrase
@@ -1648,12 +1648,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': params,
                 'labels': labels
             }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("Time signature"):
+        elif option.startswith("Beats per bar"):
             labels = ["None"]
             for i in range(1, 25):
-                labels.append(f"{i}/4")
+                labels.append(f"{i}")
             option_screen.enable_param_editor(option_screen, "timeSig", {
-                'name': 'Time signature',
+                'name': 'Beats per bar',
                 'value_min': 0,
                 'value_max': 24,
                 'labels': labels,
@@ -1733,7 +1733,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         except:
                             continue
             case "timeSig":
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "sig", zctrl.value)
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "bpb", zctrl.value)
             case "duration":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)
             case "follow":

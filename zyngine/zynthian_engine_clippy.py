@@ -299,7 +299,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 crop_end = crop_end_zctrl.value
 
                 duration = (crop_end - crop_start) / sr
-                beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "sig")
+                beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "bpb")
                 if beats_per_bar < 1:
                     beats_per_bar = self.zynseq.libseq.getTimeSig() #TODO: Get from zynseq cache
                 beats = duration * file_tempo / 60

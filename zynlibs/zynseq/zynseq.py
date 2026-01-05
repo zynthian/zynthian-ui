@@ -163,9 +163,8 @@ class zynseq(zynthian_engine):
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
             self.libseq.getSequenceTempo.restype = ctypes.c_float
-            self.libseq.setSequenceSig.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
-            self.libseq.getSequenceSig.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
-            self.libseq.getSequenceSig.restype = ctypes.c_uint8
+            self.libseq.setSequenceBpb.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getSequenceBpb.restype = ctypes.c_uint8
             self.libseq.setSequenceFollowAction.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
             self.libseq.getSequenceFollowAction.restype = ctypes.c_uint8
             self.libseq.setSequenceFollowParam.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_int16]
@@ -440,8 +439,8 @@ class zynseq(zynthian_engine):
         except:
             logging.warning("Failed to set tempo")
         try:
-            if self.state["sig"] != self.timesig:
-                self.timesig = self.state["sig"]
+            if self.state["bpb"] != self.timesig:
+                self.timesig = self.state["bpb"]
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, timesig=self.timesig)
         except:
             logging.warning("Failed to set timesig")
