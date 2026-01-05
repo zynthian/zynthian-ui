@@ -248,9 +248,9 @@ class Sequence {
     uint8_t getFollowAction();
 
     /** @brief  Get follow action parameter
-        @retval uint8_t Follow action parameter
+        @retval int16_t Follow action parameter
     */
-    uint8_t getFollowParam();
+    int16_t getFollowParam();
 
     /** @brief  Set times to play
         @param  repeat Quantity of times to play (0 to disable)

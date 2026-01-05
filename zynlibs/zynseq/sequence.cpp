@@ -341,7 +341,7 @@ uint8_t Sequence::getFollowAction() {
     return m_nFollowAction;
 }
 
-uint8_t Sequence::getFollowParam() {
+int16_t Sequence::getFollowParam() {
     return m_nFollowParam;
 }
 
