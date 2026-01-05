@@ -1591,7 +1591,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
-                options[f"Tempo ({info['tempo']})"] = info['tempo']
+                options[f"Tempo ({info['tempo']:.1f})"] = info['tempo']
                 options["Remove tempo"] = self.zynseq.phrase
             if "bpb" not in info or not info["bpb"]:
                 options[f"Beats per bar (NONE)"] = 0
