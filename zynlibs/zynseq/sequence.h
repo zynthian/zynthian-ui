@@ -295,7 +295,7 @@ class Sequence {
     uint32_t m_nPosition = 0;                   // Play position in clock cycles
     uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
     float m_fTempo = 0.0;                       // Tempo (0.0 for none) - Only used by phrases
-    uint8_t m_nTimeSig = 0;                     // Time signature in ticks per bar (0 for none, 24 ticks per beat) - Only used by phrases
+    uint8_t m_nTimeSig = 0;                     // Time signature in ticks per bar (0 for none, PPQN_INTERNAL ticks per beat) - Only used by phrases
     uint8_t m_nState = STOPPED;                 // Play state of sequence
     uint8_t m_nMode = MODE_END_SYNC;            // Bitwise flags: stop mode (bits 0..1), start mode (bit 2)
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group

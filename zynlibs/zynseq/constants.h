@@ -47,6 +47,10 @@
 #define CLOCK_TRIG_SEQEND 8  // Clock has triggered a time signature change
 #define CLOCK_TRIG_PHRASE 16  // Clock has triggered a phrase change
 
+// Clock rates
+#define PPQN_INTERNAL 96
+#define PPQN_MIDI 24
+
 // Play status (bit 0 = playing)
 #define STOPPED 0       // Sequence is stopped
 #define PLAYING 1       // Sequence is playing

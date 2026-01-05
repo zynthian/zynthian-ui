@@ -90,8 +90,6 @@ uint16_t g_nVerticalZoom              = 16;         // Quantity of rows to show 
 uint16_t g_nHorizontalZoom            = 16;         // Quantity of beats to show in arranger view
 
 // PPQN => Clock resolution: Parts Per Quarter Note
-#define PPQN_INTERNAL 96
-#define PPQN_MIDI 24
 uint32_t PPQN = PPQN_INTERNAL;
 
 // Transport variables apply to next period

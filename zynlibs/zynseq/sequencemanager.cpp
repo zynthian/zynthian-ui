@@ -306,7 +306,7 @@ bool SequenceManager::clock(std::pair<uint32_t, uint32_t> timeinfo, std::multima
         if (nGroup < 32 && pSequence->getLength())
             m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
         else if (nGroup == 32)
-            m_aGroupProgress[32] = (100 * barPos / 24 / m_nTimeSig);
+            m_aGroupProgress[32] = (100 * barPos / PPQN_INTERNAL  / m_nTimeSig);
 
         ++nSequence;
     }

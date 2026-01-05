@@ -240,7 +240,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint32_t nSamplesPerClock, u
             nReturn |= CLOCK_TRIG_MIDI;
         ++m_nPosition;
     }
-    if ((!bPhraseLauncher && (m_nPosition >= m_nLength)) || (bPhraseLauncher && (m_nPosition >= 24 * nTimeSig))) {
+    if ((!bPhraseLauncher && (m_nPosition >= m_nLength)) || (bPhraseLauncher && (m_nPosition >= PPQN_INTERNAL * nTimeSig))) {
         // End of sequence or phrase
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;

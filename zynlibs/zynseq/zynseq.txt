@@ -77,7 +77,7 @@ Playback (and live record) is handled by the JACK process callback only if the J
 For each JACK period:
 
     Each pending clock pulse is identified and processed:
-        A counter of clocks within the beat increments and resets after the configured PPQN (24)
+        A counter of clocks within the beat increments and resets after the configured PPQN (96)
             This is used to identify the start of a beat
             A clock pulse is sent to the sequence manager which populates a schedule of events due within this JACK period
                 Note: this may include events that occur in the future, e.g. NOTE OFF events
