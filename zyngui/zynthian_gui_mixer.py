@@ -1145,7 +1145,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                             strip.draw_dpm(chan_states[strip.chain.zynmixer_proc.mixer_chan])
                         else:
                             strip.draw_dpm(mixbus_states[strip.chain.zynmixer_proc.mixer_chan])
-                    if strip.chain.midi_chan is not None and strip.chain.midi_chan < 32:
+                    if strip.chain.midi_chan is not None and strip.chain.midi_chan <= 32:
                         strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
             else:
                 # Update main chain DPM
@@ -1661,7 +1661,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': params
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            labels = ["NONE", "LOOP"]
+            labels = ["NONE"]
             if self.zynseq.phrase < self.zynseq.phrases - 1:
                 labels.append("NEXT")
             if self.zynseq.phrase > 0:
@@ -1741,9 +1741,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 match zctrl.value2label[str(zctrl.value)]:
                     case "NONE":
                         followAction = zynseq.FOLLOW_ACTION_NONE
-                        followParam = 0
-                    case "LOOP":
-                        followAction = zynseq.FOLLOW_ACTION_RELATIVE
                         followParam = 0
                     case "NEXT":
                         followAction = zynseq.FOLLOW_ACTION_RELATIVE
