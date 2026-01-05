@@ -50,6 +50,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
     def fill_list(self):
         self.list_data = []
 
+        self.list_data.append((None, None, "> Manage this processor"))
         # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator"):
             if self.processor.chain.get_processor_count(self.processor.type) > 1:
@@ -79,7 +80,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         # Processor info
         self.list_data.append((self.show_details, None, "Info"))
 
-        self.list_data.append((None, None, "Add to Chain ..."))
+        self.list_data.append((None, None, "> Add to chain"))
         if self.processor.type in ("MIDI Synth", "MIDI Tool"):
             self.list_data.append((self.add_midi_processor, None, "Insert MIDI Processor"))
         if self.processor.type in ("MIDI Synth", "Audio Effect", "Audio Generator"):

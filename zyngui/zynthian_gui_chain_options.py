@@ -49,26 +49,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
-        if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]) and self.chain.get_processor_count():
-            self.list_data.append((self.midi_learn, None, "MIDI Learn",
-                                   ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
+        self.list_data.append((None, None, "> Manage this chain"))
 
-        # TODO: Catch signal for Audio Recording status change
-        if self.chain.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            if self.zyngui.state_manager.audio_recorder.status:
-                self.list_data.append(
-                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "■ Stop Audio Recording", ["Stop audio recording", "audio_recorder.png"]))
-            else:
-                self.list_data.append(
-                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
+        if audio_proc_count > 0:
+            self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
+                                   ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
 
-        self.list_data.append((self.insert_chain, None, "Insert new chain",
-                               ["Create a new chain and insert immediately before the selected chain.", "midi_instrument.png"]))
-
-        if self.chain.chain_id == 0:
-            self.list_data.append((self.remove_all_chains, None, "Remove all chains",
-                                   ["Clean all chains while keeping sequencer data.", "delete_chains.png"]))
-        else:
+        if self.chain.chain_id:
             self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                    ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
             if synth_proc_count * midi_proc_count + audio_proc_count == 0:
@@ -77,15 +64,43 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             else:
                 self.list_data.append((self.remove_cb, None, "Remove...",
                                        ["Remove chain or processors.", "delete_chains.png"]))
-        if audio_proc_count > 0:
-            self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
-                                   ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
-
+        if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]) and self.chain.get_processor_count():
+            self.list_data.append((self.midi_learn, None, "MIDI Learn",
+                                   ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
         self.list_data.append((self.rename_chain, None, "Rename chain",
                                ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
         if self.chain.chain_id:
             self.list_data.append((self.move_chain, None, "Move chain",
                                     ["Reposition the chain in the mixer view.", "move_left_right.png"]))
+
+        self.list_data.append((None, None, "> Global chain management"))
+        self.list_data.append((self.insert_chain, None, "Insert new chain",
+                               ["Create a new chain and insert immediately before the selected chain.", "midi_instrument.png"]))
+
+        if self.chain.chain_id == 0:
+            self.list_data.append((self.remove_sequences, 0,
+                                "Remove Sequences",
+                                ["Clean all sequencer data while keeping existing chains.",
+                                    "delete_sequences.png"]))
+            self.list_data.append((self.remove_chains, 0,
+                                "Remove Chains",
+                                ["Clean all chains while keeping sequencer data.",
+                                "delete_chains.png"]))
+            self.list_data.append((self.remove_all, 0,
+                                "Remove All",
+                                ["Clean all chains and sequencer data. Start from scratch!",
+                                "delete_all.png"]))
+
+        # TODO: Catch signal for Audio Recording status change
+        if self.chain.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
+            self.list_data.append((None, None, "> Global functions"))
+            if self.zyngui.state_manager.audio_recorder.status:
+                self.list_data.append(
+                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "■ Stop Audio Recording", ["Stop audio recording", "audio_recorder.png"]))
+            else:
+                self.list_data.append(
+                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
+
         super().fill_list()
 
     def fill_listbox(self):
@@ -202,14 +217,32 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.zyngui.chain_manager.remove_chain(self.chain.chain_id)
         self.zyngui.show_screen_reset('chain_manager')
 
-    def remove_all_chains(self, params=None):
+    def remove_all(self, t='S'):
         self.zyngui.show_confirm(
-            "Do you really want to remove ALL chains?", self.all_chains_remove_confirmed)
+            "Do you really want to remove ALL chains & sequences?", self.remove_all_confirmed)
 
-    def all_chains_remove_confirmed(self, params=None):
+    def remove_all_confirmed(self, params=None):
+        self.index = 0
+        self.zyngui.clean_all()
+        self.zyngui.show_screen_reset('chain_manager')
+
+    def remove_chains(self, t='S'):
+        self.zyngui.show_confirm(
+            "Do you really want to remove ALL chains?", self.remove_chains_confirmed)
+
+    def remove_chains_confirmed(self, params=None):
         self.index = 0
         self.zyngui.clean_chains()
-        self.zyngui.show_screen_reset('chain_manager') #TODO: Do we want to return to chain manager or mixer view?
+        self.zyngui.show_screen_reset('chain_manager')
+
+    def remove_sequences(self, t='S'):
+        self.zyngui.show_confirm(
+            "Do you really want to remove ALL sequences?", self.remove_sequences_confirmed)
+
+    def remove_sequences_confirmed(self, params=None):
+        self.index = 0
+        self.zyngui.clean_sequences()
+        self.zyngui.show_screen_reset('chain_manager')
 
     def insert_chain(self, params=None):
         pos = self.zyngui.chain_manager.get_chain_index(self.chain.chain_id)
