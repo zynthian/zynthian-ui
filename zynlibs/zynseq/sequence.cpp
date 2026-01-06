@@ -245,7 +245,12 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint32_t nSamplesPerClock, u
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
             m_nPosition = 0;
-            if (m_nCount >= m_nRepeat) {
+            bool bFollow = false;
+            if (m_nRepeat == 255)
+                bFollow = (m_nCount * PPQN_INTERNAL * nTimeSig >= m_nAutoFollow);
+            else
+                bFollow = (m_nCount >= m_nRepeat);
+            if (bFollow) {
                 // Follow action
                 nReturn |= CLOCK_TRIG_SEQEND;
                 if (m_pFollowSequence != this)
@@ -298,6 +303,10 @@ void Sequence::updateLength(uint32_t length) {
             m_nLength = nTrackLength;
         m_bEmpty &= (*it).isEmpty();
     }
+    if (m_pPhraseSequence)
+        m_pPhraseSequence->updateAutoFollow();
+    else
+        updateAutoFollow();
 }
 
 uint32_t Sequence::getLength() { return m_nLength; }
@@ -347,10 +356,27 @@ int16_t Sequence::getFollowParam() {
 
 void Sequence::setRepeat(uint8_t repeat) {
     m_nRepeat = repeat;
+    if (m_pPhraseSequence)
+        m_pPhraseSequence->updateAutoFollow();
+    else if (repeat == 255)
+        updateAutoFollow();
+    else
+        m_nAutoFollow = 0;
 }
 
 uint8_t Sequence::getRepeat() {
     return m_nRepeat;
+}
+
+void Sequence::updateAutoFollow() {
+    m_nAutoFollow = 0;
+    for (auto pSequence: m_aChildSequences) {
+        if (!pSequence)
+            continue;
+        uint32_t nDuration = pSequence->getLength() * pSequence->getRepeat();
+        if (nDuration > m_nAutoFollow)
+            m_nAutoFollow = nDuration;
+    }
 }
 
 void Sequence::setPlayed(uint8_t played) {

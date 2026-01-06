@@ -138,7 +138,10 @@ class zynthian_gui_launcher_pad():
             else:
                 title = name[:5]
                 if state_seq["repeat"]:
-                    mode_text = f"x{state_seq['repeat']}"
+                    if state_seq["repeat"] == 255:
+                        mode_text = f"auto"
+                    else:
+                        mode_text = f"x{state_seq['repeat']}"
                     match state_seq["followAction"]:
                         case zynseq.FOLLOW_ACTION_NONE:
                             mode_image = self.gui_mixer.mode_icons["oneshot"]
@@ -1577,11 +1580,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if repeat == 0:
             options["Duration (DISABLED)"] = repeat
         else:
-            if repeat == 1:
-                unit = "bar"
+            if repeat == 255:
+                options["Duration (AUTO)"] = repeat
             else:
-                unit = "bars"
-            options[f"Duration ({repeat} {unit})"] = repeat
+                if repeat == 1:
+                    unit = "bar"
+                else:
+                    unit = "bars"
+                options[f"Duration ({repeat} {unit})"] = repeat
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
                 options[f"Follow action (NONE)"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
@@ -1645,13 +1651,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.phrase_menu()
             option_screen.select(index - 1)
         elif option.startswith("Duration"):
-            labels = ["DISABLED", "1 bar"]
-            for i in range(2, 256):
+            labels = ["DISABLED", "AUTO", "1 bar"]
+            for i in range(2, 255):
                 labels.append(f"{i} bars")
+            if params == 255:
+                value = 1
+            elif params:
+                value = params + 1
+            else:
+                value = 0
             option_screen.enable_param_editor(option_screen, "duration", {
                 'name': 'Duration',
-                'value': params,
-                'labels': labels
+                'value': value,
+                'labels': labels,
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Beats per bar"):
             labels = ["None"]
@@ -1740,7 +1752,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             case "bpb":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "bpb", zctrl.value)
             case "duration":
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)
+                if zctrl.value == 1:
+                    value = 255
+                elif zctrl.value > 1:
+                    value = zctrl.value - 1
+                else:
+                    value = 0
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", value)
             case "follow":
                 match zctrl.value2label[str(zctrl.value)]:
                     case "NONE":

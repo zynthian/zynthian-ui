@@ -262,6 +262,10 @@ class Sequence {
     */
     uint8_t getRepeat();
 
+    /** @brief  Update the duration of a phrase launcher set to auto follow mode
+    */
+    void updateAutoFollow();
+
     /** @brief Set times played
     */
     void setPlayed(uint8_t played);
@@ -299,7 +303,8 @@ class Sequence {
     uint8_t m_nState = STOPPED;                 // Play state of sequence
     uint8_t m_nMode = MODE_END_SYNC;            // Bitwise flags: stop mode (bits 0..1), start mode (bit 2)
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence
+    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence. 0 to disable, 255 for auto follow time 
+    uint32_t m_nAutoFollow = 0;                 // Calculated duration (pulses) before auto follow action - Only used by phrases
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
     uint8_t m_nPhrase = 0xff;                   // Index of phrase this sequence belongs - 0xff for none
     bool m_bChanged = false;                    // True if sequence content changed

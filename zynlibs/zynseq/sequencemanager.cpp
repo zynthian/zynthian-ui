@@ -499,7 +499,7 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
     s = 'A' + phrase;
     pPhrase->setName(s);
     pPhrase->setGroup(32);
-    pPhrase->setRepeat(1);
+    pPhrase->setRepeat(255);
     for (uint8_t chan = 0; chan < 32; ++chan) {
         Sequence* pSequence = new Sequence(pPhrase);
         pSequence->setGroup(chan);
