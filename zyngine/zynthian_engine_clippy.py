@@ -346,7 +346,9 @@ class zynthian_engine_clippy(zynthian_engine):
                     logging.warning(f"Clippy error - wrong note {note}/{new_note} assigned!")
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
                 self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
-                self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * 24)
+                if whole_beats < 1:
+                    whole_beats = beats_per_bar
+                self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
                 if phrase == self.selected_phrase:
                     self.set_phrase(processor, phrase)
 

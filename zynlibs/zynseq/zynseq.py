@@ -174,6 +174,7 @@ class zynseq(zynthian_engine):
             self.libseq.convertToJson.restype = ctypes.c_char_p
             self.libseq.getState.restype = ctypes.c_char_p
 
+            self.PPQN = self.libseq.getPPQN()
             self.libseq.init(bytes("zynseq", "utf-8"))
         except Exception as e:
             self.libseq = None

@@ -74,6 +74,11 @@ enum TRANSPORT_CLOCK {
 */
 void init(char* name);
 
+/** @brief  Get the constant pulses per quarter note resolution
+    @retval uint32_t Quantity of pulses in each quater note
+*/
+uint32_t getPPQN() { return PPQN_INTERNAL; };
+
 /** @brief  Check if any changes have occured since last save
     @retval bool True if changed since last save
 */

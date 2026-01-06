@@ -358,15 +358,16 @@ void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {
                 pChildSequence->setPlayState(STARTING);
             }
         }
-    }   
+    }
 }
 
 void SequenceManager::stopGroup(uint8_t group) {
-    for (auto pSequence: m_vPlayingSequences) {
-        if (pSequence->getGroup() == group) {
-            pSequence->setPlayState(STOPPED);
-        }
-    }
+    std::vector <Sequence*> vSeq;
+    for (auto pSequence: m_vPlayingSequences)
+        if (pSequence->getGroup() == group)
+            vSeq.push_back(pSequence);
+    for (auto pSequence: vSeq)
+        setPlayState(pSequence, STOPPED);
 }
 
 uint8_t SequenceManager::getTriggerNote(uint32_t phraseSeq) {
@@ -452,7 +453,7 @@ void SequenceManager::enableChannel(uint8_t channel, bool enable) {
             Sequence* pSequence = getSequence(nScene, nPhrase, channel);
             if (pSequence) {
                 pSequence->setRepeat(enable ? 1 : 0);
-                pSequence->setPlayState(STOPPED);
+                setPlayState(pSequence, STOPPED);
             }
         }
     }
