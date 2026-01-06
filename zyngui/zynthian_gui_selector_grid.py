@@ -26,8 +26,6 @@
 import logging
 import tkinter
 from PIL import Image, ImageTk
-from time import monotonic
-from tkinter import font
 
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -64,7 +62,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.drag_start_y = 0
         self.is_dragging = False
         self.drag_threshold = 5  # pixels to detect drag vs click 
-        self.press_time = None # Time of touch used for bold press detection
+        self.press_event = None
 
     def update_layout(self):
         super().update_layout()
@@ -264,7 +262,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.start_xview = self.canvas.xview()[0]
         self.start_yview = self.canvas.yview()[0]
         self.is_dragging = False
-        self.press_time = monotonic()
+        self.press_event = event
 
     def on_drag(self, event):
         """
@@ -322,10 +320,10 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             return
         self._draw_selection()
         press_type = "S"
-        if self.press_time:
-            if monotonic() > self.press_time + 0.4:
-                self.press_time = None
+        if self.press_event:
+            if event.time > self.press_event.time + 400:
                 press_type = "B"
+            self.press_event = None
         self.switch_select(press_type)
 
     def switch_select(self, press_type="S"):

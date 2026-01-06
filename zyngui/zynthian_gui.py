@@ -103,6 +103,21 @@ ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
 # Zynthian Main GUI Class
 # -------------------------------------------------------------------------------
 
+class DebugLock():
+    """ Helper debug class to log mutex lock access
+        Replace Lock() with DebugLock() when debugging lock issues,
+        e.g. self.screen_lock = DebugLock()
+    """
+    def __init__(self):
+        self.lock = Lock()
+
+    def acquire(self):
+        traceback.print_stack(limit=2)
+        self.lock.acquire()
+
+    def release(self):
+        traceback.print_stack(limit=2)
+        self.lock.release()
 
 class zynthian_gui:
     # Subsignals are defined inside each module. Here we define GUI subsignals:
@@ -785,16 +800,16 @@ class zynthian_gui:
         self.screen_lock.release()
 
     def show_keyboard(self, callback, text="", max_chars=None):
-        self.screen_lock.acquire()
         self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_QWERTY)
+        self.screen_lock.acquire()
         self.screens['keyboard'].show(callback, text, max_chars)
         self.current_screen = 'keyboard'
         self.hide_screens(exclude='keyboard')
         self.screen_lock.release()
 
     def show_numpad(self, callback, text="", max_chars=None):
-        self.screen_lock.acquire()
         self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_NUMPAD)
+        self.screen_lock.acquire()
         self.screens['keyboard'].show(callback, text, max_chars)
         self.current_screen = 'keyboard'
         self.hide_screens(exclude='keyboard')
@@ -829,36 +844,36 @@ class zynthian_gui:
         self.screen_lock.release()
 
     def show_loading(self, title="", details=""):
-        self.screen_lock.acquire()
         self.screens['loading'].set_title(title)
         self.screens['loading'].set_details(details)
+        self.screen_lock.acquire()
         self.screens['loading'].show()
         self.current_screen = 'loading'
         self.hide_screens(exclude='loading')
         self.screen_lock.release()
 
     def show_loading_error(self, title="", details=""):
-        self.screen_lock.acquire()
         self.screens['loading'].set_error(title)
         self.screens['loading'].set_details(details)
+        self.screen_lock.acquire()
         self.screens['loading'].show()
         self.current_screen = 'loading'
         self.hide_screens(exclude='loading')
         self.screen_lock.release()
 
     def show_loading_warning(self, title="", details=""):
-        self.screen_lock.acquire()
         self.screens['loading'].set_warning(title)
         self.screens['loading'].set_details(details)
+        self.screen_lock.acquire()
         self.screens['loading'].show()
         self.current_screen = 'loading'
         self.hide_screens(exclude='loading')
         self.screen_lock.release()
 
     def show_loading_success(self, title="", details=""):
-        self.screen_lock.acquire()
         self.screens['loading'].set_warning(title)
         self.screens['loading'].set_details(details)
+        self.screen_lock.acquire()
         self.screens['loading'].show()
         self.current_screen = 'loading'
         self.hide_screens(exclude='loading')
@@ -1550,8 +1565,8 @@ class zynthian_gui:
 
     def cuia_refresh_screen(self, params=None):
         if params is None or self.current_screen in params:
-            self.screen_lock.acquire()
             self.screens[self.current_screen].build_view()
+            self.screen_lock.acquire()
             self.screens[self.current_screen].show()
             self.screen_lock.release()
 
@@ -2470,12 +2485,8 @@ class zynthian_gui:
                         self.screens['loading'].set_details(busy_details)
             else:
                 busy_timeout = 0
-                self.screen_lock.acquire()
                 if self.current_screen == "loading":
-                    self.screen_lock.release()
                     self.close_screen("loading")
-                else:
-                    self.screen_lock.release()
 
             try:
                 if self.current_screen:
