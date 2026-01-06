@@ -1255,12 +1255,12 @@ double getTempo();
 /** @brief  Set beats per bar
     @retval uint8_t beats Beats per bar
 */
-void setTimeSig(uint8_t beats);
+void setBpb(uint8_t beats);
 
 /** @brief  Get Beats per bar
     @retval uint8_t Beats per bar
 */
-uint8_t getTimeSig();
+uint8_t getBpb();
 
 /** @brief  Set sync timeout
     @param  timeout Quantity of microseconds to wait for slow sync clients at start of play

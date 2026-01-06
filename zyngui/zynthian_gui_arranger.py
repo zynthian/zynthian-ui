@@ -174,7 +174,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         options = {}
         options[f'Tempo ({self.zynseq.libseq.getTempo():0.1f})'] = 'Tempo'
         options['Beats per bar ({})'.format(
-            self.zyngui.state_manager.zynseq.timesig)] = 'Beats per bar'
+            self.zyngui.state_manager.zynseq.bpb)] = 'Beats per bar'
         options[f'Phrase ({self.zynseq.scene})'] = 'Phrase'
         options['> ARRANGER'] = None
         if self.zynseq.libseq.isMuted(self.zynseq.scene, self.sequence, self.track):
@@ -214,8 +214,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         if params == 'Tempo':
             self.zyngui.show_screen('tempo')
         elif params == 'Beats per bar':
-            self.enable_param_editor(self, 'timesig', {'name': 'Beats per bar', 'value_min': 1,
-                                     'value_max': 64, 'value_default': 4, 'value': self.zynseq.timesig})
+            self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1,
+                                     'value_max': 64, 'value_default': 4, 'value': self.zynseq.bpb})
         elif params == 'Phrase':
             self.enable_param_editor(self, 'phrase', {
                                      'name': 'Phrase', 'value_min': 1, 'value_max': 64, 'value': self.zynseq.scene})
@@ -268,7 +268,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             self.redraw_pending = 4
         if zctrl.symbol == 'metro_vol':
             self.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
-        elif zctrl.symbol == 'timesig':
+        elif zctrl.symbol == 'bpb':
             self.zynseq.libseq.set_timesig(zctrl.value)
             self.draw_vertical_lines()
         elif zctrl.symbol == 'midi_chan':

@@ -800,7 +800,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.state_manager = self.zyngui.state_manager
         self.chain_manager = self.zyngui.chain_manager
         self.zynseq = self.state_manager.zynseq
-        self.timesig = 4
+        self.bpb = 4
         self.beat = 0
         self.chain_strips = [] # List of channel strips excluding main mixbus, indexed by strip position
         self.state_changed = True
@@ -848,7 +848,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.right_canvas.bind("<Button-5>", self.on_wheel)
 
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_timesig)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
         """
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.cb_state_change)
@@ -1119,9 +1119,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def clear_tempo_highlight(self):
         self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_header_tx)
 
-    def set_timesig(self, timesig):
-        self.timesig = timesig
-        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"[{self.beat}] {timesig}/4")
+    def set_bpb(self, bpb):
+        self.bpb = bpb
+        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"[{self.beat}] {bpb}/4")
         Timer(0.6, self.clear_timesig_highlight).start()
 
     def clear_timesig_highlight(self):
@@ -1152,7 +1152,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.chain_strips[-1].draw_dpm(state)
             if self.beat != self.zynseq.beat:
                 self.beat = self.zynseq.beat
-                self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.timesig}/4")
+                self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.bpb}/4")
             for strip in self.chain_strips:
                 # Update MIDI activity indicators
                 if strip.chain.midi_chan is not None:
@@ -1657,7 +1657,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             labels = ["None"]
             for i in range(1, 25):
                 labels.append(f"{i}")
-            option_screen.enable_param_editor(option_screen, "timeSig", {
+            option_screen.enable_param_editor(option_screen, "bpb", {
                 'name': 'Beats per bar',
                 'value_min': 0,
                 'value_max': 24,
@@ -1737,7 +1737,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                                 clippy_engine.set_file(processor, note, phrase=phrase)
                         except:
                             continue
-            case "timeSig":
+            case "bpb":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "bpb", zctrl.value)
             case "duration":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", zctrl.value)

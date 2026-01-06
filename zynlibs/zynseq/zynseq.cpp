@@ -89,12 +89,12 @@ uint8_t g_nInputRest                  = 0xFF;       // MIDI note number that cre
 uint16_t g_nVerticalZoom              = 16;         // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom            = 16;         // Quantity of beats to show in arranger view
 
-// PPQN => Clock resolution: Parts Per Quarter Note
+// PPQN => Clock resolution: Pulses Per Quarter Note
 uint32_t PPQN = PPQN_INTERNAL;
 
 // Transport variables apply to next period
-uint32_t g_nTimeSig                    = 4;
-uint32_t g_nBeatType                   = 4;
+uint32_t g_nBpb                       = 4;         // Quantity of beats (quater notes) in each bar (sync point division)
+uint32_t g_nBeatType                  = 4;
 uint32_t g_nTicksPerBeat              = 1920;
 uint32_t g_nTicksPerClock             = g_nTicksPerBeat / PPQN;
 double g_dTempo                       = 120.0;
@@ -165,8 +165,8 @@ void updateBBT(jack_position_t* position) {
     uint32_t nBar = 0;
     uint32_t nBeat = 0;
     uint32_t nTick = 0;
-    uint8_t nTimeSig = 4;
-    uint32_t nTicksPerBar = g_nTicksPerBeat * nTimeSig;
+    uint8_t nBpb = 4;
+    uint32_t nTicksPerBar = g_nTicksPerBeat * nBpb;
     bool bDone = false;
     jack_nframes_t nFramesInSection;
     uint32_t nTicksInSection;
@@ -174,8 +174,8 @@ void updateBBT(jack_position_t* position) {
 
     position->tick = position->frame % uint32_t(nFramesPerTick);
     position->beat = (uint32_t(position->frame / nFramesPerTick) % uint32_t(g_nTicksPerBeat)) + 1;
-    position->bar = (uint32_t(position->frame / nFramesPerTick / g_nTicksPerBeat) % nTimeSig) + 1;
-    position->beats_per_bar = g_nTimeSig;
+    position->bar = (uint32_t(position->frame / nFramesPerTick / g_nTicksPerBeat) % nBpb) + 1;
+    position->beats_per_bar = g_nBpb;
     position->beats_per_minute = g_dTempo;
     position->beat_type = g_nBeatType;
     position->ticks_per_beat = g_nTicksPerBeat;
@@ -208,9 +208,9 @@ void updateBBT(jack_position_t* position) {
                 nFramesPerTick = getFramesPerTick(pEvent->value);
             else if(pEvent->type == TIMEBASE_TYPE_TIMESIG)
             {
-                nTimeSig = pEvent->value >> 8;
+                nBpb = pEvent->value >> 8;
                 nBeatsType = pEvent->value & 0x00FF;
-                nTicksPerBar = g_nTicksPerBeat * nTimeSig;
+                nTicksPerBar = g_nTicksPerBeat * nBpb;
             }
         }
     }
@@ -227,7 +227,7 @@ void updateBBT(jack_position_t* position) {
     position->bar_start_tick = nTicksFromStart - nTicksInLastBar;
     g_nClock = position->tick % (uint32_t)g_nTicksPerClock;
     // g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_nTicksPerBeat + g_nTick) / g_nTicksPerClock);
-    // g_nTimeSig = uint32_t(g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_nTicksPerBeat + g_nTick) / g_nTicksPerClock)) >> 8;
+    // g_nBpb = uint32_t(g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_nTicksPerBeat + g_nTick) / g_nTicksPerClock)) >> 8;
 }
 
 /*  Handle timebase callback - update timebase elements (BBT) from transport position
@@ -262,11 +262,11 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         }
         else if(g_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG)
         {
-            g_nTimeSig = g_pNextTimebaseEvent->value >> 8;
+            g_nBpb = g_pNextTimebaseEvent->value >> 8;
             g_nBeatType = g_pNextTimebaseEvent->value & 0x0F;
-            pPosition->beats_per_bar = g_nTimeSig;
+            pPosition->beats_per_bar = g_nBpb;
             g_bTimebaseChanged = true;
-            DPRINTF("Time signature change to %u/%u\n", g_nTimeSig, g_nBeatType);
+            DPRINTF("Time signature change to %u/%u\n", g_nBpb, g_nBeatType);
         }
         g_pNextTimebaseEvent = g_pTimebase->getNextTimebaseEvent(g_pNextTimebaseEvent);
     }
@@ -278,7 +278,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         if(g_pTimebase)
         {
             g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_nTicksPerBeat + g_nTick));
-            g_nTimeSig = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_nTicksPerBeat + g_nTick)) >> 8;
+            g_nBpb = g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_nTicksPerBeat + g_nTick)) >> 8;
         }
         */
         // Update position based on parameters passed
@@ -321,7 +321,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         pPosition->beat = g_nBeat;
         pPosition->tick = g_nTick % (uint32_t)g_nTicksPerBeat;
         pPosition->bar_start_tick = g_nBarStartTick;
-        pPosition->beats_per_bar = g_nTimeSig;
+        pPosition->beats_per_bar = g_nBpb;
         pPosition->beat_type = g_nBeatType;
         pPosition->ticks_per_beat = g_nTicksPerBeat;
         pPosition->beats_per_minute = g_dTempo;
@@ -645,7 +645,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
                 g_nMetronomePtr = 0;
                 nClockOffset = g_qClockPos.front().first - nNow;
-                //DPRINTF("Beat %u of %u clock %u timestamp: %f (%f)\n", g_nBeat, g_nTimeSig, g_nClock, g_qClockPos.front().first, g_qClockPos.front().first - dLast);
+                //DPRINTF("Beat %u of %u clock %u timestamp: %f (%f)\n", g_nBeat, g_nBpb, g_nClock, g_qClockPos.front().first, g_qClockPos.front().first - dLast);
                 //dLast = g_qClockPos.front().first;
             }
             // Schedule events in next period
@@ -657,7 +657,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             // Advance clock
             if (++g_nClock >= PPQN) {
                 g_nClock = 0;
-                if (++g_nBeat > g_nTimeSig) {
+                if (++g_nBeat > g_nBpb) {
                     g_nBeat = 1;
                     ++g_nBar;
                 }
@@ -712,9 +712,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             setTempo(tempo);
         }
         if (g_seqMan.isTimeSigChanged()) {
-            uint8_t newTimeSig = g_seqMan.getTimeSig(true);
-            if (newTimeSig > 1)
-                g_nTimeSig = newTimeSig;
+            uint8_t newBpb = g_seqMan.getTimeSig(true);
+            if (newBpb > 1)
+                g_nBpb = newBpb;
         }
     }
 
@@ -1021,7 +1021,7 @@ void reset() {
     g_nScene = 0;
     g_nBar = 1;
     g_nBeat = 1;
-    g_nTimeSig = 4;
+    g_nBpb = 4;
     // Create default phrases
     for (uint8_t phrase = 0; phrase < 8; ++phrase)
         insertPhrase(g_nScene, phrase);
@@ -1343,7 +1343,7 @@ bool setState(const char* state) {
         g_seqMan.init();
 
         g_dTempo = j.value("tempo", g_dTempo); //!@todo Do we want to reset tempo to default or use previous if not in state?
-        setTimeSig(j.value("bpb", 4));
+        setBpb(j.value("bpb", 4));
 
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {
@@ -1483,7 +1483,7 @@ const char* getState() {
     uint8_t nScene = getScene();
     json jState;
     jState["tempo"] = g_dTempo;
-    jState["bpb"] = g_nTimeSig;
+    jState["bpb"] = g_nBpb;
     jState["scene"] = nScene;
     // Iterate through patterns
     uint32_t nPattern = 0;
@@ -1628,11 +1628,11 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 return nullptr;
             }
             // Loaded from file but not used!
-            // g_nTimeSig, g_nVerticalZoom, g_nHorizontalZoom
+            // g_nBpb, g_nVerticalZoom, g_nHorizontalZoom
             fileRead16u(pFile);
             fileRead16u(pFile);
             fileRead16u(pFile);
-            // printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nTimeSig, g_nVerticalZoom, g_nHorizontalZoom);
+            // printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nBpb, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
             if (nVersion > 8) {
                 if (checkBlock(pFile, nBlockSize, 28))
@@ -2920,7 +2920,7 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick) 
         --beat;
     uint32_t nTicksToPrev = 0;
     uint32_t nTicksToEvent = 0;
-    uint32_t nTicksPerBar = g_nTicksPerBeat * g_nTimeSig;
+    uint32_t nTicksPerBar = g_nTicksPerBeat * g_nBpb;
     //!@todo Handle changes in tempo and time signature
     //jack_nframes_t nFramesPerTick = getFramesPerTick(DEFAULT_TEMPO);
     jack_nframes_t nFramesPerTick = getFramesPerTick(g_dTempo);
@@ -3028,14 +3028,14 @@ void setTempo(double tempo) {
 
 double getTempo() { return g_dTempo; }
 
-void setTimeSig(uint8_t beats) {
+void setBpb(uint8_t beats) {
     if (beats > 0) {
-        g_nTimeSig = beats;
+        g_nBpb = beats;
         g_seqMan.setTimeSig(beats);
     }
 }
 
-uint8_t getTimeSig() { return g_nTimeSig; }
+uint8_t getBpb() { return g_nBpb; }
 
 void transportSetSyncTimeout(uint32_t timeout) { jack_set_sync_timeout(g_pJackClient, timeout); }
 

@@ -299,38 +299,34 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Pattern menu
     # -------------------------------------------------------------------------
 
-    def get_time_sig(self):
-        timeSig = 0
-        try:
-            phrase = self.seq_info["phrase"]
-            timeSig = self.zynseq.get_sequence_param(self.scene, phrase, zynseq.PHRASE_CHANNEL, "timeSig")
-        except:
-            pass
-        if timeSig == 0:
-            timeSig = self.zynseq.timesig
-        return timeSig
-
-    def get_pattern_length(self, n_beats=None, timesig=None):
-        if n_beats is None:
-            n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
-        if timesig is None:
-            timesig = self.get_time_sig()
-        if timesig > 1:
-            bars = n_beats // timesig
-            if bars > 0:
-                if bars == 1:
-                    bars_text = "1 bar"
-                else:
-                    bars_text = f"{bars} bars"
-                rest_beats = n_beats % timesig
-                if rest_beats:
-                    return f"{bars_text} + {rest_beats} beats"
-                else:
-                    return bars_text
-        if n_beats == 1:
-            return "1 beat"
+    def get_pattern_length(self, beats=None, bpb=None):
+        if beats is None:
+            beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
+        if bpb is None:
+            bpb = self.bpb
+        if bpb > 1:
+            bars = beats // bpb
         else:
-            return f"{n_beats} beats"
+            bars = 0
+        extra_beats = beats % bpb
+
+        if extra_beats == 0:
+            beats_text = ""
+        elif extra_beats == 1:
+            beats_text = "1 beat"
+        else:
+            beats_text = f"{extra_beats} beats"
+        if bars == 0:
+            bars_text = ""
+        elif bars == 1:
+            bars_text = "1 bar"
+        else:
+            bars_text = f"{bars} bars"
+        if bars and extra_beats:
+            return f"{bars_text} + {beats_text}"
+        else:
+            return bars_text + beats_text
+
 
     def get_menu_options(self):
         menu_options = {}
@@ -444,10 +440,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.zyngui.toggle_pated()
             case 'Length':
                 labels = []
-                timesig = self.get_time_sig()
                 n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
                 for i in range(1, 65):
-                    labels.append(self.get_pattern_length(i, timesig))
+                    labels.append(self.get_pattern_length(i, self.bpb))
                 self.enable_param_editor(self, 'bip', {'name': 'Length', 'value_min': 1, 'value_max': 64,
                                          'value_default': 4, 'labels': labels, 'value': n_beats},
                                          assert_cb=self.assert_beats_in_pattern)
@@ -593,6 +588,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.phrase = self.zynseq.phrase
             self.sequence = self.zynseq.chan
             self.channel = self.zynseq.chan
+            try:
+                self.bpb = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["bpb"]
+            except:
+                self.bpb = 0
+            if self.bpb == 0:
+                self.bpb = self.zynseq.bpb
             self.seq_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["sequences"][self.sequence]
         except Exception as e:
             logging.warning(f"Unable to refresh sequence info for pattern: {e}")
@@ -1094,7 +1095,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             # Redraw gridlines
             self.grid_canvas.delete("gridvline")
             self.play_canvas.delete("beatnum")
-            timesig = self.get_time_sig()
             if self.n_steps_beat:
                 bnum_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=PLAYHEAD_HEIGHT - 2)
                 lh = max(128 * self.row_height - 1, self.grid_height - 1)
@@ -1103,7 +1103,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                     xpos = step * self.step_width
                     if step % self.n_steps_beat == 0:
                         beatnum = step // self.n_steps_beat
-                        rest_beatnum = beatnum % timesig
+                        rest_beatnum = beatnum % self.bpb
                         if rest_beatnum == 0:
                             self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_XTRONG, tags="gridvline")
                         else:

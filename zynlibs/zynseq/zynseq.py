@@ -210,7 +210,7 @@ class zynseq(zynthian_engine):
         self.playing_sequences = 0 # Quantity of playing sequences
         self.pause_update = False
         self.progress = [0] * LAUNCHER_COLS
-        self.timesig = 4
+        self.bpb = 4
         self.beat = 0 # Current beat of bar
         self.clippy = None # Clippy engine object
         self.reset()
@@ -240,10 +240,10 @@ class zynseq(zynthian_engine):
             if tempo != self.zctrl_tempo.value:
                 self.zctrl_tempo.value = tempo
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=tempo)
-            timesig = self.libseq.getTimeSig()
-            if timesig != self.timesig:
-                self.timesig = timesig
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, timesig=timesig)
+            bpb = self.libseq.getBpb()
+            if bpb != self.bpb:
+                self.bpb = bpb
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, bpb=bpb)
             # Iterate state changes
             for i in range(count):
                 if self.pause_update:
@@ -440,11 +440,11 @@ class zynseq(zynthian_engine):
         except:
             logging.warning("Failed to set tempo")
         try:
-            if self.state["bpb"] != self.timesig:
-                self.timesig = self.state["bpb"]
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, timesig=self.timesig)
+            if self.state["bpb"] != self.bpb:
+                self.bpb = self.state["bpb"]
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, bpb=self.bpb)
         except:
-            logging.warning("Failed to set timesig")
+            logging.warning("Failed to set bpb")
         if send:
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_STATE)
 
