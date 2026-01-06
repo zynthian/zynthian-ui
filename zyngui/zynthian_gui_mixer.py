@@ -113,13 +113,13 @@ class zynthian_gui_launcher_pad():
         timesig_text = ""
         tempo_text = ""
         disabled = False
-        if self.chain.chain_id == 0:
-            state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
-        elif self.chain.midi_chan is None or self.chain.midi_chan > 31:
-            state_seq = None  # This will raise an exception later and draw empty block
-        else:
-            state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]["sequences"][self.chain.midi_chan]
         try:
+            if self.chain.chain_id == 0:
+                state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
+            elif self.chain.midi_chan is None or self.chain.midi_chan > 31:
+                state_seq = None  # This will raise an exception later and draw empty block
+            else:
+                state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]["sequences"][self.chain.midi_chan]
             name = state_seq["name"]
             disabled |= state_seq["repeat"] == 0
             if disabled:
