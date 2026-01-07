@@ -864,7 +864,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.cb_launcher_refresh)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
         self.update_layout()
         
     def cb_rename_chain(self, chain_id, title):
@@ -1003,6 +1003,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.left_canvas.configure(scrollregion=(0, 0, self.chain_manager.get_pinned_pos() * self.strip_width, self.height))
         self.refresh_launchers()
         self.refresh_mixer_controls()
+        self.set_launcher_mode()
 
     def build_launchers(self):
         """ Build the sequence launcher buttons """
@@ -1311,14 +1312,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 if strip.chain.midi_chan == chan:
                     strip.launchers[phrase].draw()
 
-    def cb_launcher_refresh(self):
-        if not self.launcher_mode:
-            return
-        for strip in self.chain_strips:
-            for launcher in strip.launchers:
-                launcher.draw()
-        self.select_launcher()
-
     def topbar_bold_touch_action(self):
         self.toggle_launcher_mode()
 
@@ -1537,7 +1530,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             strip.set_launcher_mode(launcher_mode)
 
         if self.launcher_mode:
-            self.cb_launcher_refresh()
+            self.refresh_launchers()
             self.left_canvas.itemconfig("fader", state=tkinter.HIDDEN)
             self.right_canvas.itemconfig("fader", state=tkinter.HIDDEN)
             self.left_canvas.itemconfig("fader_horizontal", state=tkinter.NORMAL)
