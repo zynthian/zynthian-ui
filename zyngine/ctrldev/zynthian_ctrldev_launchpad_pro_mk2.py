@@ -49,7 +49,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
     def send_sysex(self, data):
         if self.idev_out is not None:
             msg = bytes.fromhex("F0 00 20 29 02 10 {} F7".format(data))
-            lib_zyncore.dev_send_midi_event(self.idev, msg, len(msg))
+            lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
             sleep(0.05)
 
     def get_note_xy(self, note):
