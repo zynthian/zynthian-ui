@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynmixer library
 #
-# Copyright (C) 2019-2024 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2019-2026 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #
@@ -32,6 +32,15 @@ from zyngine.zynthian_signal_manager import zynsigman
 
 # Subsignals are defined inside each module. Here we define audio_mixer subsignals:
 SS_ZYNMIXER_SET_VALUE = 1
+
+class DPM(ctypes.Structure):
+    _fields_ = [
+        ("a", ctypes.c_float),
+        ("b", ctypes.c_float),
+        ("a_hold", ctypes.c_float),
+        ("b_hold", ctypes.c_float),
+        ("mono", ctypes.c_uint8)
+    ]
 
 class ZynMixer():
     """
@@ -105,15 +114,12 @@ class ZynMixer():
             ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getDpmHold.restype = ctypes.c_float
 
-        self.lib_zynmixer.getDpmStates.argtypes = [
-            ctypes.c_uint8, ctypes.c_uint8, ctypes.POINTER(ctypes.c_float)]
-
-        self.lib_zynmixer.enableDpm.argtypes = [
-            ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+        self.lib_zynmixer.getDpmStates.argtypes = [ctypes.c_uint8, ctypes.POINTER(DPM)]
 
         self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
 
         self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
+        self.dpm = (DPM * self.MAX_NUM_CHANNELS)()
 
     def add_strip(self):
         """
@@ -645,54 +651,31 @@ class ZynMixer():
             return
         return self.lib_zynmixer.getDpmHold(channel, leg)
 
-    def get_dpm_states(self, start, end):
+    def update_dpm_states(self, count):
         """
-        Gets peak programme level state of a range of mixer strips
+        Updates peak programme level state of a range of mixer strips
 
         Parameters
         ----------
-        start : int
-            Index of the first mixer strip
-        end : int
-            Index of the last mixer strip
+        count : int
+            Quanity of mixer strips
 
-        Returns
-        -------
-        list
-            A list of tuples containing (dpm_a, dpm_b, hold_a, hold_b, mono)
         """
 
-        state = (ctypes.c_float * (5 * (end - start + 1)))()
-        self.lib_zynmixer.getDpmStates(start, end, state)
-        result = []
-        offset = 0
-        for channel in range(start, end + 1):
-            l = []
-            for i in range(4):
-                l.append(state[offset])
-                offset += 1
-            l.append(state[offset] != 0.0)
-            offset += 1
-            result.append(l)
-        return result
+        self.lib_zynmixer.getDpmStates(count, self.dpm)
 
-    def enable_dpm(self, start, end, enable):
+    def enable_dpm(self, enable):
         """
-        Enable or disable peak programme meter of a range of mixer strips
+        Enable or disable peak programme meter
 
         Parameters
         ----------
-        start : int
-            Index of the first mixer strip
-        end : int
-            Index of the last mixer strip
         enable : bool
             True to enable DPM, False to disable
+        Note: Main mixbus is always enabled
         """
 
-        if start is None or end is None:
-            return
-        self.lib_zynmixer.enableDpm(start, end, enable, int(enable))
+        self.lib_zynmixer.enableDpm(int(enable))
 
     # Function to add OSC client registration
     # client: IP address of OSC client

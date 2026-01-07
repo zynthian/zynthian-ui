@@ -4,7 +4,7 @@
  *
  * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019-2024 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2026 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -356,10 +356,10 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->dpmB *= g_fDpmDecay;
             }
         } else if (strip->enable_dpm) {
-            strip->dpmA  = -200.0;
-            strip->dpmB  = -200.0;
-            strip->holdA = -200.0;
-            strip->holdB = -200.0;
+            strip->dpmA  = 0.0f;
+            strip->dpmB  = 0.0f;
+            strip->holdA = 0.0f;
+            strip->holdB = 0.0f;
         }
     }
 
@@ -722,7 +722,7 @@ void reset(uint8_t channel) {
 
 float getDpm(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return 0.0f;
+        return -200.0f;
     if (leg)
         return convertToDBFS(g_channelStrips[channel]->dpmB);
     return convertToDBFS(g_channelStrips[channel]->dpmA);
@@ -730,49 +730,45 @@ float getDpm(uint8_t channel, uint8_t leg) {
 
 float getDpmHold(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return 0.0f;
+        return -200.0f;
     if (leg)
         return convertToDBFS(g_channelStrips[channel]->holdB);
     return convertToDBFS(g_channelStrips[channel]->holdA);
 }
 
-void getDpmStates(uint8_t start, uint8_t end, float* values) {
-    if (start > end) {
-        uint8_t tmp = start;
-        start       = end;
-        end         = tmp;
-    }
-    uint8_t count = end - start + 1;
-    while (count--) {
-        *(values++) = getDpm(start, 0);
-        *(values++) = getDpm(start, 1);
-        *(values++) = getDpmHold(start, 0);
-        *(values++) = getDpmHold(start, 1);
-        *(values++) = getMono(start);
-        ++start;
+void getDpmStates(uint8_t count, dpm_struct* values) {
+    if (count >= MAX_CHANNELS)
+        count = MAX_CHANNELS - 1;
+    for (uint8_t i = 0; i < count; ++i) {
+        if (i < g_lastStrip) {
+            values[i].a = getDpm(i, 0);
+            values[i].b = getDpm(i, 1);
+            values[i].aHold = getDpmHold(i, 0);
+            values[i].bHold = getDpmHold(i, 1);
+            values[i].mono = getMono(i);
+        } else {
+            memset(values + i, 0, sizeof(dpm_struct));
+        }
     }
 }
 
-void enableDpm(uint8_t start, uint8_t end, uint8_t enable) {
+void enableDpm(uint8_t enable) {
     struct channel_strip* pChannel;
-    if (start > end) {
-        uint8_t tmp = start;
-        start       = end;
-        end         = tmp;
-    }
-    if (start >= MAX_CHANNELS)
-        start = MAX_CHANNELS - 1;
-    if (end >= MAX_CHANNELS)
-        end = MAX_CHANNELS - 1;
-    for (uint8_t chan = start; chan <= end; ++chan) {
+    for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         if (g_channelStrips[chan] == NULL)
             continue;
+#ifdef MIXBUS
+        if (chan == 0)
+            g_channelStrips[chan]->enable_dpm = 1;
+        else
+#endif
         g_channelStrips[chan]->enable_dpm = enable;
-        if (g_channelStrips[chan] == 0) {
-            g_channelStrips[chan]->dpmA  = 0;
-            g_channelStrips[chan]->dpmB  = 0;
-            g_channelStrips[chan]->holdA = 0;
-            g_channelStrips[chan]->holdB = 0;
+        // Silence disabled DPMs
+        if (!g_channelStrips[chan]->enable_dpm) {
+            g_channelStrips[chan]->dpmA  = 0.0f;
+            g_channelStrips[chan]->dpmB  = 0.0f;
+            g_channelStrips[chan]->holdA = 0.0f;
+            g_channelStrips[chan]->holdB = 0.0f;
         }
     }
 }
@@ -830,17 +826,17 @@ int8_t addStrip() {
         strip->normalise  = 0;
         strip->inRouted   = 0;
         strip->outRouted  = 0;
-        strip->enable_dpm = 0;
+        strip->enable_dpm = 1;
         for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
             strip->send[send] = 0.0;
             strip->sendMode[send] = 0;
         }
-        strip->dpmA = strip->holdA = 0.0;
-        strip->dpmB = strip->holdB = 0.0;
-        strip->dpmAlast  = 100.0;
-        strip->dpmBlast  = 100.0;
-        strip->holdAlast = 100.0;
-        strip->holdBlast = 100.0;
+        strip->dpmA = strip->holdA = 0.0f;
+        strip->dpmB = strip->holdB = 0.0f;
+        strip->dpmAlast  = 100.0f;
+        strip->dpmBlast  = 100.0f;
+        strip->holdAlast = 100.0f;
+        strip->holdBlast = 100.0f;
         pthread_mutex_lock(&mutex);
         g_channelStrips[chan] = strip;
         pthread_mutex_unlock(&mutex);
@@ -951,6 +947,8 @@ uint8_t getSendCount() {
 
 uint8_t getMaxChannels() { return MAX_CHANNELS; }
 
+uint8_t getLastChannel() { return g_lastStrip; }
+
 int addOscClient(const char* client) {
     for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
         if (g_oscClient[i].sin_addr.s_addr != 0)
@@ -975,10 +973,10 @@ int addOscClient(const char* client) {
                 }
             }
 #endif
-            g_channelStrips[chan]->dpmAlast  = 100.0;
-            g_channelStrips[chan]->dpmBlast  = 100.0;
-            g_channelStrips[chan]->holdAlast = 100.0;
-            g_channelStrips[chan]->holdBlast = 100.0;
+            g_channelStrips[chan]->dpmAlast  = 100.0f;
+            g_channelStrips[chan]->dpmBlast  = 100.0f;
+            g_channelStrips[chan]->holdAlast = 100.0f;
+            g_channelStrips[chan]->holdBlast = 100.0f;
         }
         g_bOsc = 1;
         return i;

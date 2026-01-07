@@ -428,10 +428,8 @@ class zynthian_gui:
                         logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
                         return
                 self.osc_clients[src.hostname] = monotonic()
-                self.state_manager.zynmixer_chan.enable_dpm(
-                    0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, True)
-                self.state_manager.zynmixer_bus.enable_dpm(
-                    1, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, True)
+                self.state_manager.zynmixer_chan.enable_dpm(True)
+                self.state_manager.zynmixer_bus.enable_dpm(True)
             else:
                 mixer, param = part2.split("/")
                 if mixer == "bus":
@@ -2758,10 +2756,8 @@ class zynthian_gui:
                         pass
 
             if not self.osc_clients and self.current_screen != "mixer":
-                self.state_manager.zynmixer_chan.enable_dpm(
-                    0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
-                self.state_manager.zynmixer_bus.enable_dpm(
-                    0, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, False)
+                self.state_manager.zynmixer_chan.enable_dpm(False)
+                self.state_manager.zynmixer_bus.enable_dpm(False)
 
             # Poll
             zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)

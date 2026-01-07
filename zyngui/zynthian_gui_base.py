@@ -633,8 +633,8 @@ class zynthian_gui_base(tkinter.Frame):
     def init_dpmeter(self):
         width = int(self.status_l - 2 * self.status_rh - 1)
         height = int(self.status_h / 4 - 2)
-        self.dpm_a = zynthian_gui_dpm(0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
-        self.dpm_b = zynthian_gui_dpm(1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
+        self.dpm_a = zynthian_gui_dpm(self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
+        self.dpm_b = zynthian_gui_dpm(self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 
     def refresh_status(self):
         if self.shown:
@@ -652,9 +652,10 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_canvas.itemconfigure(
                         'status_dpm', state=tkinter.NORMAL)
             if not mute and self.dpm_a:
-                state = self.zyngui.state_manager.zynmixer_bus.get_dpm_states(0, 0)[0]
-                self.dpm_a.refresh(state[0], state[2], state[4])
-                self.dpm_b.refresh(state[1], state[3], state[4])
+                self.zyngui.state_manager.zynmixer_bus.update_dpm_states(1)
+                dpm = self.zyngui.state_manager.zynmixer_bus.dpm[0]
+                self.dpm_a.refresh(dpm.a, dpm.a_hold, dpm.mono)
+                self.dpm_b.refresh(dpm.b, dpm.b_hold, dpm.mono)
 
             # status['xrun'] = True;
 

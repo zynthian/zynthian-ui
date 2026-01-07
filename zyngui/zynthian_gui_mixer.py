@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Audio Mixer
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -310,7 +310,10 @@ class zynthian_gui_mixer_strip():
         self.dragging = False
 
         # Digital Peak Meter (DPM) parameters
-        self.dpm_width = int(self.width / 13)  # Width of each DPM
+        if zynthian_gui_config.enable_dpm or self.chain.chain_id == 0:
+            self.dpm_width = int(self.width / 13)  # Width of each DPM
+        else:
+            self.dpm_width = 0
         self.dpm_length = self.gui_mixer.fader_height
         self.dpm_y0 = self.fader_y
         self.dpm_a_x0 = x + self.width - self.dpm_width * 2 - 2
@@ -348,9 +351,13 @@ class zynthian_gui_mixer_strip():
             self.fader_horizontal = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal",), state=tkinter.HIDDEN)
 
             # DPM
+            if self.chain.chain_id:
+                dpm_tags = ("dpm")
+            else:
+                dpm_tags = ("dpm_0")
             self.dpm_bg = self.canvas.create_rectangle(self.dpm_a_x0, self.dpm_y0, self.x + self.width + self.dpm_width, self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
-            self.dpm_a = zynthian_gui_dpm(0, self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
-            self.dpm_b = zynthian_gui_dpm(1, self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+            self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags)
+            self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags)
 
         # Chain title
         self.fader_text = self.canvas.create_text(x, self.legend_y - 2, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
@@ -431,13 +438,13 @@ class zynthian_gui_mixer_strip():
         except:
             pass # meters not yet created?
 
-    def draw_dpm(self, state):
+    def draw_dpm(self):
         """ Function to draw the DPM level meter for a mixer strip
-        state = [dpm_a, dpm_b, hold_a, hold_b, mono]
         """
 
-        self.dpm_a.refresh(state[0], state[2], state[4])
-        self.dpm_b.refresh(state[1], state[3], state[4])
+        dpm = self.chain.zynmixer_proc.zynmixer.dpm[self.chain.zynmixer_proc.mixer_chan]
+        self.dpm_a.refresh(dpm.a, dpm.a_hold, dpm.mono)
+        self.dpm_b.refresh(dpm.b, dpm.b_hold, dpm.mono)
 
     def draw_balance(self):
         """
@@ -821,8 +828,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
         self.pending_refresh_queue = set()
 
-        self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
-
         self.status_tempo = self.status_canvas.create_text(
             int(self.status_l - self.status_fs * 3.5), 2,
             anchor=tkinter.NE,
@@ -1068,12 +1073,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         self.set_title()
         if zynthian_gui_config.enable_dpm:
-            self.state_manager.zynmixer_chan.enable_dpm(0, self.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, True)
-            self.state_manager.zynmixer_bus.enable_dpm(0, self.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, True)
+            self.state_manager.zynmixer_chan.enable_dpm(True)
+            self.state_manager.zynmixer_bus.enable_dpm(True)
+            self.left_canvas.itemconfig("dpm", state=tkinter.NORMAL)
+            self.right_canvas.itemconfig("dpm", state=tkinter.NORMAL)
         else:
-            # Reset all DPM which will not be updated by refresh
-            for strip in self.chain_strips:
-                strip.draw_dpm([-200, -200, -200, -200, False])
+            # Hide DPMs
+            self.left_canvas.itemconfig("dpm", state=tkinter.HIDDEN)
+            self.right_canvas.itemconfig("dpm", state=tkinter.HIDDEN)
 
         self.setup_zynpots()
         if not self.shown:
@@ -1097,10 +1104,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         if self.shown:
             if not self.zyngui.osc_clients:
-                self.zyngui.state_manager.zynmixer_chan.enable_dpm(
-                    0, self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1, False)
-                self.zyngui.state_manager.zynmixer_bus.enable_dpm(
-                    1, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1, False)
+                self.zyngui.state_manager.zynmixer_chan.enable_dpm(False)
+                self.zyngui.state_manager.zynmixer_bus.enable_dpm(False)
             zynsigman.unregister(
                 zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.unregister(
@@ -1139,21 +1144,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             super().refresh_status()
             if zynthian_gui_config.enable_dpm:
                 # Update all chains DPM
-                chan_states = self.zyngui.state_manager.zynmixer_chan.get_dpm_states(
-                    0, self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1)
-                mixbus_states = self.zyngui.state_manager.zynmixer_bus.get_dpm_states(
-                    0, self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1)
-                for strip in self.chain_strips:
-                    if zynthian_gui_config.enable_dpm:
+                #TODO: Optimise - this is updating 200 DPM states!
+                self.zyngui.state_manager.zynmixer_chan.update_dpm_states(self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1)
+                self.zyngui.state_manager.zynmixer_bus.update_dpm_states(self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1)
+                if zynthian_gui_config.enable_dpm:
+                    for strip in self.chain_strips:
                         if strip.chain.is_audio():
-                            if strip.chain.zynmixer_proc.zynmixer == self.zyngui.state_manager.zynmixer_chan:
-                                strip.draw_dpm(chan_states[strip.chain.zynmixer_proc.mixer_chan])
-                            else:
-                                strip.draw_dpm(mixbus_states[strip.chain.zynmixer_proc.mixer_chan])
+                            strip.draw_dpm()
             else:
                 # Update main chain DPM
-                state = self.state_manager.zynmixer_bus.get_dpm_states(0, 0)[0]
-                self.chain_strips[-1].draw_dpm(state)
+                self.state_manager.zynmixer_bus.update_dpm_states(1)
+                self.chain_strips[-1].draw_dpm()
             if self.beat != self.zynseq.beat:
                 self.beat = self.zynseq.beat
                 self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.bpb}/4")

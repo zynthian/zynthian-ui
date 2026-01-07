@@ -30,10 +30,9 @@ from zyngui.zynthian_gui_config import color_panel_bg
 
 class zynthian_gui_dpm():
 
-    def __init__(self, channel, parent, x0, y0, width, height, vertical=True, tags=()):
+    def __init__(self, parent, x0, y0, width, height, vertical=True, tags=()):
         """Initialise digital peak meter
 
-        channel : Audio channel (0=A/Left, 1=B/Right)
         parent : Frame object within which to draw meter
         x0 : X coordinate of top left corner
         y0 : Y coordinate of top left corner
@@ -44,7 +43,6 @@ class zynthian_gui_dpm():
         fill: Optional background colour (default: None / transparent)
         """
 
-        self.channel = channel
         self.parent = parent
         self.vertical = vertical
         self.tags = tags

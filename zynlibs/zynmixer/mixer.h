@@ -26,6 +26,14 @@
 #include <jack/jack.h>
 #include <stdint.h> //provides fixed width integer types
 
+typedef struct {
+    float a;
+    float b;
+    float aHold;
+    float bHold;
+    uint8_t mono;
+} dpm_struct;
+
 //-----------------------------------------------------------------------------
 // Library Initialization
 //-----------------------------------------------------------------------------
@@ -191,19 +199,17 @@ float getDpm(uint8_t channel, uint8_t leg);
 float getDpmHold(uint8_t channel, uint8_t leg);
 
 /** @brief  Get DPM state for a set of channels
- *   @param  start Index of the first channel
- *   @param  end Index of the last channel
- *   @param  values Pointer to array of floats to hold DPM, hold, and mono status for each channel
+ *  @param  count Quantity of channels
+ *  @param  values Pointer to array of structure to hold DPM, hold, and mono status for each channel
  */
-void getDpmStates(uint8_t start, uint8_t end, float* values);
+void getDpmStates(uint8_t count, dpm_struct* values);
 
 /** @brief  Enable / disable peak programme metering
- *   @param  start Index of first channel
- *   @param  end Index of last channel
- *   @param  enable 1 to enable, 0 to disable
- *   @note   DPM increase CPU processing so may be disabled if this causes issues (like xruns)
+ *   @param enable 1 to enable, 0 to disable
+ *   @note  DPM increase CPU processing so may be disabled if this causes issues (like xruns)
+ *   @note  Main mixbus is always enabled 
  */
-void enableDpm(uint8_t start, uint8_t end, uint8_t enable);
+void enableDpm(uint8_t enable);
 
 /** Add a channel strip
  *  @retval int8_t Index of channel strip or -1 on failure
@@ -231,6 +237,11 @@ uint8_t removeSend(uint8_t send);
  *   @retval size_t Maximum quantity of channels
  */
 uint8_t getMaxChannels();
+
+/** @brief Get index of highest numbered channel
+ *   @retval size_t Index of last channel
+ */
+uint8_t getLastChannel();
 
 /** @brief Get quantity of effect sends
  *  @retval uint8_t Quantity of effect sends
