@@ -1197,7 +1197,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             strip = None
         if not strip or not strip.chain or strip.chain.zynmixer_proc.mixer_chan is None:
             return
-        self.pending_refresh_queue.add((strip, symbol))
+        if symbol == "solo" and strip.chain.chain_id == 0:
+            for s in self.chain_strips:
+                self.pending_refresh_queue.add((s, symbol))
+        else:
+            self.pending_refresh_queue.add((strip, symbol))
         if symbol == "level":
             #value = strip.zctrls["level"].value
             if value > 0:
