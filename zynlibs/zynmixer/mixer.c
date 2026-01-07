@@ -736,8 +736,8 @@ float getDpmHold(uint8_t channel, uint8_t leg) {
     return convertToDBFS(g_channelStrips[channel]->holdA);
 }
 
-void getDpmStates(uint8_t count, dpm_struct* values) {
-    if (count >= MAX_CHANNELS)
+void updateDpmStates(dpm_struct* values, uint8_t count) {
+    if (count == 0 || count >= MAX_CHANNELS)
         count = MAX_CHANNELS - 1;
     for (uint8_t i = 0; i < count; ++i) {
         if (i < g_lastStrip) {

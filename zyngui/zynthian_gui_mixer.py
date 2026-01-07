@@ -1144,9 +1144,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             super().refresh_status()
             if zynthian_gui_config.enable_dpm:
                 # Update all chains DPM
-                #TODO: Optimise - this is updating 200 DPM states!
-                self.zyngui.state_manager.zynmixer_chan.update_dpm_states(self.zyngui.state_manager.zynmixer_chan.MAX_NUM_CHANNELS - 1)
-                self.zyngui.state_manager.zynmixer_bus.update_dpm_states(self.zyngui.state_manager.zynmixer_bus.MAX_NUM_CHANNELS - 1)
+                self.zyngui.state_manager.zynmixer_chan.update_dpm_states()
+                self.zyngui.state_manager.zynmixer_bus.update_dpm_states()
                 if zynthian_gui_config.enable_dpm:
                     for strip in self.chain_strips:
                         if strip.chain.is_audio():

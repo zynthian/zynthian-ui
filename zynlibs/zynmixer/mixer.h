@@ -198,11 +198,11 @@ float getDpm(uint8_t channel, uint8_t leg);
  */
 float getDpmHold(uint8_t channel, uint8_t leg);
 
-/** @brief  Get DPM state for a set of channels
- *  @param  count Quantity of channels
+/** @brief  Update DPM states
  *  @param  values Pointer to array of structure to hold DPM, hold, and mono status for each channel
+ *  @param  count Quantity of channels to update or 0 for all
  */
-void getDpmStates(uint8_t count, dpm_struct* values);
+void updateDpmStates(dpm_struct* values, uint8_t count);
 
 /** @brief  Enable / disable peak programme metering
  *   @param enable 1 to enable, 0 to disable

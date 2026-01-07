@@ -114,7 +114,7 @@ class ZynMixer():
             ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getDpmHold.restype = ctypes.c_float
 
-        self.lib_zynmixer.getDpmStates.argtypes = [ctypes.c_uint8, ctypes.POINTER(DPM)]
+        self.lib_zynmixer.updateDpmStates.argtypes = [ctypes.POINTER(DPM), ctypes.c_uint8]
 
         self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
 
@@ -609,60 +609,17 @@ class ZynMixer():
             return False
         return self.lib_zynmixer.getNormalise(channel) == 1
 
-    def get_dpm(self, channel, leg):
-        """
-        Gets peak programme level of a mixer strip
-
-        Parameters
-        ----------
-        channel : int
-            Index of the mixer strip
-        leg : int
-            0 for A-leg (left), 1 for B-leg (right)
-
-        Returns
-        -------
-        float
-            Peak programme level (dBFS)
-        """
-
-        if channel is None:
-            return
-        return self.lib_zynmixer.getDpm(channel, leg)
-
-    def get_dpm_holds(self, channel, leg):
-        """
-        Gets peak programme hold level of a mixer strip
-
-        Parameters
-        ----------
-        channel : int
-            Index of the mixer strip
-        leg : int
-            0 for A-Leg (left), 1 for B-leg (right)
-
-        Returns
-        -------
-        float
-            Peak progamme hold level (dBFS)
-        """
-
-        if channel is None:
-            return
-        return self.lib_zynmixer.getDpmHold(channel, leg)
-
-    def update_dpm_states(self, count):
+    def update_dpm_states(self, count=0):
         """
         Updates peak programme level state of a range of mixer strips
 
         Parameters
         ----------
         count : int
-            Quanity of mixer strips
-
+            Quantity of mixer strips (default: 0 for all)
         """
 
-        self.lib_zynmixer.getDpmStates(count, self.dpm)
+        self.lib_zynmixer.updateDpmStates(self.dpm, count)
 
     def enable_dpm(self, enable):
         """
