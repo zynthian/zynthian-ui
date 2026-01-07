@@ -1058,8 +1058,8 @@ const char* convertToJson(const char* filename) {
             fileRead8u(pFile); // No longer use trigger input
             fileRead8u(pFile); // No longer use trigger output
             fileRead8(pFile); // padding
-            fileRead8u(pFile); // No longer use vertical zoom
-            fileRead8u(pFile); // No longer use horizontal zoom
+            fileRead16u(pFile); // No longer use vertical zoom
+            fileRead16u(pFile); // No longer use horizontal zoom
             // printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
             if (nVersion > 8) {
@@ -1111,36 +1111,41 @@ const char* convertToJson(const char* filename) {
                     if (checkBlock(pFile, nBlockSize, 14))
                         break;
                 }
-                json eventj;
-                eventj.push_back(fileRead32(pFile)); // step
+                json jEvent;
+                jEvent.push_back(fileRead32(pFile)); // step
                 float fDuration, fOffset;
                 if (nVersion > 8) {
-                    eventj.push_back(fileReadBCD(pFile)); // offset
-                    eventj.push_back(fileReadBCD(pFile)); // duration
+                    jEvent.push_back(fileReadBCD(pFile)); // offset
+                    jEvent.push_back(fileReadBCD(pFile)); // duration
                     nBlockSize -= 4;
                 } else {
-                    eventj.push_back(0);
-                    eventj.push_back(float(fileRead16(pFile)) / 100 + fileRead16(pFile)); // fractional + integral (BCD)
+                    jEvent.push_back(0);
+                    jEvent.push_back(float(fileRead16(pFile)) / 100 + fileRead16(pFile)); // fractional + integral (BCD)
                 }
-                eventj.push_back(fileRead8u(pFile)); // command
-                eventj.push_back(fileRead8u(pFile)); // value 1 start
-                eventj.push_back(fileRead8u(pFile)); // value 2 start
-                eventj.push_back(fileRead8u(pFile)); // value 1 end
-                eventj.push_back(fileRead8u(pFile)); // value 2 end
+                jEvent.push_back(fileRead8u(pFile)); // command
+                jEvent.push_back(fileRead8u(pFile)); // value 1 start
+                jEvent.push_back(fileRead8u(pFile)); // value 2 start
+                jEvent.push_back(fileRead8u(pFile)); // value 1 end
+                jEvent.push_back(fileRead8u(pFile)); // value 2 end
                 if (nVersion > 7) {
-                    eventj.push_back(fileRead8u(pFile)); // stutter count
-                    eventj.push_back(fileRead8u(pFile)); // stutter duration
+                    jEvent.push_back(fileRead8u(pFile)); // stutter count
+                    jEvent.push_back(fileRead8u(pFile)); // stutter duration
                     nBlockSize -= 2;
+                } else {
+                    jEvent.push_back(0);
+                    jEvent.push_back(1);
                 }
                 if (nVersion > 8) {
-                    eventj.push_back(float(fileRead8u(pFile))); // play chance
+                    jEvent.push_back(float(fileRead8u(pFile))); // play chance
                     nBlockSize -= 1;
+                } else {
+                    jEvent.push_back(100);
                 }
                 fileRead8(pFile); // Padding
                 nBlockSize -= 14;
                 // printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end,
                 // nValue2start, nValue2end);
-                patj["events"].push_back(eventj);
+                patj["events"].push_back(jEvent);
             }
             j["patns"][std::to_string(nPattern)] = patj;
         } else if (memcmp(sHeader, "bank", 4) == 0) {
@@ -1251,13 +1256,13 @@ const char* convertToJson(const char* filename) {
                 for (uint32_t nEvent = 0; nEvent < nTimebaseEvents; ++nEvent) {
                     if (checkBlock(pFile, nBlockSize, 8))
                         break;
-                    json tbeventj;
-                    tbeventj["bar"] = fileRead16(pFile);
-                    tbeventj["tick"] = fileRead16(pFile);
-                    tbeventj["type"] = fileRead16(pFile);
-                    tbeventj["value"] = fileRead16(pFile);
+                    json tbjEvent;
+                    tbjEvent["bar"] = fileRead16(pFile);
+                    tbjEvent["tick"] = fileRead16(pFile);
+                    tbjEvent["type"] = fileRead16(pFile);
+                    tbjEvent["value"] = fileRead16(pFile);
                     nBlockSize -= 8;
-                    jSeq["timebase"].push_back(tbeventj);
+                    jSeq["timebase"].push_back(tbjEvent);
                     // printf("    Timebase event:%u at time %u\n", pSequence->)
                 }
                 if (nTracks == 1) {
@@ -1288,9 +1293,6 @@ const char* convertToJson(const char* filename) {
         }
     }
     fclose(pFile);
-    // printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(),
-    // filename);
-
     std::string json_str = j.dump();
     free(g_pState);
     g_pState = (char*)malloc(json_str.size() + 1);
@@ -1697,10 +1699,15 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                     jEvent["stutCnt"] = fileRead8u(pFile);
                     jEvent["stutDur"] = fileRead8u(pFile);
                     nBlockSize -= 2;
+                } else {
+                    jEvent.push_back(0);
+                    jEvent.push_back(1);
                 }
                 if (nVersion > 8) {
                     jEvent["chance"] = (float(fileRead8u(pFile)) / 100);
                     nBlockSize -= 1;
+                } else {
+                    jEvent.push_back(100);
                 }
                 fileRead8(pFile); // Padding
                 nBlockSize -= 14;
