@@ -376,6 +376,21 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     return 0;
 }
 
+void print_dpm_info(uint8_t chan) {
+    // Debug helper to print current DPM state
+    struct channel_strip* strip = g_channelStrips[chan];
+    if (strip)
+        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\nDamping period: %u\n",
+            strip->dpmA,
+            strip->dpmB,
+            strip->holdA,
+            strip->holdB,
+            strip->enable_dpm?"Enabled":"Disabled",
+            g_nHoldCount,
+            g_nDampingPeriod
+        );
+}
+
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
     pthread_mutex_lock(&mutex);
     for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
