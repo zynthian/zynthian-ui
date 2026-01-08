@@ -52,6 +52,7 @@ int g_sendEvents = 1;    // Set to 0 to exit event thread
 uint8_t g_sendCount = 0; // Quantity of effect sends
 uint8_t g_lastStrip = 1; // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1; // Highest index of any send (one-based)
+uint8_t g_solo      = 0; // Quantity of channels with solo asserted
 
 // Structure describing a channel strip
 struct channel_strip {
@@ -74,6 +75,7 @@ struct channel_strip {
     float holdBlast;       // Last peak hold level B-leg
     uint8_t mute;          // 1 if muted
     uint8_t mono;          // 1 if mono
+    uint8_t solo;          // 1 if solo
     uint8_t ms;            // 1 if MS decoding
     uint8_t phase;         // 1 if channel B phase reversed
     uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
@@ -215,7 +217,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
 
             // Calculate mute and target level and balance (that we will fade to over this cycle period to avoid abrupt change clicks)
             //!@todo Crossfade send levels
-            if (strip->mute) {
+            if (strip->mute || g_solo && !strip->solo) {
                 strip->level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
                 reqLevelA             = 0.0;
                 reqLevelB             = 0.0;
@@ -604,6 +606,50 @@ void toggleMute(uint8_t channel) {
         setMute(channel, 1);
 }
 
+void setSolo(uint8_t channel, uint8_t solo) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return;
+    solo = solo?1:0;
+    if (g_channelStrips[channel]->solo == solo)
+        return;
+    g_channelStrips[channel]->solo = solo;
+    if (solo)
+        ++g_solo;
+    else
+        --g_solo;
+    sprintf(g_oscpath, "/mixer/channel/%d/solo", channel);
+    sendOscInt(g_oscpath, solo);
+}
+
+uint8_t getSolo(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return 0;
+    return g_channelStrips[channel]->solo;
+}
+
+void toggleSolo(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return;
+    uint8_t solo;
+    solo = g_channelStrips[channel]->mute;
+    if (solo)
+        setSolo(channel, 0);
+    else
+        setSolo(channel, 1);
+}
+
+void clearSolo() {
+    for (uint8_t channel = 0; channel < MAX_CHANNELS; ++channel) {
+        if (g_channelStrips[channel])
+            g_channelStrips[channel]->solo = 0;
+    }
+    g_solo = 0;
+}
+
+uint8_t getGlobalSolo() {
+    return g_solo;
+}
+
 void setPhase(uint8_t channel, uint8_t phase) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
@@ -836,6 +882,7 @@ int8_t addStrip() {
         strip->reqbalance = 0.0;
         strip->mute       = 0;
         strip->mono       = 0;
+        strip->solo       = 0;
         strip->ms         = 0;
         strip->phase      = 0;
         strip->normalise  = 0;

@@ -88,7 +88,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
-                    'value': processor.chain.is_solo(),
+                    'value': processor.zynmixer.get_solo(processor.mixer_chan),
                     'processor': processor,
                     'labels': ['off', 'on']
                 }),
@@ -170,21 +170,14 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 #TODO: Use jackname to arm
                 self.state_manager.audio_recorder.arm(zctrl.processor, zctrl.value)
             elif zctrl.symbol == "solo":
-                if zctrl.processor.chain_id == 0 and zctrl.value == 1:
-                    for processor in self.processors:
-                        processor.controllers_dict["solo"].set_value(0, False)
-                        zynautoconnect.solo(processor.chain_id, 0)
-                    try:
-                        for processor in self.state_manager.chain_manager.zyngines["MI"].processors:
-                            processor.controllers_dict["solo"].set_value(0, False)
-                            zynautoconnect.solo(processor.chain_id, 0)
-                    except:
-                        pass
+                if zctrl.processor.chain_id == 0:
+                    for chain in self.state_manager.chain_manager.chains.values():
+                        if chain.zynmixer_proc:
+                            chain.zynmixer_proc.controllers_dict["solo"].set_value(0)
                 else:
-                    zynautoconnect.solo(zctrl.processor.chain_id, zctrl.value)
-                zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
-                               chan=zctrl.processor.mixer_chan, symbol="solo", value=zctrl.value,
-                               mixbus=(zctrl.processor.eng_code == "MR"))
+                    getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
+                glob_solo = self.state_manager.zynmixer_chan.get_global_solo()
+                self.state_manager.zynmixer_bus.set_solo(0, glob_solo)
             else:
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
         except Exception as e:
