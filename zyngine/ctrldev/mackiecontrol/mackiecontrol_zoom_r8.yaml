@@ -1,13 +1,10 @@
-
-
 device_settings:
-  name: Mackie Universal
+  name: Zoom R8
   number_of_strips: 8
-  masterfader: True
+  masterfader: true
   masterfader_fader_num: 9
-  xtouch: False
-  touchsensefaders: True
-
+  xtouch: false
+  touchsensefaders: false
 ccnum_buttons:
   0:
     name: rec_0
