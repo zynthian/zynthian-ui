@@ -916,14 +916,18 @@ def audio_autoconnect():
 
     try:
         # Connect metronome to aux
-        required_routes[f"zynmixer_bus:input_00a"].add("zynseq:metronome")
-        required_routes[f"zynmixer_bus:input_00b"].add("zynseq:metronome")
+        required_routes["zynmixer_bus:input_01a"].add("zynseq:metronome")
+        required_routes["zynmixer_bus:input_01b"].add("zynseq:metronome")
+
+        # Connect solo trunk
+        required_routes[f"zynmixer_bus:solo_a"].add("zynmixer_chan:solo_a")
+        required_routes[f"zynmixer_bus:solo_b"].add("zynmixer_chan:solo_b")
 
         # Connect global audio player to aux
         if state_manager.audio_player and state_manager.audio_player.jackname:
             ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
-            required_routes[f"zynmixer_bus:input_00a"].add(ports[0].name)
-            required_routes[f"zynmixer_bus:input_00b"].add(ports[1].name)
+            required_routes["zynmixer_bus:input_01a"].add(ports[0].name)
+            required_routes["zynmixer_bus:input_01b"].add(ports[1].name)
     except Exception as e:
         logging.warning(e)
 
@@ -950,7 +954,7 @@ def audio_autoconnect():
 
     # Enable zynmixer internal normalised routes and remove corresponding jack graph connections
     if "zynmixer_bus:input_00a" in required_routes and "zynmixer_bus:input_00b" in required_routes:
-        for chan in range(state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
+        for chan in range(2, state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
             bus_route_a = f"zynmixer_bus:output_{chan:02d}a"
             bus_route_b = f"zynmixer_bus:output_{chan:02d}b"
             if bus_route_a in required_routes["zynmixer_bus:input_00a"] and bus_route_b in required_routes["zynmixer_bus:input_00b"]:

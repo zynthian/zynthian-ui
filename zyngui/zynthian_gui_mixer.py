@@ -662,8 +662,6 @@ class zynthian_gui_mixer_strip():
         """
         if self.chain.zynmixer_proc:
             self.chain.zynmixer_proc.controllers_dict['solo'].set_value(value)
-            if self.chain.chain_id == 0:
-                pass #TODO: Refresh other solo buttons
 
     def toggle_mute(self):
         """ Function to toggle mute
