@@ -136,8 +136,11 @@ class zynthian_engine_jalv(zynthian_engine):
             'panning': [10, 64],
             'expression': [11, 127],
             'modulation wheel': [1, 0],
+            'expression': [11, 64],
             'filter cutoff': [74, 64],
-            'filter resonance': [71, 64]
+            'filter resonance': [71, 64],
+            'reverb': [91, 127],
+            'chorus': [93, 127]
         },
         "ctrl_screens": {
             '_default_synth': ['modulation wheel'],
@@ -166,6 +169,7 @@ class zynthian_engine_jalv(zynthian_engine):
             'synthv1': [],
             'Surge': ['modulation wheel'],
             'padthv1': [],
+            'VirtualJV': ['modulation wheel', 'expression', 'reverb', 'chorus'],
             'Vex': [],
             'amsynth': ['modulation wheel'],
             'JC303': [],
