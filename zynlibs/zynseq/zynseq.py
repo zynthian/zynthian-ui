@@ -433,6 +433,13 @@ class zynseq(zynthian_engine):
     def refresh_state(self, send=True):
         self.state = loads(self.libseq.getState().decode("utf-8"))
         self.libseq.freeState()
+        try:
+            self.state["scenes"][0]["phrases"][0]
+        except:
+            logging.warning("Invalid zynseq - rebuilding default")
+            self.libseq.reset()
+            self.state = loads(self.libseq.getState().decode("utf-8"))
+            self.libseq.freeState()
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
         try:
             if self.state["tempo"] != self.zctrl_tempo.value:
