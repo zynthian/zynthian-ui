@@ -899,21 +899,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if zynthian_gui_config.visible_mixer_strips < 1:
             # Automatic sizing if not defined in config
             if self.width <= 400:
-                visible_chains = 6
+                self.visible_chains = 6
             elif self.width <= 600:
-                visible_chains = 8
+                self.visible_chains = 8
             elif self.width <= 800:
-                visible_chains = 10
+                self.visible_chains = 10
             elif self.width <= 1024:
-                visible_chains = 12
+                self.visible_chains = 12
             elif self.width <= 1280:
-                visible_chains = 14
+                self.visible_chains = 14
             else:
-                visible_chains = 16
+                self.visible_chains = 16
         else:
-            visible_chains = zynthian_gui_config.visible_mixer_strips
+            self.visible_chains = zynthian_gui_config.visible_mixer_strips
 
-        self.strip_width = self.width / (visible_chains + 0.2)
+        self.strip_width = self.width / (self.visible_chains + 0.2)
         self.button_height = int(self.height * 0.07)
         self.legend_height = int(self.height * 0.08)
         self.balance_height = int(self.height * 0.03)
@@ -1424,7 +1424,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 send_sig = False
                 if target_x is not None:
                     self.left_canvas.xview_moveto(target_x)
-                    left_chain = max(0, int(target_x * self.scrollable_strips + 0.4))
+                    left_chain = min(self.scrollable_strips - self.visible_chains, max(0, int(target_x * self.scrollable_strips + 0.4)))
                     if self._left_chain != left_chain:
                         self._left_chain = left_chain
                         send_sig = True
