@@ -55,8 +55,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
         # ['expression', 11, 127],
         ['volume', '/part$i/Pvolume', 96, 127, {'midi_cc': 7}],
         ['panning', '/part$i/Ppanning', 64],
-        ['filter cutoff', 74, 64],
-        ['filter resonance', 71, 64],
+        ['filter cutoff', 74, 64, 127, {'filter': "cutoffFrequency"}],
+        ['filter resonance', 71, 64, 127, {'filter': "resonance"}],
 
         ['voice limit', '/part$i/Pvoicelimit', 0, 60],
         ['drum mode', '/part$i/Pdrummode', 'off', 'off|on'],
