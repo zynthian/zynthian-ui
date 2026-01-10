@@ -478,7 +478,6 @@ class zynthian_chain_manager:
                 if len(parts) > 1:
                     try:
                         parts = parts[1].split(" ")
-                        id = int(parts[0])
                         parts[0] = str(send)
                         chain.title = f"Aux Mixbus {' '.join(parts)}"
                     except:
@@ -1191,21 +1190,21 @@ class zynthian_chain_manager:
                 if page.startswith("send "):
                     processor.ctrl_screens_dict.pop(page)
             # Create each send page
-            for send_idx, chain_id in enumerate(mixbus_chain_ids):
-                if chain_id == 0:  # Exclude main mixbus
+            for send_idx, send_chain_id in enumerate(mixbus_chain_ids):
+                if send_chain_id == 0:  # Exclude main mixbus
                     continue
-                chain = self.chains[chain_id]
-                level_symbol = f"send_{chain_id}_level"
-                mode_symbol = f"send_{chain_id}_mode"
+                send_chain = self.chains[send_chain_id]
+                level_symbol = f"send_{send_chain_id}_level"
+                mode_symbol = f"send_{send_chain_id}_mode"
                 name_prefix = f"send {send_idx + 1}"
                 # Generate a decent title for the ctrl_screen
                 ctrl_screen_title = name_prefix
-                if chain.title:
-                    chain_name = chain.title
+                if send_chain.title:
+                    send_chain_name = send_chain.title
                 else:
-                    chain_name = chain.get_processors("Audio Effect")[0].get_name()
-                if chain_name:
-                    ctrl_screen_title += f" - {chain_name}"
+                    send_chain_name = send_chain.get_processors("Audio Effect")[0].get_name()
+                if send_chain_name:
+                    ctrl_screen_title += f" - {send_chain_name}"
                 # Create or update send controllers
                 if level_symbol in processor.controllers_dict:
                     processor.controllers_dict[level_symbol].name = f"{name_prefix} level"
@@ -1213,7 +1212,7 @@ class zynthian_chain_manager:
                     processor.controllers_dict[mode_symbol].name = f"{name_prefix} mode"
                     processor.controllers_dict[mode_symbol].short_name = f"{name_prefix} mode"
                 else:
-                    send = chain.zynmixer_proc.mixer_chan - 1
+                    send = send_chain.zynmixer_proc.mixer_chan - 2 # FX returns start at 2, after main and aux
                     processor.controllers_dict[level_symbol] = zynthian_controller(processor.engine, level_symbol, {
                         'name': f'{name_prefix} level',
                         'value_max': 1.0,

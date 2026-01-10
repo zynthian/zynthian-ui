@@ -494,10 +494,6 @@ class zynthian_chain:
 
         return self.zynmixer_proc and not self.synth_slots and self.zynmixer_proc.eng_code == "MI"
 
-    def is_solo(self):
-        """Returns True if chain is audio and solo in zynmixer"""
-        return zynautoconnect.is_solo(self.chain_id)
-
     def set_solo(self, value):
         """Sets solo state in zynmixer, if audio chain"""
         try:

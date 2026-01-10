@@ -2755,7 +2755,7 @@ class zynthian_gui:
                     except:
                         pass
 
-            if not self.osc_clients and self.current_screen != "mixer":
+            if not self.osc_clients and self.current_screen not in ("root", "mixer", "launcher"):
                 self.state_manager.zynmixer_chan.enable_dpm(False)
                 self.state_manager.zynmixer_bus.enable_dpm(False)
 

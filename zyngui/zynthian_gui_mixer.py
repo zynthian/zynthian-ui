@@ -494,7 +494,12 @@ class zynthian_gui_mixer_strip():
         txcolor = self.gui_mixer.button_txcol
         font = self.gui_mixer.font
         text = "S"
-        if self.chain.zynmixer_proc.controllers_dict["solo"].value:
+        if self.chain.zynmixer_proc.eng_code == "MR" and self.chain.chain_id == 0:
+            # Main mixbus so use the global solo state
+            solo = self.state_manager.zynmixer_bus.get_global_solo() > 0
+        else:
+            solo = self.chain.zynmixer_proc.controllers_dict["solo"].value
+        if solo:
             bgcolor = self.gui_mixer.solo_color
         else:
             bgcolor = self.gui_mixer.button_bgcol
@@ -657,8 +662,6 @@ class zynthian_gui_mixer_strip():
         """
         if self.chain.zynmixer_proc:
             self.chain.zynmixer_proc.controllers_dict['solo'].set_value(value)
-            if self.chain.chain_id == 0:
-                pass #TODO: Refresh other solo buttons
 
     def toggle_mute(self):
         """ Function to toggle mute

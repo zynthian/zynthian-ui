@@ -93,7 +93,6 @@ hw_midi_src_ports = []
 # List of hardware MIDI destination ports (including network, aubionotes, etc.)
 hw_midi_dst_ports = []
 hw_audio_dst_ports = []			# List of physical audio output ports
-solo_chain_ids = []             # List of chain ids for chains with solo enabled
 sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
 sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
 alsa_audio_srcs = {}			# Map of alsa_in processes, indexed by alsa device name
@@ -405,22 +404,6 @@ def get_sidechain_portnames(jackname=None):
         except:
             pass
     return result
-
-def solo(chain_id, value):
-    global solo_chain_ids
-    if chain_id == 0:
-        solo_chain_ids = []
-    elif value:
-        if chain_id not in solo_chain_ids:
-            solo_chain_ids.append(chain_id)
-            request_audio_connect(True)
-    else:
-        if chain_id in solo_chain_ids:
-            solo_chain_ids.remove(chain_id)
-            request_audio_connect(True)
-
-def is_solo(chain_id):
-    return chain_id in solo_chain_ids
 
 # ------------------------------------------------------------------------------
 
@@ -891,8 +874,6 @@ def audio_autoconnect():
         if not chain.is_audio():
             continue
         routes = chain_manager.get_chain_audio_routing(chain_id)
-        #if chain_id == 0 and solo_chain_ids:
-        #    routes["zynmixer_bus:input_00"] = solo_chain_ids.copy()
         for dst in list(routes):
             if isinstance(dst, int):
                 # Destination is a chain
@@ -935,14 +916,18 @@ def audio_autoconnect():
 
     try:
         # Connect metronome to aux
-        required_routes[f"zynmixer_bus:input_00a"].add("zynseq:metronome")
-        required_routes[f"zynmixer_bus:input_00b"].add("zynseq:metronome")
+        required_routes["zynmixer_bus:input_01a"].add("zynseq:metronome")
+        required_routes["zynmixer_bus:input_01b"].add("zynseq:metronome")
+
+        # Connect solo trunk
+        required_routes[f"zynmixer_bus:solo_a"].add("zynmixer_chan:solo_a")
+        required_routes[f"zynmixer_bus:solo_b"].add("zynmixer_chan:solo_b")
 
         # Connect global audio player to aux
         if state_manager.audio_player and state_manager.audio_player.jackname:
             ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
-            required_routes[f"zynmixer_bus:input_00a"].add(ports[0].name)
-            required_routes[f"zynmixer_bus:input_00b"].add(ports[1].name)
+            required_routes["zynmixer_bus:input_01a"].add(ports[0].name)
+            required_routes["zynmixer_bus:input_01b"].add(ports[1].name)
     except Exception as e:
         logging.warning(e)
 
@@ -969,7 +954,7 @@ def audio_autoconnect():
 
     # Enable zynmixer internal normalised routes and remove corresponding jack graph connections
     if "zynmixer_bus:input_00a" in required_routes and "zynmixer_bus:input_00b" in required_routes:
-        for chan in range(state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
+        for chan in range(2, state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
             bus_route_a = f"zynmixer_bus:output_{chan:02d}a"
             bus_route_b = f"zynmixer_bus:output_{chan:02d}b"
             if bus_route_a in required_routes["zynmixer_bus:input_00a"] and bus_route_b in required_routes["zynmixer_bus:input_00b"]:
@@ -978,30 +963,6 @@ def audio_autoconnect():
                 state_manager.zynmixer_bus.normalise(chan, 1)
             else:
                 state_manager.zynmixer_bus.normalise(chan, 0)
-
-    # Handle solo
-    if solo_chain_ids:
-        for chan in range(state_manager.zynmixer_bus.MAX_NUM_CHANNELS):
-            state_manager.zynmixer_bus.normalise(chan, 0)
-        required_routes["zynmixer_bus:input_00a"] = set()
-        required_routes["zynmixer_bus:input_00b"] = set()
-        for chain_id in solo_chain_ids:
-            chain = chain_manager.get_chain(chain_id)
-            if not chain or not chain.audio_slots:
-                continue
-            for proc in chain.audio_slots[-1]:
-                jackname = proc.get_jackname()
-                if jackname.startswith("zynmixer"):
-                    required_routes["zynmixer_bus:input_00a"].add(f"{jackname}:output_{proc.mixer_chan:02d}a")
-                    required_routes["zynmixer_bus:input_00b"].add(f"{jackname}:output_{proc.mixer_chan:02d}b")
-                else:
-                    src_ports = jclient.get_ports(jackname, is_audio=True, is_output=True)
-                    if len(src_ports) > 0:
-                        required_routes["zynmixer_bus:input_00a"].add(src_ports[0].name)
-                        if len(src_ports) > 1:
-                            required_routes["zynmixer_bus:input_00b"].add(src_ports[1].name)
-                        else:
-                            required_routes["zynmixer_bus:input_00b"].add(src_ports[0].name)
 
     # Connect and disconnect routes
     for dst, sources in required_routes.items():

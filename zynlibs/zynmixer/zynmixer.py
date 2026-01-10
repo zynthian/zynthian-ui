@@ -318,6 +318,64 @@ class ZynMixer():
 
         self.lib_zynmixer.toggleMute(channel)
 
+    def set_solo(self, channel, solo):
+        """
+        Sets the solo of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+        solo : bool
+            True to solo, False to unsolo
+        """
+
+        if channel is None:
+            return
+        self.lib_zynmixer.setSolo(channel, solo)
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+                       chan=channel, symbol="solo", value=solo, mixbus=self.mixbus)
+
+    # Function to get solo for a channel
+    # channel: Index of channel
+    # returns: Solo state (True if solod)
+    def get_solo(self, channel):
+        """
+        Gets the solo state of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+
+        Returns
+        -------
+        bool
+            True if solo enabled, False if disabled
+        """
+
+        if channel is None:
+            return
+        return self.lib_zynmixer.getSolo(channel)
+
+    def toggle_solo(self, channel):
+        """
+        Toggle the solo state of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of of the mixer strip
+        """
+
+        self.lib_zynmixer.toggleSolo(channel)
+
+    def clear_solo(self):
+        self.lib_zynmixer.clearSolo()
+
+    def get_global_solo(self):
+        return self.lib_zynmixer.getGlobalSolo()
+
     def set_phase(self, channel, phase):
         """
         Sets the phase reverse of a mixer strip

@@ -350,9 +350,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         state = self.sm.load_snapshot(fpath)
         if state is None:
             self.zyngui.clean_all()
-        elif "zyngui" in state:
-            if self.load_zyngui(state["zyngui"]):
-                return
         self.zyngui.show_screen('root', self.zyngui.SCREEN_HMODE_RESET)
 
     def load_snapshot_chains(self, fpath, merge=False):
@@ -495,19 +492,5 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             else:
                 title = f"Snapshots: {self.zyngui.state_manager.snapshot_bank}"
         self.select_path.set(title)
-
-    def load_zyngui(self, state):
-        """Load zyngui configuration from snapshot state
-
-        state : zyngui state dictionary
-        Returns : True if screen navigation performed
-        TODO: Parse zyngui configuration from snapshot
-        """
-
-        try:
-            self.zyngui.show_screen(state["current_screen"], self.zyngui.SCREEN_HMODE_RESET)
-            return True
-        except:
-            return False
 
 # ------------------------------------------------------------------------------

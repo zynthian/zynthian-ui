@@ -88,6 +88,32 @@ uint8_t getMute(uint8_t channel);
  */
 void toggleMute(uint8_t channel);
 
+/** @brief  Set channel solo state
+ *   @param  channel Index of channel
+ *   @param  solo Solo status (0: Unsolo, 1: Solo)
+ */
+void setSolo(uint8_t channel, uint8_t solo);
+
+/** @brief  Get channel solo state
+ *   @param  channel Index of channel
+ *   @retval  uint8_t Solo status (0: Unsolo, 1: Solo)
+ */
+uint8_t getSolo(uint8_t channel);
+
+/** @brief  Toggles channel solo
+   @param  channel Index of channel
+ */
+void toggleSolo(uint8_t channel);
+
+/** @brief  Clear solo from all channel
+*/
+void clearSolo();
+
+/** @brief  Get global solo
+    @retval uint8_t Quantity of channels with solo asserted
+*/
+uint8_t getGlobalSolo();
+
 /** @brief  Set channel mono state
  *   @param  channel Index of channel
  *   @param  mono (0: Stereo, 1: Mono)
