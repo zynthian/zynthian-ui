@@ -456,6 +456,25 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
             except:
                 logging.warning(f"Failed to set {param} to {value}")
 
+    def nudge_mixer_param(self, param, pos, value):
+        """Set a mixer parameter value
+
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain)
+        value - Parameter value
+        """
+
+        if pos < 0:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.get_filtered_chain_by_index(pos)
+        if chain and chain.zynmixer_proc:
+            try:
+                zctrl = chain.zynmixer_proc.controllers_dict[param]
+                zctrl.nudge(value)
+            except:
+                logging.warning(f"Failed to nudge {param} by {value}")
+
     def get_mixer_param(self, param, pos):
         """Get a mixer parameter value
 
