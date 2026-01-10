@@ -821,6 +821,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.dragging = False # True if click/touch dragging 
         self._scroll_gen = 0 # Identifier for current scroll job - avoid concurrent thread conflicts
         self._scroll_y = 0 # Current vertial scroll offset in pixels
+        self.scrollable_strips = 0 # Quantity of strips in left, scrollable canvas
+        self._top_phrase = 0 # Index of phrase currently displayed at top of view
+        self._left_chain = 0 # Index of chain currently displayed at left of view
 
         self.launcher_mode = self.zyngui.alt_mode
 
@@ -896,21 +899,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if zynthian_gui_config.visible_mixer_strips < 1:
             # Automatic sizing if not defined in config
             if self.width <= 400:
-                visible_chains = 6
+                self.visible_chains = 6
             elif self.width <= 600:
-                visible_chains = 8
+                self.visible_chains = 8
             elif self.width <= 800:
-                visible_chains = 10
+                self.visible_chains = 10
             elif self.width <= 1024:
-                visible_chains = 12
+                self.visible_chains = 12
             elif self.width <= 1280:
-                visible_chains = 14
+                self.visible_chains = 14
             else:
-                visible_chains = 16
+                self.visible_chains = 16
         else:
-            visible_chains = zynthian_gui_config.visible_mixer_strips
+            self.visible_chains = zynthian_gui_config.visible_mixer_strips
 
-        self.strip_width = self.width / (visible_chains + 1.2)
+        self.strip_width = self.width / (self.visible_chains + 0.2)
         self.button_height = int(self.height * 0.07)
         self.legend_height = int(self.height * 0.08)
         self.balance_height = int(self.height * 0.03)
@@ -991,6 +994,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.left_canvas.delete("all")
         self.right_canvas.delete("all")
         self.right_canvas.configure(width=self.strip_width * self.chain_manager.get_pinned_count())
+        self.scrollable_strips = len(self.chain_manager.chains) - self.chain_manager.get_pinned_count()
         div = self.chain_manager.get_pinned_pos()
         x0 = 0
         canvas = self.left_canvas
@@ -1417,13 +1421,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 return # new scroll job started superceeding this job
             if i >= steps:
                 # Ensure exact final position
+                send_sig = False
                 if target_x is not None:
                     self.left_canvas.xview_moveto(target_x)
+                    left_chain = min(self.scrollable_strips - self.visible_chains, max(0, int(target_x * self.scrollable_strips + 0.4)))
+                    if self._left_chain != left_chain:
+                        self._left_chain = left_chain
+                        send_sig = True
                 if target_y is not None:
                     dy0 = self._scroll_y - target_y
                     self.left_canvas.move("launcher", 0, dy0)
                     self.right_canvas.move("launcher", 0, dy0)
                     self._scroll_y = target_y
+                    # Calculate top left chain/phrase
+                    top_phrase = int(target_y / self.launcher_height + 0.4)
+                    if self._top_phrase != top_phrase:
+                        self._top_phrase = top_phrase
+                        send_sig = True
+                if send_sig:
+                    zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SCROLL_POS, left_chain=self._left_chain, top_phrase=self._top_phrase)
                 return
             if target_x is not None:
                 self.left_canvas.xview_moveto(start_x + dx * (i + 1))
@@ -1477,7 +1493,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 if sr_w > canvas_w:
                     d_fract_x = dx / float(sr_w)
                     xview = self.start_xview + d_fract_x
-                    self.left_canvas.xview_moveto(xview)
+                    self.scroll_canvas(target_x=xview, smooth=False)
              # Vertical Move
             elif self.press_event.widget == self.right_canvas:
                 if not self.launcher_mode:
