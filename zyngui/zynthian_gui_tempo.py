@@ -104,8 +104,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
                                                      font=(zynthian_gui_config.font_family, 10),
                                                      fill=zynthian_gui_config.color_panel_tx)
 
-        self.replot = True
-
     def set_zctrls(self):
         self.bpm_zgui_ctrl.refresh_plot_value = True
         layout = zynthian_gui_config.layout
@@ -130,14 +128,12 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
     def plot_zctrls(self):
         self.refresh_bpm_value()
-        if self.replot:
-            for zgui_ctrl in self.zgui_ctrls:
-                if zgui_ctrl.zctrl.is_dirty or zgui_ctrl.refresh_plot_value:
-                    zgui_ctrl.calculate_plot_values()
-                    zgui_ctrl.plot_value()
-                    zgui_ctrl.zctrl.is_dirty = False
-            self.update_text()
-            self.replot = False
+        for zgui_ctrl in self.zgui_ctrls:
+            if zgui_ctrl.zctrl.is_dirty or zgui_ctrl.refresh_plot_value:
+                zgui_ctrl.calculate_plot_values()
+                zgui_ctrl.plot_value()
+                zgui_ctrl.zctrl.is_dirty = False
+        self.update_text()
 
     def build_view(self):
         self.set_zctrls()
@@ -156,7 +152,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.cb_status_audio_recorder()
             self.cb_status_midi_player()
             self.cb_status_midi_recorder()
-        self.replot = True
         return True
 
     def hide(self):
@@ -176,8 +171,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def zynpot_cb(self, i, dval):
         if i < 4:
             self.zgui_ctrls[i].zynpot_cb(dval)
-            if self.zgui_ctrls[i].zctrl.is_dirty:
-                self.replot = True
             return True
         else:
             return False
@@ -185,8 +178,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def zynpot_abs(self, i, val):
         if i < 4:
             self.zgui_ctrls[i].zynpot_abs(val)
-            if self.zgui_ctrls[i].zctrl.is_dirty:
-                self.replot = True
             return True
         else:
             return False
@@ -195,10 +186,9 @@ class zynthian_gui_tempo(zynthian_gui_base):
         if self.shown:
             if zctrl == self.clk_source_zctrl:
                 self.set_clk_source_value(zctrl.value)
-                self.replot = True
 
     def metronome_cb(self, enable, volume):
-        self.replot = True
+        pass
 
     def get_clk_source_value(self):
         cs = self.state_manager.get_transport_clock_source()
@@ -236,8 +226,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
     def refresh_bpm_value(self):
         self.bpm_zctrl.set_value(self.libseq.getTempo(), send=False)
-        if self.bpm_zctrl.is_dirty:
-            self.replot = True
 
     def switch_select(self, t='S'):
         self.zyngui.close_screen()
