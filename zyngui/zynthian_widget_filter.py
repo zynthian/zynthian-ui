@@ -26,15 +26,20 @@ import math
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
+
 class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
 
     def __init__(self, parent):
         super().__init__(parent)
+
+        # Take only half height
+        self.rows //= 2
+
         self.widget_canvas = tkinter.Canvas(self, highlightthickness=0, relief='flat', bg=zynthian_gui_config.color_bg)
         self.widget_canvas.grid(sticky='news')
 
         # Theme Colors
-        self.fill_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_on, -60)
+        self.fill_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_on, -90)
         self.outline_color = zynthian_gui_config.color_on
         self.grid_color = zynthian_gui_config.color_hl
 
@@ -57,31 +62,33 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         self.click_res_val = 0.0
         self.is_dragging = False
 
+        # Vertical Scale Configuration (-48 to +24 dB)
+        self.db_min = -48
+        self.db_max = 24
+        self.db_range = self.db_max - self.db_min
+
+        # Margins
+        self.m_l, self.m_r, self.m_t, self.m_b = 45, 10, 20, 35
+
+        self.draw_grid()
+
     def show(self):
-        for ctrl in self.processor.get_group_zctrls(self.zyngui_control.screen_info[0]):
-            symbol = ctrl.symbol.lower()
-            if 'cutoff' in symbol or 'freq' in symbol:
-                self.cutoff_param = ctrl
-            elif 'res' in symbol or 'q' in symbol:
-                self.resonance_param = ctrl
+        for zctrl in self.processor.get_group_zctrls(self.zyngui_control.screen_info[0]):
+            try:
+                if zctrl.filter == "cutoffFrequency":
+                    self.cutoff_param = zctrl
+                elif zctrl.filter == "resonance":
+                    self.resonance_param = zctrl
+            except:
+                pass
         super().show()
 
-    def refresh_gui(self):
-        # 1. Normalize for math consistency across engines
-        norm_cutoff = (self.cutoff_param.value - self.cutoff_param.value_min) / self.cutoff_param.value_range if self.cutoff_param else 0.5
-        norm_res = (self.resonance_param.value - self.resonance_param.value_min) / self.resonance_param.value_range if self.resonance_param else 0.0
-
-        if [norm_cutoff, norm_res] == self.last_values and not self.is_dragging:
+    def draw_grid(self):
+        # 0. Precalculate some geometric values
+        maxy = self.height - self.m_b
+        gw, gh = self.width - self.m_l - self.m_r, maxy - self.m_t
+        if gw < 10:
             return
-
-        display_cutoff = 20.0 * (20000.0 / 20.0) ** norm_cutoff
-        m_l, m_r, m_t, m_b = 45, 10, 20, 35
-        gw, gh = self.width - m_l - m_r, self.height - m_t - m_b
-        if gw < 10: return
-
-        # Vertical Scale Configuration (-48 to +24 dB)
-        db_min, db_max = -48, 24
-        db_range = db_max - db_min
 
         # Redraw Grid
         for item in self.grid_items + self.label_items:
@@ -91,40 +98,67 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
 
         # dB Grid Lines
         for db in [24, 12, 0, -24, -48]:
-            y = m_t + gh * (1.0 - (db - db_min) / db_range)
-            self.grid_items.append(self.widget_canvas.create_line(m_l, y, self.width - m_r, y, fill=self.grid_color, dash=(2, 2)))
+            y = self.m_t + gh * (1.0 - (db - self.db_min) / self.db_range)
+            self.grid_items.append(self.widget_canvas.create_line(self.m_l, y, self.width - self.m_r, y, fill=self.grid_color, dash=(2, 2)))
             self.label_items.append(self.widget_canvas.create_text(5, y, text=f"{db} dB", fill=zynthian_gui_config.color_tx, anchor="w", font=("sans", 8)))
 
         # Logarithmic Frequency Grid
         for f in [10, 100, 1000, 10000]:
             log_pos = (math.log10(f) - math.log10(20)) / (math.log10(20000) - math.log10(20))
             if 0 <= log_pos <= 1:
-                x = m_l + log_pos * gw
-                self.grid_items.append(self.widget_canvas.create_line(x, m_t, x, self.height - m_b, fill=self.grid_color, dash=(2, 2)))
+                x = self.m_l + log_pos * gw
+                self.grid_items.append(self.widget_canvas.create_line(x, self.m_t, x, self.height - self.m_b, fill=self.grid_color, dash=(2, 2)))
                 label = f"{f}Hz" if f < 1000 else f"{f//1000}kHz"
                 self.label_items.append(self.widget_canvas.create_text(x, self.height - 20, text=label, fill=zynthian_gui_config.color_tx, anchor="n", font=("sans", 8)))
 
-        # 2. SMOOTH CURVE: Calculate point for every horizontal pixel
-        coords = [m_l, self.height - m_b]
+    def on_size(self, event):
+        super().on_size(event)
+        self.draw_grid()
+        self.refresh_gui()
+
+    def refresh_gui(self):
+        # 1. Normalize for math consistency across engines
+        norm_cutoff = (self.cutoff_param.value - self.cutoff_param.value_min) / self.cutoff_param.value_range if self.cutoff_param else 0.5
+        norm_res = (self.resonance_param.value - self.resonance_param.value_min) / self.resonance_param.value_range if self.resonance_param else 0.0
+        if [norm_cutoff, norm_res] == self.last_values and not self.is_dragging:
+            return
+
+        # 2. Precalculate some geometric values
+        maxy = self.height - self.m_b
+        gw, gh = self.width - self.m_l - self.m_r, maxy - self.m_t
+        if gw < 10:
+            return
+
+        # 3. SMOOTH CURVE: Calculate point for every horizontal pixel
+        closed = False
+        coords = [self.m_l, maxy]
+        display_cutoff = 20.0 * (20000.0 / 20.0) ** norm_cutoff
         for px_offset in range(int(gw) + 1):
             log_pos = px_offset / gw
             freq = 20.0 * (20000.0 / 20.0) ** log_pos
             
             f_ratio = freq / max(1.0, display_cutoff)
             resp = 1.0 / math.sqrt(1.0 + math.pow(f_ratio, 8))
-            db_val = 20.0 * math.log10(resp + 1e-10) # Base is ~ -3dB at cutoff
+            db_val = 20.0 * math.log10(resp + 1e-10)  # Base is ~ -3dB at cutoff
             
             # Apply Resonance (Updated to 18.0 for a ~15dB total peak)
             if norm_res > 0:
                 peak = math.exp(-pow(math.log(f_ratio + 1e-10), 2) / 0.05)
                 db_val += (norm_res * 18.0 * peak)
 
-            px = m_l + px_offset
-            py = m_t + gh * (1.0 - (db_val - db_min) / db_range)
-            coords.extend([px, max(m_t, min(self.height - m_b, py))])
+            px = self.m_l + px_offset
+            py = self.m_t + gh * (1.0 - (db_val - self.db_min) / self.db_range)
+            if py < maxy:
+                coords.extend([px, max(self.m_t, py)])
+            else:
+                coords.extend([px, max(self.m_t, maxy)])
+                closed = True
+                break
 
-        # Close polygon for fill effect
-        coords.extend([m_l + gw, self.height - m_b])
+        # 4. Close polygon when slope cross 0 beyond display area
+        if not closed:
+            coords.extend([self.width - self.m_r, maxy])
+
         self.widget_canvas.coords(self.filter_poly, *coords)
         self.last_values = [norm_cutoff, norm_res]
 
@@ -153,7 +187,3 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
 
     def on_canvas_release(self, event):
         self.is_dragging = False
-
-    def on_size(self, event):
-        super().on_size(event)
-        self.refresh_gui()

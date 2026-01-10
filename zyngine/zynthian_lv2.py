@@ -803,11 +803,18 @@ def get_plugin_ports(plugin_url):
             is_enumeration = control.has_property(world.ns.lv2.enumeration)
             is_logarithmic = control.has_property(world.ns.portprops.logarithmic)
 
+            # Parameter Desgination => http://lv2plug.in/ns/lv2core#designation
+            designation = str(control.get(world.ns.lv2.designation))
+            # Detect Envelope designation
             envelope = None
-            for env_type in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                # "http://lv2plug.in/ns/lv2core#designation"
-                if str(control.get(world.ns.lv2.designation)) == f"http://lv2plug.in/ns/ext/parameters#{env_type}":
-                    envelope = env_type
+            for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
+                    envelope = env_param
+            # Detect Filter designation
+            filter = None
+            for flt_param in ["cutoffFrequency", "resonance"]:
+                if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
+                    filter = flt_param
 
             not_on_gui = control.has_property(world.ns.portprops.notOnGUI)
             display_priority = control.get(world.ns.lv2.displayPriority)
@@ -904,6 +911,7 @@ def get_plugin_ports(plugin_url):
                 'path_file_types': None,
                 'path_preload': False,
                 'envelope': envelope,
+                'filter': filter,
                 'not_on_gui': not_on_gui,
                 'display_priority': display_priority,
                 'scale_points': sp
@@ -935,12 +943,14 @@ def get_plugin_ports(plugin_url):
             # TODO => Implement LV2 port propierty for path preload => only if really needed!
             path_preload = True
             envelope = None
+            filter = None
             sp = []
         else:
             vdef = get_node_value(world.get(control, world.ns.lv2.default, None))
             vmin = get_node_value(world.get(control, world.ns.lv2.minimum, None))
             vmax = get_node_value(world.get(control, world.ns.lv2.maximum, None))
 
+            is_trigger = False
             is_toggled = (range_type == world.ns.atom.Bool)
             is_integer = (range_type == world.ns.atom.Int)
             is_enumeration = world.get(control, world.ns.lv2.enumeration, None) is not None
@@ -949,10 +959,18 @@ def get_plugin_ports(plugin_url):
             path_file_types = None
             path_preload = False
 
+            # Parameter Desgination => http://lv2plug.in/ns/lv2core#designation
+            designation = str(world.get(control, world.ns.lv2.designation, None))
+            # Detect Envelope designation
             envelope = None
-            for env_type in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                if str(world.get(control, world.ns.lv2.designation, None)) == f"http://lv2plug.in/ns/ext/parameters#{env_type}":
-                    envelope = env_type
+            for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
+                    envelope = env_param
+            # Detect Filter designation
+            filter = None
+            for flt_param in ["cutoffFrequency", "resonance"]:
+                if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
+                    filter = flt_param
 
             sp = []
             for p in world.find_nodes(control, world.ns.lv2.scalePoint, None):
@@ -1026,6 +1044,7 @@ def get_plugin_ports(plugin_url):
             'path_file_types': path_file_types,
             'path_preload': path_preload,
             'envelope': envelope,
+            'filter': filter,
             'not_on_gui': not_on_gui,
             'display_priority': display_priority,
             'scale_points': sp

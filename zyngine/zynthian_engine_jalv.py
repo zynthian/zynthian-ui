@@ -909,7 +909,8 @@ class zynthian_engine_jalv(zynthian_engine):
                         'path_file_types': None,
                         'not_on_gui': info['not_on_gui'],
                         'display_priority': display_priority,
-                        'envelope': info['envelope']
+                        'envelope': info['envelope'],
+                        'filter': info['filter']
                     })
 
             # If control info is not OK

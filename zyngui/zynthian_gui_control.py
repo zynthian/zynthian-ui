@@ -218,39 +218,19 @@ class zynthian_gui_control(zynthian_gui_selector):
         return False
 
     def get_screen_type(self):
-
         self.widget_zctrl = None
-
-        # First pass: envelope or audio file
         for zctrl in self.zcontrollers:
             if hasattr(zctrl, "envelope"):
                 self.screen_type = "envelope"
-                return self.screen_type
-
-            if zctrl.is_path and (set(zctrl.path_file_types) &
-                                  {"wav", "aiff", "flac", "mp3", "ogg"}):
+                break
+            elif hasattr(zctrl, "filter"):
+                self.screen_type = "filter"
+                break
+            elif zctrl.is_path and (set(zctrl.path_file_types) & {"wav", "aiff", "flac", "mp3", "ogg"}):
                 self.screen_type = "audio_file"
                 self.widget_zctrl = zctrl
-                return self.screen_type
-
-        # Second pass: filter detection
-        has_cutoff = False
-        has_resonance = False
-
-        for zctrl in self.zcontrollers:
-            symbol = zctrl.symbol.lower()
-            if 'cutoff' in symbol or 'freq' in symbol:
-                has_cutoff = True
-            elif 'resonance' in symbol or 'res' in symbol or symbol == 'q':
-                has_resonance = True
-
-        if has_cutoff and has_resonance:
-            self.screen_type = "filter"
-        else:
-            self.screen_type = None
-
+                break
         return self.screen_type
-     
 
     def fill_listbox(self):
         super().fill_listbox()

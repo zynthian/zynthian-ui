@@ -205,6 +205,8 @@ class zynthian_controller:
             self.display_priority = options['display_priority']
         if 'envelope' in options and options['envelope'] is not None:
             self.envelope = options['envelope']
+        if 'filter' in options and options['filter'] is not None:
+            self.filter = options['filter']
         self._configure()
 
     def _configure(self):

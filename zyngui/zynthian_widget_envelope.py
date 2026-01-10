@@ -41,7 +41,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         super().__init__(parent)
 
         # Take only half height
-        self.rows //=  2
+        self.rows //= 2
 
         self.widget_canvas = tkinter.Canvas(self,
                                             highlightthickness=0,
@@ -53,8 +53,8 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         self.drag_zctrl = None
 
         # Create custom GUI elements (position and size set when canvas is grid and size applied)
-        self.envelope_outline_color = zynthian_gui_config.color_low_on
-        self.envelope_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
+        self.envelope_outline_color = zynthian_gui_config.color_on
+        self.envelope_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_on, -90)
         self.envelope_polygon = self.widget_canvas.create_polygon(0, 0, outline=self.envelope_outline_color, fill=self.envelope_color, width=3)
         self.drag_polygon = self.widget_canvas.create_polygon(0, 0, outline=self.envelope_outline_color, fill=self.envelope_outline_color, width=3, state='hidden')
         # self.release_line = self.widget_canvas.create_line(0, 0, 0, 0,
@@ -168,8 +168,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
             self.last_envelope_values = envelope_values
             # Highlight dragged section
             if self.drag_zctrl:
-                self.widget_canvas.itemconfig(
-                    self.drag_polygon, state="normal")
+                self.widget_canvas.itemconfig(self.drag_polygon, state="normal")
 
     def on_canvas_press(self, event):
         self.last_click = event
