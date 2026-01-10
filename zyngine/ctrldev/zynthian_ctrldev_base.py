@@ -88,6 +88,8 @@ class zynthian_ctrldev_base:
         # OPTIONAL: real-time MIDI processor (jack client), inserted between the input device and zmip
         self.midiproc_jackname = None
         self.midiproc = None
+        self.scroll_h = 0 # Offset of first column / chain
+        self.scroll_v = 0 # Offset of first row of pads
 
     @classmethod
     def get_driver_name(cls):
@@ -124,6 +126,7 @@ class zynthian_ctrldev_base:
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SCROLL_POS, self.scroll)
         # Register for snapshot loading
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
 
@@ -138,6 +141,7 @@ class zynthian_ctrldev_base:
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SCROLL_POS, self.scroll)
 
         self.end_midiproc()
 
@@ -291,6 +295,19 @@ class zynthian_ctrldev_base:
 
         pass
 
+    def scroll(self, left_chain=None, top_phrase=None):
+        """Update GUI scroll position
+        *COULD* be implemented by child class"""
+
+        refresh = False
+        if self.scroll_h != left_chain:
+            self.scroll_h = left_chain
+            refresh = True
+        if self.scroll_v != top_phrase:
+            self.scroll_v = top_phrase
+            refresh = True
+        if refresh:
+            self.refresh()
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
@@ -305,8 +322,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         self.cols = 8 # Quatity of columns of physical launcher buttons
         self.rows = 8 # Quatity of rows of physical launcher buttons
         self.phrase_launcher_col = self.cols # Index of column used as phrase launcher
-        self.scroll_v = 0 # Offset of first row of pads
-        self.scroll_h = 0 # Offset of first column of pads
         self.zynseq = state_manager.zynseq
         super().__init__(state_manager, idev_in, idev_out)
 

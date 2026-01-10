@@ -59,6 +59,7 @@ class zynthian_signal_manager:
     SS_GUI_TOGGLE_ALT_MODE = 4
     SS_GUI_SHOW_MESSAGE = 5
     SS_GUI_LAUNCHER_MODE = 6
+    SS_GUI_SCROLL_POS = 7
 
     SS_MIDI_ALL = 0
     SS_MIDI_CC = 1
