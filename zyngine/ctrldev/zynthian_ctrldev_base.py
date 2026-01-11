@@ -192,6 +192,9 @@ class zynthian_ctrldev_base:
         signal.signal(signal.SIGQUIT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
+    def get_num_filtered_chains(self):
+        return len(self.chain_ids_filtered)
+
     def get_filtered_chain_id_by_index(self, index):
         """Get filtered chain ID by index
 
