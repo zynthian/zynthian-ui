@@ -78,8 +78,8 @@ BTN_RIGHT           = 0x60  # Right button
 BTN_LEFT            = 0x61  # Left button
 BTN_SHIFT           = 0x62  # Shift button
 BTN_TAP_TEMPO       = 0x63  # Tap tempo button
-BTN_NUDGE_UP        = 0x64  # Nudge + button
-BTN_NUDGE_DOWN      = 0x65  # Nudge - button
+BTN_NUDGE_DOWN      = 0x64  # Nudge - button
+BTN_NUDGE_UP        = 0x65  # Nudge + button
 BTN_SESSION         = 0x66  # Session record button
 
 CC_FADER            = 0x07  # Fader slider (Tracks: MIDI channel 0-7)
@@ -335,6 +335,16 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.set_enc_mode(ENC_MODE_USER)
             elif note == BTN_SHIFT:
                 self.shift = False
+            elif note == BTN_NUDGE_UP:
+                if self.shift:
+                    self.zynseq.nudge_tempo(0.1)
+                else:
+                    self.zynseq.nudge_tempo(1.0)
+            elif note == BTN_NUDGE_DOWN:
+                if self.shift:
+                    self.zynseq.nudge_tempo(-0.1)
+                else:
+                    self.zynseq.nudge_tempo(-1.0)
             elif note == LED_SOLO:
                 try:
                     self.set_mixer_param("solo", chan, False)
