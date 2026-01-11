@@ -499,6 +499,14 @@ class zynthian_chain_manager:
             return self.chains[self.active_chain.chain_id]
         return None
 
+    def get_active_chain_index(self):
+        """Get the active chain object or None if no active chain
+
+        Returns: Chain object or None on failure
+        """
+
+        return self.get_chain_index(self.active_chain.chain_id)
+
     def get_chain_index(self, chain_id):
         """ Get the index of a chain from its displayed order
         Args:
@@ -1026,14 +1034,16 @@ class zynthian_chain_manager:
             self.state_manager.start_busy("add_processor", "Adding Processor", f"adding {eng_code} to chain {chain_id}")
 
         logging.debug(f"Adding processor '{eng_code}' with ID '{proc_id}'")
-        processor = zynthian_processor(
-            eng_code, self.engine_info[eng_code], proc_id)
+        processor = zynthian_processor(eng_code, self.engine_info[eng_code], proc_id)
         # Add proc early to allow engines to add more as required, e.g. Aeolus
         self.processors[proc_id] = processor
 
         if chain_id is not None:
             chain = self.chains[chain_id]
             chain.insert_processor(processor, slot)
+            # Update when adding new (proc_id = None)
+            if send_signal:
+                chain.current_processor = processor
 
         engine = self.start_engine(processor, eng_code, eng_config)
         if not engine:
@@ -1466,15 +1476,14 @@ class zynthian_chain_manager:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
                     for proc_id, eng_code in slot_state.items():
                         if proc_id == str(zynthian_state_manager.MAIN_MIXBUS_ID):
-                            continue # Do not replace main mixbus audio mixer processor
+                            continue  # Do not replace main mixbus audio mixer processor
                         try:
                             eng_config = engine_config[eng_code]
                         except:
                             eng_config = None
-                        #TODO: insert in correct slot, accounting for slot being relative to subchain type
+                        # TODO: insert in correct slot, accounting for slot being relative to subchain type
                         # Use index to identify first proc in slot (add in series)
-                        processor = self.add_processor(chain_id, eng_code, slot, proc_id=int(
-                            proc_id), eng_config=eng_config)
+                        processor = self.add_processor(chain_id, eng_code, slot, proc_id=int(proc_id), eng_config=eng_config)
                         if processor:
                             slot = self.chains[chain_id].get_slot(processor)
                     slot += 1

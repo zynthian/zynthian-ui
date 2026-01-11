@@ -629,8 +629,10 @@ class zynthian_chain:
             processor.engine.add_processor(processor)
         processor.set_midi_chan(self.midi_chan)
 
+        if self.current_processor is None:
+            self.current_processor = processor
+
         self.set_zmop_options()
-        self.current_processor = processor
 
     def replace_processor(self, old_processor, new_processor):
         """Replace a processor within a chain
