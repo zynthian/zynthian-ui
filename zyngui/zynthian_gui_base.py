@@ -57,6 +57,8 @@ class zynthian_gui_base(tkinter.Frame):
         self.columnconfigure(0, weight=1)
         self.shown = False
         self.zyngui = zynthian_gui_config.zyngui
+        self.state_manager = self.zyngui.state_manager
+        self.chain_manager = self.zyngui.chain_manager
 
         self.topbar_allowed = True
         self.topbar_height = zynthian_gui_config.topbar_height
@@ -638,7 +640,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     def refresh_status(self):
         if self.shown:
-            mute = self.zyngui.state_manager.zynmixer_bus.get_mute(0)
+            mute = self.state_manager.zynmixer_bus.get_mute(0)
             if mute != self.main_mute:
                 self.main_mute = mute
                 if mute:
@@ -652,8 +654,8 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_canvas.itemconfigure(
                         'status_dpm', state=tkinter.NORMAL)
             if not mute and self.dpm_a:
-                self.zyngui.state_manager.zynmixer_bus.update_dpm_states(1)
-                dpm = self.zyngui.state_manager.zynmixer_bus.dpm[0]
+                self.state_manager.zynmixer_bus.update_dpm_states(1)
+                dpm = self.state_manager.zynmixer_bus.dpm[0]
                 self.dpm_a.refresh(dpm.a, dpm.a_hold, dpm.mono)
                 self.dpm_b.refresh(dpm.b, dpm.b_hold, dpm.mono)
 
@@ -662,22 +664,22 @@ class zynthian_gui_base(tkinter.Frame):
             # Display error flags
             flags = ""
             color = zynthian_gui_config.color_status_error
-            if self.zyngui.state_manager.status_xrun == 2:
+            if self.state_manager.status_xrun == 2:
                 color = zynthian_gui_config.color_status_error
                 # flags = "\uf00d"
                 flags = "\uf071"
-            elif self.zyngui.state_manager.status_xrun == 1:
+            elif self.state_manager.status_xrun == 1:
                 color = zynthian_gui_config.color_status_warn
                 # flags = "\uf00d"
                 flags = "\uf071"
-            elif self.zyngui.state_manager.status_undervoltage:
+            elif self.state_manager.status_undervoltage:
                 flags = "\uf0e7"
-            elif self.zyngui.state_manager.status_overtemp:
+            elif self.state_manager.status_overtemp:
                 color = zynthian_gui_config.color_status_error
                 # flags = "\uf2c7"
                 flags = "\uf769"
             else:
-                cpu_load = self.zyngui.state_manager.status_cpu_load
+                cpu_load = self.state_manager.status_cpu_load
                 if cpu_load < 50:
                     cr = 0
                     cg = 0xCC
@@ -688,7 +690,7 @@ class zynthian_gui_base(tkinter.Frame):
                     cr = 0xCC
                     cg = int((100 - cpu_load) * 0xCC / 25)
                 color = "#%02x%02x%02x" % (cr, cg, 0)
-                if self.zyngui.state_manager.update_available:
+                if self.state_manager.update_available:
                     flags = "\u21bb"
                 else:
                     flags = "\u2665"
@@ -699,7 +701,7 @@ class zynthian_gui_base(tkinter.Frame):
             # Display Audio Rec flag
             flags = ""
             color = zynthian_gui_config.color_bg
-            if self.zyngui.state_manager.audio_recorder.status:
+            if self.state_manager.audio_recorder.status:
                 self.status_canvas.itemconfig(
                     self.status_audio_rec, state=tkinter.NORMAL)
             else:
@@ -709,7 +711,7 @@ class zynthian_gui_base(tkinter.Frame):
             # Display Audio Play flag
             flags = ""
             color = zynthian_gui_config.color_bg
-            if self.zyngui.state_manager.status_audio_player:
+            if self.state_manager.status_audio_player:
                 self.status_canvas.itemconfig(
                     self.status_audio_play, state=tkinter.NORMAL)
             else:
@@ -719,7 +721,7 @@ class zynthian_gui_base(tkinter.Frame):
             # Display MIDI Rec flag
             flags = ""
             color = zynthian_gui_config.color_status_midi
-            if self.zyngui.state_manager.status_midi_recorder:
+            if self.state_manager.status_midi_recorder:
                 self.status_canvas.itemconfig(
                     self.status_midi_rec, state=tkinter.NORMAL)
             else:
@@ -727,14 +729,14 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_midi_rec, state=tkinter.HIDDEN)
 
             # Display MIDI Play flag
-            if self.zyngui.state_manager.status_midi_player:
+            if self.state_manager.status_midi_player:
                 self.status_canvas.itemconfig(
                     self.status_midi_play, state=tkinter.NORMAL)
             else:
                 self.status_canvas.itemconfig(
                     self.status_midi_play, state=tkinter.HIDDEN)
             # Display SEQ Rec flag
-            if self.zyngui.state_manager.zynseq.libseq.isMidiRecord():
+            if self.state_manager.zynseq.libseq.isMidiRecord():
                 self.status_canvas.itemconfig(
                     self.status_seq_rec, state=tkinter.NORMAL)
             else:
@@ -742,7 +744,7 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_seq_rec, state=tkinter.HIDDEN)
 
             # Display SEQ Play flag
-            if self.zyngui.state_manager.zynseq.playing_sequences > 0:
+            if self.state_manager.zynseq.playing_sequences > 0:
                 self.status_canvas.itemconfig(
                     self.status_seq_play, state=tkinter.NORMAL)
             else:
@@ -750,7 +752,7 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_seq_play, state=tkinter.HIDDEN)
 
             # Display MIDI activity flag
-            if self.zyngui.state_manager.status_midi:
+            if self.state_manager.status_midi:
                 self.status_canvas.itemconfig(
                     self.status_midi, state=tkinter.NORMAL)
             else:
@@ -758,7 +760,7 @@ class zynthian_gui_base(tkinter.Frame):
                     self.status_midi, state=tkinter.HIDDEN)
 
             # Display MIDI clock flag
-            if self.zyngui.state_manager.status_midi_clock:
+            if self.state_manager.status_midi_clock:
                 self.status_canvas.itemconfig(
                     self.status_midi_clock, state=tkinter.NORMAL)
             else:

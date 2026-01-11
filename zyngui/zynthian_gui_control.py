@@ -90,6 +90,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         #curproc = self.zyngui.get_current_processor()
         super().build_view()
         if not self.shown:
+            zynsigman.register(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
@@ -101,12 +102,22 @@ class zynthian_gui_control(zynthian_gui_selector):
     def hide(self):
         if self.shown:
             self.exit_midi_learn()
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, self.cb_control_mode)
         super().hide()
+
+    def cb_set_active_chain(self, active_chain_id):
+        """Handle MIDI_PC signal
+
+        active_chain_id : active chain id
+        """
+
+        # Refresh control screen after changing active chain
+        self.zyngui.chain_control()
 
     def cb_midi_pc(self, izmip, chan, num):
         """Handle MIDI_PC signal
@@ -149,7 +160,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
                 self.processors = [curproc]
             else:
-                self.processors = self.zyngui.chain_manager.get_processors(curproc.chain_id)
+                self.processors = self.chain_manager.get_processors(curproc.chain_id)
 
     def fill_list(self):
         self.list_data = []
@@ -331,7 +342,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 proc_id = int(parts[1])
             except:
                 continue
-            if proc_id not in self.zyngui.chain_manager.processors:
+            if proc_id not in self.chain_manager.processors:
                 logging.debug(f"Deleting orphaned widget: {k}")
                 if self.widgets[k] == self.current_widget:
                     self.hide_widgets()
@@ -485,17 +496,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def arrow_right(self):
         self.exit_midi_learn()
-        self.zyngui.chain_manager.next_chain()
+        self.chain_manager.next_chain()
         self.zyngui.chain_control()
 
     def arrow_left(self):
         self.exit_midi_learn()
-        self.zyngui.chain_manager.previous_chain()
+        self.chain_manager.previous_chain()
         self.zyngui.chain_control()
 
     def rotate_chain(self):
         self.exit_midi_learn()
-        self.zyngui.chain_manager.rotate_chain()
+        self.chain_manager.rotate_chain()
         self.zyngui.chain_control()
 
     # Function to handle *all* switch presses.
@@ -685,9 +696,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
         if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.zyngui.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
+            self.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
         elif self.midi_learning == MIDI_LEARNING_GLOBAL:
-            self.zyngui.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
+            self.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -707,9 +718,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def midi_unlearn(self, param=None):
         if param:
-            self.zyngui.chain_manager.clean_midi_learn(param)
+            self.chain_manager.clean_midi_learn(param)
         else:
-            self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
+            self.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
         self.refresh_midi_bind()
 
     def midi_unlearn_action(self):
@@ -746,7 +757,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zyngui.show_screen('option')
                 return
 
-            ml = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=True, chain=True, zynstep=False)
+            ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=True, chain=True, zynstep=False)
             if not unlearn_only:
                 title = f"Control options: {zctrl.name}"
 
@@ -801,7 +812,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                             options[f"Relative Mode {zctrl.midi_cc_mode}"] = i 
                 options[f"Chain learn..."] = i
                 options[f"Global learn..."] = i
-                zynstep_ml = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=False, chain=False, zynstep=True)
+                zynstep_ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=False, chain=False, zynstep=True)
                 if zynstep_ml:
                     ccnum = zynstep_ml[0] & 0x7f
                 else:
@@ -914,7 +925,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def zynstep_midi_cc_cb(self, ccnum, i):
         zctrl = self.zgui_controllers[i].zctrl
-        self.zyngui.chain_manager.add_zynstep_midi_learn(ccnum, zctrl)
+        self.chain_manager.add_zynstep_midi_learn(ccnum, zctrl)
         self.midi_learn_options(i, keep_selection=True)
 
     def show_xy(self, params=None):
@@ -948,6 +959,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 self.select_path.set(processor.get_presetpath())
         else:
-            self.select_path.set(self.zyngui.chain_manager.get_active_chain().get_title())
+            self.select_path.set(self.chain_manager.get_active_chain().get_title())
 
 # ------------------------------------------------------------------------------
