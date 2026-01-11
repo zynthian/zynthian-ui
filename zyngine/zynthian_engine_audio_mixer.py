@@ -31,8 +31,6 @@ from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
 from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 
-import zynautoconnect
-
 # -------------------------------------------------------------------------------
 # zynmixer channel strip engine
 # -------------------------------------------------------------------------------
@@ -126,6 +124,39 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 })
             }
+            if processor.chain.chain_id == 0:
+                processor.controllers_dict |= {
+                    'aux level': zynthian_controller(self, 'aux level', {
+                    'is_integer': False,
+                    'value_max': 1.0,
+                    'value_default': 0.8,
+                    'value': processor.zynmixer.get_level(1),
+                    'processor': processor
+                }),
+                'aux balance': zynthian_controller(self, 'aux balance', {
+                    'is_integer': False,
+                    'value_min': -1.0,
+                    'value_max': 1.0,
+                    'value_default': 0.0,
+                    'value': processor.zynmixer.get_balance(1),
+                    'processor': processor
+                }),
+                'aux mute': zynthian_controller(self, 'aux mute', {
+                    'is_toggle': True,
+                    'value_max': 1,
+                    'value_default': 0,
+                    'value': processor.zynmixer.get_mute(1),
+                    'processor': processor,
+                    'labels': ['off', 'on']
+                }),
+                'aux solo': zynthian_controller(self, 'aux solo', {
+                    'is_toggle': True,
+                    'value_max': 1,
+                    'value_default': 0,
+                    'value': processor.zynmixer.get_solo(1),
+                    'processor': processor,
+                    'labels': ['off', 'on']
+                })}
         return processor.controllers_dict
 
     def add_processor(self, processor):
@@ -144,6 +175,11 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 # Main mixbus
                 processor.mixer_chan = 0
                 processor.name = "Main Mixbus"
+                self._ctrl_screens = [
+                    ['main', ['level', 'balance', 'mute', 'solo']],
+                    ['options', ['mono', 'phase', 'ms', 'record']],
+                    ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']]
+                ]
         else:
             # Normal audio mixer strip
             processor.zynmixer = self.state_manager.zynmixer_chan
@@ -174,10 +210,13 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     for chain in self.state_manager.chain_manager.chains.values():
                         if chain.zynmixer_proc:
                             chain.zynmixer_proc.controllers_dict["solo"].set_value(0)
+                    zctrl.processor.controllers_dict["aux solo"].set_value(0)
                 else:
                     getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
                 glob_solo = self.state_manager.zynmixer_chan.get_global_solo()
                 self.state_manager.zynmixer_bus.set_solo(0, glob_solo)
+            elif zctrl.symbol.startswith("aux "):
+                getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol[4:]}')(1, zctrl.value)
             else:
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
         except Exception as e:
