@@ -32,7 +32,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynth
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
-from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS, ZMIP_INT_INDEX
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
@@ -51,7 +51,7 @@ LED_TRACK_SEL       = 0x33  # Track select LED (Tracks: MIDI channel 0-7. 0=off,
 LED_CLIP_STOP       = 0x34  # Clip stop LED (Tracks: MIDI channel 0-7. 0=off, 1=on, 2=flashing, 3-127=on)
 LED_DEVICE_LEFT     = 0x3A  # Device left LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_DEVICE_RIGHT    = 0x3B  # Device right LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
-LED_BANK_RIGHT      = 0x3C  # Bank left LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
+LED_BANK_LEFT       = 0x3C  # Bank left LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_BANK_RIGHT      = 0x3D  # Bank right LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_DEVICE_ON       = 0x3E  # Device on/off LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_DEVICE_LOCK     = 0x3F  # Device lock LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
@@ -78,8 +78,8 @@ BTN_RIGHT           = 0x60  # Right button
 BTN_LEFT            = 0x61  # Left button
 BTN_SHIFT           = 0x62  # Shift button
 BTN_TAP_TEMPO       = 0x63  # Tap tempo button
-BTN_NUDGE_UP        = 0x64  # Nudge + button
-BTN_NUDGE_DOWN      = 0x65  # Nudge - button
+BTN_NUDGE_DOWN      = 0x64  # Nudge - button
+BTN_NUDGE_UP        = 0x65  # Nudge + button
 BTN_SESSION         = 0x66  # Session record button
 
 CC_FADER            = 0x07  # Fader slider (Tracks: MIDI channel 0-7)
@@ -145,6 +145,7 @@ LED_RING_TYPE_SINGLE= 0x01  # Single ring
 LED_RING_TYPE_VOLUME= 0x02  # Volume style
 LED_RING_TYPE_PAN   = 0x03  # Pan style
 
+
 class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
     dev_ids = ["APC40 mkII IN 1"]
@@ -160,14 +161,14 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self.shift = False
         self.enc_mode = ENC_MODE_PAN # Chain encoder mode
         self.last_cc_send = 0 # Time of last sent feedback CC - used to avoid feedback interference
+        self.cc_device_count = 0
 
     def init(self):
-        # Enable session mode on launchkey
-        #TODO: Send Universal MIDI message - device inquiry: 0xf0, 0x7e, <chan>, 0x06, 0x01, 0xf7
+        # TODO: Send Universal MIDI message - device inquiry: 0xf0, 0x7e, <chan>, 0x06, 0x01, 0xf7
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
         self.mixer_toggle = False
         self.update_state()
-        self.last_press = None # Time of last button press used for (simple single-button) bold press detection
+        self.last_press = None  # Time of last button press used for (simple single-button) bold press detection
         super().init()
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.update_state)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.update_state)
@@ -255,9 +256,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
     def set_enc_mode(self, mode):
         if mode <= ENC_MODE_USER:
             self.enc_mode = mode
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PAN, mode==ENC_MODE_PAN)
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, mode==ENC_MODE_SENDS)
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, mode==ENC_MODE_USER)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PAN, mode == ENC_MODE_PAN)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, mode == ENC_MODE_SENDS)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, mode == ENC_MODE_USER)
         if mode == ENC_MODE_PAN:
             for i in range(8):
                 try:
@@ -278,24 +279,28 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             cc = ev[1]
             val = ev[2]
             if cc == CC_MAIN_FADER:
-                self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
+                self.set_mixer_param("level", -1, val / 127.0)
             elif cc == CC_FADER:
-                if chan < len(self.chains) - 1:
+                pos = self.mixer_col_offset + chan
+                if pos < len(self.chains) - 1:
                     try:
-                        self.chains[chan].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
+                        self.set_mixer_param("level", pos, val / 127.0)
                     except:
                         pass
+            elif cc == CC_CUE_LEVEL:
+                dval = relative_to_signed(val)
+                self.nudge_mixer_param("balance", -1, dval)
             elif cc == CC_TEMPO:
                 dval = relative_to_signed(val)
                 if self.shift:
                     dval *= 0.1
                 self.zynseq.nudge_tempo(dval)
             elif CC_TRACK_1 <= cc <= CC_TRACK_8:
-                pos = cc - 48
+                pos = self.mixer_col_offset + cc - 48
                 if self.enc_mode == ENC_MODE_PAN:
                     if pos < len(self.chains) - 1:
                         try:
-                            self.chains[pos].zynmixer_proc.controllers_dict["balance"].set_value(val / 64.0 - 1.0)
+                            self.set_mixer_param("balance", pos, val / 64.0 - 1.0)
                             self.last_cc_send = now
                         except:
                             pass
@@ -303,14 +308,34 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     if pos < len(self.chains) - 1:
                         send_id = self.chain_manager.get_send_id(self.shift)
                         try:
-                            self.chains[pos].zynmixer_proc.controllers_dict[f"send_{send_id}_level"].set_value(val / 127)
+                            self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
                         except:
                             pass
                 elif self.enc_mode == ENC_MODE_USER:
-                    pass #TODO: Handle user mode encoders
-            elif cc == CC_DEVICE_1:
+                    pass  # TODO: Handle user mode encoders
+            elif CC_DEVICE_1 <= cc <= CC_DEVICE_8:
                 # Only way to detect a chain has been selected when all of its device controls are sent
-                self.chain_manager.set_active_chain_by_index(chan)
+                pos = self.mixer_col_offset + chan
+                if self.chain_manager.active_chain.chain_id != pos:
+                    logging.debug(f"DEVICE CC => pos={pos}, count={self.cc_device_count}")
+                    if self.cc_device_count < 7:
+                        self.cc_device_count += 1
+                    else:
+                        self.cc_device_count = 0
+                        self.chain_manager.set_active_chain_by_index(pos)
+                        # TODO => Resend learned zctrl values from chain to controller to refresh values stored by the controller
+                # Send CC to chains and midi_learn subsystem
+                else:
+                    midi_chan = self.chain_manager.active_chain.midi_chan
+                    # Use MIDi Chan 15 for Audio chains and chains with MIDI Chan = ALL
+                    if midi_chan is None or midi_chan > 15:
+                        midi_chan = 15
+                    logging.debug(f"DEVICE CC => midi_chan={midi_chan}, cc={cc}, val={val}")
+                    if not self.state_manager.midi_learn_zctrl:
+                        self.chain_manager.midi_control_change(ZMIP_INT_INDEX, midi_chan, cc, val)
+                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
+                                          izmip=ZMIP_INT_INDEX, chan=midi_chan, num=cc, val=val)
+
         elif evtype == 8:
             # Note off
             note = ev[1]
@@ -375,6 +400,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.state_manager.send_cuia("ZYNSWITCH", (1, "R"))
             elif note == LED_DEVICE_LOCK:
                 self.state_manager.send_cuia("ZYNSWITCH", (3, "R"))
+            elif note == LED_DEVICE_VIEW:
+                pass
+            elif note == LED_DETAIL_VIEW:
+                pass
 
         elif evtype == 9:
             # Note on
@@ -414,6 +443,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_METRONOME, 0)
                 else:
                     self.zynseq.zctrl_metro_enable.set_value(True)
+            elif note == BTN_NUDGE_DOWN:
+                self.zynseq.nudge_tempo(-0.1)
+            elif note == BTN_NUDGE_UP:
+                self.zynseq.nudge_tempo(+0.1)
             elif note == BTN_STOP_ALL_CLIPS:
                 self.last_press = now
             elif note == LED_CLIP_STOP:
@@ -436,6 +469,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.state_manager.send_cuia("ZYNSWITCH", (1, "P"))
             elif note == LED_DEVICE_LOCK:
                 self.state_manager.send_cuia("ZYNSWITCH", (3, "P"))
+            elif note == LED_DEVICE_VIEW:
+                pass
+            elif note == LED_DETAIL_VIEW:
+                pass
 
         return True
 

@@ -173,7 +173,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                 return True
             elif ccnum in self.knobs3_ccnum:
                 pos = self.mixer_col_offset + self.knobs3_ccnum.index(ccnum)
-                self.set_mixer_param("balance", pos, 2.0 * ccval/127.0 - 1.0)
+                self.set_mixer_param("balance", pos, ccval/64.0 - 1.0)
                 return True
 
     # Light-Off all LEDs

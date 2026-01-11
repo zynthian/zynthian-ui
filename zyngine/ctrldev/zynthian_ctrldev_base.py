@@ -528,4 +528,9 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
                 logging.warning(f"Failed to toggle {param}")
         return 0
 
+    def scroll(self, left_chain=None, top_phrase=None):
+        super().scroll(left_chain, top_phrase)
+        self.mixer_col_offset = self.scroll_h
+
+
 # --------------------------------------------------------------------------
