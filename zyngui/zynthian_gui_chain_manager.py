@@ -320,8 +320,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             "slot": slot,  # Processor slot
             "idx": idx,  # Index of (parallel) processor within slot
             "pos": [chain_idx, row, len(self.nodes[chain_idx][row])],  # Position of node within graph
-            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "midi_key_range", "add_midi_proc", "midi_output", "audio_out"),
-            "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_input", "add_midi_proc", "audio_in")
+            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "midi_key_range", "add_midi_proc", "midi_output", "audio_out"),
+            "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "Special", "midi_key_range", "midi_input", "add_midi_proc", "audio_in")
         })
 
     def _get_name(self, text, max_width):
@@ -418,6 +418,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         c_midi = "#805050" 
         c_synth = "#32a893"
         c_audio = "#505080"
+        c_special = "#708050"
 
         # Draw node background
         proc = node.get("proc")
@@ -437,6 +438,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     color = c_synth
                 case "Audio Input" | "Audio Output" | "Audio Effect":
                     color = c_audio
+                case "Special":
+                    color = c_special
         node["id"] = self.canvas.create_rectangle(
             x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
             fill=color, outline=color, tags="node"
