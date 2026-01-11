@@ -279,6 +279,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             val = ev[2]
             if cc == CC_MAIN_FADER:
                 self.set_mixer_param("level", -1, val / 127.0)
+            elif cc == CC_CUE_LEVEL:
+                self.nudge_mixer_param("balance", -1, relative_to_signed(val))
             elif cc == CC_FADER:
                 if chan < len(self.chains) - 1:
                     self.set_mixer_param("level", chan, val / 127.0)
