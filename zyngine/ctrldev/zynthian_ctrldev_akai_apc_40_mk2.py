@@ -251,15 +251,17 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             pos = self.chain_manager.get_chain_index(active_chain_id)
         else:
             lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 1)
+            self.update_device_encoders()
             return
         if pos is None:
             return
-        old_scroll = self.scroll_h
+        old_scroll_h = self.scroll_h
         self.scroll_h = (pos // self.cols) * self.cols
-        new_pos = pos % self.cols
-        if old_scroll != self.scroll_h:
+        if old_scroll_h != self.scroll_h:
             self.update_state()
+        new_pos = pos % self.cols
         lib_zyncore.dev_send_note_on(self.idev_out, new_pos, LED_TRACK_SEL, 1)
+        self.update_device_encoders()
 
     def update_state(self):
         self.refresh()
@@ -284,10 +286,60 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PAN, mode == ENC_MODE_PAN)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, mode == ENC_MODE_SENDS)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, mode == ENC_MODE_USER)
-        if mode == ENC_MODE_PAN:
+        self.update_track_encoders()
+
+    # Send device knob values
+    def update_device_encoders(self):
+        zctrls = {}
+        # Get absolute MIDI learned zctrls
+        key_base = self.idev << 16
+        for key in list(self.chain_manager.absolute_midi_cc_binding):
+            if key_base == (key & 0xFFFF00):
+                cc = key & 0x7F
+                zctrls[cc] = self.chain_manager.absolute_midi_cc_binding[key][0]
+        # Get chain MIDI learned zctrls
+        key_base = self.chain_manager.active_chain.chain_id << 16
+        for key in list(self.chain_manager.chain_midi_cc_binding):
+            cc = key & 0x7F
+            if key_base == (key & 0xFFFF00) and cc not in zctrls:
+                zctrls[cc] = self.chain_manager.chain_midi_cc_binding[key][0]
+        for i in range(8):
+            cc = 0x10 + i
+            try:
+                val = zctrls[cc].get_ctrl_midi_val()
+            except:
+                val = 0
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
+
+    # Send track knob values
+    def update_track_encoders(self):
+        if self.enc_mode == ENC_MODE_PAN:
             for i in range(8):
                 try:
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 48, int((self.get_mixer_param("balance", i) + 1) * 64))
+                    pos = self.mixer_col_offset + i
+                    val = int((self.get_mixer_param("balance", pos) + 1) * 64)
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
+                except:
+                    pass
+        elif self.enc_mode == ENC_MODE_SENDS:
+            for i in range(8):
+                try:
+                    pos = self.mixer_col_offset + i
+                    send_id = self.chain_manager.get_send_id(0)
+                    if send_id is not None:
+                        val = int(self.get_mixer_param(f"send_{send_id}_level", pos) * 127)
+                    else:
+                        val = 0
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
+                except:
+                    pass
+        elif self.enc_mode == ENC_MODE_USER:
+            for i in range(8):
+                try:
+                    pos = self.mixer_col_offset + i
+                    # TODO => Use first chain controller!!
+                    val = 0
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
                 except:
                     pass
 
@@ -342,21 +394,18 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                             pass
                 elif self.enc_mode == ENC_MODE_SENDS:
                     if pos <= last_pos:
-                        send_id = self.chain_manager.get_send_id(self.shift)
-                        try:
+                        send_id = self.chain_manager.get_send_id(0)
+                        if send_id is not None:
                             self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
-                        except:
-                            pass
                 elif self.enc_mode == ENC_MODE_USER:
                     pass  # TODO: Handle user mode encoders
             # Send CC to chains and midi_learn subsystem
             elif CC_DEVICE_1 <= cc <= CC_DEVICE_8:
-                pos = self.mixer_col_offset + chan
-                logging.debug(f"DEVICE CC => pos={pos}, cc={cc}, val={val}")
+                #logging.debug(f"DEVICE CC => cc={cc}, val={val}")
                 if not self.state_manager.midi_learn_zctrl:
-                    self.chain_manager.midi_control_change(ZMIP_INT_INDEX, pos, cc, val)
+                    self.chain_manager.midi_control_change(self.idev, 0, cc, val)
                 zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
-                                      izmip=ZMIP_INT_INDEX, chan=pos, num=cc, val=val)
+                                      izmip=self.idev, chan=0, num=cc, val=val)
 
         elif evtype == 8:
             # Note off
@@ -402,10 +451,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 phrase = note - LED_SCENE_LAUNCH_1
                 self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, 32)
             # Track select button => Chain select
-            elif LED_TRACK_SEL:
+            elif note == LED_TRACK_SEL:
                 pos = self.mixer_col_offset + chan
                 self.chain_manager.set_active_chain_by_index(pos)
-                # TODO => Resend learned zctrl values from chain to controller to refresh values stored by the controller
             # Track flag buttons
             elif note == LED_SOLO:
                 pos = self.mixer_col_offset + chan
