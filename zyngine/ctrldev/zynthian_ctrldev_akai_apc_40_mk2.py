@@ -261,7 +261,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         if mode == ENC_MODE_PAN:
             for i in range(8):
                 try:
-                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 48, int((self.chains[i].zynmixer_proc.controllers_dict["balance"].value + 1) * 64))
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 48, int((self.get_mixer_param("balance", i) + 1) * 64))
                 except:
                     pass
 
@@ -278,13 +278,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             cc = ev[1]
             val = ev[2]
             if cc == CC_MAIN_FADER:
-                self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
+                self.set_mixer_param("level", -1, val / 127.0)
             elif cc == CC_FADER:
                 if chan < len(self.chains) - 1:
-                    try:
-                        self.chains[chan].zynmixer_proc.controllers_dict["level"].set_value(val / 127.0)
-                    except:
-                        pass
+                    self.set_mixer_param("level", chan, val / 127.0)
             elif cc == CC_TEMPO:
                 dval = relative_to_signed(val)
                 if self.shift:
@@ -295,7 +292,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 if self.enc_mode == ENC_MODE_PAN:
                     if pos < len(self.chains) - 1:
                         try:
-                            self.chains[pos].zynmixer_proc.controllers_dict["balance"].set_value(val / 64.0 - 1.0)
+                            self.set_mixer_param("balance", pos, val / 64.0 - 1.0)
                             self.last_cc_send = now
                         except:
                             pass
@@ -303,7 +300,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     if pos < len(self.chains) - 1:
                         send_id = self.chain_manager.get_send_id(self.shift)
                         try:
-                            self.chains[pos].zynmixer_proc.controllers_dict[f"send_{send_id}_level"].set_value(val / 127)
+                            self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
                         except:
                             pass
                 elif self.enc_mode == ENC_MODE_USER:
@@ -338,17 +335,17 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.shift = False
             elif note == LED_SOLO:
                 try:
-                    self.chains[chan].zynmixer_proc.controllers_dict["solo"].set_value(False)
+                    self.set_mixer_param("solo", chan, False)
                 except:
                     pass
             elif note == LED_ACTIVATOR:
                 try:
-                    self.chains[chan].zynmixer_proc.controllers_dict["mute"].set_value(False)
+                    self.set_mixer_param("mute", chan, False)
                 except:
                     pass
             elif note == LED_RECORD_ARM:
                 try:
-                    self.chains[chan].zynmixer_proc.controllers_dict["record"].set_value(False)
+                    self.set_mixer_param("record", chan, False)
                 except:
                     pass
             elif note == LED_PLAY:
@@ -389,17 +386,17 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.shift = True
             elif note == LED_SOLO:
                 try:
-                    self.chains[chan].zynmixer_proc.controllers_dict["solo"].set_value(True)
+                    self.set_mixer_param("solo", chan, True)
                 except:
                     pass
             elif note == LED_ACTIVATOR:
                 try:
-                    self.chains[chan].zynmixer_proc.controllers_dict["mute"].set_value(True)
+                    self.set_mixer_param("mute", chan, True)
                 except:
                     pass
             elif note == LED_RECORD_ARM:
                 try:
-                    self.chains[chan].zynmixer_proc.controllers_dict["record"].set_value(True)
+                    self.set_mixer_param("record", chan, True)
                 except:
                     pass
             elif note == BTN_TAP_TEMPO:
