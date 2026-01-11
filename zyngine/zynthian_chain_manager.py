@@ -590,9 +590,8 @@ class zynthian_chain_manager:
     def get_chain_ids_filtered(self, filter=None):
         """ Get chain list filtered and ordered in display order
         Args:
-            filter : A list of chain types to filter => ["audio", "midi", "synth", "generator"]
+            filter : A list of chain types to filter => ["audio", "midi", "synth", "generator", "audio_out", "audio_in", "mixbus"]
         Returns : List of chain identifiers
-        Note: filter list may be a list or a comma separted string, e.g. "audio,synth"
         """
 
         if not filter:
@@ -601,31 +600,11 @@ class zynthian_chain_manager:
         chain_ids_filtered = []
         for chain_id, chain in self.chains.items():
             for type in filter:
-                match type:
-                    case "midi":
-                        if chain.is_midi():
-                            chain_ids_filtered.append(chain_id)
-                            break
-                    case "audio_out":
-                        if chain.is_audio():
-                            chain_ids_filtered.append(chain_id)
-                            break
-                    case "audio_in":
-                        if chain.is_audio_in():
-                            chain_ids_filtered.append(chain_id)
-                            break
-                    case "synth":
-                        if chain.is_synth():
-                            chain_ids_filtered.append(chain_id)
-                            break
-                    case "generator":
-                        if chain.is_generator():
-                            chain_ids_filtered.append(chain_id)
-                            break
-                    case "mixbus":
-                        if chain.is_mixbus():
-                            chain_ids_filtered.append(chain_id)
-                            break
+                try:
+                    if getattr(chain, f"is_{type}")():
+                        chain_ids_filtered.append(chain_id)
+                except:
+                    pass
         return chain_ids_filtered
 
     def get_chain_id_by_mixer_chan(self, chan, mixbus=False):

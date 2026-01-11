@@ -362,6 +362,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 return
             options = {}
             if self.input:
+                screen_title = "MIDI Input Device"
                 options["MIDI Input Mode"] = None
                 mode_info = "Toggle input mode.\n\n"
                 if zynautoconnect.get_midi_in_dev_mode(idev):
@@ -431,6 +432,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 port = zynautoconnect.devices_in[idev]
 
             else:
+                screen_title = "MIDI Output Device"
                 port = zynautoconnect.devices_out[idev]
 
             options["Configuration"] = None
@@ -439,7 +441,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             options[f"Rename port '{port.aliases[0]}'"] = [port, ["Rename the MIDI port.\nClear name to reset to default name.",  "midi_input.png"]]
             # options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
 
-            self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb, False, False, None)
+            self.zyngui.screens['option'].config(screen_title, options, self.menu_cb, False, False, None)
             self.zyngui.show_screen('option')
         except Exception as e:
             #logging.error(e)

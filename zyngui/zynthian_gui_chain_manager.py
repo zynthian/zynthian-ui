@@ -320,8 +320,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             "slot": slot,  # Processor slot
             "idx": idx,  # Index of (parallel) processor within slot
             "pos": [chain_idx, row, len(self.nodes[chain_idx][row])],  # Position of node within graph
-            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_output", "audio_out"),
-            "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_input", "audio_in")
+            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "midi_key_range", "add_midi_proc", "midi_output", "audio_out"),
+            "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "midi_key_range", "midi_input", "add_midi_proc", "audio_in")
         })
 
     def _get_name(self, text, max_width):
@@ -386,6 +386,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     if self.nodes[chain_idx][row]:
                         row += 1
             elif chain.is_midi():
+                if not chain.midi_slots:
+                    self._add_node(chain_idx, row, "+", chain_id, "add_midi_proc")
+                    row += 1
                 self._add_node(chain_idx, row, "MIDI Output", chain_id, "midi_output")
                 row += 1
             # Add audio input
@@ -422,7 +425,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         title = node.get("title")
         if type(proc) is str:
             match proc:
-                case "midi_input" | "note_range" | "midi_output" | "midi_key_range":
+                case "midi_input" | "note_range" | "add_midi_proc" | "midi_output" | "midi_key_range":
                     color = c_midi
                 case "audio_in" | "audio_out":
                     color = c_audio
@@ -912,6 +915,15 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                         self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
                         self.zyngui.screens['midi_config'].input = True
                         proc = 'midi_config'
+                    case "add_midi_proc":
+                        self.zyngui.modify_chain({
+                            "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
+                            "type": "MIDI Tool",
+                            "midi_thru": True,
+                            "audio_thru": False,
+                            "slot": None
+                        })
+                        return True
                     case "midi_output":
                         self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
                         self.zyngui.screens['midi_config'].input = False
