@@ -487,6 +487,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 row = note // 8
                 try:
                     midi_chan = self.get_filtered_midi_chan_by_index(pos)
+                    if midi_chan is None:
+                        return
                     phrase = self.rows - 1 - row + self.scroll_v
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
                 except:
