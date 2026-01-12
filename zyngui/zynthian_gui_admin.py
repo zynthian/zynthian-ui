@@ -164,6 +164,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         self.list_data.append((None, 0, "> AUDIO"))
 
+        self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
                 self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",

@@ -234,6 +234,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 except:
                     pass
         elif symbol == "solo":
+            if mixbus and chan == 0:
+                return # No control for main mixbus
             try:
                 pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
@@ -241,6 +243,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             except TypeError:
                 pass
         elif symbol == "mute":
+            if mixbus and chan == 0:
+                return # No control for main mixbus
             try:
                 pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
@@ -248,6 +252,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             except TypeError:
                 pass
         elif symbol == "record":
+            if mixbus and chan == 0:
+                return # No control for main mixbus
             try:
                 pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
@@ -483,6 +489,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             elif note == LED_TRACK_SEL:
                 pos = self.scroll_h + chan
                 self.chain_manager.set_active_chain_by_index(pos)
+            elif note == LED_MASTER:
+                self.chain_manager.set_active_chain_by_id(0)
             # Track flag buttons
             elif note == LED_SOLO:
                 pos = self.scroll_h + chan
