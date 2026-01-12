@@ -908,27 +908,27 @@ class zynthian_chain_manager:
         """
 
         if chain_id is None:
-            chain_id = self.active_chain.chain_id
-
-        try:
-            chain = self.chains[chain_id]
-        except:
-            chain = None
+            chain = self.active_chain
+        else:
+            try:
+                chain = self.chains[chain_id]
+            except:
+                chain = None
 
         # If no better candidate, set active the first chain (Main)
         if chain is None:
             chain = next(iter(self.chains.values()))
 
-        self.active_chain = chain
-        self.state_manager.zynseq.chan = chain.midi_chan
-        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
-
-        # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
-        if isinstance(chain.zmop_index, int):
-            try:
-                lib_zyncore.set_active_chain(chain.zmop_index)
-            except Exception as e:
-                logging.error(e)
+        if self.active_chain != chain:
+            self.active_chain = chain
+            self.state_manager.zynseq.chan = chain.midi_chan
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
+            # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
+            if isinstance(chain.zmop_index, int):
+                try:
+                    lib_zyncore.set_active_chain(chain.zmop_index)
+                except Exception as e:
+                    logging.error(e)
 
         return self.active_chain.chain_id
 
@@ -1487,6 +1487,8 @@ class zynthian_chain_manager:
                         if processor:
                             slot = self.chains[chain_id].get_slot(processor)
                     slot += 1
+            if "zctrls" in chain_state:
+                self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
 
         self.state_manager.end_busy("set_chain_state")
 

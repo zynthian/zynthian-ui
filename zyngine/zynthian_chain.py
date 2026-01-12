@@ -877,7 +877,8 @@ class zynthian_chain:
             "audio_thru": self.audio_thru,
             "zmop_index": self.zmop_index,
             "cc_route": cc_route,
-            "slots": slots_states
+            "slots": slots_states,
+            "zctrls": self.get_zctrls_state()
         }
 
         return state
