@@ -32,11 +32,14 @@ from threading import Thread
 from subprocess import check_output, Popen, PIPE
 
 # Zynthian specific modules
+import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
-from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+from zyngine.ctrldev.zynthian_ctrldev_base import SCROLL_MODE_NONE, SCROLL_MODE_GUI_SEL, SCROLL_MODE_GUI_VIEW, SCROLL_MODE_CTRL
 from zyngui import zynthian_gui_config
-import zynconf
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+
+
 
 # ------------------------------------------------------------------------------
 # Mini class to allow use of audio_in gui
@@ -500,15 +503,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             idev: Index of controller's MIDI port
         """
 
-        #TODO: Check what modes controller supports
+        # TODO: Check what modes controller supports
         try:
             mode = self.zyngui.state_manager.ctrldev_manager.drivers[idev].get_scroll_mode()
             options = {
                 "Scroll Modes": None,
-                "Controller handled": (idev, 0),
-                "Follow GUI selection": (idev, 1),
-                "Follow GUI view": (idev, 2),
-                "Lock to first chain & phrase": (idev, 3)
+                "Controller handled": (idev, SCROLL_MODE_CTRL),
+                "Follow GUI selection": (idev, SCROLL_MODE_GUI_SEL),
+                "Follow GUI view": (idev, SCROLL_MODE_GUI_VIEW),
+                "Lock to first chain & phrase": (idev, SCROLL_MODE_NONE)
             }
             self.zyngui.screens['option'].config("Controller Options", options, self.controller_options_cb, index=mode+1)
             self.zyngui.show_screen('option')

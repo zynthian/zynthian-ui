@@ -43,13 +43,13 @@ from zynlibs.zynseq import zynseq
 # Control device base class
 # ------------------------------------------------------------------------------------------------------------------
 
+SCROLL_MODE_NONE = 0
+SCROLL_MODE_GUI_SEL = 1
+SCROLL_MODE_GUI_VIEW = 2
+SCROLL_MODE_CTRL = 3
+
 
 class zynthian_ctrldev_base:
-
-    SCROLL_MODE_CTRL    = 0
-    SCROLL_MODE_GUI_SEL = 1
-    SCROLL_MODE_GUI_VIEW = 2
-    SCROLL_MODE_NONE    = 3
 
     dev_ids = []			# String list that could identify the device
     dev_id = None  			# String that identifies the device
@@ -99,7 +99,7 @@ class zynthian_ctrldev_base:
         self.rows = 0  # Quantity of rows of controllers, usually mapped to phrases
         self.scroll_h = 0  # Offset of first column / chain
         self.scroll_v = 0  # Offset of first phrase / row of pads
-        self.set_scroll_mode(self.SCROLL_MODE_GUI_SEL)
+        self.scroll_mode = SCROLL_MODE_GUI_SEL
         self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
 
     @classmethod
@@ -139,18 +139,28 @@ class zynthian_ctrldev_base:
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         # Register for snapshot loading
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        # Register for GUI changes
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
+
+        self.set_scroll_mode()
 
     def end(self):
         """End control device: restore initial state, unregister signals, etc
         It *SHOULD* be implemented by child class"""
 
-        # Unregister for snapshot loading
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from processor tree changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        # Unregister from snapshot loading
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        # Unregister from GUI changes
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
         self.end_midiproc()
 
@@ -297,87 +307,79 @@ class zynthian_ctrldev_base:
 
     def get_state(self):
         """Return driver's state dictionary
-        *COULD* be implemented by child class"""
+        *COULD* be extended by child class"""
 
-        return None
+        return {
+            "scroll_mode": self.scroll_mode
+        }
 
     def set_state(self, state):
         """Restore driver's state
-        *COULD* be implemented by child class"""
+        *COULD* be extended by child class"""
 
-        pass
+        if "scroll_mode" in state:
+            self.set_scroll_mode(state["scroll_mode"])
 
     def get_scroll_mode(self):
-        return self._scroll_mode
+        return self.scroll_mode
 
     def set_scroll_mode(self, mode):
         """Set the chain and phrase scroll mode
         mode - New scroll mode"""
 
-        if mode < 0 or mode > 3:
+        if mode is None:
+            mode = SCROLL_MODE_NONE
+        if mode < SCROLL_MODE_NONE or mode > SCROLL_MODE_CTRL:
             return
 
-        self._scroll_mode = mode
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
-        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
-
-        match mode:
-            case self.SCROLL_MODE_GUI_SEL:
-                zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
-                zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
-            case self.SCROLL_MODE_GUI_VIEW:
-                zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
-            case self.SCROLL_MODE_CTRL:
-                pass
-            case self.SCROLL_MODE_NONE:
-                self.scroll_h = self.scroll_v = 0
-            case _:
-                return
+        self.scroll_mode = mode
+        if self.scroll_mode == SCROLL_MODE_NONE:
+            self.scroll_h = self.scroll_v = 0
 
     def on_active_chain(self, active_chain_id):
         """Handle active chain selection
         *COULD* be implemented by child class"""
 
-        if active_chain_id == 0:
-            return
-        pos = self.chain_manager.get_chain_index(active_chain_id)
-        if pos < self.scroll_h:
-            self.scroll_h = pos
-        elif pos >= self.scroll_h + self.cols:
-            self.scroll_h = max(0, min(pos - self.cols + 1, len(self.chain_ids_filtered) - self.cols))
-        else:
-            return
-        self.refresh()
+        if self.scroll_mode == SCROLL_MODE_GUI_SEL:
+            if active_chain_id == 0:
+                return
+            pos = self.chain_manager.get_chain_index(active_chain_id)
+            if pos < self.scroll_h:
+                self.scroll_h = pos
+            elif pos >= self.scroll_h + self.cols:
+                self.scroll_h = max(0, min(pos - self.cols + 1, len(self.chain_ids_filtered) - self.cols))
+            else:
+                return
+            self.refresh()
 
     def on_active_phrase(self, phrase):
         """Handle active phrase selection
         *COULD* be impleented by child class"""
 
-        if phrase < self.scroll_v:
-            self.scroll_v = phrase
-        elif phrase >= self.scroll_v + self.rows:
-            self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
-        else:
-            return
-        self.refresh()
+        if self.scroll_mode == SCROLL_MODE_GUI_SEL:
+            if phrase < self.scroll_v:
+                self.scroll_v = phrase
+            elif phrase >= self.scroll_v + self.rows:
+                self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
+            else:
+                return
+            self.refresh()
 
     def on_gui_view_pos(self, left_chain=None, top_phrase=None):
         """Update GUI scroll position
         *COULD* be implemented by child class"""
 
-        if self._scroll_mode != self.SCROLL_MODE_GUI_VIEW:
-            return False
-        refresh = False
-        if self.scroll_h != left_chain:
-            self.scroll_h = left_chain
-            refresh = True
-        if self.scroll_v != top_phrase:
-            self.scroll_v = top_phrase
-            refresh = True
-        if refresh:
-            self.refresh()
-        return True
+        if self.scroll_mode == SCROLL_MODE_GUI_VIEW:
+            refresh = False
+            if self.scroll_h != left_chain:
+                self.scroll_h = left_chain
+                refresh = True
+            if self.scroll_v != top_phrase:
+                self.scroll_v = top_phrase
+                refresh = True
+            if refresh:
+                self.refresh()
+            return True
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
