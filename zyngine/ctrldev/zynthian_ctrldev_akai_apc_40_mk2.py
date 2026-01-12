@@ -192,27 +192,17 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
     def init(self):
         self.send_sysex_universal_device_enquiry(0)
         sleep(0.05)
-        #logging.debug("INIT DEVICE AFTER SETTING MODE!")
-        self.mixer_toggle = False
-        self.update_state()
         self.last_press = None  # Time of last button press used for (simple single-button) bold press detection
+        self.mixer_toggle = False
+        self.refresh()
+        self.set_enc_mode(self.enc_mode)
         super().init()
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.update_state)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.update_state)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.update_state)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.update_state)
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.update_state)
         zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
         zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
 
     def end(self):
         super().end()
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.update_state)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.update_state)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.update_state)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.update_state)
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.update_state)
         zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
         zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
@@ -296,10 +286,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 lib_zyncore.dev_send_note_on(self.idev_out, col, LED_SOLO, 0)
                 lib_zyncore.dev_send_note_on(self.idev_out, col, LED_ACTIVATOR, 0)
                 lib_zyncore.dev_send_note_on(self.idev_out, col, LED_RECORD_ARM, 0)
-
-    def update_state(self):
-        self.refresh()
-        self.set_enc_mode(self.enc_mode)
+        #self.set_enc_mode(self.enc_mode)
 
     def on_audio_rec(self, state):
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_RECORD, state)
@@ -321,6 +308,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, mode == ENC_MODE_SENDS)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, mode == ENC_MODE_USER)
         self.update_track_encoders()
+        # Update device button leds
         for led in range(LED_DEVICE_LEFT, LED_DEVICE_VIEW + 1):
             lib_zyncore.dev_send_note_off(self.idev_out, 0, led, 0)
         if mode == ENC_MODE_SENDS:
