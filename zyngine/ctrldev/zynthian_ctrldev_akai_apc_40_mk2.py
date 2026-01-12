@@ -499,8 +499,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, 32)
             # Track select button => Chain select
             elif note == LED_TRACK_SEL:
-                pos = self.scroll_h + chan
-                self.chain_manager.set_active_chain_by_index(pos)
+                try:
+                    id = self.chain_ids_filtered[self.scroll_h + chan]
+                    self.chain_manager.set_active_chain_by_id(id)
+                except:
+                    pass
             elif note == LED_MASTER:
                 self.chain_manager.set_active_chain_by_id(0)
             # Track flag buttons
