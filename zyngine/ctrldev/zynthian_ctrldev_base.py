@@ -99,8 +99,9 @@ class zynthian_ctrldev_base:
         self.rows = 0  # Quantity of rows of controllers, usually mapped to phrases
         self.scroll_h = 0  # Offset of first column / chain
         self.scroll_v = 0  # Offset of first phrase / row of pads
-        self.scroll_mode = SCROLL_MODE_GUI_SEL
+        self.scroll_mode = None
         self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
+        self.set_scroll_mode(SCROLL_MODE_GUI_SEL)
 
     @classmethod
     def get_driver_name(cls):
@@ -141,25 +142,23 @@ class zynthian_ctrldev_base:
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
         # Register for GUI changes
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        #zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
-
-        self.set_scroll_mode()
 
     def end(self):
         """End control device: restore initial state, unregister signals, etc
         It *SHOULD* be implemented by child class"""
 
+        # Unregister from snapshot loading
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from processor tree changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
-        # Unregister from snapshot loading
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from GUI changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        #zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
         self.end_midiproc()
@@ -340,27 +339,12 @@ class zynthian_ctrldev_base:
         """Handle active chain selection
         *COULD* be implemented by child class"""
 
-        if self.scroll_mode == SCROLL_MODE_GUI_SEL:
-            if active_chain_id == 0:
-                return
+        if self.scroll_mode == SCROLL_MODE_GUI_SEL and active_chain_id != 0:
             pos = self.chain_manager.get_chain_index(active_chain_id)
             if pos < self.scroll_h:
                 self.scroll_h = pos
             elif pos >= self.scroll_h + self.cols:
                 self.scroll_h = max(0, min(pos - self.cols + 1, len(self.chain_ids_filtered) - self.cols))
-            else:
-                return
-            self.refresh()
-
-    def on_active_phrase(self, phrase):
-        """Handle active phrase selection
-        *COULD* be impleented by child class"""
-
-        if self.scroll_mode == SCROLL_MODE_GUI_SEL:
-            if phrase < self.scroll_v:
-                self.scroll_v = phrase
-            elif phrase >= self.scroll_v + self.rows:
-                self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
             else:
                 return
             self.refresh()
@@ -401,11 +385,15 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         # Register for zynseq updates
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
+        # Register phrase change
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
 
     def end(self):
         # Unregister from zynseq updates
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
+        # Unregister phrase change
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
         # Light off
         self.light_off()
         super().end()
@@ -472,6 +460,18 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
             for chan in range(32):
                 self.update_seq_state(phrase, chan)
             self.update_seq_state(phrase, zynseq.PHRASE_CHANNEL)
+
+    def on_active_phrase(self, phrase):
+        """Handle active phrase selection
+        *COULD* be implemented by child class"""
+
+        if phrase < self.scroll_v:
+            self.scroll_v = phrase
+        elif phrase >= self.scroll_v + self.rows:
+            self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
+        else:
+            return
+        self.refresh()
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class

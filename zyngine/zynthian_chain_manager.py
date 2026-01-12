@@ -123,7 +123,7 @@ class zynthian_chain_manager:
         self.absolute_midi_cc_binding = {}
         # Map of list of zctrls indexed by 24-bit CHAIN,CHAN,CC
         self.chain_midi_cc_binding = {}
-        self._rebuild_optimisation_cache()
+        self.rebuild_optimisation_cache()
 
     # ------------------------------------------------------------------------
     # Engine Management
@@ -275,6 +275,8 @@ class zynthian_chain_manager:
         self.active_chain = chain
         if fast_refresh:
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
+        else:
+            self.rebuild_optimisation_cache()
         self.state_manager.end_busy("add_chain")
         return chain_id
 
@@ -361,7 +363,7 @@ class zynthian_chain_manager:
                 self.chains.pop(chain_id)
                 del chain
 
-        self._rebuild_optimisation_cache()
+        self.rebuild_optimisation_cache()
 
         zynautoconnect.request_audio_connect(fast_refresh)
         zynautoconnect.request_midi_connect(fast_refresh)
@@ -685,7 +687,7 @@ class zynthian_chain_manager:
         except IndexError:
             return None
 
-    def _rebuild_optimisation_cache(self):
+    def rebuild_optimisation_cache(self):
         self._midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)] # List of lists of chain ids, indexed by midi channel.
         self._midi_chan_2_pos = [list() for _ in range(MAX_NUM_MIDI_CHANS)] # List of lists of chain positions, indexed by midi channel.
         self._mixer_chan_2_pos = [{},{}] # Map of chain positions, indexed by mixer chan. First map is for chains. Second map is for mixbuses.
@@ -1489,7 +1491,7 @@ class zynthian_chain_manager:
                     slot += 1
             if "zctrls" in chain_state:
                 self.chains[chain_id].set_zctrls_state(chain_state["zctrls"])
-
+        self.rebuild_optimisation_cache()
         self.state_manager.end_busy("set_chain_state")
 
     def restore_presets(self):
@@ -1838,7 +1840,6 @@ class zynthian_chain_manager:
             elif chain.midi_chan == 0xffff:
                 midi_chans = list(range(MAX_NUM_MIDI_CHANS))
 
-        self._rebuild_optimisation_cache()
         chain.set_midi_chan(midi_chan)
         for mc in range(16):
             if not self._midi_chan_2_chain_ids[mc]:
@@ -1854,7 +1855,7 @@ class zynthian_chain_manager:
             # ALL MIDI channels
             elif midi_chan == 0xffff:
                 midi_chans = list(range(MAX_NUM_MIDI_CHANS))
-            self._rebuild_optimisation_cache()
+        self.rebuild_optimisation_cache()
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""
