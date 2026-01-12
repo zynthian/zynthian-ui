@@ -997,6 +997,7 @@ class zynthian_gui:
                             self.chain_manager.set_chain_title(chain_id, am_proc.name)
                         else:
                             am_proc = self.chain_manager.add_processor(chain_id, "MI")
+                    self.chain_manager.rebuild_optimisation_cache()
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
                     if processor and processor.eng_code != "CL":

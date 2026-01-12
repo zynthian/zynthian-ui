@@ -67,7 +67,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
         self.buttonbar_config = [
             ("arrow_left", '<< Prev'),
-            ("zynswitch 1,S", 'Preset'),
+            ("zynswitch 0,B", 'Preset'),
             ("zynswitch 3,S", 'Pages'),
             ("arrow_right", 'Next >>')
         ]

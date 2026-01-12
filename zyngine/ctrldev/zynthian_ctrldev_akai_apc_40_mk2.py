@@ -161,7 +161,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self.sysex_manufacturer_id = None
         self.sysex_product_model_id = None
         self.sysex_dev_id = None
-        self.shift = False
+        self._shift = False # True whilst shift button is pressed
+        self._send = False # True whilst send button is pressed
+        self.send = 0 # Index of send to adjust
         self.enc_mode = ENC_MODE_PAN  # Chain encoder mode
         self.last_cc_send = 0  # Time of last sent feedback CC - used to avoid feedback interference
         self.mixer_toggle = False
@@ -331,7 +333,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         elif self.enc_mode == ENC_MODE_SENDS:
             for i in range(8):
                 pos = self.scroll_h + i
-                send_id = self.chain_manager.get_send_id(0)
+                send_id = self.chain_manager.get_send_id(self.send)
                 if send_id is not None:
                     val = int(self.get_mixer_param(f"send_{send_id}_level", pos) * 127)
                 else:
@@ -409,7 +411,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.nudge_mixer_param("balance", -1, dval)
             elif cc == CC_TEMPO:
                 dval = relative_to_signed(val)
-                if self.shift:
+                if self._shift:
                     dval *= 0.1
                 self.zynseq.nudge_tempo(dval)
             elif CC_TRACK_1 <= cc <= CC_TRACK_8:
@@ -423,7 +425,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                             pass
                 elif self.enc_mode == ENC_MODE_SENDS:
                     if pos <= last_pos:
-                        send_id = self.chain_manager.get_send_id(0)
+                        send_id = self.chain_manager.get_send_id(self.send)
                         if send_id is not None:
                             self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
                 elif self.enc_mode == ENC_MODE_USER:
@@ -446,7 +448,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             # Note off
             note = ev[1]
             if note == BTN_SHIFT:
-                self.shift = False
+                self._shift = False
+                if self.enc_mode == ENC_MODE_SENDS:
+                    self.update_track_encoders()
+            elif note == LED_SENDS:
+                self._send = False
             elif note == BTN_STOP_ALL_CLIPS:
                 if self.last_press and now > self.last_press + BOLD_PRESS_TIME:
                     # PANIC!
@@ -516,10 +522,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.set_enc_mode(ENC_MODE_PAN)
             elif note == LED_SENDS:
                 self.set_enc_mode(ENC_MODE_SENDS)
+                self._send = True
             elif note == LED_USER:
                 self.set_enc_mode(ENC_MODE_USER)
             elif note == BTN_SHIFT:
-                self.shift = True
+                self._shift = True
             elif note == BTN_TAP_TEMPO:
                 self.state_manager.send_cuia("TAP_TEMPO")
             elif note == LED_PLAY:
@@ -527,7 +534,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             elif note == LED_RECORD:
                 self.state_manager.audio_recorder.toggle_recording()
             elif note == LED_METRONOME:
-                if self.shift:
+                if self._shift:
                     self.state_manager.send_cuia("TOGGLE_SCREEN", ("tempo",))
                 else:
                     self.zynseq.zctrl_metro_enable.toggle()
@@ -545,14 +552,46 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.state_manager.send_cuia("ARROW_LEFT")
             elif note == BTN_RIGHT:
                 self.state_manager.send_cuia("ARROW_RIGHT")
+            elif note == LED_DEVICE_LEFT:
+                if self._send:
+                    self.send = 0
+                    self.set_enc_mode(ENC_MODE_SENDS)
+            elif note == LED_DEVICE_RIGHT:
+                if self._send:
+                    self.send = 1
+                    self.set_enc_mode(ENC_MODE_SENDS)
+            elif note == LED_BANK_LEFT:
+                if self._send:
+                    self.send = 2
+                    self.set_enc_mode(ENC_MODE_SENDS)
+            elif note == LED_BANK_RIGHT:
+                if self._send:
+                    self.send = 3
+                    self.set_enc_mode(ENC_MODE_SENDS)
             elif note == LED_DEVICE_ON:
-                self.state_manager.send_cuia("ZYNSWITCH", (1, "P"))
+                if self._send:
+                    self.send = 4
+                    self.set_enc_mode(ENC_MODE_SENDS)
+                else:
+                    self.state_manager.send_cuia("ZYNSWITCH", (1, "P"))
             elif note == LED_DEVICE_LOCK:
-                self.state_manager.send_cuia("ZYNSWITCH", (3, "P"))
+                if self._send:
+                    self.send = 5
+                    self.set_enc_mode(ENC_MODE_SENDS)
+                else:
+                    self.state_manager.send_cuia("ZYNSWITCH", (3, "P"))
             elif note == LED_DEVICE_VIEW:
-                pass
+                if self._send:
+                    self.send = 6
+                    self.set_enc_mode(ENC_MODE_SENDS)
+                else:
+                    pass
             elif note == LED_DETAIL_VIEW:
-                pass
+                if self._send:
+                    self.send = 7
+                    self.set_enc_mode(ENC_MODE_SENDS)
+                else:
+                    pass
             elif note == BTN_SESSION:
                 if zynthian_gui_config.zyngui.screens["mixer"].launcher_mode:
                     self.state_manager.send_cuia("SCREEN_MIXER")
