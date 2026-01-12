@@ -122,8 +122,8 @@ class zynthian_signal_manager:
                     del self.signal_register[signal][subsignal][k]
                     n += 1
             if n == 0:
-                logging.warning(
-                    f"Callback not registered for signal({signal},{subsignal})")
+                #logging.warning(f"Callback not registered for signal({signal},{subsignal})")
+                pass
 
     def unregister_all(self, callback):
         n = 0
