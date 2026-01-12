@@ -391,6 +391,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     # CONFIG OPTIONS
     # ------------------------------------------------------------------------------
 
+    def audio_levels(self, t='S'):
+        logging.info("Audio Levels")
+        self.zyngui.show_screen("alsa_mixer")
+
     def start_rbpi_headphones(self, save_config=True):
         logging.info("STARTING RBPI HEADPHONES")
         try:
