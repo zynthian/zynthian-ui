@@ -608,7 +608,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         group = 32
         try:
             group = pad_info["group"]
-        except KeyError:
+        except:
             pass
 
         try:

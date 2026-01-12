@@ -127,7 +127,7 @@ class zynthian_gui_launcher_pad():
             elif self.chain.chain_id == 0:
                 color = zynthian_gui_config.PAD_COLOUR_PHRASE
             else:
-                color = zynthian_gui_config.LAUNCHER_COLOUR[self.chain.midi_chan]["rgb"]
+                color = zynthian_gui_config.LAUNCHER_COLOUR[state_seq["group"]]["rgb"]
             if self.gui_mixer.moving_phrase and self.phrase == self.gui_mixer.zynseq.phrase:
                 if self.phrase == 0:
                     title = f"⇓ {name[:5]}"
