@@ -234,17 +234,26 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 except:
                     pass
         elif symbol == "solo":
-            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
-            if pos is not None and 0 <= pos < self.cols:
-                lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
+            try:
+                pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+                if 0 <= pos < self.cols:
+                    lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
+            except TypeError:
+                pass
         elif symbol == "mute":
-            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
-            if pos is not None and 0 <= pos < self.cols:
-                lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_ACTIVATOR, value)
+            try:
+                pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+                if 0 <= pos < self.cols:
+                    lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_ACTIVATOR, value)
+            except TypeError:
+                pass
         elif symbol == "record":
-            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
-            if pos is not None and 0 <= pos < self.cols:
-                lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_RECORD_ARM, value)
+            try:
+                pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+                if 0 <= pos < self.cols:
+                    lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_RECORD_ARM, value)
+            except TypeError:
+                pass
 
     def on_active_chain(self, active_chain_id):
         super().on_active_chain(active_chain_id)
@@ -262,6 +271,24 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 1)
         self.update_device_encoders()
         self.update_track_encoders()
+
+    def refresh(self):
+        super().refresh()
+        for col in range(min(self.cols, len(self.chain_ids_filtered))):
+            pos = self.scroll_h + col
+            chain_id = self.chain_ids_filtered[pos]
+            if chain_id == 0:
+                continue
+            proc = self.chain_manager.chains[chain_id].zynmixer_proc
+            if proc:
+                for symbol in ("mute", "solo", "record"):
+                    mixbus = proc.eng_code == "MR"
+                    value = proc.controllers_dict[symbol].value
+                    self.update_mixer_strip(pos, symbol, value, mixbus)
+            else:
+                lib_zyncore.dev_send_note_on(self.idev_out, col, LED_SOLO, 0)
+                lib_zyncore.dev_send_note_on(self.idev_out, col, LED_ACTIVATOR, 0)
+                lib_zyncore.dev_send_note_on(self.idev_out, col, LED_RECORD_ARM, 0)
 
     def update_state(self):
         self.refresh()
