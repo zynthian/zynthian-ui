@@ -533,13 +533,13 @@ class zynthian_gui_control(zynthian_gui_selector):
             if t == 'S':
                 self.rotate_chain()
                 return True
+            elif t == "B":
+                self.zyngui.cuia_bank_preset()
+                return True
 
         elif swi == 1:
             if t == 'S':
                 if self.back_action():
-                    return True
-                elif not self.zyngui.is_shown_alsa_mixer():
-                    self.zyngui.cuia_bank_preset()
                     return True
             elif t == 'B':
                 self.back_action()

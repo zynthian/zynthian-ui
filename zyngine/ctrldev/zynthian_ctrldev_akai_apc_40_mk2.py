@@ -553,6 +553,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 pass
             elif note == LED_DETAIL_VIEW:
                 pass
+            elif note == BTN_SESSION:
+                if zynthian_gui_config.zyngui.screens["mixer"].launcher_mode:
+                    self.state_manager.send_cuia("SCREEN_MIXER")
+                else:
+                    self.state_manager.send_cuia("SCREEN_LAUNCHER")
 
         return True
 
