@@ -50,7 +50,6 @@ class zynthian_audio_recorder:
     def __init__(self, state_manager):
         self.rec_proc = None
         self.status = False
-        self.armed = set()  # List of jack sources armed to record
         self.state_manager = state_manager
         self.filename = None
 
@@ -67,49 +66,25 @@ class zynthian_audio_recorder:
         filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
         return "{}/{}.wav".format(path, filename)
 
-    def arm(self, processor, arm):
-        if isinstance(processor, str):
-            src = processor
-        else:
-            src = f"{processor.jackname}:output_{processor.mixer_chan:02d}"
-        if arm:
-            try:
-                self.armed.add(src)
-                zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                    self.SS_AUDIO_RECORDER_ARM, channel=processor.mixer_chan, mixbus=processor.eng_code=="MR", value=True)
-            except:
-                logging.info(f"{src} not armed")
-        else:
-            try:
-                self.armed.remove(src)
-                zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                    self.SS_AUDIO_RECORDER_ARM, channel=processor.mixer_chan, mixbus=processor.eng_code=="MR", value=False)
-            except:
-                logging.info(f"{src} not unarmed")
-
-    def toggle_arm(self, channel, mixbus):
-        self.arm(channel, mixbus, not self.is_armed(channel, mixbus))
-
-    def is_armed(self, channel, mixbus):
-        if mixbus:
-            src = f"zynmixer_bus:output_{channel:02d}"
-        else:
-            src = f"zynmixer_chan:output_{channel:02d}"
-        return src in self.armed
-
     def start_recording(self, processor=None):
         if self.rec_proc:
             # Already recording
             return False
 
         cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth", "16", "--bufsize", "30", "--maxbufsize", "120"]
-        if self.armed:
-            for port in sorted(self.armed):
+        single_chan = True
+        for chain in self.state_manager.chain_manager.chains.values():
+            if chain.zynmixer_proc and chain.zynmixer_proc.controllers_dict["record"].value:
+                single_chan = False
+                if chain.zynmixer_proc.eng_code == "MI":
+                    port = f"zynmixer_chan:output_{chain.zynmixer_proc.mixer_chan:02d}"
+                else:
+                    port = f"zynmixer_bus:output_{chain.zynmixer_proc.mixer_chan:02d}"
                 cmd.append("--port")
                 cmd.append(f"{port}a")
                 cmd.append("--port")
                 cmd.append(f"{port}b")
-        else:
+        if single_chan:
             cmd.append("--port")
             cmd.append("zynmixer_bus:output_00a")
             cmd.append("--port")

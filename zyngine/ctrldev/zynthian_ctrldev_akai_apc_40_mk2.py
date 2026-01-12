@@ -241,6 +241,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus)
             if pos is not None:
                 lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_ACTIVATOR, value)
+        elif symbol == "record":
+            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus)
+            if pos is not None:
+                lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_RECORD_ARM, value)
 
     def on_active_chain(self, active_chain_id):
         super().on_active_chain(active_chain_id)
