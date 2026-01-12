@@ -43,6 +43,7 @@ MIDI_LEARNING_DISABLED = 0
 MIDI_LEARNING_CHAIN = 1
 MIDI_LEARNING_GLOBAL = 2
 
+
 class zynthian_gui_control(zynthian_gui_selector):
 
     def __init__(self, selcap='Controllers'):
@@ -171,6 +172,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not self.processors:
             self.list_data.append((None, None, "NO PROCESSORS!"))
         else:
+            i = 0
             # Chain controllers => favorite processor controllers
             # Some processors have no chain => I.e. global audio player
             if self.processors[0].chain:
@@ -178,6 +180,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if chain_zctrls:
                     self.list_data.append((None, None, "> CHAIN"))
                     j = 0
+                    i += 1
                     page_zctrls = []
                     for zctrl in chain_zctrls:
                         page_zctrls.append(zctrl)
@@ -185,10 +188,11 @@ class zynthian_gui_control(zynthian_gui_selector):
                             self.list_data.append((f"CHAIN_{j}", -1, f"Controllers {j + 1}", self.processors[0], j, page_zctrls))
                             page_zctrls = []
                             j += 1
+                            i += 1
                     if len(page_zctrls) > 0:
                         self.list_data.append((f"CHAIN_{j}", -1, f"Controllers {j + 1}", self.processors[0], j, page_zctrls))
+                        i += 1
             # Processor Controllers
-            i = 0
             for processor in self.processors:
                 j = 0
                 screen_list = processor.get_ctrl_screens()
