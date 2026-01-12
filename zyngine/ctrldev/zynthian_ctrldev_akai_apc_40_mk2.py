@@ -234,16 +234,16 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 except:
                     pass
         elif symbol == "solo":
-            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus)
-            if pos is not None:
+            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+            if pos is not None and 0 <= pos < self.cols:
                 lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
         elif symbol == "mute":
-            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus)
-            if pos is not None:
+            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+            if pos is not None and 0 <= pos < self.cols:
                 lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_ACTIVATOR, value)
         elif symbol == "record":
-            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus)
-            if pos is not None:
+            pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+            if pos is not None and 0 <= pos < self.cols:
                 lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_RECORD_ARM, value)
 
     def on_active_chain(self, active_chain_id):
