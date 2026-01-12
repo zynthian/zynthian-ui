@@ -370,6 +370,19 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
                 except:
                     pass
+        elif self.enc_mode == ENC_MODE_USER:
+            for i in range(8):
+                try:
+                    # Use first chain zctrl (1st favorite)
+                    pos = self.scroll_h + i
+                    try:
+                        user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[0]
+                        val = user_zctrl.get_ctrl_midi_val()
+                    except:
+                        val = 0
+                    lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
+                except:
+                    pass
 
     def midi_event(self, ev):
         def relative_to_signed(v):
@@ -426,10 +439,13 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                         if send_id is not None:
                             self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
                 elif self.enc_mode == ENC_MODE_USER:
-                    if not self.state_manager.midi_learn_zctrl:
-                        self.chain_manager.midi_control_change(self.idev, 0, cc, val)
-                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
-                                        izmip=self.idev, chan=0, num=cc, val=val)
+                    # Use first chain zctrl (favorite)
+                    if pos <= last_pos:
+                        try:
+                            user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[0]
+                            user_zctrl.midi_control_change(val)
+                        except:
+                            pass
             # Send CC to chains and midi_learn subsystem
             elif CC_DEVICE_1 <= cc <= CC_DEVICE_8:
                 #logging.debug(f"DEVICE CC => cc={cc}, val={val}")

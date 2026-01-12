@@ -95,12 +95,12 @@ class zynthian_ctrldev_base:
         # OPTIONAL: real-time MIDI processor (jack client), inserted between the input device and zmip
         self.midiproc_jackname = None
         self.midiproc = None
-        self.cols = 0 # Quantity of columns of controllers, usually mapped to chains
-        self.rows = 0 # Quantity of rows of controllers, usually mapped to phrases
-        self.scroll_h = 0 # Offset of first column / chain
-        self.scroll_v = 0 # Offset of first phrase / row of pads
+        self.cols = 0  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 0  # Quantity of rows of controllers, usually mapped to phrases
+        self.scroll_h = 0  # Offset of first column / chain
+        self.scroll_v = 0  # Offset of first phrase / row of pads
         self.set_scroll_mode(self.SCROLL_MODE_GUI_SEL)
-        self.scroll_bank_mode = False # TODO: Implement ctrl scrolls by whole banks of cols/rows
+        self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
 
     @classmethod
     def get_driver_name(cls):
@@ -389,9 +389,9 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     dev_zynpad = True		# Can act as a zynpad trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self.cols = 8 # Quatity of columns of physical launcher buttons
-        self.rows = 8 # Quatity of rows of physical launcher buttons
-        self.phrase_launcher_col = self.cols # Index of column used as phrase launcher
+        self.cols = 8  # Quatity of columns of physical launcher buttons
+        self.rows = 8  # Quatity of rows of physical launcher buttons
+        self.phrase_launcher_col = self.cols  # Index of column used as phrase launcher
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
