@@ -441,13 +441,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             options[f"Rename port '{port.aliases[0]}'"] = [port, ["Rename the MIDI port.\nClear name to reset to default name.",  "midi_input.png"]]
             # options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
 
-            self.zyngui.screens['option'].config(screen_title, options, self.menu_cb, False, False, None)
+            self.zyngui.screens['option'].config(screen_title, options, self.menu_cb, False, True, None)
             self.zyngui.show_screen('option')
         except Exception as e:
             #logging.error(e)
             pass  # Port may have disappeared whilst building menu
 
-    def menu_cb(self, option, params):
+    def menu_cb(self, option, params, click_type):
         try:
             if option.startswith("Rename port"):
                 self.zyngui.show_keyboard(self.rename_device, params.aliases[1])
@@ -456,7 +456,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 zynautoconnect.set_port_friendly_name(params)
             elif isinstance(params, list):
                 idev = self.list_data[self.index][1]
-                if params[0] == "LOAD_DRIVER":
+                if click_type == "B":
+                    self.show_controller_options(idev)
+                    return
+                elif params[0] == "LOAD_DRIVER":
                     #logging.debug(f"LOAD DRIVER FOR {idev}")
                     self.zyngui.state_manager.ctrldev_manager.load_driver(idev, params[1])
                 elif params[0] == "UNLOAD_DRIVER":
@@ -490,6 +493,35 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         except Exception as e:
             #logging.error(e)
             pass  # Ports may have changed since menu opened
+
+    def show_controller_options(self, idev):
+        """ Show hardware controller options view
+        Params:
+            idev: Index of controller's MIDI port
+        """
+
+        #TODO: Check what modes controller supports
+        try:
+            mode = self.zyngui.state_manager.ctrldev_manager.drivers[idev].get_scroll_mode()
+            options = {
+                "Scroll Modes": None,
+                "Controller handled": (idev, 0),
+                "Follow GUI selection": (idev, 1),
+                "Follow GUI view": (idev, 2),
+                "Lock to first chain & phrase": (idev, 3)
+            }
+            self.zyngui.screens['option'].config("Controller Options", options, self.controller_options_cb, index=mode+1)
+            self.zyngui.show_screen('option')
+        except:
+            pass
+
+    def controller_options_cb(self, option, params):
+        try:
+            idev, mode = params
+            self.zyngui.state_manager.ctrldev_manager.drivers[idev].set_scroll_mode(mode)
+        except:
+            logging.warning("Failed to set scroll mode")
+        self.show_options()
 
     def process_dynamic_ports(self):
         """Process dynamically added/removed MIDI devices"""

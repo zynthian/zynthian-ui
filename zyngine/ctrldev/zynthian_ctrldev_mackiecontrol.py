@@ -216,7 +216,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def rec(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.mixer_col_offset
+			col = int(id) + self.scroll_h
 			val = self.toggle_mixer_param("record", col)
 			# Send LED feedback
 			if self.idev_out is not None:
@@ -224,7 +224,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def solo(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.mixer_col_offset
+			col = int(id) + self.scroll_h
 			val = self.toggle_mixer_param("solo", col)
 			# Send LED feedback
 			if self.idev_out is not None:
@@ -232,7 +232,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def mute(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.mixer_col_offset
+			col = int(id) + self.scroll_h
 			val = self.toggle_mixer_param("mute", col)
 			# Send LED feedback
 			if self.idev_out is not None:
@@ -240,7 +240,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 	def select(self, id, ccnum, ccval):
 		if ccval == 127:
-			col = int(id) + self.mixer_col_offset
+			col = int(id) + self.scroll_h
 			self.chain_manager.set_active_chain_by_index(col)
 
 	def encoderpress(self, id, ccnum, ccval):
@@ -292,28 +292,28 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		if ccval == 127:
 			n_strips = self.device_settings['number_of_strips']
 			if direction == 'left':
-				if self.mixer_col_offset > 0:
-					self.mixer_col_offset -= n_strips
-					if self.mixer_col_offset < 0:
-						self.mixer_col_offset = 0
+				if self.scroll_h > 0:
+					self.scroll_h -= n_strips
+					if self.scroll_h < 0:
+						self.scroll_h = 0
 					self.refresh()
 			elif direction == 'right':
 				n_chains = len(self.chain_manager.chains)
-				if self.mixer_col_offset < n_chains - n_strips:
-					self.mixer_col_offset += n_strips
+				if self.scroll_h < n_chains - n_strips:
+					self.scroll_h += n_strips
 					self.refresh()
 
 	def channel(self, direction, ccnum, ccval):
 		if ccval == 127:
 			n_strips = self.device_settings['number_of_strips']
 			if direction == 'left':
-				if self.mixer_col_offset > 0:
-					self.mixer_col_offset -= 1
+				if self.scroll_h > 0:
+					self.scroll_h -= 1
 					self.refresh()
 			elif direction == 'right':
 				n_chains = len(self.chain_manager.chains)
-				if self.mixer_col_offset < n_chains - n_strips:
-					self.mixer_col_offset += 1
+				if self.scroll_h < n_chains - n_strips:
+					self.scroll_h += 1
 					self.refresh()
 
 	def transport(self, command, ccnum, ccval):
@@ -456,7 +456,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 					lib_zyncore.dev_send_pitchbend_change(self.idev_out, self.device_settings['masterfader_fader_num'], int(value * self.max_fader_value))
 				return
 			else:
-				col = self.get_filtered_index_by_chain_id(chain_id) - self.mixer_col_offset
+				col = self.get_filtered_index_by_chain_id(chain_id) - self.scroll_h
 				if 0 <= col < self.device_settings['number_of_strips']:
 					if symbol == "mute":
 						lib_zyncore.dev_send_note_on(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
@@ -484,7 +484,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 
 		# Set correct select led, if within the mixer range
 		for i in range(0, self.device_settings['number_of_strips']):
-			chain_id = self.get_filtered_chain_id_by_index(self.mixer_col_offset + i)
+			chain_id = self.get_filtered_chain_id_by_index(self.scroll_h + i)
 			if chain_id == active_chain:
 				sel = 0x7F
 				if chain_id == 0 and self.device_settings['masterfader']:
@@ -536,7 +536,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			self.refresh_audio_transport()
 
 		for i in range(0, self.device_settings['number_of_strips']):
-			pos = self.mixer_col_offset + i
+			pos = self.scroll_h + i
 
 			mute = self.get_mixer_param("mute", pos)
 			solo = self.get_mixer_param("solo", pos)
@@ -584,7 +584,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 				if self.device_settings['masterfader'] and fader_channel == self.device_settings['masterfader_fader_num']:
 					pos = -1
 				else:
-					pos = self.mixer_col_offset + fader_channel
+					pos = self.scroll_h + fader_channel
 				self.set_mixer_param("level", pos, zyn_vol_level)
 				if self.idev_out is not None:
 					lib_zyncore.dev_send_pitchbend_change(self.idev_out, fader_channel, mackie_vol_level)
@@ -609,9 +609,9 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 				# Encoder PAN
 				if self.encoder_assign == 'pan':
 					col = self.encoders_ccnum.index(ccnum)
-					pos = self.mixer_col_offset + col
+					pos = self.scroll_h + col
 					balance_value = self.get_mixer_param("balance", pos)
-					# encoder_num = ccnum - self.encoders_ccnum[0] + self.mixer_col_offset
+					# encoder_num = ccnum - self.encoders_ccnum[0] + self.scroll_h
 					if ccval > 64:  # Encoder turned left
 						new_balance_value = round(balance_value - (ccval - 64) / 100.0, 2)
 						if new_balance_value < -1.0:

@@ -157,7 +157,6 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         super().__init__(state_manager, idev_in, idev_out)
         self.cols = 8
         self.rows = 5
-        self.scroll_v = 0
 
         self.sysex_manufacturer_id = None
         self.sysex_product_model_id = None
@@ -243,25 +242,22 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             if pos is not None:
                 lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_ACTIVATOR, value)
 
-    def update_mixer_active_chain(self, active_chain_id):
+    def on_active_chain(self, active_chain_id):
+        super().on_active_chain(active_chain_id)
         for pos in range(self.cols):
             lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 0)
-        if active_chain_id:
-            lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 0)
-            pos = self.chain_manager.get_chain_index(active_chain_id)
-        else:
+        if active_chain_id == 0:
             lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 1)
             self.update_device_encoders()
             return
+        pos = self.chain_manager.get_chain_index(active_chain_id)
         if pos is None:
             return
-        old_scroll_h = self.scroll_h
-        self.scroll_h = (pos // self.cols) * self.cols
-        if old_scroll_h != self.scroll_h:
-            self.update_state()
-        new_pos = pos % self.cols
-        lib_zyncore.dev_send_note_on(self.idev_out, new_pos, LED_TRACK_SEL, 1)
+        pos = max(0, pos - self.scroll_h)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 0)
+        lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 1)
         self.update_device_encoders()
+        self.update_track_encoders()
 
     def update_state(self):
         self.refresh()
@@ -316,7 +312,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         if self.enc_mode == ENC_MODE_PAN:
             for i in range(8):
                 try:
-                    pos = self.mixer_col_offset + i
+                    pos = self.scroll_h + i
                     val = int((self.get_mixer_param("balance", pos) + 1) * 64)
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
                 except:
@@ -324,7 +320,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         elif self.enc_mode == ENC_MODE_SENDS:
             for i in range(8):
                 try:
-                    pos = self.mixer_col_offset + i
+                    pos = self.scroll_h + i
                     send_id = self.chain_manager.get_send_id(0)
                     if send_id is not None:
                         val = int(self.get_mixer_param(f"send_{send_id}_level", pos) * 127)
@@ -336,7 +332,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         elif self.enc_mode == ENC_MODE_USER:
             for i in range(8):
                 try:
-                    pos = self.mixer_col_offset + i
+                    pos = self.scroll_h + i
                     # TODO => Use first chain controller!!
                     val = 0
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, i + 0x30, val)
@@ -372,7 +368,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             if cc == CC_MAIN_FADER:
                 self.set_mixer_param("level", -1, val / 127.0)
             elif cc == CC_FADER:
-                pos = self.mixer_col_offset + chan
+                pos = self.scroll_h + chan
                 if pos <= last_pos:
                     self.set_mixer_param("level", pos, val / 127.0)
             elif cc == CC_CUE_LEVEL:
@@ -384,7 +380,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     dval *= 0.1
                 self.zynseq.nudge_tempo(dval)
             elif CC_TRACK_1 <= cc <= CC_TRACK_8:
-                pos = self.mixer_col_offset + cc - 48
+                pos = self.scroll_h + cc - 48
                 if self.enc_mode == ENC_MODE_PAN:
                     if pos <= last_pos:
                         try:
@@ -437,8 +433,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             note = ev[1]
             # Clip launcher pads
             if note < 0x30:
-                # Launcher pad => sel.scroll_h = self.mixer_col_offset
-                pos = self.mixer_col_offset + note % 8
+                # Launcher pad => sel.scroll_h = self.scroll_h
+                pos = self.scroll_h + note % 8
                 row = note // 8
                 try:
                     midi_chan = self.get_filtered_midi_chan_by_index(pos)
@@ -452,20 +448,20 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, 32)
             # Track select button => Chain select
             elif note == LED_TRACK_SEL:
-                pos = self.mixer_col_offset + chan
+                pos = self.scroll_h + chan
                 self.chain_manager.set_active_chain_by_index(pos)
             # Track flag buttons
             elif note == LED_SOLO:
-                pos = self.mixer_col_offset + chan
+                pos = self.scroll_h + chan
                 self.toggle_mixer_param("solo", pos)
             elif note == LED_ACTIVATOR:
-                pos = self.mixer_col_offset + chan
+                pos = self.scroll_h + chan
                 self.toggle_mixer_param("mute", pos)
             elif note == LED_RECORD_ARM:
-                pos = self.mixer_col_offset + chan
+                pos = self.scroll_h + chan
                 self.toggle_mixer_param("record", pos)
             elif note == LED_CLIP_STOP:
-                pos = self.mixer_col_offset + chan
+                pos = self.scroll_h + chan
                 try:
                     midi_chan = self.get_filtered_midi_chan_by_index(pos)
                     for phrase in range(self.zynseq.phrases):

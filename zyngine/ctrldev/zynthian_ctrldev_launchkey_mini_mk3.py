@@ -61,7 +61,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         super().__init__(state_manager, idev_in, idev_out)
         self.cols = 8
         self.rows = 2
-        self.scroll_v = self.zynseq.phrase
         self.shift = False
         self.pot_mode = self.POT_MODE_VOLUME    # Potentiometer mode
         self.mixer_toggle = False               # Used to toggle mixer / launcher view
@@ -74,12 +73,8 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 15, 9, self.pot_mode)
         self.mixer_toggle = False
         super().init()
-        # Register for zynseq updates
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.set_phrase_cb)
 
     def end(self):
-        # Unregister for zynseq updates
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.set_phrase_cb)
         super().end()
         # Disable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
@@ -88,10 +83,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         for row in range(self.rows):
             for col in range(8):
                 self.pad_off(col, row)
-
-    def set_phrase_cb(self, phrase):
-        self.scroll_v = phrase
-        self.refresh()
 
     def update_pad(self, row, col, pad_info):
         if col == self.cols:  # Phrase launcher not implemented!
