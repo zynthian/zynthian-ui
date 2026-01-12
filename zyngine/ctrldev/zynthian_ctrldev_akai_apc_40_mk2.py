@@ -322,6 +322,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, mode == ENC_MODE_SENDS)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, mode == ENC_MODE_USER)
         self.update_track_encoders()
+        for led in range(LED_DEVICE_LEFT, LED_DEVICE_VIEW + 1):
+            lib_zyncore.dev_send_note_off(self.idev_out, 0, led, 0)
+        if mode == ENC_MODE_SENDS:
+            lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_DEVICE_LEFT + self.send, 1)
 
     # Send track knob values
     def update_track_encoders(self):
