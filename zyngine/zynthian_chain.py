@@ -31,6 +31,7 @@ import zynautoconnect
 from zyngine.zynthian_processor import zynthian_processor
 from zyncoder.zyncore import lib_zyncore
 
+
 class zynthian_chain:
 
     # ------------------------------------------------------------------------

@@ -76,31 +76,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.last_active_proc = None # The last processor to be selected
         self.long_press_id = None
 
-    def start_moving_processor(self, processor=None):
-        """
-        Enter 'Move Mode' for a specific processor.
-
-        Args:
-            processor: The processor object to be moved. Default: Current processor of current chain.
-        """
-
-        if processor:
-            self.moving_proc = processor
-        else:
-            chain = self.zyngui.chain_manager.active_chain
-            if chain.chain_id == 0:
-                return
-            self.moving_proc = chain.current_processor
-        if self.moving_proc and not self.zyngui.chain_manager.can_move_processor(self.moving_proc):
-            self.moving_proc = None
-        self.select_node(proc=self.moving_proc)
-
-    def end_moving_processor(self):
-        """ Exit processor move mode
-        """
-
-        self.moving_proc = None
-
     def build_view(self):
         """
         Set up the view for the current chain.
@@ -111,7 +86,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Returns:
             bool: Always True.
         """
-        self.set_title(f"Chain: {self.zyngui.chain_manager.active_chain.get_name()}")
+        self.set_title(f"Chain: {self.chain_manager.active_chain.get_name()}")
 
         if zynthian_gui_config.enable_touch_navigation:
             self.show_back_button()
@@ -122,11 +97,25 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
-        if self.nodes and (self.selected_node[0] != self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id) or self.zyngui.get_current_processor() != self.last_active_proc):
-            self.build_graph(self.zyngui.chain_manager.active_chain.current_processor)
+        #self.build_graph(self.zyngui.get_current_processor())
+        if (self.nodes and self.selected_node[0] != self.chain_manager.get_active_chain_index()) or self.zyngui.get_current_processor() != self.last_active_proc:
+            self.build_graph(self.zyngui.get_current_processor())
         else:
             self.build_graph()
         return True
+
+    def update_layout(self):
+        super().update_layout()
+        self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
+        # Formual 2 * (x // y) ensures even values which helps with spacing and dividers
+        self.BLOCK_WIDTH = 2 * (self.width // 12)
+        self.BLOCK_HEIGHT = 2 * (self.height // 16)
+        self.H_SPACING = 2 * (self.BLOCK_WIDTH // 28)
+        self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 8)
+        shown = self.shown
+        self.shown = False
+        self._draw_graph()
+        self.shown = shown
 
     def hide(self):
         if self.shown:
@@ -225,11 +214,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                         else:
                             self.arrow_left()
                     elif dy > self.BLOCK_HEIGHT:
-                        if self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, self.moving_proc, True):
+                        if self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, self.moving_proc, True):
                             self.build_graph(self.moving_proc)
                             self.press_event.y = event.y
                     elif dy < -self.BLOCK_HEIGHT:
-                        if self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, self.moving_proc, False):
+                        if self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, self.moving_proc, False):
                             self.build_graph(self.moving_proc)
                             self.press_event.y = event.y
                     else:
@@ -357,7 +346,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.nodes = []
 
         self.rows = 0
-        for chain_idx, chain in enumerate(self.zyngui.chain_manager.chains.values()):
+        for chain_idx, chain in enumerate(self.chain_manager.chains.values()):
             chain_id = chain.chain_id
             row = 0
 
@@ -472,7 +461,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def _draw_graph(self, sel_proc=None):
         if self.width == 1:
             return # Not yet resized
-        div = self.zyngui.chain_manager.get_pinned_pos()
+        div = self.chain_manager.get_pinned_pos()
         self.canvas.delete("all")
         self.node2pos = {} # Dict of nodes, mapped by gui object (background rectangle)
         divider_height = self.rows * (self.BLOCK_HEIGHT + self.V_SPACING)
@@ -547,7 +536,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if bbox:
             self.canvas.configure(scrollregion=(bbox[0], bbox[1] - 5, bbox[2], bbox[3] + 5))
         else:
-            self.canvas.configure(scrollregion=(0,0,100,100))
+            self.canvas.configure(scrollregion=(0, 0, 100, 100))
         self.select_node(proc=sel_proc)
 
     def _draw_selection(self):
@@ -634,7 +623,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         return None
 
     def select_chain_options_node(self):
-        chain_idx = self.zyngui.chain_manager.get_chain_index(self.zyngui.chain_manager.active_chain.chain_id)
+        chain_idx = self.chain_manager.get_chain_index(self.chain_manager.active_chain.chain_id)
         self.selected_node = [chain_idx, 0, 0]
 
     def get_node_pos(self, node):
@@ -663,8 +652,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.selected_node = [0, 0, 0]
         chain_idx, row, col = self.selected_node
         # Range check
-        if chain_idx >= len(self.zyngui.chain_manager.chains):
-            chain_idx = len(self.zyngui.chain_manager.chains) - 1
+        if chain_idx >= len(self.chain_manager.chains):
+            chain_idx = len(self.chain_manager.chains) - 1
         if row >= len(self.nodes[chain_idx]):
             row = len(self.nodes[chain_idx]) - 1
         if col >= len(self.nodes[chain_idx][row]):
@@ -675,11 +664,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
         node = self._get_node(self.selected_node)
         chain_id = node.get("chain_id")
-        self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
+        self.chain_manager.set_active_chain_by_id(chain_id)
         if type(proc) != str:
             self.zyngui.set_current_processor(proc)
         self._draw_selection()
-        chain = self.zyngui.chain_manager.chains[chain_id]
+        chain = self.chain_manager.chains[chain_id]
         self.set_title(f"Chain: {chain.get_name()}")
 
     def move_processor(self, chain_idx, chain_offset):
@@ -687,11 +676,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         try:
             node = self._get_node(self.selected_node)
-            ordered_chains = list(self.zyngui.chain_manager.chains)
+            ordered_chains = list(self.chain_manager.chains)
             chain_id = ordered_chains[chain_idx]
-            chain = self.zyngui.chain_manager.chains[chain_id]
+            chain = self.chain_manager.chains[chain_id]
             chain_dest_id = ordered_chains[chain_idx + chain_offset]
-            chain_dst = self.zyngui.chain_manager.chains[chain_dest_id]
+            chain_dst = self.chain_manager.chains[chain_dest_id]
             # Constrain which chains a process may be moved to
             if self.moving_proc.type == "MIDI Tool":
                 if not chain_dst.is_midi():
@@ -704,6 +693,31 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         except:
             pass
         self.build_graph(self.moving_proc)
+
+    def start_moving_processor(self, processor=None):
+        """
+        Enter 'Move Mode' for a specific processor.
+
+        Args:
+            processor: The processor object to be moved. Default: Current processor of current chain.
+        """
+
+        if processor:
+            self.moving_proc = processor
+        else:
+            chain = self.chain_manager.active_chain
+            if chain.chain_id == 0:
+                return
+            self.moving_proc = chain.current_processor
+        if self.moving_proc and not self.chain_manager.can_move_processor(self.moving_proc):
+            self.moving_proc = None
+        self.select_node(proc=self.moving_proc)
+
+    def end_moving_processor(self):
+        """ Exit processor move mode
+        """
+
+        self.moving_proc = None
 
     def start_moving_chain(self):
         self.moving_chain = True
@@ -726,7 +740,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         if self.moving_proc:
             proc = self.moving_proc
-            self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, proc, False)
+            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, False)
             self.build_graph(proc)
         else:
             chain_idx, row, col = self.selected_node
@@ -744,7 +758,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         if self.moving_proc:
             proc = self.moving_proc
-            self.zyngui.chain_manager.nudge_processor(self.zyngui.chain_manager.active_chain.chain_id, proc, True)
+            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, True)
             self.build_graph(proc)
         else:
             chain_idx, row, col = self.selected_node
@@ -763,7 +777,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if chain_idx:
                 self.move_processor(chain_idx, -1)
         elif self.moving_chain:
-            self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(-1)
+            self.selected_node[0] = self.chain_manager.nudge_chain(-1)
             self.build_graph()
         else:
             col -= 1
@@ -785,7 +799,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if self.moving_proc:
             self.move_processor(chain_idx, 1)
         elif self.moving_chain:
-            self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(1)
+            self.selected_node[0] = self.chain_manager.nudge_chain(1)
             self.build_graph()
         else:
             col += 1
@@ -807,7 +821,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 self.arrow_up()
             return
         if self.moving_chain:
-            self.selected_node[0] = self.zyngui.chain_manager.nudge_chain(dval)
+            self.selected_node[0] = self.chain_manager.nudge_chain(dval)
             self.build_graph()
             return
 
@@ -844,6 +858,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             else:
                 self.arrow_down()
 
+    def toggle_menu(self):
+        if self.shown:
+            self.zyngui.show_screen("admin")
+
     def zynpot_cb(self, i, dval):
         if super().zynpot_cb(i, dval):
             return True
@@ -860,7 +878,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if self.moving_proc:
             self.end_moving_processor()
             self.select_node()
-            return True # Consumed
+            return True  # Consumed
         if self.moving_chain:
             self.end_moving_chain()
             return True
@@ -900,7 +918,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         proc = node.get("proc")
         if t == "B":
             if type(proc) == str:
-                chain = self.zyngui.chain_manager.active_chain
+                chain = self.chain_manager.active_chain
                 if proc == "chain_options":
                     if chain.chain_id != 0:
                         self.start_moving_chain()
@@ -913,14 +931,14 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     case "chain_options":
                         pass
                     case "midi_key_range":
-                        self.zyngui.screens['midi_key_range'].config(self.zyngui.chain_manager.active_chain)
+                        self.zyngui.screens['midi_key_range'].config(self.chain_manager.active_chain)
                     case "midi_input":
-                        self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
+                        self.zyngui.screens['midi_config'].set_chain(self.chain_manager.active_chain)
                         self.zyngui.screens['midi_config'].input = True
                         proc = 'midi_config'
                     case "add_midi_proc":
                         self.zyngui.modify_chain({
-                            "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
+                            "chain_id": self.chain_manager.active_chain.chain_id,
                             "type": "MIDI Tool",
                             "midi_thru": True,
                             "audio_thru": False,
@@ -928,7 +946,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                         })
                         return True
                     case "midi_output":
-                        self.zyngui.screens['midi_config'].set_chain(self.zyngui.chain_manager.active_chain)
+                        self.zyngui.screens['midi_config'].set_chain(self.chain_manager.active_chain)
                         self.zyngui.screens['midi_config'].input = False
                         proc = 'midi_config'
                     case "audio_in":
@@ -939,20 +957,3 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             else:
                 self.zyngui.show_screen("processor_options")
         return True
-
-    def update_layout(self):
-        super().update_layout()
-        self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
-        # Formual 2 * (x // y) ensures even values which helps with spacing and dividers
-        self.BLOCK_WIDTH = 2 * (self.width // 12)
-        self.BLOCK_HEIGHT = 2 * (self.height // 16)
-        self.H_SPACING = 2 * (self.BLOCK_WIDTH // 28)
-        self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 8)
-        shown = self.shown
-        self.shown = False
-        self._draw_graph()
-        self.shown = shown
-
-    def toggle_menu(self):
-        if self.shown:
-            self.zyngui.show_screen("admin")

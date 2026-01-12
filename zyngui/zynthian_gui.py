@@ -1109,11 +1109,11 @@ class zynthian_gui:
             self.show_screen("preset")
 
     def set_current_processor(self, processor):
+        self.current_processor = processor
         try:
-            self.chain_manager.get_active_chain().current_processor = processor
+            self.chain_manager.active_chain.set_current_processor(processor)
         except:
             pass
-        self.current_processor = processor
 
     def get_current_processor(self):
         """ Get the currently selected processor object
@@ -1122,7 +1122,7 @@ class zynthian_gui:
         if self.current_processor:
             return self.current_processor
         try:
-            return self.chain_manager.get_active_chain().current_processor
+            return self.chain_manager.active_chain.current_processor
         except:
             return None
 
