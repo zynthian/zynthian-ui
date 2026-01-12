@@ -66,7 +66,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
         if chain_id:
-            col = self.get_filtered_index_by_chain_id(chain_id) - self.mixer_col_offset
+            col = self.get_filtered_index_by_chain_id(chain_id) - self.scroll_h
             if 0 <= col < 8:
                 if symbol == "mute":
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, self.mute_notes[col], value)
@@ -80,7 +80,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
         if self.rec_mode or self.idev_out is None:
             return
         for i in range(0, 8):
-            chain_id = self.get_filtered_chain_id_by_index(self.mixer_col_offset + i)
+            chain_id = self.get_filtered_chain_id_by_index(self.scroll_h + i)
             if chain_id and chain_id == active_chain:
                 rec = 1
             else:
@@ -103,7 +103,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
         # Strips Leds
         for i in range(0, 8):
-            pos = self.mixer_col_offset + i
+            pos = self.scroll_h + i
             chain_id = self.get_filtered_chain_id_by_index(pos)
             mute = self.get_mixer_param("mute", pos)
             solo = self.get_mixer_param("solo", pos)
@@ -128,30 +128,30 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                 return True
             elif note == self.bank_left_note:
                 self.midimix_bank = 0
-                self.mixer_col_offset = 0
+                self.scroll_h = 0
                 self.refresh()
                 return True
             elif note == self.bank_right_note:
                 self.midimix_bank = 1
-                self.mixer_col_offset = 8
+                self.scroll_h = 8
                 self.refresh()
                 return True
             elif note in self.mute_notes:
-                pos = self.mixer_col_offset + self.mute_notes.index(note)
+                pos = self.scroll_h + self.mute_notes.index(note)
                 val = self.toggle_mixer_param("mute", pos)
                 # Send LED feedback
                 if self.idev_out is not None:
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
                 return True
             elif note in self.solo_notes:
-                pos = self.mixer_col_offset + self.solo_notes.index(note)
+                pos = self.scroll_h + self.solo_notes.index(note)
                 val = self.toggle_mixer_param("solo", pos)
                 # Send LED feedback
                 if self.idev_out is not None:
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
                 return True
             elif note in self.rec_notes:
-                pos = self.mixer_col_offset + self.rec_notes.index(note)
+                pos = self.scroll_h + self.rec_notes.index(note)
                 if not self.rec_mode:
                     self.chain_manager.set_active_chain_by_index(pos)
                     self.refresh()
@@ -168,11 +168,11 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                 self.set_mixer_param("level", -1, ccval / 127.0)
                 return True
             elif ccnum in self.faders_ccnum:
-                pos = self.mixer_col_offset + self.faders_ccnum.index(ccnum)
+                pos = self.scroll_h + self.faders_ccnum.index(ccnum)
                 self.set_mixer_param("level", pos, ccval / 127.0)
                 return True
             elif ccnum in self.knobs3_ccnum:
-                pos = self.mixer_col_offset + self.knobs3_ccnum.index(ccnum)
+                pos = self.scroll_h + self.knobs3_ccnum.index(ccnum)
                 self.set_mixer_param("balance", pos, ccval/64.0 - 1.0)
                 return True
 

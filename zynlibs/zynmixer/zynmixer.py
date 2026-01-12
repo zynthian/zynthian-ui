@@ -427,6 +427,11 @@ class ZynMixer():
             return
         self.lib_zynmixer.togglePhase(channel)
 
+    def set_record(self, channel, record):
+        # State handled entirely by zctrl
+        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+            chan=channel, symbol="record", value=record, mixbus=self.mixbus)
+
     def set_send_mode(self, channel, send, mode):
         """
         Sets the effect send mode of a mixer strip

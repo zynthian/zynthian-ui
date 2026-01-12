@@ -202,9 +202,6 @@ class zynthian_engine_audio_mixer(zynthian_engine):
             if zctrl.symbol.startswith("send"):
                 getattr(zctrl.processor.zynmixer, f"set_{zctrl.graph_path[0]}")(
                     zctrl.processor.mixer_chan, zctrl.graph_path[1], zctrl.value)
-            elif zctrl.symbol == "record":
-                #TODO: Use jackname to arm
-                self.state_manager.audio_recorder.arm(zctrl.processor, zctrl.value)
             elif zctrl.symbol == "solo":
                 if zctrl.processor.chain_id == 0:
                     for chain in self.state_manager.chain_manager.chains.values():

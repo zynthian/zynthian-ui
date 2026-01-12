@@ -847,7 +847,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             anchor=tkinter.NE,
             fill=zynthian_gui_config.color_header_tx,
             font=("forkawesome", int(0.25 * self.status_h)),
-            text="[1] 4/4",
+            text="1 | 4/4",
             state=tkinter.NORMAL)
 
         self.left_canvas.bind("<Button-1>", self.on_press)
@@ -1137,7 +1137,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def set_bpb(self, bpb):
         self.bpb = bpb
-        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"[{self.beat}] {bpb}/4")
+        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"[{self.beat}] | {bpb}/4")
         Timer(0.6, self.clear_timesig_highlight).start()
 
     def clear_timesig_highlight(self):
@@ -1439,7 +1439,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         self._top_phrase = top_phrase
                         send_sig = True
                 if send_sig:
-                    zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SCROLL_POS, left_chain=self._left_chain, top_phrase=self._top_phrase)
+                    zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, left_chain=self._left_chain, top_phrase=self._top_phrase)
                 return
             if target_x is not None:
                 self.left_canvas.xview_moveto(start_x + dx * (i + 1))

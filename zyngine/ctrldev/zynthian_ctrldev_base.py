@@ -46,6 +46,11 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_base:
 
+    SCROLL_MODE_CTRL    = 0
+    SCROLL_MODE_GUI_SEL = 1
+    SCROLL_MODE_GUI_VIEW = 2
+    SCROLL_MODE_NONE    = 3
+
     dev_ids = []			# String list that could identify the device
     dev_id = None  			# String that identifies the device
     fb_dev_id = None		# Index of zmop connected to controller input
@@ -78,6 +83,8 @@ class zynthian_ctrldev_base:
 
         self.state_manager = state_manager
         self.chain_manager = state_manager.chain_manager
+        self.zynseq = state_manager.zynseq
+
         # Slot index where the input device is connected, starting from 1 (0 = None)
         self.idev = idev_in
         # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
@@ -88,8 +95,12 @@ class zynthian_ctrldev_base:
         # OPTIONAL: real-time MIDI processor (jack client), inserted between the input device and zmip
         self.midiproc_jackname = None
         self.midiproc = None
-        self.scroll_h = 0 # Offset of first column / chain
-        self.scroll_v = 0 # Offset of first row of pads
+        self.cols = 0  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 0  # Quantity of rows of controllers, usually mapped to phrases
+        self.scroll_h = 0  # Offset of first column / chain
+        self.scroll_v = 0  # Offset of first phrase / row of pads
+        self.set_scroll_mode(self.SCROLL_MODE_GUI_SEL)
+        self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
 
     @classmethod
     def get_driver_name(cls):
@@ -126,7 +137,6 @@ class zynthian_ctrldev_base:
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SCROLL_POS, self.scroll)
         # Register for snapshot loading
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
 
@@ -141,7 +151,6 @@ class zynthian_ctrldev_base:
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SCROLL_POS, self.scroll)
 
         self.end_midiproc()
 
@@ -298,10 +307,67 @@ class zynthian_ctrldev_base:
 
         pass
 
-    def scroll(self, left_chain=None, top_phrase=None):
+    def get_scroll_mode(self):
+        return self._scroll_mode
+
+    def set_scroll_mode(self, mode):
+        """Set the chain and phrase scroll mode
+        mode - New scroll mode"""
+
+        if mode < 0 or mode > 3:
+            return
+
+        self._scroll_mode = mode
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
+
+        match mode:
+            case self.SCROLL_MODE_GUI_SEL:
+                zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
+                zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+            case self.SCROLL_MODE_GUI_VIEW:
+                zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
+            case self.SCROLL_MODE_CTRL:
+                pass
+            case self.SCROLL_MODE_NONE:
+                self.scroll_h = self.scroll_v = 0
+            case _:
+                return
+
+    def on_active_chain(self, active_chain_id):
+        """Handle active chain selection
+        *COULD* be implemented by child class"""
+
+        if active_chain_id == 0:
+            return
+        pos = self.chain_manager.get_chain_index(active_chain_id)
+        if pos < self.scroll_h:
+            self.scroll_h = pos
+        elif pos >= self.scroll_h + self.cols:
+            self.scroll_h = max(0, min(pos - self.cols + 1, len(self.chain_ids_filtered) - self.cols))
+        else:
+            return
+        self.refresh()
+
+    def on_active_phrase(self, phrase):
+        """Handle active phrase selection
+        *COULD* be impleented by child class"""
+
+        if phrase < self.scroll_v:
+            self.scroll_v = phrase
+        elif phrase >= self.scroll_v + self.rows:
+            self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
+        else:
+            return
+        self.refresh()
+
+    def on_gui_view_pos(self, left_chain=None, top_phrase=None):
         """Update GUI scroll position
         *COULD* be implemented by child class"""
 
+        if self._scroll_mode != self.SCROLL_MODE_GUI_VIEW:
+            return False
         refresh = False
         if self.scroll_h != left_chain:
             self.scroll_h = left_chain
@@ -311,6 +377,7 @@ class zynthian_ctrldev_base:
             refresh = True
         if refresh:
             self.refresh()
+        return True
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
@@ -322,10 +389,9 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     dev_zynpad = True		# Can act as a zynpad trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self.cols = 8 # Quatity of columns of physical launcher buttons
-        self.rows = 8 # Quatity of rows of physical launcher buttons
-        self.phrase_launcher_col = self.cols # Index of column used as phrase launcher
-        self.zynseq = state_manager.zynseq
+        self.cols = 8  # Quatity of columns of physical launcher buttons
+        self.rows = 8  # Quatity of rows of physical launcher buttons
+        self.phrase_launcher_col = self.cols  # Index of column used as phrase launcher
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
@@ -417,19 +483,15 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.zynmixer = state_manager.zynmixer_chan
         self.zynmixer_bus = state_manager.zynmixer_bus
-        self.mixer_col_offset = 0
+        self.scroll_h = 0
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         super().init()
-        # Register for active chain changes
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
         # Register for audio mixer changes
         zynsigman.register_queued(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
 
     def end(self):
-        # Unregister for active chain changes
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
         # Unregister for audio mixer changes
         zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
         self.light_off()
@@ -530,10 +592,6 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
             except:
                 logging.warning(f"Failed to toggle {param}")
         return 0
-
-    def scroll(self, left_chain=None, top_phrase=None):
-        super().scroll(left_chain, top_phrase)
-        self.mixer_col_offset = self.scroll_h
 
 
 # --------------------------------------------------------------------------
