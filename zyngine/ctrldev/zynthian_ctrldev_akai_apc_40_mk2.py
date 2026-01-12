@@ -270,7 +270,6 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 0)
         lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 1)
         self.update_device_encoders()
-        self.update_track_encoders()
 
     def refresh(self):
         super().refresh()
