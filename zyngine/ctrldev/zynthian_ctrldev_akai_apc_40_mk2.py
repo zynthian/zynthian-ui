@@ -172,6 +172,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self.last_cc_send = 0  # Time of last sent feedback CC - used to avoid feedback interference
         self.mixer_toggle = False
         self.last_press = None
+        self.ccnum2zctrls = {}
 
     # Send the SysEx universal device enquiry
     def send_sysex_universal_device_enquiry(self, chan=0):
@@ -244,7 +245,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     pass
         elif symbol == "solo":
             if mixbus and chan == 0:
-                return # No control for main mixbus
+                return  # No control for main mixbus
             try:
                 pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
@@ -253,7 +254,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 pass
         elif symbol == "mute":
             if mixbus and chan == 0:
-                return # No control for main mixbus
+                return  # No control for main mixbus
             try:
                 pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
@@ -262,7 +263,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 pass
         elif symbol == "record":
             if mixbus and chan == 0:
-                return # No control for main mixbus
+                return  # No control for main mixbus
             try:
                 pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
@@ -340,53 +341,78 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         if self.enc_mode == ENC_MODE_PAN:
             for i in range(8):
                 pos = self.scroll_h + i
+                cc = CC_TRACK_1 + i
                 val = int((self.get_mixer_param("balance", pos) + 1) * 64)
-                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, CC_TRACK_1 + i, val)
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
+                try:
+                    self.ccnum2zctrls[cc].reset_send_value_cb()
+                    del self.ccnum2zctrls[cc]
+                except:
+                    pass
         elif self.enc_mode == ENC_MODE_SENDS:
             for i in range(8):
                 pos = self.scroll_h + i
+                cc = CC_TRACK_1 + i
                 send_id = self.chain_manager.get_send_id(self.send)
                 if send_id is not None:
                     val = int(self.get_mixer_param(f"send_{send_id}_level", pos) * 127)
                 else:
                     val = 0
-                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, CC_TRACK_1 + i, val)
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
+                try:
+                    self.ccnum2zctrls[cc].reset_send_value_cb()
+                    del self.ccnum2zctrls[cc]
+                except:
+                    pass
         elif self.enc_mode == ENC_MODE_USER:
             for i in range(8):
-                # Use first chain zctrl (favorite)
                 pos = self.scroll_h + i
+                cc = CC_TRACK_1 + i
+                # Use first chain zctrl (favorite)
                 try:
-                    user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[self.user]
-                    val = user_zctrl.get_ctrl_midi_val()
+                    self.ccnum2zctrls[cc] = self.get_filtered_chain_by_index(pos).zctrls[self.user]
+                    self.ccnum2zctrls[cc].set_send_value_cb(self.send_encoder_feedback)
+                    val = self.ccnum2zctrls[cc].get_ctrl_midi_val()
                 except:
                     val = 0
-                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, CC_TRACK_1 + i, val)
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
 
     # Send device knob values
     def update_device_encoders(self):
-        zctrls = {}
+        # Reset zctrl callbacks
+        for cc in list(self.ccnum2zctrls.keys()):
+            self.ccnum2zctrls[cc].reset_send_value_cb()
+            del self.ccnum2zctrls[cc]
+
         # Get absolute MIDI learned zctrls
         key_base = self.idev << 16
         for key in list(self.chain_manager.absolute_midi_cc_binding):
             if key_base == (key & 0xFFFF00):
                 cc = key & 0x7F
                 #logging.debug(f"FOUND ABSOLUTE ZCTRL {key:06x} == {key_base:06x}")
-                zctrls[cc] = self.chain_manager.absolute_midi_cc_binding[key][0]
+                self.ccnum2zctrls[cc] = self.chain_manager.absolute_midi_cc_binding[key][0]
         # Get chain MIDI learned zctrls
         key_base = self.chain_manager.active_chain.chain_id << 16
         for key in list(self.chain_manager.chain_midi_cc_binding):
             cc = key & 0x7F
-            if key_base == (key & 0xFFFF00) and cc not in zctrls:
+            if key_base == (key & 0xFFFF00) and cc not in self.ccnum2zctrls:
                 #logging.debug(f"FOUND CHAIN ZCTRL {key:06x} == {key_base:06x}")
-                zctrls[cc] = self.chain_manager.chain_midi_cc_binding[key][0]
+                self.ccnum2zctrls[cc] = self.chain_manager.chain_midi_cc_binding[key][0]
         # Send update to the 8 device knobs
         for i in range(8):
             cc = CC_DEVICE_1 + i
             try:
-                val = zctrls[cc].get_ctrl_midi_val()
+                self.ccnum2zctrls[cc].set_send_value_cb(self.send_encoder_feedback)
+                val = self.ccnum2zctrls[cc].get_ctrl_midi_val()
             except:
                 val = 0
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
+
+    def send_encoder_feedback(self, zctrl):
+        for cc, _zctrl in self.ccnum2zctrls.items():
+            if _zctrl == zctrl:
+                val = zctrl.get_ctrl_midi_val()
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
 
     def midi_event(self, ev):
         def relative_to_signed(v):
