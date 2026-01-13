@@ -686,7 +686,7 @@ class zynthian_gui_mixer_strip():
         """
 
         self.dragging = False
-        if zynthian_gui_config.zyngui.cb_touch(event):
+        if self.zyngui.cb_touch(event):
             return "break"
         if self.chain.is_audio():
             self.fader_start_value = self.chain.zynmixer_proc.controllers_dict['level'].value
@@ -753,7 +753,7 @@ class zynthian_gui_mixer_strip():
         Args:
             event: Mouse event
         """
-        if zynthian_gui_config.zyngui.cb_touch_release(event):
+        if self.zyngui.cb_touch_release(event):
             return "break" #TODO: "break" does not work with tab binding!
         if not self.gui_mixer.press_event or self.gui_mixer.dragging:
             return
@@ -764,9 +764,9 @@ class zynthian_gui_mixer_strip():
             self.gui_mixer.press_event = None
             if delta > 400:
                 self.zyngui.screens['chain_manager'].select_chain_options_node()
-                zynthian_gui_config.zyngui.show_screen('chain_manager')
+                self.zyngui.show_screen('chain_manager')
             else:
-                zynthian_gui_config.zyngui.chain_control(self.chain.chain_id)
+                self.zyngui.chain_control(self.chain.chain_id)
 
     def on_mute_release(self, event):
         """ Function to handle mute button release

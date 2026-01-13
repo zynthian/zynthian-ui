@@ -77,6 +77,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
                 self.list_data.append((self.undo_randomize, None, "Undo Randomize"))
 
         self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
+        self.list_data.append((self.control_view, None, "Control View"))
         # Processor info
         self.list_data.append((self.show_details, None, "Info"))
 
@@ -159,6 +160,9 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
         if self.processor:
             self.zyngui.show_confirm(
                 f"Do you want to clean MIDI-learn for ALL controls in {self.processor.name}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
+
+    def control_view(self):
+        self.zyngui.chain_control(hmode=self.zyngui.SCREEN_HMODE_REPLACE)
 
     # FX-Chain management
 
