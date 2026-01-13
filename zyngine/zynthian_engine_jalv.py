@@ -97,7 +97,7 @@ class zynthian_engine_jalv(zynthian_engine):
         'https://butoba.net/homepage/mimid.html': [ "-D" ]
     }
 
-    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia", "JE8086"]
+    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia", "JE8086", "NodalRed2x"]
 
     # ------------------------------------------------------------------------------
     # Native formats configuration (used by zynapi_install, preset converter, etc.)
@@ -738,6 +738,7 @@ class zynthian_engine_jalv(zynthian_engine):
             symbol = info['symbol']
 
             # Restrict to Channel 1 for DSP56300 plugins
+            # TODO => Implement multi-timbral jalv engines
             if self.plugin_name in self.dsp56300_plugins:
                 parts = info['name'].split(" ")
                 if parts[0] == "Ch":
