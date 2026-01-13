@@ -166,6 +166,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self._shift = False  # True whilst shift button is pressed
         self._send = False  # True whilst send button is pressed
         self.send = 0  # Index of send to adjust
+        self._user = False  # True whilst user button is pressed
+        self.user = 0  # Index of (fav) chain controller to adjust
         self.enc_mode = ENC_MODE_PAN  # Chain encoder mode
         self.last_cc_send = 0  # Time of last sent feedback CC - used to avoid feedback interference
         self.mixer_toggle = False
@@ -327,6 +329,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             lib_zyncore.dev_send_note_off(self.idev_out, 0, led, 0)
         if mode == ENC_MODE_SENDS:
             lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_DEVICE_LEFT + self.send, 1)
+        elif mode == ENC_MODE_USER:
+            lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_DEVICE_LEFT + self.user, 1)
 
     # Send track knob values
     def update_track_encoders(self):
@@ -349,7 +353,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 # Use first chain zctrl (favorite)
                 pos = self.scroll_h + i
                 try:
-                    user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[0]
+                    user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[self.user]
                     val = user_zctrl.get_ctrl_midi_val()
                 except:
                     val = 0
@@ -428,7 +432,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 elif self.enc_mode == ENC_MODE_USER:
                     # Use first chain zctrl (favorite)
                     try:
-                        user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[0]
+                        user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[self.user]
                         user_zctrl.midi_control_change(val)
                     except:
                         pass
@@ -443,12 +447,15 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         elif evtype == 8:
             # Note off
             note = ev[1]
+            not_enc_mode = not (self._send or self._user)
             if note == BTN_SHIFT:
                 self._shift = False
                 if self.enc_mode == ENC_MODE_SENDS:
                     self.update_track_encoders()
             elif note == LED_SENDS:
                 self._send = False
+            elif note == LED_USER:
+                self._user = False
             elif note == BTN_STOP_ALL_CLIPS:
                 if self.last_press and now > self.last_press + BOLD_PRESS_TIME:
                     # PANIC!
@@ -460,10 +467,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.last_press = None
 
             # Navigation CUIAs: Arrows, BACK, SELECT, etc.
-            elif note == LED_DEVICE_ON:
+            elif note == LED_DEVICE_ON and not_enc_mode:
                 #self.state_manager.send_cuia("ZYNSWITCH", (1, "R"))
                 pass
-            elif note == LED_DEVICE_LOCK:
+            elif note == LED_DEVICE_LOCK and not_enc_mode:
                 self.state_manager.send_cuia("ZYNSWITCH", (3, "R"))
             elif note == LED_DEVICE_VIEW:
                 pass
@@ -521,6 +528,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self._send = True
             elif note == LED_USER:
                 self.set_enc_mode(ENC_MODE_USER)
+                self._user = True
             elif note == BTN_SHIFT:
                 self._shift = True
             elif note == BTN_TAP_TEMPO:
@@ -548,41 +556,19 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.state_manager.send_cuia("ARROW_LEFT")
             elif note == BTN_RIGHT:
                 self.state_manager.send_cuia("ARROW_RIGHT")
-            elif note == LED_DEVICE_LEFT:
+            elif LED_DEVICE_LEFT <= note <= LED_DETAIL_VIEW:
+                idx = note - LED_DEVICE_LEFT
                 if self._send:
-                    self.send = 0
+                    self.send = idx
                     self.set_enc_mode(ENC_MODE_SENDS)
-            elif note == LED_DEVICE_RIGHT:
-                if self._send:
-                    self.send = 1
-                    self.set_enc_mode(ENC_MODE_SENDS)
-            elif note == LED_BANK_LEFT:
-                if self._send:
-                    self.send = 2
-                    self.set_enc_mode(ENC_MODE_SENDS)
-            elif note == LED_BANK_RIGHT:
-                if self._send:
-                    self.send = 3
-                    self.set_enc_mode(ENC_MODE_SENDS)
-            elif note == LED_DEVICE_ON:
-                if self._send:
-                    self.send = 4
-                    self.set_enc_mode(ENC_MODE_SENDS)
-                else:
+                elif self._user:
+                    self.user = idx
+                    self.set_enc_mode(ENC_MODE_USER)
+                elif note == LED_DEVICE_ON:
                     self.state_manager.send_cuia("BACK")
                     #self.state_manager.send_cuia("ZYNSWITCH", (1, "P"))
-            elif note == LED_DEVICE_LOCK:
-                if self._send:
-                    self.send = 5
-                    self.set_enc_mode(ENC_MODE_SENDS)
-                else:
+                elif note == LED_DEVICE_LOCK:
                     self.state_manager.send_cuia("ZYNSWITCH", (3, "P"))
-            elif note == LED_DEVICE_VIEW:
-                if self._send:
-                    self.send = 6
-                    self.set_enc_mode(ENC_MODE_SENDS)
-                else:
-                    pass
             elif note == LED_DETAIL_VIEW:
                 if self._send:
                     self.send = 7
@@ -613,9 +599,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         group = 32
         try:
             group = pad_info["group"]
-        except KeyError:
+        except:
             pass
-
         try:
             state = pad_info["state"]
             repeat = pad_info["repeat"]

@@ -214,6 +214,24 @@ class zynthian_legacy_snapshot:
             self.state_manager.zynseq.libseq.freeState()
             self.snapshot["zynseq"] = loads(a)
             del self.snapshot["zynseq_riff_b64"]
+            for scene in self.snapshot["zynseq"]["scenes"]:
+                num_seq = len (scene["phrases"][0]["sequences"])
+                for phrase_idx, phrase in enumerate(scene["phrases"]):
+                    for seq in range(num_seq):
+                        try:
+                            if phrase["sequences"][seq]:
+                                continue
+                        except:
+                            if seq == 0:
+                                del scene["phrases"][phrase_idx]
+                            break
+                        phrase["sequences"][seq] = {
+                            'followAction': 1,
+                            'followParam': 0,
+                            'group': seq,
+                            'tracks': [{'chan': seq}]}
+
+
         except Exception as e:
             logging.warning(e)
 
