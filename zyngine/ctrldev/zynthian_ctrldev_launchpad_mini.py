@@ -29,7 +29,6 @@ import logging
 # Zynthian specific modules
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
-from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 
@@ -41,6 +40,8 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 
     dev_ids = ["Launchpad Mini IN 1"]
+    driver_name = "Launchpad Mini"
+    driver_description = "Interface Novation Launchpad Mini with launcher."
 
     OFF_COLOUR = 0xC		 # Light Off
     PLAYING_COLOUR = 0x3C    # Solid Green
@@ -53,12 +54,10 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 
     def init(self):
         super().init()
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
         # Configure blinking LEDs
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 0, 0x28)
 
     def end(self):
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
         super().end()
 
     def get_note_xy(self, note):
@@ -66,7 +65,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         col = note % 16
         return col, row
 
-    def update_active_chain(self, active_chain_id=None):
+    def on_active_chain(self, active_chain_id=None):
         if self.idev_out is None:
             return
         if active_chain_id is None:
@@ -110,7 +109,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 
     def refresh(self):
         super().refresh()
-        self.update_active_chain()
+        self.on_active_chain()
 
     def midi_event(self, ev):
         # logging.debug("Launchpad MINI MIDI handler => {}".format(ev))
@@ -147,10 +146,8 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         for row in range(self.rows):
             for col in range(self.cols + 1):
                 note = 16 * row + col
-                lib_zyncore.dev_send_note_on(
-                    self.idev_out, 0, note, self.OFF_COLOUR)
+                lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.OFF_COLOUR)
         for col in range(self.cols):
-            lib_zyncore.dev_send_ccontrol_change(
-                self.idev_out, 0, 104 + col, self.OFF_COLOUR)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 104 + col, self.OFF_COLOUR)
 
 # ------------------------------------------------------------------------------

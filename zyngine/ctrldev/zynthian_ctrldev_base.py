@@ -383,10 +383,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     dev_zynpad = True		# Can act as a zynpad trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
+        super().__init__(state_manager, idev_in, idev_out)
         self.cols = 8  # Quatity of columns of physical launcher buttons
         self.rows = 8  # Quatity of rows of physical launcher buttons
         self.phrase_launcher_col = self.cols  # Index of column used as phrase launcher
-        super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         super().init()
@@ -413,11 +413,11 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         phrase - phrase index (row)
         chan - zynseq's midi chan
         """
-        logging.debug(f"UPDATE SEQ STATE {phrase}, {chan}")
+
+        #logging.debug(f"UPDATE SEQ STATE {phrase}, {chan}")
         if chan is None or self.idev_out is None:
             return
 
-        logging.debug(f"ROW => {phrase} - {self.scroll_v}")
         row = phrase - self.scroll_v
         if row < 0 or row >= self.rows:
             return
