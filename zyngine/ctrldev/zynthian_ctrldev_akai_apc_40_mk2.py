@@ -177,7 +177,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
     def send_sysex_universal_device_enquiry(self, chan=0):
         self.sysex_dev_id = None
         msg = bytes.fromhex(f"F0 7E {chan:02x} 06 01 F7")
-        #logging.debug("SYSEX UNIVERSAL DEVICE ENQUIRY: " + msg.hex(" "))
+        logging.debug("SYSEX UNIVERSAL DEVICE ENQUIRY: " + msg.hex(" "))
         lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 
     def send_sysex(self, msg_id, data):
@@ -185,7 +185,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             size = len(data)
             header_data = bytes([self.sysex_manufacturer_id, self.sysex_dev_id, self.sysex_product_model_id, msg_id])
             msg = bytes.fromhex(f"F0 {header_data.hex(' ')} {size//0xFF:02x} {size%0xFF:02x} {data.hex(' ')} F7")
-            #logging.debug("SYSEX MESSAGE: " + msg.hex(" "))
+            logging.debug("SYSEX MESSAGE: " + msg.hex(" "))
             lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 
     def send_sysex_set_mode(self, mode):
@@ -196,9 +196,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         sleep(0.05)
         self.last_press = None  # Time of last button press used for (simple single-button) bold press detection
         self.mixer_toggle = False
-        self.refresh()
-        self.set_enc_mode(self.enc_mode)
         self.set_scroll_mode(SCROLL_MODE_GUI_SEL)
+        self.refresh()
+        self.on_active_chain()
+        self.set_enc_mode()
         super().init()
         zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
         zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
@@ -269,7 +270,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             except TypeError:
                 pass
 
-    def on_active_chain(self, active_chain_id):
+    def on_active_chain(self, active_chain_id=None):
+        if active_chain_id is None:
+            active_chain_id = self.chain_manager.active_chain.chain_id
         super().on_active_chain(active_chain_id)
         for pos in range(self.cols):
             lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 0)
@@ -317,19 +320,19 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
     def on_metronome(self, enable, volume):
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_METRONOME, enable)
 
-    def set_enc_mode(self, mode):
-        if mode <= ENC_MODE_USER:
+    def set_enc_mode(self, mode=None):
+        if mode is not None and mode <= ENC_MODE_USER:
             self.enc_mode = mode
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PAN, mode == ENC_MODE_PAN)
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, mode == ENC_MODE_SENDS)
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, mode == ENC_MODE_USER)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PAN, self.enc_mode == ENC_MODE_PAN)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, self.enc_mode == ENC_MODE_SENDS)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, self.enc_mode == ENC_MODE_USER)
         self.update_track_encoders()
         # Update device button leds
         for led in range(LED_DEVICE_LEFT, LED_DEVICE_VIEW + 1):
             lib_zyncore.dev_send_note_off(self.idev_out, 0, led, 0)
-        if mode == ENC_MODE_SENDS:
+        if self.enc_mode == ENC_MODE_SENDS:
             lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_DEVICE_LEFT + self.send, 1)
-        elif mode == ENC_MODE_USER:
+        elif self.enc_mode == ENC_MODE_USER:
             lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_DEVICE_LEFT + self.user, 1)
 
     # Send track knob values
@@ -367,12 +370,14 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         for key in list(self.chain_manager.absolute_midi_cc_binding):
             if key_base == (key & 0xFFFF00):
                 cc = key & 0x7F
+                #logging.debug(f"FOUND ABSOLUTE ZCTRL {key:06x} == {key_base:06x}")
                 zctrls[cc] = self.chain_manager.absolute_midi_cc_binding[key][0]
         # Get chain MIDI learned zctrls
         key_base = self.chain_manager.active_chain.chain_id << 16
         for key in list(self.chain_manager.chain_midi_cc_binding):
             cc = key & 0x7F
             if key_base == (key & 0xFFFF00) and cc not in zctrls:
+                #logging.debug(f"FOUND CHAIN ZCTRL {key:06x} == {key_base:06x}")
                 zctrls[cc] = self.chain_manager.chain_midi_cc_binding[key][0]
         # Send update to the 8 device knobs
         for i in range(8):
