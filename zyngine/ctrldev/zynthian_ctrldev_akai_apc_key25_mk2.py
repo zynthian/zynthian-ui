@@ -1491,7 +1491,7 @@ class StepSeqHandler(ModeHandlerBase):
 
         # We need to receive clock though MIDI
         # FIXME: Changing clock source from user preference seems wrong!
-        self._state_manager.set_transport_clock_source(1)
+        #TODO: Clock source is now chosen with lib_zyncore.zmip_set_flag_system_rt
 
         # Pads ordered for cursor sliding + note pads
         self._pads = []

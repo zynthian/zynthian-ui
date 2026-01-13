@@ -114,7 +114,7 @@ uint16_t g_nMidiClock                 = 0;         // Quantity of *RECEIVED* MID
 uint16_t g_nAnalogClock               = 0;         // Quantity of *RECEIVED* ANALOG clocks since start of beat
 int8_t g_nAnalogClocksBeat            = 1;         // Number of analog clocks per beat (Analog Clock Divisor)
 uint8_t g_nClockSource                = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
-bool g_bSendMidiClock                 = false;     // True to send MIDI clock
+
 jack_nframes_t g_nFramesSinceLastBeat = 0;         // Quantity of frames since last beat
 
 float g_fSwingAmount = 0.0; // Swing amount, range from 0 to 1, but values over 0.5 are not "MPC swing"
@@ -389,7 +389,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             continue;
 
         // Process MIDI RT-events => clock/tranport events
-        if (g_nClockSource & (TRANSPORT_CLOCK_MIDI | TRANSPORT_CLOCK_ANALOG)) {
+        if (g_nClockSource != TRANSPORT_CLOCK_INTERNAL) {
             switch (midiEvent.buffer[0]) {
             /*
             case MIDI_STOP:
@@ -411,7 +411,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 break;
             case MIDI_CONTINUE:
                 // For analog clock source => update tempo on each bar
-                if (g_nClockSource & TRANSPORT_CLOCK_ANALOG) {
+                if (g_nClockSource == TRANSPORT_CLOCK_ANALOG) {
                     if (nLastBeatFrame)
                         setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
                     //DPRINTF("BPM = 60 * %u / (%u + %u - %u) = %f\n", g_nSampleRate, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
@@ -425,7 +425,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nTransportState = JackTransportRolling;
                 break;
             case MIDI_CLOCK:
-                if (g_nClockSource & TRANSPORT_CLOCK_MIDI) {
+                if (g_nClockSource != TRANSPORT_CLOCK_INTERNAL) {
                     // DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
                     if (g_nMidiClock == 0) {
                         // Update tempo on each beat
@@ -446,7 +446,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         g_nMidiClock = 0;
                 }
                 // For analog clock source => update tempo on each analog clock
-                else if (g_nClockSource & TRANSPORT_CLOCK_ANALOG) {
+                else if (g_nClockSource == TRANSPORT_CLOCK_ANALOG) {
                     if (nLastBeatFrame)
                         setTempo(60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
                     //printf("BPM = 60 * %u / (%u * (%u + %u - %u)) = %f\n", g_nSampleRate, g_nAnalogClocksBeat, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (g_nAnalogClocksBeat * (nNow + midiEvent.time - nLastBeatFrame)));
@@ -632,7 +632,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         bool bSync = false;              // True if at start of bar
         jack_nframes_t nClockOffset = 0; // Position within this period that clock 0 occurs
         // There should always be a clock scheduled for internal clock source when transport is rolling
-        if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty()) {
+        if (g_nClockSource == TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty()) {
             // No clock scheduled so must be starting up
             g_qClockPos.push(std::pair<jack_nframes_t, jack_nframes_t>(nNow, g_nFramesPerClock));
             //g_nClock = 0;
@@ -666,14 +666,14 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 }
             }
             // Send MIDI CLOCK ...
-            if (g_bSendMidiClock && g_bClientPlaying && g_nClock % (PPQN/PPQN_MIDI) == 0) {
+            if (g_bClientPlaying && g_nClock % (PPQN/PPQN_MIDI) == 0) {
                 // Add a MIDI_CLOCK message to the schedule
                 jack_nframes_t nClockTime = g_qClockPos.front().first - nNow;
                 //if (bSync)
                 //    g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nClockTime, new SEQ_EVENT({nClockTime, 0, MIDI_MESSAGE{MIDI_CONTINUE, 0, 0}})));
                 g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nClockTime, new SEQ_EVENT({nClockTime, 0, MIDI_MESSAGE{MIDI_CLOCK, 0, 0}})));
             }
-            if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL) {
+            if (g_nClockSource == TRANSPORT_CLOCK_INTERNAL) {
                 g_qClockPos.push(std::pair<jack_nframes_t, jack_nframes_t>(g_qClockPos.back().first + g_nFramesPerClock, g_nFramesPerClock));
                 //printf("NEXT CLOCK AT FRAME %u + %u = %u\n", g_qClockPos.back().first, g_nFramesPerClock, g_qClockPos.back().first + g_nFramesPerClock);
             }
@@ -682,7 +682,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
         // g_nTick = g_nTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
-        if (!g_bPlayingSequences && (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)) {
+        if (!g_bPlayingSequences && (g_nClockSource == TRANSPORT_CLOCK_INTERNAL)) {
             DPRINTF("Stopping transport because no sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, g_nClock, g_nBeat, g_nTick);
             g_bMutex = false;
             transportStop("zynseq");
@@ -690,7 +690,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 std::this_thread::sleep_for(std::chrono::microseconds(10));
             g_bMutex = true;
             g_nMetronomePtr = -1;
-            // if(g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
+            // if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
             {
                 // Remove pending clocks
                 std::queue<std::pair<jack_nframes_t, jack_nframes_t>> qEmpty;
@@ -1882,10 +1882,6 @@ void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2) {
     sendMidiMsg(msg);
 }
 
-uint8_t getMidiClockOutput() { return g_bSendMidiClock; }
-
-void setMidiClockOutput(bool enable) { g_bSendMidiClock = enable; }
-
 // ** Pattern management functions **
 
 uint32_t createPattern() { return g_seqMan.createPattern(); }
@@ -2540,7 +2536,7 @@ void setPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t state
         return;
     if (!g_bPlayingSequences) {
         if (state == STARTING) {
-            if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
+            if (g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
                 setTransportToStartOfBar();
             transportStart("zynseq");
         } else if (state == STOPPING)
@@ -2985,7 +2981,7 @@ void transportStart(const char* client) {
     jack_position_t pos;
     if (jack_transport_query(g_pJackClient, &pos) != JackTransportRolling)
         jack_transport_start(g_pJackClient);
-    if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL) {
+    if (g_nClockSource == TRANSPORT_CLOCK_INTERNAL) {
         // Send MIDI start message
         jack_nframes_t nClockTime = jack_last_frame_time(g_pJackClient);
         while (g_bMutex)
@@ -3010,7 +3006,7 @@ void transportStop(const char* client) {
     if (g_bClientPlaying)
         return;
     jack_transport_stop(g_pJackClient);
-    if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL) {
+    if (g_nClockSource == TRANSPORT_CLOCK_INTERNAL) {
         // Send MIDI stop message
         jack_nframes_t nClockTime = jack_last_frame_time(g_pJackClient);
         while (g_bMutex)
@@ -3078,39 +3074,32 @@ float getMetronomeVolume() { return g_fMetronomeLevel; }
 uint8_t getClockSource() { return g_nClockSource; }
 
 void setClockSource(uint8_t source) {
-    if (source == 0)
-        return; // Invalid - must have bits set to assert functionality
-    // Restrict to allowed values
-    if (source & TRANSPORT_CLOCK_MIDI)
-        source = TRANSPORT_CLOCK_MIDI;
-    else
-        source |= TRANSPORT_CLOCK_INTERNAL;
-    // If TRANSPORT_CLOCK_MIDI bit has changed => Reset clock
-    bool resetClock = false;
-    if ((g_nClockSource ^ source) & TRANSPORT_CLOCK_MIDI) resetClock = true;
-    // Assign new clock source
+    if (source > 2)
+        return;
     g_nClockSource = source;
-    if (resetClock) {
-        // Set PPQN
-        if (g_nClockSource & TRANSPORT_CLOCK_MIDI)
-            setPPQN(PPQN_MIDI);
-        else
-            setPPQN(PPQN_INTERNAL);
-        // Reset Clock Queue
-        std::queue<std::pair<jack_nframes_t, jack_nframes_t>> qEmpty;
-        while (g_bMutex)
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
-        g_bMutex = true;
-        std::swap(g_qClockPos, qEmpty);
-        g_bMutex = false;
-    }
+    // Set PPQN
+    if (g_nClockSource == TRANSPORT_CLOCK_MIDI)
+        setPPQN(PPQN_MIDI);
+    else
+        setPPQN(PPQN_INTERNAL);
+    // Reset Clock Queue
+    std::queue<std::pair<jack_nframes_t, jack_nframes_t>> qEmpty;
+    while (g_bMutex)
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
+    std::swap(g_qClockPos, qEmpty);
+    g_bMutex = false;
 }
 
-uint8_t getAnalogClocksBeat() { return g_nAnalogClocksBeat; }
+uint8_t getAnalogClocksBeat() {
+    return g_nAnalogClocksBeat;
+}
 
 void setAnalogClocksBeat(uint8_t analog_clock_divisor) {
-    if (analog_clock_divisor > 0) g_nAnalogClocksBeat = analog_clock_divisor;
-    else g_nAnalogClocksBeat = 1;
+    if (analog_clock_divisor > 0)
+        g_nAnalogClocksBeat = analog_clock_divisor;
+    else
+        g_nAnalogClocksBeat = 1;
 }
 
 void enableChannel(uint8_t channel, bool enable) {

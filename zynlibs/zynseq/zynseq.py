@@ -32,6 +32,9 @@ from zyngine import zynthian_engine
 from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
 from zynlibs.zynaudioplayer import *
+from zyngui import zynthian_gui_config
+import zynconf
+import zynautoconnect
 
 # -------------------------------------------------------------------------------
 # Zynthian Step Sequencer Library Wrapper
@@ -384,6 +387,10 @@ class zynseq(zynthian_engine):
     def transport_toggle(self, client):
         if self.libseq:
             self.libseq.transportToggle(bytes(client, "utf-8"))
+
+    # -------------------------------------------------------------------
+    # MIDI transport & clock settings
+    # -------------------------------------------------------------------
 
     def set_tempo(self, tempo):
         self.zctrl_tempo.set_value(tempo)

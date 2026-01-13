@@ -64,8 +64,8 @@ class aubio_inputs():
 # ------------------------------------------------------------------------------
 
 ZMIP_MODE_SYS = "♣" # \u1
-ZMIP_MODE_SYS_RT = "⏱" # \u23F1
-#ZMIP_MODE_SYS_RT = "⌛" # \u231B
+ZMIP_MODE_CLOCK = "⏱" # \u23F1
+ZMIP_MODE_SYS_RT = "⌛" # \u231B
 ZMIP_MODE_CONTROLLER = "⌨"  # \u2328
 ZMIP_MODE_ACTIVE = "⇥"  # \u21e5
 ZMIP_MODE_MULTI = "⇶"  # \u21f6
@@ -128,6 +128,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     mode_str += f" {ZMIP_MODE_SYS}"
                 if lib_zyncore.zmip_get_flag_system_rt(idev):
                     mode_str += f" {ZMIP_MODE_SYS_RT}"
+                if lib_zyncore.zmip_get_clock_index() == idev:
+                    mode_str += f" {ZMIP_MODE_CLOCK}"
                 if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                     mode_str += f" {ZMIP_MODE_CONTROLLER}"
             if mode_str:
@@ -143,6 +145,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 input_mode_info += f"{ZMIP_MODE_MULTI} Multitimbral mode\n"
                 input_mode_info += f"{ZMIP_MODE_SYS} System messages\n"
                 input_mode_info += f"{ZMIP_MODE_SYS_RT} Transport messages\n"
+                input_mode_info += f"{ZMIP_MODE_CLOCK} MIDI clock\n"
                 input_mode_info += f"{ZMIP_MODE_CONTROLLER} Driver loaded"
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}",
@@ -368,6 +371,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 screen_title = "MIDI Input Device"
                 options["MIDI Input Mode"] = None
                 mode_info = "Toggle input mode.\n\n"
+                port = zynautoconnect.devices_in[idev]
                 if zynautoconnect.get_midi_in_dev_mode(idev):
                     title = f"{ZMIP_MODE_ACTIVE} Active mode"
                     if lib_zyncore.get_active_midi_chan():
@@ -396,6 +400,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 else:
                     title = f"\u2610 {ZMIP_MODE_SYS_RT} Transport"
                     options[title] = ["SYSTEM_RT/ON", [mode_info, "midi_input.png"]]
+
+                mode_info = "Route MIDI clock from this device.\n\n"
+                if lib_zyncore.zmip_get_clock_index() == idev:
+                    title = f"\u2612 {ZMIP_MODE_CLOCK} MIDI Clock"
+                    options[title] = ["SYSTEM_CLOCK/OFF", [mode_info, "midi_input.png"]]
+                    if port.name == "CV/Gate":
+                        beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat()
+                        options[f"[{beats}] Analog clock divider"] = ["CLOCK_ANALOG", [mode_info, "midi_input.png"]]
+                else:
+                    title = f"\u2610 {ZMIP_MODE_CLOCK} MIDI Clock"
+                    options[title] = ["SYSTEM_CLOCK/ON", [mode_info, "midi_input.png"]]
 
                 # Reload drivers => Hot reload the driver classes!
                 #self.zyngui.state_manager.ctrldev_manager.update_available_drivers(reload_modules=False)
@@ -431,8 +446,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 if driver_options:
                     options["Controller Drivers"] = None
                     options.update(driver_options)
-
-                port = zynautoconnect.devices_in[idev]
 
             else:
                 screen_title = "MIDI Output Device"
@@ -492,6 +505,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                             lib_zyncore.zmip_set_flag_system_rt(idev, True)
                         case "SYSTEM_RT/OFF":
                             lib_zyncore.zmip_set_flag_system_rt(idev, False)
+                        case "SYSTEM_CLOCK/ON":
+                            lib_zyncore.zmip_set_clock_index(idev)
+                            self.state_manager.zynseq.libseq.setClockSource(1)
+                        case "SYSTEM_CLOCK/OFF":
+                            if lib_zyncore.zmip_set_clock_index(-1):
+                                self.state_manager.zynseq.libseq.setClockSource(0)
+                        case "CLOCK_ANALOG":
+                            beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat() + 1
+                            if beats > 4:
+                                beats = 1
+                            self.state_manager.zynseq.libseq.setAnalogClocksBeat(beats)
                         case "ACTI":
                             lib_zyncore.zmip_set_flag_active_chain(idev, True)
                             zynautoconnect.update_midi_in_dev_mode(idev)

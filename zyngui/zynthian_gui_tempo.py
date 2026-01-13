@@ -63,6 +63,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
         self.tap_buf = None
         self.last_tap_ts = 0
+        self.analog_clock = False
 
         # Create zctrl objects
         self.zgui_ctrls = []
@@ -71,21 +72,12 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
         self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
-        self.clk_source_zctrl = zynthian_controller(self, 'clock_source',
-                                                    {'name': 'Clock Source',
-                                                     'labels': ['Internal', 'Internal Send', 'MIDI', 'Sync Beat',
-                                                                'Sync Beat/2', 'Sync Beat/3', 'Sync Beat/4'],
-                                                     'ticks': [0, 1, 2, 3, 4, 5, 6],
-                                                     'value': self.get_clk_source_value()})
-        self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
-        self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
-
         self.mtr_enable_zctrl = self.zynseq.zctrl_metro_enable
-        self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
+        self.mtr_enable_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.mtr_enable_zctrl)
         self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
 
         self.mtr_volume_zctrl = self.zynseq.zctrl_metro_volume
-        self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
+        self.mtr_volume_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_volume_zctrl)
         self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
 
         # Create graphic elements
@@ -138,6 +130,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def build_view(self):
         self.set_zctrls()
         self.last_tap_ts = 0
+        self.analog_clock = self.state_manager.zynseq.libseq.getClockSource() == 2
         if zynthian_gui_config.enable_touch_navigation:
             zynsigman.register(zynsigman.S_AUDIO_PLAYER,
                                self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
@@ -182,29 +175,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
         else:
             return False
 
-    def send_controller_value(self, zctrl):
-        if self.shown:
-            if zctrl == self.clk_source_zctrl:
-                self.set_clk_source_value(zctrl.value)
-
     def metronome_cb(self, enable, volume):
         pass
-
-    def get_clk_source_value(self):
-        cs = self.state_manager.get_transport_clock_source()
-        if cs == 3:
-            cs += self.state_manager.get_transport_analog_clock_divisor() - 1
-            if cs > 6:
-                cs = 3
-        return cs
-
-    def set_clk_source_value(self, val):
-        if val >= 3:
-            self.state_manager.set_transport_analog_clock_divisor(val - 2, save_config=True)
-            logging.debug("SETTING ANALOG CLOCK DIVISOR: {}".format(val - 2))
-            val = 3
-        self.state_manager.set_transport_clock_source(val, save_config=True)
-        logging.debug("SETTING CLOCK SOURCE: {}".format(val))
 
     def tap(self):
         now = monotonic()
@@ -214,7 +186,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.tap_buf = deque(maxlen=self.NUM_TAPS)
         else:
             self.last_tap_ts = now
-            if self.clk_source_zctrl.value >= 3:
+            if self.analog_clock:
                 lib_zyncore.zynstep_send_clock()
                 logging.debug("TAP SYNCING (BEAT + TEMPO)!")
             else:

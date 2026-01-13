@@ -61,9 +61,9 @@ extern "C" {
 #endif
 
 enum TRANSPORT_CLOCK {
-    TRANSPORT_CLOCK_INTERNAL = 1,
-    TRANSPORT_CLOCK_MIDI = 2,
-    TRANSPORT_CLOCK_ANALOG = 4
+    TRANSPORT_CLOCK_INTERNAL = 0,
+    TRANSPORT_CLOCK_MIDI = 1,
+    TRANSPORT_CLOCK_ANALOG = 2
 };
 
 // ** Library management functions **
@@ -230,15 +230,6 @@ void sendMidiClock();
     @param  value2 Value 2 byte
 */
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
-
-/** @brief  Return MIDI clock output flag
-*/
-uint8_t getMidiClockOutput();
-
-/** @brief  Enable or disable sending MIDI clock to output
-    @param  enable True to enable MIDI clock output (Default: true)
-*/
-void setMidiClockOutput(bool enable = true);
 
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the
@@ -1293,12 +1284,12 @@ void setMetronomeVolume(float level);
 float getMetronomeVolume();
 
 /** @brief  Get clock source
-    @retval uint8_t Bitwise clock source [1:Internal 2:MIDI 4:Analogue]
+    @retval uint8_t Clock source [0:Internal 1:MIDI 2:Analogue]
 */
 uint8_t getClockSource();
 
 /** @brief  Set clock source
-    @param  source uint8_t Bitwise clock source [1:Internal 2:MIDI 4:Analogue]
+    @param  source uint8_t Clock source [0:Internal 1:MIDI 2:Analogue]
 */
 void setClockSource(uint8_t source);
 

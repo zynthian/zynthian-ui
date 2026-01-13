@@ -2084,64 +2084,6 @@ class zynthian_state_manager:
         self.default_aubionotes()
 
     # -------------------------------------------------------------------
-    # MIDI transport & clock settings
-    # -------------------------------------------------------------------
-
-    def get_transport_clock_source(self):
-        val = self.zynseq.libseq.getClockSource()
-        if val == 5:
-            return 3
-        elif val == 2:
-            return 2
-        elif self.zynseq.libseq.getMidiClockOutput():
-            return 1
-        else:
-            return 0
-
-    def set_transport_clock_source(self, val=None, save_config=False):
-        """ Set the transport clock source
-
-        Params:
-            val: Clock source [0: Intenal, 1: Internal send to output, 2: External MIDI, 3..5: Analogue]
-            save_config: True to persist change
-        """
-
-        if val is None:
-            val = zynthian_gui_config.transport_clock_source
-
-        if val == 2:
-            self.zynseq.libseq.setClockSource(2)
-        elif val == 3:
-            self.zynseq.libseq.setClockSource(1 | 4)
-        else:
-            self.zynseq.libseq.setClockSource(1)
-
-        self.zynseq.libseq.setMidiClockOutput(val == 1)
-
-        # Save config
-        if save_config:
-            zynthian_gui_config.transport_clock_source = val
-            zynconf.update_midi_profile({
-                "ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE": str(int(val))
-            })
-
-    def get_transport_analog_clock_divisor(self):
-        return self.zynseq.libseq.getAnalogClocksBeat()
-
-    def set_transport_analog_clock_divisor(self, val=None, save_config=False):
-        if val is None:
-            val = zynthian_gui_config.transport_clock_source
-
-        self.zynseq.libseq.setAnalogClocksBeat(val)
-
-        # Save config
-        if save_config:
-            zynthian_gui_config.transport_analog_clock_divisor = val
-            zynconf.update_midi_profile({
-                "ZYNTHIAN_MIDI_TRANSPORT_ANALOG_CLOCK_DIVISOR": str(int(val))
-            })
-
-    # -------------------------------------------------------------------
     # MIDI profile
     # -------------------------------------------------------------------
 
@@ -2171,7 +2113,6 @@ class zynthian_state_manager:
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
-            self.set_transport_clock_source()
             zynautoconnect.request_midi_connect()
             return True
 
