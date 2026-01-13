@@ -40,8 +40,6 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
     dev_ids = ["MIDI Mix IN 1"]
     driver_description = "Full mixer integration"
 
-    rec_mode = 0
-
     bank_left_note = 25
     bank_right_note = 26
     solo_note = 27
@@ -57,6 +55,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
+        self.rec_mode = 0
         self.midimix_bank = 0
         super().__init__(state_manager, idev_in, idev_out)
 
@@ -76,12 +75,15 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
                     lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[col], value)
 
     # Update LED status for active chain
-    def update_mixer_active_chain(self, active_chain):
+    def on_active_chain(self, active_chain_id):
+        # Scroll modes are DISABLED for MIDI MIX, so no need to call the base class method
+        #super().on_active_chain(active_chain_id)
+
         if self.rec_mode or self.idev_out is None:
             return
         for i in range(0, 8):
             chain_id = self.get_filtered_chain_id_by_index(self.scroll_h + i)
-            if chain_id and chain_id == active_chain:
+            if chain_id and chain_id == active_chain_id:
                 rec = 1
             else:
                 rec = 0

@@ -28,11 +28,11 @@ import logging
 from time import monotonic, sleep
 
 # Zynthian specific modules
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer
+from zyngine.ctrldev.zynthian_ctrldev_base import *
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
-from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS, ZMIP_INT_INDEX
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
@@ -69,6 +69,7 @@ LED_SENDS           = 0x58  # Sends LED (0=off, 1-127=on)
 LED_USER            = 0x59  # User LED (0=off, 1-127=on)
 LED_METRONOME       = 0x5A  # Metronome LED (0=off, 1-127=on)
 LED_PLAY            = 0x5B  # Play LED (0=off, 1-127=on)
+LED_STOP            = 0x5C  # STOP LED (0=off, 1-127=on)
 LED_RECORD          = 0x5D  # Record LED (0=off, 1-127=on)
 
 BTN_STOP_ALL_CLIPS  = 0x51  # Stop all clips
@@ -81,6 +82,7 @@ BTN_TAP_TEMPO       = 0x63  # Tap tempo button
 BTN_NUDGE_DOWN      = 0x64  # Nudge - button
 BTN_NUDGE_UP        = 0x65  # Nudge + button
 BTN_SESSION         = 0x66  # Session record button
+BTN_BANK            = 0x67  # Bank button
 
 CC_FADER            = 0x07  # Fader slider (Tracks: MIDI channel 0-7)
 CC_TEMPO            = 0x0D  # Tempo knob (Relative)
@@ -150,7 +152,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
 
     dev_ids = ["APC40 mkII IN 1"]
     driver_name = "APC40 mk2"
-    driver_description = "Interface Akai APC40 with zynpad and zynmixer"
+    driver_description = "Interface Akai APC40 with mixer, launcher and more..."
 
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
@@ -161,15 +163,13 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self.sysex_manufacturer_id = None
         self.sysex_product_model_id = None
         self.sysex_dev_id = None
-        self._shift = False # True whilst shift button is pressed
-        self._send = False # True whilst send button is pressed
-        self.send = 0 # Index of send to adjust
+        self._shift = False  # True whilst shift button is pressed
+        self._send = False  # True whilst send button is pressed
+        self.send = 0  # Index of send to adjust
         self.enc_mode = ENC_MODE_PAN  # Chain encoder mode
         self.last_cc_send = 0  # Time of last sent feedback CC - used to avoid feedback interference
         self.mixer_toggle = False
         self.last_press = None
-
-        self.cc_device_count = 0
 
     # Send the SysEx universal device enquiry
     def send_sysex_universal_device_enquiry(self, chan=0):
@@ -196,20 +196,34 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self.mixer_toggle = False
         self.refresh()
         self.set_enc_mode(self.enc_mode)
+        self.set_scroll_mode(SCROLL_MODE_GUI_SEL)
         super().init()
         zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
         zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
+        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
 
     def end(self):
         super().end()
         zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
         zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
+        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
 
     def light_off(self):
         for led in range(0x28):
             lib_zyncore.dev_send_note_off(self.idev_out, 0, led, 0)
+
+    def on_gui_show_screen(self, screen):
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, BTN_SESSION, 0x0)
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, BTN_BANK, 0x0)
+        match screen:
+            case "launcher":
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, BTN_SESSION, 0x1)
+            case "presets":
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, BTN_BANK, 0x1)
+            case "banks":
+                lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, BTN_BANK, 0x1)
 
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         if symbol == "balance" and self.enc_mode == ENC_MODE_PAN:
@@ -383,8 +397,6 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         if self.state_manager.power_save_mode:
             return True
 
-        last_pos = self.get_num_filtered_chains()
-
         evtype = (ev[0] >> 4) & 0x0F
         chan = ev[0] & 0x0f
         now = monotonic()
@@ -395,8 +407,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.set_mixer_param("level", -1, val / 127.0)
             elif cc == CC_FADER:
                 pos = self.scroll_h + chan
-                if pos <= last_pos:
-                    self.set_mixer_param("level", pos, val / 127.0)
+                self.set_mixer_param("level", pos, val / 127.0)
             elif cc == CC_CUE_LEVEL:
                 dval = relative_to_signed(val)
                 self.nudge_mixer_param("balance", -1, dval)
@@ -408,25 +419,19 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             elif CC_TRACK_1 <= cc <= CC_TRACK_8:
                 pos = self.scroll_h + cc - CC_TRACK_1
                 if self.enc_mode == ENC_MODE_PAN:
-                    if pos <= last_pos:
-                        try:
-                            self.set_mixer_param("balance", pos, val / 64.0 - 1.0)
-                            self.last_cc_send = now
-                        except:
-                            pass
+                    self.set_mixer_param("balance", pos, val / 64.0 - 1.0)
+                    self.last_cc_send = now
                 elif self.enc_mode == ENC_MODE_SENDS:
-                    if pos <= last_pos:
-                        send_id = self.chain_manager.get_send_id(self.send)
-                        if send_id is not None:
-                            self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
+                    send_id = self.chain_manager.get_send_id(self.send)
+                    if send_id is not None:
+                        self.set_mixer_param(f"send_{send_id}_level", pos, val / 127.0)
                 elif self.enc_mode == ENC_MODE_USER:
                     # Use first chain zctrl (favorite)
-                    if pos <= last_pos:
-                        try:
-                            user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[0]
-                            user_zctrl.midi_control_change(val)
-                        except:
-                            pass
+                    try:
+                        user_zctrl = self.get_filtered_chain_by_index(pos).zctrls[0]
+                        user_zctrl.midi_control_change(val)
+                    except:
+                        pass
             # Send CC to chains and midi_learn subsystem
             elif CC_DEVICE_1 <= cc <= CC_DEVICE_8:
                 #logging.debug(f"DEVICE CC => cc={cc}, val={val}")
@@ -456,7 +461,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
 
             # Navigation CUIAs: Arrows, BACK, SELECT, etc.
             elif note == LED_DEVICE_ON:
-                self.state_manager.send_cuia("ZYNSWITCH", (1, "R"))
+                #self.state_manager.send_cuia("ZYNSWITCH", (1, "R"))
+                pass
             elif note == LED_DEVICE_LOCK:
                 self.state_manager.send_cuia("ZYNSWITCH", (3, "R"))
             elif note == LED_DEVICE_VIEW:
@@ -472,14 +478,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 # Launcher pad => sel.scroll_h = self.scroll_h
                 pos = self.scroll_h + note % 8
                 row = note // 8
-                try:
-                    midi_chan = self.get_filtered_midi_chan_by_index(pos)
-                    if midi_chan is None:
-                        return
-                    phrase = self.rows - 1 - row + self.scroll_v
-                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
-                except:
-                    pass
+                midi_chan = self.get_filtered_midi_chan_by_index(pos)
+                if midi_chan is None:
+                    return
+                phrase = self.rows - 1 - row + self.scroll_v
+                self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
             # Scene buttons => Phrase launcher
             elif LED_SCENE_LAUNCH_1 <= note <= LED_SCENE_LAUNCH_5:
                 phrase = note - LED_SCENE_LAUNCH_1
@@ -505,12 +508,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.toggle_mixer_param("record", pos)
             elif note == LED_CLIP_STOP:
                 pos = self.scroll_h + chan
-                try:
-                    midi_chan = self.get_filtered_midi_chan_by_index(pos)
-                    for phrase in range(self.zynseq.phrases):
-                        self.zynseq.libseq.setPlayState(self.zynseq.scene, phrase, midi_chan, zynseq.SEQ_STOPPING)
-                except:
-                    pass
+                midi_chan = self.get_filtered_midi_chan_by_index(pos)
+                for phrase in range(self.zynseq.phrases):
+                    self.zynseq.libseq.setPlayState(self.zynseq.scene, phrase, midi_chan, zynseq.SEQ_STOPPING)
             # Global buttons
             elif note == BTN_STOP_ALL_CLIPS:
                 self.last_press = now
@@ -569,7 +569,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     self.send = 4
                     self.set_enc_mode(ENC_MODE_SENDS)
                 else:
-                    self.state_manager.send_cuia("ZYNSWITCH", (1, "P"))
+                    self.state_manager.send_cuia("BACK")
+                    #self.state_manager.send_cuia("ZYNSWITCH", (1, "P"))
             elif note == LED_DEVICE_LOCK:
                 if self._send:
                     self.send = 5
@@ -593,6 +594,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     self.state_manager.send_cuia("SCREEN_MIXER")
                 else:
                     self.state_manager.send_cuia("SCREEN_LAUNCHER")
+            elif note == BTN_BANK:
+                self.state_manager.send_cuia("BANK_PRESET")
+            else:
+                logging.debug(f"UNCATCHED NOTE-ON => {note:02x}")
 
         return True
 

@@ -43,10 +43,11 @@ from zynlibs.zynseq import zynseq
 # Control device base class
 # ------------------------------------------------------------------------------------------------------------------
 
-SCROLL_MODE_NONE = 0
-SCROLL_MODE_GUI_SEL = 1
-SCROLL_MODE_GUI_VIEW = 2
-SCROLL_MODE_CTRL = 3
+SCROLL_MODE_DISABLED = 0
+SCROLL_MODE_FIXED = 1
+SCROLL_MODE_GUI_SEL = 2
+SCROLL_MODE_GUI_VIEW = 3
+SCROLL_MODE_CTRLDEV = 4
 
 
 class zynthian_ctrldev_base:
@@ -101,7 +102,7 @@ class zynthian_ctrldev_base:
         self.scroll_v = 0  # Offset of first phrase / row of pads
         self.scroll_mode = None
         self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
-        self.set_scroll_mode(SCROLL_MODE_GUI_SEL)
+        self.set_scroll_mode(SCROLL_MODE_DISABLED)
 
     @classmethod
     def get_driver_name(cls):
@@ -142,7 +143,6 @@ class zynthian_ctrldev_base:
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
         # Register for GUI changes
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
-        #zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
     def end(self):
@@ -158,7 +158,6 @@ class zynthian_ctrldev_base:
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         # Unregister from GUI changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
-        #zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
         self.end_midiproc()
@@ -221,9 +220,12 @@ class zynthian_ctrldev_base:
         """
 
         try:
-            return self.chain_ids_filtered[index]
+            chain_id = self.chain_ids_filtered[index]
+            if chain_id > 0:
+                return chain_id
         except:
-            return None
+            pass
+        return None
 
     def get_filtered_chain_by_index(self, index):
         """Get filtered chain by index
@@ -233,9 +235,12 @@ class zynthian_ctrldev_base:
         """
 
         try:
-            return self.chain_manager.chains[self.chain_ids_filtered[index]]
+            chain_id = self.chain_ids_filtered[index]
+            if chain_id > 0:
+                return self.chain_manager.chains[chain_id]
         except:
-            return None
+            pass
+        return None
 
     def get_filtered_index_by_chain(self, chain):
         """Get index of chain in the filtered chain list
@@ -262,9 +267,12 @@ class zynthian_ctrldev_base:
     def get_filtered_midi_chan_by_index(self, index):
         """Get filtered chain MIDI channel by index"""
         try:
-            return self.chain_manager.chains[self.chain_ids_filtered[index]].midi_chan
+            chain_id = self.chain_ids_filtered[index]
+            if chain_id > 0:
+                return self.chain_manager.chains[chain_id].midi_chan
         except:
-            return None
+            pass
+        return None
 
     def refresh(self):
         """Refresh full device status (LED feedback, etc)
@@ -327,12 +335,12 @@ class zynthian_ctrldev_base:
         mode - New scroll mode"""
 
         if mode is None:
-            mode = SCROLL_MODE_NONE
-        if mode < SCROLL_MODE_NONE or mode > SCROLL_MODE_CTRL:
+            mode = SCROLL_MODE_DISABLED
+        if mode < SCROLL_MODE_DISABLED or mode > SCROLL_MODE_CTRLDEV:
             return
 
         self.scroll_mode = mode
-        if self.scroll_mode == SCROLL_MODE_NONE:
+        if self.scroll_mode == SCROLL_MODE_FIXED:
             self.scroll_h = self.scroll_v = 0
 
     def on_active_chain(self, active_chain_id):
@@ -405,12 +413,15 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         phrase - phrase index (row)
         chan - zynseq's midi chan
         """
-        #logging.debug(f"UPDATE SEQ STATE {phrase}, {chan}")
+        logging.debug(f"UPDATE SEQ STATE {phrase}, {chan}")
         if chan is None or self.idev_out is None:
             return
+
+        logging.debug(f"ROW => {phrase} - {self.scroll_v}")
         row = phrase - self.scroll_v
         if row < 0 or row >= self.rows:
             return
+
         # Phrase launcher
         if chan == 32:
             col = self.phrase_launcher_col
@@ -465,13 +476,14 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         """Handle active phrase selection
         *COULD* be implemented by child class"""
 
-        if phrase < self.scroll_v:
-            self.scroll_v = phrase
-        elif phrase >= self.scroll_v + self.rows:
-            self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
-        else:
-            return
-        self.refresh()
+        if self.scroll_mode == SCROLL_MODE_GUI_SEL:
+            if phrase < self.scroll_v:
+                self.scroll_v = phrase
+            elif phrase >= self.scroll_v + self.rows:
+                self.scroll_v = max(0, min(self.zynseq.phrases - self.rows, phrase - self.rows + 1))
+            else:
+                return
+            self.refresh()
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class
@@ -509,14 +521,6 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         mixbus - True for mixbus mixer. False for chain mixer. (Default: False)
         """
         logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
-
-    def update_mixer_active_chain(self, active_chain_id):
-        """Update hardware indicators for active_chain
-        *SHOULD* be implemented by child class
-
-        active_chain - Active chain
-        """
-        logging.debug(f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
 
     def set_mixer_param(self, param, pos, value):
         """Set a mixer parameter value

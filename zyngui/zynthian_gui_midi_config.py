@@ -35,7 +35,7 @@ from subprocess import check_output, Popen, PIPE
 import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
-from zyngine.ctrldev.zynthian_ctrldev_base import SCROLL_MODE_NONE, SCROLL_MODE_GUI_SEL, SCROLL_MODE_GUI_VIEW, SCROLL_MODE_CTRL
+from zyngine.ctrldev.zynthian_ctrldev_base import SCROLL_MODE_DISABLED, SCROLL_MODE_FIXED, SCROLL_MODE_GUI_SEL, SCROLL_MODE_GUI_VIEW, SCROLL_MODE_CTRLDEV
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
@@ -505,25 +505,28 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
         # TODO: Check what modes controller supports
         try:
+            options = {}
+            # Scroll options
             mode = self.zyngui.state_manager.ctrldev_manager.drivers[idev].get_scroll_mode()
-            options = {
-                "Scroll Modes": None,
-                "Controller handled": (idev, SCROLL_MODE_CTRL),
-                "Follow GUI selection": (idev, SCROLL_MODE_GUI_SEL),
-                "Follow GUI view": (idev, SCROLL_MODE_GUI_VIEW),
-                "Lock to first chain & phrase": (idev, SCROLL_MODE_NONE)
-            }
-            self.zyngui.screens['option'].config("Controller Options", options, self.controller_options_cb, index=mode+1)
-            self.zyngui.show_screen('option')
+            if mode > 0:
+                options["Scroll Modes"] = None
+                options["Locked (no scroll)"] = ("scroll_mode", idev, SCROLL_MODE_FIXED)
+                options["Follow GUI selection"] = ("scroll_mode", idev, SCROLL_MODE_GUI_SEL)
+                options["Follow GUI view"] = ("scroll_mode", idev, SCROLL_MODE_GUI_VIEW)
+                options["Controller handled"] = ("scroll_mode", idev, SCROLL_MODE_CTRLDEV)
+            if options:
+                self.zyngui.screens['option'].config("Controller Options", options, self.controller_options_cb, index=mode+1)
+                self.zyngui.show_screen('option')
         except:
             pass
 
     def controller_options_cb(self, option, params):
+        cmd, idev, val = params
         try:
-            idev, mode = params
-            self.zyngui.state_manager.ctrldev_manager.drivers[idev].set_scroll_mode(mode)
+            if cmd == "scroll_mode":
+                self.zyngui.state_manager.ctrldev_manager.drivers[idev].set_scroll_mode(cal)
         except:
-            logging.warning("Failed to set scroll mode")
+            logging.warning(f"Failed to set ctrldev option for device {idev}: {cmd}({val}) ")
         self.show_options()
 
     def process_dynamic_ports(self):
