@@ -372,7 +372,7 @@ class ModeHandlerBase:
 
         n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq)
         for track in range(n_tracks):
-            retval.extend(self._get_patterns_in_track(self._zynseq.scene, phrase, seq, track))
+            retval.extend(self._get_patterns_in_track(phrase, seq, track))
         return retval
 
     # FIXME: Could this be in libseq?

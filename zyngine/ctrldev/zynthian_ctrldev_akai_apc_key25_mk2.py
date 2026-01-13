@@ -1,3 +1,4 @@
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # ******************************************************************************
@@ -177,7 +178,7 @@ FN_SOLO = 0x03
 FN_MUTE = 0x04
 FN_REC_ARM = 0x05
 FN_SELECT = 0x06
-FN_PHRASE = 0x07
+FN_SCENE = 0x07
 FN_SEQUENCE_MANAGER = 0x08
 FN_COPY_SEQUENCE = 0x09
 FN_MOVE_SEQUENCE = 0x0A
@@ -268,8 +269,8 @@ class DeviceHandler(ModeHandlerBase):
 
         self._btn_actions = {
             BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
-            BTN_MIX_LEVEL:      ("SCREEN_MIXER", "SCREEN_ALSA_MIXER"),
-            BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET", "SCREEN_scene"),
+            BTN_MIX_LEVEL:      ("SCREEN_AUDIO_MIXER", "SCREEN_ALSA_MIXER"),
+            BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET", "SCREEN_BANK"),
             BTN_ZS3_SHOT:       ("SCREEN_ZS3", "SCREEN_SNAPSHOT"),
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
@@ -383,12 +384,12 @@ class DeviceHandler(ModeHandlerBase):
             "option":         (BTN_OPT_ADMIN, 0),
             "chain_manager":      (BTN_OPT_ADMIN, 0),
             "admin":          (BTN_OPT_ADMIN, 1),
-            "mixer":    (BTN_MIX_LEVEL, 0),
+            "audio_mixer":    (BTN_MIX_LEVEL, 0),
             "alsa_mixer":     (BTN_MIX_LEVEL, 1),
             "control":        (BTN_CTRL_PRESET, 0),
             "engine":         (BTN_CTRL_PRESET, 0),
             "preset":         (BTN_CTRL_PRESET, 1),
-            "scene":           (BTN_CTRL_PRESET, 1),
+            "bank":           (BTN_CTRL_PRESET, 1),
             "zs3":            (BTN_ZS3_SHOT, 0),
             "snapshot":       (BTN_ZS3_SHOT, 1),
             "zynpad":         (BTN_PAD_STEP, 0),
@@ -460,7 +461,7 @@ class MixerHandler(ModeHandlerBase):
         self._is_shifted = False
         self._knobs_function = FN_VOLUME
         self._track_buttons_function = FN_SELECT
-        self._chains_scene = 0
+        self._chains_bank = 0
 
         active_chain = self._chain_manager.get_active_chain()
         self._active_chain = active_chain.chain_id if active_chain else 0
@@ -483,20 +484,20 @@ class MixerHandler(ModeHandlerBase):
                 FN_MUTE: BTN_SOFT_KEY_MUTE,
                 FN_SOLO: BTN_SOFT_KEY_SOLO,
                 FN_SELECT: BTN_SOFT_KEY_SELECT,
-                FN_PHRASE: BTN_SOFT_KEY_REC_ARM,
+                FN_SCENE: BTN_SOFT_KEY_REC_ARM,
             }[self._track_buttons_function]
             self._leds.led_on(btn)
 
-            # Clips scene selection
-            btn = BTN_LEFT if self._chains_scene == 0 else BTN_RIGHT
+            # Clips bank selection
+            btn = BTN_LEFT if self._chains_bank == 0 else BTN_RIGHT
             self._leds.led_on(btn)
 
         # Otherwise, show current function status
         else:
-            if self._track_buttons_function == FN_PHRASE:
+            if self._track_buttons_function == FN_SCENE:
                 for i in range(8):
-                    phrase = i + (8 if self._chains_scene == 1 else 0)
-                    state = phrase == (self._zynseq.scene - 1)
+                    scene = i + (8 if self._chains_bank == 1 else 0)
+                    state = scene == (self._zynseq.bank - 1)
                     self._leds.led_state(BTN_TRACK_1 + i, state)
                 return
 
@@ -510,7 +511,7 @@ class MixerHandler(ModeHandlerBase):
                 FN_SELECT: lambda c: c.chain_id == self._active_chain,
             }[self._track_buttons_function]
             for i in range(8):
-                pos = i + (8 if self._chains_scene == 1 else 0)
+                pos = i + (8 if self._chains_bank == 1 else 0)
                 chain = self._chain_manager.get_chain_by_position(pos)
                 if not chain:
                     break
@@ -538,13 +539,13 @@ class MixerHandler(ModeHandlerBase):
             elif note == BTN_SOFT_KEY_SOLO:
                 self._track_buttons_function = FN_SOLO
             elif note == BTN_SOFT_KEY_REC_ARM:
-                self._track_buttons_function = FN_PHRASE
+                self._track_buttons_function = FN_SCENE
             elif note == BTN_SOFT_KEY_CLIP_STOP:
                 self._track_buttons_function = FN_SEQUENCE_MANAGER
             elif note == BTN_LEFT:
-                self._chains_scene = 0
+                self._chains_bank = 0
             elif note == BTN_RIGHT:
-                self._chains_scene = 1
+                self._chains_bank = 1
             elif note == BTN_STOP_ALL_CLIPS:
                 self._stop_all_sounds()
             elif note == BTN_PLAY:
@@ -587,7 +588,7 @@ class MixerHandler(ModeHandlerBase):
             if self._chain_manager.get_chain_id_by_index(pos) == chain_id:
                 break
 
-        pos -= self._chains_scene * 8
+        pos -= self._chains_bank * 8
         if 0 > pos > 8:
             return
         self._leds.led_state(BTN_TRACK_1 + pos, value)
@@ -597,7 +598,7 @@ class MixerHandler(ModeHandlerBase):
         # Do not change chain if 'main' is selected
         if chain == 0:
             return
-        self._chains_scene = 0 if chain <= 8 else 1
+        self._chains_bank = 0 if chain <= 8 else 1
         self._active_chain = chain
         if refresh:
             self.refresh()
@@ -615,7 +616,7 @@ class MixerHandler(ModeHandlerBase):
                 return False
             mixer_chan = 255
         else:
-            index = (ccnum - KNOB_1) + self._chains_scene * 8
+            index = (ccnum - KNOB_1) + self._chains_bank * 8
             chain = self._chain_manager.get_chain_by_index(index)
             if chain is None or chain.chain_id == 0:
                 return False
@@ -638,11 +639,11 @@ class MixerHandler(ModeHandlerBase):
         return True
 
     def _run_track_button_function(self, note):
-        index = (note - BTN_TRACK_1) + self._chains_scene * 8
+        index = (note - BTN_TRACK_1) + self._chains_bank * 8
 
         # FIXME: move this to padmatrix handler!
-        if self._track_buttons_function == FN_PHRASE:
-            self._zynseq.select_scene(index + 1)
+        if self._track_buttons_function == FN_SCENE:
+            self._zynseq.select_bank(index + 1)
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
             return True
 
@@ -744,31 +745,32 @@ class PadMatrixHandler(ModeHandlerBase):
         # If seqman is enabled, ignore row functions
         if self._seqman_func is not None:
             return False
-        if row >= self._zynseq.LAUNCHER_COLS:
+        if row >= self._zynseq.col_in_bank:
             return True
 
         # Get overall status: playing if at least one sequence is playing
         is_playing = False
-        for col in range(self._zynseq.LAUNCHER_COLS):
-            seq = col * self._zynseq.LAUNCHER_COLS + row
+        for col in range(self._zynseq.col_in_bank):
+            seq = col * self._zynseq.col_in_bank + row
             if seq in self._playing_seqs:
                 is_playing = True
                 break
 
         stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
-                       zynseq.SEQ_STOPPING_SYNC)
-        play_states = (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
-        for col in range(self._zynseq.LAUNCHER_COLS):
-            seq = col * self._zynseq.LAUNCHER_COLS + row
+                       zynseq.SEQ_STOPPINGSYNC)
+        play_states = (zynseq.SEQ_RESTARTING,
+                       zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
+        for col in range(self._zynseq.col_in_bank):
+            seq = col * self._zynseq.col_in_bank + row
             # We only play sequences that are not empty
-            if not is_playing and self._libseq.isEmpty(self._zynseq.scene, seq):
+            if not is_playing and self._libseq.isEmpty(self._zynseq.bank, seq):
                 continue
-            state = self._libseq.getPlayState(self._zynseq.scene, seq)
+            state = self._libseq.getPlayState(self._zynseq.bank, seq)
             if is_playing and state in stop_states:
                 continue
             if not is_playing and state in play_states:
                 continue
-            self._libseq.togglePlayState(self._zynseq.scene, seq)
+            self._libseq.togglePlayState(self._zynseq.bank, seq)
 
     def on_track_changed(self, track, state):
         self._track_btn_pressed = track if state else None
@@ -778,9 +780,9 @@ class PadMatrixHandler(ModeHandlerBase):
             btn = BTN_TRACK_1 + track
 
             if btn == BTN_LEFT:
-                return self._change_phrase(-1)
+                return self._change_scene(-1)
             if btn == BTN_RIGHT:
-                return self._change_phrase(1)
+                return self._change_scene(1)
 
             func = {
                 BTN_KNOB_CTRL_VOLUME: FN_COPY_SEQUENCE,
@@ -793,9 +795,9 @@ class PadMatrixHandler(ModeHandlerBase):
 
                 # Function CLEAR does not have source sequence, remove it
                 if func == FN_CLEAR_SEQUENCE and self._seqman_src_seq is not None:
-                    phrase, seq = self._seqman_src_seq
+                    scene, seq = self._seqman_src_seq
                     self._seqman_src_seq = None
-                    if phrase == self._zynseq.scene:
+                    if scene == self._zynseq.bank:
                         self._update_pad(seq)
 
     def on_shift_changed(self, state):
@@ -821,11 +823,11 @@ class PadMatrixHandler(ModeHandlerBase):
         for c in range(self._cols):
             for r in range(self._rows):
                 # Pad outside grid, switch off
-                if c >= self._zynseq.LAUNCHER_COLS or r >= self._zynseq.LAUNCHER_COLS:
+                if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
                     self.pad_off(c, r)
                     continue
 
-                seq = c * self._zynseq.LAUNCHER_COLS + r
+                seq = c * self._zynseq.col_in_bank + r
                 self._update_pad(seq, False)
 
         self._refresh_tool_buttons()
@@ -849,13 +851,13 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
-            self._clear_sequence(self._zynseq.scene, seq)
+            self._clear_sequence(self._zynseq.bank, seq)
         elif self._is_record_pressed:
             self._start_pattern_record(seq)
         elif self._recording_seq == seq:
             self._stop_pattern_record()
         else:
-            self._libseq.togglePlayState(self._zynseq.scene, seq)
+            self._libseq.togglePlayState(self._zynseq.bank, seq)
 
         return True
 
@@ -863,42 +865,39 @@ class PadMatrixHandler(ModeHandlerBase):
         index = col * self._rows + row
         self._leds.led_off(self._pads[index])
 
-    def update_seq_state(self, phrase, chan, state=None, mode=None, refresh=True):
-        try:
-            col = self._chain_manager.get_pos_by_midi_chan(chan)[0]
-        except:
-            return
-        idx = col * self._rows + phrase
+    def update_seq_state(self, bank, seq, state=None, mode=None, group=None, refresh=True):
+        col, row = self._zynseq.get_xy_from_pad(seq)
+        idx = col * self._rows + row
         if idx >= len(self._pads):
             return
         btn = self._pads[idx]
 
         is_empty = all(
             self._zynseq.is_pattern_empty(pattern)
-            for pattern in self._get_sequence_patterns(phrase, chan))
-        color = self.GROUP_COLORS[chan]
+            for pattern in self._get_sequence_patterns(bank, seq))
+        color = self.GROUP_COLORS[group]
 
         # If seqman is enabled, update according to it's function
         if self._seqman_func is not None:
             led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
             if (self._seqman_func in (FN_COPY_SEQUENCE, FN_MOVE_SEQUENCE)
                     and self._seqman_src_seq is not None):
-                src_phrase, src_seq = self._seqman_src_seq
-                if src_phrase == self._zynseq.scene and src_seq == chan:
+                src_scene, src_seq = self._seqman_src_seq
+                if src_scene == self._zynseq.bank and src_seq == seq:
                     led_mode = LED_BLINKING_24
 
         # Otherwise, update according to sequence state
         else:
-            if self._recording_seq == chan:
+            if self._recording_seq == seq:
                 led_mode = LED_BLINKING_16
             elif state == zynseq.SEQ_PLAYING:
                 led_mode = LED_BLINKING_8
-                self._playing_seqs.add(chan)
+                self._playing_seqs.add(seq)
             elif state in (zynseq.SEQ_STOPPING, zynseq.SEQ_STARTING):
                 led_mode = LED_PULSING_2
             else:
                 led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
-                self._playing_seqs.discard(chan)
+                self._playing_seqs.discard(seq)
 
         self._leds.led_on(btn, color, led_mode)
 
@@ -911,17 +910,17 @@ class PadMatrixHandler(ModeHandlerBase):
         row = index % self._rows
 
         # Pad outside grid, discarded
-        if col >= self._zynseq.LAUNCHER_COLS or row >= self._zynseq.LAUNCHER_COLS:
+        if col >= self._zynseq.col_in_bank or row >= self._zynseq.col_in_bank:
             return None
-        return col * self._zynseq.LAUNCHER_COLS + row
+        return col * self._zynseq.col_in_bank + row
 
     def _handle_timed_button(self, btn, ptype):
         if btn == BTN_STOP_ALL_CLIPS:
             if ptype == CONST.PT_LONG:
                 self._stop_all_sounds()
             else:
-                in_all_scenes = ptype == CONST.PT_BOLD
-                self._stop_all_seqs(in_all_scenes)
+                in_all_banks = ptype == CONST.PT_BOLD
+                self._stop_all_seqs(in_all_banks)
 
     def _seqman_handle_pad_press(self, seq):
         if self._seqman_func is None:
@@ -931,49 +930,46 @@ class PadMatrixHandler(ModeHandlerBase):
         # FIXME: if Zynpad is open, also update it!
         # You can use self._current_screen...
         self._libseq.updateSequenceInfo()
-        seq_is_empty = self._libseq.isEmpty(self._zynseq.scene, seq)
+        seq_is_empty = self._libseq.isEmpty(self._zynseq.bank, seq)
         if self._seqman_func == FN_CLEAR_SEQUENCE:
             if not seq_is_empty:
-                self._clear_sequence(self._zynseq.scene, seq)
+                self._clear_sequence(self._zynseq.bank, seq)
             return
 
         # Set selected sequence as source
         if self._seqman_src_seq is None:
             if not seq_is_empty:
-                self._seqman_src_seq = (self._zynseq.scene, seq)
+                self._seqman_src_seq = (self._zynseq.bank, seq)
         else:
             # Clear source sequence
-            if self._seqman_src_seq == (self._zynseq.scene, seq):
+            if self._seqman_src_seq == (self._zynseq.bank, seq):
                 self._seqman_src_seq = None
             # Copy/Move source to selected sequence (will be overwritten)
             else:
                 if self._seqman_func == FN_COPY_SEQUENCE:
                     self._copy_sequence(
-                        *self._seqman_src_seq, self._zynseq.scene, seq)
+                        *self._seqman_src_seq, self._zynseq.bank, seq)
                 elif self._seqman_func == FN_MOVE_SEQUENCE:
                     self._copy_sequence(
-                        *self._seqman_src_seq, self._zynseq.scene, seq)
+                        *self._seqman_src_seq, self._zynseq.bank, seq)
                     self._clear_sequence(*self._seqman_src_seq)
                     self._seqman_src_seq = None
 
         self._update_pad(seq)
 
-    def _change_phrase(self, offset):
-        phrase = min(64, max(1, self._zynseq.scene + offset))
-        if phrase != self._zynseq.scene:
-            self._zynseq.select_scene(phrase)
+    def _change_scene(self, offset):
+        scene = min(64, max(1, self._zynseq.bank + offset))
+        if scene != self._zynseq.bank:
+            self._zynseq.select_bank(scene)
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
 
     def _update_pad(self, seq, refresh=True):
-        phrase = int(seq / 17)
-        chan = seq % 17
-        if chan > 15:
-            chan = 0xff
-        state = self._libseq.getSequenceState(self._zynseq.scene, phrase, seq)
+        state = self._libseq.getSequenceState(self._zynseq.bank, seq)
         mode = (state >> 8) & 0xFF
+        group = (state >> 16) & 0xFF
         state &= 0xFF
         self.update_seq_state(
-            phrase=phrase, chan=chan, state=state, mode=mode,
+            bank=self._zynseq.bank, seq=seq, state=state, mode=mode, group=group,
             refresh=refresh)
 
     def _refresh_tool_buttons(self):
@@ -991,14 +987,14 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # If seqman is disabled, show playing status in row launchers
         playing_rows = {
-            seq % self._zynseq.LAUNCHER_COLS for seq in self._playing_seqs}
+            seq % self._zynseq.col_in_bank for seq in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
 
     def _start_pattern_record(self, seq):
         # Set pad's chain as active
-        channel = self._libseq.getChannel(self._zynseq.scene, seq, 0)
+        channel = self._libseq.getChannel(self._zynseq.bank, seq, 0)
         chain_id = self._chain_manager.get_chain_id_by_mixer_chan(channel)
         if chain_id is None:
             return
@@ -1010,7 +1006,7 @@ class PadMatrixHandler(ModeHandlerBase):
         self._show_pattern_editor(seq, skip_arranger=True)
 
         # Start playing & recording
-        if self._libseq.getPlayState(self._zynseq.scene, seq) == zynseq.SEQ_STOPPED:
+        if self._libseq.getPlayState(self._zynseq.bank, seq) == zynseq.SEQ_STOPPED:
             self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
@@ -1018,20 +1014,20 @@ class PadMatrixHandler(ModeHandlerBase):
         self._recording_seq = seq
         self._update_pad(seq)
 
-    def _stop_all_seqs(self, in_all_scenes=False):
-        scene = 0 if in_all_scenes else self._zynseq.scene
+    def _stop_all_seqs(self, in_all_banks=False):
+        bank = 0 if in_all_banks else self._zynseq.bank
         while True:
             # Iterate max 64 scenes or until no playing sequences
             # TODO: Should use a constant for max scenes
-            seq_num = self._libseq.getSequencesInscene(scene)
+            seq_num = self._libseq.getSequencesInBank(bank)
             for seq in range(seq_num):
-                state = self._libseq.getPlayState(scene, seq)
-                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                    self._libseq.togglePlayState(scene, seq)
-            if not in_all_scenes:
+                state = self._libseq.getPlayState(bank, seq)
+                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
+                    self._libseq.togglePlayState(bank, seq)
+            if not in_all_banks:
                 break
-            scene += 1
-            if scene >= 64 or self._zynseq.playing_sequences == 0:
+            bank += 1
+            if bank >= 64 or self._libseq.getPlayingSequences() == 0:
                 break
 
     def _stop_pattern_record(self):
@@ -1040,20 +1036,20 @@ class PadMatrixHandler(ModeHandlerBase):
         self._recording_seq = None
         self.refresh()
 
-    def _clear_sequence(self, phrase, seq, create_empty=True):
+    def _clear_sequence(self, scene, seq, create_empty=True):
         # Remove all patterns in all tracks
-        seq_len = self._libseq.getSequenceLength(phrase, seq)
+        seq_len = self._libseq.getSequenceLength(scene, seq)
         if seq_len != 0:
-            n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq)
+            n_tracks = self._libseq.getTracksInSequence(scene, seq)
             for track in range(n_tracks):
-                n_patts = self._libseq.getPatternsInTrack(self._zynseq.scene, phrase, seq, track)
+                n_patts = self._libseq.getPatternsInTrack(scene, seq, track)
                 if n_patts == 0:
                     continue
                 pos = 0
                 while pos < seq_len:
-                    pattern = self._libseq.getPatternAt(self._zynseq.scene, phrase, seq, track, pos)
+                    pattern = self._libseq.getPatternAt(scene, seq, track, pos)
                     if pattern != -1:
-                        self._libseq.removePattern(self._zynseq.scene, phrase, seq, track, pos)
+                        self._libseq.removePattern(scene, seq, track, pos)
                         pos += self._libseq.getPatternLength(pattern)
                     else:
                         # Arranger's offset step is a quarter note (24 clocks)
@@ -1061,40 +1057,40 @@ class PadMatrixHandler(ModeHandlerBase):
 
             if n_tracks > 0:
                 for track in range(n_tracks-1):
-                    self._libseq.removeTrackFromSequence(phrase, seq, track)
+                    self._libseq.removeTrackFromSequence(scene, seq, track)
 
         # Add a new empty pattern at the beginning of first track
         if create_empty:
             pattern = self._libseq.createPattern()
-            self._libseq.addPattern(self._zynseq.scene, phrase, seq, 0, 0, pattern)
+            self._libseq.addPattern(scene, seq, 0, 0, pattern)
             self._libseq.selectPattern(pattern)
 
             if self._pattern_template is not None:
                 self._action_apply_pattern_template(pattern)
 
-    def _copy_sequence(self, src_phrase, src_seq, dst_phrase, dst_seq):
-        self._clear_sequence(dst_phrase, dst_seq, create_empty=False)
+    def _copy_sequence(self, src_scene, src_seq, dst_scene, dst_seq):
+        self._clear_sequence(dst_scene, dst_seq, create_empty=False)
 
         # Copy all patterns in all tracks
-        seq_len = self._libseq.getSequenceLength(src_phrase, src_seq)
+        seq_len = self._libseq.getSequenceLength(src_scene, src_seq)
         if seq_len != 0:
-            n_tracks = self._libseq.getTracksInSequence(src_phrase, src_seq)
+            n_tracks = self._libseq.getTracksInSequence(src_scene, src_seq)
             for track in range(n_tracks):
-                if track >= self._libseq.getTracksInSequence(dst_phrase, dst_seq):
-                    self._libseq.addTrackToSequence(dst_phrase, dst_seq)
+                if track >= self._libseq.getTracksInSequence(dst_scene, dst_seq):
+                    self._libseq.addTrackToSequence(dst_scene, dst_seq)
                 n_patts = self._libseq.getPatternsInTrack(
-                    self._zynseq.scene, src_phrase, src_seq, track)
+                    src_scene, src_seq, track)
                 if n_patts == 0:
                     continue
                 pos = 0
                 while pos < seq_len:
                     pattern = self._libseq.getPatternAt(
-                        src_phrase, src_seq, track, pos)
+                        src_scene, src_seq, track, pos)
                     if pattern != -1:
                         new_pattern = self._libseq.createPattern()
                         self._libseq.copyPattern(pattern, new_pattern)
                         self._libseq.addPattern(
-                            self._zynseq.scene, dst_phrase, dst_seq, track, pos, new_pattern)
+                            dst_scene, dst_seq, track, pos, new_pattern)
                         pos += self._libseq.getPatternLength(pattern)
                     else:
                         # Arranger's offset step is a quarter note (24 clocks)
@@ -1102,7 +1098,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # Also copy StepSeq instrument pages
         self._request_action("stepseq", "sync-sequences",
-            src_phrase, src_seq, dst_phrase, dst_seq)
+            src_scene, src_seq, dst_scene, dst_seq)
 
     def _action_set_pattern_template(self, pattern):
         self._pattern_template = pattern
@@ -1254,7 +1250,7 @@ class NotePad(dict):
 
 # --------------------------------------------------------------------------
 # Class to marshall/un-marshall saved state of StepSeq
-# FIXME: add support for phrases too!
+# FIXME: add support for scenes too!
 # --------------------------------------------------------------------------
 class StepSeqState:
     def __init__(self):
@@ -1606,16 +1602,16 @@ class StepSeqHandler(ModeHandlerBase):
                 pad) if args is None else self._leds.led_on(pad, *args)
 
     def set_sequence(self, seq):
-        self._libseq.selectSequence(seq)
+        self._libseq.setSequence(seq)
         self._selected_seq = seq
         self._sequence_patterns = self._get_sequence_patterns(
-            self._zynseq.scene, seq, create=True)
+            self._zynseq.bank, seq, create=True)
         self._selected_pattern_idx = 0
         self._pattern_clock_offset = 0
         self._set_pattern(self._sequence_patterns[0])
 
         # Update active chain and instruments page
-        chain_id = self._get_chain_id_by_sequence(self._zynseq.scene, seq)
+        chain_id = self._get_chain_id_by_sequence(self._zynseq.bank, seq)
         self._chain_manager.set_active_chain_by_id(chain_id)
         self._update_instruments(seq, chain_id)
 
@@ -1667,10 +1663,10 @@ class StepSeqHandler(ModeHandlerBase):
 
             elif note == BTN_PLAY:
                 self._libseq.togglePlayState(
-                    self._zynseq.scene, self._selected_seq)
+                    self._zynseq.bank, self._selected_seq)
                 state = self._libseq.getPlayState(
-                    self._zynseq.scene, self._selected_seq)
-                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING):
+                    self._zynseq.bank, self._selected_seq)
+                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING, zynseq.SEQ_RESTARTING):
                     self._is_stage_play = True
                     self.refresh()
 
@@ -1704,7 +1700,7 @@ class StepSeqHandler(ModeHandlerBase):
                 return True
 
             if note == BTN_PLAY:
-                self._libseq.togglePlayState(self._zynseq.scene, self._selected_seq)
+                self._libseq.togglePlayState(self._zynseq.bank, self._selected_seq)
 
             elif BTN_PAD_START <= note <= BTN_PAD_END:
                 self._pressed_pads[note] = time.time()
@@ -1850,9 +1846,9 @@ class StepSeqHandler(ModeHandlerBase):
         # Update sequence's chain volume
         elif ccnum == KNOB_2:
             self._show_screen_briefly(
-                screen="mixer", cuia="SCREEN_MIXER", timeout=1500)
+                screen="audio_mixer", cuia="SCREEN_AUDIO_MIXER", timeout=1500)
             chain_id = self._get_chain_id_by_sequence(
-                self._zynseq.scene, self._selected_seq)
+                self._zynseq.bank, self._selected_seq)
             chain = self._chain_manager.chains.get(chain_id)
             if chain is not None:
                 mixer_chan = chain.mixer_chan
@@ -1860,7 +1856,7 @@ class StepSeqHandler(ModeHandlerBase):
                     0, min(100, self._zynmixer.get_level(mixer_chan) * 100 + delta))
                 self._zynmixer.set_level(mixer_chan, level / 100)
 
-    def update_seq_state(self, phrase, chan, state=None, mode=None):
+    def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
         if state == zynseq.SEQ_STOPPED and self._cursor < self._used_pads:
             self._leds.remove_overlay(self._pads[self._cursor])
@@ -1898,7 +1894,7 @@ class StepSeqHandler(ModeHandlerBase):
             return
 
         note = self._selected_note.note
-        max_duration = self._libseq.getSteps(self._selected_pattern)
+        max_duration = self._libseq.getSteps()
         duration = self._libseq.getNoteDuration(step, note) + delta * 0.1
         duration = round(min(max_duration, max(0.1, duration)), 1)
         self._set_note_duration(step, note, duration)
@@ -1937,7 +1933,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._play_step(step)
 
     def _update_note_pad_duration(self, pad, note_spec, delta):
-        max_duration = self._libseq.getSteps(self._selected_pattern)
+        max_duration = self._libseq.getSteps()
         note_spec.duration = \
             round(min(max_duration, max(0.1, note_spec.duration + delta * 0.1)), 1)
         self._play_note_pad(pad)
@@ -2043,14 +2039,14 @@ class StepSeqHandler(ModeHandlerBase):
         self._selected_note = self._note_pads.get(index)
 
     # This will be called as an action (look for 'sync-sequences' requests)
-    def _action_sync_sequences(self, src_scene, src_seq, dst_scene, dst_seq):
-        src_chain = self._get_chain_id_by_sequence(src_scene, src_seq)
-        dst_chain = self._get_chain_id_by_sequence(dst_scene, dst_seq)
+    def _action_sync_sequences(self, src_bank, src_seq, dst_bank, dst_seq):
+        src_chain = self._get_chain_id_by_sequence(src_bank, src_seq)
+        dst_chain = self._get_chain_id_by_sequence(dst_bank, dst_seq)
         src = self._saved_state.get_chain_by_id(src_chain)
         dst = self._saved_state.get_chain_by_id(dst_chain)
         dst["pages"] = deepcopy(src["pages"])
 
-        # FIXME: add support for phrases
+        # FIXME: add support for scenes
         src_page = self._saved_state.get_page_by_sequence(src_seq)
         self._saved_state.set_sequence_selection(dst_seq, *src_page)
 
@@ -2067,7 +2063,7 @@ class StepSeqHandler(ModeHandlerBase):
     def _play_note_pad(self, pad, velocity=None, on=True, force=False):
         if not force:
             state = self._libseq.getPlayState(
-                self._zynseq.scene, self._selected_seq)
+                self._zynseq.bank, self._selected_seq)
             if state != zynseq.SEQ_STOPPED:
                 return
 
@@ -2079,7 +2075,7 @@ class StepSeqHandler(ModeHandlerBase):
             velocity = note_spec.velocity
 
         channel = self._libseq.getChannel(
-            self._zynseq.scene, self._selected_seq, 0)
+            self._zynseq.bank, self._selected_seq, 0)
         if on:
             self._note_player.play(
                 note_spec.note, velocity, 0, channel,
@@ -2090,7 +2086,7 @@ class StepSeqHandler(ModeHandlerBase):
     def _play_step(self, step, only_when_stopped=True):
         if only_when_stopped:
             state = self._libseq.getPlayState(
-                self._zynseq.scene, self._selected_seq)
+                self._zynseq.bank, self._selected_seq)
             if state != zynseq.SEQ_STOPPED:
                 return
 
@@ -2098,7 +2094,7 @@ class StepSeqHandler(ModeHandlerBase):
         velocity = self._libseq.getNoteVelocity(step, note)
         duration = self._libseq.getNoteDuration(step, note)
         channel = self._libseq.getChannel(
-            self._zynseq.scene, self._selected_seq, 0)
+            self._zynseq.bank, self._selected_seq, 0)
         stutt_count = self._libseq.getStutterCount(step, note)
         stutt_duration = self._libseq.getStutterDur(step, note)
         self._note_player.play(
@@ -2119,7 +2115,7 @@ class StepSeqHandler(ModeHandlerBase):
         else:
             self._libseq.removeNote(step, spec.note)
             channel = self._libseq.getChannel(
-                self._zynseq.scene, self._selected_seq, 0)
+                self._zynseq.bank, self._selected_seq, 0)
             self._libseq.playNote(spec.note, 0, channel, 0)
         self.refresh(only_steps=True)
 
@@ -2140,7 +2136,7 @@ class StepSeqHandler(ModeHandlerBase):
 
         # Avoid turning on the first LED when is stopping
         state = self._libseq.getPlayState(
-            self._zynseq.scene, self._selected_seq)
+            self._zynseq.bank, self._selected_seq)
         if self._cursor == 0 and state != zynseq.SEQ_PLAYING:
             return
         if self._cursor < self._used_pads:
@@ -2174,15 +2170,15 @@ class StepSeqHandler(ModeHandlerBase):
         spb = self._libseq.getStepsPerBeat()
         self._clock.set_steps_per_beat(spb)
 
-        steps = self._libseq.getSteps(self._selected_pattern)
+        steps = self._libseq.getSteps()
         self._used_pads = min(32, steps)
         self._cursor = self._get_pattern_playhead()
 
     def _get_pattern_playhead(self):
         # NOTE: libseq.getPatternPlayhead() does not work here!
-        cps = self._libseq.getClocksPerStep(self._selected_pattern)
+        cps = self._libseq.getClocksPerStep()
         playpos = self._libseq.getPlayPosition(
-            self._zynseq.scene, self._selected_seq)
+            self._zynseq.bank, self._selected_seq)
         playpos -= self._pattern_clock_offset
 
         # If playhead is in previous patterns, return a big number (which will be ignored)
@@ -2215,7 +2211,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._show_patterns_bar()
 
     def _change_to_next_pattern(self):
-        scene = self._zynseq.scene
+        bank = self._zynseq.bank
         seq = self._selected_seq
         # FIXME: Add support for track selection
         track = 0
@@ -2227,7 +2223,7 @@ class StepSeqHandler(ModeHandlerBase):
                 if not self._is_shifted:
                     return
                 pattern = self._libseq.createPattern()
-                if not self._add_pattern_to_end_of_track(scene, seq, track, pattern):
+                if not self._add_pattern_to_end_of_track(bank, seq, track, pattern):
                     logging.error(" could not add a new pattern!")
                     return
                 self._sequence_patterns.append(pattern)
@@ -2256,7 +2252,7 @@ class StepSeqHandler(ModeHandlerBase):
         current = self._libseq.getPatternIndex()
         pattern = self._sequence_patterns[index]
         self._libseq.selectPattern(pattern)
-        self._libseq.clearPattern(pattern)
+        self._libseq.clear()
         self._libseq.updateSequenceInfo()
         if current != -1 and current != pattern:
             self._libseq.selectPattern(current)
@@ -2265,7 +2261,7 @@ class StepSeqHandler(ModeHandlerBase):
             self.refresh(only_steps=True)
 
     def _remove_pattern(self, index):
-        scene = self._zynseq.scene
+        bank = self._zynseq.bank
         seq = self._selected_seq
         # FIXME: Add support for track selection
         track = 0
@@ -2279,17 +2275,17 @@ class StepSeqHandler(ModeHandlerBase):
         for offset, pattern in enumerate(self._sequence_patterns[index:]):
             prev_position = position
             position = self._get_pattern_position(index + offset)
-            self._libseq.removePattern(self._zynseq.scene, scene, seq, track, position)
+            self._libseq.removePattern(bank, seq, track, position)
             if offset > 0:
                 self._libseq.addPattern(
-                    self._zynseq.scene, scene, seq, track, prev_position, pattern)
+                    bank, seq, track, prev_position, pattern)
 
         # If pattern to remove is to the left of selected, then update selected
         if index <= self._selected_pattern_idx:
             self._selected_pattern_idx = max(0, self._selected_pattern_idx - 1)
 
         self._sequence_patterns = self._get_sequence_patterns(
-            self._zynseq.scene, seq, create=True)
+            self._zynseq.bank, seq, create=True)
         self._change_to_pattern_index(0, self._selected_pattern_idx)
         new_position = self._get_pattern_position(self._selected_pattern_idx)
         self._update_ui_arranger(cell_selected=(
@@ -2317,7 +2313,7 @@ class StepSeqHandler(ModeHandlerBase):
         if self._selected_note is None:
             return retval
 
-        num_steps = min(32, self._libseq.getSteps(self._selected_pattern))
+        num_steps = min(32, self._libseq.getSteps())
         note = self._selected_note.note
         duration = None
         for step in range(num_steps):
@@ -2387,7 +2383,7 @@ class StepSeqHandler(ModeHandlerBase):
             notes[col] = step_prx
 
         channel = self._libseq.getChannel(
-            self._zynseq.scene, self._selected_seq, 0)
+            self._zynseq.bank, self._selected_seq, 0)
         self._note_config = Control(self, notes, channel, row_led=row_led)
         self.refresh()
         return True
