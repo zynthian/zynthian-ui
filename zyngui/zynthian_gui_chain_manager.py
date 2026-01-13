@@ -411,32 +411,41 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
         # Draw node background
         proc = node.get("proc")
-        color = "#505050"
+        bg_col = "#505050"
+        fg_col = "#ffffff"
+        disabled = False
         title = node.get("title")
         if type(proc) is str:
             match proc:
                 case "midi_input" | "note_range" | "add_midi_proc" | "midi_output" | "midi_key_range":
-                    color = c_midi
+                    bg_col = c_midi
                 case "audio_in" | "audio_out":
-                    color = c_audio
+                    bg_col = c_audio
         else:
             match proc.type:
                 case "MIDI Input" | "MIDI Output" | "MIDI Tool":
-                    color = c_midi
+                    bg_col = c_midi
                 case "MIDI Synth" | "Audio Generator":
-                    color = c_synth
+                    bg_col = c_synth
                 case "Audio Input" | "Audio Output" | "Audio Effect":
-                    color = c_audio
+                    bg_col = c_audio
                 case "Special":
-                    color = c_special
+                    bg_col = c_special
+            if proc.type == "Audio Effect":
+                try:
+                    if proc.controllers_dict["bypass"].value:
+                        disabled = True
+                        fg_col = "#808080"
+                except:
+                    pass
         node["id"] = self.canvas.create_rectangle(
             x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
-            fill=color, outline=color, tags="node"
+            fill=bg_col, outline=bg_col, tags="node"
         )
         # Draw node text
         text_id = self.canvas.create_text(
             x + self.BLOCK_WIDTH / 2, y + self.BLOCK_HEIGHT / 2,
-            text=title, fill="white",
+            text=title, fill=fg_col,
             font=self.font,
             width=self.BLOCK_WIDTH,
             justify=tkinter.CENTER
