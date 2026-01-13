@@ -59,6 +59,7 @@ static struct ev_start startEvents[128];
 
 jack_port_t* g_pInputPort;            // Pointer to the JACK input port
 jack_port_t* g_pOutputPort;           // Pointer to the JACK output port
+jack_port_t* g_pClockOutputPort;      // Pointer to the JACK MIDI clock output port
 jack_port_t* g_pClippyPort;           // Pointer to the JACK output port feeding clippy
 jack_port_t* g_pMetronomePort;        // Pointer to the JACK metronome audio output port
 jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
@@ -362,9 +363,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
+    void* pClockBuffer = jack_port_get_buffer(g_pClockOutputPort, nFrames);
     void* pClippyBuffer = jack_port_get_buffer(g_pClippyPort, nFrames);
     unsigned char* pBuffer;
     jack_midi_clear_buffer(pOutputBuffer);
+    jack_midi_clear_buffer(pClockBuffer);
     jack_midi_clear_buffer(pClippyBuffer);
 
     // Process MIDI input
@@ -767,7 +770,12 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         nSize = 3;
                     }
                 }
-                if (!bSkip) {
+                if (it->second->msg.command >= 0xF8 && it->second->msg.command <= 0xFC) {
+                    pBuffer = jack_midi_event_reserve(pClockBuffer, nTime, nSize);
+                    if (pBuffer == NULL)
+                        break; // Exceeded buffer size (or other issue)
+                    pBuffer[0] = it->second->msg.command;
+                } else if (!bSkip) {
                     pBuffer = jack_midi_event_reserve(it->second->output == 0xfe ? pClippyBuffer : pOutputBuffer, nTime, nSize);
                     if (pBuffer == NULL)
                         break; // Exceeded buffer size (or other issue)
@@ -853,6 +861,10 @@ void init(char* name) {
     // Create output ports
     if (!(g_pOutputPort = jack_port_register(g_pJackClient, "output", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0))) {
         fprintf(stderr, "libzynseq cannot register output port\n");
+        return;
+    }
+    if (!(g_pClockOutputPort = jack_port_register(g_pJackClient, "clock", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0))) {
+        fprintf(stderr, "libzynseq cannot register MIDI clock output port\n");
         return;
     }
     if (!(g_pClippyPort = jack_port_register(g_pJackClient, "clippy", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0))) {
@@ -3067,10 +3079,12 @@ uint8_t getClockSource() { return g_nClockSource; }
 
 void setClockSource(uint8_t source) {
     if (source == 0)
-        return;
+        return; // Invalid - must have bits set to assert functionality
     // Restrict to allowed values
-    if (g_nClockSource & TRANSPORT_CLOCK_MIDI) source = TRANSPORT_CLOCK_MIDI;
-    else source |= TRANSPORT_CLOCK_INTERNAL;
+    if (source & TRANSPORT_CLOCK_MIDI)
+        source = TRANSPORT_CLOCK_MIDI;
+    else
+        source |= TRANSPORT_CLOCK_INTERNAL;
     // If TRANSPORT_CLOCK_MIDI bit has changed => Reset clock
     bool resetClock = false;
     if ((g_nClockSource ^ source) & TRANSPORT_CLOCK_MIDI) resetClock = true;
@@ -3078,8 +3092,10 @@ void setClockSource(uint8_t source) {
     g_nClockSource = source;
     if (resetClock) {
         // Set PPQN
-        if (g_nClockSource & TRANSPORT_CLOCK_MIDI) setPPQN(PPQN_MIDI);
-        else setPPQN(PPQN_INTERNAL);
+        if (g_nClockSource & TRANSPORT_CLOCK_MIDI)
+            setPPQN(PPQN_MIDI);
+        else
+            setPPQN(PPQN_INTERNAL);
         // Reset Clock Queue
         std::queue<std::pair<jack_nframes_t, jack_nframes_t>> qEmpty;
         while (g_bMutex)

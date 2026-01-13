@@ -1293,12 +1293,12 @@ void setMetronomeVolume(float level);
 float getMetronomeVolume();
 
 /** @brief  Get clock source
-    @retval uint8_t Clock source [0:Internal 1:MIDI]
+    @retval uint8_t Bitwise clock source [1:Internal 2:MIDI 4:Analogue]
 */
 uint8_t getClockSource();
 
 /** @brief  Set clock source
-    @param  source uint8_t Clock source [0:Internal 1:MIDI]
+    @param  source uint8_t Bitwise clock source [1:Internal 2:MIDI 4:Analogue]
 */
 void setClockSource(uint8_t source);
 

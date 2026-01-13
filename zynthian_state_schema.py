@@ -134,7 +134,12 @@ ZynthianState = {
                     "cvin_note0": 0, # CV input note 0 
                     "cvout_volts_octave": 1.0, # CV output volts per octave
                     "cvout_note0": 0 # CV output note 0
-                }
+                },
+                "send_clock": [ # List of MIDI output ports to send MIDI clock
+                    "ttymidi:MIDI_out",
+                    "USB:2.2/APC40 mkII OUT 1",
+                    # ... Other ports
+                ]
             }
         },
         "1/2": {},  # ZS3 for channel 1, program change 2

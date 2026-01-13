@@ -118,6 +118,9 @@ ctrl_fb_procs = []
 # Map of user friendly names indexed by device uid (alias[0])
 midi_port_names = {}
 
+# List of MIDI output ports to which to send MIDI clock
+midi_clock_output_ports = []
+
 # Get the main jack audio device
 jack_audio_device = ""
 for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -500,6 +503,31 @@ def remove_hw_port(port):
         return True
     return False
 
+def set_midi_clock_output_port(port_name, send):
+    global midi_clock_output_ports
+    if send:
+        if port_name not in midi_clock_output_ports:
+            midi_clock_output_ports.append(port_name)
+    else:
+        if port_name in midi_clock_output_ports:
+            midi_clock_output_ports.remove(port_name)
+    request_midi_connect()
+
+def toggle_midi_clock_output_port(port_name):
+    global midi_clock_output_ports
+    if port_name in midi_clock_output_ports:
+        midi_clock_output_ports.remove(port_name)
+    else:
+        midi_clock_output_ports.append(port_name)
+    request_midi_connect()
+
+def set_midi_clock_output_ports(port_names):
+    global midi_clock_output_ports
+    midi_clock_output_ports = port_names
+    request_midi_connect()
+
+def get_midi_clock_output_ports():
+    return midi_clock_output_ports
 
 def update_hw_midi_ports(force=False):
     """Update lists of external (hardware) source and destination MIDI ports
@@ -742,6 +770,14 @@ def midi_autoconnect():
             update_midi_port_aliases(src_ports[0])
     # Connect zynseq output to ZynMidiRouter:step_in
     required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
+
+    # Connect zynseq clock output
+    for port in midi_clock_output_ports:
+        if port in required_routes:
+            try:
+                required_routes[port].add("zynseq:clock")
+            except:
+                logging.warning(f"Unable to connect MIDI clock to {port}")
 
     # Add SMF player to MIDI input devices
     idev = state_manager.get_zmip_seq_index()
@@ -1214,7 +1250,7 @@ def build_midi_port_name(port):
     elif port.name.startswith("ZynMaster"):
         return port.name, "CV/Gate"
     elif port.name.startswith("zynseq"):
-        return port.name, "Step-Sequencer"
+        return port.name, "Step Sequencer"
     elif port.name.startswith("zynsmf"):
         return port.name, "MIDI player"
     elif port.name.startswith("ZynMidiRouter:seq_in"):

@@ -437,6 +437,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             else:
                 screen_title = "MIDI Output Device"
                 port = zynautoconnect.devices_out[idev]
+                options["MIDI System Messages"] = None
+                if port.name in zynautoconnect.get_midi_clock_output_ports():
+                    options[f"\u2612 Send MIDI Clock"] = [port.name, ["Send zynseq MIDI clock to this output", "midi_output.png" ]]
+                else:
+                    options[f"\u2610 Send MIDI Clock"] = [port.name, ["Send zynseq MIDI clock to this output", "midi_output.png" ]]
 
             options["Configuration"] = None
             if self.list_data[self.index][0].startswith("AUBIO:") or self.list_data[self.index][0].endswith("aubionotes"):
@@ -457,6 +462,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 return
             elif option.startswith("Reset name"):
                 zynautoconnect.set_port_friendly_name(params)
+            elif option.endswith("Send MIDI Clock"):
+                zynautoconnect.toggle_midi_clock_output_port(params)
             elif isinstance(params, list):
                 idev = self.list_data[self.index][1]
                 if click_type == "B":

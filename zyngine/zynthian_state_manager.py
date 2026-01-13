@@ -1488,6 +1488,8 @@ class zynthian_state_manager:
         if "global" in zs3_state:
             if "midi_transpose" in zs3_state["global"]:
                 lib_zyncore.set_global_transpose(int(zs3_state["global"]["midi_transpose"]))
+            if "send_clock" in zs3_state["global"]:
+                zynautoconnect.set_midi_clock_output_ports(zs3_state["global"]["send_clock"])
             if "zctrl_x" in zs3_state["global"]:
                 try:
                     processor = self.chain_manager.processors[zs3_state["global"]["zctrl_x"][0]]
@@ -1658,6 +1660,7 @@ class zynthian_state_manager:
 
         # Add global parameters
         self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
+        self.zs3[zs3_id]["global"]["send_clock"] = zynautoconnect.midi_clock_output_ports
         try:
             processor_id = self.zctrl_x.processor.id
             symbol = self.zctrl_x.symbol
@@ -2096,6 +2099,13 @@ class zynthian_state_manager:
             return 0
 
     def set_transport_clock_source(self, val=None, save_config=False):
+        """ Set the transport clock source
+
+        Params:
+            val: Clock source [0: Intenal, 1: Internal send to output, 2: External MIDI, 3..5: Analogue]
+            save_config: True to persist change
+        """
+
         if val is None:
             val = zynthian_gui_config.transport_clock_source
 
