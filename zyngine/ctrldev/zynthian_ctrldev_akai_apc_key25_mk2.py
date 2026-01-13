@@ -820,15 +820,15 @@ class PadMatrixHandler(ModeHandlerBase):
         if not self._libseq.isMidiRecord():
             self._recording_seq = None
 
-        for c in range(self._cols):
-            for r in range(self._rows):
-                # Pad outside grid, switch off
-                if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
-                    self.pad_off(c, r)
-                    continue
+        # for c in range(self._cols):
+        #     for r in range(self._rows):
+        #         # Pad outside grid, switch off
+        #         if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
+        #             self.pad_off(c, r)
+        #             continue
 
-                seq = c * self._zynseq.col_in_bank + r
-                self._update_pad(seq, False)
+        #         seq = c * self._zynseq.col_in_bank + r
+        #         self._update_pad(seq, False)
 
         self._refresh_tool_buttons()
 
