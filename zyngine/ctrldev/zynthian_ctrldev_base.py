@@ -573,7 +573,8 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
             try:
                 return chain.zynmixer_proc.controllers_dict[param].get_value()
             except:
-                logging.warning(f"Failed to get {param}")
+                pass
+                #logging.warning(f"Failed to get {param}")
         return 0
 
     def toggle_mixer_param(self, param, pos):
