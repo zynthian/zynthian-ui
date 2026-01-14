@@ -822,7 +822,8 @@ class zynthian_gui_control(zynthian_gui_selector):
                                 options["Absolute Mode"] = i
                         case _:
                             options[f"Relative Mode {zctrl.midi_cc_mode}"] = i 
-                options[f"Chain learn..."] = i
+                if zctrl.processor:
+                    options[f"Chain learn..."] = i
                 options[f"Global learn..."] = i
                 zynstep_ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=False, chain=False, zynstep=True)
                 if zynstep_ml:
