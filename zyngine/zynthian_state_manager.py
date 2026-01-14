@@ -1662,7 +1662,7 @@ class zynthian_state_manager:
 
         # Add global parameters
         self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
-        self.zs3[zs3_id]["global"]["send_clock"] = zynautoconnect.midi_clock_output_ports
+        self.zs3[zs3_id]["global"]["send_clock"] = zynautoconnect.get_midi_clock_output_ports()
         try:
             processor_id = self.zctrl_x.processor.id
             symbol = self.zctrl_x.symbol
