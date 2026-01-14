@@ -274,7 +274,7 @@ class zynthian_chain_manager:
 
         logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, zmop_index={chain.zmop_index}")
 
-        self.active_chain = chain
+        self.set_active_chain_by_id(chain_id)
         if fast_refresh:
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
         else:
