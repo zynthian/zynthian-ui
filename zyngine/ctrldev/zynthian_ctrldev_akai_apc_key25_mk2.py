@@ -2663,6 +2663,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         zynthian_ctrldev_zynpad.end(self)
 
     def refresh(self):
+        super().refresh()
         # PadMatrix is handled in volume/pan modes (when mixer handler is active)
         self._current_handler.refresh()
         if self._current_handler == self._mixer_handler:
