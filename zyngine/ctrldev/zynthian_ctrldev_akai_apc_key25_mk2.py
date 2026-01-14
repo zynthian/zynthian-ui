@@ -746,9 +746,10 @@ class PadMatrixHandler(ModeHandlerBase):
         # If seqman is enabled, ignore row functions
         if self._seqman_func is not None:
             return False
+        
         if row >= self._zynseq.col_in_bank:
             return True
-
+        # @todo: just call the new phrase playing stuff?
         # Get overall status: playing if at least one sequence is playing
         is_playing = False
         for col in range(self._zynseq.col_in_bank):
@@ -866,8 +867,12 @@ class PadMatrixHandler(ModeHandlerBase):
         index = col * self._rows + row
         self._leds.led_off(self._pads[index])
 
-    def update_seq_state(self, bank, seq, state=None, mode=None, group=None, refresh=True):
-        col, row = self._zynseq.get_xy_from_pad(seq)
+    def update_seq_state(self, chan=None, phrase=None, state=None, mode=None, refresh=True):
+        # col, row = self._zynseq.get_xy_from_pad(seq)
+        #chain_id = self._chain_manager.get_chain_ids_by_midi_chan(chan)[0]
+        #col = self._chain_manager.get_chain_index(chain_id)
+        col = chan
+        row = phrase
         idx = col * self._rows + row
         if idx >= len(self._pads):
             return
@@ -875,8 +880,8 @@ class PadMatrixHandler(ModeHandlerBase):
 
         is_empty = all(
             self._zynseq.is_pattern_empty(pattern)
-            for pattern in self._get_sequence_patterns(bank, seq))
-        color = self.GROUP_COLORS[group]
+            for pattern in self._get_sequence_patterns(phrase, chan))
+        color = self.GROUP_COLORS[chan]
 
         # If seqman is enabled, update according to it's function
         if self._seqman_func is not None:
@@ -963,6 +968,14 @@ class PadMatrixHandler(ModeHandlerBase):
         if scene != self._zynseq.bank:
             self._zynseq.select_bank(scene)
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
+
+    def update_pad(self, row, col, pad_info):
+        if col == self._cols:  # Phrase launcher not implemented!
+            return
+        state = pad_info["state"]
+        repeat = pad_info["repeat"]
+        group = pad_info["group"]
+        return
 
     def _update_pad(self, seq, refresh=True):
         state = self._libseq.getSequenceState(self._zynseq.bank, seq)
@@ -2773,13 +2786,13 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     def light_off(self):
         self._leds.all_off()
 
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         if self._current_handler == self._mixer_handler:
             self._current_handler.update_strip(chan, symbol, value)
 
-    def update_mixer_active_chain(self, active_chain):
+    def update_mixer_active_chain(self, active_chain_id):
         refresh = self._current_handler == self._mixer_handler
-        self._mixer_handler.set_active_chain(active_chain, refresh)
+        self._mixer_handler.set_active_chain(active_chain_id, refresh)
 
     def update_seq_state(self, *args, **kwargs):
         if self._current_handler == self._mixer_handler:
