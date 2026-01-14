@@ -706,7 +706,7 @@ class PadMatrixHandler(ModeHandlerBase):
     ]
     BRIGHT_OFF = LED_BRIGHT_25
 
-    def __init__(self, state_manager, leds: FeedbackLEDs):
+    def __init__(self, state_manager, parent, leds: FeedbackLEDs):
         super().__init__(state_manager)
         self._leds = leds
         self._libseq = self._zynseq.libseq
@@ -717,6 +717,7 @@ class PadMatrixHandler(ModeHandlerBase):
         self._playing_seqs = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
         self._pattern_template = None
+        self.parent = parent
 
         # Seqman sub-mode
         self._seqman_func = None
@@ -747,32 +748,35 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._seqman_func is not None:
             return False
         
-        if row >= self._zynseq.col_in_bank:
-            return True
-        # @todo: just call the new phrase playing stuff?
-        # Get overall status: playing if at least one sequence is playing
-        is_playing = False
-        for col in range(self._zynseq.col_in_bank):
-            seq = col * self._zynseq.col_in_bank + row
-            if seq in self._playing_seqs:
-                is_playing = True
-                break
+        phrase = row
+        self._zynseq.libseq.togglePlayState(self._zynseq.scene, phrase, 32)
+        
+        # if row >= self._zynseq.col_in_bank:
+        #     return True
+        # # @todo: just call the new phrase playing stuff?
+        # # Get overall status: playing if at least one sequence is playing
+        # is_playing = False
+        # for col in range(self._zynseq.col_in_bank):
+        #     seq = col * self._zynseq.col_in_bank + row
+        #     if seq in self._playing_seqs:
+        #         is_playing = True
+        #         break
 
-        stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
-                       zynseq.SEQ_STOPPINGSYNC)
-        play_states = (zynseq.SEQ_RESTARTING,
-                       zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
-        for col in range(self._zynseq.col_in_bank):
-            seq = col * self._zynseq.col_in_bank + row
-            # We only play sequences that are not empty
-            if not is_playing and self._libseq.isEmpty(self._zynseq.bank, seq):
-                continue
-            state = self._libseq.getPlayState(self._zynseq.bank, seq)
-            if is_playing and state in stop_states:
-                continue
-            if not is_playing and state in play_states:
-                continue
-            self._libseq.togglePlayState(self._zynseq.bank, seq)
+        # stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
+        #                zynseq.SEQ_STOPPINGSYNC)
+        # play_states = (zynseq.SEQ_RESTARTING,
+        #                zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
+        # for col in range(self._zynseq.col_in_bank):
+        #     seq = col * self._zynseq.col_in_bank + row
+        #     # We only play sequences that are not empty
+        #     if not is_playing and self._libseq.isEmpty(self._zynseq.bank, seq):
+        #         continue
+        #     state = self._libseq.getPlayState(self._zynseq.bank, seq)
+        #     if is_playing and state in stop_states:
+        #         continue
+        #     if not is_playing and state in play_states:
+        #         continue
+        #     self._libseq.togglePlayState(self._zynseq.bank, seq)
 
     def on_track_changed(self, track, state):
         self._track_btn_pressed = track if state else None
@@ -2616,7 +2620,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._leds = self.FeedbackLEDs(idev_out)
         self._device_handler = self.DeviceHandler(state_manager, self._leds, self.COLOR_SET)
         self._mixer_handler = self.MixerHandler(state_manager, self._leds)
-        self._padmatrix_handler = self.PadMatrixHandler(state_manager, self._leds)
+        self._padmatrix_handler = self.PadMatrixHandler(state_manager, self, self._leds)
         self._stepseq_handler = self.StepSeqHandler(state_manager, self._leds, idev_in)
         self._current_handler = self._device_handler
         self._is_shifted = False
