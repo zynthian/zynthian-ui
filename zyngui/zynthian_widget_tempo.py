@@ -45,7 +45,7 @@ class zynthian_widget_tempo(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas = tkinter.Canvas(self,
             highlightthickness=0,
             relief='flat',
-            bg=zynthian_gui_config.color_bg)
+            bg=zynthian_gui_config.color_panel_bg)
         self.widget_canvas.grid(sticky='news')
 
         # Create custom GUI elements (position and size set when canvas is grid and size applied)
@@ -61,11 +61,9 @@ class zynthian_widget_tempo(zynthian_widget_base.zynthian_widget_base):
 
     def on_size(self, event):
         if super().on_size(event):
-            fs = self.width // 20
-            self.widget_canvas.itemconfigure(self.bpm_text,
-                width=9*fs,
-                font=(zynthian_gui_config.font_family, fs))
-            self.widget_canvas.coords(self.bpm_text, self.width//2, self.height//2)
+            fs = self.width // 16
+            self.widget_canvas.coords(self.bpm_text, self.width // 2, self.height // 2)
+            self.widget_canvas.itemconfigure(self.bpm_text, width=9 * fs, font=(zynthian_gui_config.font_family, fs))
 
     def show(self):
         super().show()
