@@ -162,14 +162,18 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                                                [f"'{port.aliases[1]}' disconnected from chain's MIDI input.\nBold select to show more options.{input_mode_info}", "midi_input.png"]))
             else:
                 port = zynautoconnect.devices_out[idev]
+                if port.name in zynautoconnect.get_midi_clock_output_ports():
+                    name = f"{ZMIP_ICON_MIDI_CLOCK} {port.aliases[1]}"
+                else:
+                    name = port.aliases[1]
                 if self.chain is None:
-                    self.list_data.append((port.aliases[0], idev, f"{port.aliases[1]}",
+                    self.list_data.append((port.aliases[0], idev, name,
                                            [f"Bold select to show options for '{port.aliases[1]}'.", "midi_output.png"]))
                 elif port.aliases[0] in self.chain.midi_out:
-                    self.list_data.append((port.aliases[0], idev, f"\u2612 {port.aliases[1]}",
+                    self.list_data.append((port.aliases[0], idev, f"\u2612 {name}",
                                            [f"Chain's MIDI output connected to '{port.aliases[1]}'.\nBold select to show more options.", "midi_output.png"]))
                 else:
-                    self.list_data.append((port.aliases[0], idev, f"\u2610 {port.aliases[1]}",
+                    self.list_data.append((port.aliases[0], idev, f"\u2610 {name}",
                                            [f"Chain's MIDI output disconnected from '{port.aliases[1]}'.\nBold select to show more options.", "midi_output.png"]))
 
         def append_service(service, name, help_info=""):
@@ -452,9 +456,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 port = zynautoconnect.devices_out[idev]
                 options["MIDI System Messages"] = None
                 if port.name in zynautoconnect.get_midi_clock_output_ports():
-                    options[f"\u2612 Send MIDI Clock"] = [port.name, ["Send MIDI clock to this device", "midi_output.png" ]]
+                    options[f"\u2612 {ZMIP_ICON_MIDI_CLOCK} Send MIDI Clock"] = [port.name, ["Send MIDI clock to this device", "midi_output.png" ]]
                 else:
-                    options[f"\u2610 Send MIDI Clock"] = [port.name, ["Send MIDI clock to this device", "midi_output.png" ]]
+                    options[f"\u2610 {ZMIP_ICON_MIDI_CLOCK} Send MIDI Clock"] = [port.name, ["Send MIDI clock to this device", "midi_output.png" ]]
 
             options["Configuration"] = None
             if self.list_data[self.index][0].startswith("AUBIO:") or self.list_data[self.index][0].endswith("aubionotes"):
