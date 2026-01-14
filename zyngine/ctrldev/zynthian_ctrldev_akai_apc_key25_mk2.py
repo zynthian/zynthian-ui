@@ -849,21 +849,29 @@ class PadMatrixHandler(ModeHandlerBase):
             self._btn_timer.is_released(note)
 
     def pad_press(self, pad):
-        # Pad outside grid, discarded
-        seq = self.get_sequence_from_pad(pad)
-        if seq is None:
-            return True
+        note = pad
+        pos = self.parent.scroll_h + note % 8
+        row = note // 8
+        midi_chan = self.parent.get_filtered_midi_chan_by_index(pos)
 
+        if midi_chan is None:
+            return
+        phrase = self._rows - 1 - row + self.parent.scroll_v
+        # Pad outside grid, discarded
+        # seq = self.get_sequence_from_pad(pad)
+        
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
-            self._clear_sequence(self._zynseq.bank, seq)
-        elif self._is_record_pressed:
-            self._start_pattern_record(seq)
-        elif self._recording_seq == seq:
-            self._stop_pattern_record()
+            self._clear_sequence(self._zynseq.scene, phrase)
+        # elif self._is_record_pressed:
+        #     self._start_pattern_record(seq)
+        # elif self._recording_seq == seq:
+        #     self._stop_pattern_record()
         else:
-            self._libseq.togglePlayState(self._zynseq.bank, seq)
+            self._zynseq.libseq.togglePlayState(self._zynseq.scene, phrase, midi_chan)
+        
+            # self._libseq.togglePlayState(self._zynseq.bank, seq)
 
         return True
 
@@ -1053,6 +1061,7 @@ class PadMatrixHandler(ModeHandlerBase):
         self.refresh()
 
     def _clear_sequence(self, scene, seq, create_empty=True):
+        # TODO: new sig!
         # Remove all patterns in all tracks
         seq_len = self._libseq.getSequenceLength(scene, seq)
         if seq_len != 0:
