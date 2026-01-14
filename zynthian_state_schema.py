@@ -139,7 +139,8 @@ ZynthianState = {
                     "ttymidi:MIDI_out",
                     "USB:2.2/APC40 mkII OUT 1",
                     # ... Other ports
-                ]
+                ],
+                "clock_source": -1 # Index of ZMIP acting as MIDI clock source. -1 for internal.
             }
         },
         "1/2": {},  # ZS3 for channel 1, program change 2

@@ -42,7 +42,7 @@ class zynthian_engine_tempo(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     _ctrl_screens = [
-        ["Tempo", ["bpm", "metro_enable", "metro_volume"]]
+        ["Tempo", ["bpm", "metro_enable", "metro_volume", "transport"]]
     ]
 
     # ----------------------------------------------------------------------------
@@ -126,13 +126,15 @@ class zynthian_engine_tempo(zynthian_engine):
                 processor.controllers_dict = {
                     "bpm": self.state_manager.zynseq.zctrl_tempo,
                     "metro_enable": self.state_manager.zynseq.zctrl_metro_enable,
-                    "metro_volume": self.state_manager.zynseq.zctrl_metro_volume
+                    "metro_volume": self.state_manager.zynseq.zctrl_metro_volume,
+                    "transport": self.state_manager.zynseq.zctrl_transport
                 }
             return processor.controllers_dict
         return  {
             "bpm": self.state_manager.zynseq.zctrl_tempo,
             "metro_enable": self.state_manager.zynseq.zctrl_metro_enable,
-            "metro_volume": self.state_manager.zynseq.zctrl_metro_volume
+            "metro_volume": self.state_manager.zynseq.zctrl_metro_volume,
+            "transport": self.state_manager.zynseq.zctrl_transport
         }
 
     def send_controller_value(self, zctrl):

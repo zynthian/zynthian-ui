@@ -689,7 +689,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             while (g_bMutex)
                 std::this_thread::sleep_for(std::chrono::microseconds(10));
             g_bMutex = true;
-            g_nMetronomePtr = -1;
+            // g_nMetronomePtr = -1;
             // if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
             {
                 // Remove pending clocks
@@ -2536,7 +2536,7 @@ void setPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t state
         return;
     if (!g_bPlayingSequences) {
         if (state == STARTING) {
-            if (g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+            if (!transportGetPlayStatus())
                 setTransportToStartOfBar();
             transportStart("zynseq");
         } else if (state == STOPPING)

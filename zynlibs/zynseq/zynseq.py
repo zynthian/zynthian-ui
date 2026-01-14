@@ -204,6 +204,12 @@ class zynseq(zynthian_engine):
             'value_max': 100,
             'value': int(100 * self.libseq.getMetronomeVolume())
         })
+        self.zctrl_transport = zynthian_controller(self, 'transport', {
+            'name': 'Global Transport',
+            'labels': ['Stopped', 'Running'],
+            'ticks': [0, 1],
+            'is_toggle': True
+        })
 
         # Cache sequence info for launchers to reduce access to libseq
         self.phrases = 0  # Quantity of launcher slots/rows/phrases
@@ -413,6 +419,11 @@ class zynseq(zynthian_engine):
         elif zctrl == self.zctrl_metro_volume:
             self.libseq.setMetronomeVolume(zctrl.value / 100.0)
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, enable=self.zctrl_metro_enable.value, volume=zctrl.value)
+        elif zctrl == self.zctrl_transport:
+            if zctrl.value:
+                self.transport_start("global")
+            else:
+                self.transport_stop("global")
 
     def set_midi_channel(self, chan, sequence, track, channel):
         self.libseq.setChannel(chan, sequence, track, channel)
