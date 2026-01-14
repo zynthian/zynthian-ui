@@ -63,12 +63,12 @@ class aubio_inputs():
 # Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
 
-ZMIP_MODE_SYS = "♣" # \u1
-ZMIP_MODE_CLOCK = "⏱" # \u23F1
-ZMIP_MODE_SYS_RT = "⌛" # \u231B
-ZMIP_MODE_CONTROLLER = "⌨"  # \u2328
-ZMIP_MODE_ACTIVE = "⇥"  # \u21e5
-ZMIP_MODE_MULTI = "⇶"  # \u21f6
+ZMIP_ICON_MIDI_SYS = "♣" # \u1
+ZMIP_ICON_MIDI_CLOCK = "⏱"  # \u23F1
+ZMIP_ICON_MIDI_SYS_RT = "⌛"  # \u231B
+ZMIP_ICON_CTRLDEV_DRIVER = "⌨"  # \u2328
+ZMIP_ICON_MODE_ACTIVE = "⇥"  # \u21e5
+ZMIP_ICON_MODE_MULTI = "⇶"  # \u21f6
 SERVICE_ICONS = {
     "aubionotes": "midi_audio.png"
 }
@@ -121,17 +121,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 return mode_str
             if self.input:
                 if zynautoconnect.get_midi_in_dev_mode(idev):
-                    mode_str += ZMIP_MODE_ACTIVE
+                    mode_str += ZMIP_ICON_MODE_ACTIVE
                 else:
-                    mode_str += ZMIP_MODE_MULTI
+                    mode_str += ZMIP_ICON_MODE_MULTI
                 if lib_zyncore.zmip_get_flag_system(idev):
-                    mode_str += f" {ZMIP_MODE_SYS}"
+                    mode_str += f" {ZMIP_ICON_MIDI_SYS}"
                 if lib_zyncore.zmip_get_flag_system_rt(idev):
-                    mode_str += f" {ZMIP_MODE_SYS_RT}"
-                if lib_zyncore.zmip_get_clock_index() == idev:
-                    mode_str += f" {ZMIP_MODE_CLOCK}"
+                    mode_str += f" {ZMIP_ICON_MIDI_SYS_RT}"
+                if lib_zyncore.zmip_get_midi_clock_source() == idev:
+                    mode_str += f" {ZMIP_ICON_MIDI_CLOCK}"
                 if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode_str += f" {ZMIP_MODE_CONTROLLER}"
+                    mode_str += f" {ZMIP_ICON_CTRLDEV_DRIVER}"
             if mode_str:
                 mode_str += " "
             return mode_str
@@ -141,12 +141,12 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             if self.input:
                 port = zynautoconnect.devices_in[idev]
                 mode = get_mode_str(idev)
-                input_mode_info = f"\n\n{ZMIP_MODE_ACTIVE} Active mode\n"
-                input_mode_info += f"{ZMIP_MODE_MULTI} Multitimbral mode\n"
-                input_mode_info += f"{ZMIP_MODE_SYS} System messages\n"
-                input_mode_info += f"{ZMIP_MODE_SYS_RT} Transport messages\n"
-                input_mode_info += f"{ZMIP_MODE_CLOCK} MIDI clock\n"
-                input_mode_info += f"{ZMIP_MODE_CONTROLLER} Driver loaded"
+                input_mode_info = f"\n\n{ZMIP_ICON_MODE_ACTIVE} Active mode\n"
+                input_mode_info += f"{ZMIP_ICON_MODE_MULTI} Multitimbral mode\n"
+                input_mode_info += f"{ZMIP_ICON_MIDI_SYS} System non-RT\n"
+                input_mode_info += f"{ZMIP_ICON_MIDI_SYS_RT} System RT\n"
+                input_mode_info += f"{ZMIP_ICON_MIDI_CLOCK} MIDI Clock\n"
+                input_mode_info += f"{ZMIP_ICON_CTRLDEV_DRIVER} Driver loaded"
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}",
                                            [f"Bold select to show options for '{port.aliases[1]}'.{input_mode_info}", "midi_input.png"]))
@@ -224,9 +224,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             if midi_chan > 16:
                 midi_chan = "ALL"
             self.list_data.append(("MIDI Channel", None, f"MIDI Channel ({midi_chan})",
-                [f"Select the MIDI channel this chain recieves.", "midi_settings.png"]))
+                                   [f"Select the MIDI channel this chain recieves.", "midi_settings.png"]))
             self.list_data.append(("MIDI CC", None, f"MIDI CC",
-                [f"Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
+                                   [f"Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
 
         self.list_data.append((None, None, "Internal Devices"))
         nint = len(self.list_data)
@@ -373,44 +373,44 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 mode_info = "Toggle input mode.\n\n"
                 port = zynautoconnect.devices_in[idev]
                 if zynautoconnect.get_midi_in_dev_mode(idev):
-                    title = f"{ZMIP_MODE_ACTIVE} Active mode"
+                    title = f"{ZMIP_ICON_MODE_ACTIVE} Active mode"
                     if lib_zyncore.get_active_midi_chan():
                         mode_info += f"{title}. Translate MIDI channel. Send to chains matching active chain's MIDI channel."
                     else:
                         mode_info += f"{title}. Translate MIDI channel. Send to active chain only."
-                    options[title] = ["MULTI", [mode_info, "midi_input.png"]]
+                    options[title] = ["MODE_MULTI", [mode_info, "midi_input.png"]]
                 else:
-                    title = f"{ZMIP_MODE_MULTI} Multitimbral mode"
+                    title = f"{ZMIP_ICON_MODE_MULTI} Multitimbral mode"
                     mode_info += f"{title}. Don't translate MIDI channel. Send to chains matching device's MIDI channel."
-                    options[title] = ["ACTI", [mode_info, "midi_input.png"]]
+                    options[title] = ["MODE_ACTI", [mode_info, "midi_input.png"]]
 
                 options["MIDI System Messages"] = None
+                mode_info = "Sync to MIDI clock from this device.\n\n"
+                if lib_zyncore.zmip_get_midi_clock_source() == idev:
+                    title = f"\u2612 {ZMIP_ICON_MIDI_CLOCK} MIDI Clock Source"
+                    options[title] = ["MIDI_CLOCK/OFF", [mode_info, "midi_input.png"]]
+                    if port.name == "CV/Gate":
+                        beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat()
+                        options[f"[{beats}] Beat Sync Divider"] = ["BEAT_SYNC_DIV", [mode_info, "midi_input.png"]]
+                else:
+                    title = f"\u2610 {ZMIP_ICON_MIDI_CLOCK} MIDI Clock Source"
+                    options[title] = ["MIDI_CLOCK/ON", [mode_info, "midi_input.png"]]
+
                 mode_info = "Route non real-time system messages from this device.\n\n"
                 if lib_zyncore.zmip_get_flag_system(idev):
-                    title = f"\u2612 {ZMIP_MODE_SYS} Non real-time"
-                    options[title] = ["SYSTEM/OFF", [mode_info, "midi_input.png"]]
+                    title = f"\u2612 {ZMIP_ICON_MIDI_SYS} Non real-time messages"
+                    options[title] = ["MIDI_SYS/OFF", [mode_info, "midi_input.png"]]
                 else:
-                    title = f"\u2610 {ZMIP_MODE_SYS} Non real-time"
-                    options[title] = ["SYSTEM/ON", [mode_info, "midi_input.png"]]
+                    title = f"\u2610 {ZMIP_ICON_MIDI_SYS} Non real-time messages"
+                    options[title] = ["MIDI_SYS/ON", [mode_info, "midi_input.png"]]
 
                 mode_info = "Route real-time system messages from this device.\n\n"
                 if lib_zyncore.zmip_get_flag_system_rt(idev):
-                    title = f"\u2612 {ZMIP_MODE_SYS_RT} Transport"
-                    options[title] = ["SYSTEM_RT/OFF", [mode_info, "midi_input.png"]]
+                    title = f"\u2612 {ZMIP_ICON_MIDI_SYS_RT} Real-time transport messages"
+                    options[title] = ["MIDI_SYS_RT/OFF", [mode_info, "midi_input.png"]]
                 else:
-                    title = f"\u2610 {ZMIP_MODE_SYS_RT} Transport"
-                    options[title] = ["SYSTEM_RT/ON", [mode_info, "midi_input.png"]]
-
-                mode_info = "Route MIDI clock from this device.\n\n"
-                if lib_zyncore.zmip_get_clock_index() == idev:
-                    title = f"\u2612 {ZMIP_MODE_CLOCK} MIDI Clock"
-                    options[title] = ["SYSTEM_CLOCK/OFF", [mode_info, "midi_input.png"]]
-                    if port.name == "CV/Gate":
-                        beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat()
-                        options[f"[{beats}] Analog clock divider"] = ["CLOCK_ANALOG", [mode_info, "midi_input.png"]]
-                else:
-                    title = f"\u2610 {ZMIP_MODE_CLOCK} MIDI Clock"
-                    options[title] = ["SYSTEM_CLOCK/ON", [mode_info, "midi_input.png"]]
+                    title = f"\u2610 {ZMIP_ICON_MIDI_SYS_RT} Real-time transport messages"
+                    options[title] = ["MIDI_SYS_RT/ON", [mode_info, "midi_input.png"]]
 
                 # Reload drivers => Hot reload the driver classes!
                 #self.zyngui.state_manager.ctrldev_manager.update_available_drivers(reload_modules=False)
@@ -438,10 +438,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     if not driver_description:
                         driver_description = "Device driver integrating UI functions and customized workflow."
                     if idev in loaded_drivers and type(loaded_drivers[idev]) is driver_class:
-                        driver_options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
+                        driver_options[f"\u2612 {ZMIP_ICON_CTRLDEV_DRIVER} {driver_name}"] = [
                             ["UNLOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                     else:
-                        driver_options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [
+                        driver_options[f"\u2610 {ZMIP_ICON_CTRLDEV_DRIVER} {driver_name}"] = [
                             ["LOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                 if driver_options:
                     options["Controller Drivers"] = None
@@ -452,9 +452,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 port = zynautoconnect.devices_out[idev]
                 options["MIDI System Messages"] = None
                 if port.name in zynautoconnect.get_midi_clock_output_ports():
-                    options[f"\u2612 Send MIDI Clock"] = [port.name, ["Send zynseq MIDI clock to this output", "midi_output.png" ]]
+                    options[f"\u2612 Send MIDI Clock"] = [port.name, ["Send MIDI clock to this device", "midi_output.png" ]]
                 else:
-                    options[f"\u2610 Send MIDI Clock"] = [port.name, ["Send zynseq MIDI clock to this output", "midi_output.png" ]]
+                    options[f"\u2610 Send MIDI Clock"] = [port.name, ["Send MIDI clock to this device", "midi_output.png" ]]
 
             options["Configuration"] = None
             if self.list_data[self.index][0].startswith("AUBIO:") or self.list_data[self.index][0].endswith("aubionotes"):
@@ -465,8 +465,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             self.zyngui.screens['option'].config(screen_title, options, self.menu_cb, False, True, None)
             self.zyngui.show_screen('option')
         except Exception as e:
-            #logging.error(e)
-            pass  # Port may have disappeared whilst building menu
+            logging.error(e)
+            #pass  # Port may have disappeared whilst building menu
 
     def menu_cb(self, option, params, click_type):
         try:
@@ -497,29 +497,29 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 elif self.input:
                     idev = self.list_data[self.index][1]
                     match params:
-                        case "SYSTEM/ON":
+                        case "MIDI_SYS/ON":
                             lib_zyncore.zmip_set_flag_system(idev, True)
-                        case "SYSTEM/OFF":
+                        case "MIDI_SYS/OFF":
                             lib_zyncore.zmip_set_flag_system(idev, False)
-                        case "SYSTEM_RT/ON":
+                        case "MIDI_SYS_RT/ON":
                             lib_zyncore.zmip_set_flag_system_rt(idev, True)
-                        case "SYSTEM_RT/OFF":
+                        case "MIDI_SYS_RT/OFF":
                             lib_zyncore.zmip_set_flag_system_rt(idev, False)
-                        case "SYSTEM_CLOCK/ON":
-                            lib_zyncore.zmip_set_clock_index(idev)
+                        case "MIDI_CLOCK/ON":
+                            lib_zyncore.zmip_set_midi_clock_source(idev)
                             self.state_manager.zynseq.libseq.setClockSource(1)
-                        case "SYSTEM_CLOCK/OFF":
-                            if lib_zyncore.zmip_set_clock_index(-1):
-                                self.state_manager.zynseq.libseq.setClockSource(0)
-                        case "CLOCK_ANALOG":
+                        case "MIDI_CLOCK/OFF":
+                            lib_zyncore.zmip_set_midi_clock_source(-1)
+                            self.state_manager.zynseq.libseq.setClockSource(0)
+                        case "BEAT_SYNC_DIV":
                             beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat() + 1
                             if beats > 4:
                                 beats = 1
                             self.state_manager.zynseq.libseq.setAnalogClocksBeat(beats)
-                        case "ACTI":
+                        case "MODE_ACTI":
                             lib_zyncore.zmip_set_flag_active_chain(idev, True)
                             zynautoconnect.update_midi_in_dev_mode(idev)
-                        case "MULTI":
+                        case "MODE_MULTI":
                             lib_zyncore.zmip_set_flag_active_chain(idev, False)
                             zynautoconnect.update_midi_in_dev_mode(idev)
             self.show_options()
@@ -544,7 +544,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 options["Locked (no scroll)"] = ("scroll_mode", idev, SCROLL_MODE_FIXED)
                 options["Follow GUI selection"] = ("scroll_mode", idev, SCROLL_MODE_GUI_SEL)
                 options["Follow GUI view"] = ("scroll_mode", idev, SCROLL_MODE_GUI_VIEW)
-                options["Controller handled"] = ("scroll_mode", idev, SCROLL_MODE_CTRLDEV)
+                options["Driver custom"] = ("scroll_mode", idev, SCROLL_MODE_CTRLDEV)
             if options:
                 self.zyngui.screens['option'].config("Controller Options", options, self.controller_options_cb, index=mode+1)
                 self.zyngui.show_screen('option')
