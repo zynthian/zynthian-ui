@@ -2608,7 +2608,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._mixer_handler = self.MixerHandler(state_manager, self._leds)
         self._padmatrix_handler = self.PadMatrixHandler(state_manager, self._leds)
         self._stepseq_handler = self.StepSeqHandler(state_manager, self._leds, idev_in)
-        self._current_handler = self._mixer_handler
+        self._current_handler = self._device_handler
         self._is_shifted = False
 
         self._signals = [
