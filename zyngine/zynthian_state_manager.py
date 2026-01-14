@@ -70,6 +70,7 @@ capture_dir_sdc = my_data_dir + "/capture"
 MAIN_MIXBUS_ID = -1
 ALSA_ID = -2
 AUDIO_PLAYER_ID = -3
+TEMPO_ID = -4
 
 class zynthian_state_manager:
 
@@ -156,10 +157,11 @@ class zynthian_state_manager:
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 
+        self.zynseq = zynseq.zynseq(self)
         self.alsa_mixer_processor = self.chain_manager.add_processor(None, "MX", None, ALSA_ID)
+        self.tempo_processor = self.chain_manager.add_processor(None, "TP", None, TEMPO_ID)
 
         self.audio_recorder = zynthian_audio_recorder(self)
-        self.zynseq = zynseq.zynseq(self)
         self.ctrldev_manager = None
         self.audio_player = None
         self.aubio_in = [1, 2]  # List of aubio inputs

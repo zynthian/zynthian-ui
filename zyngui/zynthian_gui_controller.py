@@ -27,7 +27,6 @@ import os
 import math
 import tkinter
 import logging
-from datetime import datetime
 from tkinter import font as tkFont
 
 # Zynthian specific modules
@@ -154,7 +153,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				tags='gui')
 
 			# Bind canvas events
-			self.canvas_push_ts = None
+			self.canvas_push_event = None
 			self.bind("<Button-1>", self.cb_canvas_push)
 			self.bind("<ButtonRelease-1>", self.cb_canvas_release)
 			self.bind("<B1-Motion>", self.cb_canvas_motion)
@@ -705,17 +704,17 @@ class zynthian_gui_controller(tkinter.Canvas):
 	# --------------------------------------------------------------------------
 
 	def cb_canvas_push(self, event):
-		self.canvas_push_ts = datetime.now()
+		self.canvas_push_event = event
 		self.active_motion_axis = 0  # +1=dragging in y-axis, -1=dragging in x-axis
 		self.canvas_motion_y0 = event.y
 		self.canvas_motion_x0 = event.x
 		self.canvas_motion_dx = 0
-		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_ts} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
+		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_event} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 	def cb_canvas_release(self, event):
-		if self.canvas_push_ts and self.enabled and self.zctrl:
-			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
-			self.canvas_push_ts = None
+		if self.canvas_push_event and self.enabled and self.zctrl:
+			dts = (event.time - self.canvas_push_event.time) / 1000
+			self.canvas_push_event = None
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
 			if self.active_motion_axis == 0:
 				if zynthian_gui_config.enable_touch_controller_switches:
@@ -733,8 +732,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'L')) # TODO: This should trigger before release
 
 	def cb_canvas_motion(self, event):
-		if self.canvas_push_ts:
-			dts = (datetime.now() - self.canvas_push_ts).total_seconds()
+		if self.canvas_push_event:
+			dts = (event.time - self.canvas_push_event.time) / 1000
 			if dts > 0.1:  # debounce initial touch
 				dy = self.canvas_motion_y0 - event.y
 				dx = event.x - self.canvas_motion_x0

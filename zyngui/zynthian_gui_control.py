@@ -158,10 +158,20 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not curproc:
             self.processors = []
         else:
-            if curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
+            if curproc and curproc.id < 0:
                 self.processors = [curproc]
             else:
                 self.processors = self.chain_manager.get_processors(curproc.chain_id)
+        try:
+            self.init_buttonbar(curproc.engine.buttonbar_config)
+        except:
+            self.init_buttonbar([
+            ("arrow_left", '<< Prev'),
+            ("zynswitch 0,B", 'Preset'),
+            ("zynswitch 3,S", 'Pages'),
+            ("arrow_right", 'Next >>')
+        ])
+
 
     def fill_list(self):
         self.list_data = []

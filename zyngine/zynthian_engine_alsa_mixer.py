@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Alsa Mixer
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -61,12 +61,6 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     device_overrides = {}
-
-    # ---------------------------------------------------------------------------
-    # Controllers & Screens
-    # ---------------------------------------------------------------------------
-
-    _ctrl_screens = []
 
     # ----------------------------------------------------------------------------
     # ZynAPI variables

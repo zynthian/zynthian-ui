@@ -75,6 +75,7 @@ engine2class = {
     "MI": zynthian_engine_audio_mixer,
     "MR": zynthian_engine_audio_mixer,
     "MX": zynthian_engine_alsa_mixer,
+    "TP": zynthian_engine_tempo,
     'CL': zynthian_engine_clippy
 }
 
@@ -145,6 +146,7 @@ class zynthian_chain_manager:
         cls.engine_info["MI"] = {"ID":"0", "NAME":"Mixer_Channel_Strip", "TITLE": "Mixer Channel Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 0, "URL": "", "UI": "", "DESCR": "Audio mixer channel strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
         cls.engine_info["MR"] = {"ID":"1", "NAME":"Mixer_Return_Strip", "TITLE": "Mixer Effect Return Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 1, "URL": "", "UI": "", "DESCR": "Audio mixer effect return strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
         cls.engine_info["MX"] = {"NAME": "Alsa_Mixer", "TITLE": "ALSA Mixer", "TYPE": "Global", "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": False}
+        cls.engine_info["TP"] = {"NAME": "Tempo", "TITLE": "Tempo", "TYPE": "Global", "CAT": None, "ENGINE": zynthian_engine_tempo, "ENABLED": False}
         # Look for an engine class for each one
         for key, info in cls.engine_info.items():
             try:

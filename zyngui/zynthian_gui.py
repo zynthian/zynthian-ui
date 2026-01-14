@@ -88,7 +88,6 @@ from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_pated_notes import zynthian_gui_pated_notes
 from zyngui.zynthian_gui_pated_cc import zynthian_gui_pated_cc
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
-from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
 from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
@@ -500,7 +499,7 @@ class zynthian_gui:
         self.screens['midi_profile'] = zynthian_gui_midi_profile()
         self.screens['zs3'] = zynthian_gui_zs3()
         self.screens['zs3_options'] = zynthian_gui_zs3_options()
-        self.screens['tempo'] = zynthian_gui_tempo()
+        self.screens['tempo'] = self.screens['control']
         self.screens['admin'] = zynthian_gui_admin()
         self.screens['mixer'] = zynthian_gui_mixer()
 
@@ -657,6 +656,9 @@ class zynthian_gui:
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.alsa_mixer_processor
+        elif screen == "tempo":
+            self.state_manager.tempo_processor.refresh_controllers(params)
+            self.current_processor = self.state_manager.tempo_processor
         elif screen == "audio_player":
             if self.state_manager.audio_player:
                 self.current_processor = self.state_manager.audio_player
@@ -1360,7 +1362,7 @@ class zynthian_gui:
             self.cuia_toggle_audio_play()
 
     def cuia_tempo(self, params=None):
-        self.screens["tempo"].tap()
+        self.state_manager.tempo_processor.engine.tap()
         if self.current_screen != "tempo":
             self.show_screen("tempo")
 
@@ -1396,7 +1398,7 @@ class zynthian_gui:
             self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - 1)
 
     def cuia_tap_tempo(self, params=None):
-        self.screens["tempo"].tap()
+        self.state_manager.tempo_processor.engine.tap()
 
     # Zynpot & Zynswitch emulation CUIAs (low level)
     def cuia_zynpot(self, params=None):
@@ -1791,7 +1793,7 @@ class zynthian_gui:
         if t == "L":
             if self.state_manager.zctrl_x and self.state_manager.zctrl_y:
                 self.show_screen("control_xy")
-        elif self.current_screen in ("control", "alsa_mixer", "audio_player"):
+        elif self.current_screen in ("control", "alsa_mixer", "audio_player", "tempo"):
             # if i < 3 and t == 'S':
             if t == 'S':
                 if self.screens[self.current_screen].mode == 'select':

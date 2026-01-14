@@ -52,14 +52,22 @@ class zynthian_widget_base(tkinter.Frame):
         self.bind('<Configure>', self.on_size)
 
     def on_size(self, event):
+        """ Handle GUI layout change
+
+        Parameters:
+            event - size event
+        Returns: True if size changed
+        """
+
         if event.width == self.width and event.height == self.height:
-            return
+            return False
         self.width = event.width
         self.height = event.height
         try:
             self.widget_canvas.configure(width=self.width, height=self.height)
         except:
             pass
+        return True
 
     def show(self):
         if not self.shown:
