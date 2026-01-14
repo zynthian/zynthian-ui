@@ -449,8 +449,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             elif cc == CC_TEMPO:
                 dval = relative_to_signed(val)
                 if self._shift:
-                    dval *= 0.1
-                self.zynseq.nudge_tempo(dval)
+                    self.zynseq.zctrl_metro_volume.nudge(dval**3)
+                else:
+                    self.zynseq.nudge_tempo(dval)
             elif CC_TRACK_1 <= cc <= CC_TRACK_8:
                 pos = self.scroll_h + cc - CC_TRACK_1
                 if self.enc_mode == ENC_MODE_PAN:
