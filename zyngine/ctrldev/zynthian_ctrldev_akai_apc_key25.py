@@ -67,6 +67,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
     dev_ids = ["APC Key 25 MIDI 1", "APC Key 25 IN 1"]
     driver_name = 'AKAI APC Key25'
+    apc_color_variant = 'apc_mk1'
     unroute_from_chains = 0b1111111111111101
     on_notes = {}
 

@@ -39,6 +39,7 @@ from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
+from zyngui import zynthian_gui_config
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
 from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
 from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
@@ -171,6 +172,25 @@ LED_BLINKING_16 = 0x0C
 LED_BLINKING_8 = 0x0D
 LED_BLINKING_4 = 0x0E
 LED_BLINKING_2 = 0x0F
+
+# MIDI channels set mode of RGB buttons
+RGB_MODE_PRIMARY    = 0x00  # Show RGB LED primary colour
+RGB_MODE_ONE_SHOT_24= 0x01  # Show RGB LED secondary colour - oneshot 1/24
+RGB_MODE_ONE_SHOT_16= 0x02  # Show RGB LED secondary colour - oneshot 1/16
+RGB_MODE_ONE_SHOT_8 = 0x03  # Show RGB LED secondary colour - oneshot 1/8
+RGB_MODE_ONE_SHOT_4 = 0x04  # Show RGB LED secondary colour - oneshot 1/4
+RGB_MODE_ONE_SHOT_2 = 0x05  # Show RGB LED secondary colour - oneshot 1/2
+RGB_MODE_PULSE_24   = 0x06  # Show RGB LED secondary colour - pulsing 1/24
+RGB_MODE_PULSE_16   = 0x07  # Show RGB LED secondary colour - pulsing 1/24
+RGB_MODE_PULSE_8    = 0x08  # Show RGB LED secondary colour - pulsing 1/24
+RGB_MODE_PULSE_4    = 0x09  # Show RGB LED secondary colour - pulsing 1/24
+RGB_MODE_PULSE_2    = 0x0A  # Show RGB LED secondary colour - pulsing 1/24
+RGB_MODE_BLINK_24   = 0x0B  # Show RGB LED secondary colour - blinking 1/24
+RGB_MODE_BLINK_16   = 0x0C  # Show RGB LED secondary colour - blinking 1/24
+RGB_MODE_BLINK_8    = 0x0D  # Show RGB LED secondary colour - blinking 1/24
+RGB_MODE_BLINK_4    = 0x0E  # Show RGB LED secondary colour - blinking 1/24
+RGB_MODE_BLINK_2    = 0x0F  # Show RGB LED secondary colour - blinking 1/24
+
 
 # Function/State constants
 FN_VOLUME = 0x01
@@ -706,7 +726,7 @@ class PadMatrixHandler(ModeHandlerBase):
     ]
     BRIGHT_OFF = LED_BRIGHT_25
 
-    def __init__(self, state_manager, parent, leds: FeedbackLEDs):
+    def __init__(self, state_manager, driver, leds: FeedbackLEDs):
         super().__init__(state_manager)
         self._leds = leds
         self._libseq = self._zynseq.libseq
@@ -717,7 +737,7 @@ class PadMatrixHandler(ModeHandlerBase):
         self._playing_seqs = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
         self._pattern_template = None
-        self.parent = parent
+        self.driver = driver
 
         # Seqman sub-mode
         self._seqman_func = None
@@ -828,13 +848,25 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # for c in range(self._cols):
         #     for r in range(self._rows):
-        #         # Pad outside grid, switch off
-        #         if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
-        #             self.pad_off(c, r)
-        #             continue
+                # Pad outside grid, switch off
+                # if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
+                #     self.pad_off(c, r)
+                #     continue
+        for note in range(0, 40):
 
-        #         seq = c * self._zynseq.col_in_bank + r
-        #         self._update_pad(seq, False)
+            pos = self.driver.scroll_h + note % 8
+            row = note // 8
+            midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
+
+            if midi_chan is None:
+                self.pad_off(note % 8, row)
+                continue
+
+            phrase = self._rows - 1 - row + self.driver.scroll_v
+            # seq = c * self._zynseq.col_in_bank + r
+            seq = (phrase, midi_chan)
+            pad_info = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"][phrase]["sequences"][midi_chan]
+            self.update_pad(4 - row, note % 8, pad_info)
 
         self._refresh_tool_buttons()
 
@@ -850,21 +882,21 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def pad_press(self, pad):
         note = pad
-        pos = self.parent.scroll_h + note % 8
+        pos = self.driver.scroll_h + note % 8
         row = note // 8
-        midi_chan = self.parent.get_filtered_midi_chan_by_index(pos)
+        midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
 
         if midi_chan is None:
             return
-        phrase = self._rows - 1 - row + self.parent.scroll_v
+        phrase = self._rows - 1 - row + self.driver.scroll_v
         # Pad outside grid, discarded
-        # seq = self.get_sequence_from_pad(pad)
-        
+        seq = (phrase, pos)
+
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
             self._clear_sequence(self._zynseq.scene, phrase)
-        # elif self._is_record_pressed:
+        # elif self._is_rec                                                                     bb0bbord_pressed:
         #     self._start_pattern_record(seq)
         # elif self._recording_seq == seq:
         #     self._stop_pattern_record()
@@ -890,6 +922,8 @@ class PadMatrixHandler(ModeHandlerBase):
             return
         btn = self._pads[idx]
 
+        seq = (chan, phrase)
+
         is_empty = all(
             self._zynseq.is_pattern_empty(pattern)
             for pattern in self._get_sequence_patterns(phrase, chan))
@@ -903,9 +937,10 @@ class PadMatrixHandler(ModeHandlerBase):
                 src_scene, src_seq = self._seqman_src_seq
                 if src_scene == self._zynseq.bank and src_seq == seq:
                     led_mode = LED_BLINKING_24
-
+            self._leds.led_on(btn, color, led_mode)
         # Otherwise, update according to sequence state
         else:
+            pass
             if self._recording_seq == seq:
                 led_mode = LED_BLINKING_16
             elif state == zynseq.SEQ_PLAYING:
@@ -917,7 +952,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
                 self._playing_seqs.discard(seq)
 
-        self._leds.led_on(btn, color, led_mode)
+
 
         if refresh:
             self._refresh_tool_buttons()
@@ -982,12 +1017,56 @@ class PadMatrixHandler(ModeHandlerBase):
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
 
     def update_pad(self, row, col, pad_info):
-        if col == self._cols:  # Phrase launcher not implemented!
+        if col < self._cols:
+            note = (4 - row) * 8 + col
+        elif col == self.driver.phrase_launcher_col:
+            note = row + BTN_SOFT_KEY_START
+        else:
             return
-        state = pad_info["state"]
-        repeat = pad_info["repeat"]
-        group = pad_info["group"]
-        return
+        led_mode = RGB_MODE_PRIMARY
+        led_colour = 0
+        group = 32
+        try:
+            group = pad_info["group"]
+        except:
+            pass
+        try:
+            state = pad_info["state"]
+            repeat = pad_info["repeat"]
+            led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
+            patterns = self._get_sequence_patterns(row, group)
+            is_empty = all(
+                self._zynseq.is_pattern_empty(pattern)
+                for pattern in patterns)
+            if repeat == 0:
+                led_colour = 0 # Off
+                led_mode = RGB_MODE_PRIMARY
+            elif state == zynseq.SEQ_STOPPED:
+                led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
+                led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+            elif state == zynseq.SEQ_PLAYING:
+                led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
+                led_mode = RGB_MODE_PULSE_2
+            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
+                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                led_colour = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR[self.driver.apc_color_variant]
+                led_mode = RGB_MODE_BLINK_4
+            elif state == zynseq.SEQ_STARTING:
+                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
+                led_mode = RGB_MODE_BLINK_8
+            elif state == zynseq.SEQ_CHILD_PLAYING:
+                led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR[self.driver.apc_color_variant]
+                led_mode = RGB_MODE_PULSE_2
+            elif state == zynseq.SEQ_CHILD_STOPPING:
+                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
+                led_mode = RGB_MODE_BLINK_4
+        except:
+            pass
+        self._leds.led_on(note, led_colour, led_mode, False)
+        #lib_zyncore.dev_send_note_on(self.driver.idev_out, led_mode, note, led_colour)
+
 
     def _update_pad(self, seq, refresh=True):
         state = self._libseq.getSequenceState(self._zynseq.bank, seq)
@@ -1013,7 +1092,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # If seqman is disabled, show playing status in row launchers
         playing_rows = {
-            seq % self._zynseq.col_in_bank for seq in self._playing_seqs}
+            phrase for (chan, phrase) in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
@@ -1036,7 +1115,7 @@ class PadMatrixHandler(ModeHandlerBase):
             self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
-
+  
         self._recording_seq = seq
         self._update_pad(seq)
 
@@ -2617,6 +2696,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
     driver_name = 'AKAI APC Key25 MK2'
     driver_description = 'Full UI integration'
+    apc_color_variant = "apc"
 
     COLOR_SET = COLORS
     FeedbackLEDs = FeedbackLEDs
@@ -2677,6 +2757,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler.refresh()
         if self._current_handler == self._mixer_handler:
             self._padmatrix_handler.refresh()
+
+    def update_pad(self, row, col, pad_info):
+        if (self._current_handler == self._mixer_handler):
+            self._padmatrix_handler.update_pad(row, col, pad_info)
 
     def midi_event(self, ev):
         if self._on_midi_event(ev):
@@ -2810,6 +2894,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
     def update_seq_state(self, *args, **kwargs):
         if self._current_handler == self._mixer_handler:
+            super().update_seq_state(*args, **kwargs)
             self._padmatrix_handler.update_seq_state(*args, **kwargs)
         elif self._current_handler == self._stepseq_handler:
             self._current_handler.update_seq_state(*args, **kwargs)
