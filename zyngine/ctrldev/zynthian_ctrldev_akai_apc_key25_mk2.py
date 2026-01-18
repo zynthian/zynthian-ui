@@ -1706,17 +1706,19 @@ class StepSeqHandler(ModeHandlerBase):
             self._leds.led_off(
                 pad) if args is None else self._leds.led_on(pad, *args)
 
-    def set_sequence(self, seq):
-        self._libseq.setSequence(seq)
-        self._selected_seq = seq
+    def set_sequence(self, phrase=0, seq=0):
+        # todo: what did this do?
+        # self._libseq.setSequence(seq)
+        self._selected_seq = (phrase, seq)
         self._sequence_patterns = self._get_sequence_patterns(
-            self._zynseq.bank, seq, create=True)
+            # phrase...
+            phrase, seq, create=True)
         self._selected_pattern_idx = 0
         self._pattern_clock_offset = 0
         self._set_pattern(self._sequence_patterns[0])
 
         # Update active chain and instruments page
-        chain_id = self._get_chain_id_by_sequence(self._zynseq.bank, seq)
+        chain_id = self._get_chain_id_by_sequence(phrase, seq)
         self._chain_manager.set_active_chain_by_id(chain_id)
         self._update_instruments(seq, chain_id)
 
@@ -1805,7 +1807,7 @@ class StepSeqHandler(ModeHandlerBase):
                 return True
 
             if note == BTN_PLAY:
-                self._libseq.togglePlayState(self._zynseq.bank, self._selected_seq)
+                self._libseq.togglePlayState(self._selected_seq[0], self._selected_seq[1])
 
             elif BTN_PAD_START <= note <= BTN_PAD_END:
                 self._pressed_pads[note] = time.time()
@@ -1961,7 +1963,7 @@ class StepSeqHandler(ModeHandlerBase):
                     0, min(100, self._zynmixer.get_level(mixer_chan) * 100 + delta))
                 self._zynmixer.set_level(mixer_chan, level / 100)
 
-    def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
+    def update_seq_state(self, phrase, chan, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
         if state == zynseq.SEQ_STOPPED and self._cursor < self._used_pads:
             self._leds.remove_overlay(self._pads[self._cursor])
@@ -2180,7 +2182,7 @@ class StepSeqHandler(ModeHandlerBase):
             velocity = note_spec.velocity
 
         channel = self._libseq.getChannel(
-            self._zynseq.bank, self._selected_seq, 0)
+            self._selected_seq[0], self._selected_seq[1], 0)
         if on:
             self._note_player.play(
                 note_spec.note, velocity, 0, channel,
@@ -2220,7 +2222,7 @@ class StepSeqHandler(ModeHandlerBase):
         else:
             self._libseq.removeNote(step, spec.note)
             channel = self._libseq.getChannel(
-                self._zynseq.bank, self._selected_seq, 0)
+                self._selected_seq[0], self._selected_seq[1], 0)
             self._libseq.playNote(spec.note, 0, channel, 0)
         self.refresh(only_steps=True)
 
@@ -2282,6 +2284,10 @@ class StepSeqHandler(ModeHandlerBase):
     def _get_pattern_playhead(self):
         # NOTE: libseq.getPatternPlayhead() does not work here!
         cps = self._libseq.getClocksPerStep()
+        # NOTE: is function of pattern, I Think
+        playhead = self._libseq.getPatternPlayhead()
+        return playhead
+    
         playpos = self._libseq.getPlayPosition(
             self._zynseq.bank, self._selected_seq)
         playpos -= self._pattern_clock_offset
@@ -2819,14 +2825,15 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
                     # Launch StepSeq directly from SHIFT + PAD
                     if self._is_shifted:
-                        seq = self._padmatrix_handler.get_sequence_from_pad(
-                            note)
+                        seq = 'A1'
+                        # self._padmatrix_handler.get_sequence_from_pad(
+                        #     note)
                         if seq is None:
                             return False
                         if self._current_handler != self._stepseq_handler:
                             self._current_handler.set_active(False)
                         self._current_handler = self._stepseq_handler
-                        self._current_handler.set_sequence(seq)
+                        self._current_handler.set_sequence(4 - note // 8, self.scroll_h + note % 8)
                         self._current_handler.set_active(True)
                         self._current_handler.refresh(
                             shifted_override=self._is_shifted)
