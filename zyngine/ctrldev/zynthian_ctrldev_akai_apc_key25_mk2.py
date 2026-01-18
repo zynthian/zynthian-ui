@@ -2828,12 +2828,16 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                         seq = 'A1'
                         # self._padmatrix_handler.get_sequence_from_pad(
                         #     note)
+                        pos = self.scroll_h + note % 8
+                        row = 4 - note // 8
+                        chan = self.get_filtered_midi_chan_by_index(pos)
+                        
                         if seq is None:
                             return False
                         if self._current_handler != self._stepseq_handler:
                             self._current_handler.set_active(False)
                         self._current_handler = self._stepseq_handler
-                        self._current_handler.set_sequence(4 - note // 8, self.scroll_h + note % 8)
+                        self._current_handler.set_sequence(row, chan)
                         self._current_handler.set_active(True)
                         self._current_handler.refresh(
                             shifted_override=self._is_shifted)
