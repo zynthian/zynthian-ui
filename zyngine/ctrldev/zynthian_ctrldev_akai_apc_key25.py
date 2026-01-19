@@ -130,9 +130,9 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
     class MixerHandler(zynthian_ctrldev_akai_apc_key25_mk2.MixerHandler):
 
-        def __init__(self, state_manager,  leds: zynthian_ctrldev_akai_apc_key25_mk2.FeedbackLEDs):
+        def __init__(self, state_manager, driver, leds: zynthian_ctrldev_akai_apc_key25_mk2.FeedbackLEDs):
             self._knobmoves = {}
-            super().__init__(state_manager, leds)
+            super().__init__(state_manager, driver, leds)
 
         def _update_control(self, type, ccnum, ccval, minv, maxv):
             if self._is_shifted:
