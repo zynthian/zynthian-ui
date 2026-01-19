@@ -368,19 +368,13 @@ class zynthian_gui_control(zynthian_gui_selector):
         if widget is not None and widget == self.current_widget:
             return
         self.current_widget = widget
-        # Clean dynamic CUIA methods from widgets
-        for fn in dir(self):
-            if fn.startswith('cuia_') or fn == 'update_wsleds':
-                delattr(self, fn)
-                # logging.debug(f"DELATTR {fn}")
-        # Create new dynamix CUIA methods
+
+    def update_wsleds(self, leds):
         if self.current_widget:
-            for fn in dir(self.current_widget):
-                if fn.startswith('cuia_') or fn == 'update_wsleds':
-                    func = getattr(self.current_widget, fn)
-                    if callable(func):
-                        setattr(self, fn, func)
-                        # logging.debug(f"SETATTR {fn}")
+            try:
+                self.current_widget.update_wsleds(leds)
+            except (AttributeError, TypeError):
+                pass
 
     def set_controller_screen(self):
         # Get screen info

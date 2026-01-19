@@ -1170,19 +1170,26 @@ class zynthian_gui:
     def callable_ui_action(self, cuia, params=None):
         logging.debug("CUIA '{}' => {}".format(cuia, params))
         cuia_func_name = "cuia_" + cuia.lower()
-        # First try screen defined cuia function
         done = False
-        cuia_func = getattr(self.get_current_screen_obj(), cuia_func_name, None)
-        if callable(cuia_func):
-            if cuia_func(params):
+        screen_obj = self.get_current_screen_obj()
+        # First, try widget defined cuia function
+        widget_obj = getattr(screen_obj, "current_widget", None)
+        if widget_obj:
+            cuia_func = getattr(widget_obj, cuia_func_name, None)
+            if callable(cuia_func) and cuia_func(params):
                 done = True
+        # Second, try screen defined cuia function
         if not done:
-            # else, call global function
-            cuia_func = getattr(self, cuia_func_name, None)
-            if callable(cuia_func):
-                cuia_func(params)
-            else:
-                logging.error("Unknown CUIA '{}'".format(cuia))
+            cuia_func = getattr(screen_obj, cuia_func_name, None)
+            if callable(cuia_func) and cuia_func(params):
+                done = True
+            # Third, call default CUIA function (defined in this class)
+            if not done:
+                cuia_func = getattr(self, cuia_func_name, None)
+                if callable(cuia_func):
+                    cuia_func(params)
+                else:
+                    logging.error("Unknown CUIA '{}'".format(cuia))
         # Capture CUIA for UI log
         if self.capture_log_fname:
             self.write_capture_log("CUIA:{},{}".format(cuia, str(params)))
