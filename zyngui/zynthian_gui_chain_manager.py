@@ -986,4 +986,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
+        if t == 'B' and i == 2:
+            self.zyngui.show_screen("chain_options")
+            return True
         return self.switch(i, t)

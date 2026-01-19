@@ -1328,6 +1328,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def toggle_menu(self):
         if self.shown:
+            # Chain options selected
+            self.zyngui.screens['chain_manager'].select_chain_options_node()
             self.zyngui.toggle_screen("chain_manager")
         elif self.zyngui.get_current_screen() == "option":
             self.zyngui.close_screen()
@@ -1337,8 +1339,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             # Launcher Options
             self.phrase_menu()
         else:
-            # Chain Options
-            self.zyngui.screens['chain_manager'].select_chain_options_node()
+            # Current processor selected
+            self.zyngui.screens['chain_manager'].select_node(proc=self.chain_manager.active_chain.current_processor)
             self.zyngui.show_screen('chain_manager')
 
     # --------------------------------------------------------------------------
@@ -1876,9 +1878,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
-        # In launcher/mixer view, V5 knob's short actions are the same than V4
+        # V5 knob SHORT actions are the same than V4
         if t == 'S':
             self.zyngui.zynswitch_short(i)
+            return True
+        # Bold knob#2 => chain options
+        elif t == 'B' and i == 2:
+            self.zyngui.show_screen("chain_options")
             return True
         return False
 
