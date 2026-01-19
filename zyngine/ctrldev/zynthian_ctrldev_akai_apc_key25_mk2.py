@@ -1045,7 +1045,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 led_mode = RGB_MODE_PULSE_2
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
                 #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
-                led_colour = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR[self.driver.apc_color_variant]
+                led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_4
             elif state == zynseq.SEQ_STARTING:
                 #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
