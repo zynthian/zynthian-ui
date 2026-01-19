@@ -1805,7 +1805,7 @@ class StepSeqHandler(ModeHandlerBase):
                 return True
 
             if note == BTN_PLAY:
-                self._libseq.togglePlayState(self._selected_seq[0], self._selected_seq[1])
+                self._libseq.togglePlayState(self._zynseq.scene, self._selected_seq[0], self._selected_seq[1])
 
             elif BTN_PAD_START <= note <= BTN_PAD_END:
                 self._pressed_pads[note] = time.time()
