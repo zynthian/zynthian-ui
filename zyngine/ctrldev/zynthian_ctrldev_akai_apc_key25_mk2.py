@@ -1272,6 +1272,7 @@ class StepSyncProvider(mp.Process):
             self._tick_counter = 0
             self._jack_client.activate()
             self._jack_client.connect("zynseq:output", self._inport)
+            self._jack_client.connect("zynseq:clock", self._inport)
         else:
             self._jack_client.deactivate()
 
@@ -2238,7 +2239,8 @@ class StepSeqHandler(ModeHandlerBase):
 
         # Avoid turning on the first LED when is stopping
         state = self._libseq.getPlayState(
-            self._zynseq.bank, self._selected_seq)
+            self._zynseq.scene, self._selected_seq[0], self._selected_seq[1]) & 0xff
+        
         if self._cursor == 0 and state != zynseq.SEQ_PLAYING:
             return
         if self._cursor < self._used_pads:
