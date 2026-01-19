@@ -51,27 +51,31 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
         self.list_data.append((None, None, "> Manage this chain"))
 
+        self.list_data.append((self.rename_chain, None, "Rename chain",
+                               ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
+
+        if self.chain.chain_id:
+            self.list_data.append((self.move_chain, None, "Move chain",
+                               ["Reposition the chain in the mixer view.", "move_left_right.png"]))
+
+        if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]) and self.chain.get_processor_count():
+            self.list_data.append((self.midi_learn, None, "MIDI Learn",
+                                   ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
+
         if audio_proc_count > 0:
             self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
                                    ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
 
         if self.chain.chain_id:
-            self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
-                                   ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
             if synth_proc_count * midi_proc_count + audio_proc_count == 0:
                 self.list_data.append((self.remove_chain, None, "Remove chain",
                                        ["Remove this chain and all its processors.", "delete_chains.png"]))
             else:
                 self.list_data.append((self.remove_cb, None, "Remove...",
                                        ["Remove chain or processors.", "delete_chains.png"]))
-        if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]) and self.chain.get_processor_count():
-            self.list_data.append((self.midi_learn, None, "MIDI Learn",
-                                   ["Enter MIDI-learning mode for processor parameters.", "midi_learn.png"]))
-        self.list_data.append((self.rename_chain, None, "Rename chain",
-                               ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
-        if self.chain.chain_id:
-            self.list_data.append((self.move_chain, None, "Move chain",
-                                    ["Reposition the chain in the mixer view.", "move_left_right.png"]))
+
+            self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
+                                   ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
 
         self.list_data.append((None, None, "> Global chain management"))
         self.list_data.append((self.insert_chain, None, "Insert new chain",
