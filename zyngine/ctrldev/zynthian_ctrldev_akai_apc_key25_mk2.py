@@ -1714,9 +1714,10 @@ class StepSeqHandler(ModeHandlerBase):
         self._pattern_clock_offset = 0
         self._set_pattern(self._sequence_patterns[0])
 
-        # Update active chain and instruments page
+        # Update active chain/pad and instruments page
         chain_id = self._get_chain_id_by_sequence(phrase, seq)
         self._chain_manager.set_active_chain_by_id(chain_id)
+        self._zynseq.select_phrase(phrase)
         self._update_instruments(seq, chain_id)
 
     def on_shift_changed(self, state):
