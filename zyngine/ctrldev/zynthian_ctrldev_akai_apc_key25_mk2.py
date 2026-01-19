@@ -1719,6 +1719,7 @@ class StepSeqHandler(ModeHandlerBase):
         chain_id = self._get_chain_id_by_sequence(phrase, seq)
         self._chain_manager.set_active_chain_by_id(chain_id)
         self._zynseq.select_phrase(phrase)
+        self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, seq)
         self._update_instruments(seq, chain_id)
 
     def on_shift_changed(self, state):
