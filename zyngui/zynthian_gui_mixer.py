@@ -1878,9 +1878,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
-        # V5 knob SHORT actions are the same than V4
         if t == 'S':
-            self.zyngui.zynswitch_short(i)
+            if i == 2:
+                self.zyngui.screens["chain_options"].insert_chain()
+            else:
+                self.zyngui.zynswitch_short(i)
             return True
         # Bold knob#2 => chain options
         elif t == 'B' and i == 2:
