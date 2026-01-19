@@ -476,8 +476,9 @@ class MixerHandler(ModeHandlerBase):
     # To control main level, use SHIFT + K1
     main_chain_knob = KNOB_1
 
-    def __init__(self, state_manager, leds: FeedbackLEDs):
+    def __init__(self, state_manager, driver, leds: FeedbackLEDs):
         super().__init__(state_manager)
+        self.driver = driver
         self._leds = leds
         self._is_shifted = False
         self._knobs_function = FN_VOLUME
@@ -527,9 +528,9 @@ class MixerHandler(ModeHandlerBase):
                 return
 
             query = {
-                FN_MUTE: lambda c: self._zynmixer.get_mute(c.mixer_chan),
-                FN_SOLO: lambda c: self._zynmixer.get_solo(c.mixer_chan),
-                FN_SELECT: lambda c: c.chain_id == self._active_chain,
+                FN_MUTE: lambda pos, c: self.driver.get_mixer_param('mute', pos),
+                FN_SOLO: lambda pos, c: self.driver.get_mixer_param('solo', pos),
+                FN_SELECT: lambda pos, c: c.chain_id == self._active_chain,
             }[self._track_buttons_function]
             for i in range(8):
                 pos = i + (8 if self._chains_bank == 1 else 0)
@@ -539,7 +540,7 @@ class MixerHandler(ModeHandlerBase):
                 # Main channel ignored
                 if chain.chain_id == 0:
                     continue
-                self._leds.led_state(BTN_TRACK_1 + i, query(chain))
+                self._leds.led_state(BTN_TRACK_1 + i, query(pos, chain))
 
     def on_shift_changed(self, state):
         retval = super().on_shift_changed(state)
@@ -570,7 +571,7 @@ class MixerHandler(ModeHandlerBase):
             elif note == BTN_STOP_ALL_CLIPS:
                 self._stop_all_sounds()
             elif note == BTN_PLAY:
-                self._run_track_button_function_on_channel(255, FN_MUTE)
+                self._run_track_button_function_on_idx(-1, FN_MUTE)
             elif note == BTN_SOFT_KEY_SELECT:
                 self._track_buttons_function = FN_SELECT
             elif note == BTN_RECORD:
@@ -598,17 +599,12 @@ class MixerHandler(ModeHandlerBase):
         if self._knobs_function == FN_PAN:
             return self._update_pan(ccnum, ccval)
 
-    def update_strip(self, chan, symbol, value):
+    def update_strip(self, pos, symbol, value):
         if {"mute": FN_MUTE, "solo": FN_SOLO}.get(symbol) != self._track_buttons_function:
             return
 
-        # Mixer 'chan' may not be equal to its position (if re-arranged or a
-        # chain was deleted). Search the actual displayed position.
-        chain_id = self._chain_manager.get_chain_id_by_mixer_chan(chan)
-        for pos in range(self._chain_manager.get_chain_count()):
-            if self._chain_manager.get_chain_id_by_index(pos) == chain_id:
-                break
-
+        # Shift to current selection.
+        # ToDo: maybe use driver.scroll_h instead.
         pos -= self._chains_bank * 8
         if 0 > pos > 8:
             return
@@ -672,30 +668,31 @@ class MixerHandler(ModeHandlerBase):
         if chain is None or chain.chain_id == 0:
             return False
 
-        return self._run_track_button_function_on_channel(chain)
+        return self._run_track_button_function_on_idx(index)
 
-    def _run_track_button_function_on_channel(self, chain, function=None):
-        if isinstance(chain, int):
-            channel = chain
-            chain = None
-        else:
-            channel = chain.mixer_chan
+    def _run_track_button_function_on_idx(self, chain_index, function=None):
+        # if isinstance(chain_index, int):
+        #     channel = chain_index
+        #     chain_index = None
+        # else:
+        #     channel = chain_index.mixer_chan
 
         if function is None:
             function = self._track_buttons_function
 
         if function == FN_MUTE:
-            val = self._zynmixer.get_mute(channel) ^ 1
-            self._zynmixer.set_mute(channel, val, True)
+            self.driver.toggle_mixer_param('mute', chain_index)
             return True
 
         if function == FN_SOLO:
-            val = self._zynmixer.get_solo(channel) ^ 1
-            self._zynmixer.set_solo(channel, val, True)
+            self.driver.toggle_mixer_param('solo', chain_index)
+            
+            # val = self._zynmixer.get_solo(channel) ^ 1
+            # self._zynmixer.set_solo(channel, val, True)
             return True
 
-        if function == FN_SELECT and chain is not None:
-            self._chain_manager.set_active_chain_by_id(chain.chain_id)
+        if function == FN_SELECT and chain_index is not None:
+            self._chain_manager.set_active_chain_by_index(chain_index)
             return True
 
 
@@ -2714,7 +2711,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     def __init__(self, state_manager, idev_in, idev_out=None):
         self._leds = self.FeedbackLEDs(idev_out)
         self._device_handler = self.DeviceHandler(state_manager, self._leds, self.COLOR_SET)
-        self._mixer_handler = self.MixerHandler(state_manager, self._leds)
+        self._mixer_handler = self.MixerHandler(state_manager, self, self._leds)
         self._padmatrix_handler = self.PadMatrixHandler(state_manager, self, self._leds)
         self._stepseq_handler = self.StepSeqHandler(state_manager, self._leds, idev_in)
         self._current_handler = self._device_handler
