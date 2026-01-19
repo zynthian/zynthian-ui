@@ -1845,17 +1845,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         returns True if action fully handled or False if parent action should be triggered
         """
 
-        if super().switch(swi, t):
-            return True
         if swi == 0:
             if t == "S":
                 if self.highlighted_strip is not None:
                     self.highlighted_strip.toggle_solo()
                 return True
-
         elif swi == 1:
-            # This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
-            # Moving the "learn" button to back is not an option. It's a labeled button on V4!!
             if self.moving_phrase:
                 self.end_moving_phrase()
                 return True
@@ -1866,15 +1861,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             elif t == "B":
                 self.toggle_launcher_mode()
                 return True
-
         elif swi == 2:
             if t == "S":
-                self.zyngui.show_screen("tempo")
+                if self.launcher_mode:
+                    self.zyngui.show_screen("tempo")
+                else:
+                    self.zyngui.screens["chain_options"].insert_chain()
                 return True
-
         elif swi == 3:
             return self.switch_select(t)
 
+        return False
+
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        # In launcher/mixer view, V5 knob's short actions are the same than V4
+        if t == 'S':
+            self.zyngui.zynswitch_short(i)
+            return True
         return False
 
     def setup_zynpots(self):

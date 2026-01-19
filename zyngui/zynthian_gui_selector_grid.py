@@ -41,21 +41,21 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         Sets up the canvas, data structures for nodes and grid navigation,
         and initializes mouse drag state variables.
         """
-        super().__init__('Chain View')
-        
-        # Canvas for drawing the graph
-        self.canvas = tkinter.Canvas(self.main_frame,
-            bg=zynthian_gui_config.color_panel_bg,
-            highlightthickness=0)
-        self.canvas.pack(fill=tkinter.BOTH, expand=True)
-        self.columns = 4
-        self.BLOCK_WIDTH = 120 # Width of each processor block in pixels
-        self.BLOCK_HEIGHT = 40 # Height of each processor block in pixels
-        self.SPACING = 10 # Horizontal spacing between processor blocks in pixels
-        self.font = (zynthian_gui_config.font_family, int(0.024 * self.height))
-        self.config = [] # List of dictionaries, each describing a button
-        self.selected_node = 0 # Selected node id
+        super().__init__('Selector Grid')
+
+        self.columns = 3
+        self.BLOCK_WIDTH = 120  # Width of each processor block in pixels
+        self.BLOCK_HEIGHT = 40  # Height of each processor block in pixels
+        self.SPACING = 10  # Horizontal spacing between processor blocks in pixels
+        self.font = (zynthian_gui_config.font_family, int(0.065 * self.BLOCK_WIDTH))
         self.icon_size = (8, 8)
+
+        self.config = []  # List of dictionaries, each describing a button
+        self.selected_node = 0  # Selected node id
+
+        # Canvas for drawing the graph
+        self.canvas = tkinter.Canvas(self.main_frame, bg=zynthian_gui_config.color_panel_bg, highlightthickness=0)
+        self.canvas.pack(fill=tkinter.BOTH, expand=True)
 
         # Mouse Drag State
         self.drag_start_x = 0
@@ -66,11 +66,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
     def update_layout(self):
         super().update_layout()
-        self.font = (zynthian_gui_config.font_family, int(0.024 * self.height))
-        # Formual 2 * (x // y) ensures even values which helps with spacing and dividers
-        self.SPACING = 2 * (self.width // (self.columns * 16))
+        # Formula 2 * (x // y) ensures even values which helps with spacing and dividers
+        self.SPACING = 2 * (self.width // (self.columns * 20))
         self.BLOCK_WIDTH = 2 * ((self.width - self.SPACING) // (self.columns * 2)) - self.SPACING
-        self.BLOCK_HEIGHT = 2* (self.BLOCK_WIDTH // 4)
+        self.BLOCK_HEIGHT = 2 * (self.BLOCK_WIDTH // 5)
+        self.font = (zynthian_gui_config.font_family, int(0.065 * self.BLOCK_WIDTH))
         self.icon_size = (self.BLOCK_HEIGHT - 4, self.BLOCK_HEIGHT - 4)
         self._draw_nodes()
 
@@ -124,7 +124,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
                 if img:
                     self.canvas.create_image(x, y, image=img, anchor="nw")
             self.canvas.create_text(
-                x + 3 * self.BLOCK_WIDTH / 4, y + self.BLOCK_HEIGHT / 2,
+                x + 2 * self.BLOCK_WIDTH // 3, y + self.BLOCK_HEIGHT // 2,
                 text=node["title"],
                 fill="white",
                 font=self.font,

@@ -562,6 +562,20 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.midi_unlearn_action()
                     return True
 
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if t == 'S':
+            if self.mode == 'select':
+                self.switch_select(t)
+            else:
+                self.toggle_midi_learn(i)
+            return True
+        elif t == 'B':
+            self.midi_learn_options(i)
+            return True
+        return False
+
     def switch_select(self, t):
         if t == 'S':
             if self.mode == 'control':

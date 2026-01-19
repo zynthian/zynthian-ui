@@ -1234,6 +1234,23 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 return False
         return False
 
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 0:
+            if t == 'S' or t == 'B':
+                self.zyngui.toggle_pated()
+                return True
+        elif i == 1:
+            if t == 'S' or t == 'B':
+                self.reset_grid_zoom()
+                return True
+        elif i == 2:
+            if t == 'S' or t == 'B':
+                #self.zyngui.show_screen("arranger")
+                return True
+        return False
+
     # Function to handle BACK button
     def back_action(self):
         if self.edit_mode == EDIT_MODE_NONE:

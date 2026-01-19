@@ -355,6 +355,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
                 self.show_details()
                 return True
 
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 2 and t == 'S':
+            self.show_details()
+            return True
+        return False
+
     def set_selector(self, zs_hidden=False):
         super().set_selector(zs_hidden)
         self.zselector.zctrl.engine = self

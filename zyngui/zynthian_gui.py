@@ -1784,63 +1784,19 @@ class zynthian_gui:
                 # TODO: Should all screens be derived from base?
 
     # -------------------------------------------------------------------
-    # V5 knob's switch actions
+    # V5 knob's switch action defaults
     # -------------------------------------------------------------------
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
-
         if t == "L":
             if self.state_manager.zctrl_x and self.state_manager.zctrl_y:
                 self.show_screen("control_xy")
-        elif self.current_screen in ("control", "alsa_mixer", "audio_player", "tempo"):
-            # if i < 3 and t == 'S':
-            if t == 'S':
-                if self.screens[self.current_screen].mode == 'select':
-                    self.zynswitch_short(i)
-                else:
-                    self.screens[self.current_screen].toggle_midi_learn(i)
-                return
-            elif t == 'B':
-                self.screens[self.current_screen].midi_learn_options(i)
-                return
-        elif self.current_screen == "engine":
-            if i == 2 and t == 'S':
-                self.zynswitch_short(i)
-                return
-        elif self.current_screen in ("mixer", "launcher"):
+        elif i == 3:
             if t == 'S':
                 self.zynswitch_short(i)
-                return
-        elif self.current_screen in ("pattern_editor", "pated_cc"):
-            if i == 0:
-                if t == 'S' or t == 'B':
-                    self.toggle_pated()
-                    return
-            elif i == 1:
-                if t == 'S' or t == 'B':
-                    self.get_current_screen_obj().reset_grid_zoom()
-                    return
-            elif i == 2:
-                if t == 'S' or t == 'B':
-                    #self.show_screen("arranger")
-                    return
-        elif self.current_screen == "arranger":
-            if i == 0:
-                return
-            elif i == 1:
-                return
-            elif i == 2:
-                if t == 'S' or t == 'B':
-                    self.show_screen("pattern_editor")
-                    return
-        if i == 3:
-            if t == 'S':
-                self.zynswitch_short(i)
-                return
             elif t == 'B':
                 self.zynswitch_bold(i)
-                return
 
     # -------------------------------------------------------------------
     # MIDI CUIAs

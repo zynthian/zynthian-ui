@@ -966,3 +966,24 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             else:
                 self.zyngui.show_screen("processor_options")
         return True
+
+    def switch(self, swi, t):
+        """ Function to handle switches press
+        swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+        t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+
+        returns True if action fully handled or False if parent action should be triggered
+        """
+
+        if swi == 2:
+            if t == "S":
+                self.zyngui.screens["chain_options"].insert_chain()
+                return True
+        elif swi == 3:
+            return self.on_select(t)
+        return False
+
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        return self.switch(i, t)
