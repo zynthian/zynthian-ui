@@ -25,13 +25,14 @@
 
 import logging
 import tkinter
-from time import monotonic
 from tkinter import font
 
+import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 
 DRAG_THRESHOLD = 5
+
 
 class zynthian_gui_chain_manager(zynthian_gui_base):
     """
@@ -162,11 +163,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.start_moving_processor(node["proc"])
 
     def get_node_at(self, x, y):
-        items = self.canvas.find_overlapping(x, y, x, y)
-        for obj_id in items:
+        for obj_id in self.canvas.find_overlapping(x, y, x, y):
             try:
-                node = self.node2pos[obj_id]
-                return node
+                return self.node2pos[obj_id]
             except:
                 pass
         return None
@@ -248,8 +247,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                         self.canvas.yview_moveto(self.start_yview + d_fract_y)
 
                 except Exception as e:
-                    logging.warning(f"Drag scroll error: {e}")
-                    pass
+                    logging.warning(f"Can't drag scroll => {e}")
 
     def on_release(self, event):
         """
@@ -469,7 +467,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
     def _draw_graph(self, sel_proc=None):
         if self.width == 1:
-            return # Not yet resized
+            return  # Not yet resized
         div = self.chain_manager.get_pinned_pos()
         self.canvas.delete("all")
         self.node2pos = {} # Dict of nodes, mapped by gui object (background rectangle)
@@ -699,8 +697,17 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     return
             chain.remove_processor(self.moving_proc)
             chain_dst.insert_processor(self.moving_proc, node.get("slot"))
-        except:
-            pass
+            # Rebuild routing in both chains
+            if self.moving_proc.type == "MIDI Tool":
+                chain.rebuild_midi_graph()
+                chain_dst.rebuild_midi_graph()
+                zynautoconnect.request_midi_connect(True)
+            elif self.moving_proc.type == "Audio Effect":
+                chain.rebuild_audio_graph()
+                chain_dst.rebuild_audio_graph()
+                zynautoconnect.request_audio_connect(True)
+        except Exception as e:
+            logging.error(f"Can't move processor! => {e}")
         self.build_graph(self.moving_proc)
 
     def start_moving_processor(self, processor=None):

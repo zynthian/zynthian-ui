@@ -1085,7 +1085,7 @@ class zynthian_chain_manager:
         Returns: True if processor can be moved within chain or to another chain
         """
 
-        if not processor or processor.type == "MIDI Synth":
+        if not processor or processor.type in ("MIDI Synth", "Audio Generator"):
             return False
         if processor.type == "Audio Effect" and processor.eng_code not in ["MI", "MR"] and self.get_chain_count(True, False, True) > 1:
             return True
