@@ -80,23 +80,46 @@ class zynthian_gui_launcher_pad():
         self.phrase = phrase
 
         id = self.chain.chain_id
+        tags = ("launcher", f"strip_{id}", f"launcher_{id}_{phrase}")
         # Launcher pad (background)
-        self.pad = self.canvas.create_rectangle(x, y, x + self.width - 1, y + self.height - 1, width=3, fill=zynthian_gui_config.color_panel_bg, tags=("launcher", "launcher_pad", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.pad = self.canvas.create_rectangle(x, y, x + self.width - 1, y + self.height - 1,
+                                                width=3,
+                                                fill=zynthian_gui_config.color_panel_bg,
+                                                tags=(*tags, "launcher_pad"))
         # Play state text
-        self.play_state = self.canvas.create_text(x + self.width - 3,  y - 3, text="", anchor=tkinter.NE, font=self.gui_mixer.font_clip_state, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.play_state = self.canvas.create_text(x + self.width - 3,  y - 3, text="",
+                                                  anchor=tkinter.NE,
+                                                  font=self.gui_mixer.font_clip_state,
+                                                  tags=tags)
         # Title text
-        self.title =  self.canvas.create_text(x + self.width // 2, y + 0.5 * self.height, text="", anchor=tkinter.CENTER,
-            font=self.gui_mixer.font_clip_title, fill=self.gui_mixer.legend_txt_color,
-            tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.title = self.canvas.create_text(x + self.width // 2, y + 0.5 * self.height, text="",
+                                             anchor=tkinter.CENTER,
+                                             font=self.gui_mixer.font_clip_title,
+                                             fill=self.gui_mixer.legend_txt_color,
+                                             tags=tags)
         # Play mode image
-        self.mode_icon = self.canvas.create_image(x + 3, y + 2, anchor=tkinter.NW, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.mode_icon = self.canvas.create_image(x + 3, y + 2,
+                                                  anchor=tkinter.NW,
+                                                  tags=tags)
         # Play mode text
-        self.mode_text = self.canvas.create_text(x + 4, y - 4, anchor=tkinter.NW, fill=self.gui_mixer.legend_txt_color, font=self.gui_mixer.font_clip_state, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}")   )
+        self.mode_text = self.canvas.create_text(x + 3, y - 3,
+                                                 anchor=tkinter.NW,
+                                                 fill=self.gui_mixer.legend_txt_color,
+                                                 font=self.gui_mixer.font_clip_state,
+                                                 tags=tags)
         # Timesig text
-        self.timesig = self.canvas.create_text(x + 3, y + self.height - 1, anchor=tkinter.SW, fill=self.gui_mixer.legend_txt_color, font=self.gui_mixer.font_timbase, tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.timesig = self.canvas.create_text(x + 3, y + self.height,
+                                               anchor=tkinter.SW,
+                                               fill=self.gui_mixer.legend_txt_color,
+                                               font=self.gui_mixer.font_timebase,
+                                               tags=tags)
         # Tempo text
-        self.tempo = self.canvas.create_text(x + self.width - 1, y + self.height - 1, anchor=tkinter.SE, fill=self.gui_mixer.legend_txt_color, justify=tkinter.RIGHT, font=self.gui_mixer.font_timbase,
-            tags=("launcher", f"strip_{id}", f"launcher_{id}_{phrase}"))
+        self.tempo = self.canvas.create_text(x + self.width - 1, y + self.height,
+                                             anchor=tkinter.SE,
+                                             fill=self.gui_mixer.legend_txt_color,
+                                             justify=tkinter.RIGHT,
+                                             font=self.gui_mixer.font_timebase,
+                                             tags=tags)
 
         self.canvas.tag_bind(f"launcher_{id}_{phrase}", '<ButtonRelease-1>', self.on_clip_release)
 
@@ -104,6 +127,27 @@ class zynthian_gui_launcher_pad():
         """ Show selection cursor highlight"""
 
         self.canvas.itemconfig(self.pad, outline="yellow")
+
+    def get_pattern_length(self, beats, bpb):
+        if not bpb:
+            bpb = 4
+        if bpb > 1:
+            bars = beats // bpb
+        else:
+            bars = 0
+        extra_beats = beats % bpb
+        if extra_beats == 0:
+            beats_text = ""
+        else:
+            beats_text = f"{extra_beats}♩"
+        if bars == 0:
+            bars_text = ""
+        else:
+            bars_text = f"{bars}"
+        if bars and extra_beats:
+            return f"{bars_text} + {beats_text}"
+        else:
+            return bars_text + beats_text
 
     def draw(self):
         """ Update the launcher button elements"""
@@ -114,12 +158,13 @@ class zynthian_gui_launcher_pad():
         tempo_text = ""
         disabled = False
         try:
+            state_phrase = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
             if self.chain.chain_id == 0:
-                state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
+                state_seq = state_phrase
             elif self.chain.midi_chan is None or self.chain.midi_chan > 31:
                 state_seq = None  # This will raise an exception later and draw empty block
             else:
-                state_seq = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]["sequences"][self.chain.midi_chan]
+                state_seq = state_phrase["sequences"][self.chain.midi_chan]
             name = state_seq["name"]
             disabled |= state_seq["repeat"] == 0
             if disabled:
@@ -128,6 +173,8 @@ class zynthian_gui_launcher_pad():
                 color = zynthian_gui_config.PAD_COLOUR_PHRASE
             else:
                 color = zynthian_gui_config.LAUNCHER_COLOUR[state_seq["group"]]["rgb"]
+
+            # Moving phrase
             if self.gui_mixer.moving_phrase and self.phrase == self.gui_mixer.zynseq.phrase:
                 if self.phrase == 0:
                     title = f"⇓ {name[:5]}"
@@ -135,35 +182,58 @@ class zynthian_gui_launcher_pad():
                     title = f"⇑ {name[:5]}"
                 else:
                     title = f"⇕ {name[:5]}"
+            # Normal draw
             else:
                 title = name[:5]
-                if state_seq["repeat"]:
-                    if state_seq["repeat"] == 255:
-                        mode_text = f"auto"
-                    else:
-                        mode_text = f"x{state_seq['repeat']}"
+
+                # Chain launcher =>
+                if self.chain.chain_id:
+                    # Zynstep pattern
+                    try:
+                        pattern = state_seq["tracks"][0]["patns"]["0"]
+                        n_beats = self.gui_mixer.zynseq.libseq.getBeatsInPattern(pattern)
+                        timesig_text = self.get_pattern_length(n_beats, state_phrase["bpb"])
+                    # Clippy
+                    except:
+                        timesig_text = "1"
+
                     match state_seq["followAction"]:
                         case zynseq.FOLLOW_ACTION_NONE:
-                            mode_image = self.gui_mixer.mode_icons["oneshot"]
-                            mode_text += "→"
+                            mode_text = "→"
+                        case zynseq.FOLLOW_ACTION_RELATIVE:
+                            if state_seq["followParam"] == 0:
+                                mode_text = "↻"
+                            else:
+                                mode_text = "↦"
+                        case _:
+                            mode_text = "↦"
+
+                # Phrase launcher =>
+                else:
+                    if state_seq["repeat"]:
+                        if state_seq["repeat"] == 255:
+                            mode_text = "A"
+                        else:
+                            mode_text = f"{state_seq['repeat']}|"
+                    else:
+                        #title = "⏹"
+                        pass
+
+                    match state_seq["followAction"]:
+                        case zynseq.FOLLOW_ACTION_NONE:
+                            #mode_text += "→"
+                            pass
                         case zynseq.FOLLOW_ACTION_RELATIVE:
                             if state_seq["followParam"] < 0:
-                                mode_image = self.gui_mixer.mode_icons["oneshotall"]
                                 mode_text += "↑"
                             elif state_seq["followParam"] > 0:
-                                mode_image = self.gui_mixer.mode_icons["oneshotall"]
                                 mode_text += "↓"
                             else:
-                                mode_image = self.gui_mixer.mode_icons["loopsync"]
                                 mode_text = "↻"
                         case _:
-                            mode_image = self.gui_mixer.mode_icons["oneshotall"]
-                            mode_text += "↦"
-                else:
-                    title = "⏹"
-                    mode_image = self.gui_mixer.mode_icons["empty"]
-                if self.chain.chain_id == 0:
-                    # Phrase launcher
+                            #mode_text += "↦"
+                            mode_text += ""
+
                     if "bpb" in state_seq:
                         sig = state_seq["bpb"]
                         if sig:
@@ -172,6 +242,7 @@ class zynthian_gui_launcher_pad():
                         tempo = state_seq["tempo"]
                         if tempo:
                             tempo_text = f"{tempo:.1f}"
+            # Play state
             match state_seq["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -194,13 +265,12 @@ class zynthian_gui_launcher_pad():
                 case zynseq.SEQ_STOPPED:
                     color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
                     try:
-                        pattern = state_seq["tracks"][0]["patns"]["0"]
                         if self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]:
                             state_text = "⏹"
                         else:  # Pattern empty
                             state_text = ""
                     except:
-                        state_text = "" # Pattern does not exist
+                        state_text = ""  # Pattern does not exist
                 case _:
                     color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
                     state_text = ""
@@ -210,16 +280,17 @@ class zynthian_gui_launcher_pad():
             title = ""
             state_text = ""
         self.canvas.itemconfig(self.pad, fill=color)
-        self.canvas.itemconfig(self.play_state, text=state_text, fill=color_state)
         self.canvas.itemconfig(self.title, text=title)
+        self.canvas.itemconfig(self.play_state, text=state_text, fill=color_state)
         if self.chain.chain_id:
             # Chain sequence launcher
-            self.canvas.itemconfig(self.mode_text, state=tkinter.HIDDEN)
-            self.canvas.itemconfig(self.timesig, state=tkinter.HIDDEN)
-            self.canvas.itemconfig(self.mode_icon, image=mode_image)
+            self.canvas.itemconfig(self.mode_text, text=mode_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.timesig, text=timesig_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.tempo, state=tkinter.HIDDEN)
+            self.canvas.itemconfig(self.mode_icon, state=tkinter.HIDDEN)
         else:
             # Phrase launcher
-            self.canvas.itemconfig(self.mode_text, text=mode_text)
+            self.canvas.itemconfig(self.mode_text, text=mode_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.timesig, text=timesig_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.tempo, text=tempo_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.mode_icon, state=tkinter.HIDDEN)
@@ -946,10 +1017,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         font_size = min(int(0.5 * self.legend_height), int(0.25 * self.width))
         self.font = (zynthian_gui_config.font_family, font_size)
         self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
-        self.font_clip_state = (zynthian_gui_config.font_family, int(0.8 * font_size))
+        self.font_clip_state = (zynthian_gui_config.font_family, int(0.6 * font_size))
         self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
+        self.font_timebase = (zynthian_gui_config.font_family, int(0.5 * font_size))
         self.font_icons = ("forkawesome", int(1.2 * font_size))
-        self.font_timbase = (zynthian_gui_config.font_family, int(0.45 * font_size))
 
         if zynthian_gui_config.visible_launchers < 1:
             # Automatic sizing if not defined in config
@@ -970,7 +1041,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         
         self.launcher_height = int((self.legend_y - self.launcher_y) / (visible_launchers + 0.2))
 
-        # Clip Mode Icons
+        #self.load_mode_icons()
+        self.build_mixer()
+
+    # Clip Mode Icons
+    def load_mode_icons(self):
         empty_icon = tkinter.PhotoImage()
         iconsize = (int(self.strip_width * 0.4), int(self.launcher_height * 0.30))
         self.mode_icons = {}
@@ -980,8 +1055,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.mode_icons[f] = ImageTk.PhotoImage(img.resize(iconsize))
             except:
                 self.mode_icons[f] = empty_icon
-
-        self.build_mixer()
 
     def build_mixer(self):
         """ Draw chain strips"""

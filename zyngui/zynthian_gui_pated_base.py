@@ -327,7 +327,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         else:
             return bars_text + beats_text
 
-
     def get_menu_options(self):
         menu_options = {}
         extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
