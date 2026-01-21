@@ -363,9 +363,7 @@ class DeviceHandler(ModeHandlerBase):
             elif note == BTN_BACK_NO:
                 self._state_manager.send_cuia("BACK")
             elif note == BTN_ALT:
-                self._is_alt_active = not self._is_alt_active
                 self._state_manager.send_cuia("TOGGLE_ALT_MODE")
-                self.refresh()
             else:
                 # Function buttons (F1-F4)
                 fn_btns = {BTN_F1: 1, BTN_F2: 2, BTN_F3: 3, BTN_F4: 4}
@@ -398,6 +396,11 @@ class DeviceHandler(ModeHandlerBase):
             return
 
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
+
+    def on_alt_mode(self, alt_mode, refresh=False):
+        self._is_alt_active = alt_mode
+        if refresh:
+            self.refresh()
 
     def on_screen_change(self, screen):
         screen_map = {
@@ -2906,6 +2909,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         if self._current_handler == self._mixer_handler:
             self._current_handler.update_strip(chan, symbol, value)
 
+    def on_alt_mode(self, alt_mode: bool):
+        refresh = self._current_handler == self._device_handler
+        self._device_handler.on_alt_mode(alt_mode, refresh)
+        
     def on_active_chain(self, active_chain_id):
         refresh = self._current_handler == self._mixer_handler
         self._mixer_handler.set_active_chain(active_chain_id, refresh)
