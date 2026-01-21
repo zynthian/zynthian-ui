@@ -407,6 +407,7 @@ class DeviceHandler(ModeHandlerBase):
             "option":         (BTN_OPT_ADMIN, 0),
             "chain_manager":  (BTN_OPT_ADMIN, 0),
             "admin":          (BTN_OPT_ADMIN, 1),
+            "mixer":          (BTN_MIX_LEVEL, 0),
             "audio_mixer":    (BTN_MIX_LEVEL, 0),
             "alsa_mixer":     (BTN_MIX_LEVEL, 1),
             "control":        (BTN_CTRL_PRESET, 0),
