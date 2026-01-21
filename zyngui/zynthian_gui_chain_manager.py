@@ -350,7 +350,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
             # Add chain option button
             name = self._get_name(chain.get_name(), self.BLOCK_WIDTH)
-            self._add_node(chain_idx, row, f"{name}\nOptions", chain_id, "chain_options")
+            self._add_node(chain_idx, row, f"{name}", chain_id, "chain_options")
             row += 1
             # Add MIDI input
             if chain.is_midi():

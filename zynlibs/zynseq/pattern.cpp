@@ -436,17 +436,17 @@ void Pattern::stepControlEvents(uint8_t control) {
 
 uint32_t Pattern::getSteps() { return (m_nBeats * m_nStepsPerBeat); }
 
-uint32_t Pattern::getLength() { return m_nBeats * PPQN; }
+uint32_t Pattern::getLength() { return m_nBeats * PPQN_INTERNAL; }
 
 uint32_t Pattern::getClocksPerStep() {
-    if (m_nStepsPerBeat > PPQN || m_nStepsPerBeat == 0)
+    if (m_nStepsPerBeat > PPQN_INTERNAL || m_nStepsPerBeat == 0)
         return 1;
-    return PPQN / m_nStepsPerBeat;
+    return PPQN_INTERNAL / m_nStepsPerBeat;
 }
 
 bool Pattern::setStepsPerBeat(uint32_t value) {
     float fScale = 1.0;
-    if (m_nStepsPerBeat == 0 || m_nStepsPerBeat > PPQN)
+    if (m_nStepsPerBeat == 0 || m_nStepsPerBeat > PPQN_INTERNAL)
         m_nStepsPerBeat = 4;
     else
         float fScale = float(value) / m_nStepsPerBeat;

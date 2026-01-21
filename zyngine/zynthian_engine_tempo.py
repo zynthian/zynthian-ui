@@ -29,6 +29,7 @@ from collections import deque
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_controller import zynthian_controller
+import zynautoconnect
 
 # ------------------------------------------------------------------------------
 # Tempo Engine Class
@@ -42,7 +43,7 @@ class zynthian_engine_tempo(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     _ctrl_screens = [
-        ["Tempo", ["bpm", "metro_enable", "metro_volume", "transport"]]
+        ["Tempo", ["bpm", "metro_enable", "metro_volume", "ppqn"]]
     ]
 
     # ----------------------------------------------------------------------------
@@ -54,8 +55,6 @@ class zynthian_engine_tempo(zynthian_engine):
     # ----------------------------------------------------------------------------
     # Initialization
     # ----------------------------------------------------------------------------
-
-    NUM_TAPS = 4
 
     def __init__(self, state_manager=None, proc=None):
         super().__init__(state_manager)
@@ -71,9 +70,6 @@ class zynthian_engine_tempo(zynthian_engine):
         self.options['replace'] = False
 
         self.zctrls = None
-
-        self.tap_buf = None
-        self.last_tap_ts = 0
 
         self.buttonbar_config = [
             ("toggle_audio_play", "Play\nAudio"),
@@ -121,20 +117,25 @@ class zynthian_engine_tempo(zynthian_engine):
     # ----------------------------------------------------------------------------
 
     def get_controllers_dict(self, processor=None, ctrl_list=None):
+        if zynautoconnect.get_ext_clock_zmip() < 0:
+            self._ctrl_screens = [["Tempo", ["bpm", "metro_enable", "metro_volume"]]]
+        else:
+            self._ctrl_screens = [["Tempo", ["ppqn", "metro_enable", "metro_volume"]]]
+
         if processor:
             if not processor.controllers_dict:
                 processor.controllers_dict = {
                     "bpm": self.state_manager.zynseq.zctrl_tempo,
-                    "metro_enable": self.state_manager.zynseq.zctrl_metro_enable,
+                    "metro_enable": self.state_manager.zynseq.zctrl_metro_mode,
                     "metro_volume": self.state_manager.zynseq.zctrl_metro_volume,
-                    "transport": self.state_manager.zynseq.zctrl_transport
+                    "ppqn": self.state_manager.zynseq.zctrl_ppqn
                 }
             return processor.controllers_dict
         return  {
             "bpm": self.state_manager.zynseq.zctrl_tempo,
-            "metro_enable": self.state_manager.zynseq.zctrl_metro_enable,
+            "metro_enable": self.state_manager.zynseq.zctrl_metro_mode,
             "metro_volume": self.state_manager.zynseq.zctrl_metro_volume,
-            "transport": self.state_manager.zynseq.zctrl_transport
+            "ppqn": self.state_manager.zynseq.zctrl_ppqn
         }
 
     def send_controller_value(self, zctrl):
@@ -144,22 +145,5 @@ class zynthian_engine_tempo(zynthian_engine):
     # Special
     # ----------------------------------------------------------------------------
 
-    def tap(self):
-        now = monotonic()
-        if self.state_manager.zynseq.libseq.getClockSource() == 2:
-            lib_zyncore.zynstep_send_clock()
-            logging.debug("TAP SYNCING (BEAT + TEMPO)!")
-        else:
-            tap_dur = now - self.last_tap_ts
-            self.last_tap_ts = now
-            if tap_dur < 0.14285 or tap_dur > 2:
-                # Too slow or too fast so reset
-                self.tap_buf = deque(maxlen=self.NUM_TAPS)
-            else:
-                self.tap_buf.append(tap_dur)
-                logging.debug(f"TAP TEMPO BUFFER: {self.tap_buf}")
-                bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
-                self.state_manager.zynseq.set_tempo(bpm)
-                logging.debug(f"SETTING TAP TEMPO BPM: {bpm}")
 
 # ******************************************************************************

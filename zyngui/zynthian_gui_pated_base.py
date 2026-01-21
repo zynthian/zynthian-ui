@@ -585,8 +585,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
         try:
             self.phrase = self.zynseq.phrase
-            self.sequence = self.zynseq.chan
-            self.channel = self.zynseq.chan
+            self.sequence = self.chain_manager.active_chain.midi_chan
+            self.channel = self.chain_manager.active_chain.midi_chan
             try:
                 self.bpb = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["bpb"]
             except:

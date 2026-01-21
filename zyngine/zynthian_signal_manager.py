@@ -47,6 +47,7 @@ class zynthian_signal_manager:
     S_CUIA = 10
     S_GUI = 11
     S_MIDI = 12
+    S_TRANSPORT = 13
 
     SS_CUIA_REFRESH = 0
     SS_CUIA_MIDI_EVENT = 1

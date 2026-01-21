@@ -120,6 +120,7 @@ midi_port_names = {}
 
 # List of MIDI output ports to which to send MIDI clock
 midi_clock_output_ports = []
+ext_clock_zmip = -1
 
 # Get the main jack audio device
 jack_audio_device = ""
@@ -503,6 +504,14 @@ def remove_hw_port(port):
         return True
     return False
 
+def set_ext_clock_zmip(idev):
+    global ext_clock_zmip
+    ext_clock_zmip = idev
+    request_midi_connect()
+
+def get_ext_clock_zmip():
+    return ext_clock_zmip
+
 def set_midi_clock_output_port(port_name, send):
     global midi_clock_output_ports
     if send:
@@ -778,6 +787,10 @@ def midi_autoconnect():
                 required_routes[port].add("zynseq:clock")
             except:
                 logging.warning(f"Unable to connect MIDI clock to {port}")
+
+    # Connect zynseq clock input
+    if 0 <= ext_clock_zmip <= len(devices_in):
+        required_routes["zynseq:clock_in"] = {devices_in[ext_clock_zmip].name}
 
     # Add SMF player to MIDI input devices
     idev = state_manager.get_zmip_seq_index()
