@@ -2902,9 +2902,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         if self._current_handler == self._mixer_handler:
             self._current_handler.update_strip(chan, symbol, value)
 
-    def update_mixer_active_chain(self, active_chain_id):
+    def on_active_chain(self, active_chain_id):
         refresh = self._current_handler == self._mixer_handler
         self._mixer_handler.set_active_chain(active_chain_id, refresh)
+        super().on_active_chain(active_chain_id)
 
     def update_seq_state(self, *args, **kwargs):
         if self._current_handler == self._mixer_handler:
