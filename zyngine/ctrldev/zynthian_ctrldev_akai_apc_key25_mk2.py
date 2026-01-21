@@ -403,7 +403,7 @@ class DeviceHandler(ModeHandlerBase):
     def on_screen_change(self, screen):
         screen_map = {
             "option":         (BTN_OPT_ADMIN, 0),
-            "chain_manager":      (BTN_OPT_ADMIN, 0),
+            "chain_manager":  (BTN_OPT_ADMIN, 0),
             "admin":          (BTN_OPT_ADMIN, 1),
             "audio_mixer":    (BTN_MIX_LEVEL, 0),
             "alsa_mixer":     (BTN_MIX_LEVEL, 1),
@@ -413,7 +413,7 @@ class DeviceHandler(ModeHandlerBase):
             "bank":           (BTN_CTRL_PRESET, 1),
             "zs3":            (BTN_ZS3_SHOT, 0),
             "snapshot":       (BTN_ZS3_SHOT, 1),
-            "zynpad":         (BTN_PAD_STEP, 0),
+            "launcher":       (BTN_PAD_STEP, 0),
             "pattern_editor": (BTN_PAD_STEP, 1),
             "arranger":       (BTN_PAD_STEP, 1),
             "tempo":          (BTN_METRONOME, 0),
