@@ -2897,6 +2897,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._leds.all_off()
 
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
+        if mixbus:
+            return
         if self._current_handler == self._mixer_handler:
             self._current_handler.update_strip(chan, symbol, value)
 
