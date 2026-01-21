@@ -297,7 +297,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             "action": self.zyngui.modify_chain,
             "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True, "pos": pos}]
         })
-        self.zyngui.screens["selector_grid"].setup(config)
+        self.zyngui.screens["selector_grid"].setup(config, cols=3)
         self.zyngui.show_screen("selector_grid")
 
     # FX-Chain management

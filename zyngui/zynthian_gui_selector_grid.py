@@ -30,6 +30,7 @@ from PIL import Image, ImageTk
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 
+
 class zynthian_gui_selector_grid(zynthian_gui_base):
     """
     Selector presented as a grid of buttons.
@@ -69,9 +70,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         # Formula 2 * (x // y) ensures even values which helps with spacing and dividers
         self.SPACING = 2 * (self.width // (self.columns * 20))
         self.BLOCK_WIDTH = 2 * ((self.width - self.SPACING) // (self.columns * 2)) - self.SPACING
-        self.BLOCK_HEIGHT = 2 * (self.BLOCK_WIDTH // 5)
+        #self.BLOCK_HEIGHT = 2 * (self.BLOCK_WIDTH // 5)
+        self.BLOCK_HEIGHT = 2 * ((self.height - self.SPACING) // (self.columns * 2)) - self.SPACING
         self.font = (zynthian_gui_config.font_family, int(0.06 * self.BLOCK_WIDTH))
-        self.icon_size = (self.BLOCK_HEIGHT - 4, self.BLOCK_HEIGHT - 4)
+        icon_h = self.BLOCK_HEIGHT - int(0.5 * self.SPACING)
+        self.icon_size = (icon_h, icon_h)
         self._draw_nodes()
 
     def build_view(self):
@@ -84,13 +87,15 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self._draw_nodes()
         return True
 
-    def setup(self, config):
+    def setup(self, config, cols=None):
         """
         Configure the buttons
         
         :param config: List of dictionaries, each describing a button
         """
         self.config = config
+        if cols:
+            self.columns = cols
 
     def get_icon(self, icon_fname):
         if not icon_fname:
@@ -122,7 +127,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             if "icon" in node:
                 img = self.get_icon(node["icon"])
                 if img:
-                    self.canvas.create_image(x, y, image=img, anchor="nw")
+                    self.canvas.create_image(x, y + self.BLOCK_HEIGHT // 2, image=img, anchor="w")
             self.canvas.create_text(
                 x + 2 * self.BLOCK_WIDTH // 3, y + self.BLOCK_HEIGHT // 2,
                 text=node["title"],
@@ -141,7 +146,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         if bbox:
             self.canvas.configure(scrollregion=(bbox[0] - self.SPACING, bbox[1] - self.SPACING, bbox[2] + self.SPACING, bbox[3] + self.SPACING))
         else:
-            self.canvas.configure(scrollregion=(0,0,100,100))
+            self.canvas.configure(scrollregion=(0, 0, 100, 100))
         
         self._draw_selection()
 
