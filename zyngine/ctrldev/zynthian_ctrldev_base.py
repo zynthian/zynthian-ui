@@ -144,6 +144,7 @@ class zynthian_ctrldev_base:
         # Register for GUI changes
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
+        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, self.on_alt_mode)
 
     def end(self):
         """End control device: restore initial state, unregister signals, etc
@@ -356,6 +357,11 @@ class zynthian_ctrldev_base:
             else:
                 return
             self.refresh()
+
+    def on_alt_mode(self, alt_mode: bool):
+        """Handle change of alt mode
+        *COULD* be implemented by child class"""
+        pass
 
     def on_gui_view_pos(self, left_chain=None, top_phrase=None):
         """Update GUI scroll position
