@@ -70,7 +70,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.SPACING = 2 * (self.width // (self.columns * 20))
         self.BLOCK_WIDTH = 2 * ((self.width - self.SPACING) // (self.columns * 2)) - self.SPACING
         self.BLOCK_HEIGHT = 2 * (self.BLOCK_WIDTH // 5)
-        self.font = (zynthian_gui_config.font_family, int(0.065 * self.BLOCK_WIDTH))
+        self.font = (zynthian_gui_config.font_family, int(0.06 * self.BLOCK_WIDTH))
         self.icon_size = (self.BLOCK_HEIGHT - 4, self.BLOCK_HEIGHT - 4)
         self._draw_nodes()
 
