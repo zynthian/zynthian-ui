@@ -194,10 +194,10 @@ class zynseq(zynthian_engine):
             'nudge_factor': 1.0
         })
         self.zctrl_metro_mode = zynthian_controller(self, 'metronome_enable', {
-                'name': 'Metronome Mode',
-                'labels': ['Off', 'Transport', 'On', 'Intro'],
-                'ticks': [0, 1, 2, 3],
-                'value': self.libseq.getMetronomeMode()
+            'name': 'Metronome Mode',
+            'labels': ['OFF', 'AUTO', 'ON', 'INTRO'],
+            'ticks': [0, 1, 2, 3],
+            'value': self.libseq.getMetronomeMode()
         })
         self.zctrl_metro_volume = zynthian_controller(self, 'metronome_volume', {
             'name': 'Metronome Volume',
