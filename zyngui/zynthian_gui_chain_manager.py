@@ -972,7 +972,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                 self.zyngui.show_screen(proc)
             else:
                 self.zyngui.show_screen("processor_options")
-        return True
+            return True
 
     def switch(self, swi, t):
         """ Function to handle switches press
