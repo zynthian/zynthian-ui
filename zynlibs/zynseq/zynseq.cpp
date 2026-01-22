@@ -95,12 +95,10 @@ uint16_t g_nHorizontalZoom          = 16;           // Quantity of beats to show
 
 // Transport variables apply to next period
 uint32_t g_nDefaultBpb                = DEFAULT_BPB; // Default quantity of beats (quater notes) in each bar
-uint32_t g_g_nBeatsPerBar             = DEFAULT_BPB; // Current quantity of beats (quater notes) in each bar (sync point division)
-uint32_t g_nBeatType                  = 4;         // Time signature denominator (not used)
-uint32_t g_nTicksPerBeat              = 1920;
-uint32_t g_nTicksPerClock             = g_nTicksPerBeat / PPQN;
+uint32_t g_nBeatsPerBar               = DEFAULT_BPB; // Current quantity of beats (quater notes) in each bar (sync point division)
+uint32_t g_nBeatType                  = 4;           // Time signature denominator (not used)
 double g_dTempo                       = 120.0;
-double g_dFramesPerTick;                       // Quantity of frames in each sequence clock cycle
+double g_dFramesPerTick;                           // Quantity of frames in each sequence clock cycle
 bool g_bTimebaseChanged               = false;     // True to trigger recalculation of timebase parameters
 Timebase* g_pTimebase                 = NULL;      // Pointer to the timebase object for selected song
 uint32_t g_nBar                       = 1;         // Current bar
@@ -2374,8 +2372,13 @@ void setPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t state
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence == nullptr)
         return;
-    if (state == STARTING || state == PLAYING)
+    if (state == STARTING || state == PLAYING) {
+        // If no playing sequences, set BPB to the sequence's phrase's timesig
+        if (g_seqMan.getPlayingSequencesCount() == 0) {
+			setBpb(getPhraseBPB(scene, phrase));
+    	}
         localTransportStart(TRANSPORT_CLIENT_ZYNSEQ);
+    }
     else if (!g_bPlayingSequences && state == STOPPING)
         state = STOPPED;
     g_seqMan.setPlayState(pSequence, state);
@@ -2882,13 +2885,6 @@ void setDefaultBpb(uint8_t beats) {
 }
 
 uint8_t getDefaultBpb() { return g_nDefaultBpb; }
-
-void transportSetSyncTimeout(uint32_t timeout) { jack_set_sync_timeout(g_pJackClient, timeout); }
-
-void enableMetronome(bool enable) {
-    g_bMetronome = enable;
-    g_nMetronomePtr = -1;
-}
 
 void transportSetSyncTimeout(uint32_t timeout) {
     jack_set_sync_timeout(g_pJackClient, timeout);
