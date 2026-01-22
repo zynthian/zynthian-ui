@@ -117,8 +117,10 @@ PATTERN_PARAMS = [
 class zynseq(zynthian_engine):
 
     # Initiate library - performed by zynseq module
-    def __init__(self, state_manager=None):
+    def __init__(self, state_manager=None, proc=None):
         self.state_manager = state_manager
+        self.proc = proc
+        self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_tempo.py"
 
         try:
             self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
@@ -187,16 +189,15 @@ class zynseq(zynthian_engine):
             'name': 'BPM',
             'is_integer': False,
             'value_min': 10.0,
-            'value_max': 420,
+            'value_max': 420.0,
             'value': self.libseq.getTempo(),
             'nudge_factor': 1.0
         })
-        self.zctrl_metro_enable = zynthian_controller(self, 'metronome_enable', {
-                'name': 'Metronome On/Off',
-                'labels': ['Off', 'On'],
-                'ticks': [0, 1],
-                'is_toggle': True,
-                'value': self.libseq.isMetronomeEnabled()
+        self.zctrl_metro_mode = zynthian_controller(self, 'metronome_enable', {
+                'name': 'Metronome Mode',
+                'labels': ['Off', 'Transport', 'On', 'Intro'],
+                'ticks': [0, 1, 2, 3],
+                'value': self.libseq.getMetronomeMode()
         })
         self.zctrl_metro_volume = zynthian_controller(self, 'metronome_volume', {
             'name': 'Metronome Volume',
@@ -204,11 +205,12 @@ class zynseq(zynthian_engine):
             'value_max': 100,
             'value': int(100 * self.libseq.getMetronomeVolume())
         })
-        self.zctrl_transport = zynthian_controller(self, 'transport', {
-            'name': 'Global Transport',
-            'labels': ['Stopped', 'Running'],
-            'ticks': [0, 1],
-            'is_toggle': True
+        self.zctrl_ppqn = zynthian_controller(self, 'ppqn', {
+            'name': 'Clock PPQN',
+            'value_min': 1,
+            'value_max': 48,
+            'value_default': 24,
+            'value': self.libseq.getExtClockPPQN()
         })
 
         # Cache sequence info for launchers to reduce access to libseq
@@ -240,16 +242,14 @@ class zynseq(zynthian_engine):
         # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
         # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
 
+        tempo = self.libseq.getTempo()
+        if tempo != self.zctrl_tempo.value:
+            self.zctrl_tempo.set_value(tempo)
         size = self.phrases * 33
         states = (ctypes.c_uint32 * size)()
         count = self.libseq.getStateChange(states, size)
         if count:
             self.playing_sequences = self.libseq.getPlayingSequences()
-            # Only check for tempo and time signature changes when change of play state - this works for now but won't if we have dynamic tempo changes
-            tempo = self.libseq.getTempo()
-            if tempo != self.zctrl_tempo.value:
-                self.zctrl_tempo.value = tempo
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=tempo)
             bpb = self.libseq.getBpb()
             if bpb != self.bpb:
                 self.bpb = bpb
@@ -378,21 +378,21 @@ class zynseq(zynthian_engine):
     # client: Name to register with transport to avoid other clients stopping whilst in use
     def transport_start(self, client):
         if self.libseq:
-            self.libseq.transportStart(bytes(client, "utf-8"))
+            self.libseq.jackTransportStart(bytes(client, "utf-8"))
 
     # Request JACK transport stop
     # client: Name registered with transport when started
     # Note: Transport stops when all registered clients have requested stop
     def transport_stop(self, client):
         if self.libseq:
-            self.libseq.transportStop(bytes(client, "utf-8"))
+            self.libseq.jackTransportStop(bytes(client, "utf-8"))
 
     # Toggle JACK transport
     # client: Name to register or was previously registered with transport when started
 
     def transport_toggle(self, client):
         if self.libseq:
-            self.libseq.transportToggle(bytes(client, "utf-8"))
+            self.libseq.jackTransportToggle(bytes(client, "utf-8"))
 
     # -------------------------------------------------------------------
     # MIDI transport & clock settings
@@ -408,22 +408,22 @@ class zynseq(zynthian_engine):
     def nudge_tempo(self, offset):
         self.zctrl_tempo.nudge(offset)
 
+    def tap_tempo(self):
+        self.libseq.tapTempo()
+
     def send_controller_value(self, zctrl):
         if zctrl == self.zctrl_tempo:
             self.libseq.setTempo(zctrl.value)
             #self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=zctrl.value)
-        elif zctrl == self.zctrl_metro_enable:
-            self.libseq.enableMetronome(zctrl.value)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, enable=zctrl.value, volume=self.zctrl_metro_volume.value)
+        elif zctrl == self.zctrl_metro_mode:
+            self.libseq.setMetronomeMode(zctrl.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, mode=zctrl.value, volume=self.zctrl_metro_volume.value)
         elif zctrl == self.zctrl_metro_volume:
             self.libseq.setMetronomeVolume(zctrl.value / 100.0)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, enable=self.zctrl_metro_enable.value, volume=zctrl.value)
-        elif zctrl == self.zctrl_transport:
-            if zctrl.value:
-                self.transport_start("global")
-            else:
-                self.transport_stop("global")
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, mode=self.zctrl_metro_mode.value, volume=zctrl.value)
+        elif zctrl == self.zctrl_ppqn:
+            self.libseq.setExtClockPPQN(zctrl.value)
 
     def set_midi_channel(self, chan, sequence, track, channel):
         self.libseq.setChannel(chan, sequence, track, channel)
@@ -461,8 +461,7 @@ class zynseq(zynthian_engine):
         self.phrases = len(self.state["scenes"][self.scene]["phrases"])
         try:
             if self.state["tempo"] != self.zctrl_tempo.value:
-                self.zctrl_tempo.value = self.state["tempo"]
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=self.zctrl_tempo.value)
+                self.zctrl_tempo.set_value(self.state["tempo"])
         except:
             logging.warning("Failed to set tempo")
         try:

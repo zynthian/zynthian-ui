@@ -120,6 +120,10 @@ midi_port_names = {}
 
 # List of MIDI output ports to which to send MIDI clock
 midi_clock_output_ports = []
+ext_clock_zmip = -1
+
+# List of MIDI zmips not feeding zynseq
+zynseq_input_exclude = []
 
 # Get the main jack audio device
 jack_audio_device = ""
@@ -503,6 +507,14 @@ def remove_hw_port(port):
         return True
     return False
 
+def set_ext_clock_zmip(idev):
+    global ext_clock_zmip
+    ext_clock_zmip = idev
+    request_midi_connect()
+
+def get_ext_clock_zmip():
+    return ext_clock_zmip
+
 def set_midi_clock_output_port(port_name, send):
     global midi_clock_output_ports
     if send:
@@ -528,6 +540,23 @@ def set_midi_clock_output_ports(port_names):
 
 def get_midi_clock_output_ports():
     return midi_clock_output_ports
+
+def get_zynseq_exclude_idevs():
+    return zynseq_input_exclude
+
+def set_zynseq_input_port(idev, enable):
+    global zynseq_input_exclude
+
+    if enable and idev in zynseq_input_exclude:
+        zynseq_input_exclude.remove(idev)
+    elif not enable and idev not in zynseq_input_exclude:
+        zynseq_input_exclude.append(idev)
+    else:
+        return
+    request_midi_connect()
+
+def toggle_zynseq_input_port(idev):
+    set_zynseq_input_port(idev, idev in zynseq_input_exclude)
 
 def update_hw_midi_ports(force=False):
     """Update lists of external (hardware) source and destination MIDI ports
@@ -771,6 +800,13 @@ def midi_autoconnect():
     # Connect zynseq output to ZynMidiRouter:step_in
     required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
 
+    # Add zynseq inputs
+    for idev, port in enumerate(devices_in):
+        if idev >= max_num_devs:
+            break
+        if port and idev not in zynseq_input_exclude:
+            required_routes["zynseq:input"].add(port.name)
+
     # Connect zynseq clock output
     for port in midi_clock_output_ports:
         if port in required_routes:
@@ -778,6 +814,10 @@ def midi_autoconnect():
                 required_routes[port].add("zynseq:clock")
             except:
                 logging.warning(f"Unable to connect MIDI clock to {port}")
+
+    # Connect zynseq clock input
+    if 0 <= ext_clock_zmip <= len(devices_in):
+        required_routes["zynseq:clock_in"] = {devices_in[ext_clock_zmip].name}
 
     # Add SMF player to MIDI input devices
     idev = state_manager.get_zmip_seq_index()
@@ -818,7 +858,7 @@ def midi_autoconnect():
             del ctrl_fb_procs[i]
 
     # Connect ZynMidiRouter:step_out to ZynthStep input
-    required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
+    #required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
     # Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
     # TODO => We need a new mechanism for this!! Or simply use the ctrldev drivers

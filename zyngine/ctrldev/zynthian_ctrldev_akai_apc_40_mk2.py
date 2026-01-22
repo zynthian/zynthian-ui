@@ -318,8 +318,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         except:
             pass
 
-    def on_metronome(self, enable, volume):
-        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_METRONOME, enable)
+    def on_metronome(self, mode, volume):
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_METRONOME, mode)
 
     def set_enc_mode(self, mode=None):
         if mode is not None and mode <= ENC_MODE_USER:
@@ -564,7 +564,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             elif note == BTN_SHIFT:
                 self._shift = True
             elif note == BTN_TAP_TEMPO:
-                self.state_manager.send_cuia("TAP_TEMPO")
+                self.zynseq.tap_tempo()
             elif note == LED_PLAY:
                 self.state_manager.toggle_audio_player()
             elif note == LED_RECORD:
@@ -573,7 +573,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 if self._shift:
                     self.state_manager.send_cuia("TOGGLE_SCREEN", ("tempo",))
                 else:
-                    self.zynseq.zctrl_metro_enable.toggle()
+                    self.zynseq.zctrl_metro_mode.toggle()
             elif note == BTN_NUDGE_DOWN:
                 self.zynseq.nudge_tempo(-0.1)
             elif note == BTN_NUDGE_UP:

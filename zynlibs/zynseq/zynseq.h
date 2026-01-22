@@ -60,12 +60,6 @@
 extern "C" {
 #endif
 
-enum TRANSPORT_CLOCK {
-    TRANSPORT_CLOCK_INTERNAL = 0,
-    TRANSPORT_CLOCK_MIDI = 1,
-    TRANSPORT_CLOCK_ANALOG = 2
-};
-
 // ** Library management functions **
 
 /** @brief  Initialise library and connect to jackd server
@@ -1173,7 +1167,7 @@ void updateSequenceInfo();
 
 /** @brief  Sets the transport to start of the current bar
 */
-void setTransportToStartOfBar();
+void setJackTransportToStartOfBar();
 
 /** @brief  Selects a track to solo, muting other tracks in phrase
     @param  scene Index of scene
@@ -1197,44 +1191,53 @@ bool isSolo(uint8_t scene, uint8_t phrase, uint8_t sequence, uint16_t track);
 /** @brief  Locate transport to frame
     @param  frame Quantity of frames (samples) from start of song to locate
 */
-void transportLocate(uint32_t frame);
-
-/** @brief  Get frame sequence at BBT position
-    @param  bar Bar [>0]
-    @param  beat Beat within bar [>0, <=beats per bar]
-    @param  tick Tick within beat [<ticks per beat]
-    @retval uint32_t Frames since start of song until requested position
-*/
-uint32_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick);
+void jackTransportLocate(uint32_t frame);
 
 /** @brief  Register as timebase master
     @retval bool True if successfully became timebase master
 */
-bool transportRequestTimebase();
+bool jackTransportRequestTimebase();
 
 /** @brief  Release timebase master
 */
-void transportReleaseTimebase();
+void jackTransportReleaseTimebase();
 
-/** @brief  Start transport rolling
-    @param  client Name of client requesting change
+/** @brief  Start jack transport rolling
  **/
-void transportStart(const char* client);
+void jackTransportStart();
 
-/** @brief  Stop transport rolling
-    @param  client Name of client requesting change
+/** @brief  Stop jack transport rolling
 */
-void transportStop(const char* client);
+void jackTransportStop();
 
 /** @brief  Toggle between play and stop state
-    @param  client Name of client requesting change
 */
-void transportToggle(const char* client);
+void jackTransportToggle();
 
-/** @brief  Get play status
-    @retval uint8_t Status [JackTransportStopped | JackTransportRolling | JackTransportStarting]
+/** @brief  Get jack transport state
+    @retval uint8_t State [JackTransportStopped | JackTransportRolling | JackTransportStarting]
 */
-uint8_t transportGetPlayStatus();
+uint8_t getJackTransportState();
+
+/** @brief  Start local transport rolling
+    @param  id Id  of client requesting change
+ **/
+void localTransportStart(uint8_t id);
+
+/** @brief  Stop local transport rolling
+    @param  id Id  of client requesting change
+*/
+void localTransportStop(uint8_t id);
+
+/** @brief  Toggle between play and stop state
+    @param  id Id of client requesting change
+*/
+void localTransportToggle(uint8_t id);
+
+/** @breif  Get tempo from jack transport
+    @retval double Tempo or 0.0 on error
+*/
+double getJackTempo();
 
 /** @brief  Set transport tempo
     @param  tempo Beats per minute
@@ -1273,15 +1276,15 @@ uint8_t getDefaultBpb();
 */
 void transportSetSyncTimeout(uint32_t timeout);
 
-/** @brief  Enable or disable metronome
-    @param  enable True to enable [Default: true]
+/** @brief  Set metronome mode
+    @param  mode 0: Disabled. 1: Play when transport running. 2: Play always (starts local transport)
 */
-void enableMetronome(bool enable = true);
+void setMetronomeMode(uint8_t mode);
 
-/** @brief  Check of metronome enabled
-    @retval bool True if enabled
+/** @brief  Get metronome mode
+    @retval uint8_t Metronome mode
 */
-bool isMetronomeEnabled();
+uint8_t getMetronomeMode();
 
 /** @brief  Set level of metronome
     @param  level Level [0.0 - 1.0]
@@ -1293,25 +1296,19 @@ void setMetronomeVolume(float level);
 */
 float getMetronomeVolume();
 
-/** @brief  Get clock source
-    @retval uint8_t Clock source [0:Internal 1:MIDI 2:Analogue]
+/** @brief  Get external clock PPQN
+    @retval uint32_t External clock pulse per quater note (beat)
 */
-uint8_t getClockSource();
+uint8_t getExtClockPPQN();
 
-/** @brief  Set clock source
-    @param  source uint8_t Clock source [0:Internal 1:MIDI 2:Analogue]
+/** @brief  Set external clock PPQN
+    @param  ppqn PPQN (>0)
 */
-void setClockSource(uint8_t source);
+void setExtClockPPQN(uint8_t ppqn);
 
-/** @brief  Get analog clock divisor
-    @retval uint8_t Analog Clocks per Beat (Analog Clock Divisor)
+/** @brief  React to a tempo tap event
 */
-uint8_t getAnalogClocksBeat();
-
-/** @brief  Set analog clock divisor
-    @param  Analog Clocks per Beat
-*/
-void setAnalogClocksBeat(uint8_t analog_clock_divisor);
+void tapTempo();
 
 /** @brief  Enable a channel
     @param  channel MIDI channel
@@ -1325,10 +1322,9 @@ void enableChannel(uint8_t channel, bool enable);
 */
 bool isChannelEnabled(uint8_t channel);
 
-/** @brief  Get quantity of frames in each clock cycle
-    @retval jack_nframes_t Quantity of frames
+/** @brief  Update the quantity of frames in each tick and clock
 */
-jack_nframes_t getFramesPerClock(double dTempo);
+void updateClockTiming();
 
 /* Phrase handling */
 

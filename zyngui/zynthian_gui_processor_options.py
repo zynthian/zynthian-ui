@@ -52,7 +52,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
 
         self.list_data.append((None, None, "> Manage this processor"))
         # Move processor
-        if self.processor.type not in ("MIDI Synth", "Audio Generator"):
+        if self.processor.type not in ("MIDI Synth", "Audio Generator") and self.processor.chain is not None:
             if self.processor.chain.get_processor_count(self.processor.type) > 1:
                 self.list_data.append((self.start_move, None, "Move"))
 

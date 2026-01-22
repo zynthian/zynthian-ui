@@ -1369,7 +1369,7 @@ class zynthian_gui:
             self.cuia_toggle_audio_play()
 
     def cuia_tempo(self, params=None):
-        self.state_manager.tempo_processor.engine.tap()
+        self.state_manager.zynseq.tap_tempo()
         if self.current_screen != "tempo":
             self.show_screen("tempo")
 
@@ -1405,7 +1405,7 @@ class zynthian_gui:
             self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - 1)
 
     def cuia_tap_tempo(self, params=None):
-        self.state_manager.tempo_processor.engine.tap()
+        self.state_manager.zynseq.tap_tempo()
 
     # Zynpot & Zynswitch emulation CUIAs (low level)
     def cuia_zynpot(self, params=None):

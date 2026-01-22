@@ -9,8 +9,6 @@
 
 #define FLAG_CC_INTERPOLATION 1
 
-extern uint32_t PPQN;
-
 /** StepEvent class provides an individual step event .
  *   The event may be part of a scene, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern
  * player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in steps. The epoch depends on the

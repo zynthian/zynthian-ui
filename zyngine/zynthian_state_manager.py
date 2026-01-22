@@ -159,7 +159,7 @@ class zynthian_state_manager:
 
         self.zynseq = zynseq.zynseq(self)
         self.alsa_mixer_processor = self.chain_manager.add_processor(None, "MX", None, ALSA_ID)
-        self.tempo_processor = self.chain_manager.add_processor(None, "TP", None, TEMPO_ID)
+        self.tempo_processor = self.chain_manager.add_processor(None, "TP", None, TEMPO_ID) #TODO: Use zynseq engine directly
 
         self.audio_recorder = zynthian_audio_recorder(self)
         self.ctrldev_manager = None
@@ -1463,8 +1463,9 @@ class zynthian_state_manager:
                 if not restore_flag:
                     continue
                 try:
-                    processor = self.chain_manager.processors[int(proc_id)]
-                    if processor.chain_id in restored_chains:
+                    id = int(proc_id)
+                    processor = self.chain_manager.processors[id]
+                    if id < 0 or processor.chain_id in restored_chains:
                         self.set_busy_details(f"restoring {processor.get_basepath()} state")
                         processor.set_state(proc_state)
                 except Exception as e:
@@ -1493,9 +1494,9 @@ class zynthian_state_manager:
             if "send_clock" in zs3_state["global"]:
                 zynautoconnect.set_midi_clock_output_ports(zs3_state["global"]["send_clock"])
             try:
-                lib_zyncore.zmip_set_midi_clock_source(int(zs3_state["global"]["clock_source"]))
+                zynautoconnect.set_ext_clock_zmip(int(zs3_state["global"]["clock_source"]))
             except:
-                lib_zyncore.zmip_set_midi_clock_source(-1)
+                zynautoconnect.set_ext_clock_zmip(-1)
             if "zctrl_x" in zs3_state["global"]:
                 try:
                     processor = self.chain_manager.processors[zs3_state["global"]["zctrl_x"][0]]
@@ -1667,7 +1668,7 @@ class zynthian_state_manager:
         # Add global parameters
         self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
         self.zs3[zs3_id]["global"]["send_clock"] = zynautoconnect.get_midi_clock_output_ports()
-        self.zs3[zs3_id]["global"]["clock_source"] = lib_zyncore.zmip_get_midi_clock_source()
+        self.zs3[zs3_id]["global"]["clock_source"] = zynautoconnect.get_ext_clock_zmip()
         try:
             processor_id = self.zctrl_x.processor.id
             symbol = self.zctrl_x.symbol
@@ -2252,7 +2253,7 @@ class zynthian_state_manager:
                 zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=True)
                 self.status_midi_player = False
             self.last_midi_file = fpath
-            # self.zynseq.libseq.transportLocate(0)
+            # self.zynseq.libseq.jackTransportLocate(0)
         except Exception as e:
             logging.error(f"ERROR STARTING MIDI PLAY: {e}")
             return False

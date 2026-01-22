@@ -107,12 +107,12 @@ class SequenceManager {
     void updateAllSequenceLengths();
 
     /** @brief  Handle clock
-        @param  timeinfo Pair: Offset since JACK epoch for start of next period, duration of clock cycle in frames
+        @param  nTime Offset since sequence tick epoch for this tick
         @param  pSchedule Pointer to the schedule to populate with events
         @param  bSync True indicates a sync pulse
         @retval bool True if sequences or phrase playing
     */
-    bool clock(std::pair<uint32_t, uint32_t> timeinfo, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync);
+    bool clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync);
 
     /** @brief  Get pointer to sequence
         @param  scene Index of scene

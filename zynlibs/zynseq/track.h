@@ -62,18 +62,17 @@ class Track {
     void setOutput(uint8_t output);
 
     /** @brief  Handle clock signal
-        @param  nTime Time (quantity of samples since JACK epoch)
+        @param  nTime Time (quantity of ticks since tick epoch)
         @param  nPosition Play position within sequence in clock cycles
-        @param  nSamplesPerClock Samples per clock
         @param  bSync True if sync point
         @retval uint8_t 1 if a step needs processing for this track
         @note   Tracks are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
     */
-    uint8_t clock(uint32_t nTime, uint32_t nPosition, uint32_t nSamplesPerClock, bool bSync);
+    uint8_t clock(uint32_t nTime, uint32_t nPosition, bool bSync);
 
     /** @brief  Gets next event at current clock cycle
         @retval SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
-        @note   Start, end and interpolated events are returned on each call. Time is offset from start of clock cycle in samples.
+        @note   Start, end and interpolated events are returned on each call. Time is offset from start of clock cycle in ticks.
     */
     SEQ_EVENT* getEvent();
 
@@ -183,10 +182,9 @@ class Track {
     int m_nNextEvent = -1;                    // Index of next event to process or -1 if no more events at this clock cycle
     int8_t m_nEventValue = -1;                // Value of event at current interpolation point or -1 if no event
     float m_fEventOffset = 0;                 // Offset for the currently processed Step event (getEvent)
-    uint32_t m_nLastClockTime = 0;            // Time of last clock pulse (sample)
+    uint32_t m_nLastClockTime = 0;            // Time of last clock pulse (ticks)
     uint32_t m_nNextStep = 0;                 // Postion within pattern (step)
     uint32_t m_nTrackLength = 0;              // Quantity of clock cycles in track (last pattern start + length)
-    uint32_t m_nSamplesPerClock;              // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
     bool m_bSolo = false;                     // True if track is solo
     bool m_bMute = false;                     // True if track is muted
     bool m_bChanged = true;                   // True if state changed since last hasChanged()

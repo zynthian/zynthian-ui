@@ -432,6 +432,11 @@ class zynthian_controller:
                 self.midi_cc_debounce_timer.start()
             else:
                 self.set_value(value, send=True)
+        elif self.ticks:
+            idx = self.ticks.index(self.value) + 1
+            if idx >= len(self.ticks):
+                idx = 0
+            self.set_value(self.ticks[idx], send=True)
 
     def _set_value(self, val):
         if self.is_path:

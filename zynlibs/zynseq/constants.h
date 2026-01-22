@@ -49,8 +49,8 @@
 #define CLOCK_TRIG_PHRASE 16  // Clock has triggered a phrase change
 
 // Clock rates
-#define PPQN_INTERNAL 96
-#define PPQN_MIDI 24
+#define PPQN_INTERNAL 1920  // Quantity of sequencer clock pulses in each beat 
+#define PPQN_MIDI 24        // Quantity of MIDI clock pulses in each beat
 
 // Play status (bit 0 = playing)
 #define STOPPED 0       // Sequence is stopped
@@ -61,6 +61,19 @@
 #define STOPPING_SYNC 5 // Sequence is playing waiting to stop at next sync point
 #define CHILD_PLAYING 6 // Child (of phrase launcher) sequence is playing
 #define CHILD_STOPPING 8 // Child (of phrase launcher) sequence is stopping
+
+// Metronome modes
+enum METRO_MODES {
+    METRO_MODE_OFF,         // Disable metronome
+    METRO_MODE_TRANSPORT,   // Play metronome only when transport running
+    METRO_MODE_ON,          // Play metronome
+    METRO_MODE_INTRO,       // Play metronome only when trasport stopped
+    METRO_MODE_LAST         // Dummy - used for range check
+};
+
+// Local transport flags
+#define TRANSPORT_CLIENT_ZYNSEQ   1
+#define TRANSPORT_CLIENT_METRO    2
 
 // Follow action
 enum FOLLOW_ACTION {

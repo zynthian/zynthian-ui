@@ -169,19 +169,18 @@ class Sequence {
     Timebase* getTimebase();
 
     /** @brief  Handle clock signal
-        @param  nTime Time (quantity of samples since JACK epoch)
+        @param  nTime Time (quantity of ticks since tick epoch)
         @param  bSync True to indicate sync pulse, e.g. to sync tracks
-        @param  nSamplesPerClock Samples per clock
         @param  nTimeSig Beats per bar
         @retval uint8_t Bitwise flag of what clock triggers (See CLOCK_TRIG_ constants)
         @note   Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
         @note   Will clock each track
     */
-    uint8_t clock(uint32_t nTime, bool bSync, uint32_t nSamplesPerClock, uint8_t nTimeSig);
+    uint8_t clock(uint32_t nTime, bool bSync, uint8_t nTimeSig);
 
     /** @brief  Gets next event at current clock cycle
         @retval SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
-        @note   Start, end and interpolated events are returned on each call. Time is offset from start of clock cycle in samples.
+        @note   Start, end and interpolated events are returned on each call. Time is offset from start of clock cycle in ticks.
     */
     SEQ_EVENT* getEvent();
 

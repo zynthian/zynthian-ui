@@ -128,7 +128,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     mode_str += f" {ZMIP_ICON_MIDI_SYS}"
                 if lib_zyncore.zmip_get_flag_system_rt(idev):
                     mode_str += f" {ZMIP_ICON_MIDI_SYS_RT}"
-                if lib_zyncore.zmip_get_midi_clock_source() == idev:
+                if zynautoconnect.get_ext_clock_zmip() == idev:
                     mode_str += f" {ZMIP_ICON_MIDI_CLOCK}"
                 if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                     mode_str += f" {ZMIP_ICON_CTRLDEV_DRIVER}"
@@ -388,13 +388,19 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     mode_info += f"{title}. Don't translate MIDI channel. Send to chains matching device's MIDI channel."
                     options[title] = ["MODE_ACTI", [mode_info, "midi_input.png"]]
 
+                options["Sequencer"] = None
+                if idev in zynautoconnect.get_zynseq_exclude_idevs():
+                    options[f"\u2610 Sequencer record input"] = [idev, ["Use this MIDI input for live recording into sequencer.", "midi_input.png"]]
+                else:
+                    options[f"\u2612 Sequencer record input"] = [idev, ["Use this MIDI input for live recording into sequencer.", "midi_input.png"]]
+
                 options["MIDI System Messages"] = None
                 mode_info = "Sync to MIDI clock from this device.\n\n"
-                if lib_zyncore.zmip_get_midi_clock_source() == idev:
+                if zynautoconnect.get_ext_clock_zmip() == idev:
                     title = f"\u2612 {ZMIP_ICON_MIDI_CLOCK} MIDI Clock Source"
                     options[title] = ["MIDI_CLOCK/OFF", [mode_info, "midi_input.png"]]
                     if port.name == "CV/Gate":
-                        beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat()
+                        beats = self.state_manager.zynseq.libseq.getClockDivisor()
                         options[f"[{beats}] Beat Sync Divider"] = ["BEAT_SYNC_DIV", [mode_info, "midi_input.png"]]
                 else:
                     title = f"\u2610 {ZMIP_ICON_MIDI_CLOCK} MIDI Clock Source"
@@ -481,6 +487,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 zynautoconnect.set_port_friendly_name(params)
             elif option.endswith("Send MIDI Clock"):
                 zynautoconnect.toggle_midi_clock_output_port(params)
+            elif option.endswith("Sequencer record input"):
+                zynautoconnect.toggle_zynseq_input_port(params)
             elif isinstance(params, list):
                 idev = self.list_data[self.index][1]
                 if click_type == "B":
@@ -510,16 +518,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                         case "MIDI_SYS_RT/OFF":
                             lib_zyncore.zmip_set_flag_system_rt(idev, False)
                         case "MIDI_CLOCK/ON":
-                            lib_zyncore.zmip_set_midi_clock_source(idev)
-                            self.state_manager.zynseq.libseq.setClockSource(1)
+                            zynautoconnect.set_ext_clock_zmip(idev)
                         case "MIDI_CLOCK/OFF":
-                            lib_zyncore.zmip_set_midi_clock_source(-1)
-                            self.state_manager.zynseq.libseq.setClockSource(0)
+                            zynautoconnect.set_ext_clock_zmip(-1)
                         case "BEAT_SYNC_DIV":
-                            beats = self.state_manager.zynseq.libseq.getAnalogClocksBeat() + 1
+                            beats = self.state_manager.zynseq.libseq.getClockDivisor() + 1
                             if beats > 4:
                                 beats = 1
-                            self.state_manager.zynseq.libseq.setAnalogClocksBeat(beats)
+                            self.state_manager.zynseq.libseq.setClockDivisor(beats)
                         case "MODE_ACTI":
                             lib_zyncore.zmip_set_flag_active_chain(idev, True)
                             zynautoconnect.update_midi_in_dev_mode(idev)

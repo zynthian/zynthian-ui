@@ -81,6 +81,6 @@ class zynthian_widget_tempo(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.itemconfigure(self.bpm_text, text=f"{tempo:.1f} BPM")
 
     def tap(self, event):
-        self.zyngui.state_manager.tempo_processor.engine.tap()
+        self.zyngui.state_manager.zynseq.tap_tempo()
 
 # ------------------------------------------------------------------------------

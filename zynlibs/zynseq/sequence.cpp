@@ -197,7 +197,7 @@ uint32_t Sequence::getState() {
     return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState;
 }
 
-uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint32_t nSamplesPerClock, uint8_t nTimeSig) {
+uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
     m_nCurrentTrack = 0;
     uint8_t nReturn = 0;
     uint8_t nState = m_nState;
@@ -236,7 +236,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint32_t nSamplesPerClock, u
         // Still playing so iterate through tracks
         bool trig = false;
         for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-            trig |= (*it).clock(nTime, m_nPosition, nSamplesPerClock, bSync);
+            trig |= (*it).clock(nTime, m_nPosition, bSync);
         if (trig)
             nReturn |= CLOCK_TRIG_MIDI;
         ++m_nPosition;

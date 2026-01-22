@@ -286,7 +286,7 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setPlayMode(sequence2,play_mode["LOOPSYNC"]) 
         libseq.setPlayState(sequence1, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence1), play_state["PLAYING"])
         libseq.setPlayState(sequence2, play_state["STARTING"])
         sleep(1.8)
@@ -322,7 +322,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayMode(sequence), mode)
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         sleep(2.2)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
@@ -355,7 +355,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayMode(sequence), mode)
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         sleep(1.8)
         tb=client.transport_query()
@@ -376,7 +376,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayMode(sequence), mode)
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for beat in range (0,5):
             self.assertEqual(client.transport_query()[1]['beat'], (beat%4)+1)
@@ -389,7 +389,7 @@ class TestLibZynSeq(unittest.TestCase):
         # one-shot-all, stopping before end
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         libseq.setPlayState(sequence, play_state["STOPPING"])
         for beat in range (0,5):
@@ -406,7 +406,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayMode(sequence), mode)
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for beat in range (0,5):
             self.assertEqual(client.transport_query()[1]['beat'], (beat%4)+1)
@@ -427,7 +427,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayMode(sequence), mode)
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for beat in range (0,5):
             self.assertEqual(client.transport_query()[1]['beat'], (beat%4)+1)
@@ -440,7 +440,7 @@ class TestLibZynSeq(unittest.TestCase):
         # One shot sync - stop before end
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         libseq.setPlayState(sequence, play_state["STOPPING"])
         for beat in range (0,4):
@@ -456,7 +456,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayMode(sequence), mode)
         libseq.setPlayState(sequence, play_state["STARTING"])
         sleep(0.1)
-        self.assertEqual(libseq.transportGetPlayStatus(), jack.ROLLING)
+        self.assertEqual(libseq.jackTransportGetPlayStatus(), jack.ROLLING)
         self.assertEqual(libseq.getPlayState(sequence), play_state["PLAYING"])
         for beat in range (0,5):
             self.assertEqual(client.transport_query()[1]['beat'], (beat%4)+1)
