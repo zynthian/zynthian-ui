@@ -388,6 +388,12 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     mode_info += f"{title}. Don't translate MIDI channel. Send to chains matching device's MIDI channel."
                     options[title] = ["MODE_ACTI", [mode_info, "midi_input.png"]]
 
+                options["Sequencer"] = None
+                if idev in zynautoconnect.get_zynseq_exclude_idevs():
+                    options[f"\u2610 Sequencer record input"] = [idev, ["Use this MIDI input for live recording into sequencer.", "midi_input.png"]]
+                else:
+                    options[f"\u2612 Sequencer record input"] = [idev, ["Use this MIDI input for live recording into sequencer.", "midi_input.png"]]
+
                 options["MIDI System Messages"] = None
                 mode_info = "Sync to MIDI clock from this device.\n\n"
                 if zynautoconnect.get_ext_clock_zmip() == idev:
@@ -481,6 +487,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 zynautoconnect.set_port_friendly_name(params)
             elif option.endswith("Send MIDI Clock"):
                 zynautoconnect.toggle_midi_clock_output_port(params)
+            elif option.endswith("Sequencer record input"):
+                zynautoconnect.toggle_zynseq_input_port(params)
             elif isinstance(params, list):
                 idev = self.list_data[self.index][1]
                 if click_type == "B":

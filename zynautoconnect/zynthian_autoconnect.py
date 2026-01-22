@@ -122,6 +122,9 @@ midi_port_names = {}
 midi_clock_output_ports = []
 ext_clock_zmip = -1
 
+# List of MIDI zmips not feeding zynseq
+zynseq_input_exclude = []
+
 # Get the main jack audio device
 jack_audio_device = ""
 for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -538,6 +541,23 @@ def set_midi_clock_output_ports(port_names):
 def get_midi_clock_output_ports():
     return midi_clock_output_ports
 
+def get_zynseq_exclude_idevs():
+    return zynseq_input_exclude
+
+def set_zynseq_input_port(idev, enable):
+    global zynseq_input_exclude
+
+    if enable and idev in zynseq_input_exclude:
+        zynseq_input_exclude.remove(idev)
+    elif not enable and idev not in zynseq_input_exclude:
+        zynseq_input_exclude.append(idev)
+    else:
+        return
+    request_midi_connect()
+
+def toggle_zynseq_input_port(idev):
+    set_zynseq_input_port(idev, idev in zynseq_input_exclude)
+
 def update_hw_midi_ports(force=False):
     """Update lists of external (hardware) source and destination MIDI ports
 
@@ -780,6 +800,13 @@ def midi_autoconnect():
     # Connect zynseq output to ZynMidiRouter:step_in
     required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
 
+    # Add zynseq inputs
+    for idev, port in enumerate(devices_in):
+        if idev >= max_num_devs:
+            break
+        if port and idev not in zynseq_input_exclude:
+            required_routes["zynseq:input"].add(port.name)
+
     # Connect zynseq clock output
     for port in midi_clock_output_ports:
         if port in required_routes:
@@ -831,7 +858,7 @@ def midi_autoconnect():
             del ctrl_fb_procs[i]
 
     # Connect ZynMidiRouter:step_out to ZynthStep input
-    required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
+    #required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
     # Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
     # TODO => We need a new mechanism for this!! Or simply use the ctrldev drivers
