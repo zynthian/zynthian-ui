@@ -635,20 +635,17 @@ class MixerHandler(ModeHandlerBase):
             # Only main chain is handled with SHIFT, ignore the rest
             if ccnum != self.main_chain_knob:
                 return False
-            mixer_chan = 255
+            else:
+                index = -1
         else:
             index = (ccnum - KNOB_1) + self._chains_bank * 8
             chain = self._chain_manager.get_chain_by_index(index)
             if chain is None or chain.chain_id == 0:
                 return False
-            mixer_chan = chain.mixer_chan
+            #mixer_chan = chain.mixer_chan
 
-        if type == "level":
-            value = self._zynmixer.get_level(mixer_chan)
-            set_value = self._zynmixer.set_level
-        elif type == "balance":
-            value = self._zynmixer.get_balance(mixer_chan)
-            set_value = self._zynmixer.set_balance
+        if type == "level" or type == "balance":
+            value = self.driver.get_mixer_param(type, index)
         else:
             return False
 
@@ -656,7 +653,7 @@ class MixerHandler(ModeHandlerBase):
         value *= 100
         value += ccval if ccval < 64 else ccval - 128
         value = max(minv, min(value, maxv))
-        set_value(mixer_chan, value / 100)
+        self.driver.set_mixer_param(type, index, value / 100)
         return True
 
     def _run_track_button_function(self, note):
