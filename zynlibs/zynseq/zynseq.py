@@ -583,4 +583,5 @@ class zynseq(zynthian_engine):
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
 
+
 # -------------------------------------------------------------------------------

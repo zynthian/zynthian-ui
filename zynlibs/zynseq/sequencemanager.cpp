@@ -47,6 +47,7 @@ void SequenceManager::init() {
     m_vScenes.clear();
     for (uint8_t channel = 0; channel < 32; ++channel)
         enableChannel(channel, m_bEnabled[channel]);
+    m_nTimeSig = DEFAULT_BPB;
     getPattern(0); // Create pattern 0 so that getNextPattern always has a valid starting point.
     setScene(0);
 }
@@ -103,11 +104,11 @@ uint32_t SequenceManager::getNextPattern(uint32_t pattern) {
     return it->first;
 }
 
-uint32_t SequenceManager::createPattern() {
+uint32_t SequenceManager::createPattern(uint32_t beats) {
     uint32_t pattern = 0;
     while (m_mPatterns.find(++pattern) != m_mPatterns.end())
         ;
-    m_mPatterns[pattern] = new Pattern(); // Insert a default pattern
+    m_mPatterns[pattern] = new Pattern(beats); // Insert a default pattern
     return pattern;
 }
 
@@ -440,6 +441,14 @@ void SequenceManager::setTimeSig(uint8_t sig) {
     m_nTimeSig = sig;
 }
 
+uint8_t SequenceManager::getDefaultTimeSig() {
+    return m_nDefaultTimeSig;
+}
+
+void SequenceManager::setDefaultTimeSig(uint8_t sig) {
+    m_nDefaultTimeSig = sig;
+}
+
 uint8_t* SequenceManager::getProgress() {
     return m_aGroupProgress;
 }
@@ -500,15 +509,16 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
     pPhrase->setName(s);
     pPhrase->setGroup(32);
     pPhrase->setRepeat(255);
+    pPhrase->setTimeSig(m_nDefaultTimeSig);
     for (uint8_t chan = 0; chan < 32; ++chan) {
         Sequence* pSequence = new Sequence(pPhrase);
         pSequence->setGroup(chan);
         pSequence->setName(s  + std::to_string(chan + 1));
         if (chan < 16) {
            Track* pTrack = pSequence->getTrack(0);
-            pTrack->setChannel(chan);
-            uint32_t nPattern = createPattern();
-            addPattern(pSequence, 0, 0, nPattern);
+           pTrack->setChannel(chan);
+           uint32_t nPattern = createPattern(m_nDefaultTimeSig);
+           addPattern(pSequence, 0, 0, nPattern);
         }
         pPhrase->m_aChildSequences[chan] = pSequence;
         setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0); // Loop
@@ -574,6 +584,43 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
     for (auto& phraseSeq: m_vScenes[scene])
         setFollowAction(scene, phraseSeq, phraseSeq->getFollowAction(), phraseSeq->getFollowParam());
     refreshPhrases(scene);
+}
+
+
+void SequenceManager::setPhraseTimesig(uint8_t scene, uint8_t phrase, uint8_t bpb) {
+    if (scene >= m_vScenes.size())
+        return;
+    auto& vPhrases = m_vScenes[scene];
+    if (phrase >= vPhrases.size())
+        return;
+
+    Sequence* pPhrase = vPhrases[phrase];
+    pPhrase->setTimeSig(bpb);
+
+    // Iterate each sequence in phrase
+    for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
+        Sequence* pChildSeq = pPhrase->m_aChildSequences[nSeq];
+        if (!pChildSeq) continue;
+	    Track* pTrack = pChildSeq->getTrack(0);
+        if (pTrack) {
+            Pattern* pPattern = pTrack->getPattern(0);
+            // For each empty pattern, adjust number of beats to fit exactly 1 bar => bpb
+            if (pPattern && pPattern->getLastStep() == -1) {
+                pPattern->setBeatsInPattern(bpb);
+            }
+        }
+    }
+}
+
+uint8_t SequenceManager::getPhraseTimesig(uint8_t scene, uint8_t phrase) {
+    if (scene >= m_vScenes.size())
+        return 0;
+    auto& vPhrases = m_vScenes[scene];
+    if (phrase >= vPhrases.size())
+        return 0;
+
+    Sequence* pPhrase = vPhrases[phrase];
+    return pPhrase->getTimeSig();
 }
 
 bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param) {

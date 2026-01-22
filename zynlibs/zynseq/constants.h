@@ -29,6 +29,7 @@
 #include <cstdint>
 
 #define DEFAULT_TEMPO 120.0 // March time (120 BPM)
+#define DEFAULT_BPB 4  // Default time signature (Beats Per Bar)
 #define PHRASE_CHANNEL 32 // Phrase launcher channel
 
 // Play modes START & END are OR'd to provide mode

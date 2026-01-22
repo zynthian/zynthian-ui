@@ -23,6 +23,7 @@
 #include "track.h"
 #include <map>
 
+
 /** SequenceManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk)
  * storage. SequenceManager is implemented as a singleton ensuring a single instance is available to all callers.
 */
@@ -78,10 +79,11 @@ class SequenceManager {
     uint32_t getNextPattern(uint32_t pattern);
 
     /** @brief  Create new pattern
+        @param  Number of beats in pattern.
         @retval uint32_t Index of new pattern
         @note   Use getPattern to retrieve pointer to pattern
     */
-    uint32_t createPattern();
+    uint32_t createPattern(uint32_t beats = DEFAULT_BPB);
 
     /** @brief  Delete pattern
         @param  index Index of the pattern to delete
@@ -228,6 +230,16 @@ class SequenceManager {
     */
     void setTimeSig(uint8_t sig);
 
+    /** @brief  Get default time signature (beats in bar)
+        @retval uint8_t Default time signature
+    */
+    uint8_t getDefaultTimeSig();
+
+    /** @brief  Set default time signature (beats in bar)
+        @param  sig default time signature (in quarter notes)
+    */
+    void setDefaultTimeSig(uint8_t sig);
+
     /** @brief  Get playback progress percentage
         @param   uint8_t* Pointer to 33 element array containing progress as a percentage of sequence length
         @note   Element 32 (phrase launchers) is a percentage of the current time signature (beats per bar)
@@ -274,6 +286,20 @@ class SequenceManager {
     */
     void swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2);
 
+    /** @brief  Set the time signature for a phrase
+        @param  scene Index of scene
+        @param  phrase Index of phrase
+        @param  bpb Time signature in Beats per Bar
+    */
+    void setPhraseTimesig(uint8_t scene, uint8_t phrase, uint8_t bpb);
+
+    /** @brief  Set the time signature for a phrase
+        @param  scene Index of scene
+        @param  phrase Index of phrase
+        @param  bpb Time signature in Beats per Bar
+    */
+    uint8_t getPhraseTimesig(uint8_t scene, uint8_t phrase);
+
     /** @brief  Set follow action
         @param  scene Index of scene
         @param  sequence Pointer to sequence
@@ -297,7 +323,8 @@ class SequenceManager {
     bool m_bTempoChanged = false;     // True if tempo changed by sequence
     float m_fTempo = DEFAULT_TEMPO;   // Current tempo
     bool m_bTimeSigChanged = false;   // True if time signature changed by sequence
-    uint8_t m_nTimeSig = 4;           // Current time signature in beats (1/4 notes) per bar
+    uint8_t m_nTimeSig = DEFAULT_BPB;           // Current time signature in beats (1/4 notes) per bar
+    uint8_t m_nDefaultTimeSig = DEFAULT_BPB;    // Default time signature in beats (1/4 notes) per bar
     uint8_t m_nTriggerDevice = 0xFF;  // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
     uint8_t m_aGroupProgress[33];     // Array of group playback progress percentage

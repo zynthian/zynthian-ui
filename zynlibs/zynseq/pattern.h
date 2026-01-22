@@ -121,7 +121,7 @@ class Pattern {
         @param  beats Quantity of beats in pattern [Optional - default:4]
         @param  stepsPerBeat Quantity of steps per beat [Optional - default: 4]
     */
-    Pattern(uint32_t beats = 4, uint32_t stepsPerBeat = 4);
+    Pattern(uint32_t beats = DEFAULT_BPB, uint32_t stepsPerBeat = 4);
 
     /** @brief  Copy constructor
         @param  Pointer to pattern to copy

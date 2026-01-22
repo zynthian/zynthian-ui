@@ -94,7 +94,8 @@ uint16_t g_nHorizontalZoom            = 16;         // Quantity of beats to show
 uint32_t PPQN = PPQN_INTERNAL;
 
 // Transport variables apply to next period
-uint32_t g_nBpb                       = 4;         // Quantity of beats (quater notes) in each bar (sync point division)
+uint32_t g_nDefaultBpb                = DEFAULT_BPB; // Default quantity of beats (quater notes) in each bar
+uint32_t g_nBpb                       = DEFAULT_BPB; // Current quantity of beats (quater notes) in each bar (sync point division)
 uint32_t g_nBeatType                  = 4;
 uint32_t g_nTicksPerBeat              = 1920;
 uint32_t g_nTicksPerClock             = g_nTicksPerBeat / PPQN;
@@ -1033,7 +1034,8 @@ void reset() {
     g_nScene = 0;
     g_nBar = 1;
     g_nBeat = 1;
-    g_nBpb = 4;
+    g_nBpb = DEFAULT_BPB;
+    g_nDefaultBpb = DEFAULT_BPB;
     // Create default phrases
     for (uint8_t phrase = 0; phrase < 8; ++phrase)
         insertPhrase(g_nScene, phrase);
@@ -1357,7 +1359,7 @@ bool setState(const char* state) {
         g_seqMan.init();
 
         g_dTempo = j.value("tempo", g_dTempo); //!@todo Do we want to reset tempo to default or use previous if not in state?
-        setBpb(j.value("bpb", 4));
+        setDefaultBpb(j.value("bpb", DEFAULT_BPB));
 
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {
@@ -1497,7 +1499,7 @@ const char* getState() {
     uint8_t nScene = getScene();
     json jState;
     jState["tempo"] = g_dTempo;
-    jState["bpb"] = g_nBpb;
+    jState["bpb"] = g_nDefaultBpb;
     jState["scene"] = nScene;
     // Iterate through patterns
     uint32_t nPattern = 0;
@@ -3052,6 +3054,15 @@ void setBpb(uint8_t beats) {
 
 uint8_t getBpb() { return g_nBpb; }
 
+void setDefaultBpb(uint8_t beats) {
+    if (beats > 0) {
+        g_nDefaultBpb = beats;
+        g_seqMan.setDefaultTimeSig(beats);
+    }
+}
+
+uint8_t getDefaultBpb() { return g_nDefaultBpb; }
+
 void transportSetSyncTimeout(uint32_t timeout) { jack_set_sync_timeout(g_pJackClient, timeout); }
 
 void enableMetronome(bool enable) {
@@ -3132,6 +3143,18 @@ void removePhrase(uint8_t scene, uint8_t phrase) {
     stop(); //!@todo Blunt stop everything to avoid pointers to events in deleted sequences segfault!
     g_seqMan.removePhrase(scene, phrase);
     g_bMutex = false;
+}
+
+void setPhraseBPB(uint8_t scene, uint8_t phrase, uint8_t bpb) {
+    while (g_bMutex)
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
+	g_seqMan.setPhraseTimesig(scene, phrase, bpb);
+    g_bMutex = false;
+}
+
+uint8_t getPhraseBPB(uint8_t scene, uint8_t phrase) {
+	return g_seqMan.getPhraseTimesig(scene, phrase);
 }
 
 void swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2) {

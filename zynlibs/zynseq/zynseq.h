@@ -1258,6 +1258,16 @@ void setBpb(uint8_t beats);
 */
 uint8_t getBpb();
 
+/** @brief  Set default beats per bar
+    @retval uint8_t beats Beats per bar
+*/
+void setDefaultBpb(uint8_t beats);
+
+/** @brief  Get default Beats per bar
+    @retval uint8_t Beats per bar
+*/
+uint8_t getDefaultBpb();
+
 /** @brief  Set sync timeout
     @param  timeout Quantity of microseconds to wait for slow sync clients at start of play
 */
@@ -1347,6 +1357,21 @@ void removePhrase(uint8_t scene, uint8_t phrase);
     @param  phrase2 Index of second phrase
 */
 void swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2);
+
+/** @brief  Set phrase time signature in Beats per Bar
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  bpb Time signature in Beats per Bar
+*/
+void setPhraseBPB(uint8_t scene, uint8_t phrase, uint8_t bpb);
+
+/** @brief  Get phrase time signature in Beats per Bar
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @retval uint8_t Beats per Bar
+*/
+uint8_t getPhraseBPB(uint8_t scene, uint8_t phrase);
+
 
 #ifdef __cplusplus
 }

@@ -1831,7 +1831,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         except:
                             continue
             case "bpb":
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "bpb", zctrl.value)
+                #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "bpb", zctrl.value)
+                self.zynseq.libseq.setPhraseBPB(self.zynseq.scene, phrase, zctrl.value)
+                self.zynseq.refresh_state()
             case "duration":
                 if zctrl.value == 1:
                     value = 255

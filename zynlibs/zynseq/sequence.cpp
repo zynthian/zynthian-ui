@@ -86,6 +86,7 @@ float Sequence::getTempo() {
 
 void Sequence::setTimeSig(uint8_t sig) {
     m_nTimeSig = sig;
+    m_bChanged = true;
 }
 
 uint8_t Sequence::getTimeSig() {
