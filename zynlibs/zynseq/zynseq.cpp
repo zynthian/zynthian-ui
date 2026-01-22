@@ -229,8 +229,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 uint32_t nTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
                 int32_t nTickDelta = nTicksBeforeClk - nExpectedTicksBeforeClk;
                 nNextBeatTime += nTickDelta;
-                if (nTickDelta)
-                    fprintf(stderr, "Adjusting clock by %d ticks\n", nTickDelta);
+                //if (nTickDelta)
+                //    fprintf(stderr, "Adjusting clock by %d ticks\n", nTickDelta);
 
                 break;
             }
