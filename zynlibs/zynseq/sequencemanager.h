@@ -236,9 +236,9 @@ class SequenceManager {
     uint8_t getDefaultTimeSig();
 
     /** @brief  Set default time signature (beats in bar)
-        @param  sig default time signature (in quarter notes)
+        @param  bpb default time signature (in quarter notes)
     */
-    void setDefaultTimeSig(uint8_t sig);
+    void setDefaultTimeSig(uint8_t bpb);
 
     /** @brief  Get playback progress percentage
         @param   uint8_t* Pointer to 33 element array containing progress as a percentage of sequence length
@@ -291,14 +291,27 @@ class SequenceManager {
         @param  phrase Index of phrase
         @param  bpb Time signature in Beats per Bar
     */
-    void setPhraseTimesig(uint8_t scene, uint8_t phrase, uint8_t bpb);
+    void setPhraseTimeSig(uint8_t scene, uint8_t phrase, uint8_t bpb);
 
     /** @brief  Set the time signature for a phrase
         @param  scene Index of scene
         @param  phrase Index of phrase
-        @param  bpb Time signature in Beats per Bar
+        @retval uint8_t Phrase's time signature in Beats per Bar
     */
-    uint8_t getPhraseTimesig(uint8_t scene, uint8_t phrase);
+    uint8_t getPhraseTimeSig(uint8_t scene, uint8_t phrase);
+
+    /** @brief  Is a phrase empty?
+        @param  scene Index of scene
+        @param  phrase Index of phrase
+        @retval bool True is phrase is empty => all its sequences are empty
+    */
+    bool isPhraseEmpty(uint8_t scene, uint8_t phrase);
+
+    /** @brief  Is a phrase empty?
+        @param  pPhrase pointer to phrase sequence
+        @retval bool True is phrase is empty => all its sequences are empty
+    */
+    bool isPhraseEmpty(Sequence* pPhrase);
 
     /** @brief  Set follow action
         @param  scene Index of scene

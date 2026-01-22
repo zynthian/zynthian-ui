@@ -443,8 +443,15 @@ uint8_t SequenceManager::getDefaultTimeSig() {
     return m_nDefaultTimeSig;
 }
 
-void SequenceManager::setDefaultTimeSig(uint8_t sig) {
-    m_nDefaultTimeSig = sig;
+void SequenceManager::setDefaultTimeSig(uint8_t bpb) {
+    m_nDefaultTimeSig = bpb;
+    // Change timesig on empty phrases
+    for (uint8_t nScene = 0; nScene < m_vScenes.size(); ++nScene) {
+		for (uint8_t nPhrase = 0; nPhrase < m_vScenes[nScene].size(); ++nPhrase) {
+			if (isPhraseEmpty(nScene, nPhrase))
+		        setPhraseTimeSig(nScene, nPhrase, bpb);
+		}
+	}
 }
 
 uint8_t* SequenceManager::getProgress() {
@@ -585,7 +592,7 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
 }
 
 
-void SequenceManager::setPhraseTimesig(uint8_t scene, uint8_t phrase, uint8_t bpb) {
+void SequenceManager::setPhraseTimeSig(uint8_t scene, uint8_t phrase, uint8_t bpb) {
     if (scene >= m_vScenes.size())
         return;
     auto& vPhrases = m_vScenes[scene];
@@ -610,7 +617,7 @@ void SequenceManager::setPhraseTimesig(uint8_t scene, uint8_t phrase, uint8_t bp
     }
 }
 
-uint8_t SequenceManager::getPhraseTimesig(uint8_t scene, uint8_t phrase) {
+uint8_t SequenceManager::getPhraseTimeSig(uint8_t scene, uint8_t phrase) {
     if (scene >= m_vScenes.size())
         return 0;
     auto& vPhrases = m_vScenes[scene];
@@ -619,6 +626,29 @@ uint8_t SequenceManager::getPhraseTimesig(uint8_t scene, uint8_t phrase) {
 
     Sequence* pPhrase = vPhrases[phrase];
     return pPhrase->getTimeSig();
+}
+
+bool SequenceManager::isPhraseEmpty(uint8_t scene, uint8_t phrase) {
+    if (scene >= m_vScenes.size())
+        return 0;
+    auto& vPhrases = m_vScenes[scene];
+    if (phrase >= vPhrases.size())
+        return 0;
+
+    return isPhraseEmpty(vPhrases[phrase]);
+}
+
+bool SequenceManager::isPhraseEmpty(Sequence* pPhrase) {
+    for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
+        Sequence* pChildSeq = pPhrase->m_aChildSequences[nSeq];
+        if (!pChildSeq) continue;
+	    Track* pTrack = pChildSeq->getTrack(0);
+        if (pTrack) {
+            Pattern* pPattern = pTrack->getPattern(0);
+            if (pPattern && pPattern->getLastStep() >= 0) return false;
+        }
+    }
+    return true;
 }
 
 bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param) {
