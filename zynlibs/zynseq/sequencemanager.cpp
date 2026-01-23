@@ -436,6 +436,7 @@ uint8_t SequenceManager::getTimeSig(bool clear) {
 }
 
 void SequenceManager::setTimeSig(uint8_t sig) {
+	m_bTimeSigChanged |= (m_nTimeSig != sig);
     m_nTimeSig = sig;
 }
 

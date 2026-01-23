@@ -471,7 +471,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
         */
 
-        // Advance clock
+        // Advance beat/bar
         bool bSync = false; // True if at start of bar
         if (nTickTime >= nNextBeatTime) {
             // Beat
@@ -483,11 +483,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nBeat = 1;
                 bSync = true;
                 ++nBar;
-                if (nBeatsPerBar != g_nBeatsPerBar) {
-                    // Update time signature only at bar boundary
-                    nBeatsPerBar = g_nBeatsPerBar;
-                    g_seqMan.setTimeSig(nBeatsPerBar);
-                }
                 // Start / stop transport if pending - only at bar boundary
                 if (g_nJackTransportState == STARTING) {
                     jack_transport_start(g_pJackClient);
@@ -511,14 +506,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
         bool bPlayingSequences = g_seqMan.clock(nTickTime, &g_mSchedule, bSync);
 
-        if (g_bPlayingSequences != bPlayingSequences) {
-            g_bPlayingSequences = bPlayingSequences;
-            if (!g_bPlayingSequences) {
-                DPRINTF("No sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, nTickTime, nBeat, g_nTick);
-                localTransportStop(TRANSPORT_CLIENT_ZYNSEQ);
-            }
-        }
-
         // Check for sequenced timebase changes (from patterns)
         if (g_seqMan.isTempoChanged()) {
             float tempo = g_seqMan.getTempo();
@@ -526,8 +513,22 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
         if (g_seqMan.isTimeSigChanged()) {
             uint8_t newBpb = g_seqMan.getTimeSig(true);
-            if (newBpb > 1)
+            if (newBpb > 1) {
                 g_nBeatsPerBar = newBpb;
+            }
+        }
+		// Update time signature only at bar boundary
+		if (bSync && nBeatsPerBar != g_nBeatsPerBar) {
+			nBeatsPerBar = g_nBeatsPerBar;
+			g_seqMan.setTimeSig(nBeatsPerBar);
+		}
+
+        if (g_bPlayingSequences != bPlayingSequences) {
+            g_bPlayingSequences = bPlayingSequences;
+            if (!g_bPlayingSequences) {
+                DPRINTF("No sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, nTickTime, nBeat, g_nTick);
+                localTransportStop(TRANSPORT_CLIENT_ZYNSEQ);
+            }
         }
 
         // Send MIDI CLOCK...
