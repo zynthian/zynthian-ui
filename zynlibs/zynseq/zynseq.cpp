@@ -537,6 +537,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
 
         // Update jack transport parameters
+        if (g_nLocalTransportState == PLAYING)
+            g_nBeat = nBeat;
         if (g_nJackTransportState == PLAYING) {
             g_nBarStartTick = g_nTick;
             g_nBeat = nBeat;
