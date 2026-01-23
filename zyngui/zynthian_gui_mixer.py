@@ -130,7 +130,7 @@ class zynthian_gui_launcher_pad():
 
     def get_pattern_length(self, beats, bpb):
         if not bpb:
-            bpb = self.gui_mixer.bpb
+            bpb = 4
         if bpb > 1:
             bars = beats // bpb
         else:
@@ -1747,12 +1747,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'labels': labels,
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Beats per bar"):
-            labels = ["None"]
+            labels = []
             for i in range(1, 25):
                 labels.append(f"{i}")
             option_screen.enable_param_editor(option_screen, "bpb", {
                 'name': 'Beats per bar',
-                'value_min': 0,
+                'value_min': 1,
                 'value_max': 24,
                 'labels': labels,
                 'value': params

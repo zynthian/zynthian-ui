@@ -303,7 +303,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if beats is None:
             beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
         if bpb is None:
-            bpb = self.bpb
+            bpb = 4
         if bpb > 1:
             bars = beats // bpb
         else:
