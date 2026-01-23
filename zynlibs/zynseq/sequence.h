@@ -278,6 +278,11 @@ class Sequence {
     */
     bool isPhraseLauncher();
 
+    /** @brief  Check if sequence is an empty phrase
+        @retval bool True if some sequence have events. False if any patterns have any events)
+    */
+    bool isPhraseEmpty();
+
     /** @brief  Sets phrase the sequence belongs
         @param  phrase Index of phrase (0xff for none)
     */

@@ -1198,6 +1198,7 @@ bool setState(const char* state) {
 
         setTempo(j.value("tempo", g_dTempo)); //!@todo Do we want to reset tempo to default or use previous if not in state?
         setDefaultBpb(j.value("bpb", DEFAULT_BPB));
+        //fprintf(stderr, "Default Timesig = %d\n", j.value("bpb", DEFAULT_BPB));
 
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {
@@ -1251,7 +1252,8 @@ bool setState(const char* state) {
                         pPhrase->setName(jPhrase["name"]);
                     if (jPhrase.contains("mode"))
                         pPhrase->setPlayMode(jPhrase["mode"]);
-                    pPhrase->setTimeSig(jPhrase.value("bpb", 0));
+                    pPhrase->setTimeSig(jPhrase.value("bpb", DEFAULT_BPB));
+                    //fprintf(stderr, "Phrase %d Timesig = %d\n", nPhrase, jPhrase.value("bpb", DEFAULT_BPB));
                     pPhrase->setTempo(jPhrase.value("tempo", 0));
                     if (jPhrase.contains("repeat"))
                         pPhrase->setRepeat(jPhrase["repeat"]);
@@ -1312,6 +1314,8 @@ bool setState(const char* state) {
                         }
                         ++nSeq;
                     }
+                    // Set Phrase BPB after adding the patterns
+                    pPhrase->setTimeSig(jPhrase.value("bpb", DEFAULT_BPB));
                     ++nPhrase;
                 }
                 // Set follow actions late, after creating all sequence objects
@@ -1321,7 +1325,9 @@ bool setState(const char* state) {
                 }
             }
         }
+        // Reset dirty flag
         g_bDirty = false;
+        // Setup scene
         if (nLowestScene == 255)
             nLowestScene = 0;
         setScene(j.value("scene", nLowestScene));

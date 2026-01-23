@@ -86,6 +86,21 @@ float Sequence::getTempo() {
 
 void Sequence::setTimeSig(uint8_t sig) {
     m_nTimeSig = sig;
+    if (isPhraseLauncher()) {
+		// Iterate each sequence in phrase
+		for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
+			Sequence* pChildSeq = m_aChildSequences[nSeq];
+			if (!pChildSeq) continue;
+			Track* pTrack = pChildSeq->getTrack(0);
+			if (pTrack) {
+				Pattern* pPattern = pTrack->getPattern(0);
+				// For each empty pattern, adjust number of beats to fit exactly 1 bar => bpb
+				if (pPattern && pPattern->getLastStep() == -1) {
+					pPattern->setBeatsInPattern(sig);
+				}
+			}
+		}
+	}
     m_bChanged = true;
 }
 
@@ -390,6 +405,22 @@ uint8_t Sequence::getPlayed() {
 
 bool Sequence::isPhraseLauncher() {
     return m_pPhraseSequence == nullptr;
+}
+
+bool Sequence::isPhraseEmpty() {
+	if (isPhraseLauncher()) {
+		for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
+			Sequence* pChildSeq = m_aChildSequences[nSeq];
+			if (!pChildSeq) continue;
+			Track* pTrack = pChildSeq->getTrack(0);
+			if (pTrack) {
+				Pattern* pPattern = pTrack->getPattern(0);
+				if (pPattern && pPattern->getLastStep() >= 0) return false;
+			}
+		}
+		return true;
+	}
+    return false;
 }
 
 void Sequence::setPhrase(uint8_t phrase) {

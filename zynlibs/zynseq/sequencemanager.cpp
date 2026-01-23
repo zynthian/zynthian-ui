@@ -446,10 +446,10 @@ uint8_t SequenceManager::getDefaultTimeSig() {
 void SequenceManager::setDefaultTimeSig(uint8_t bpb) {
     m_nDefaultTimeSig = bpb;
     // Change timesig on empty phrases
-    for (uint8_t nScene = 0; nScene < m_vScenes.size(); ++nScene) {
-		for (uint8_t nPhrase = 0; nPhrase < m_vScenes[nScene].size(); ++nPhrase) {
-			if (isPhraseEmpty(nScene, nPhrase))
-		        setPhraseTimeSig(nScene, nPhrase, bpb);
+    for (auto& scene: m_vScenes) {
+        for (auto& phrase: scene) {
+			if (phrase->isPhraseEmpty())
+		        phrase->setTimeSig(bpb);
 		}
 	}
 }
@@ -599,23 +599,9 @@ void SequenceManager::setPhraseTimeSig(uint8_t scene, uint8_t phrase, uint8_t bp
     if (phrase >= vPhrases.size())
         return;
 
-    Sequence* pPhrase = vPhrases[phrase];
-    pPhrase->setTimeSig(bpb);
-
-    // Iterate each sequence in phrase
-    for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
-        Sequence* pChildSeq = pPhrase->m_aChildSequences[nSeq];
-        if (!pChildSeq) continue;
-	    Track* pTrack = pChildSeq->getTrack(0);
-        if (pTrack) {
-            Pattern* pPattern = pTrack->getPattern(0);
-            // For each empty pattern, adjust number of beats to fit exactly 1 bar => bpb
-            if (pPattern && pPattern->getLastStep() == -1) {
-                pPattern->setBeatsInPattern(bpb);
-            }
-        }
-    }
+    vPhrases[phrase]->setTimeSig(bpb);
 }
+
 
 uint8_t SequenceManager::getPhraseTimeSig(uint8_t scene, uint8_t phrase) {
     if (scene >= m_vScenes.size())
@@ -635,20 +621,7 @@ bool SequenceManager::isPhraseEmpty(uint8_t scene, uint8_t phrase) {
     if (phrase >= vPhrases.size())
         return 0;
 
-    return isPhraseEmpty(vPhrases[phrase]);
-}
-
-bool SequenceManager::isPhraseEmpty(Sequence* pPhrase) {
-    for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
-        Sequence* pChildSeq = pPhrase->m_aChildSequences[nSeq];
-        if (!pChildSeq) continue;
-	    Track* pTrack = pChildSeq->getTrack(0);
-        if (pTrack) {
-            Pattern* pPattern = pTrack->getPattern(0);
-            if (pPattern && pPattern->getLastStep() >= 0) return false;
-        }
-    }
-    return true;
+    return vPhrases[phrase]->isPhraseEmpty();
 }
 
 bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param) {

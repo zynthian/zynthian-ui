@@ -307,12 +307,6 @@ class SequenceManager {
     */
     bool isPhraseEmpty(uint8_t scene, uint8_t phrase);
 
-    /** @brief  Is a phrase empty?
-        @param  pPhrase pointer to phrase sequence
-        @retval bool True is phrase is empty => all its sequences are empty
-    */
-    bool isPhraseEmpty(Sequence* pPhrase);
-
     /** @brief  Set follow action
         @param  scene Index of scene
         @param  sequence Pointer to sequence
