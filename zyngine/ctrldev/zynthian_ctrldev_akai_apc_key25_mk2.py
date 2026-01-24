@@ -619,7 +619,8 @@ class MixerHandler(ModeHandlerBase):
         # Do not change chain if 'main' is selected
         if chain == 0:
             return
-        self._chains_bank = 0 if chain <= 8 else 1
+        index = self.driver.get_filtered_index_by_chain_id(chain)
+        self._chains_bank = 0 if index < 8 else 1
         self._active_chain = chain
         if refresh:
             self.refresh()
