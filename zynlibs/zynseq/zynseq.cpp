@@ -472,11 +472,13 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         */
 
         // Advance beat/bar
+        bool bBeat = false; // True if start of beat
         bool bSync = false; // True if at start of bar
         if (nTickTime >= nNextBeatTime) {
             // Beat
             nNextBeatTime = nTickTime + PPQN_INTERNAL;
             nBeatFrameOffset = nFrame;
+            bBeat = true;
             DPRINTF("Beat at tick %d, frame %u (%u)\n", nTickTime, nFrame, nNow + nFrame);
             if (++nBeat > nBeatsPerBar) {
                 // Bar
@@ -492,13 +494,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     jack_transport_stop(g_pJackClient);
                     g_nJackTransportState = STOPPED;
                 }
-            }
-            if (g_nMetronomeMode == METRO_MODE_ON ||
-            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nLocalTransportState == PLAYING || nJackTransportState == JackTransportRolling) ||
-            g_nMetronomeMode == METRO_MODE_INTRO && ((g_nTransportClients & (1 << TRANSPORT_CLIENT_ZYNSEQ)) == 0)) {
-                // Start metronome
-                g_nMetronomePtr = 0;
-                g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
             }
         }
 
@@ -540,10 +535,21 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Update jack transport parameters
         if (g_nLocalTransportState == PLAYING)
             g_nBeat = nBeat;
+
         if (g_nJackTransportState == PLAYING) {
             g_nBarStartTick = g_nTick;
             g_nBeat = nBeat;
             g_nBar = nBar;
+        }
+
+        if (bBeat) {
+            if (g_nMetronomeMode == METRO_MODE_ON ||
+            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nLocalTransportState == PLAYING || nJackTransportState == JackTransportRolling) ||
+            g_nMetronomeMode == METRO_MODE_INTRO && ((g_nTransportClients & (1 << TRANSPORT_CLIENT_ZYNSEQ)) == 0)) {
+                // Start metronome
+                g_nMetronomePtr = 0;
+                g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
+            }
         }
 
         ++nTickTime;

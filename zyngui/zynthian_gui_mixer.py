@@ -1200,7 +1200,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def set_bpb(self, bpb):
         self.bpb = bpb
-        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"[{self.beat}] | {bpb}/4")
+        self.status_canvas.itemconfig(self.status_timesig, fill=zynthian_gui_config.color_ml, text=f"{self.beat} | {bpb}/4")
         Timer(0.6, self.clear_timesig_highlight).start()
 
     def clear_timesig_highlight(self):
