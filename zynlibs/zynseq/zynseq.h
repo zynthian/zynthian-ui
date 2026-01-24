@@ -1219,6 +1219,18 @@ void jackTransportToggle();
 */
 uint8_t getJackTransportState();
 
+/** @brief  Get jack transport mode
+    @retval uint8_t Jack tranport mode
+    @see    JTRANS_MODES
+*/
+uint8_t getJackTransportMode();
+
+/** @brief  Set jack transport mode
+    @param  mode Jack tranport mode
+    @see    JTRANS_MODES
+*/
+void setJackTransportMode(uint8_t mode);
+
 /** @brief  Start local transport rolling
     @param  id Id  of client requesting change
  **/

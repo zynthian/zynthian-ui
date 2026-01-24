@@ -71,6 +71,15 @@ enum METRO_MODES {
     METRO_MODE_LAST         // Dummy - used for range check
 };
 
+// Jack transport modes
+enum JTRANS_MODES {
+    JTRANS_MODE_OFF,        // Disable jack transport
+    JTRANS_MODE_LOCK,       // Lock jack transport to internal transport
+    JTRANS_MODE_TRIG,       // Trigger jack transport start from internal transport start, don't auto stop
+    JTRANS_MODE_ON,          // Enable jack transport running continually
+    JTRANS_MODE_LAST        // Dummy - usef for range check
+};
+
 // Local transport flags
 #define TRANSPORT_CLIENT_ZYNSEQ   1
 #define TRANSPORT_CLIENT_METRO    2

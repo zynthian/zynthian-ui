@@ -82,6 +82,7 @@ bool g_bDirty                       = false;        // True if anything has been
 uint32_t g_nTransportClients        = 0;            // Bitwise flags indicating which clients have requested local transport
 uint8_t g_nLocalTransportState      = STOPPED;      // State of local (non-jack) transport
 uint8_t g_nJackTransportState       = STOPPED;      // State of jack transport
+uint8_t g_nJackTransportMode        = JTRANS_MODE_LOCK; // Mode for jack transport
 bool g_bMidiRecord                  = false;        // True to add notes to current pattern from MIDI input
 uint8_t g_nSustainValue             = 0;            // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart            = 0;            // Step when sustain pedal was last pressed
@@ -172,11 +173,16 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
 */
 int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     // Transport & Clock
-    jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
+    static uint64_t nNow = 0;
+    static jack_nframes_t nLastNow32 = 0;
+    jack_nframes_t nNow32 = jack_last_frame_time(g_pJackClient);
+    if (nNow32 < nLastNow32)
+        nNow += 0x100000000ULL;
+    nNow = (nNow & 0xFFFFFFFF00000000ULL) | nNow32;
     jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
     jack_transport_state_t nJackTransportState = jack_transport_query(g_pJackClient, &transportPosition);
 
-    static jack_nframes_t nLastExtClockFrame = 0; // Frames since jack epoch of last external clock
+    static uint64_t nLastExtClockFrame = 0; // Frames since jack epoch of last external clock
     static double dNextIntClockFrame = 0.0; // Frames since jack epoch of next internal clock
     static uint32_t nExtClk = 0; // Count of external clocks in this beat (wrap at PPQN)
     static uint32_t nTickTime = 0; // Quantity of elapsed ticks since tick epoch that next event will be processed
@@ -270,30 +276,31 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Process MIDI RT-events => clock/tranport events
         switch (midiEvent.buffer[0]) {
             case MIDI_STOP:
+            //!@todo Disabled MIDI transport control whilst rationalising internal and jack transports
                 // Rx stop on any port - stops jack transport on next bar
                 if (g_nLocalTransportState == STOPPED) {
-                    jack_transport_stop(g_pJackClient);
-                    nJackTransportState = JackTransportStopped;
+                    //jack_transport_stop(g_pJackClient);
+                    //nJackTransportState = JackTransportStopped;
                 } else {
-                    g_nJackTransportState = STOPPING;
+                    //g_nJackTransportState = STOPPING;
                 }
                 break;
             case MIDI_START:
                 // Rx start on any port - starts jack transport on next bar
                 if (g_nLocalTransportState == STOPPED) {
-                    jack_transport_start(g_pJackClient);
-                    nJackTransportState = JackTransportRolling;
+                    //jack_transport_start(g_pJackClient);
+                    //nJackTransportState = JackTransportRolling;
                 } else {
-                    g_nJackTransportState = STARTING;
+                    //g_nJackTransportState = STARTING;
                 }
                 break;
             case MIDI_CONTINUE:
                 // Rx continue on any port - starts jack transport on next bar
                 if (g_nLocalTransportState == STOPPED) {
-                    jack_transport_start(g_pJackClient);
-                    nJackTransportState = JackTransportRolling;
+                    //jack_transport_start(g_pJackClient);
+                    //nJackTransportState = JackTransportRolling;
                 } else {
-                    g_nJackTransportState = STARTING;
+                    //g_nJackTransportState = STARTING;
                 }
                 break;
             /*
@@ -430,16 +437,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         g_nSustainValue = 0;
     }
 
-    // Change transport rolling if pending and local not running (else wait for bar)
-    if (g_nJackTransportState == STARTING && nJackTransportState != JackTransportRolling && (g_nLocalTransportState == STOPPED)) {
-        jack_transport_start(g_pJackClient);
-        g_nJackTransportState = PLAYING;
-    }
-    if (g_nJackTransportState == STOPPING && nJackTransportState == JackTransportRolling && (g_nLocalTransportState == STOPPED)) {
-        jack_transport_stop(g_pJackClient);
-        g_nJackTransportState = STOPPED;
-    }
-
+    // Update local (internal) transport
     if (g_nLocalTransportState == STARTING) {
         if (nJackTransportState == JackTransportStopped) {
             g_nLocalTransportState = PLAYING;
@@ -455,6 +453,34 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         if (g_nBeat == 1) {
             g_nLocalTransportState = STOPPED;
         }
+    }
+
+    // Update jack transport
+    switch (g_nJackTransportMode) {
+        case JTRANS_MODE_OFF:
+            if (g_nJackTransportState != STOPPED)
+                g_nJackTransportState = STOPPED;
+                jack_transport_stop(g_pJackClient);
+            break;
+        case JTRANS_MODE_LOCK:
+            if (g_nJackTransportState != g_nLocalTransportState) {
+                g_nJackTransportState = g_nLocalTransportState;
+                if (g_nJackTransportState == PLAYING)
+                    jack_transport_start(g_pJackClient);
+                else if (g_nJackTransportState == STOPPED)
+                    jack_transport_stop(g_pJackClient);
+            }
+            break;
+        case JTRANS_MODE_TRIG:
+            if (g_nJackTransportState == STOPPED && g_nLocalTransportState == PLAYING)
+                g_nJackTransportState = g_nLocalTransportState;
+                    jack_transport_start(g_pJackClient);
+            break;
+        case JTRANS_MODE_ON:
+            if (g_nJackTransportState != PLAYING)
+                g_nJackTransportState = PLAYING;
+                jack_transport_start(g_pJackClient);
+            break;
     }
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
@@ -479,7 +505,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             nNextBeatTime = nTickTime + PPQN_INTERNAL;
             nBeatFrameOffset = nFrame;
             bBeat = true;
-            DPRINTF("Beat at tick %d, frame %u (%u)\n", nTickTime, nFrame, nNow + nFrame);
+            DPRINTF("Beat at tick %d, frame %u (%llu)\n", nTickTime, nFrame, nNow + nFrame);
             if (++nBeat > nBeatsPerBar) {
                 // Bar
                 nBeat = 1;
@@ -623,7 +649,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     pBuffer[1] = it->second->msg.value1;
                 if (nSize > 2)
                     pBuffer[2] = it->second->msg.value2;
-                DPRINTF("Sending MIDI event %x,%x,%x at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
+                DPRINTF("Sending MIDI event %x,%x,%x at %llu\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
             }
             delete it->second;
             it->second = NULL;
@@ -2818,6 +2844,15 @@ void jackTransportToggle() {
 uint8_t getJackTransportState() {
     jack_position_t position; // Not used but required to query transport
     return jack_transport_query(g_pJackClient, &position);
+}
+
+uint8_t getJackTransportMode() {
+    return g_nJackTransportMode;
+}
+
+void setJackTransportMode(uint8_t mode) {
+    if (mode < JTRANS_MODE_LAST)
+        g_nJackTransportMode = mode;
 }
 
 void localTransportStart(uint8_t id) {
