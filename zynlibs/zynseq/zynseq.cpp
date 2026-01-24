@@ -1276,20 +1276,29 @@ bool setState(const char* state) {
                 if (nScene < nLowestScene)
                     nLowestScene = nScene;
                 uint32_t nPhrase = 0;
+                uint8_t phrase_bpb;
                 std::vector<std::array<int16_t, 4>> vFollowActions;
                 for (auto& jPhrase: jScene["phrases"]) {
                     Sequence* pPhrase = g_seqMan.insertPhrase(nScene, -1);
                     if (!pPhrase)
                         continue;
+
                     if (jPhrase.contains("name"))
                         pPhrase->setName(jPhrase["name"]);
                     if (jPhrase.contains("mode"))
                         pPhrase->setPlayMode(jPhrase["mode"]);
-                    pPhrase->setTimeSig(jPhrase.value("bpb", DEFAULT_BPB));
-                    //fprintf(stderr, "Phrase %d Timesig = %d\n", nPhrase, jPhrase.value("bpb", DEFAULT_BPB));
+
+                    // Set phrase time signature, fixing if needed
+                    phrase_bpb = jPhrase.value("bpb", DEFAULT_BPB);
+                    if (phrase_bpb <= 0)
+                        phrase_bpb = DEFAULT_BPB;
+                    pPhrase->setTimeSig(phrase_bpb);
+                    //fprintf(stderr, "Phrase %d Timesig = %d\n", nPhrase, phrase_bpb);
+
                     pPhrase->setTempo(jPhrase.value("tempo", 0));
                     if (jPhrase.contains("repeat"))
                         pPhrase->setRepeat(jPhrase["repeat"]);
+
                     // Store the follow configuration to apply after all sequences have been created
                     std::array<int16_t, 4> followAction;
                     followAction[0] = nPhrase;
@@ -1297,6 +1306,7 @@ bool setState(const char* state) {
                     followAction[2] = jPhrase.value("followAction", FOLLOW_ACTION_NONE);
                     followAction[3] = jPhrase.value("followParam", 0);
                     vFollowActions.push_back(followAction);
+
                     uint8_t nSeq = 0;
                     for (auto& jSeq: jPhrase["sequences"]) {
                         uint32_t nTracks = jSeq["tracks"].size();
@@ -1348,7 +1358,7 @@ bool setState(const char* state) {
                         ++nSeq;
                     }
                     // Set Phrase BPB after adding the patterns
-                    pPhrase->setTimeSig(jPhrase.value("bpb", DEFAULT_BPB));
+                    pPhrase->setTimeSig(phrase_bpb);
                     ++nPhrase;
                 }
                 // Set follow actions late, after creating all sequence objects
