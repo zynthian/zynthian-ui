@@ -1946,24 +1946,21 @@ class StepSeqHandler(ModeHandlerBase):
 
         # Adjust tempo
         if ccnum == KNOB_1:
-            self._show_screen_briefly(
-                screen="tempo", cuia="TEMPO", timeout=1500)
             delta *= 0.1 if self._is_shifted else 1
             self._zynseq.set_tempo(self._zynseq.get_tempo() + delta)
 
         # Update sequence's chain volume
         elif ccnum == KNOB_2:
-            self._show_screen_briefly(
-                screen="audio_mixer", cuia="SCREEN_AUDIO_MIXER", timeout=1500)
             chain_id = self._get_chain_id_by_sequence(
-                self._zynseq.bank, self._selected_seq)
+                self._selected_seq[0], self._selected_seq[1])
             chain = self._chain_manager.chains.get(chain_id)
             if chain is not None:
-                mixer_chan = chain.mixer_chan
+                zctrl = chain.zynmixer_proc.controllers_dict['level']
+                value = zctrl.get_value()
                 level = max(
-                    0, min(100, self._zynmixer.get_level(mixer_chan) * 100 + delta))
-                self._zynmixer.set_level(mixer_chan, level / 100)
-
+                    0, min(100, value * 100 + delta))
+                zctrl.set_value(level / 100)
+                
     def update_seq_state(self, phrase, chan, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
         if state == zynseq.SEQ_STOPPED and self._cursor < self._used_pads:
@@ -2202,7 +2199,7 @@ class StepSeqHandler(ModeHandlerBase):
         velocity = self._libseq.getNoteVelocity(step, note)
         duration = self._libseq.getNoteDuration(step, note)
         channel = self._libseq.getChannel(
-            self._zynseq.bank, self._selected_seq, 0)
+            self._zynseq.scene, self._selected_seq[0], self._selected_seq[1], 0)
         stutt_count = self._libseq.getStutterCount(step, note)
         stutt_duration = self._libseq.getStutterDur(step, note)
         self._note_player.play(
@@ -2496,7 +2493,7 @@ class StepSeqHandler(ModeHandlerBase):
             notes[col] = step_prx
 
         channel = self._libseq.getChannel(
-            self._zynseq.bank, self._selected_seq, 0)
+            self._zynseq.scene, self._selected_seq[0],  self._selected_seq[1], 0)
         self._note_config = Control(self, notes, channel, row_led=row_led)
         self.refresh()
         return True

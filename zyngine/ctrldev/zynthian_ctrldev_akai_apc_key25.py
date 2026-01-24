@@ -139,15 +139,17 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 # Only main chain is handled with SHIFT, ignore the rest
                 if ccnum != self.main_chain_knob:
                     return False
-                mixer_chan = 255
+                else:
+                    index = -1
+                    chain_id = 255
             else:
                 index = (ccnum - KNOB_1) + self._chains_bank * 8
                 chain = self._chain_manager.get_chain_by_index(index)
+                chsin_id = chain.chain_id
                 if chain is None or chain.chain_id == 0:
                     return False
-                mixer_chan = chain.mixer_chan
 
-            ctrlid = f'{type}{mixer_chan}'
+            ctrlid = f'{type}{chain_id}'
             now = time.perf_counter()
             then = self._knobmoves.get(ctrlid)
             within_time = ((then is not None) and ((now - then) < 0.2))
@@ -155,19 +157,19 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
             if type == "level":
                 val = cval
-                old_value = self._zynmixer.get_level(mixer_chan)
+                old_value = self.driver.get_mixer_param(type, index)
                 if within_time or abs(val - old_value) < 0.01:
-                    self._zynmixer.set_level(mixer_chan, max(0, min(1, val)))
                     self._knobmoves[ctrlid] = now
+                    self.driver.set_mixer_param(type, index, max(0, min(1, val)))
                     return True
                 else:
                     return False
             elif type == "balance":
                 val = -1 + cval * 2
-                old_value = self._zynmixer.get_balance(mixer_chan)
+                old_value = self.driver.get_mixer_param(type, index)
                 if within_time or abs(val - old_value) < (1 - -1) * 0.01:
                     self._knobmoves[ctrlid] = now
-                    self._zynmixer.set_balance(mixer_chan, max(-1, min(1, val)))
+                    self.driver.set_mixer_param(type, index, max(-1, min(1, val)))
                     return True
                 else:
                     return False
