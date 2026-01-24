@@ -437,52 +437,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         g_nSustainValue = 0;
     }
 
-    // Update local (internal) transport
-    if (g_nLocalTransportState == STARTING) {
-        if (nJackTransportState == JackTransportStopped) {
-            g_nLocalTransportState = PLAYING;
-            nNextBeatTime = nTickTime;
-            nBeat = nBeatsPerBar;
-        } else {
-            if (g_nBeat == 1) {
-                g_nLocalTransportState = PLAYING;
-            }
-        }
-    }
-    if (g_nLocalTransportState == STOPPING) {
-        if (g_nBeat == 1) {
-            g_nLocalTransportState = STOPPED;
-        }
-    }
-
-    // Update jack transport
-    switch (g_nJackTransportMode) {
-        case JTRANS_MODE_OFF:
-            if (g_nJackTransportState != STOPPED)
-                g_nJackTransportState = STOPPED;
-                jack_transport_stop(g_pJackClient);
-            break;
-        case JTRANS_MODE_LOCK:
-            if (g_nJackTransportState != g_nLocalTransportState) {
-                g_nJackTransportState = g_nLocalTransportState;
-                if (g_nJackTransportState == PLAYING)
-                    jack_transport_start(g_pJackClient);
-                else if (g_nJackTransportState == STOPPED)
-                    jack_transport_stop(g_pJackClient);
-            }
-            break;
-        case JTRANS_MODE_TRIG:
-            if (g_nJackTransportState == STOPPED && g_nLocalTransportState == PLAYING)
-                g_nJackTransportState = g_nLocalTransportState;
-                    jack_transport_start(g_pJackClient);
-            break;
-        case JTRANS_MODE_ON:
-            if (g_nJackTransportState != PLAYING)
-                g_nJackTransportState = PLAYING;
-                jack_transport_start(g_pJackClient);
-            break;
-    }
-
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
     //!@todo Interpolate events across frame, e.g. CC variations
 
@@ -510,16 +464,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 // Bar
                 nBeat = 1;
                 bSync = true;
-                ++nBar;
-                // Start / stop transport if pending - only at bar boundary
-                if (g_nJackTransportState == STARTING) {
-                    jack_transport_start(g_pJackClient);
-                    g_nJackTransportState = PLAYING;
-                    nBar = 0;
-                } else if (g_nJackTransportState == STOPPING) {
-                    jack_transport_stop(g_pJackClient);
-                    g_nJackTransportState = STOPPED;
-                }
+                if (g_nJackTransportState == PLAYING)
+                    ++nBar;
             }
         }
 
@@ -568,9 +514,48 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             g_nBar = nBar;
         }
 
+        // Update local (internal) transport
+        if (g_nLocalTransportState == STARTING) {
+            if (nJackTransportState == STOPPED) {
+                g_nLocalTransportState = PLAYING;
+                nNextBeatTime = nTickTime;
+                nBeat = nBeatsPerBar;
+            } else {
+                if (g_nBeat == 1) {
+                    g_nLocalTransportState = PLAYING;
+                }
+            }
+        }
+        if (g_nLocalTransportState == STOPPING) {
+            if (g_nBeat == 1) {
+                g_nLocalTransportState = STOPPED;
+            }
+        }
+
+        // Update jack transport
+        if (g_nJackTransportState == STARTING) {
+            if (g_nLocalTransportState == STOPPED) {
+                jack_transport_start(g_pJackClient);
+                g_nJackTransportState = PLAYING;
+                nNextBeatTime = nTickTime;
+                nBeat = nBeatsPerBar;
+            } else {
+                if (g_nBeat == 1) {
+                    jack_transport_start(g_pJackClient);
+                    g_nJackTransportState = PLAYING;
+                }
+            }
+        }
+        if (g_nJackTransportState == STOPPING) {
+            if (g_nBeat == 1) {
+                jack_transport_stop(g_pJackClient);
+                g_nJackTransportState = STOPPED;
+            }
+        }
+
         if (bBeat) {
             if (g_nMetronomeMode == METRO_MODE_ON ||
-            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nLocalTransportState == PLAYING || nJackTransportState == JackTransportRolling) ||
+            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nLocalTransportState == PLAYING || g_nJackTransportState == PLAYING) ||
             g_nMetronomeMode == METRO_MODE_INTRO && ((g_nTransportClients & (1 << TRANSPORT_CLIENT_ZYNSEQ)) == 0)) {
                 // Start metronome
                 g_nMetronomePtr = 0;
@@ -2866,16 +2851,12 @@ void setJackTransportMode(uint8_t mode) {
 }
 
 void localTransportStart(uint8_t id) {
-    /*
-    while (g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
-    */
     bool bPlaying = (g_nTransportClients != 0);
     if (g_nLocalTransportState != PLAYING)
         g_nLocalTransportState = STARTING;
     g_nTransportClients |= (1 << id);
-    //g_bMutex = false;
+    if (g_nJackTransportState != PLAYING && g_nJackTransportMode == JTRANS_MODE_LOCK || g_nJackTransportMode == JTRANS_MODE_TRIG)
+        g_nJackTransportState = STARTING;
 }
 
 void localTransportStop(uint8_t id) {
@@ -2886,6 +2867,8 @@ void localTransportStop(uint8_t id) {
     }
     if ((g_nTransportClients == 0) && (g_nLocalTransportState != STOPPED))
         g_nLocalTransportState = STOPPING;
+    if (g_nJackTransportState != STOPPED && g_nJackTransportMode == JTRANS_MODE_LOCK)
+        g_nJackTransportState = STOPPING;
 }
 
 void localTransportToggle(uint8_t id) {
