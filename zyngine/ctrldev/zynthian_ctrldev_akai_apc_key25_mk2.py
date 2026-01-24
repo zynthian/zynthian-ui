@@ -2191,7 +2191,7 @@ class StepSeqHandler(ModeHandlerBase):
     def _play_step(self, step, only_when_stopped=True):
         if only_when_stopped:
             state = self._libseq.getPlayState(
-                self._zynseq.bank, self._selected_seq)
+                self._zynseq.scene, self._selected_seq[0], self._selected_seq[1])
             if state != zynseq.SEQ_STOPPED:
                 return
 
