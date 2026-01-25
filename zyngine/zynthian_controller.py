@@ -237,6 +237,8 @@ class zynthian_controller:
                         self.value_min = 0
                     if self.value_max is None:
                         self.value_max = 127
+            elif len(self.labels) > 2:
+                self.is_toggle = False # Handle change of label length from 2 (which asserts toggle)
 
             # Generate ticks if needed ...
             if not self.ticks:

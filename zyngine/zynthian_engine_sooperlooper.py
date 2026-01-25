@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for sooper looper
 #
-# Copyright (C) 2022-2025 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -398,7 +398,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
             ['rate', {'name': 'speed', 'value': 1.0, 'value_min': 0.25, 'value_max': 4.0, 'is_integer': False, 'nudge_factor': 0.01}],
             ['stretch_ratio', {'name': 'stretch', 'value': 1.0, 'value_min': 0.5, 'value_max': 4.0, 'is_integer': False, 'nudge_factor': 0.01}],
             ['pitch_shift', {'name': 'pitch', 'value': 0.0, 'value_min': -12, 'value_max': 12, 'is_integer': False, 'nudge_factor': 0.05}],
-            ['sync_source', {'name': 'sync to', 'value': 1, 'value_min': -3, 'value_max': 1, 'labels': ['Internal', 'MidiClock', 'Jack/Host', 'None', 'Loop1'], 'is_integer': True}],
+            ['sync_source', {'name': 'sync to', 'value': 1, 'value_min': -1, 'value_max': 1, 'labels': ['Host', 'None', 'Loop1'], 'is_integer': True}],
             ['sync', {'name': 'enable sync', 'value': 1, 'value_max': 1, 'labels': ['off', 'on']}],
             ['eighth_per_cycle', {'name': '8th/cycle', 'value': 16, 'value_min': 1, 'value_max': 600}],  # TODO: What makes sense for max val?
             ['quantize', {'value': 1, 'value_max': 3, 'labels': ['off', 'cycle', '8th', 'loop']}],
@@ -783,7 +783,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
                 loop_count_changed = int(args[2]) - self.loop_count  # +/- quantity of added/removed loops
                 self.loop_count = int(args[2])
                 if loop_count_changed:
-                    labels = ['Internal', 'MidiClock', 'Jack/Host', 'None']
+                    labels = ['Host', 'None']
                     for loop in range(self.loop_count):
                         labels.append(f"Loop {loop + 1}")
                     try:
