@@ -1119,15 +1119,12 @@ class PadMatrixHandler(ModeHandlerBase):
         self._update_pad(seq)
 
     def _stop_all_seqs(self, in_all_scenes=False):
+        #scene = 0 if in_all_scenes else self._zynseq.scene
         for midi_chan in range(MAX_NUM_MIDI_CHANS + 1):
             for phrase in range(self._zynseq.phrases):
-                for scene in range(64):
-                    if in_all_scenes or scene == self._zynseq.scene:
-                        state = self._libseq.getPlayState(scene, phrase, midi_chan)
-                        if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                            self._libseq.togglePlayState(scene, phrase, midi_chan)
-                        if self._libseq.getPlayingSequences() == 0:
-                            return
+                state = self._libseq.getPlayState(self._zynseq.scene, phrase, midi_chan)
+                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
+                    self._libseq.togglePlayState(self._zynseq.scene, phrase, midi_chan)
 
     def _stop_pattern_record(self):
         if self._libseq.isMidiRecord():
