@@ -2253,7 +2253,6 @@ class zynthian_state_manager:
                 zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=True)
                 self.status_midi_player = False
             self.last_midi_file = fpath
-            # self.zynseq.libseq.jackTransportLocate(0)
         except Exception as e:
             logging.error(f"ERROR STARTING MIDI PLAY: {e}")
             return False

@@ -116,7 +116,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
     def midi_chan_activity(self, chan):
         #TODO: The guard against acitivating when playing only supports jack transport, not internal transport, like zynseq
-        if self.shown and not self.zyngui.state_manager.zynseq.libseq.getJackTransportState():
+        if self.shown and not self.zyngui.state_manager.zynseq.libseq.getTransportState():
             i = self.get_midi_chan_index(chan)
             if i is not None and i != self.index:
                 dts = (datetime.now()-self.last_index_change_ts).total_seconds()

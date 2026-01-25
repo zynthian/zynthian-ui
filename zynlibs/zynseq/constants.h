@@ -68,6 +68,8 @@ enum METRO_MODES {
     METRO_MODE_TRANSPORT,   // Play metronome only when transport running
     METRO_MODE_ON,          // Play metronome
     METRO_MODE_INTRO,       // Play metronome only when trasport stopped
+    METRO_MODE_NO_PEEP,     // Play metronome without accent
+    METRO_MODE_SILENT,      // Play transport but don't play metronome
     METRO_MODE_LAST         // Dummy - used for range check
 };
 

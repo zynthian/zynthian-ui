@@ -194,30 +194,6 @@ void setHorizontalZoom(uint16_t zoom);
 */
 void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration = 0);
 
-/** @brief  Send MIDI START message
-*/
-void sendMidiStart();
-
-/** @brief  Send MIDI STOP message
-*/
-void sendMidiStop();
-
-/** @brief  Send MIDI CONTINUE message
-*/
-void sendMidiContinue();
-
-/** @brief  Send MIDI song position message
-*/
-void sendMidiSongPos(uint16_t pos);
-
-/** @brief  Send MIDI song select message
-*/
-void sendMidiSong(uint32_t pos);
-
-/** @brief  Send MIDI CLOCK message
-*/
-void sendMidiClock();
-
 /** @brief  Send MIDI command
     @param  status Status byte
     @param  value1 Value 1 byte
@@ -860,7 +836,7 @@ bool isEmpty(uint8_t scene, uint8_t phrase, uint8_t sequence);
     @param  sequence Index of sequence (sequence) of sequence within phrase
     @param  state Play state [STOPPED | STARTING | PLAYING | STOPPING]
     @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
-    @note   If all sequences have stopped and no external clients have registered for transport then transport is stopped.
+    @note   If all sequences have stopped and no external clients have registered for local transport then local transport is stopped.
 */
 void setPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t state);
 
@@ -1165,10 +1141,6 @@ int16_t getSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence);
 */
 void updateSequenceInfo();
 
-/** @brief  Sets the transport to start of the current bar
-*/
-void setJackTransportToStartOfBar();
-
 /** @brief  Selects a track to solo, muting other tracks in phrase
     @param  scene Index of scene
     @param  phrase Index of phrase
@@ -1188,68 +1160,21 @@ void solo(uint8_t scene, uint8_t phrase, uint8_t sequence, uint16_t track, bool 
 bool isSolo(uint8_t scene, uint8_t phrase, uint8_t sequence, uint16_t track);
 
 // ** Transport control **
-/** @brief  Locate transport to frame
-    @param  frame Quantity of frames (samples) from start of song to locate
-*/
-void jackTransportLocate(uint32_t frame);
-
-/** @brief  Register as timebase master
-    @retval bool True if successfully became timebase master
-*/
-bool jackTransportRequestTimebase();
-
-/** @brief  Release timebase master
-*/
-void jackTransportReleaseTimebase();
-
-/** @brief  Start jack transport rolling
- **/
-void jackTransportStart();
-
-/** @brief  Stop jack transport rolling
-*/
-void jackTransportStop();
-
-/** @brief  Toggle between play and stop state
-*/
-void jackTransportToggle();
-
-/** @brief  Get jack transport state
-    @retval uint8_t State [JackTransportStopped | JackTransportRolling | JackTransportStarting]
-*/
-uint8_t getJackTransportState();
-
-/** @brief  Get jack transport mode
-    @retval uint8_t Jack tranport mode
-    @see    JTRANS_MODES
-*/
-uint8_t getJackTransportMode();
-
-/** @brief  Set jack transport mode
-    @param  mode Jack tranport mode
-    @see    JTRANS_MODES
-*/
-void setJackTransportMode(uint8_t mode);
 
 /** @brief  Start local transport rolling
     @param  id Id  of client requesting change
  **/
-void localTransportStart(uint8_t id);
+void transportStart(uint8_t id);
 
 /** @brief  Stop local transport rolling
     @param  id Id  of client requesting change
 */
-void localTransportStop(uint8_t id);
+void transportStop(uint8_t id);
 
 /** @brief  Toggle between play and stop state
     @param  id Id of client requesting change
 */
-void localTransportToggle(uint8_t id);
-
-/** @breif  Get tempo from jack transport
-    @retval double Tempo or 0.0 on error
-*/
-double getJackTempo();
+void transportToggle(uint8_t id);
 
 /** @brief  Set transport tempo
     @param  tempo Beats per minute
@@ -1282,11 +1207,6 @@ void setDefaultBpb(uint8_t beats);
     @retval uint8_t Beats per bar
 */
 uint8_t getDefaultBpb();
-
-/** @brief  Set sync timeout
-    @param  timeout Quantity of microseconds to wait for slow sync clients at start of play
-*/
-void transportSetSyncTimeout(uint32_t timeout);
 
 /** @brief  Set metronome mode
     @param  mode 0: Disabled. 1: Play when transport running. 2: Play always (starts local transport)

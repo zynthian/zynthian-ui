@@ -192,11 +192,12 @@ void SequenceManager::updateAllSequenceLengths() {
     }
 }
 
-bool SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
+uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
     static uint32_t barPos = 0;
+    uint8_t nResult = 0; // Summary of playing sequences (0:None, 1:Starting, 2:Playing/stopping)
     ++barPos;
     if(bSync)
         barPos = 0;
@@ -313,10 +314,11 @@ bool SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>*
                     m_aGroupProgress[32] = (100 * barPos / (m_nTimeSig * PPQN_INTERNAL));
             }
         }
+        nResult |= (pSequence->getPlayState() & 0x3);
         ++nSequence;
     }
 
-    return m_vPlayingSequences.size() > 0;
+    return nResult;
 }
 
 void SequenceManager::setPlayState(Sequence* pSequence, uint8_t state) {

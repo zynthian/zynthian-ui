@@ -195,8 +195,7 @@ class zynseq(zynthian_engine):
         })
         self.zctrl_metro_mode = zynthian_controller(self, 'metronome_enable', {
             'name': 'Metronome Mode',
-            'labels': ['OFF', 'AUTO', 'ON', 'INTRO'],
-            'ticks': [0, 1, 2, 3],
+            'labels': ['OFF', 'AUTO', 'ON', 'INTRO', "NO ACCENT", "SILENT"],
             'value': self.libseq.getMetronomeMode()
         })
         self.zctrl_metro_volume = zynthian_controller(self, 'metronome_volume', {
@@ -378,21 +377,21 @@ class zynseq(zynthian_engine):
     # client: Name to register with transport to avoid other clients stopping whilst in use
     def transport_start(self, client):
         if self.libseq:
-            self.libseq.jackTransportStart(bytes(client, "utf-8"))
+            self.libseq.transportStart(bytes(client, "utf-8"))
 
     # Request JACK transport stop
     # client: Name registered with transport when started
     # Note: Transport stops when all registered clients have requested stop
     def transport_stop(self, client):
         if self.libseq:
-            self.libseq.jackTransportStop(bytes(client, "utf-8"))
+            self.libseq.transportStop(bytes(client, "utf-8"))
 
     # Toggle JACK transport
     # client: Name to register or was previously registered with transport when started
 
     def transport_toggle(self, client):
         if self.libseq:
-            self.libseq.jackTransportToggle(bytes(client, "utf-8"))
+            self.libseq.transportToggle(bytes(client, "utf-8"))
 
     # -------------------------------------------------------------------
     # MIDI transport & clock settings

@@ -80,14 +80,13 @@ bool g_bDebug                       = false;        // True to output debug info
 bool g_bPatternModified             = false;        // True if pattern has changed since last check
 bool g_bDirty                       = false;        // True if anything has been modified
 uint32_t g_nTransportClients        = 0;            // Bitwise flags indicating which clients have requested local transport
-uint8_t g_nLocalTransportState      = STOPPED;      // State of local (non-jack) transport
-uint8_t g_nJackTransportState       = STOPPED;      // State of jack transport
-uint8_t g_nJackTransportMode        = JTRANS_MODE_LOCK; // Mode for jack transport
+uint8_t g_nTransportState           = STOPPED;      // State of local (non-jack) transport
+bool g_bTransportRolling            = false;        // True if (arranger) transport rolling forward bars
 bool g_bMidiRecord                  = false;        // True to add notes to current pattern from MIDI input
 uint8_t g_nSustainValue             = 0;            // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart            = 0;            // Step when sustain pedal was last pressed
 uint32_t g_nLastStepCC              = 0;            // Step when last => WARNING!! Doesn't work if capturing several CC at once!
-bool g_bPlayingSequences            = false;        // True if any sequences are playing
+uint8_t g_nPlayingSequences         = 0;            // Bitwise flga of playing/starting sequences
 
 char g_sName[256];                                  // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest                = 0xFF;       // MIDI note number that creates rest in pattern
@@ -175,21 +174,24 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     // Transport & Clock
     static uint64_t nNow = 0;
     static jack_nframes_t nLastNow32 = 0;
-    jack_nframes_t nNow32 = jack_last_frame_time(g_pJackClient);
-    if (nNow32 < nLastNow32)
-        nNow += 0x100000000ULL;
-    nNow = (nNow & 0xFFFFFFFF00000000ULL) | nNow32;
-    jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
-    jack_transport_state_t nJackTransportState = jack_transport_query(g_pJackClient, &transportPosition);
-
     static uint64_t nLastExtClockFrame = 0; // Frames since jack epoch of last external clock
     static double dNextIntClockFrame = 0.0; // Frames since jack epoch of next internal clock
     static uint32_t nExtClk = 0; // Count of external clocks in this beat (wrap at PPQN)
     static uint32_t nTickTime = 0; // Quantity of elapsed ticks since tick epoch that next event will be processed
     static uint32_t nBeatsPerBar = g_nBeatsPerBar; // Sequencer's live beats per bar, updated from g_nBeatsPerBar on bar boundary
-    static uint32_t nBeat = g_nBeat; // Sequencer's live beat number, updates g_nBeat only if jack transport is rolling
-    static uint32_t nBar = g_nBar; // Sequencer's live bar number, updates g_nBar only if jack transport is rolling
     static int64_t nNextBeatTime = 0; // Tick time of next beat
+    static bool bRolling = g_bTransportRolling; // Transport rolling bars, updates g_bTranportRolling on next bar
+
+    jack_nframes_t nNow32 = jack_last_frame_time(g_pJackClient);
+    if (nNow32 < nLastNow32)
+        nNow += 0x100000000ULL;
+    nNow = (nNow & 0xFFFFFFFF00000000ULL) | nNow32;
+
+    // Ensure we are clock master
+    jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
+    jack_transport_state_t nJackTransportState = jack_transport_query(g_pJackClient, &transportPosition);
+    //!@todo Need to ensure we are timebase master
+
     // Metronome output buffer
     jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
     memset(pOutMetronome, 0, sizeof(jack_default_audio_sample_t) * nFrames);
@@ -276,32 +278,17 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Process MIDI RT-events => clock/tranport events
         switch (midiEvent.buffer[0]) {
             case MIDI_STOP:
-            //!@todo Disabled MIDI transport control whilst rationalising internal and jack transports
-                // Rx stop on any port - stops jack transport on next bar
-                if (g_nLocalTransportState == STOPPED) {
-                    //jack_transport_stop(g_pJackClient);
-                    //nJackTransportState = JackTransportStopped;
-                } else {
-                    //g_nJackTransportState = STOPPING;
-                }
+                // Rx stop on any port - stops transport rolling on next bar
+                bRolling = false;
                 break;
             case MIDI_START:
-                // Rx start on any port - starts jack transport on next bar
-                if (g_nLocalTransportState == STOPPED) {
-                    //jack_transport_start(g_pJackClient);
-                    //nJackTransportState = JackTransportRolling;
-                } else {
-                    //g_nJackTransportState = STARTING;
-                }
+                // Rx start on any port - starts transport rolling on next bar
+                bRolling = true; //!@todo Use bRolling to acutally start rolling
+                //!@todo reset to start of bar
                 break;
             case MIDI_CONTINUE:
                 // Rx continue on any port - starts jack transport on next bar
-                if (g_nLocalTransportState == STOPPED) {
-                    //jack_transport_start(g_pJackClient);
-                    //nJackTransportState = JackTransportRolling;
-                } else {
-                    //g_nJackTransportState = STARTING;
-                }
+                bRolling = true;
                 break;
             /*
             case MIDI_POSITION:
@@ -422,7 +409,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 // Advance step
-                if (bAdvance && g_nLocalTransportState != PLAYING) {
+                if (bAdvance && g_nTransportState != PLAYING) {
                     if (++nStep >= g_pPattern->getSteps())
                         nStep = 0;
                     g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->setPlayPosition(nStep * g_pPattern->getClocksPerStep());
@@ -454,48 +441,71 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Advance beat/bar
         bool bBeat = false; // True if start of beat
         bool bSync = false; // True if at start of bar
-        if (nTickTime >= nNextBeatTime) {
+
+        // Update local (internal) transport
+        if (g_nTransportState == STARTING) {
+            g_nTransportState = PLAYING;
+            nNextBeatTime = nTickTime + PPQN_INTERNAL;
+            g_nBeat = 1;
+            bSync = true;
+            bBeat = true;
+            jack_transport_start(g_pJackClient);
+        } else if (g_nTransportState == STOPPING) {
+            if (g_nBeat == 1) {
+                g_nTransportState = STOPPED;
+                jack_transport_stop(g_pJackClient);
+                jack_transport_locate(g_pJackClient, 0);
+            }
+        }
+
+        if (g_nTransportState == PLAYING && nTickTime >= nNextBeatTime) {
             // Beat
             nNextBeatTime = nTickTime + PPQN_INTERNAL;
             nBeatFrameOffset = nFrame;
             bBeat = true;
             DPRINTF("Beat at tick %d, frame %u (%llu)\n", nTickTime, nFrame, nNow + nFrame);
-            if (++nBeat > nBeatsPerBar) {
+            if (++g_nBeat > nBeatsPerBar) {
                 // Bar
-                nBeat = 1;
+                g_nBeat = 1;
                 bSync = true;
-                if (g_nJackTransportState == PLAYING)
-                    ++nBar;
+                if (g_bTransportRolling) {
+                    ++g_nBar;
+                }
             }
         }
 
-        // *** THIS IS WHERE THE SEQENCES ARE CLOCKED ***
-        //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
-        bool bPlayingSequences = g_seqMan.clock(nTickTime, &g_mSchedule, bSync);
+        if (g_nTransportState == PLAYING) {
+            // *** THIS IS WHERE THE SEQUENCES ARE CLOCKED ***
+            //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
+            uint8_t nPlayingSequences = g_seqMan.clock(nTickTime, &g_mSchedule, bSync);
 
-        // Check for sequenced timebase changes (from patterns)
-        if (g_seqMan.isTempoChanged()) {
-            float tempo = g_seqMan.getTempo();
-            setTempo(tempo);
-        }
-        if (g_seqMan.isTimeSigChanged()) {
-            uint8_t newBpb = g_seqMan.getTimeSig(true);
-            if (newBpb > 1) {
-                g_nBeatsPerBar = newBpb;
+            // Check for sequenced timebase changes (from patterns)
+            if (g_seqMan.isTempoChanged()) {
+                float tempo = g_seqMan.getTempo();
+                setTempo(tempo);
             }
-        }
-		// Update time signature only at bar boundary
-		if (bSync && nBeatsPerBar != g_nBeatsPerBar) {
-			nBeatsPerBar = g_nBeatsPerBar;
-			g_seqMan.setTimeSig(nBeatsPerBar);
-		}
+            if (g_seqMan.isTimeSigChanged()) {
+                uint8_t newBpb = g_seqMan.getTimeSig(true);
+                if (newBpb > 1) {
+                    g_nBeatsPerBar = newBpb;
+                }
+            }
+            // Update time signature only at bar boundary
+            if (bSync && nBeatsPerBar != g_nBeatsPerBar) {
+                nBeatsPerBar = g_nBeatsPerBar;
+                g_seqMan.setTimeSig(nBeatsPerBar);
+            }
 
-        if (g_bPlayingSequences != bPlayingSequences) {
-            g_bPlayingSequences = bPlayingSequences;
-            if (!g_bPlayingSequences) {
-                DPRINTF("No sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, nTickTime, nBeat, g_nTick);
-                localTransportStop(TRANSPORT_CLIENT_ZYNSEQ);
+            if (g_nPlayingSequences != nPlayingSequences) {
+                g_nPlayingSequences = nPlayingSequences;
+                if (!g_nPlayingSequences) {
+                    DPRINTF("No sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, nTickTime, g_nBeat, g_nTick);
+                    transportStop(TRANSPORT_CLIENT_ZYNSEQ);
+                }
             }
+
+            // Update transport parameters
+            g_nBarStartTick = g_nTick;
         }
 
         // Send MIDI CLOCK...
@@ -504,62 +514,17 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nTickTime, new SEQ_EVENT({nTickTime, 0, MIDI_MESSAGE{MIDI_CLOCK, 0, 0}})));
         }
 
-        // Update jack transport parameters
-        if (g_nLocalTransportState == PLAYING)
-            g_nBeat = nBeat;
-
-        if (g_nJackTransportState == PLAYING) {
-            g_nBarStartTick = g_nTick;
-            g_nBeat = nBeat;
-            g_nBar = nBar;
-        }
-
-        // Update local (internal) transport
-        if (g_nLocalTransportState == STARTING) {
-            if (nJackTransportState == STOPPED) {
-                g_nLocalTransportState = PLAYING;
-                nNextBeatTime = nTickTime;
-                nBeat = nBeatsPerBar;
-            } else {
-                if (g_nBeat == 1) {
-                    g_nLocalTransportState = PLAYING;
-                }
-            }
-        }
-        if (g_nLocalTransportState == STOPPING) {
-            if (g_nBeat == 1) {
-                g_nLocalTransportState = STOPPED;
-            }
-        }
-
-        // Update jack transport
-        if (g_nJackTransportState == STARTING) {
-            if (g_nLocalTransportState == STOPPED) {
-                jack_transport_start(g_pJackClient);
-                g_nJackTransportState = PLAYING;
-                nNextBeatTime = nTickTime;
-                nBeat = nBeatsPerBar;
-            } else {
-                if (g_nBeat == 1) {
-                    jack_transport_start(g_pJackClient);
-                    g_nJackTransportState = PLAYING;
-                }
-            }
-        }
-        if (g_nJackTransportState == STOPPING) {
-            if (g_nBeat == 1) {
-                jack_transport_stop(g_pJackClient);
-                g_nJackTransportState = STOPPED;
-            }
-        }
 
         if (bBeat) {
             if (g_nMetronomeMode == METRO_MODE_ON ||
-            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nLocalTransportState == PLAYING || g_nJackTransportState == PLAYING) ||
-            g_nMetronomeMode == METRO_MODE_INTRO && ((g_nTransportClients & (1 << TRANSPORT_CLIENT_ZYNSEQ)) == 0)) {
+            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nTransportState == PLAYING || g_bTransportRolling) ||
+            g_nMetronomeMode == METRO_MODE_INTRO && !(g_nPlayingSequences & 1)) {
                 // Start metronome
                 g_nMetronomePtr = 0;
                 g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
+            } else if (g_nMetronomeMode == METRO_MODE_NO_PEEP) {
+                g_nMetronomePtr = 0;
+                g_pMetro = &g_metro_pip;
             }
         }
 
@@ -748,9 +713,9 @@ void init(char* name) {
     // Register the cleanup function to be called when program exits
     atexit(end);
 
-    if (!jackTransportRequestTimebase())
+    if (jack_set_timebase_callback(g_pJackClient, 0, onJackTimebase, NULL))
         fprintf(stderr, "ERROR: Failed to become timebase master\n");
-    jackTransportLocate(0);
+    jack_transport_locate(g_pJackClient, 0);
     selectPattern(1);
     setTempo(120.0);
 }
@@ -1704,50 +1669,6 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
     }
 }
 
-//!@todo Do we still need functions to send MIDI transport control (start, stop, continuew, songpos, song select, clock)?
-
-void sendMidiStart() {
-    MIDI_MESSAGE msg;
-    msg.command = MIDI_START;
-    sendMidiMsg(msg);
-    DPRINTF("Sending MIDI Start... does it get recieved back???\n");
-}
-
-void sendMidiStop() {
-    MIDI_MESSAGE msg;
-    msg.command = MIDI_STOP;
-    sendMidiMsg(msg);
-}
-
-void sendMidiContinue() {
-    MIDI_MESSAGE msg;
-    msg.command = MIDI_CONTINUE;
-    sendMidiMsg(msg);
-}
-
-void sendMidiSongPos(uint16_t pos) {
-    MIDI_MESSAGE msg;
-    msg.command = MIDI_POSITION;
-    msg.value1 = pos & 0x7F;
-    msg.value2 = (pos >> 7) & 0x7F;
-    sendMidiMsg(msg);
-}
-
-void sendMidiSong(uint32_t pos) {
-    if (pos > 127)
-        return;
-    MIDI_MESSAGE msg;
-    msg.command = MIDI_SONG;
-    msg.value1 = pos & 0x7F;
-    sendMidiMsg(msg);
-}
-
-void sendMidiClock() {
-    MIDI_MESSAGE msg;
-    msg.command = MIDI_CLOCK;
-    sendMidiMsg(msg);
-}
-
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2) {
     MIDI_MESSAGE msg;
     msg.command = status;
@@ -2413,9 +2334,9 @@ void setPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t state
         if (g_seqMan.getPlayingSequencesCount() == 0) {
 			setBpb(getPhraseBPB(scene, phrase));
     	}
-        localTransportStart(TRANSPORT_CLIENT_ZYNSEQ);
+        transportStart(TRANSPORT_CLIENT_ZYNSEQ);
     }
-    else if (!g_bPlayingSequences && state == STOPPING)
+    else if (!g_nPlayingSequences && state == STOPPING)
         state = STOPPED;
     g_seqMan.setPlayState(pSequence, state);
 }
@@ -2787,118 +2708,36 @@ bool isSolo(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t track) {
 }
 
 // ** Transport management **/
-
-void setJackTransportToStartOfBar() {
-    jack_position_t position;
-    jack_transport_query(g_pJackClient, &position);
-    position.beat = 1;
-    position.tick = 0;
-    //    position.valid = JackPositionBBT;
-    jack_transport_reposition(g_pJackClient, &position);
+uint8_t getTransportState() {
+    return g_nTransportState;
 }
 
-void jackTransportLocate(uint32_t frame) {
-    jack_transport_locate(g_pJackClient, frame);
-}
-
-bool jackTransportRequestTimebase() {
-    if (jack_set_timebase_callback(g_pJackClient, 0, onJackTimebase, NULL))
-        return false;
-    return true;
-}
-
-void jackTransportReleaseTimebase() { jack_release_timebase(g_pJackClient); }
-
-void jackTransportStart() {
-    if (g_nJackTransportState != STOPPED)
-        return;
-    while (g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
-    g_nJackTransportState = STARTING;
-    g_bMutex = false;
-}
-
-void jackTransportStop() {
-    if (g_nJackTransportState == STOPPED)
-        return;
-    while (g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
-    g_nJackTransportState = STOPPING;
-    g_bMutex = false;
-}
-
-void jackTransportToggle() {
-    if (getJackTransportState() == JackTransportRolling)
-        jackTransportStop();
-    else
-        jackTransportStart();
-}
-
-uint8_t getJackTransportState() {
-    jack_position_t position; // Not used but required to query transport
-    return jack_transport_query(g_pJackClient, &position);
-}
-
-uint8_t getJackTransportMode() {
-    return g_nJackTransportMode;
-}
-
-void setJackTransportMode(uint8_t mode) {
-    if (mode < JTRANS_MODE_LAST)
-        g_nJackTransportMode = mode;
-}
-
-void localTransportStart(uint8_t id) {
-    bool bPlaying = (g_nTransportClients != 0);
-    if (g_nLocalTransportState != PLAYING)
-        g_nLocalTransportState = STARTING;
+void transportStart(uint8_t id) {
+    if (g_nTransportState != PLAYING)
+        g_nTransportState = STARTING;
     g_nTransportClients |= (1 << id);
-    if (g_nJackTransportState != PLAYING && g_nJackTransportMode == JTRANS_MODE_LOCK || g_nJackTransportMode == JTRANS_MODE_TRIG)
-        g_nJackTransportState = STARTING;
 }
 
-void localTransportStop(uint8_t id) {
+void transportStop(uint8_t id) {
     if (id == 255)
         g_nTransportClients = 0;
     else {
         g_nTransportClients &= ~(1 << id);
     }
-    if ((g_nTransportClients == 0) && (g_nLocalTransportState != STOPPED))
-        g_nLocalTransportState = STOPPING;
-    if (g_nJackTransportState != STOPPED && g_nJackTransportMode == JTRANS_MODE_LOCK)
-        g_nJackTransportState = STOPPING;
+    if ((g_nTransportClients == 0) && (g_nTransportState != STOPPED))
+        g_nTransportState = STOPPING;
 }
 
-void localTransportToggle(uint8_t id) {
-    if (g_nLocalTransportState != STOPPED)
-        localTransportStop(id);
+void transportToggle(uint8_t id) {
+    if (g_nTransportState != STOPPED)
+        transportStop(id);
     else
-        localTransportStart(id);
-}
-
-double getJackTempo() {
-    jack_position_t pos;
-    jack_transport_state_t state;
-    state = jack_transport_query(g_pJackClient, &pos);
-    if (pos.valid & JackPositionBBT)
-        return pos.beats_per_minute;
-    else
-        return 0.0;
-}
-
-void setJackTempo() {
-    jack_position_t pos;
-    jack_transport_state_t state;
-    state = jack_transport_query(g_pJackClient, &pos);
+        transportStart(id);
 }
 
 void setTempo(double tempo) {
     if (tempo >= 10.0 && tempo < 500.0) {
         g_dTempo = tempo;
-        if (g_nJackTransportState != PLAYING)
-            jackTransportLocate(0); // Cludge to update jack transport tempo when jack transport not running
         updateClockTiming();
         g_seqMan.setTempo(tempo);
         //DPRINTF("Tempo set to: %f FramesPerClock: %u\n", g_dTempo, g_dFramesPerTick);
@@ -2929,19 +2768,14 @@ void setDefaultBpb(uint8_t beats) {
 
 uint8_t getDefaultBpb() { return g_nDefaultBpb; }
 
-void transportSetSyncTimeout(uint32_t timeout) {
-    jack_set_sync_timeout(g_pJackClient, timeout);
-}
-
 void setMetronomeMode(uint8_t mode) {
     if (mode >= METRO_MODE_LAST)
         return;
     g_nMetronomeMode = mode;
-    g_nMetronomePtr = -1;
-    if (mode == METRO_MODE_ON || mode == METRO_MODE_INTRO)
-        localTransportStart(TRANSPORT_CLIENT_METRO);
+    if (mode >= METRO_MODE_ON)
+        transportStart(TRANSPORT_CLIENT_METRO);
     else
-        localTransportStop(TRANSPORT_CLIENT_METRO);
+        transportStop(TRANSPORT_CLIENT_METRO);
 }
 
 uint8_t getMetronomeMode() {
