@@ -39,6 +39,7 @@ from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 
 from zyngui import zynthian_gui_config
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
 from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
 from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
@@ -970,8 +971,8 @@ class PadMatrixHandler(ModeHandlerBase):
             if ptype == CONST.PT_LONG:
                 self._stop_all_sounds()
             else:
-                in_all_banks = ptype == CONST.PT_BOLD
-                self._stop_all_seqs(in_all_banks)
+                in_all_scenes = ptype == CONST.PT_BOLD
+                self._stop_all_seqs(in_all_scenes)
 
     def _seqman_handle_pad_press(self, seq):
         if self._seqman_func is None:
@@ -1117,21 +1118,13 @@ class PadMatrixHandler(ModeHandlerBase):
         self._recording_seq = seq
         self._update_pad(seq)
 
-    def _stop_all_seqs(self, in_all_banks=False):
-        bank = 0 if in_all_banks else self._zynseq.bank
-        while True:
-            # Iterate max 64 scenes or until no playing sequences
-            # TODO: Should use a constant for max scenes
-            seq_num = self._libseq.getSequencesInBank(bank)
-            for seq in range(seq_num):
-                state = self._libseq.getPlayState(bank, seq)
-                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
-                    self._libseq.togglePlayState(bank, seq)
-            if not in_all_banks:
-                break
-            bank += 1
-            if bank >= 64 or self._libseq.getPlayingSequences() == 0:
-                break
+    def _stop_all_seqs(self, in_all_scenes=False):
+        #scene = 0 if in_all_scenes else self._zynseq.scene
+        for midi_chan in range(MAX_NUM_MIDI_CHANS + 1):
+            for phrase in range(self._zynseq.phrases):
+                state = self._libseq.getPlayState(self._zynseq.scene, phrase, midi_chan)
+                if state not in [zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
+                    self._libseq.togglePlayState(self._zynseq.scene, phrase, midi_chan)
 
     def _stop_pattern_record(self):
         if self._libseq.isMidiRecord():
