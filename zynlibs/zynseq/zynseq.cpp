@@ -2335,9 +2335,10 @@ void setPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t state
         return;
     if (state == STARTING || state == PLAYING) {
         // If no playing sequences, set BPB to the sequence's phrase's timesig
-        if (g_seqMan.getPlayingSequencesCount() == 0) {
-			setBpb(getPhraseBPB(scene, phrase));
-    	}
+        // This is disabled. We could want to enable it in the future, or not ;-)
+        //if (g_seqMan.getPlayingSequencesCount() == 0) {
+		//	setBpb(getPhraseBPB(scene, phrase));
+    	//}
         transportStart(TRANSPORT_CLIENT_ZYNSEQ);
     }
     else if (!g_nPlayingSequences && state == STOPPING)
