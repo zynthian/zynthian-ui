@@ -2265,7 +2265,11 @@ void setSequenceMode(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t mo
 }
 
 uint8_t getPlayState(uint8_t scene, uint8_t phrase, uint8_t sequence) {
-    return g_seqMan.getSequence(scene, phrase, sequence)->getPlayState();
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        return pSequence->getPlayState();
+    else
+        return STOPPED;
 }
 
 void setSequenceRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t repeat) {
