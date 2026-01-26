@@ -488,6 +488,7 @@ class zynthian_chain_manager:
                         pass
                     send += 1
         self.refresh_mixbus_sends()
+        self.rebuild_optimisation_cache()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
         return pos
 
