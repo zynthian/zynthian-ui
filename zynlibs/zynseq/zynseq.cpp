@@ -332,16 +332,17 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition();
                         uint32_t nClocksPerStep = g_pPattern->getClocksPerStep();
                         uint32_t nStart = startEvents[nNum1].start / nClocksPerStep;
-                        float fOffset = float(startEvents[nNum1].start % nClocksPerStep) / nClocksPerStep;
-                        float fDuration = float(nPlayPos - startEvents[nNum1].start) / nClocksPerStep;
+                        float fOffset = double(startEvents[nNum1].start % nClocksPerStep) / nClocksPerStep;
+                        float fDuration = double(int(nPlayPos) - int(startEvents[nNum1].start)) / nClocksPerStep;
                         // Constrain duration
                          if (fDuration < 0.0)
-                            fDuration += g_pPattern->getLength();
+                            fDuration += g_pPattern->getSteps();
                         if (fDuration < 1.0)
                             fDuration = 1.0;
 
                        // Add note to pattern
                         g_pPattern->addNote(nStart, nNum1, startEvents[nNum1].velocity, fDuration, fOffset);
+                        //fprintf(stderr, "Captured Note %d at %d + %f with duration %f\n", nNum1, nStart, fOffset, fDuration);
                         // Reset note in event buffer
                         startEvents[nNum1].start = -1;
                         // Flag pattern as modified
