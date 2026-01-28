@@ -84,8 +84,9 @@ float Sequence::getTempo() {
     return m_fTempo;
 }
 
-void Sequence::setTimeSig(uint8_t sig) {
+bool Sequence::setTimeSig(uint8_t sig) {
     m_nTimeSig = sig;
+    bool bLenChange = false;
     if (isPhraseLauncher()) {
 		// Iterate each sequence in phrase
 		for (uint8_t nSeq = 0; nSeq < 32; ++nSeq) {
@@ -97,11 +98,13 @@ void Sequence::setTimeSig(uint8_t sig) {
 				// For each empty pattern, adjust number of beats to fit exactly 1 bar => bpb
 				if (pPattern && pPattern->getLastStep() == -1) {
 					pPattern->setBeatsInPattern(sig);
+                    bLenChange = true;
 				}
 			}
 		}
 	}
     m_bChanged = true;
+    return bLenChange;
 }
 
 uint8_t Sequence::getTimeSig() {

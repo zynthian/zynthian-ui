@@ -193,14 +193,15 @@ void SequenceManager::updateAllSequenceLengths() {
 }
 
 uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
-    /** Get events scheduled for next step from all tracks in each playing sequence.
+    /** Get events scheduled for next tick from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
     static uint32_t barPos = 0;
     uint8_t nResult = 0; // Summary of playing sequences (0:None, 1:Starting, 2:Playing/stopping)
-    ++barPos;
     if(bSync)
         barPos = 0;
+    else
+        ++barPos;
     size_t nSequence = 0;
     while (nSequence < m_vPlayingSequences.size()) {
         Sequence* pSequence = m_vPlayingSequences[nSequence];
@@ -242,7 +243,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             uint8_t nEventType = pSequence->clock(nTime, bSync, m_nTimeSig);
 
             if (nEventType & CLOCK_TRIG_MIDI) {
-                // A step event
+                // A step event so iterate all step events starting on this tick
                 while (SEQ_EVENT* pEvent = pSequence->getEvent())
                     pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(pEvent->time, new SEQ_EVENT(*pEvent)));
             }
@@ -452,7 +453,8 @@ void SequenceManager::setDefaultTimeSig(uint8_t bpb) {
     for (auto& scene: m_vScenes) {
         for (auto& phrase: scene) {
 			if (phrase->isPhraseEmpty())
-		        phrase->setTimeSig(bpb);
+		        if(phrase->setTimeSig(bpb))
+                    updateAllSequenceLengths();
 		}
 	}
 }
@@ -594,7 +596,6 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
     refreshPhrases(scene);
 }
 
-
 void SequenceManager::setPhraseTimeSig(uint8_t scene, uint8_t phrase, uint8_t bpb) {
     if (scene >= m_vScenes.size())
         return;
@@ -602,9 +603,9 @@ void SequenceManager::setPhraseTimeSig(uint8_t scene, uint8_t phrase, uint8_t bp
     if (phrase >= vPhrases.size())
         return;
 
-    vPhrases[phrase]->setTimeSig(bpb);
+    if (vPhrases[phrase]->setTimeSig(bpb))
+        updateAllSequenceLengths();
 }
-
 
 uint8_t SequenceManager::getPhraseTimeSig(uint8_t scene, uint8_t phrase) {
     if (scene >= m_vScenes.size())

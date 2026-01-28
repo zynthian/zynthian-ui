@@ -115,8 +115,9 @@ class Sequence {
 
     /** @brief  Set time signature
         @param  sig Time signature (beats per bar)
+        @retval bool True if any pattern / sequence lengths changed
     */
-    void setTimeSig(uint8_t sig);
+    bool setTimeSig(uint8_t sig);
 
     /** @brief  Get time signature
         @retval uint8_t Time signature (beats per bar)
