@@ -188,7 +188,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
     def init(self):
         super().init()
         self._enter_daw_mode()
-        zynsigman.register(zynsigman.S_STEPSEQ, self.state_manager.zynseq.SS_SEQ_METRONOME_STATE, self.update_metronome)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.update_metronome)
         self._send_display_sysex("Zynthian", "Connected")
 
     def _enter_daw_mode(self):
@@ -206,7 +206,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
 
     def end(self):
         super().end()
-        zynsigman.unregister(zynsigman.S_STEPSEQ, self.state_manager.zynseq.SS_SEQ_METRONOME_STATE, self.update_metronome)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.update_metronome)
         #zynthian_ctrldev_zynpad.end(self)
 
     def refresh(self):
@@ -277,15 +277,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
                     self.setButtonState(TRANSPORT_RECORD.sysex, self.record_pressed)
                     self.state_manager.send_cuia("TOGGLE_RECORD")
                 if note == GLOBAL_METRO.note:
-                    now = time.time()
-                    if now - self.last_metro_press_time > 0.1:
-                        self.last_metro_press_time = now
-                        is_enabled = self.zynseq.libseq.isMetronomeEnabled()
-                        self.zynseq.libseq.enableMetronome(not is_enabled)
-                        zynsigman.send(zynsigman.S_STEPSEQ, self.state_manager.zynseq.SS_SEQ_METRONOME_STATE, enabled=not is_enabled)
-                    # The signal will trigger update_metronome
-                    # this doesn't work yet TODO move metronome setting into the zynseq class
-                    # so the signal management works
+                    self.zynseq.zctrl_metro_mode.toggle()
                 if note >= SELECT_1.note and note <= SELECT_8.note:
                     self._chain_manager.set_active_chain_by_id(note - SELECT_1.note + 1)
 
