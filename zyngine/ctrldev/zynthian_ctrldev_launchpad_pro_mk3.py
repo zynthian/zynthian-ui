@@ -3,10 +3,12 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
-# Zynthian Control Device Driver for "Novation Launchpad Pro MK3"
+# Zynthian Control Device Driver for "Novation Launchpad X"
 #
 # Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
+#                         Wapata <wapata.31@gmail.com>
+#
 #
 # ******************************************************************************
 #
@@ -28,10 +30,10 @@ import logging
 from time import sleep
 
 # Zynthian specific modules
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
-from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
+from zyncoder.zyncore import lib_zyncore
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Pro MK3
@@ -40,11 +42,11 @@ from zyngui import zynthian_gui_config
 
 class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 
-    dev_ids = ["Launchpad Pro MK3 IN 1"]
+    dev_ids = ["Launchpad Pro MK3 IN 3"]
 
     def send_sysex(self, data):
         if self.idev_out is not None:
-            msg = bytes.fromhex("F0 00 20 29 02 0E {} F7".format(data))
+            msg = bytes.fromhex(f"F0 00 20 29 02 0E {data} F7")
             lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
             sleep(0.05)
 
@@ -54,22 +56,18 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
         return col, row
 
     def init(self):
-        # Awake
-        self.sleep_off()
         # Enter DAW session mode
         self.send_sysex("10 01")
-        # Select session layout (layout session = 0x00, page = 0x0D)
-        self.send_sysex("00 00 00")
-        # Light off
-        # self.light_off()
+        # Select session layout (session = 0x00, faders = 0x0D)
+        self.send_sysex("00 00 00 00")
+        super().init()
 
     def end(self):
-        # Light off
-        self.light_off()
+        super().end()
         # Exit DAW session mode
         self.send_sysex("10 00")
-        # Select Notes/Drum layout, page 0 (Chord = 0x2, Note/Drum = 0x4, Scale Settings = 0x5, ...)
-        self.send_sysex("04 00 00")
+        # Select Keys layout (drums = 0x04, keys = 0x05, user = 0x06, prog = 0x7F)
+        self.send_sysex("00 05 00 00")
 
     def update_pad(self, row, col, pad_info):
         chan = 0
@@ -99,10 +97,16 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
                 vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
         except:
             pass
+
         lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
+    # Light-Off the pad specified with column & row
+    def pad_off(self, col, row):
+        note = 10 * (8 - row) + col + 1
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
+
     def midi_event(self, ev):
-        # logging.debug("Launchpad MINI MK3 MIDI handler => {}".format(ev))
+        # logging.debug(f"Launchpad Pro MK3 MIDI handler => {ev}")
         evtype = (ev[0] >> 4) & 0x0F
         # Note ON => launch/stop sequence
         if evtype == 0x9:
@@ -123,13 +127,13 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if ccval > 0:
-                if ccnum == 80:
+                if ccnum == 0x50:
                     self.state_manager.send_cuia("ARROW_UP")
-                elif ccnum == 70:
+                elif ccnum == 0x46:
                     self.state_manager.send_cuia("ARROW_DOWN")
-                elif ccnum == 91:
+                elif ccnum == 0x5B:
                     self.state_manager.send_cuia("ARROW_LEFT")
-                elif ccnum == 92:
+                elif ccnum == 0x5C:
                     self.state_manager.send_cuia("ARROW_RIGHT")
                 else:
                     col, row = self.get_note_xy(ccnum)
@@ -140,21 +144,10 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
                         except:
                             pass
             return True
+        # SysEx
+        elif ev[0] == 0xF0:
+            logging.info(f"Received SysEx => {ev.hex(' ')}")
+            return True
 
-    # Light-Off LEDs
-    def light_off(self):
-        # logging.debug("Lighting Off LEDs Launchpad MINI MK3")
-        # Clean state of notes & CCs
-        self.send_sysex("12 01 00 01")
-
-    # Sleep On
-    def sleep_on(self):
-        # Sleep Mode (0 = sleep, 1 = awake)
-        self.send_sysex("09 00")
-
-    # Sleep On
-    def sleep_off(self):
-        # Sleep Mode (0 = sleep, 1 = awake)
-        self.send_sysex("09 01")
 
 # ------------------------------------------------------------------------------
