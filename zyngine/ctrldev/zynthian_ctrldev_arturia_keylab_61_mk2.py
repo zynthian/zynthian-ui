@@ -5,8 +5,6 @@
 #
 # Zynthian Control Device Driver for "Arturia Keylab 61 Mk2"
 #
-# Copyright (C) 2023-2025 Oscar Aceña <oscaracena@gmail.com>
-#
 # ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
@@ -145,11 +143,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
     - 61 piano keys
     - track control, global control and transport control buttons
     - and an 8 x mixing set with 8x(1  encoder, 1 fader and 1 toggle button) + 1 master.
-
     
-    This driver
-    - allows enabling/disabling midi transport control via the "Global Controls IN"
-    - allows enabling/disabling audio transport control via the "Global Controls OUT"
     
     Resources:
     - https://downloads.arturia.com/products/keylab-49-mkII/manual/keylab-mk2_Manual_1_0_0_EN.pdf
