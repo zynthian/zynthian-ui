@@ -561,9 +561,9 @@ class Pattern {
     void setInterpolateCCDefaults();
 
     /** @brief  Get last populated step
-        @retval uint32_t Index of last step that contains any events or -1 if pattern is empty
+        @retval int32_t Index of last step that contains any events or -1 if pattern is empty
     */
-    uint32_t getLastStep();
+    int32_t getLastStep();
 
     // Snapshot management: Undo/Redo
     void clearStepEventVector(StepEventVector* sev);

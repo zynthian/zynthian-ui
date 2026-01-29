@@ -646,10 +646,10 @@ void Pattern::setInterpolateCCDefaults() {
     }
 }
 
-uint32_t Pattern::getLastStep() {
+int32_t Pattern::getLastStep() {
     if (m_vEvents.size() == 0)
         return -1;
-    uint32_t nStep = 0;
+    int32_t nStep = 0;
     for (StepEvent* ev : m_vEvents) {
         if (ev->getPosition() > nStep)
             nStep = ev->getPosition();

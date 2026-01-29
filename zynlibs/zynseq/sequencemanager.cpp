@@ -385,7 +385,7 @@ void SequenceManager::setTriggerNote(uint16_t phraseSeq, uint8_t note) {
         m_mTriggers[note] = phraseSeq;
 }
 
-uint8_t SequenceManager::getTriggerChannel() { 
+uint8_t SequenceManager::getTriggerChannel() {
     return m_nTriggerChannel;
 }
 
@@ -453,7 +453,7 @@ void SequenceManager::setDefaultTimeSig(uint8_t bpb) {
     for (auto& scene: m_vScenes) {
         for (auto& phrase: scene) {
 			if (phrase->isPhraseEmpty())
-		        if(phrase->setTimeSig(bpb))
+		        if (phrase->setTimeSig(bpb))
                     updateAllSequenceLengths();
 		}
 	}
@@ -602,8 +602,18 @@ void SequenceManager::setPhraseTimeSig(uint8_t scene, uint8_t phrase, uint8_t bp
     auto& vPhrases = m_vScenes[scene];
     if (phrase >= vPhrases.size())
         return;
-
-    if (vPhrases[phrase]->setTimeSig(bpb))
+    bool bLenChange = false;
+    // Change timesig of selected phrase
+    bLenChange |= vPhrases[phrase]->setTimeSig(bpb);
+    // Change timesig on next consecutive empty phrases
+    while (++phrase < vPhrases.size()) {
+        if (vPhrases[phrase]->isPhraseEmpty())
+            bLenChange |= vPhrases[phrase]->setTimeSig(bpb);
+        else
+            break;
+    }
+    // Update lengths if needed
+    if (bLenChange)
         updateAllSequenceLengths();
 }
 
