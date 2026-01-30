@@ -45,16 +45,18 @@ from zyngui import zynthian_gui_config
 
 MAX_NUM_MIDI_CHANS = 32
 
-# Get ZYnMidiRouter parameters and limits from lib_zyncore
+# Get ZynMidiRouter parameters and limits from lib_zyncore
 NUM_ZMOP_CHAINS = lib_zyncore.zmop_get_num_chains()
 MAX_NUM_ZMOPS = NUM_ZMOP_CHAINS - 1
-NUM_MIDI_DEVS_IN = lib_zyncore.zmip_get_num_devs() + 3 #TODO: Use a constant for this extra capacity
+NUM_MIDI_DEVS_IN = lib_zyncore.zmip_get_num_devs() + 3  #TODO: Use a constant for this extra capacity
 NUM_MIDI_DEVS_OUT = lib_zyncore.zmop_get_num_devs()
 MAX_NUM_MIDI_DEVS = min(NUM_MIDI_DEVS_IN, NUM_MIDI_DEVS_OUT)
 ZMIP_SEQ_INDEX = lib_zyncore.zmip_get_seq_index()
 ZMIP_STEP_INDEX = lib_zyncore.zmip_get_step_index()
 ZMIP_INT_INDEX = lib_zyncore.zmip_get_int_index()
 ZMIP_CTRL_INDEX = lib_zyncore.zmip_get_ctrl_index()
+ZMOP_MOD_INDEX = lib_zyncore.zmop_get_mod_index()
+ZMOP_STEP_INDEX = lib_zyncore.zmop_get_step_index()
 
 engine2class = {
     "ZY": zynthian_engine_zynaddsubfx,
@@ -467,7 +469,7 @@ class zynthian_chain_manager:
 
         if pos == index:
             return pos
-        
+
         value = self.chains.pop(chain_id)
         items = list(self.chains.items())
         items.insert(pos, (chain_id, value))

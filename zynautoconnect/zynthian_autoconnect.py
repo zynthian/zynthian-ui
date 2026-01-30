@@ -852,7 +852,22 @@ def midi_autoconnect():
     # Connect zynseq output to ZynMidiRouter:step_in
     required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
 
+    # Connect ZynMidiRouter:step_out to zynseq input
+    required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
+    # Route/unroute the devices from zmop_step as configured in zynseq_input_exclude_ports
+    for idev, port in enumerate(devices_in):
+        if idev >= max_num_devs:
+            break
+        if port:
+            if port.aliases[0] in zynseq_input_exclude_ports:
+                lib_zyncore.zmop_set_route_from(state_manager.get_zmop_step_index(), idev, 0)
+            else:
+                lib_zyncore.zmop_set_route_from(state_manager.get_zmop_step_index(), idev, 1)
+
+    # This doesn't work well!
+    # Reverted to old behavior: ZynMidiRouter:step_out => zynseq:input
     # Connect zynseq to selected input devices
+    """
     for idev, port in enumerate(devices_in):
         if idev >= max_num_devs:
             break
@@ -861,14 +876,16 @@ def midi_autoconnect():
                 required_routes["zynseq:input"].add(port.name)
             except:
                 logger.warning(f"Unable to connect '{port}' to Zynseq")
+    """
 
-    # Connect zynseq clock output to selected MIDI output devices
-    for idev, port in enumerate(devices_out):
-        if port and port.aliases[0] in midi_clock_output_ports:
-            try:
-                required_routes[port.name].add("zynseq:clock")
-            except:
-                logger.warning(f"Unable to connect MIDI clock to '{port}'")
+    # Connect MIDI clock output to selected MIDI output devices
+    if midi_clock_output_ports:
+        for idev, port in enumerate(devices_out):
+            if port and port.aliases[0] in midi_clock_output_ports:
+                try:
+                    required_routes[port.name].add("zynseq:clock")
+                except:
+                    logger.warning(f"Unable to connect MIDI clock to '{port}'")
 
     # Connect zynseq clock input
     if 0 <= ext_clock_zmip <= len(devices_in) and devices_in[ext_clock_zmip]:
