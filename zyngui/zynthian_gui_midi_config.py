@@ -520,11 +520,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                             zynautoconnect.set_ext_clock_zmip(idev)
                         case "MIDI_CLOCK/OFF":
                             zynautoconnect.set_ext_clock_zmip(-1)
-                        case "BEAT_SYNC_DIV":
-                            beats = self.state_manager.zynseq.libseq.getClockDivisor() + 1
-                            if beats > 4:
-                                beats = 1
-                            self.state_manager.zynseq.libseq.setClockDivisor(beats)
                         case "MODE_ACTI":
                             lib_zyncore.zmip_set_flag_active_chain(idev, True)
                             zynautoconnect.update_midi_in_dev_mode(idev)

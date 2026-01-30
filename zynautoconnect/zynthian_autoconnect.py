@@ -122,6 +122,7 @@ midi_port_names = {}
 # List of MIDI output ports to which to send MIDI clock
 midi_clock_output_ports = []
 ext_clock_zmip = -1
+ext_clock_device_name = None
 
 # List of MIDI zmips not feeding zynseq
 zynseq_input_exclude = []
@@ -509,12 +510,28 @@ def remove_hw_port(port):
     return False
 
 def set_ext_clock_zmip(idev):
-    global ext_clock_zmip
+    global ext_clock_zmip, ext_clock_device_name
     ext_clock_zmip = idev
+    try:
+        ext_clock_device_name = devices_in[idev].aliases[0]
+    except:
+        pass
     request_midi_connect()
 
 def get_ext_clock_zmip():
     return ext_clock_zmip
+
+def set_ext_clock_device_name(devname):
+    global ext_clock_zmip, ext_clock_device_name
+    ext_clock_zmip = -1
+    try:
+        ext_clock_device_name = devname
+    except:
+        pass
+    request_midi_connect()
+
+def get_ext_clock_device_name():
+    return ext_clock_device_name
 
 def set_midi_clock_output_port(port_name, send):
     global midi_clock_output_ports
@@ -632,7 +649,7 @@ def midi_autoconnect():
     deferred_midi_connect = False
 
     # logger.info("ZynAutoConnect: MIDI ...")
-    global zyn_routed_midi
+    global zyn_routed_midi, ext_clock_zmip
 
     new_idev = []  # List of newly detected input ports
 
@@ -661,6 +678,11 @@ def midi_autoconnect():
                     break
         if devnum is not None:
             busy_idevs.append(devnum)
+
+            # Enable external MIDI-clock sync for the configured device
+            if devices_in[devnum].aliases[0] == ext_clock_device_name:
+                ext_clock_zmip = devnum
+
             # Try to connect ctrldev driver's RT MIDI processor between input device and zmip
             try:
                 driver = state_manager.ctrldev_manager.drivers[devnum]
@@ -683,6 +705,10 @@ def midi_autoconnect():
         if i not in busy_idevs and devices_in[i] is not None:
             logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
             devices_in[i] = None
+            # Disable external MIDI clock sync when device is disconnected
+            if ext_clock_zmip == i:
+                ext_clock_zmip = -1
+            # Unload device drivers
             state_manager.ctrldev_manager.unload_driver(i)
 
     # Connect MIDI Output Devices
@@ -817,7 +843,6 @@ def midi_autoconnect():
                 logger.warning(f"Unable to connect MIDI clock to {port}")
 
     # Connect zynseq clock input
-    global ext_clock_zmip
     if 0 <= ext_clock_zmip <= len(devices_in) and devices_in[ext_clock_zmip]:
         required_routes["zynseq:clock_in"] = {devices_in[ext_clock_zmip].name}
     else:

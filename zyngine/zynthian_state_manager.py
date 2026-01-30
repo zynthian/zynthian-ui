@@ -985,7 +985,7 @@ class zynthian_state_manager:
 
     def export_chain(self, fpath, chain_id):
         """Save just a single chain to a snapshot file
-        
+
         fpath: Full filename and path
         chain_id: Chain to export
         """
@@ -1494,9 +1494,9 @@ class zynthian_state_manager:
             if "send_clock" in zs3_state["global"]:
                 zynautoconnect.set_midi_clock_output_ports(zs3_state["global"]["send_clock"])
             try:
-                zynautoconnect.set_ext_clock_zmip(int(zs3_state["global"]["clock_source"]))
+                zynautoconnect.set_ext_clock_device_name(zs3_state["global"]["clock_source"])
             except:
-                zynautoconnect.set_ext_clock_zmip(-1)
+                zynautoconnect.set_ext_clock_device_name(None)
             if "zctrl_x" in zs3_state["global"]:
                 try:
                     processor = self.chain_manager.processors[zs3_state["global"]["zctrl_x"][0]]
@@ -1668,7 +1668,7 @@ class zynthian_state_manager:
         # Add global parameters
         self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
         self.zs3[zs3_id]["global"]["send_clock"] = zynautoconnect.get_midi_clock_output_ports()
-        self.zs3[zs3_id]["global"]["clock_source"] = zynautoconnect.get_ext_clock_zmip()
+        self.zs3[zs3_id]["global"]["clock_source"] = zynautoconnect.get_ext_clock_device_name()
         try:
             processor_id = self.zctrl_x.processor.id
             symbol = self.zctrl_x.symbol
