@@ -31,6 +31,7 @@ import psutil
 import pexpect
 import logging
 import alsaaudio
+import traceback
 from time import sleep
 from threading import Thread, Lock
 
@@ -159,7 +160,7 @@ def set_port_friendly_name(port, friendly_name=None):
     """Set the friendly name for a JACK port
 
     port : JACK port object
-    friendly_name : New friendly name (optional) Default:Reset to ALSA name 
+    friendly_name : New friendly name (optional) Default:Reset to ALSA name
     """
 
     global midi_port_names
@@ -813,11 +814,14 @@ def midi_autoconnect():
             try:
                 required_routes[port].add("zynseq:clock")
             except:
-                logging.warning(f"Unable to connect MIDI clock to {port}")
+                logger.warning(f"Unable to connect MIDI clock to {port}")
 
     # Connect zynseq clock input
-    if 0 <= ext_clock_zmip <= len(devices_in):
+    global ext_clock_zmip
+    if 0 <= ext_clock_zmip <= len(devices_in) and devices_in[ext_clock_zmip]:
         required_routes["zynseq:clock_in"] = {devices_in[ext_clock_zmip].name}
+    else:
+        ext_clock_zmip = -1
 
     # Add SMF player to MIDI input devices
     idev = state_manager.get_zmip_seq_index()
@@ -847,9 +851,9 @@ def midi_autoconnect():
                 ports = jclient.get_ports(proc.get_jackname(True), is_midi=True, is_output=True)
                 required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
                 ctrl_fb_procs.append(proc)
-                # logging.debug(f"Routed controller feedback from {proc.get_jackname(True)}")
+                # logger.debug(f"Routed controller feedback from {proc.get_jackname(True)}")
         except Exception as e:
-            # logging.error(f"Can't route controller feedback from {proc.get_name()} => {e}")
+            # logger.error(f"Can't route controller feedback from {proc.get_name()} => {e}")
             pass
 
     # Remove from control feedback list those processors removed from chains
@@ -888,7 +892,7 @@ def midi_autoconnect():
             current_routes = jclient.get_all_connections(dst)
         except Exception as e:
             current_routes = []
-            logging.warning(e)
+            logger.warning(e)
         for src in current_routes:
             if src.name in sources:
                 sources.remove(src.name)
@@ -1005,7 +1009,7 @@ def audio_autoconnect():
             required_routes["zynmixer_bus:input_01a"].add(ports[0].name)
             required_routes["zynmixer_bus:input_01b"].add(ports[1].name)
     except Exception as e:
-        logging.warning(e)
+        logger.warning(e)
 
     # Connect inputs to aubionotes
     if zynthian_gui_config.midi_aubionotes_enabled:
@@ -1050,7 +1054,7 @@ def audio_autoconnect():
             current_routes = jclient.get_all_connections(dst)
         except Exception as e:
             current_routes = []
-            logging.warning(e)
+            logger.warning(e)
         for src in current_routes:
             if src.name in sources:
                 continue
@@ -1130,7 +1134,7 @@ def update_hw_audio_ports():
             for chain in chain_manager.chains.values():
                 chain.rebuild_audio_graph()
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
 
     return dirty
 
@@ -1201,7 +1205,7 @@ def start_alsa_in(device):
                 port.set_alias(f"{device} {i + 1}")
             return True
         sleep(0.1)
-    logging.warning(f"Failed to set {device} aliases")
+    logger.warning(f"Failed to set {device} aliases")
     return True
 
 
@@ -1229,7 +1233,7 @@ def start_alsa_out(device):
                 port.set_alias(f"{device} {i + 1}")
             return True
         sleep(0.1)
-    logging.warning(f"Failed to set {device} aliases")
+    logger.warning(f"Failed to set {device} aliases")
     return True
 
 
@@ -1399,7 +1403,7 @@ def update_midi_port_aliases(port):
             else:
                 port.set_alias(alias1)
     except:
-        logging.warning(f"Unable to set alias for port {port.name}")
+        logger.warning(f"Unable to set alias for port {port.name}")
         return False
     return True
 
@@ -1456,7 +1460,8 @@ def auto_connect_thread():
                     do_audio = False
 
             except Exception as err:
-                logger.error("ZynAutoConnect ERROR: {}".format(err))
+                #logger.error(err)
+                logging.exception(traceback.format_exc())
 
         sleep(deferred_inc)
         deferred_count += deferred_inc
@@ -1488,7 +1493,7 @@ def release_lock():
     try:
         lock.release()
     except:
-        logging.warning("Attempted to release unlocked mutex")
+        logger.warning("Attempted to release unlocked mutex")
 
 
 def init():
@@ -1500,12 +1505,12 @@ def init():
     max_num_devs = state_manager.get_max_num_midi_devs()
     max_num_chains = state_manager.get_num_zmop_chains()
 
-    logging.info(f"Initializing {num_devs_in} slots for MIDI input devices")
+    logger.info(f"Initializing {num_devs_in} slots for MIDI input devices")
     while len(devices_in) < num_devs_in:
         devices_in.append(None)
     while len(devices_in_mode) < num_devs_in:
         devices_in_mode.append(None)
-    logging.info(f"Initializing {num_devs_out} slots for MIDI output devices")
+    logger.info(f"Initializing {num_devs_out} slots for MIDI output devices")
     while len(devices_out) < num_devs_out:
         devices_out.append(None)
         devices_out_name.append(None)
@@ -1535,8 +1540,7 @@ def start(sm):
         jclient.set_property_change_callback(cb_jack_property_change)
         jclient.activate()
     except Exception as e:
-        logger.error(
-            f"ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({e})")
+        logger.error(f"Can't connect with Jack Audio Server ({e})")
 
     init()
 
@@ -1546,7 +1550,7 @@ def start(sm):
         with open(f"{zynconf.config_dir}/sidechain.json", "r") as file:
             sidechain_map = json.load(file)
     except Exception as e:
-        logger.error(f"Cannot load sidechain map ({e})")
+        logger.error(f"Can't load sidechain map ({e})")
 
     # Create Lock object (Mutex) to avoid concurrence problems
     lock = Lock()
