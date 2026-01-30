@@ -1489,14 +1489,22 @@ class zynthian_state_manager:
             self.set_midi_capture_state(zs3_state['midi_capture'])
 
         if "global" in zs3_state:
-            if "midi_transpose" in zs3_state["global"]:
-                lib_zyncore.set_global_transpose(int(zs3_state["global"]["midi_transpose"]))
-            if "send_clock" in zs3_state["global"]:
-                zynautoconnect.set_midi_clock_output_ports(zs3_state["global"]["send_clock"])
             try:
                 zynautoconnect.set_ext_clock_device_name(zs3_state["global"]["clock_source"])
             except:
                 zynautoconnect.set_ext_clock_device_name(None)
+            try:
+                zynautoconnect.set_midi_clock_output_ports(zs3_state["global"]["clock_outputs"])
+            except:
+                zynautoconnect.set_midi_clock_output_ports([])
+            try:
+                zynautoconnect.set_zynseq_exclude_ports(zs3_state["global"]["zynseq_excluded_inputs"])
+            except:
+                zynautoconnect.set_zynseq_exclude_ports([])
+
+            if "midi_transpose" in zs3_state["global"]:
+                lib_zyncore.set_global_transpose(int(zs3_state["global"]["midi_transpose"]))
+
             if "zctrl_x" in zs3_state["global"]:
                 try:
                     processor = self.chain_manager.processors[zs3_state["global"]["zctrl_x"][0]]
@@ -1666,9 +1674,10 @@ class zynthian_state_manager:
             self.zs3[zs3_id]["midi_capture"] = mcstate
 
         # Add global parameters
-        self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
-        self.zs3[zs3_id]["global"]["send_clock"] = zynautoconnect.get_midi_clock_output_ports()
         self.zs3[zs3_id]["global"]["clock_source"] = zynautoconnect.get_ext_clock_device_name()
+        self.zs3[zs3_id]["global"]["clock_outputs"] = zynautoconnect.get_midi_clock_output_ports()
+        self.zs3[zs3_id]["global"]["zynseq_excluded_inputs"] = zynautoconnect.get_zynseq_exclude_ports()
+        self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
         try:
             processor_id = self.zctrl_x.processor.id
             symbol = self.zctrl_x.symbol
@@ -1901,8 +1910,8 @@ class zynthian_state_manager:
                     routed_chains.append(ch)
             mcstate[uid] = {
                 "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chain(izmip)),
-                "zmip_system": bool(lib_zyncore.zmip_get_flag_system(izmip)),
-                "zmip_system_rt": bool(lib_zyncore.zmip_get_flag_system_rt(izmip)),
+                #"zmip_system": bool(lib_zyncore.zmip_get_flag_system(izmip)),
+                #"zmip_system_rt": bool(lib_zyncore.zmip_get_flag_system_rt(izmip)),
                 "disable_ctrldev": self.ctrldev_manager.get_disabled_driver(uid),
                 "ctrldev_driver": self.ctrldev_manager.get_driver_class_name(izmip),
                 "routed_chains": routed_chains,
@@ -1940,6 +1949,7 @@ class zynthian_state_manager:
                     lib_zyncore.zmip_set_flag_active_chain(izmip, bool(state["zmip_input_mode"]))
                 except:
                     pass
+                """
                 try:
                     lib_zyncore.zmip_set_flag_system(izmip, bool(state["zmip_system"]))
                 except:
@@ -1948,6 +1958,7 @@ class zynthian_state_manager:
                     lib_zyncore.zmip_set_flag_system_rt(izmip, bool(state["zmip_system_rt"]))
                 except:
                     pass
+                """
                 try:
                     self.aubio_in = state["audio_in"]
                 except:

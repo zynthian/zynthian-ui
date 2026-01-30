@@ -119,13 +119,15 @@ ctrl_fb_procs = []
 # Map of user friendly names indexed by device uid (alias[0])
 midi_port_names = {}
 
-# List of MIDI output ports to which to send MIDI clock
-midi_clock_output_ports = []
+# External MIDI clock device to sync
 ext_clock_zmip = -1
 ext_clock_device_name = None
 
+# List of MIDI output ports to which to send MIDI clock
+midi_clock_output_ports = []
+
 # List of MIDI zmips not feeding zynseq
-zynseq_input_exclude = []
+zynseq_input_exclude_ports = []
 
 # Get the main jack audio device
 jack_audio_device = ""
@@ -416,7 +418,6 @@ def get_sidechain_portnames(jackname=None):
 
 # ------------------------------------------------------------------------------
 
-
 def request_audio_connect(fast=False):
     """Request audio connection graph refresh
 
@@ -509,6 +510,8 @@ def remove_hw_port(port):
         return True
     return False
 
+# MIDI clock input management
+
 def set_ext_clock_zmip(idev):
     global ext_clock_zmip, ext_clock_device_name
     ext_clock_zmip = idev
@@ -524,27 +527,29 @@ def get_ext_clock_zmip():
 def set_ext_clock_device_name(devname):
     global ext_clock_zmip, ext_clock_device_name
     ext_clock_zmip = -1
-    try:
-        ext_clock_device_name = devname
-    except:
-        pass
+    ext_clock_device_name = devname
     request_midi_connect()
 
 def get_ext_clock_device_name():
     return ext_clock_device_name
 
-def set_midi_clock_output_port(port_name, send):
+# MIDI clock outputs management
+
+def set_midi_clock_output_zmop(izmop, send):
     global midi_clock_output_ports
+    port_name = devices_out[izmop].aliases[0]
     if send:
         if port_name not in midi_clock_output_ports:
             midi_clock_output_ports.append(port_name)
+            request_midi_connect()
     else:
         if port_name in midi_clock_output_ports:
             midi_clock_output_ports.remove(port_name)
-    request_midi_connect()
+            request_midi_connect()
 
-def toggle_midi_clock_output_port(port_name):
+def toggle_midi_clock_output_zmop(izmop):
     global midi_clock_output_ports
+    port_name = devices_out[izmop].aliases[0]
     if port_name in midi_clock_output_ports:
         midi_clock_output_ports.remove(port_name)
     else:
@@ -553,28 +558,48 @@ def toggle_midi_clock_output_port(port_name):
 
 def set_midi_clock_output_ports(port_names):
     global midi_clock_output_ports
-    midi_clock_output_ports = port_names
+    if not port_names:
+        midi_clock_output_ports = []
+    else:
+        midi_clock_output_ports = port_names
     request_midi_connect()
 
 def get_midi_clock_output_ports():
     return midi_clock_output_ports
 
-def get_zynseq_exclude_idevs():
-    return zynseq_input_exclude
+# Zynseq inputs management
 
-def set_zynseq_input_port(idev, enable):
-    global zynseq_input_exclude
+def set_zynseq_input_zmop(izmop, enable):
+    global zynseq_input_exclude_ports
+    port_name = devices_in[izmop].aliases[0]
+    if enable and port_name in zynseq_input_exclude_ports:
+        zynseq_input_exclude_ports.remove(port_name)
+        request_midi_connect()
+    elif not enable and port_name not in zynseq_input_exclude_ports:
+        zynseq_input_exclude_ports.append(port_name)
+        request_midi_connect()
 
-    if enable and idev in zynseq_input_exclude:
-        zynseq_input_exclude.remove(idev)
-    elif not enable and idev not in zynseq_input_exclude:
-        zynseq_input_exclude.append(idev)
+def toggle_zynseq_input_zmop(izmop):
+    global zynseq_input_exclude_ports
+    port_name = devices_in[izmop].aliases[0]
+    if port_name in zynseq_input_exclude_ports:
+        zynseq_input_exclude_ports.remove(port_name)
     else:
-        return
+        zynseq_input_exclude_ports.append(port_name)
     request_midi_connect()
 
-def toggle_zynseq_input_port(idev):
-    set_zynseq_input_port(idev, idev in zynseq_input_exclude)
+def set_zynseq_exclude_ports(port_names):
+    global zynseq_input_exclude_ports
+    if not port_names:
+        zynseq_input_exclude_ports = []
+    else:
+        zynseq_input_exclude_ports = port_names
+    request_midi_connect()
+
+def get_zynseq_exclude_ports():
+    return zynseq_input_exclude_ports
+
+# MIDI routing
 
 def update_hw_midi_ports(force=False):
     """Update lists of external (hardware) source and destination MIDI ports
@@ -827,20 +852,23 @@ def midi_autoconnect():
     # Connect zynseq output to ZynMidiRouter:step_in
     required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
 
-    # Add zynseq inputs
+    # Connect zynseq to selected input devices
     for idev, port in enumerate(devices_in):
         if idev >= max_num_devs:
             break
-        if port and idev not in zynseq_input_exclude:
-            required_routes["zynseq:input"].add(port.name)
-
-    # Connect zynseq clock output
-    for port in midi_clock_output_ports:
-        if port in required_routes:
+        if port and port.aliases[0] not in zynseq_input_exclude_ports:
             try:
-                required_routes[port].add("zynseq:clock")
+                required_routes["zynseq:input"].add(port.name)
             except:
-                logger.warning(f"Unable to connect MIDI clock to {port}")
+                logger.warning(f"Unable to connect '{port}' to Zynseq")
+
+    # Connect zynseq clock output to selected MIDI output devices
+    for idev, port in enumerate(devices_out):
+        if port and port.aliases[0] in midi_clock_output_ports:
+            try:
+                required_routes[port.name].add("zynseq:clock")
+            except:
+                logger.warning(f"Unable to connect MIDI clock to '{port}'")
 
     # Connect zynseq clock input
     if 0 <= ext_clock_zmip <= len(devices_in) and devices_in[ext_clock_zmip]:
