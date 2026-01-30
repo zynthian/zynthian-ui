@@ -129,7 +129,7 @@ def pad_seq_index_inversion(pad_or_seq_index):
     
     :param pad_or_seq_index: Description
     """
-    return (pad_or_seq_index % 4 * 4) + pad_or_seq_index // 4 
+    return pad_or_seq_index % 4 * 4 + pad_or_seq_index // 4 
 
 
 # --------------------------------------------------------------------------
@@ -215,33 +215,40 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
     def update_metronome(self, enabled):
         self.setButtonState(GLOBAL_METRO.sysex, enabled)
 
-    def update_seq_state(self, bank, seq, state, mode, group):
+    def update_pad(self, row, col, pad_info):
         dim_ratio = 32
-        if self.idev_out is None or bank != self.zynseq.bank:
-            return
-        
-        if seq >= 16:
+        if self.idev_out is None:
             return
 
-        # Map zynpad seq to Arturia pad number (1-16) then to led_id (0x70-0x7F)
-        pad_number = (seq % 4 * 4 ) + seq // 4 
-        # pad_number = (3 - (seq // 4)) * 4 + (seq % 4) + 1
-        led_id = 0x70 + pad_number 
-        
-        if mode == 0: # Empty
+        # Only handle first 4 rows and 4 columns (4x4 grid)
+        if row >= 4 or col >= 4:
+            return
+
+        # Compute linear sequence index for pad mapping
+        seq = row * 4 + col
+
+        # Map to Arturia pad number then to led_id (0x70-0x7F)
+        pad_number = seq # pad_seq_index_inversion(seq)
+        led_id = 0x70 + pad_number
+
+        if pad_info is None:
             r, g, b = self.COLOR_EMPTY
-        elif state == zynseq.SEQ_STOPPED:
-            r, g, b = self.PAD_COLORS[group % len(self.PAD_COLORS)]
-            # dim it
-            r, g, b = r // dim_ratio, g // dim_ratio, b // dim_ratio
-        elif state == zynseq.SEQ_PLAYING:
-            r, g, b = self.PAD_COLORS[group % len(self.PAD_COLORS)]
-        elif state == zynseq.SEQ_STOPPING:
-            r, g, b = self.COLOR_STOPPING
-        elif state == zynseq.SEQ_STARTING:
-            r, g, b = self.COLOR_STARTING
         else:
-            r, g, b = self.COLOR_EMPTY
+            state = pad_info.get("state")
+            group = pad_info.get("group", 0)
+
+            if state == zynseq.SEQ_STOPPED:
+                r, g, b = self.PAD_COLORS[group % len(self.PAD_COLORS)]
+                # dim it
+                r, g, b = r // dim_ratio, g // dim_ratio, b // dim_ratio
+            elif state == zynseq.SEQ_PLAYING:
+                r, g, b = self.PAD_COLORS[group % len(self.PAD_COLORS)]
+            elif state == zynseq.SEQ_STOPPING:
+                r, g, b = self.COLOR_STOPPING
+            elif state == zynseq.SEQ_STARTING:
+                r, g, b = self.COLOR_STARTING
+            else:
+                r, g, b = self.COLOR_EMPTY
 
         self._send_led_sysex(led_id, r, g, b)
 
@@ -287,17 +294,19 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
                 vel = ev[2] & 0x7F
                 if 36 <= note <= 51 and vel > 0:
                     # This is a pad press.
-                    # Map Arturia note to zynpad seq
+                    # Map Arturia note to zynpad seq, then to (phrase, midi_chan)
                     seq = pad_seq_index_inversion(note - PAD_MIDI_OFFSET)
-                    if seq < self.zynseq.seq_in_bank:
-                        self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
+                    phrase = seq % 4
+                    midi_chan = seq // 4
+                    logging.info(f"Pad press: note={note}, seq={seq}, phrase={phrase}, midi_chan={midi_chan}, scene={self.zynseq.scene}")
+                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
                     return True
 
             return True
         else:
             return False
     
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=None):
         """Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.
         *SHOULD* be implemented by child class
 
