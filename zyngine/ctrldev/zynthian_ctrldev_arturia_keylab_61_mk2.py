@@ -37,7 +37,7 @@ from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad, SCROLL_MODE_GUI_SEL
 from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
 from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
@@ -177,13 +177,12 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         # Ideally these settings could be customized by user via GUI.
         # No idea how to do that yet. 
         self.record_pressed = False
-        self.cols = 4
-        self.rows = 4
         self._chain_manager = state_manager.chain_manager
-        self.last_metro_press_time = 0
         
         # NOTE: init will call refresh(), so _current_hanlder must be ready!
         super().__init__(state_manager, idev_in, idev_out)
+        self.cols = 4
+        self.rows = 4
 
     def init(self):
         super().init()
@@ -316,6 +315,11 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         # we could probably update color based on if a chain is present/solo/mute etc
         # keylab doesn't have level/balance indicatiors
         pass
+
+
+    def on_active_chain(self, active_chain_id):
+        super().on_active_chain(active_chain_id)
+        self.update_mixer_active_chain(active_chain_id)
 
     def update_mixer_active_chain(self, active_chain):
         """Update hardware indicators for active_chain
