@@ -228,7 +228,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 double dTempo = 60.0 * g_nSampleRate / (double(g_nExtClockPPQN) * (nNow + midiEvent.time - nLastExtClockFrame));
                 setTempo(dTempo);
                 nLastExtClockFrame = nNow + midiEvent.time;
-
                 uint32_t nTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
                 int32_t nTickDelta = nTicksBeforeClk - nExpectedTicksBeforeClk;
                 nNextBeatTime += nTickDelta;
@@ -315,14 +314,23 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             if (nPlayState) {
                 // Note on event
                 if (nCommand == MIDI_NOTE_ON && nNum2 > 0) {
-                    uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition();
+                    // Frames from clock to current event minus the latency delay (1 period = nFrames)
+                    int fpos = int(nNow + midiEvent.time) - dNextIntClockFrame -  nFrames;
+                    double dclk = double(fpos) / g_dFramesPerTick;
+                    // (double(fpos) - g_dFramesPerTick) / g_dFramesPerTick;  // ???
+                    uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition() + int(dclk);
+                    //fprintf(stderr, "START NOTE %d => %d (DCLK = %f)\n", nNum1, nPlayPos, dclk);
                     startEvents[nNum1].start = nPlayPos;
                     startEvents[nNum1].velocity = nNum2;
                 }
                 // Note off event
                 else if ((nCommand == MIDI_NOTE_ON && nNum2 == 0) || nCommand == MIDI_NOTE_OFF) {
                     if (startEvents[nNum1].start != -1) {
-                        uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition();
+                        // Frames from clock to current event minus the latency delay (1 period = nFrames)
+                        int fpos = int(nNow + midiEvent.time) - dNextIntClockFrame -  nFrames;
+                        double dclk = double(fpos) / g_dFramesPerTick;
+                        uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition() + int(dclk);
+                        //fprintf(stderr, "END NOTE %d => %d (DCLK = %f)\n", nNum1, nPlayPos, dclk);
                         uint32_t nClocksPerStep = g_pPattern->getClocksPerStep();
                         uint32_t nStart = startEvents[nNum1].start / nClocksPerStep;
                         float fOffset = double(startEvents[nNum1].start % nClocksPerStep) / nClocksPerStep;
@@ -422,7 +430,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     //!@todo Interpolate events across frame, e.g. CC variations
 
     // Process clock ticks in this period
-    jack_nframes_t nMetronomeFrame = 0; // Position within this period of next metronome sample 
+    jack_nframes_t nMetronomeFrame = 0; // Position within this period of next metronome sample
     uint32_t nPeriodStartTick = nTickTime; // Store the first tick of this period
     for (const auto& nFrame: vTicks) {
         // Iterate clocks within this jack period to prepare MIDI output schedule events
@@ -1028,7 +1036,7 @@ const char* convertToJson(const char* filename) {
                             // LOOPSYNC
                             jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
                             jSeq["followParam"] = 0;
-                            break; 
+                            break;
                 }
                 uint8_t nGroup = fileRead8u(pFile);
                 jSeq["group"] = nGroup;
@@ -2816,32 +2824,24 @@ void tapTempo() {
     auto now = Clock::now();
 
     // Timeout: reset if last call was more than 1 second ago
-    if (hasLast)
-    {
+    if (hasLast) {
         std::chrono::duration<double> sinceLast = now - lastCallTime;
-        if (sinceLast.count() > 1.0)
-        {
+        if (sinceLast.count() > 1.0) {
             intervals.clear();
             hasLast = false;
         }
     }
-
-    if (hasLast)
-    {
+    if (hasLast) {
         std::chrono::duration<double> diff = now - lastCallTime;
         double seconds = diff.count();
-
-        if (seconds > 0.0)
-        {
+        if (seconds > 0.0) {
             intervals.push_back(seconds);
             if (intervals.size() > 4)
                 intervals.pop_front();
         }
     }
-
     lastCallTime = now;
     hasLast = true;
-
     if (intervals.empty())
         return; // Not enough recent taps
 
@@ -2849,9 +2849,7 @@ void tapTempo() {
     double sum = 0.0;
     for (double s : intervals)
         sum += s;
-
     double averageInterval = sum / intervals.size();
-
     setTempo(60.0 / averageInterval);
 }
 

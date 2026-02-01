@@ -25,7 +25,7 @@ Sequence::Sequence(Sequence* phraseSequence) {
         m_aChildSequences[nSeq] = nullptr;
     addTrack(); // Ensure new sequences have at least one track
 }
-
+//
 uint8_t Sequence::getGroup() {
     return m_nGroup;
 }
