@@ -212,8 +212,9 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
     def refresh(self):
         super().refresh()
     
-    def update_metronome(self, enabled):
-        self.setButtonState(GLOBAL_METRO.sysex, enabled)
+    def update_metronome(self, mode, volume):
+        # zero is off and 5 is silent
+        self.setButtonState(GLOBAL_METRO.sysex, mode != 0 and mode != 5)
 
     def update_pad(self, row, col, pad_info):
         dim_ratio = 32
@@ -285,6 +286,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
                     self.state_manager.send_cuia("TOGGLE_RECORD")
                 if note == GLOBAL_METRO.note:
                     self.zynseq.zctrl_metro_mode.toggle()
+                    self._send_display_sysex("Metronome", "mode: " + self.zynseq.zctrl_metro_mode.get_value2label())
                 if note >= SELECT_1.note and note <= SELECT_8.note:
                     self._chain_manager.set_active_chain_by_id(note - SELECT_1.note + 1)
 
@@ -415,9 +417,9 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         # Start of the SysEx message
         msg = bytearray.fromhex("F0 00 20 6B 7F 42 04 00 60 01")
 
-        # Append upper string, padded to 16 bytes with nulls
+        # Append upper string, padded to 16 bytes with space
         upper_bytes = upper.encode('ascii', 'ignore')
-        upper_bytes = upper_bytes[:16].ljust(16, b'\x00')
+        upper_bytes = upper_bytes[:16].ljust(16, ' '.encode('ascii'))
         msg.extend(upper_bytes)
 
         # Append static part
