@@ -254,7 +254,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         self._send_led_sysex(led_id, r, g, b)
 
        
-    def midi_event(self, ev, idev=None):
+    def midi_event(self, ev):
         """ get a midi event  and do something with it. """
         self._log_midi(ev, idev)
 
@@ -266,48 +266,45 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         evtype = (ev[0] >> 4) & 0x0F
         evchan = ev[0] & 0x0F # exists even if invalid for system messages
             
-        if idev != self.idev:
-            # DAW controller MIDI device
-            if evtype == 0x9:
-                # note on
-                note = ev[1] & 0x7F
-                _vel = ev[2] & 0x7F
-                if note == TRANSPORT_PLAY_PAUSE:
-                    # play/pause button
-                    # todo should there be one transport toggle? Seems weird these are separate. 
-                    self.state_manager.send_cuia("TOGGLE_PLAY")
-                if note == TRANSPORT_STOP:
-                    # play/pause button
-                    # todo should there be one transport toggle? Seems weird these are separate. 
-                    self.state_manager.send_cuia("STOP")
-                if note == TRANSPORT_RECORD.note:
-                    self.record_pressed = not self.record_pressed
-                    self.setButtonState(TRANSPORT_RECORD.sysex, self.record_pressed)
-                    self.state_manager.send_cuia("TOGGLE_RECORD")
-                if note == GLOBAL_METRO.note:
-                    self.zynseq.zctrl_metro_mode.toggle()
-                    self._send_display_sysex("Metronome", "mode: " + self.zynseq.zctrl_metro_mode.get_value2label())
-                if note >= SELECT_1.note and note <= SELECT_8.note:
-                    self._chain_manager.set_active_chain_by_id(note - SELECT_1.note + 1)
+        # DAW controller MIDI device
+        if evtype == 0x9:
+            # note on
+            note = ev[1] & 0x7F
+            _vel = ev[2] & 0x7F
+            if note == TRANSPORT_PLAY_PAUSE:
+                # play/pause button
+                # todo should there be one transport toggle? Seems weird these are separate. 
+                self.state_manager.send_cuia("TOGGLE_PLAY")
+            if note == TRANSPORT_STOP:
+                # play/pause button
+                # todo should there be one transport toggle? Seems weird these are separate. 
+                self.state_manager.send_cuia("STOP")
+            if note == TRANSPORT_RECORD.note:
+                self.record_pressed = not self.record_pressed
+                self.setButtonState(TRANSPORT_RECORD.sysex, self.record_pressed)
+                self.state_manager.send_cuia("TOGGLE_RECORD")
+            if note == GLOBAL_METRO.note:
+                self.zynseq.zctrl_metro_mode.toggle()
+                self._send_display_sysex("Metronome", "mode: " + self.zynseq.zctrl_metro_mode.get_value2label())
+            if note >= SELECT_1.note and note <= SELECT_8.note:
+                self._chain_manager.set_active_chain_by_id(note - SELECT_1.note + 1)
 
-            if evchan == 9 and evtype == 0x9:
-                # note off
-                note = ev[1] & 0x7F
-                vel = ev[2] & 0x7F
-                if 36 <= note <= 51 and vel > 0:
-                    # This is a pad press.
-                    # Map Arturia note to zynpad seq, then to (phrase, midi_chan)
-                    seq = pad_seq_index_inversion(note - PAD_MIDI_OFFSET)
-                    phrase = seq % 4
-                    midi_chan = seq // 4
-                    logging.info(f"Pad press: note={note}, seq={seq}, phrase={phrase}, midi_chan={midi_chan}, scene={self.zynseq.scene}")
-                    self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
-                    return True
+        if evchan == 9 and evtype == 0x9:
+            # note off
+            note = ev[1] & 0x7F
+            vel = ev[2] & 0x7F
+            if 36 <= note <= 51 and vel > 0:
+                # This is a pad press.
+                # Map Arturia note to zynpad seq, then to (phrase, midi_chan)
+                seq = pad_seq_index_inversion(note - PAD_MIDI_OFFSET)
+                phrase = seq % 4
+                midi_chan = seq // 4
+                logging.info(f"Pad press: note={note}, seq={seq}, phrase={phrase}, midi_chan={midi_chan}, scene={self.zynseq.scene}")
+                self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
+                return True
 
-            return True
-        else:
-            return False
-    
+        return True
+
     def update_mixer_strip(self, chan, symbol, value, mixbus=None):
         """Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.
         *SHOULD* be implemented by child class
