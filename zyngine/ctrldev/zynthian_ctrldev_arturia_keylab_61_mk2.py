@@ -256,7 +256,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
        
     def midi_event(self, ev):
         """ get a midi event  and do something with it. """
-        self._log_midi(ev, idev)
+        self._log_midi(ev, self.idev)
 
         if ev == b'\xf0\x00\x20\x6b\x7f\x42\x02\x00\x00\x15\x00\xf7':
             # if we get the switch back into daw mode
