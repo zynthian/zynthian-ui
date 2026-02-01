@@ -24,16 +24,26 @@ using namespace RubberBand;
 using namespace std;
 
 // **** Global variables ****
-vector<AUDIO_PLAYER*> g_vPlayers;
 jack_client_t* g_jack_client;
 jack_port_t* g_jack_midi_in;
-jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
+jack_nframes_t g_samplerate = 48000; // Playback samplerate set by jackd
 uint8_t g_debug             = 0;
 uint8_t g_last_debug        = 0;
 char g_supported_codecs[1024];
 uint8_t g_mutex      = 0;
 uint32_t g_nextIndex = 1;
 float g_tempo        = 2.0; // Tempo in beats per second
+
+struct PlayerVector {
+    vector<AUDIO_PLAYER*> players;
+    ~PlayerVector() {
+        while (!players.empty()) {
+            remove_player(players.front());
+        }
+    };
+};
+
+static PlayerVector playerVector;
 
 // Declare local functions
 void set_env_gate(AUDIO_PLAYER* pPlayer, uint8_t gate);
@@ -217,7 +227,6 @@ void* file_thread_fn(void* param) {
     SRC_DATA srcData;
     size_t nMaxFrames;        // Maximum quantity of frames that may be read from file
     size_t nUnusedFrames = 0; // Quantity of frames in input buffer not used by SRC
-
     SNDFILE* pFile       = sf_open(pPlayer->filename.c_str(), SFM_READ, &pPlayer->sf_info);
     if (!pFile || pPlayer->sf_info.channels < 1) {
         pPlayer->file_open = FILE_CLOSED;
@@ -273,8 +282,8 @@ void* file_thread_fn(void* param) {
             }
             SF_INSTRUMENT inst;
             if (sf_command(pFile, SFC_GET_INSTRUMENT, &inst, sizeof(inst)) == SF_TRUE) {
-                fprintf(stderr, "File instrument info: gain: %d, detune:%d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n", inst.gain,
-                        inst.detune, inst.velocity_lo, inst.velocity_hi, inst.basenote, inst.detune, inst.key_lo, inst.key_hi);
+                fprintf(stderr, "File instrument info: gain: %d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n", inst.gain,
+                        inst.velocity_lo, inst.velocity_hi, inst.basenote, inst.detune, inst.key_lo, inst.key_hi);
                 pPlayer->gain = pow(10, (float(inst.gain) / 20));
                 for (int i = 0; i < inst.loop_count; ++i) {
                     fprintf(stderr, "\tLoop %d: mode:%s, start: %d, end:%d, count:%u\n", i, loopModes[inst.loops[i].mode - 800], inst.loops[i].start,
@@ -436,11 +445,9 @@ void* file_thread_fn(void* param) {
                             pPlayer->file_read_pos += (nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames));
                     }
 
-                    getMutex();
                     if (nFramesRead) {
                         // Got some audio data to process...
                         // Remain in LOADING state to trigger next file read when FIFO has sufficient space
-                        releaseMutex();
                         DPRINTF("libzynaudioplayer read %u frames into input buffer\n", nFramesRead);
 
                         if (srcData.src_ratio != 1.0) {
@@ -496,12 +503,14 @@ void* file_thread_fn(void* param) {
                         }
                     } else if (pPlayer->loop == 1) {
                         // Short read - looping so fill from loop start point in file
+                        getMutex();
                         pPlayer->file_read_status = LOOPING;
                         // srcData.end_of_input = 1;
                         releaseMutex();
                         DPRINTF("libzynaudioplayer read to loop point in input file - setting loading status to looping\n");
                     } else {
                         // End of file
+                        getMutex();
                         pPlayer->file_read_status = IDLE;
                         srcData.end_of_input      = 1;
                         releaseMutex();
@@ -559,10 +568,14 @@ uint8_t load(AUDIO_PLAYER* pPlayer, const char* filename, cb_fn_t cb_fn) {
 }
 
 void unload(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer || !pPlayer->file_thread)
+    if (!pPlayer)
         return;
     stop_playback(pPlayer);
+    if (pPlayer->file_open == FILE_CLOSED)
+        return;
+    getMutex();
     pPlayer->file_open = FILE_CLOSED;
+    releaseMutex();
     pPlayer->cue_points.clear();
     pthread_join(pPlayer->file_thread, NULL);
 }
@@ -572,11 +585,11 @@ uint8_t save(AUDIO_PLAYER* pPlayer, const char* filename) {
         return 0;
 
     AUDIO_PLAYER* overwrite = NULL;
-    for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
-        if (strcmp((*it)->filename.c_str(), filename) == 0) {
+    for (const auto player: playerVector.players) {
+        if (strcmp(player->filename.c_str(), filename) == 0) {
             // Trying to overwrite an open file
-            unload(*it);
-            overwrite = *it;
+            unload(player);
+            overwrite = player;
             break;
         }
     }
@@ -1175,8 +1188,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
     for (jack_nframes_t i = 0; i < nCount; i++) {
         jack_midi_event_get(&midiEvent, pMidiBuffer, i);
         uint8_t chan = midiEvent.buffer[0] & 0x0F;
-        for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
-            AUDIO_PLAYER* pPlayer = *it;
+        for (const auto& pPlayer: playerVector.players) {
             if (!pPlayer->file_open || pPlayer->midi_chan != chan)
                 continue;
             uint32_t cue_point_play = pPlayer->cue_points.size();
@@ -1295,8 +1307,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         }
     }
 
-    for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
-        AUDIO_PLAYER* pPlayer = *it;
+    for (const auto& pPlayer: playerVector.players) {
         if (pPlayer->file_open != FILE_OPEN)
             continue;
 
@@ -1498,11 +1509,7 @@ void stop_jack() {
 }
 
 static void lib_exit(void) {
-    fprintf(stderr, "libzynaudioplayer exiting...  ");
-    while (!g_vPlayers.empty()) {
-        remove_player(g_vPlayers.front());
-    }
-    fprintf(stderr, "done!\n");
+    fprintf(stderr, "libzynaudioplayer exiting\n");
 }
 
 AUDIO_PLAYER* add_player() {
@@ -1512,7 +1519,6 @@ AUDIO_PLAYER* add_player() {
     if (!pPlayer)
         return nullptr;
     pPlayer->index = g_nextIndex++;
-    ;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
     pPlayer->loop_end       = pPlayer->input_buffer_size;
     pPlayer->loop_end_src   = pPlayer->loop_end * pPlayer->src_ratio;
@@ -1520,7 +1526,7 @@ AUDIO_PLAYER* add_player() {
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
     pPlayer->crop_end       = pPlayer->input_buffer_size;
     pPlayer->crop_end_src   = pPlayer->crop_end * pPlayer->src_ratio;
-    g_vPlayers.push_back(pPlayer);
+    playerVector.players.push_back(pPlayer);
 
     set_env_target_ratio_a(pPlayer, 0.3);
     set_env_target_ratio_dr(pPlayer, 0.0001);
@@ -1545,8 +1551,7 @@ AUDIO_PLAYER* add_player() {
         jack_port_unregister(g_jack_client, pPlayer->jack_out_a);
         return 0;
     }
-
-    // fprintf(stderr, "libzynaudioplayer: Created new audio player\n");
+    DPRINTF("libaudioplayer player %u registered JACK audio output ports %u & %u\n", pPlayer, pPlayer->jack_out_a, pPlayer->jack_out_b);
     return pPlayer;
 }
 
@@ -1555,15 +1560,15 @@ void remove_player(AUDIO_PLAYER* pPlayer) {
         return;
     unload(pPlayer);
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a)) {
-        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dA\n", pPlayer->index);
+        fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port A %02d\n", pPlayer->index, pPlayer, pPlayer->jack_out_a);
     }
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
-        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", pPlayer->index);
+        fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port B %02d\n", pPlayer->index, pPlayer, pPlayer->jack_out_b);
     }
-    auto it = find(g_vPlayers.begin(), g_vPlayers.end(), pPlayer);
-    if (it != g_vPlayers.end())
-        g_vPlayers.erase(it);
-    if (g_vPlayers.size() == 0)
+    auto it = find(playerVector.players.begin(), playerVector.players.end(), pPlayer);
+    if (it != playerVector.players.end())
+        playerVector.players.erase(it);
+    if (playerVector.players.size() == 0)
         stop_jack();
 }
 
@@ -1804,8 +1809,8 @@ void set_tempo(float tempo) {
     if (tempo < 10.0)
         return;
     g_tempo = tempo / 60;
-    for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it)
-        updateTempo(*it);
+    for (const auto& pPlayer: playerVector.players)
+        updateTempo(pPlayer);
 }
 
 /**** Global functions ***/
@@ -1853,4 +1858,6 @@ void enable_debug(int enable) {
 
 int is_debug() { return g_debug; }
 
-unsigned int get_player_count() { return g_vPlayers.size(); }
+unsigned int get_player_count() {
+    return playerVector.players.size();
+}
