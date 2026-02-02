@@ -1246,7 +1246,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 return True
         elif i == 2:
             if t == 'S' or t == 'B':
-                #self.zyngui.show_screen("arranger")
+                if self.param_editor_zctrl:
+                    self.disable_param_editor()
+                else:
+                    self.menu_cb("Length", "Length")
                 return True
         return False
 
