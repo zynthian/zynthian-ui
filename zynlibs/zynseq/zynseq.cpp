@@ -314,10 +314,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             if (nPlayState) {
                 // Note on event
                 if (nCommand == MIDI_NOTE_ON && nNum2 > 0) {
-                    // Frames from clock to current event minus the latency delay (1 period = nFrames)
-                    int fpos = int(nNow + midiEvent.time) - dNextIntClockFrame -  nFrames;
+                    // Current event time minus the latency delay (1 period = nFrames), converted to clocks
+                    int fpos = int(midiEvent.time) - nFrames;
                     double dclk = double(fpos) / g_dFramesPerTick;
-                    // (double(fpos) - g_dFramesPerTick) / g_dFramesPerTick;  // ???
                     uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition() + int(dclk);
                     //fprintf(stderr, "START NOTE %d => %d (DCLK = %f)\n", nNum1, nPlayPos, dclk);
                     startEvents[nNum1].start = nPlayPos;
@@ -326,8 +325,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 // Note off event
                 else if ((nCommand == MIDI_NOTE_ON && nNum2 == 0) || nCommand == MIDI_NOTE_OFF) {
                     if (startEvents[nNum1].start != -1) {
-                        // Frames from clock to current event minus the latency delay (1 period = nFrames)
-                        int fpos = int(nNow + midiEvent.time) - dNextIntClockFrame -  nFrames;
+                        // Current event time minus the latency delay (1 period = nFrames), converted to clocks
+                        int fpos = int(midiEvent.time) - nFrames;
                         double dclk = double(fpos) / g_dFramesPerTick;
                         uint32_t nPlayPos = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayPosition() + int(dclk);
                         //fprintf(stderr, "END NOTE %d => %d (DCLK = %f)\n", nNum1, nPlayPos, dclk);
