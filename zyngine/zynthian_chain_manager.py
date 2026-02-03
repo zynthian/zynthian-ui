@@ -219,6 +219,11 @@ class zynthian_chain_manager:
             self.state_manager.end_busy("add_chain")
             return chain_id
 
+        # Enable sequencer channel
+        if midi_chan is not None:
+            self.state_manager.zynseq.enable_channel(midi_chan, True)
+
+        """
         # Enable launcher sequences if not used by other chain
         if midi_chan is not None:
             enable_sequences = True
@@ -228,6 +233,7 @@ class zynthian_chain_manager:
                     break
             if enable_sequences:
                 self.state_manager.zynseq.enable_channel(midi_chan, True)
+        """
 
         # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)

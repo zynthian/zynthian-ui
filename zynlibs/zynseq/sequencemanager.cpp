@@ -467,6 +467,7 @@ void SequenceManager::enableChannel(uint8_t channel, bool enable) {
     if (channel >= 32)
         return;
     m_bEnabled[channel] = enable;
+    /*
     for (uint8_t nScene = 0; nScene < m_vScenes.size(); ++nScene) {
         for (uint8_t nPhrase = 0; nPhrase < m_vScenes[nScene].size(); ++nPhrase) {
             Sequence* pSequence = getSequence(nScene, nPhrase, channel);
@@ -476,6 +477,7 @@ void SequenceManager::enableChannel(uint8_t channel, bool enable) {
             }
         }
     }
+    */
 }
 
 bool SequenceManager::isChannelEnabled(uint8_t channel) {
