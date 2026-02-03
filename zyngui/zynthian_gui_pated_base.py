@@ -342,7 +342,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             menu_options["GLOBAL"] = options
         # Sequence options
         if self.seq_info:
-            logging.debug(f"SEQ_INFO => {self.seq_info}")
             options = {}
             repeat = self.seq_info["repeat"]
             follow_action = self.seq_info["followAction"]
@@ -1351,7 +1350,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         return True
 
     def cuia_toggle_play(self, params=None):
-        logging.debug("PATED CUIA TOGGLE PLAY!!")
         self.toggle_playback()
         return True
 

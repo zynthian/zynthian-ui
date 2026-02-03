@@ -90,36 +90,36 @@ class zynthian_gui_launcher_pad():
         self.play_state = self.canvas.create_text(x + self.width - 3,  y - 3, text="",
                                                   anchor=tkinter.NE,
                                                   font=self.gui_mixer.font_clip_state,
-                                                  tags=tags)
+                                                  tags=(*tags, "launcher_play_state"))
         # Title text
         self.title = self.canvas.create_text(x + self.width // 2, y + 0.5 * self.height, text="",
                                              anchor=tkinter.CENTER,
                                              font=self.gui_mixer.font_clip_title,
                                              fill=self.gui_mixer.legend_txt_color,
-                                             tags=tags)
+                                             tags=(*tags, "launcher_title"))
         # Play mode image
         self.mode_icon = self.canvas.create_image(x + 3, y + 2,
                                                   anchor=tkinter.NW,
-                                                  tags=tags)
+                                                  tags=(*tags, "launcher_mode_icon"))
         # Play mode text
         self.mode_text = self.canvas.create_text(x + 3, y - 3,
                                                  anchor=tkinter.NW,
                                                  fill=self.gui_mixer.legend_txt_color,
                                                  font=self.gui_mixer.font_clip_state,
-                                                 tags=tags)
+                                                 tags=(*tags, "launcher_mode_text"))
         # Timesig text
         self.timesig = self.canvas.create_text(x + 3, y + self.height,
                                                anchor=tkinter.SW,
                                                fill=self.gui_mixer.legend_txt_color,
                                                font=self.gui_mixer.font_timebase,
-                                               tags=tags)
+                                               tags=(*tags, "launcher_timesig"))
         # Tempo text
         self.tempo = self.canvas.create_text(x + self.width - 1, y + self.height,
                                              anchor=tkinter.SE,
                                              fill=self.gui_mixer.legend_txt_color,
                                              justify=tkinter.RIGHT,
                                              font=self.gui_mixer.font_timebase,
-                                             tags=tags)
+                                             tags=(*tags, "launcher_tempo"))
 
         self.canvas.tag_bind(f"launcher_{id}_{phrase}", '<ButtonRelease-1>', self.on_clip_release)
 
@@ -935,21 +935,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.right_canvas.bind("<Button-4>", self.on_wheel)
         self.right_canvas.bind("<Button-5>", self.on_wheel)
 
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
-        """
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.cb_state_change)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.cb_state_change)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.cb_state_change)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.cb_state_change)
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.cb_state_change)
-        """
-        zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
-        zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
         self.update_layout()
 
     def cb_rename_chain(self, chain_id, title):
@@ -1099,8 +1084,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.right_canvas.delete("launcher")
         self.launcher_total_height = self.launcher_height * self.zynseq.phrases
 
-        div = self.chain_manager.get_pinned_pos()
         canvas = self.left_canvas
+        div = self.chain_manager.get_pinned_pos()
         for col, strip in enumerate(self.chain_strips):
             if col == div:
                 canvas = self.right_canvas
@@ -1145,15 +1130,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def build_view(self):
         """ Function to handle showing display"""
-        try:
-            self.build_mixer() #TODO: Don't do full rebuild
-        except Exception as e:
-            logging.warning(e)
-        self.set_launcher_mode()
-        #self.launcher_mode = self.zyngui.alt_mode
+        #try:
+        #    self.build_mixer() #TODO: Don't do full rebuild
+        #except Exception as e:
+        #    logging.warning(e)
+        #self.set_launcher_mode()
+
+        self.build_mixer()
         if zynthian_gui_config.enable_touch_navigation and self.moving_phrase:
             self.show_back_button()
-
         self.set_title()
         if zynthian_gui_config.enable_dpm:
             self.state_manager.zynmixer_chan.enable_dpm(True)
@@ -1166,15 +1151,24 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.right_canvas.itemconfig("dpm", state=tkinter.HIDDEN)
 
         self.setup_zynpots()
+
         if not self.shown:
             zynsigman.register(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
+            zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
             zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
             zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
             zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
+
         return True
 
     def hide(self):
@@ -1185,13 +1179,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.zyngui.state_manager.zynmixer_chan.enable_dpm(False)
                 self.zyngui.state_manager.zynmixer_bus.enable_dpm(False)
             zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
+            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
             zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
             zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
             zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
             zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
             zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
             super().hide()
 
     def set_tempo(self, tempo):
