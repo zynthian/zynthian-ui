@@ -1112,11 +1112,7 @@ class zynthian_state_manager:
             converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
 
-            if load_sequences and "zynseq" in state:
-                if not self.zynseq.set_state(state["zynseq"]):
-                    self.set_busy_warning("Invalid sequence data within snapshot")
-                    sleep(2)
-
+            # Load chains
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.mute(True)
@@ -1212,6 +1208,13 @@ class zynthian_state_manager:
                 # GUI
                 if "gui" in state:
                     self.chain_manager.set_pinned(state["gui"].get("pinned_chains", 1))
+
+
+            # Load Sequences after loading chains
+            if load_sequences and "zynseq" in state:
+                if not self.zynseq.set_state(state["zynseq"]):
+                    self.set_busy_warning("Invalid sequence data within snapshot")
+                    sleep(2)
 
             # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1
