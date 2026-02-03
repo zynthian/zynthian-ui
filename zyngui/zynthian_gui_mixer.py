@@ -199,22 +199,25 @@ class zynthian_gui_launcher_pad():
 
                     match state_seq["followAction"]:
                         case zynseq.FOLLOW_ACTION_NONE:
-                            mode_text = "→"
+                            if state_seq["repeat"] == 1:
+                                mode_text = "↦"
+                            elif state_seq["repeat"] > 1:
+                                mode_text = "x" + str(state_seq["repeat"])
                         case zynseq.FOLLOW_ACTION_RELATIVE:
                             if state_seq["followParam"] == 0:
                                 mode_text = "↻"
                             else:
-                                mode_text = "↦"
+                                mode_text = "→"
                         case _:
-                            mode_text = "↦"
+                            mode_text = "→"
 
                 # Phrase launcher =>
                 else:
                     if state_seq["repeat"]:
                         if state_seq["repeat"] == 255:
-                            mode_text = "A"
+                            mode_text = "a"
                         else:
-                            mode_text = f"{state_seq['repeat']}|"
+                            mode_text = f"{state_seq['repeat']}"
                     else:
                         #title = "⏹"
                         pass
