@@ -1099,6 +1099,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def refresh_launchers(self):
         if self.state_changed:
             return # Avoid refreshing controls whilst rebuilding state
+        if not self.launcher_mode:
+            return
         for strip in self.chain_strips:
             for launcher in strip.launchers:
                 launcher.draw()
