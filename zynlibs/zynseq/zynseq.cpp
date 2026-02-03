@@ -1249,8 +1249,7 @@ bool setState(const char* state) {
                     //fprintf(stderr, "Phrase %d Timesig = %d\n", nPhrase, phrase_bpb);
 
                     pPhrase->setTempo(jPhrase.value("tempo", 0));
-                    if (jPhrase.contains("repeat"))
-                        pPhrase->setRepeat(jPhrase["repeat"]);
+                    pPhrase->setRepeat(jPhrase.value("repeat", 1));
 
                     // Store the follow configuration to apply after all sequences have been created
                     std::array<int16_t, 4> followAction;

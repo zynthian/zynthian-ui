@@ -889,7 +889,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chain_strips = [] # List of channel strips excluding main mixbus, indexed by strip position
         self.state_changed = True
         self.press_event = None
-        self.dragging = False # True if click/touch dragging 
+        self.dragging = False # True if click/touch dragging
         self._scroll_gen = 0 # Identifier for current scroll job - avoid concurrent thread conflicts
         self._scroll_y = 0 # Current vertial scroll offset in pixels
         self.scrollable_strips = 0 # Quantity of strips in left, scrollable canvas
@@ -948,7 +948,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
         self.update_layout()
-        
+
     def cb_rename_chain(self, chain_id, title):
         for strip in self.chain_strips:
             if strip.chain.chain_id == chain_id:
@@ -965,7 +965,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         self.state_changed = True
         super().update_layout()
-       
+
         # Update geometry
         if zynthian_gui_config.visible_mixer_strips < 1:
             # Automatic sizing if not defined in config
@@ -995,7 +995,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.launcher_y = self.fader_y + self.balance_height
         self.legend_y = self.height - self.legend_height
         self.fader_height = self.legend_y - self.fader_y
-        
+
         # Style
         self.fader_bg_color = zynthian_gui_config.color_panel_bg
         self.fader_color = zynthian_gui_config.color_off
@@ -1038,7 +1038,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 visible_launchers = 14
         else:
             visible_launchers = zynthian_gui_config.visible_launchers
-        
+
         self.launcher_height = int((self.legend_y - self.launcher_y) / (visible_launchers + 0.2))
 
         #self.load_mode_icons()
@@ -1581,7 +1581,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def on_release(self, event):
         self.press_event = None
         self.dragging = False
-    
+
     def on_wheel(self, event):
         """ Handle mouse wheel event
         Args:
@@ -1601,7 +1601,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.arrow_left()
             elif self.launcher_mode:
                 self.arrow_down()
-    
+
     # --------------------------------------------------------------------------
     # Launcher Functionality
     # --------------------------------------------------------------------------
@@ -1781,6 +1781,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         pated = self.zyngui.screens['pattern_editor']
         pated.refresh_sequence_info()
         pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
+        pated.enable_sequence()
         self.zyngui.show_screen("pattern_editor")
         return True
 

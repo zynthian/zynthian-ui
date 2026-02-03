@@ -1929,6 +1929,23 @@ class zynthian_chain_manager:
                 return i
         return None
 
+    def get_synth_chain(self, midi_chan):
+        """Get a chain in a given MIDI channel, preferably, a synth chain.
+           If several synth chains in the same MIDI channel, take the first one.
+
+        chan : MIDI channel
+        Returns : Chain ID or None if not found
+        """
+        # Try to find a Synth processor in the specified MIDI channel ...
+        for chain_id in self._midi_chan_2_chain_ids[midi_chan]:
+            processors = self.get_processors(chain_id, "MIDI Synth")
+            if len(processors) > 0:
+                return self.chains[chain_id]
+        # If not synth processors, return first chain in the MIDI channel
+        for chain_id in self._midi_chan_2_chain_ids[midi_chan]:
+            return self.chains[chain_id]
+        return None
+
     def get_synth_processor(self, midi_chan):
         """Get a synth processor on MIDI channel
            If several synth chains in the same MIDI channel, take the first one.

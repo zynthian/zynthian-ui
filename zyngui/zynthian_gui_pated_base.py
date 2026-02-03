@@ -224,12 +224,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         #logging.debug(f"BANK: {bank}, SEQUENCE: {sequence}")
         if seq_name:
             try:
-                preset_name = self.zyngui.chain_manager.get_synth_preset_name(self.channel)
+                synth_chain = self.zyngui.chain_manager.get_synth_chain(self.channel)
+                chain_name = synth_chain.get_title()
             except:
-                preset_name = ""
-            if not preset_name:
-                preset_name = f"MIDI-{self.channel + 1}"
-            return f"{seq_name}: {preset_name}"
+                chain_name = ""
+            if not chain_name:
+                chain_name = f"MIDI-{self.channel + 1}"
+            return f"{seq_name} {chain_name}"
         else:
             return f"Pattern {self.pattern}"
 
@@ -287,6 +288,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.zynseq.libseq.setPatternZoom(self.zoom)
         if self.seq_info:
             # Restore sequence (was changed to looping mode for pattern editing)
+            #self.update_squence_params(["followAction", "followParam", "repeat"])
             self.zynseq.libseq.setSequenceFollowAction(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["followAction"])
             self.zynseq.libseq.setSequenceFollowParam(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["followParam"])
             self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["repeat"])
@@ -340,6 +342,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             menu_options["GLOBAL"] = options
         # Sequence options
         if self.seq_info:
+            logging.debug(f"SEQ_INFO => {self.seq_info}")
             options = {}
             repeat = self.seq_info["repeat"]
             follow_action = self.seq_info["followAction"]
@@ -599,25 +602,41 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.channel = 0
             self.seq_info = {}
 
-    def assert_playmode(self, value):
-        action = zynseq.FOLLOW_ACTION_NONE
-        param = 0
-        repeat = 1
+    def update_sequence_params(self, params):
+        for key in params:
+            self.zynseq.set_sequence_param(self.zynseq.scene, self.phrase, self.sequence, key, self.seq_info[key])
 
+    def update_sequence_info(self):
+        for key, value in self.seq_info.items():
+            self.zynseq.set_sequence_param(self.zynseq.scene, self.phrase, self.sequence, key, value)
+
+    def assert_playmode(self, value):
+        # Disable
         if value == 0:
-            # Disable
+            action = zynseq.FOLLOW_ACTION_NONE
             repeat = 0
+        # Loop
         elif value == 1:
-            # Loop
             action = zynseq.FOLLOW_ACTION_RELATIVE
-            param = 0
+            repeat = 1
+        # Oneshot/Repeat
         else:
-            # Oneshot/Repeat
+            action = zynseq.FOLLOW_ACTION_NONE
             repeat = value - 1
         # Update the cache only so that we can assert on hide
         self.seq_info["followAction"] = action
-        self.seq_info["followParam"] = param
+        self.seq_info["followParam"] = 0
         self.seq_info["repeat"] = repeat
+
+    def enable_sequence(self):
+        if self.seq_info["repeat"] == 0:
+            self.assert_playmode(1)
+            self.update_sequence_params(["followAction", "followParam", "repeat"])
+
+    def disable_sequence(self):
+        if self.seq_info["repeat"] > 0:
+            self.assert_playmode(0)
+            self.update_sequence_params(["followAction", "followParam", "repeat"])
 
     def rename_sequence(self, name):
         self.zynseq.set_sequence_param(self.zynseq.scene, self.phrase, self.sequence, "name", name)
