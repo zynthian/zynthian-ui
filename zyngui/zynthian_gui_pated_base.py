@@ -95,6 +95,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
         self.title = "Pattern 0"
+        self.alt_mode = False
         self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
         self.pattern2copy = None  # Index of pattern to copy (clipboard)
         self.phrase = 0  # Phrase where pattern is used
@@ -1283,14 +1284,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to handle CUIA ARROW_RIGHT
     def arrow_right(self):
-        if self.zyngui.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
+        if self.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
             self.redo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], 1)
 
     # Function to handle CUIA ARROW_LEFT
     def arrow_left(self):
-        if self.zyngui.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
+        if self.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
             self.undo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], -1)
@@ -1301,7 +1302,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zynpot_cb(self.ctrl_order[3], 1)
         elif self.edit_mode:
             self.zynpot_cb(self.ctrl_order[2], 1)
-        elif self.zyngui.alt_mode:
+        elif self.alt_mode:
             self.redo_pattern_all()
         else:
             self.zynpot_cb(self.ctrl_order[2], -1)
@@ -1312,7 +1313,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zynpot_cb(self.ctrl_order[3], -1)
         elif self.edit_mode:
             self.zynpot_cb(self.ctrl_order[2], -1)
-        elif self.zyngui.alt_mode:
+        elif self.alt_mode:
             self.undo_pattern_all()
         else:
             self.zynpot_cb(self.ctrl_order[2], 1)
@@ -1341,6 +1342,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # CUIA & LEDs methods
     # -------------------------------------------------------------------------
 
+    def get_alt_mode(self):
+        return self.alt_mode
+
+    def cuia_toggle_alt_mode(self, params=None):
+        self.alt_mode = not self.alt_mode
+        return True
+
     def cuia_toggle_record(self, params=None):
         self.toggle_midi_record()
         return True
@@ -1355,6 +1363,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def update_wsleds(self, leds):
         wsl = self.zyngui.wsleds
+
+        # ALT button
+        if self.alt_mode:
+            wsl.set_led(leds[0], wsl.wscolor_active2)
+
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
             wsl.set_led(leds[1], wsl.wscolor_red)
@@ -1375,7 +1388,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif pb_status == zynseq.SEQ_STOPPED:
             wsl.set_led(leds[3], wsl.wscolor_active2)
         # Arrow buttons
-        if self.zyngui.alt_mode and not (self.param_editor_zctrl or self.edit_mode):
+        if self.alt_mode and not (self.param_editor_zctrl or self.edit_mode):
             wsl.set_led(leds[4], wsl.wscolor_active2)
             wsl.set_led(leds[5], wsl.wscolor_active2)
             wsl.set_led(leds[6], wsl.wscolor_active2)

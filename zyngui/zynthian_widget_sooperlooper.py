@@ -46,6 +46,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
     def __init__(self, parent):
         super().__init__(parent)
 
+        self.alt_mode = False
+
         self.slider_press_event = None
         self.state = 0
         self.selected_loop = 0
@@ -531,8 +533,15 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
     # Buttons => 'record', 'overdub', 'multiply', 'replace', 'substitute', 'insert', 'undo', 'redo', 'trigger', 'oneshot', 'reverse', 'pause'
 
+    def get_alt_mode(self):
+        return self.alt_mode
+
+    def cuia_toggle_alt_mode(self, params=None):
+        self.alt_mode = not self.alt_mode
+        return True
+
     def cuia_toggle_record(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             state = self.monitors['state']
             if state in (SL_STATE_REC_STARTING, SL_STATE_RECORDING, SL_STATE_REC_STOPPING):
                 btn = "record"
@@ -550,13 +559,13 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             return True
 
     def cuia_stop(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             state = self.monitors['state']
             self.processor.controllers_dict['multiply'].toggle()
             return True
 
     def cuia_toggle_play(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             state = self.monitors['state']
             if state == SL_STATE_MUTED:
                 self.processor.controllers_dict['mute'].set_value(0, True)
@@ -567,27 +576,27 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             return True
 
     def cuia_arrow_up(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             self.processor.engine.prev_loop()
             return True
 
     def cuia_arrow_down(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             self.processor.engine.next_loop()
             return True
 
     def cuia_arrow_left(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             self.processor.engine.undo()
             return True
 
     def cuia_arrow_right(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             self.processor.engine.redo()
             return True
 
     def cuia_program_change(self, params=None):
-        if self.zyngui.alt_mode:
+        if self.alt_mode:
             if len(params) > 0:
                 pgm = int(params[0])
                 if pgm == 5:
@@ -602,7 +611,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
     def update_wsleds(self, leds):
         # ALT mode only!
-        if not self.zyngui.alt_mode:
+        if not self.alt_mode:
             return
         wsl = self.zyngui.wsleds
         color_default = wsl.wscolor_active2

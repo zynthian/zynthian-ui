@@ -1139,7 +1139,17 @@ class zynthian_gui:
                 sleep(0.1)
 
     def get_alt_mode(self):
+        try:
+            return self.screens[self.current_screen].get_alt_mode()
+        except:
+            return self.alt_mode
+
+    def get_global_alt_mode(self):
         return self.alt_mode
+
+    def set_global_alt_mode(self, alt_mode):
+        self.alt_mode = alt_mode
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, alt_mode=self.alt_mode)
 
     def clean_all(self):
         if self.chain_manager.get_chain_count() > 1:
@@ -1212,11 +1222,7 @@ class zynthian_gui:
         logging.warning('TEST_MODE: {}'.format(params))
 
     def cuia_toggle_alt_mode(self, params=None):
-        if self.alt_mode:
-            self.alt_mode = False
-        else:
-            self.alt_mode = True
-        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, alt_mode=self.alt_mode)
+        self.set_global_alt_mode(not self.alt_mode)
 
     def cuia_help(self, params=None):
         self.show_help(params)
@@ -1591,10 +1597,7 @@ class zynthian_gui:
             else:
                 chain_id = self.chain_manager.get_chain_id_by_index(index - 1)
         except:
-            if self.alt_mode:
-                chain_id = 0
-            else:
-                chain_id = self.chain_manager.active_chain.chain_id
+            chain_id = self.chain_manager.active_chain.chain_id
         self.chain_control(chain_id)
 
     cuia_layer_control = cuia_chain_control

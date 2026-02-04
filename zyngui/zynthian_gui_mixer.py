@@ -899,6 +899,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self._top_phrase = 0 # Index of phrase currently displayed at top of view
         self._left_chain = 0 # Index of chain currently displayed at left of view
 
+        self.alt_mode = False
         self.launcher_mode = self.zyngui.alt_mode
 
         self.chan2strip = {} # Map of audio strips, indexed by [is_mixbus, mixer_channel]
@@ -2081,5 +2082,36 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.moving_phrase = False
         self.strip_drag_start = None
         self.refresh_launchers()
+
+    # CUIA and alt mode management
+
+    def get_alt_mode(self):
+        return self.alt_mode
+
+    def cuia_toggle_alt_mode(self, params=None):
+        self.alt_mode = not self.alt_mode
+        self.zyngui.set_global_alt_mode(self.alt_mode)
+        return True
+
+    def cuia_chain_control(self, params=None):
+        if self.alt_mode:
+            chain_id = 0
+        else:
+            chain_id = self.chain_manager.active_chain.chain_id
+        self.zyngui.chain_control(chain_id)
+        return True
+
+    def update_wsleds(self, leds):
+        # ALT mode only!
+        if not self.alt_mode:
+            return
+
+        wsl = self.zyngui.wsleds
+
+        # ALT button
+        wsl.set_led(leds[0], wsl.wscolor_active2)
+
+        # CTRL button
+        wsl.set_led(leds[15], wsl.wscolor_active2)
 
 # --------------------------------------------------------------------------
