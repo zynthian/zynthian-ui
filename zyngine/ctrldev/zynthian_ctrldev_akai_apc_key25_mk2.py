@@ -844,28 +844,30 @@ class PadMatrixHandler(ModeHandlerBase):
     def refresh(self):
         if not self._libseq.isMidiRecord():
             self._recording_seq = None
-
+        
+        # for phrase in range(self.driver.scroll_v + 0, self.driver.scroll_v + 6):
+        #     pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
         # for c in range(self._cols):
         #     for r in range(self._rows):
                 # Pad outside grid, switch off
                 # if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
                 #     self.pad_off(c, r)
                 #     continue
-        for note in range(0, 40):
+        # for note in range(0, 40):
 
-            pos = self.driver.scroll_h + note % 8
-            row = note // 8
-            midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
+        #     pos = self.driver.scroll_h + note % 8
+        #     row = note // 8
+        #     midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
 
-            if midi_chan is None:
-                self.pad_off(note % 8, row)
-                continue
+        #     if midi_chan is None:
+        #         self.pad_off(note % 8, row)
+        #         continue
 
-            phrase = self._rows - 1 - row + self.driver.scroll_v
-            # seq = c * self._zynseq.col_in_bank + r
-            seq = (phrase, midi_chan)
-            pad_info = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"][phrase]["sequences"][midi_chan]
-            self.update_pad(4 - row, note % 8, pad_info)
+        #     phrase = self._rows - 1 - row + self.driver.scroll_v
+        #     # seq = c * self._zynseq.col_in_bank + r
+        #     seq = (phrase, midi_chan)
+        #     pad_info = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"][phrase]["sequences"][midi_chan]
+        #     self.update_pad(4 - row, note % 8, pad_info)
 
         self._refresh_tool_buttons()
 
@@ -895,8 +897,8 @@ class PadMatrixHandler(ModeHandlerBase):
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
             self._clear_sequence(self._zynseq.scene, phrase)
-        # elif self._is_rec                                                                     bb0bbord_pressed:
-        #     self._start_pattern_record(seq)
+        elif self._is_record_pressed:
+            self._start_pattern_record(seq)
         # elif self._recording_seq == seq:
         #     self._stop_pattern_record()
         else:
@@ -1042,6 +1044,9 @@ class PadMatrixHandler(ModeHandlerBase):
                 led_mode = RGB_MODE_PRIMARY
             elif state == zynseq.SEQ_STOPPED:
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
+                if group == 32:
+                    self._leds.led_off(note)
+                    return
                 led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
             elif state == zynseq.SEQ_PLAYING:
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
@@ -1098,7 +1103,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def _start_pattern_record(self, seq):
         # Set pad's chain as active
-        channel = self._libseq.getChannel(self._zynseq.bank, seq, 0)
+        channel = self._libseq.getChannel(self._zynseq.scene, seq[0], seq[1], 0)
         chain_id = self._chain_manager.get_chain_id_by_mixer_chan(channel)
         if chain_id is None:
             return
@@ -2706,6 +2711,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     driver_name = 'AKAI APC Key25 MK2'
     driver_description = 'Full UI integration'
     apc_color_variant = "apc"
+    cols = 8
+    rows = 5
 
     COLOR_SET = COLORS
     FeedbackLEDs = FeedbackLEDs
@@ -2748,6 +2755,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
         # NOTE: init will call refresh(), so _current_hanlder must be ready!
         super().__init__(state_manager, idev_in, idev_out)
+        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
     def init(self):
         super().init()
@@ -2804,7 +2813,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     self._current_handler = self._device_handler
                 elif note in [BTN_KNOB_CTRL_PAN, BTN_KNOB_CTRL_VOLUME]:
                     self._current_handler = self._mixer_handler
-                    self._padmatrix_handler.refresh()
+                    super().refresh()
+                    # self._padmatrix_handler.refresh()
                 elif note == BTN_KNOB_CTRL_SEND:
                     self._current_handler = self._stepseq_handler
 
@@ -2861,6 +2871,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     track = note - BTN_TRACK_1
                     self._padmatrix_handler.on_track_changed(track, True)
                     self._current_handler.note_on(note, vel, self._is_shifted)
+                    super().refresh()
                     self._padmatrix_handler.refresh()
                     return True
                 elif note == BTN_STOP_ALL_CLIPS:
@@ -2917,7 +2928,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     def update_seq_state(self, *args, **kwargs):
         if self._current_handler == self._mixer_handler:
             super().update_seq_state(*args, **kwargs)
-            self._padmatrix_handler.update_seq_state(*args, **kwargs)
+#            self._padmatrix_handler.update_seq_state(*args, **kwargs)
         elif self._current_handler == self._stepseq_handler:
             self._current_handler.update_seq_state(*args, **kwargs)
 
