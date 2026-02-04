@@ -3,9 +3,10 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian GUI New Chain Class
+# Zynthian GUI Selector Grid Class
 #
-# Copyright (C) 2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2025 Brian Walton <riban@zynthian.org>
+#
 #
 # ******************************************************************************
 #
@@ -37,7 +38,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
     """
     def __init__(self):
         """
-        Initialize the Chain View.
+        Initialize the Grid View.
 
         Sets up the canvas, data structures for nodes and grid navigation,
         and initializes mouse drag state variables.
@@ -45,6 +46,8 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         super().__init__('Selector Grid')
 
         self.columns = 3
+
+        # Initial values, recalculated by update_layout
         self.BLOCK_WIDTH = 120  # Width of each processor block in pixels
         self.BLOCK_HEIGHT = 40  # Height of each processor block in pixels
         self.SPACING = 10  # Horizontal spacing between processor blocks in pixels
@@ -57,12 +60,18 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         # Canvas for drawing the graph
         self.canvas = tkinter.Canvas(self.main_frame, bg=zynthian_gui_config.color_panel_bg, highlightthickness=0)
         self.canvas.pack(fill=tkinter.BOTH, expand=True)
+        # Bind Mouse Events
+        self.canvas.bind("<Button-1>", self.on_press)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
+        self.canvas.bind("<Button-4>", self.on_wheel)
+        self.canvas.bind("<Button-5>", self.on_wheel)
 
         # Mouse Drag State
         self.drag_start_x = 0
         self.drag_start_y = 0
         self.is_dragging = False
-        self.drag_threshold = 5  # pixels to detect drag vs click 
+        self.drag_threshold = 5  # pixels to detect drag vs click
         self.press_event = None
 
     def update_layout(self):
@@ -78,19 +87,13 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self._draw_nodes()
 
     def build_view(self):
-        # Bind Mouse Events
-        self.canvas.bind("<Button-1>", self.on_press)
-        self.canvas.bind("<B1-Motion>", self.on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        self.canvas.bind("<Button-4>", self.on_wheel)
-        self.canvas.bind("<Button-5>", self.on_wheel)
         self._draw_nodes()
         return True
 
     def setup(self, config, cols=None):
         """
         Configure the buttons
-        
+
         :param config: List of dictionaries, each describing a button
         """
         self.config = config
@@ -147,7 +150,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             self.canvas.configure(scrollregion=(bbox[0] - self.SPACING, bbox[1] - self.SPACING, bbox[2] + self.SPACING, bbox[3] + self.SPACING))
         else:
             self.canvas.configure(scrollregion=(0, 0, 100, 100))
-        
+
         self._draw_selection()
 
     def _draw_selection(self):
@@ -278,12 +281,12 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         # Calculate pixel delta
         dx = self.drag_start_x - event.x
         dy = self.drag_start_y - event.y
-        
+
         # Check threshold
         if not self.is_dragging:
             if abs(dx) > self.drag_threshold or abs(dy) > self.drag_threshold:
                 self.is_dragging = True
-        
+
         if self.is_dragging:
             # Scroll Canvas manually using moveto
             # We need the total scrollable size to convert pixels to fraction
@@ -299,11 +302,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
                 # Horizontal Move
                 if sr_w > can_w:
                     d_fract_x = dx / float(sr_w)
-                    self.canvas.xview_moveto(self.start_xview + d_fract_x)                
+                    self.canvas.xview_moveto(self.start_xview + d_fract_x)
                 # Vertical Move
                 if sr_h > can_h:
                     d_fract_y = dy / float(sr_h)
-                    self.canvas.yview_moveto(self.start_yview + d_fract_y)                    
+                    self.canvas.yview_moveto(self.start_yview + d_fract_y)
             except Exception as e:
                 logging.warning(f"Drag scroll error: {e}")
                 pass
@@ -315,7 +318,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             event: Mouse event
         """
         # Use canvasx/y to account for scrolling
-        x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)        
+        x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
         # Find closest node or clicked node
         items = self.canvas.find_overlapping(x, y, x, y)
         try:

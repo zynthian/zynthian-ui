@@ -62,7 +62,7 @@ from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
 from zyngui.zynthian_gui_chain_manager import zynthian_gui_chain_manager
-from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
+from zyngui.zynthian_gui_add_chain import zynthian_gui_add_chain
 from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
@@ -481,7 +481,7 @@ class zynthian_gui:
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
         self.screens['chain_manager'] = zynthian_gui_chain_manager()
-        self.screens['selector_grid'] = zynthian_gui_selector_grid()
+        self.screens['add_chain'] = zynthian_gui_add_chain()
         self.screens['processor_options'] = zynthian_gui_processor_options()
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
@@ -592,7 +592,7 @@ class zynthian_gui:
         if zynthian_gui_config.control_test_enabled:
             init_screen = "control_test"
         else:
-            init_screen = "chain_manager"
+            init_screen = "add_chain"
             # Try to load "last_state" snapshot...
             if zynthian_gui_config.restore_last_state:
                 snapshot_loaded = self.state_manager.load_last_state_snapshot()
