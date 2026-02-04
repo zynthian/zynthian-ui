@@ -34,13 +34,13 @@ from threading import Timer
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zynlibs.zynaudioplayer import *
-from zyngine.zynthian_signal_manager import zynsigman
-from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
-from . import zynthian_gui_base
-from . import zynthian_gui_config
 from zynlibs.zynseq import zynseq
+from zynlibs.zynaudioplayer import *
+from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
+from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
@@ -859,7 +859,7 @@ class zynthian_gui_mixer_strip():
 # Zynthian Mixer GUI Class
 # ------------------------------------------------------------------------------
 
-class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
+class zynthian_gui_mixer(zynthian_gui_base):
 
     def __init__(self):
         super().__init__(has_backbutton=False)
@@ -1155,6 +1155,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.setup_zynpots()
 
         if not self.shown:
+            self.set_tempo()
             zynsigman.register(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
@@ -1197,9 +1198,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
             super().hide()
 
-    def set_tempo(self, tempo):
-        self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_ml, text=f"{tempo:.1f} bpm")
-        Timer(0.6, self.clear_tempo_highlight).start()
+    def set_tempo(self, tempo=None):
+        if tempo is None:
+            self.status_canvas.itemconfig(self.status_tempo, text=f"{self.zynseq.get_tempo():.1f} bpm")
+        else:
+            self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_ml, text=f"{tempo:.1f} bpm")
+            Timer(0.6, self.clear_tempo_highlight).start()
 
     def clear_tempo_highlight(self):
         self.status_canvas.itemconfig(self.status_tempo, fill=zynthian_gui_config.color_header_tx)
