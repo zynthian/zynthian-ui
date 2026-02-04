@@ -611,22 +611,22 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.set_sequence_param(self.zynseq.scene, self.phrase, self.sequence, key, value)
 
     def assert_playmode(self, value):
+        # Update the cache only so that we can assert on hide
         # Disable
         if value == 0:
-            action = zynseq.FOLLOW_ACTION_NONE
-            repeat = 0
+            #self.seq_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
+            #self.seq_info["followParam"] = 0
+            self.seq_info["repeat"] = 0
         # Loop
         elif value == 1:
-            action = zynseq.FOLLOW_ACTION_RELATIVE
-            repeat = 1
+            self.seq_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
+            self.seq_info["followParam"] = 0
+            self.seq_info["repeat"] = 1
         # Oneshot/Repeat
         else:
-            action = zynseq.FOLLOW_ACTION_NONE
-            repeat = value - 1
-        # Update the cache only so that we can assert on hide
-        self.seq_info["followAction"] = action
-        self.seq_info["followParam"] = 0
-        self.seq_info["repeat"] = repeat
+            self.seq_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
+            self.seq_info["followParam"] = 0
+            self.seq_info["repeat"] = value - 1
 
     def enable_sequence(self):
         if self.seq_info["repeat"] == 0:
