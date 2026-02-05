@@ -220,7 +220,9 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
     uint8_t nReturn = 0;
     uint8_t nState = m_nState;
     uint8_t nCountInc = (m_nState == STARTING) ? 0 : 1;
+    uint32_t nPulsesBar = PPQN_INTERNAL * nTimeSig;
     bool bPhraseLauncher = isPhraseLauncher();
+    // Start of bar
     if (bSync) {
         if (m_nMode & MODE_END_SYNC) {
             if (m_nState == STOPPING) {
@@ -249,9 +251,8 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
                 nReturn |= CLOCK_TRIG_TIMESIG;
         }
     }
-
+    // Still playing so iterate through tracks
     if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
-        // Still playing so iterate through tracks
         bool trig = false;
         for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
             trig |= (*it).clock(nTime, m_nPosition, bSync);
@@ -259,14 +260,15 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
             nReturn |= CLOCK_TRIG_MIDI;
         ++m_nPosition;
     }
-    if ((!bPhraseLauncher && (m_nPosition >= m_nLength)) || (bPhraseLauncher && (m_nPosition >= PPQN_INTERNAL * nTimeSig))) {
-        // End of sequence or phrase
+
+    // End of sequence or phrase
+    if ((!bPhraseLauncher && (m_nPosition >= m_nLength)) || (bPhraseLauncher && (m_nPosition >= nPulsesBar))) {
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
             m_nPosition = 0;
-            bool bFollow = false;
+            bool bFollow;
             if (m_nRepeat == 255)
-                bFollow = (m_nCount * PPQN_INTERNAL * nTimeSig >= m_nAutoFollow);
+                bFollow = (m_nCount * nPulsesBar >= m_nAutoFollow);
             else
                 bFollow = (m_nCount >= m_nRepeat);
             if (bFollow) {

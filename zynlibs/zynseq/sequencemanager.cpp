@@ -196,23 +196,26 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
     /** Get events scheduled for next tick from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
+
+    // Clock ticks from start of bar
     static uint32_t barPos = 0;
+    if (bSync) barPos = 0;
+    else barPos++;
+
     uint8_t nResult = 0; // Summary of playing sequences (0:None, 1:Starting, 2:Playing/stopping)
-    if(bSync)
-        barPos = 0;
-    else
-        ++barPos;
     size_t nSequence = 0;
     while (nSequence < m_vPlayingSequences.size()) {
         Sequence* pSequence = m_vPlayingSequences[nSequence];
         uint8_t nGroup = pSequence->getGroup();
         uint32_t nPlayState = pSequence->getPlayState();
         bool bIsClippy = nGroup > 15 && nGroup < 32;
+        // Audio clip sequence
         if (bIsClippy) {
             uint8_t nChannel = nGroup - 16;
             uint8_t nPhrase = pSequence->getPhrase();
             uint8_t nNote = nPhrase + 1;
             if (nPlayState == STARTING && bSync) {
+                // Start playing clip at bar sync
                 nPlayState = PLAYING;
                 pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 1}));
                 pSequence->setPlayState(PLAYING);
@@ -227,19 +230,22 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                             pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
                         pSequence->setPlayed(0);
                     } else {
-                    // Triggering repeat
-                    pSequence->setPlayed(nCount);
-                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
+                        // Triggering repeat
+                        pSequence->setPlayed(nCount);
+                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
                     }
                 }
                 pSequence->setPlayPosition(nPos);
             } else if (bSync &&(nPlayState == STOPPING || nPlayState == STOPPING_SYNC)) {
+                // Stop clip
                 pSequence->setPlayState(STOPPED);
                 pSequence->setPlayed(0);
                 pSequence->setPlayPosition(0);
                 nPlayState = STOPPED;
             }
-        } else if (nPlayState != STOPPED && nPlayState != CHILD_PLAYING) {
+        }
+        // Step or phrase sequence
+        else if (nPlayState != STOPPED && nPlayState != CHILD_PLAYING) {
             uint8_t nEventType = pSequence->clock(nTime, bSync, m_nTimeSig);
 
             if (nEventType & CLOCK_TRIG_MIDI) {
@@ -262,14 +268,19 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                 }
             }
             if (nEventType & CLOCK_TRIG_PHRASE) {
-                // Phrase change
+                // Phrase start or re-trigger
                 if (pSequence->getPlayState() == PLAYING) {
-                    uint8_t nNote = pSequence->getPhrase() + 1;
                     for (uint8_t nChild = 0; nChild < 32; ++nChild) {
                         Sequence* pChildSeq = pSequence->m_aChildSequences[nChild];
                         if (pChildSeq && pChildSeq->getRepeat() && pChildSeq->getPlayState() != PLAYING) {
-                            if (nChild > 15)
-                                pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChild - 16), nNote, 1}));
+                            // Schedule clippy child trigger MIDI event
+                            uint8_t nChildGroup = pChildSeq->getGroup();
+                            if (nChildGroup > 15) {
+                                uint8_t nChildChan = nChildGroup - 16;
+                                uint8_t nChildNote = pSequence->getPhrase() + 1;
+                                pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChildChan), nChildNote, 1}));
+                            }
+                            // Set child sequence to play
                             setPlayState(pChildSeq, PLAYING);
                         }
                     }
@@ -283,6 +294,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             }
         }
 
+        // Stopped sequence
         if (nPlayState == STOPPED || nPlayState == CHILD_PLAYING) {
             if (nGroup < 33)
                 m_aGroupProgress[nGroup] = 0;
@@ -304,6 +316,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
             continue;
         }
+
         if (pSequence->getPlayState() & 0x01) {
             if (nGroup < 32 && pSequence->getLength())
                 m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
