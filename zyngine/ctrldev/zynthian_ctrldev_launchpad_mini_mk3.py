@@ -77,17 +77,14 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         color = 0
         try:
             state = pad_info["state"]
-            mode = pad_info["mode"]
-            repeat = pad_info["repeat"]
             if col == self.cols:
                 group = 0
             else:
                 group = pad_info["group"]
-            # logging.debug(f"\t => state={state}, mode={mode}")
-            if repeat == 0 or mode == 0 or group >= MAX_NUM_MIDI_CHANS:
+            if pad_info["repeat"] == 0 or group >= MAX_NUM_MIDI_CHANS:
                 pass
             elif state == zynseq.SEQ_STOPPED:
-                if col == self.cols:
+                if col == self.cols or pad_info["empty"]:
                     color = 0
                 else:
                     color = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
@@ -103,7 +100,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             elif state == zynseq.SEQ_STARTING:
                 midi_chan = 1
                 color = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
-        except Exception as e:
+        except:
             pass
         # Send MIDI event to controller
         if col < self.cols:

@@ -693,7 +693,7 @@ LAUNCHER_COLOUR = [
     {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #31:yellow
     {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #32:blue
     # Main / phrase launchers (offset 32)
-    {"rgb": "#707070", "launchpad": 1,   "apc": 1}    #33:dark grey
+    {"rgb": "#707070", "launchpad": 1,   "apc": 1}    #33:grey
 ]
 #TODO: Choose clip launcher colours (currently just reversed 1-16)
 

@@ -427,6 +427,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
             col = self.phrase_launcher_col
             try:
                 pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
+                pad_info["empty"] = False
             except:
                 pad_info = None
             self.update_pad(row, col, pad_info)
@@ -434,6 +435,17 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         else:
             try:
                 pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+                # Sequence
+                if pad_info["group"] < 16:
+                    try:
+                        pattern = pad_info["tracks"][0]["patns"]["0"]
+                        pad_info["empty"] = len(self.zynseq.state["patns"][str(pattern)]["events"]) == 0
+                    except:
+                        pad_info["empty"] = True
+                # Clippy
+                else:
+                    # TODO Fix this!
+                    pad_info["empty"] = False
             except IndexError:
                 pad_info = None
             for idx in self.chain_manager.get_pos_by_midi_chan(chan):
