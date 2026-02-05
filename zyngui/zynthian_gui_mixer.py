@@ -184,116 +184,116 @@ class zynthian_gui_launcher_pad():
             else:
                 title = name[:5]
 
-                # Chain launcher =>
-                if self.chain.chain_id:
-                    # Zynstep pattern
-                    if state_seq["group"] < 16:
+            # Chain launcher =>
+            if self.chain.chain_id:
+                # Zynstep pattern
+                if state_seq["group"] < 16:
+                    try:
+                        pattern = state_seq["tracks"][0]["patns"]["0"]
+                        n_beats = self.gui_mixer.zynseq.libseq.getBeatsInPattern(pattern)
+                        timesig_text = self.get_pattern_length(n_beats, state_phrase["bpb"])
                         try:
-                            pattern = state_seq["tracks"][0]["patns"]["0"]
-                            n_beats = self.gui_mixer.zynseq.libseq.getBeatsInPattern(pattern)
-                            timesig_text = self.get_pattern_length(n_beats, state_phrase["bpb"])
-                            try:
-                                empty = len(self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]) == 0
-                            except:
-                                empty = True
-                        except Exception as e:
-                            logging.error(e)
-                            disabled = True
-                    # Clippy
-                    else:
-                        # TODO => Fix this!!
-                        timesig_text = "1"
-                        empty = False
-
-                    match state_seq["followAction"]:
-                        case zynseq.FOLLOW_ACTION_NONE:
-                            if state_seq["repeat"] <= 1:
-                                mode_text = "↦"
-                            elif state_seq["repeat"] > 1:
-                                mode_text = "x" + str(state_seq["repeat"])
-                        case zynseq.FOLLOW_ACTION_RELATIVE:
-                            if state_seq["followParam"] == 0:
-                                mode_text = "↻"
-                            else:
-                                mode_text = "→"
-                        case _:
-                            mode_text = "→"
-
-                    # Launcher background color
-                    if empty:
-                        color = zynthian_gui_config.PAD_COLOUR_EMPTY
-                    else:
-                        color = zynthian_gui_config.LAUNCHER_COLOUR[state_seq["group"]]["rgb"]
-
-                # Phrase launcher =>
+                            empty = len(self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]) == 0
+                        except:
+                            empty = True
+                    except Exception as e:
+                        logging.error(e)
+                        disabled = True
+                # Clippy
                 else:
-                    color = zynthian_gui_config.PAD_COLOUR_PHRASE
-                    if state_seq["repeat"]:
-                        if state_seq["repeat"] == 255:
-                            mode_text = "a"
+                    # TODO => Fix this!!
+                    timesig_text = "1"
+                    empty = False
+
+                match state_seq["followAction"]:
+                    case zynseq.FOLLOW_ACTION_NONE:
+                        if state_seq["repeat"] <= 1:
+                            mode_text = "↦"
+                        elif state_seq["repeat"] > 1:
+                            mode_text = "x" + str(state_seq["repeat"])
+                    case zynseq.FOLLOW_ACTION_RELATIVE:
+                        if state_seq["followParam"] == 0:
+                            mode_text = "↻"
                         else:
-                            mode_text = f"{state_seq['repeat']}"
-                    else:
-                        #title = "⏹"
-                        pass
+                            mode_text = "→"
+                    case _:
+                        mode_text = "→"
 
-                    match state_seq["followAction"]:
-                        case zynseq.FOLLOW_ACTION_NONE:
-                            #mode_text += "→"
-                            pass
-                        case zynseq.FOLLOW_ACTION_RELATIVE:
-                            if state_seq["followParam"] < 0:
-                                mode_text += "↑"
-                            elif state_seq["followParam"] > 0:
-                                mode_text += "↓"
-                            else:
-                                mode_text = "↻"
-                        case _:
-                            #mode_text += "↦"
-                            mode_text += ""
-
-                    if "bpb" in state_seq:
-                        sig = state_seq["bpb"]
-                        if sig:
-                            timesig_text = f"{state_seq['bpb']}/4"
-                    if "tempo" in state_seq:
-                        tempo = state_seq["tempo"]
-                        if tempo:
-                            tempo_text = f"{tempo:.1f}"
-
-                if disabled:
-                    color = zynthian_gui_config.PAD_COLOUR_DISABLED
-                    color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
-                    color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
-                    state_text = ""
+                # Launcher background color
+                if empty:
+                    color = zynthian_gui_config.PAD_COLOUR_EMPTY
                 else:
-                    # Play state
-                    match state_seq["state"]:
-                        case zynseq.SEQ_PLAYING:
-                            color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
-                            state_text = "▶"
-                        case zynseq.SEQ_STARTING:
-                            color_state = zynthian_gui_config.PAD_COLOUR_STARTING
-                            state_text = "▶"
-                        case zynseq.SEQ_STOPPING:
-                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                            state_text = "▶"
-                        case zynseq.SEQ_STOPPING_SYNC:
-                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                            state_text = "▶"
-                        case zynseq.SEQ_CHILD_PLAYING:
-                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
-                            state_text = "▶"
-                        case zynseq.SEQ_CHILD_STOPPING:
-                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                            state_text = "▶"
-                        case zynseq.SEQ_STOPPED:
-                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
-                            state_text = "⏹"
-                        case _:
-                            color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
-                            color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
-                            state_text = "?"
+                    color = zynthian_gui_config.LAUNCHER_COLOUR[state_seq["group"]]["rgb"]
+
+            # Phrase launcher =>
+            else:
+                color = zynthian_gui_config.PAD_COLOUR_PHRASE
+                if state_seq["repeat"]:
+                    if state_seq["repeat"] == 255:
+                        mode_text = "a"
+                    else:
+                        mode_text = f"{state_seq['repeat']}"
+                else:
+                    #title = "⏹"
+                    pass
+
+                match state_seq["followAction"]:
+                    case zynseq.FOLLOW_ACTION_NONE:
+                        #mode_text += "→"
+                        pass
+                    case zynseq.FOLLOW_ACTION_RELATIVE:
+                        if state_seq["followParam"] < 0:
+                            mode_text += "↑"
+                        elif state_seq["followParam"] > 0:
+                            mode_text += "↓"
+                        else:
+                            mode_text = "↻"
+                    case _:
+                        #mode_text += "↦"
+                        mode_text += ""
+
+                if "bpb" in state_seq:
+                    sig = state_seq["bpb"]
+                    if sig:
+                        timesig_text = f"{state_seq['bpb']}/4"
+                if "tempo" in state_seq:
+                    tempo = state_seq["tempo"]
+                    if tempo:
+                        tempo_text = f"{tempo:.1f}"
+
+            if disabled:
+                color = zynthian_gui_config.PAD_COLOUR_DISABLED
+                color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                state_text = ""
+            else:
+                # Play state
+                match state_seq["state"]:
+                    case zynseq.SEQ_PLAYING:
+                        color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
+                        state_text = "▶"
+                    case zynseq.SEQ_STARTING:
+                        color_state = zynthian_gui_config.PAD_COLOUR_STARTING
+                        state_text = "▶"
+                    case zynseq.SEQ_STOPPING:
+                        color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                        state_text = "▶"
+                    case zynseq.SEQ_STOPPING_SYNC:
+                        color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                        state_text = "▶"
+                    case zynseq.SEQ_CHILD_PLAYING:
+                        color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                        state_text = "▶"
+                    case zynseq.SEQ_CHILD_STOPPING:
+                        color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                        state_text = "▶"
+                    case zynseq.SEQ_STOPPED:
+                        color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                        state_text = "⏹"
+                    case _:
+                        color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                        color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                        state_text = "?"
         except:
             #logging.exception(traceback.format_exc())
             title = ""
