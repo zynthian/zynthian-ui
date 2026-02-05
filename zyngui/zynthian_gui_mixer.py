@@ -24,13 +24,15 @@
 #
 # ******************************************************************************
 
-from os.path import basename, splitext
+
 import tkinter
 import logging
+#import traceback
 from math import log10
 from time import monotonic
-from PIL import Image, ImageTk
 from threading import Timer
+from PIL import Image, ImageTk
+from os.path import basename, splitext
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -156,7 +158,7 @@ class zynthian_gui_launcher_pad():
         mode_text = ""
         timesig_text = ""
         tempo_text = ""
-        disabled = False
+        color_text = self.gui_mixer.legend_txt_color
         try:
             state_phrase = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
             if self.chain.chain_id == 0:
@@ -166,13 +168,9 @@ class zynthian_gui_launcher_pad():
             else:
                 state_seq = state_phrase["sequences"][self.chain.midi_chan]
             name = state_seq["name"]
-            disabled |= state_seq["repeat"] == 0
-            if disabled:
-                color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
-            elif self.chain.chain_id == 0:
-                color = zynthian_gui_config.PAD_COLOUR_PHRASE
-            else:
-                color = zynthian_gui_config.LAUNCHER_COLOUR[state_seq["group"]]["rgb"]
+
+            disabled = state_seq["repeat"] == 0
+            empty = False
 
             # Moving phrase
             if self.gui_mixer.moving_phrase and self.phrase == self.gui_mixer.zynseq.phrase:
@@ -189,13 +187,23 @@ class zynthian_gui_launcher_pad():
                 # Chain launcher =>
                 if self.chain.chain_id:
                     # Zynstep pattern
-                    try:
-                        pattern = state_seq["tracks"][0]["patns"]["0"]
-                        n_beats = self.gui_mixer.zynseq.libseq.getBeatsInPattern(pattern)
-                        timesig_text = self.get_pattern_length(n_beats, state_phrase["bpb"])
+                    if state_seq["group"] < 16:
+                        try:
+                            pattern = state_seq["tracks"][0]["patns"]["0"]
+                            n_beats = self.gui_mixer.zynseq.libseq.getBeatsInPattern(pattern)
+                            timesig_text = self.get_pattern_length(n_beats, state_phrase["bpb"])
+                            try:
+                                empty = len(self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]) == 0
+                            except:
+                                empty = True
+                        except Exception as e:
+                            logging.error(e)
+                            disabled = True
                     # Clippy
-                    except:
+                    else:
+                        # TODO => Fix this!!
                         timesig_text = "1"
+                        empty = False
 
                     match state_seq["followAction"]:
                         case zynseq.FOLLOW_ACTION_NONE:
@@ -211,8 +219,15 @@ class zynthian_gui_launcher_pad():
                         case _:
                             mode_text = "→"
 
+                    # Launcher background color
+                    if empty:
+                        color = zynthian_gui_config.PAD_COLOUR_EMPTY
+                    else:
+                        color = zynthian_gui_config.LAUNCHER_COLOUR[state_seq["group"]]["rgb"]
+
                 # Phrase launcher =>
                 else:
+                    color = zynthian_gui_config.PAD_COLOUR_PHRASE
                     if state_seq["repeat"]:
                         if state_seq["repeat"] == 255:
                             mode_text = "a"
@@ -245,57 +260,62 @@ class zynthian_gui_launcher_pad():
                         tempo = state_seq["tempo"]
                         if tempo:
                             tempo_text = f"{tempo:.1f}"
-            # Play state
-            match state_seq["state"]:
-                case zynseq.SEQ_PLAYING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
-                    state_text = "▶"
-                case zynseq.SEQ_STARTING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STARTING
-                    state_text = "▶"
-                case zynseq.SEQ_STOPPING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                    state_text = "▶"
-                case zynseq.SEQ_STOPPING_SYNC:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                    state_text = "▶"
-                case zynseq.SEQ_CHILD_PLAYING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
-                    state_text = "▶"
-                case zynseq.SEQ_CHILD_STOPPING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                    state_text = "▶"
-                case zynseq.SEQ_STOPPED:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
-                    try:
-                        if self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]:
-                            state_text = "⏹"
-                        else:  # Pattern empty
-                            state_text = ""
-                    except:
-                        state_text = ""  # Pattern does not exist
-                case _:
-                    color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
+
+                if disabled:
+                    color = zynthian_gui_config.PAD_COLOUR_DISABLED
+                    color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                    color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                     state_text = ""
+                else:
+                    # Play state
+                    match state_seq["state"]:
+                        case zynseq.SEQ_PLAYING:
+                            color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
+                            state_text = "▶"
+                        case zynseq.SEQ_STARTING:
+                            color_state = zynthian_gui_config.PAD_COLOUR_STARTING
+                            state_text = "▶"
+                        case zynseq.SEQ_STOPPING:
+                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                            state_text = "▶"
+                        case zynseq.SEQ_STOPPING_SYNC:
+                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                            state_text = "▶"
+                        case zynseq.SEQ_CHILD_PLAYING:
+                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                            state_text = "▶"
+                        case zynseq.SEQ_CHILD_STOPPING:
+                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                            state_text = "▶"
+                        case zynseq.SEQ_STOPPED:
+                            color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                            state_text = "⏹"
+                        case _:
+                            color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                            color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+                            state_text = "?"
         except:
-            color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
-            color_state = "#F0F0F0"
+            #logging.exception(traceback.format_exc())
             title = ""
-            state_text = ""
+            color = zynthian_gui_config.PAD_COLOUR_DISABLED
+            color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+            color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
+            state_text = "?"
+
         self.canvas.itemconfig(self.pad, fill=color)
-        self.canvas.itemconfig(self.title, text=title)
+        self.canvas.itemconfig(self.title, text=title, fill=color_text)
         self.canvas.itemconfig(self.play_state, text=state_text, fill=color_state)
         if self.chain.chain_id:
             # Chain sequence launcher
-            self.canvas.itemconfig(self.mode_text, text=mode_text, state=tkinter.NORMAL)
-            self.canvas.itemconfig(self.timesig, text=timesig_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.mode_text, text=mode_text, fill=color_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.timesig, text=timesig_text, fill=color_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.tempo, state=tkinter.HIDDEN)
             self.canvas.itemconfig(self.mode_icon, state=tkinter.HIDDEN)
         else:
             # Phrase launcher
-            self.canvas.itemconfig(self.mode_text, text=mode_text, state=tkinter.NORMAL)
-            self.canvas.itemconfig(self.timesig, text=timesig_text, state=tkinter.NORMAL)
-            self.canvas.itemconfig(self.tempo, text=tempo_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.mode_text, text=mode_text, fill=color_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.timesig, text=timesig_text, fill=color_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.tempo, text=tempo_text, fill=color_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.mode_icon, state=tkinter.HIDDEN)
 
     def on_clip_release(self, event):
@@ -1792,7 +1812,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         pated = self.zyngui.screens['pattern_editor']
         pated.refresh_sequence_info()
         pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
-        pated.enable_sequence()
+        #pated.enable_sequence()
         self.zyngui.show_screen("pattern_editor")
         return True
 
