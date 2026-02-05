@@ -85,15 +85,13 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
         try:
             state = pad_info["state"]
             if col == self.cols:
-                group = 0
+                group = 32
             else:
                 group = pad_info["group"]
-            if pad_info["repeat"] == 0 or group >= MAX_NUM_MIDI_CHANS:
-                vel = self.OFF_COLOUR
+            if pad_info["repeat"] == 0 or group > MAX_NUM_MIDI_CHANS:
+                pass
             elif state == zynseq.SEQ_STOPPED:
-                if pad_info["empty"]:
-                    vel = self.OFF_COLOUR
-                else:
+                if not pad_info["empty"]:
                     vel = self.STOPPED_COLOUR
             elif state == zynseq.SEQ_PLAYING:
                 vel = self.PLAYING_COLOUR

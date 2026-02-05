@@ -628,37 +628,37 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             return
         led_mode = RGB_MODE_PRIMARY
         led_colour = 0
-        group = 32
-        try:
-            group = pad_info["group"]
-        except:
-            pass
         try:
             state = pad_info["state"]
-            repeat = pad_info["repeat"]
-            led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group]["apc"]
-            if repeat == 0:
-                led_colour = 0 # Off
-                led_mode = RGB_MODE_PRIMARY
+            try:
+                group = pad_info["group"]
+            except:
+                group = 32
+            if group <= MAX_NUM_MIDI_CHANS:
+                led_colour_primary = zynthian_gui_config.LAUNCHER_COLOUR[group]["apc"]
+            if pad_info["repeat"] == 0:
+                pass
             elif state == zynseq.SEQ_STOPPED:
-                led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group]["apc"]
-                led_mode = RGB_MODE_PRIMARY
+                if not pad_info["empty"]:
+                    led_colour = led_colour_primary
             elif state == zynseq.SEQ_PLAYING:
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour_primary)
                 led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR["apc"]
                 led_mode = RGB_MODE_PULSE_2
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour_primary)
                 led_colour = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["apc"]
                 led_mode = RGB_MODE_BLINK_4
             elif state == zynseq.SEQ_STARTING:
-                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour_primary)
                 led_colour = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["apc"]
                 led_mode = RGB_MODE_BLINK_8
             elif state == zynseq.SEQ_CHILD_PLAYING:
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour_primary)
                 led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR["apc"]
                 led_mode = RGB_MODE_PULSE_2
             elif state == zynseq.SEQ_CHILD_STOPPING:
-                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
+                lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour_primary)
                 led_colour = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["apc"]
                 led_mode = RGB_MODE_BLINK_4
         except:

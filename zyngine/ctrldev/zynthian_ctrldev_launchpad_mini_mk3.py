@@ -78,21 +78,19 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         try:
             state = pad_info["state"]
             if col == self.cols:
-                group = 0
+                group = 32
             else:
                 group = pad_info["group"]
-            if pad_info["repeat"] == 0 or group >= MAX_NUM_MIDI_CHANS:
+            if pad_info["repeat"] == 0 or group > MAX_NUM_MIDI_CHANS:
                 pass
             elif state == zynseq.SEQ_STOPPED:
-                if col == self.cols or pad_info["empty"]:
-                    color = 0
-                else:
+                if not pad_info["empty"]:
                     color = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state in (zynseq.SEQ_PLAYING, zynseq.SEQ_CHILD_PLAYING):
+                midi_chan = 2
                 if col == self.cols:
                     color = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
                 else:
-                    midi_chan = 2
                     color = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC, zynseq.SEQ_FORCED_STOP, zynseq.SEQ_CHILD_STOPPING):
                 midi_chan = 1
@@ -108,7 +106,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             lib_zyncore.dev_send_note_on(self.idev_out, midi_chan, note, color)
         elif col == self.cols:
             ccnum = 89 - 10 * row
-            lib_zyncore.dev_send_ccontrol_change(self.idev_out, max(midi_chan, 1), ccnum, color)
+            lib_zyncore.dev_send_ccontrol_change(self.idev_out, midi_chan, ccnum, color)
 
     # Light-Off the pad specified with chan & phrase (column & row)
     def pad_off(self, col, row):
