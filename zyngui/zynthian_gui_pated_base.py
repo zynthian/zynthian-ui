@@ -97,7 +97,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.title = "Pattern 0"
         self.alt_mode = False
         self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
-        self.pattern2copy = None  # Index of pattern to copy (clipboard)
+        self.clipboard = 8 * [None]  # Pattern clipboard: Array of pattern indexes to copy/paste.
         self.phrase = 0  # Phrase where pattern is used
         self.pattern = 0  # Pattern to edit
         self.sequence = 0  # Sequence used for pattern editor sequence player
@@ -210,6 +210,20 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.velocity_canvas.create_rectangle(0, 0, 0, PLAYHEAD_HEIGHT, fill='yellow', width=0,
                                               tags="velocityIndicator")
         self.velocity_canvas.grid(column=0, row=1)
+
+        # Configure ALT mode layout depending on hardware
+        if zynthian_gui_config.check_wiring_layout(["V5"]):
+            self.switch_i_clipboard = [11, 15, 19, 23]
+            self.wsleds_i_clipboard = [10, 11, 12, 13]
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+            self.switch_i_clipboard = [10, 11, 12, 13]
+            self.wsleds_i_clipboard = [10, 11, 12, 13]
+        elif zynthian_gui_config.check_kit_version(["V4"]):
+            self.switch_i_clipboard = None
+            self.wsleds_i_clipboard = None
+        else:
+            self.switch_i_clipboard = None
+            self.wsleds_i_clipboard = None
 
     # Function to get name of this view
     def get_name(self):
@@ -394,9 +408,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2612 Record from MIDI'] = 'Record MIDI'
             else:
                 options['\u2610 Record from MIDI'] = 'Record MIDI'
-        options[f"Copy this pattern ({self.pattern}) to clipboard"] = 'Copy pattern'
-        if self.pattern2copy is not None and self.pattern2copy != self.pattern:
-            options[f"Paste from clipboard ({self.pattern2copy})"] = 'Paste pattern'
+        options[f"Copy this pattern ({self.pattern}) to clipboard#1"] = ('Copy pattern', 0)
+        for i, pattern in enumerate(self.clipboard):
+            if pattern is not None and pattern != self.pattern:
+                options[f"Paste pattern {pattern} from clipboard#{i+1}"] = ('Paste pattern', i)
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
         options['Export to SMF'] = 'Export to SMF'
@@ -432,7 +447,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def menu_cb(self, option, params):
         #self.save_last_menu_option() => Include this in children classes
-        match params:
+        if isinstance(params, str):
+            param = params
+        elif len(params) > 1:
+            param = params[0]
+        else:
+            return
+        match param:
             case 'Grid zoom':
                 self.enable_param_editor(self, 'zoom', {'name': 'Zoom', 'value_min': 1, 'value_max': 64,
                                                         'value_default': 1, 'value': self.zoom})
@@ -472,9 +493,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             case 'Record MIDI':
                 self.toggle_midi_record()
             case 'Copy pattern':
-                self.pattern2copy = self.pattern
+                self.copy_pattern(params[1])
             case 'Paste pattern':
-                self.paste_pattern()
+                self.paste_pattern(params[1])
             case 'Load pattern':
                 self.zyngui.screens['option'].config_file_list("Load pattern",
                                                                [self.patterns_dpath, self.my_patterns_dpath],
@@ -749,26 +770,43 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if self.zynseq.libseq.getPlayState(self.phrase, self.sequence, 0) != zynseq.SEQ_STOPPED:
             self.zynseq.libseq.sendMidiCommand(0xB0 | self.channel, 123, 0)  # All notes off
 
-    # Function to paste pattern from clipboard (pattern2copy)
-    def paste_pattern(self):
+    # Function to copy current pattern to clipboard
+    def copy_pattern(self, i=0):
+        try:
+            self.clipboard[i] = self.pattern
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+
+    # Function to paste pattern from clipboard
+    def paste_pattern(self, i=0):
+        try:
+            pattern = self.clipboard[i]
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+            return
         # Don't paste from None or over itself
-        if self.pattern2copy is None and self.pattern2copy == self.pattern:
+        if pattern is None or pattern == self.pattern:
             return
         # Overwriting an empty pattern doesn't need confirmation
         if self.zynseq.libseq.getLastStep() == -1:
-            self.do_paste_pattern()
+            self.do_paste_pattern(i)
         # Overwriting a busy pattern does need confirmation!
         else:
-            self.zyngui.show_confirm(f"Overwrite pattern {self.pattern} with content from pattern {self.pattern2copy}?",
-                                     self.do_paste_pattern)
+            self.zyngui.show_confirm(f"Overwrite pattern {self.pattern} with content from pattern {pattern}?",
+                                     self.do_paste_pattern, i)
 
     # Function to actually copy pattern
-    def do_paste_pattern(self, param=None):
-        # Doesn't paste over itself
-        if self.pattern2copy == self.pattern:
+    def do_paste_pattern(self, i=0):
+        try:
+            pattern = self.clipboard[i]
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+            return
+        # Don't paste from None or over itself
+        if pattern is None or pattern == self.pattern:
             return
         # Paste from clipboard to current pattern
-        self.zynseq.libseq.copyPattern(self.pattern2copy, self.pattern)
+        self.zynseq.libseq.copyPattern(pattern, self.pattern)
         self.load_pattern(self.pattern)
 
     # Function to export pattern to SMF
@@ -1250,6 +1288,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 return True
             elif st == "P":
                 return False
+        # ALT mode => Use F1-F4 as copy/paste buttons
+        elif self.alt_mode and self.switch_i_clipboard is not None and i in self.switch_i_clipboard:
+            index = self.switch_i_clipboard.index(i)
+            if st == "S":
+                self.paste_pattern(index)
+            elif st == "B":
+                self.copy_pattern(index)
         return False
 
     def cuia_v5_zynpot_switch(self, params):
@@ -1364,10 +1409,19 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def update_wsleds(self, leds):
         wsl = self.zyngui.wsleds
 
-        # ALT button
         if self.alt_mode:
+            # ALT button
             wsl.set_led(leds[0], wsl.wscolor_active2)
 
+            # Copy/paste buttons
+            for i, wsli in enumerate(self.wsleds_i_clipboard):
+                if self.clipboard[i] is not None:
+                    if self.clipboard[i] == self.pattern:
+                        wsl.blink(leds[wsli], wsl.wscolor_red)
+                    else:
+                        wsl.blink(leds[wsli], wsl.wscolor_active2)
+                else:
+                    wsl.set_led(leds[wsli], wsl.wscolor_active2)
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
             wsl.set_led(leds[1], wsl.wscolor_red)
