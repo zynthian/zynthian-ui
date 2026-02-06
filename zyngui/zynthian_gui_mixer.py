@@ -1757,7 +1757,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.zynseq.duplicate_phrase(self.zynseq.scene, params)
             self.build_launchers()
             self.zyngui.show_screen("launcher")
-        elif option.startswith("Remove phrase"):
+        elif option.startswith("Delete phrase"):
             self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
         elif option.startswith("Move phrase"):
             self.moving_phrase = True
