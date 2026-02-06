@@ -1733,7 +1733,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             options[f"Rename"] = ""
         options["> EDIT"] = None
         options["Insert phrase"] = phrase
-        options["Duplicate phrase"] = phrase
+        options["Clone phrase"] = phrase
         if self.zynseq.phrases > 1:
             options["Move phrase"] = phrase
             options["Delete phrase"] = phrase
@@ -1753,7 +1753,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.zynseq.insert_phrase(self.zynseq.scene, params)
             self.build_launchers()
             self.zyngui.show_screen("launcher")
-        elif option.startswith("Duplicate phrase"):
+        elif option.startswith("Clone phrase"):
             self.zynseq.duplicate_phrase(self.zynseq.scene, params)
             self.build_launchers()
             self.zyngui.show_screen("launcher")
