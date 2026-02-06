@@ -348,16 +348,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         menu_options = {}
         extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
         # Global Options
-        options = {}
-        if not self.zyngui.multitouch._f_device:
-            options['Grid zoom'] = 'Grid zoom'
-        if extra_options:
-            options['Tempo'] = 'Tempo'
-        if options:
-            menu_options["GLOBAL"] = options
         # Sequence options
         if self.seq_info:
             options = {}
+            name = self.seq_info["name"]
             repeat = self.seq_info["repeat"]
             follow_action = self.seq_info["followAction"]
             follow_param = self.seq_info["followParam"]
@@ -373,13 +367,15 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                         options[f"Play mode (PLAY {repeat} TIMES)"] = "Playmode"
             else:
                 options["Play mode (DISABLED)"] = "Playmode"
-            name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
-            options[f"Name ({name})"] = 'Rename sequence'
             program_change = self.zynseq.libseq.getProgramChange(0)
             if program_change > 127:
                 program_change = "None"
             options[f"Program Change ({program_change})"] = 'Program Change'
-            menu_options['SEQUENCE'] = options
+            if name:
+                options[f"Rename ({name})"] = 'Rename sequence'
+            else:
+                options[f"Rename"] = 'Rename sequence'
+            menu_options['_SEQUENCE'] = options
         # Pattern Options
         options = {}
         if extra_options:
@@ -400,25 +396,28 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
         options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime())})"] = 'Time Humanization'
-        menu_options['PATTERN OPTIONS'] = options
+        menu_options['PATTERN'] = options
         # Pattern Edit
         options = {}
+        if not self.zyngui.multitouch._f_device:
+            options['Grid zoom'] = 'Grid zoom'
         if extra_options:
             if self.zynseq.libseq.isMidiRecord():
                 options['\u2612 Record from MIDI'] = 'Record MIDI'
             else:
                 options['\u2610 Record from MIDI'] = 'Record MIDI'
-        name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
-        options[f"Copy this pattern ({name}) to clipboard#1"] = ('Copy pattern', 0)
-        for i, paste in enumerate(self.clipboard):
-            if paste is not None and paste[2] != self.pattern:
-                name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[0], paste[1])
-                options[f"Paste {name} from clipboard#{i+1}"] = ('Paste pattern', i)
+        if self.seq_info:
+            name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
+            options[f"Copy this ({name}) to clipboard#1"] = ('Copy pattern', 0)
+            for i, paste in enumerate(self.clipboard):
+                if paste is not None and paste[2] != self.pattern:
+                    name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[0], paste[1])
+                    options[f"Paste {name} from clipboard#{i+1}"] = ('Paste pattern', i)
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
         options['Export to SMF'] = 'Export to SMF'
         options['Clear pattern ALL'] = 'Clear pattern ALL'
-        menu_options['PATTERN EDIT'] = options
+        menu_options['EDIT'] = options
         return menu_options
 
     # Function to add menus
@@ -427,9 +426,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         menu_options = self.get_menu_options()
         options = {}
         for subtitle, subopts in menu_options.items():
-            options[f"> {subtitle}"] = None
+            if subtitle[0] != "_":
+                options[f"> {subtitle}"] = None
             options.update(subopts)
-        self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb, index=self.get_last_menu_option())
+        title = "Sequence options"
+        if self.seq_info and self.seq_info["name"]:
+            title += ": " + self.seq_info["name"]
+
+        self.zyngui.screens['option'].config(title, options, self.menu_cb, index=self.get_last_menu_option())
         self.zyngui.show_screen('option')
 
     def toggle_menu(self):

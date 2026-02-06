@@ -167,7 +167,13 @@ class zynthian_gui_launcher_pad():
                 state_seq = None  # This will raise an exception later and draw empty block
             else:
                 state_seq = state_phrase["sequences"][self.chain.midi_chan]
+
             name = state_seq["name"]
+            # If not asigned name => generate default name on-the-fly
+            if not name:
+                name = chr(ord('A') + self.phrase)
+                if self.chain.chain_id > 0:
+                    name += str(self.chain.midi_chan + 1)  # QUESTION: It MIDI chan same than group?
 
             disabled = state_seq["repeat"] == 0
             empty = False
@@ -1687,8 +1693,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
         repeat = info["repeat"]
         follow_action = info["followAction"]
         follow_phrase = info["followParam"]
-        title = f"Phrase options ({name})"
-        options["> Manipulate this phrase"] = None
+        title = f"Phrase options"
+        if name:
+            title += f": {name}"
+        #options["> Phrase Options"] = None
         if repeat == 0:
             options["Duration (DISABLED)"] = repeat
         else:
@@ -1719,19 +1727,23 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 options[f"Beats per bar (NONE)"] = 0
             else:
                 options[f"Beats per bar ({info['bpb']})"] = info["bpb"]
-        options[f"Edit name ({name})"] = name
-        options["> Manipulate global phrases"] = None
+        if name:
+            options[f"Rename ({name})"] = name
+        else:
+            options[f"Rename"] = ""
+        options["> EDIT"] = None
         options["Insert phrase"] = phrase
+        options["Duplicate phrase"] = phrase
         if self.zynseq.phrases > 1:
-            options["Remove phrase"] = phrase
             options["Move phrase"] = phrase
+            options["Delete phrase"] = phrase
 
         self.zyngui.screens['option'].config(title, options, self.phrase_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
     def phrase_menu_cb(self, option, params):
         option_screen = self.zyngui.screens["option"]
-        if option.startswith("Edit name"):
+        if option.startswith("Rename"):
             self.zyngui.show_keyboard(self.rename_phrase, params, 8)
         elif option.startswith("Append phrase"):
             self.zynseq.insert_phrase(self.zynseq.scene, self.zynseq.phrases)
@@ -1739,6 +1751,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.zyngui.show_screen("launcher")
         elif option.startswith("Insert phrase"):
             self.zynseq.insert_phrase(self.zynseq.scene, params)
+            self.build_launchers()
+            self.zyngui.show_screen("launcher")
+        elif option.startswith("Duplicate phrase"):
+            self.zynseq.duplicate_phrase(self.zynseq.scene, params)
             self.build_launchers()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Remove phrase"):

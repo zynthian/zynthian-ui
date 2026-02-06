@@ -87,7 +87,7 @@ void enableDebug(bool bEnable);
 */
 void reset();
 
-/** @brief  Convert binary sequence file to json 
+/** @brief  Convert binary sequence file to json
     @param  filename Full path and filename
     @retval const char* State as json string
 */
@@ -1269,9 +1269,14 @@ uint8_t getNumPhrases(uint8_t scene);
 /** @brief  Add phrase
     @param  scene Index of scene
     @param  phrase Index of phrase to insert before
-    @note   Provide phrase higher than current quantity of phrases to append
 */
 void insertPhrase(uint8_t scene, uint8_t phrase);
+
+/** @brief  Duplicate phrase
+    @param  scene Index of scene
+    @param  phrase Index of phrase to duplicate
+*/
+void duplicatePhrase(uint8_t scene, uint8_t phrase);
 
 /** @brief  Remove phrase
     @param  scene Index of scene

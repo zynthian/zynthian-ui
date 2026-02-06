@@ -85,11 +85,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             options[f"\u2612 Interpolate CC{self.cc_num} values"] = 'Interpolate CC OFF'
         else:
             options[f"\u2610 Interpolate CC{self.cc_num} values"] = 'Interpolate CC ON'
-        menu_options['PATTERN OPTIONS'].update(options)
+        menu_options['PATTERN'].update(options)
         # Pattern Edit
         options = {}
         options[f"Clear pattern CC{self.cc_num}"] = 'Clear pattern CC'
-        menu_options['PATTERN EDIT'].update(options)
+        menu_options['EDIT'].update(options)
         return menu_options
 
     def menu_cb(self, option, params):

@@ -529,15 +529,15 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         vPhrases.insert(vPhrases.begin() + phrase, pPhrase);
     }
     std::string s;
-    s = 'A' + phrase;
-    pPhrase->setName(s);
+    //s = 'A' + phrase;
+    //pPhrase->setName(s);
     pPhrase->setGroup(32);
     pPhrase->setRepeat(255);
     pPhrase->setTimeSig(m_nDefaultTimeSig);
     for (uint8_t chan = 0; chan < 32; ++chan) {
         Sequence* pSequence = new Sequence(pPhrase);
         pSequence->setGroup(chan);
-        pSequence->setName(s  + std::to_string(chan + 1));
+        //pSequence->setName(s  + std::to_string(chan + 1));
         if (chan < 16) {
            Track* pTrack = pSequence->getTrack(0);
            pTrack->setChannel(chan);
@@ -548,6 +548,48 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0); // Loop
         if (m_bEnabled[chan])
             pSequence->setRepeat(1);
+    }
+    refreshPhrases(scene);
+    return pPhrase;
+}
+
+// TODO: This should be implemented as assignation operator / constructor in Sequence class
+Sequence* SequenceManager::duplicatePhrase(uint8_t scene, uint8_t phrase) {
+    for (uint8_t i = m_vScenes.size(); i <= scene; ++i)
+        m_vScenes.emplace_back(); // Create missing scenes
+    auto& vPhrases = m_vScenes[scene];
+    Sequence* pSrcPhrase = vPhrases[phrase];
+    Sequence* pPhrase = new Sequence(nullptr);
+    if (!pPhrase)
+        return nullptr;
+    if (phrase >= vPhrases.size()) {
+        phrase = vPhrases.size();
+        vPhrases.push_back(pPhrase);
+    } else {
+        vPhrases.insert(vPhrases.begin() + phrase, pPhrase);
+    }
+    pPhrase->setName(pSrcPhrase->getName());
+    pPhrase->setGroup(32);
+    pPhrase->setRepeat(pSrcPhrase->getRepeat());
+    setFollowAction(scene, pPhrase, pSrcPhrase->getFollowAction(), pSrcPhrase->getFollowParam());
+    pPhrase->setTimeSig(pSrcPhrase->getTimeSig());
+    pPhrase->setTempo(pSrcPhrase->getTempo());
+    for (uint8_t chan = 0; chan < 32; ++chan) {
+        Sequence* pSrcSeq = pSrcPhrase->m_aChildSequences[chan];
+        Sequence* pSequence = new Sequence(pPhrase);
+        pSequence->setGroup(chan);
+        pSequence->setName(pSrcSeq->getName());
+        if (chan < 16) {
+            Track* pTrack = pSequence->getTrack(0);
+            pTrack->setChannel(chan);
+            uint32_t nPattern = createPattern(m_nDefaultTimeSig);
+            addPattern(pSequence, 0, 0, nPattern);
+            // Copy pattern from source sequence
+            *(getPattern(nPattern)) = *(pSrcSeq->getTrack(0)->getPatternByIndex(0));
+        }
+        pPhrase->m_aChildSequences[chan] = pSequence;
+        pSequence->setRepeat(pSrcSeq->getRepeat());
+        setFollowAction(scene, pSequence, pSrcSeq->getFollowAction(), pSrcSeq->getFollowParam());
     }
     refreshPhrases(scene);
     return pPhrase;

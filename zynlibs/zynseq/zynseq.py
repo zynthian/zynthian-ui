@@ -295,6 +295,20 @@ class zynseq(zynthian_engine):
             self.clippy.insert_phrase(phrase)
         self.refresh_state()
 
+    def duplicate_phrase(self, scene, phrase=None):
+        """ Insert a row of sequences to the current scene
+
+        :phrase: Index of phrase to insert (Default: append)
+        """
+
+        if phrase is None:
+            phrase = self.phrases
+        self.libseq.duplicatePhrase(scene, phrase)
+        if scene == self.scene and self.clippy:
+            self.clippy.insert_phrase(phrase)
+            # TODO Duplicate clips
+        self.refresh_state()
+
     def remove_phrase(self, scene, phrase):
         if self.phrases < 2:
             return  # TODO: What should be the minimum quantity of launchers?
@@ -369,7 +383,10 @@ class zynseq(zynthian_engine):
     # Returns: Sequence name (maximum 16 characters)
     def get_sequence_name(self, scene, phrase, sequence):
         if self.libseq:
-            return self.libseq.getSequenceName(scene, phrase, sequence).decode("utf-8")
+            name = self.libseq.getSequenceName(scene, phrase, sequence).decode("utf-8")
+            if not name:
+                name = f"{chr(ord('A') + phrase)}{sequence + 1}"
+            return name
         else:
             return f"{sequence}"
 
@@ -483,7 +500,7 @@ class zynseq(zynthian_engine):
 
     def set_sequence_param(self, scene, phrase, sequence, param, value):
         """ Set a sequence parameter value
-        
+
         scene: Index of scene
         phrase: Index of phrase
         sequence: Index of sequence

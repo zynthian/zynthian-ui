@@ -2875,6 +2875,16 @@ void insertPhrase(uint8_t scene, uint8_t phrase)
     g_bDirty = true;
 }
 
+void duplicatePhrase(uint8_t scene, uint8_t phrase)
+{
+    while (g_bMutex)
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
+    g_seqMan.duplicatePhrase(scene, phrase);
+    g_bMutex = false;
+    g_bDirty = true;
+}
+
 void removePhrase(uint8_t scene, uint8_t phrase) {
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));

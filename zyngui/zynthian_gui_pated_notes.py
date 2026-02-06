@@ -192,7 +192,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             options[f"Rest note ({NOTE_NAMES[note % 12]}{note // 12 - 1})"] = 'Rest note'
         else:
             options["Rest note (None)"] = 'Rest note'
-        menu_options['PATTERN OPTIONS'].update(options)
+        menu_options['PATTERN'].update(options)
         # Pattern Edit
         options = {}
         options[f"Chord mode ({CHORD_MODES[self.chord_mode]})"] = 'Chord mode'
@@ -201,9 +201,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         elif self.chord_mode >= 2:
             options[f"Diatonic key ({NOTE_NAMES[self.diatonic_scale_tonic]})"] = 'Chord type'
         options['Transpose pattern'] = 'Transpose pattern'
-        options.update(menu_options['PATTERN EDIT'])
+        options.update(menu_options['EDIT'])
         options['Clear pattern notes'] = 'Clear pattern notes'
-        menu_options['PATTERN EDIT'] = options
+        menu_options['EDIT'] = options
         return menu_options
 
     def menu_cb(self, option, params):

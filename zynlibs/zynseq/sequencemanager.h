@@ -273,8 +273,15 @@ class SequenceManager {
     */
     Sequence* insertPhrase(uint8_t scene, uint8_t phrase);
 
+    /** @brief  Duplicate phrase
+        @param  scene Index of scene
+        @param  phrase Index of phrase to duplicate
+        @retval Sequence* Pointer to the phrase sequence or nullptr on failure
+    */
+    Sequence* duplicatePhrase(uint8_t scene, uint8_t phrase);
+
     /** @brief  Remove phrase
-        @param  scene Index of scene    
+        @param  scene Index of scene
         @param  phrase Index of phrase to remove
     */
     void removePhrase(uint8_t scene, uint8_t phrase);
