@@ -106,7 +106,7 @@ class zynthian_ctrldev_akai_mpk_mini_mk3_moder(zynthian_ctrldev_base, zynthian_c
                     except:
                         pass
                     logging.debug(f"MODE => {mode_key} ({self.mode_index.value})")
-                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"{self.get_driver_name()}: {mode_key}")
+                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"MPKmini moder: {mode_key}")
                     return True
             # Pad CCs, Bank A & B:
             elif evtype == 0xB:
@@ -119,7 +119,7 @@ class zynthian_ctrldev_akai_mpk_mini_mk3_moder(zynthian_ctrldev_base, zynthian_c
                     except:
                         pass
                     logging.debug(f"MODE => {mode_key} ({self.mode_index.value})")
-                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"{self.get_driver_name()}: {mode_key}")
+                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"MPKmini moder: {mode_key}")
                     return True
 
 # ------------------------------------------------------------------------------
