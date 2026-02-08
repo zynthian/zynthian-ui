@@ -693,8 +693,10 @@ def _generate_plugin_presets_cache(plugin):
                     'presets': []
                 }
 
-        if label.startswith(bank_label):
-            label = label[len(bank_label) + 1:].strip()
+        # Disabled because it's ugly and doesn't work very well
+        #if label.startswith(bank_label):
+        #    label = label[len(bank_label) + 1:].strip()
+
         presets_info[bank_label]['presets'].append({
             'label': str(label),
             'url': str(preset)
