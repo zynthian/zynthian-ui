@@ -896,7 +896,7 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
-            self._clear_sequence(self._zynseq.scene, phrase)
+            self._clear_sequence(self._zynseq.scene, (midi_chan, phrase))
         elif self._is_record_pressed:
             self._start_pattern_record(seq)
         elif self._recording_seq == seq:
@@ -987,7 +987,7 @@ class PadMatrixHandler(ModeHandlerBase):
         seq_is_empty = self._libseq.isEmpty(self._zynseq.bank, seq)
         if self._seqman_func == FN_CLEAR_SEQUENCE:
             if not seq_is_empty:
-                self._clear_sequence(self._zynseq.bank, seq)
+                self._clear_sequence(self._zynseq.scene, seq)
             return
 
         # Set selected sequence as source
@@ -1143,20 +1143,19 @@ class PadMatrixHandler(ModeHandlerBase):
         self.refresh()
 
     def _clear_sequence(self, scene, seq, create_empty=True):
-        # TODO: new sig!
         # Remove all patterns in all tracks
-        seq_len = self._libseq.getSequenceLength(scene, seq)
+        seq_len = self._libseq.getSequenceLength(scene, *seq)
         if seq_len != 0:
-            n_tracks = self._libseq.getTracksInSequence(scene, seq)
+            n_tracks = self._libseq.getTracksInSequence(scene, *seq)
             for track in range(n_tracks):
-                n_patts = self._libseq.getPatternsInTrack(scene, seq, track)
+                n_patts = self._libseq.getPatternsInTrack(scene, seq[0], seq[1], track)
                 if n_patts == 0:
                     continue
                 pos = 0
                 while pos < seq_len:
-                    pattern = self._libseq.getPatternAt(scene, seq, track, pos)
+                    pattern = self._libseq.getPatternAt(scene, seq[0], seq[1], track, pos)
                     if pattern != -1:
-                        self._libseq.removePattern(scene, seq, track, pos)
+                        self._libseq.removePattern(scene, seq[0], seq[1], track, pos)
                         pos += self._libseq.getPatternLength(pattern)
                     else:
                         # Arranger's offset step is a quarter note (24 clocks)
@@ -1164,16 +1163,22 @@ class PadMatrixHandler(ModeHandlerBase):
 
             if n_tracks > 0:
                 for track in range(n_tracks-1):
-                    self._libseq.removeTrackFromSequence(scene, seq, track)
+                    self._libseq.removeTrackFromSequence(scene, seq[0], seq[1], track)
 
         # Add a new empty pattern at the beginning of first track
         if create_empty:
             pattern = self._libseq.createPattern()
-            self._libseq.addPattern(scene, seq, 0, 0, pattern)
+            self._libseq.addPattern(scene, seq[0], seq[1], 0, 0, pattern)
             self._libseq.selectPattern(pattern)
 
             if self._pattern_template is not None:
                 self._action_apply_pattern_template(pattern)
+
+            zyngui = zynthian_gui_config.zyngui
+            current_screen = zyngui.get_current_screen()
+            if current_screen == 'pattern_editor':
+                pated = zyngui.screens['pattern_editor']
+                pated.load_pattern(pattern)
 
     def _copy_sequence(self, src_scene, src_seq, dst_scene, dst_seq):
         self._clear_sequence(dst_scene, dst_seq, create_empty=False)
