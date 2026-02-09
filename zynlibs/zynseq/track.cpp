@@ -127,6 +127,7 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, bool bSync) {
 SEQ_EVENT* Track::getEvent() {
     // This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
     static SEQ_EVENT seqEvent;             // A MIDI event timestamped for some imminent or future time
+    static uint32_t nEventEndTime;         // End of event time (optimization)
     static uint32_t nStutterCount = 0;     // Count stutters already added to this event
     static uint32_t nInterpolateCount = 0; // Count interpolations already added to this event
     static uint32_t nInterpolateNum = 0;   // Number of interpolation points for this event
@@ -155,7 +156,7 @@ SEQ_EVENT* Track::getEvent() {
         seqEvent.output = m_nOutput;
         //fprintf(stderr, "  found event at %u => %x, %u, %u\n", m_nNextStep, nCommand, pEvent->getValue1start(), pEvent->getValue2start());
 
-        // Have not yet started to interpolate value => process start value
+        // Last event already finished => Start new event!
         if (m_nEventValue == -1) {
             // Note Play Chance
             if (nCommand == MIDI_NOTE_ON) {
@@ -166,7 +167,7 @@ SEQ_EVENT* Track::getEvent() {
                     return &seqEvent;
                 }
             }
-            // Start interpolation
+            // Start value (interpolation)
             m_nEventValue = pEvent->getValue2start();
             // Recorded Offset (fraction of step => float)
             m_fEventOffset = pEvent->getOffset();
@@ -203,46 +204,60 @@ SEQ_EVENT* Track::getEvent() {
             }
             // Calculate event scheduled time
             seqEvent.time = m_nLastClockTime + m_fEventOffset * pPattern->getClocksPerStep();
-            // Reset Stutter and Interpolation counters
+            // Calculate note-off event scheduled time
+            // -1 to send note-off one tick before next step
+            nEventEndTime = seqEvent.time + pEvent->getDuration() * pPattern->getClocksPerStep() - 1;
+            // Reset stutter and interpolation counters
             nStutterCount = 0;
             nInterpolateCount = 0;
             nInterpolateNum = pEvent->getDuration() * pPattern->getClocksPerStep();
             fInterpolateDelta = ((float)pEvent->getValue2end() - (float)pEvent->getValue2start()) / nInterpolateNum;
         }
-        // Stutter (a single note has stutter=1) & CC interpolation
+        // Event already started
         else if (m_nEventValue != pEvent->getValue2end()) {
-            // Add note off/on for each stutter
+            // Process note stutter => Normal note off is processed like stutter. By default a note has stutter=0.
             if (nCommand == MIDI_NOTE_ON) {
-                // Calculate event scheduled time
-                // -1 to send note-off one tick before next step
-                seqEvent.time = m_nLastClockTime + (m_fEventOffset + pEvent->getDuration()) * pPattern->getClocksPerStep() - 1;
-
-                seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON : MIDI_NOTE_OFF) | m_nChannel;
-                if (pEvent->getStutterCount()) {
-                    uint32_t stutter_time = m_nLastClockTime + (m_fEventOffset + pEvent->getStutterDur()) * ++nStutterCount;
-                    if (stutter_time < seqEvent.time && 2 * pEvent->getStutterCount() >= nStutterCount)
+                // Add note off/on for each stutter
+                if (pEvent->getStutterCount() > 0) {
+                    uint32_t stutter_time = seqEvent.time + pPattern->getClocksPerStep() / pEvent->getStutterCount();
+                    if (stutter_time < nEventEndTime) {
                         seqEvent.time = stutter_time;
-                    else
-                        m_nEventValue = pEvent->getValue2end();
-                }
-                else {
-                    m_nEventValue = pEvent->getValue2end(); // Send end value
+                        // Stutter alternate note-off and note-on events
+                        seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON : MIDI_NOTE_OFF) | m_nChannel;
+                        nStutterCount++;
+                    } else {
+                        seqEvent.time = nEventEndTime;
+                        seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
+                        m_nEventValue = pEvent->getValue2end(); // send end value
+                    }
+                } else {
+                    seqEvent.time = nEventEndTime;
+                    seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
+                    m_nEventValue = pEvent->getValue2end();     // send end value
                 }
             }
+            // CC interpolation => one value per clock but don't repeat values
             else if (nCommand == MIDI_CONTROL) {
-                if (nInterpolateCount < nInterpolateNum - 1) {
-                    int8_t value = m_nEventValue;
-                    while (value == m_nEventValue) {
-                        nInterpolateCount++;
-                        value = pEvent->getValue2start() + fInterpolateDelta * nInterpolateCount;
-                    }
-                    m_nEventValue = value;
-                } else {
+                int8_t start_value = pEvent->getValue2start();
+                int8_t next_value;
+                do {
+                    seqEvent.time++;
                     nInterpolateCount++;
-                    m_nEventValue = pEvent->getValue2end();
+                    next_value = start_value + fInterpolateDelta * nInterpolateCount;
+                } while (seqEvent.time < nEventEndTime && next_value == m_nEventValue);
+                // If reached event's end time, send end value
+                if (seqEvent.time >= nEventEndTime) {
+                    seqEvent.time = nEventEndTime;
+                    next_value = pEvent->getValue2end();     // send end value
                 }
-                seqEvent.time = m_nLastClockTime + (m_fEventOffset * pPattern->getClocksPerStep() + nInterpolateCount);
-                  //fprintf(stderr, "Scheduling CC%u interpolated value => %u, %u\n", pEvent->getValue1start(), seqEvent.time, m_nEventValue);
+                // Don't send repeated values
+                if (next_value == m_nEventValue) {
+                    seqEvent.msg.command = 0xFE;
+                    return &seqEvent;
+                } else {
+                    m_nEventValue = next_value;
+                }
+                //fprintf(stderr, "Scheduling CC%u interpolated value => %u, %u\n", pEvent->getValue1start(), seqEvent.time, m_nEventValue);
             }
         }
 
