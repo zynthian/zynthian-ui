@@ -892,7 +892,7 @@ class PadMatrixHandler(ModeHandlerBase):
             return
         phrase = self._rows - 1 - row + self.driver.scroll_v
         # Pad outside grid, discarded
-        seq = (phrase, pos)
+        seq = (phrase, midi_chan)
 
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
@@ -900,8 +900,8 @@ class PadMatrixHandler(ModeHandlerBase):
             self._clear_sequence(self._zynseq.scene, phrase)
         elif self._is_record_pressed:
             self._start_pattern_record(seq)
-        # elif self._recording_seq == seq:
-        #     self._stop_pattern_record()
+        elif self._recording_seq == seq:
+            self._stop_pattern_record()
         else:
             self._zynseq.libseq.togglePlayState(self._zynseq.scene, phrase, midi_chan)
         
@@ -1103,20 +1103,18 @@ class PadMatrixHandler(ModeHandlerBase):
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
 
     def _start_pattern_record(self, seq):
-        # Set pad's chain as active
-        channel = self._libseq.getChannel(self._zynseq.scene, seq[0], seq[1], 0)
-        chain_id = self._chain_manager.get_chain_id_by_mixer_chan(channel)
-        if chain_id is None:
+        midi_chan = seq[1]
+        chain_indices = self._chain_manager.get_pos_by_midi_chan(midi_chan)
+        if not chain_indices:
             return
+
+        self._show_pattern_editor(seq)
+
         if self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
-        self._chain_manager.set_active_chain_by_id(chain_id)
-
-        # Open Pattern Editor
-        self._show_pattern_editor(seq, skip_arranger=True)
-
+        
         # Start playing & recording
-        if self._libseq.getPlayState(self._zynseq.bank, seq) == zynseq.SEQ_STOPPED:
+        if self._libseq.getPlayState(self._zynseq.scene, seq[0], seq[1]) == zynseq.SEQ_STOPPED:
             self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
@@ -1632,7 +1630,7 @@ class StepSeqHandler(ModeHandlerBase):
     def set_active(self, active):
         super().set_active(active)
         if self._selected_seq is None:
-            self.set_sequence(0)
+            self.set_sequence(0, 0)
         else:
             self._update_for_selected_pattern()
         if active:
@@ -1710,23 +1708,23 @@ class StepSeqHandler(ModeHandlerBase):
             self._leds.led_off(
                 pad) if args is None else self._leds.led_on(pad, *args)
 
-    def set_sequence(self, phrase=0, seq=0):
+    def set_sequence(self, phrase=0, chan=0):
         # todo: what did this do?
         # self._libseq.setSequence(seq)
-        self._selected_seq = (phrase, seq)
+        self._selected_seq = (phrase, chan)
         self._sequence_patterns = self._get_sequence_patterns(
             # phrase...
-            phrase, seq, create=True)
+            phrase, chan, create=True)
         self._selected_pattern_idx = 0
         self._pattern_clock_offset = 0
         self._set_pattern(self._sequence_patterns[0])
 
         # Update active chain/pad and instruments page
-        chain_id = self._get_chain_id_by_sequence(phrase, seq)
+        chain_id = self._get_chain_id_by_sequence(phrase, chan)
         self._chain_manager.set_active_chain_by_id(chain_id)
         self._zynseq.select_phrase(phrase)
-        self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, seq)
-        self._update_instruments(seq, chain_id)
+        self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, chan)
+        self._update_instruments(chan, chain_id)
 
     def on_shift_changed(self, state):
         retval = super().on_shift_changed(state)
@@ -2845,7 +2843,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                         if self._current_handler != self._stepseq_handler:
                             self._current_handler.set_active(False)
                         self._current_handler = self._stepseq_handler
-                        self._current_handler.set_sequence(row, chan)
+                        self._current_handler.set_sequence(phrase=row, chan=chan)
                         self._current_handler.set_active(True)
                         self._current_handler.refresh(
                             shifted_override=self._is_shifted)
