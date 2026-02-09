@@ -1112,8 +1112,8 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
         
-        # Start playing & recording
-        if self._libseq.getPlayState(self._zynseq.scene, seq[0], seq[1]) == zynseq.SEQ_STOPPED:
+        playstate = self._libseq.getPlayState(self._zynseq.scene, seq[0], seq[1])
+        if playstate == zynseq.SEQ_STOPPED:
             self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
