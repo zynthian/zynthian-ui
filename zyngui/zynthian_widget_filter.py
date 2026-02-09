@@ -3,7 +3,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian Widget Class for "Euclidean Sequencer"
+# Zynthian Widget Class for filter screen type
 #
 # Copyright (C) 2025 Ronald Summers <ronfsum@gmail.com>
 #
@@ -31,6 +31,9 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
 
     def __init__(self, parent):
         super().__init__(parent)
+        self.fg_color = zynthian_gui_config.color_tx
+        self.font_small = ("sans", 10)
+
 
         # Take only half height
         self.rows //= 2
@@ -63,8 +66,13 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         self.is_dragging = False
 
         # Vertical Scale Configuration (-48 to +24 dB)
-        self.db_min = -48
-        self.db_max = 24
+        #self.db_min = -48
+        #self.db_max = 24
+        #self.db_range = self.db_max - self.db_min
+
+        # Vertical Scale Configuration (-24 to +18 dB)
+        self.db_min = -32
+        self.db_max = 16
         self.db_range = self.db_max - self.db_min
 
         # Margins
@@ -97,19 +105,43 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         self.label_items = []
 
         # dB Grid Lines
-        for db in [24, 12, 0, -24, -48]:
+        for db in [16, 8, 0, -8, -16, -24, -32]:
+        #for db in [24, 12, 0, -24, -48]:
             y = self.m_t + gh * (1.0 - (db - self.db_min) / self.db_range)
             self.grid_items.append(self.widget_canvas.create_line(self.m_l, y, self.width - self.m_r, y, fill=self.grid_color, dash=(2, 2)))
-            self.label_items.append(self.widget_canvas.create_text(5, y, text=f"{db} dB", fill=zynthian_gui_config.color_tx, anchor="w", font=("sans", 8)))
+            #self.label_items.append(self.widget_canvas.create_text(5, y, text=f"{db} dB", fill=zynthian_gui_config.color_tx, anchor="w", font=("sans", 8)))
 
-        # Logarithmic Frequency Grid
-        for f in [10, 100, 1000, 10000]:
-            log_pos = (math.log10(f) - math.log10(20)) / (math.log10(20000) - math.log10(20))
-            if 0 <= log_pos <= 1:
-                x = self.m_l + log_pos * gw
-                self.grid_items.append(self.widget_canvas.create_line(x, self.m_t, x, self.height - self.m_b, fill=self.grid_color, dash=(2, 2)))
-                label = f"{f}Hz" if f < 1000 else f"{f//1000}kHz"
-                self.label_items.append(self.widget_canvas.create_text(x, self.height - 20, text=label, fill=zynthian_gui_config.color_tx, anchor="n", font=("sans", 8)))
+
+         # Evenly spaced vertical gridlines (linear spacing)
+        num_vlines = 8  # adjust to taste
+        for i in range(num_vlines + 1):
+            x = self.m_l + (gw * i / num_vlines)
+            self.grid_items.append(
+                self.widget_canvas.create_line(
+                    x, self.m_t, x, self.height - self.m_b,
+                    fill=self.grid_color, dash=(2, 2)
+                )
+            )
+
+
+
+        # Single axis labels
+        self.widget_canvas.create_text(
+            10, 80,
+            text="dB",
+            anchor="nw",
+            fill=self.fg_color,
+            font=self.font_small
+        )
+
+        self.widget_canvas.create_text(
+            self.width - 270, self.height - 10,
+            text="Hz",
+            anchor="se",
+            fill=self.fg_color,
+            font=self.font_small
+        )
+
 
     def on_size(self, event):
         super().on_size(event)
@@ -144,7 +176,8 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
             # Apply Resonance (Updated to 18.0 for a ~15dB total peak)
             if norm_res > 0:
                 peak = math.exp(-pow(math.log(f_ratio + 1e-10), 2) / 0.05)
-                db_val += (norm_res * 18.0 * peak)
+                #db_val += (norm_res * 18.0 * peak)
+                db_val += (norm_res * 12.0 * peak)
 
             px = self.m_l + px_offset
             py = self.m_t + gh * (1.0 - (db_val - self.db_min) / self.db_range)
