@@ -396,33 +396,33 @@ float getControlOffset(uint32_t step, uint8_t control);
 */
 void setControlOffset(uint32_t step, uint8_t control, float offset);
 
-/** @brief  Get stutter count of note in selected pattern
+/** @brief  Get stutter speed of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @retval uint8_t Stutter count
+    @retval uint8_t Stutter speed
 */
-uint8_t getStutterCount(uint32_t step, uint8_t note);
+uint8_t getStutterSpeed(uint32_t step, uint8_t note);
 
-/** @brief  Set stutter count of note in selected pattern
+/** @brief  Set stutter speed of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @param  count Stutter count
+    @param  speed Stutter speed
 */
-void setStutterCount(uint32_t step, uint8_t note, uint8_t count);
+void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed);
 
-/** @brief  Get stutter duration of note in selected pattern
+/** @brief  Get stutter velocity FX of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @retval uint8_t Stutter duration in clock cycles
+    @retval uint8_t Stutter velocity FX value
 */
-uint8_t getStutterDur(uint32_t step, uint8_t note);
+uint8_t getStutterVelfx(uint32_t step, uint8_t note);
 
-/** @brief  Set stutter duration of note in selected pattern
+/** @brief  Set stutter velocity FX value of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @param  dur Stutter duration in clock cycles
+    @param  dur Stutter velocity FX value
 */
-void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
+void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx);
 
 /** @brief  Get note play chance in selected pattern
     @param  step Index of step at which note resides
@@ -478,15 +478,15 @@ void changeVelocityAll(int value);
 */
 void changeDurationAll(float value);
 
-/** @brief  Change stutter count of all notes in patterm
+/** @brief  Change stutter speed of all notes in patterm
     @param  value Offset to adjust +/-100 or whatever
 */
-void changeStutterCountAll(int value);
+void changeStutterSpeedAll(int value);
 
-/** @brief  Change stutter duration of all notes in patterm
-    @param  value Offset to adjust +/-100 or whatever
+/** @brief  Change stutter velocity FX value of all notes in patterm
+    @param  value Velocity FX value
 */
-void changeStutterDurAll(int value);
+void changeStutterVelfxAll(int value);
 
 /** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
     @param  pPattern Pointer to pattern

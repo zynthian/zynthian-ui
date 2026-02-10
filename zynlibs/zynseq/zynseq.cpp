@@ -966,15 +966,23 @@ const char* convertToJson(const char* filename) {
                 jEvent.push_back(fileRead8u(pFile)); // value 1 end
                 jEvent.push_back(fileRead8u(pFile)); // value 2 end
                 if (nVersion > 7) {
-                    jEvent.push_back(fileRead8u(pFile)); // stutter count
-                    jEvent.push_back(fileRead8u(pFile)); // stutter duration
+                    // Read legacy values
+                    uint8_t stut_cnt = fileRead8u(pFile);    // stutter count
+                    uint8_t stut_dur = fileRead8u(pFile);    // stutter duration
+                    if (stut_cnt > 0) {
+                        uint16_t legacy_clocks_step = 24 * patj.value("beats", 4) / patj.value("steps", 16);  // 6 by default (96/16) => 4 steps/beat
+                        jEvent.push_back(legacy_clocks_step / stut_cnt);
+                    } else {
+                        jEvent.push_back(0);
+                    }
+                    jEvent.push_back(0);
                     nBlockSize -= 2;
                 } else {
                     jEvent.push_back(0);
-                    jEvent.push_back(1);
+                    jEvent.push_back(0);
                 }
                 if (nVersion > 8) {
-                    jEvent.push_back(float(fileRead8u(pFile))); // play chance
+                    jEvent.push_back(int(fileReadBCD(pFile) * 100)); // play chance
                     nBlockSize -= 1;
                 } else {
                     jEvent.push_back(100);
@@ -1158,18 +1166,18 @@ void setPattern(uint32_t id, const char* patn_state) {
     pPattern->setHumanVelo(jPattern.value("humanVel", 0.0));
     pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
     for (auto& jEvent: jPattern["events"]) {
-        uint32_t nStep = jEvent.value("step", 0);
-        float fDuration = jEvent.value("duration", 1.0);
-        float fOffset = jEvent.value("offset", 0.0);
-        uint8_t nCommand = jEvent.value("command", 144);
-        uint8_t nValue1start = jEvent["val1Start"];
-        uint8_t nValue2start = jEvent["val2Start"];
+        uint32_t nStep = jEvent[0];
+        float fDuration = jEvent[1];
+        float fOffset = jEvent[2];
+        uint8_t nCommand = jEvent[3];
+        uint8_t nValue1start = jEvent[4];
+        uint8_t nValue2start = jEvent[6];
         StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
-        pEvent->setValue1end(jEvent.value("val1End", nValue1start));
-        pEvent->setValue2end(jEvent.value("val2End", nValue2start));
-        pEvent->setStutterCount(jEvent.value("stutCnt", 0));
-        pEvent->setStutterDur(jEvent.value("stutDur", 1));
-        pEvent->setPlayChance(float(jEvent.value("chance", 100)) / 100);
+        pEvent->setValue1end(jEvent[5]);
+        pEvent->setValue2end(jEvent[7]);
+        pEvent->setStutterSpeed(jEvent[8]);
+        pEvent->setStutterVelfx(jEvent[9]);
+        pEvent->setPlayChance(float(jEvent[10]) / 100);
     }
 }
 
@@ -1217,8 +1225,8 @@ bool setState(const char* state) {
                     StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
                     pEvent->setValue1end(jEvent[5]);
                     pEvent->setValue2end(jEvent[7]);
-                    pEvent->setStutterCount(jEvent[8]);
-                    pEvent->setStutterDur(jEvent[9]);
+                    pEvent->setStutterSpeed(jEvent[8]);
+                    pEvent->setStutterVelfx(jEvent[9]);
                     pEvent->setPlayChance(float(jEvent[10]) / 100);
                 }
             }
@@ -1371,8 +1379,8 @@ const char* getState() {
                 jEvt.push_back(pEvent->getValue1end());
                 jEvt.push_back(pEvent->getValue2start());
                 jEvt.push_back(pEvent->getValue2end());
-                jEvt.push_back(pEvent->getStutterCount());
-                jEvt.push_back(pEvent->getStutterDur());
+                jEvt.push_back(pEvent->getStutterSpeed());
+                jEvt.push_back(pEvent->getStutterVelfx());
                 jEvt.push_back(int(pEvent->getPlayChance()) * 100);
                 jPatn["events"].push_back(jEvt);
             }
@@ -1513,7 +1521,7 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 jPattern["swing"] = fileReadBCD(pFile);
                 jPattern["humanTime"] = fileReadBCD(pFile);
                 jPattern["humanVel"] = fileReadBCD(pFile);
-                jPattern["chance"] = fileReadBCD(pFile);
+                jPattern["chance"] = int(100 * fileReadBCD(pFile));
                 nBlockSize -= 18;
             }
             if (nVersion > 4) {
@@ -1535,29 +1543,38 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                         break;
                 }
                 json jEvent;
-                jEvent["step"] = fileRead32u(pFile);
+                jEvent.push_back(fileRead32(pFile)); // step
                 if (nVersion > 8) {
-                    jEvent["offset"] = fileReadBCD(pFile);
-                    jEvent["duration"] = fileReadBCD(pFile);
+                    jEvent.push_back(fileReadBCD(pFile)); // offset
+                    jEvent.push_back(fileReadBCD(pFile)); // duration
                     nBlockSize -= 4;
                 } else {
-                    jEvent["duration"] = float(fileRead16u(pFile)) / 100 + fileRead16u(pFile); // fractional + integral (BCD)
+                    jEvent.push_back(0);
+                    jEvent.push_back(float(fileRead16(pFile)) / 100 + fileRead16(pFile)); // fractional + integral (BCD)
                 }
-                jEvent["command"] = fileRead8u(pFile);
-                jEvent["val1Start"] = fileRead8u(pFile);
-                jEvent["val2Start"] = fileRead8u(pFile);
-                jEvent["val1End"] = fileRead8u(pFile);
-                jEvent["val2End"] = fileRead8u(pFile);
+                jEvent.push_back(fileRead8u(pFile)); // command
+                jEvent.push_back(fileRead8u(pFile)); // value 1 start
+                jEvent.push_back(fileRead8u(pFile)); // value 2 start
+                jEvent.push_back(fileRead8u(pFile)); // value 1 end
+                jEvent.push_back(fileRead8u(pFile)); // value 2 end
                 if (nVersion > 7) {
-                    jEvent["stutCnt"] = fileRead8u(pFile);
-                    jEvent["stutDur"] = fileRead8u(pFile);
+                    // Read legacy values
+                    uint8_t stut_cnt = fileRead8u(pFile);    // stutter count
+                    uint8_t stut_dur = fileRead8u(pFile);    // stutter duration
+                    if (stut_cnt > 0) {
+                        uint16_t legacy_clocks_step = 24 * jPattern.value("beats", 4) / jPattern.value("steps", 16);  // 6 by default (96/16) => 4 steps/beat
+                        jEvent.push_back(legacy_clocks_step / stut_cnt);
+                    } else {
+                        jEvent.push_back(0);
+                    }
+                    jEvent.push_back(0);
                     nBlockSize -= 2;
                 } else {
                     jEvent.push_back(0);
-                    jEvent.push_back(1);
+                    jEvent.push_back(0);
                 }
                 if (nVersion > 8) {
-                    jEvent["chance"] = (float(fileRead8u(pFile)) / 100);
+                    jEvent.push_back(int(100 * fileReadBCD(pFile))); // play chance
                     nBlockSize -= 1;
                 } else {
                     jEvent.push_back(100);
@@ -1976,30 +1993,30 @@ void setControlOffset(uint32_t step, uint8_t control, float offset) {
     }
 }
 
-uint8_t getStutterCount(uint32_t step, uint8_t note) {
+uint8_t getStutterSpeed(uint32_t step, uint8_t note) {
     if (g_pPattern)
-        return g_pPattern->getStutterCount(step, note);
+        return g_pPattern->getStutterSpeed(step, note);
     return 0;
 }
 
-void setStutterCount(uint32_t step, uint8_t note, uint8_t count) {
+void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->setStutterCount(step, note, count);
+        g_pPattern->setStutterSpeed(step, note, speed);
         g_bDirty = true;
     }
 }
 
-uint8_t getStutterDur(uint32_t step, uint8_t note) {
+uint8_t getStutterVelfx(uint32_t step, uint8_t note) {
     if (g_pPattern)
-        return g_pPattern->getStutterDur(step, note);
+        return g_pPattern->getStutterVelfx(step, note);
     return 0;
 }
 
-void setStutterDur(uint32_t step, uint8_t note, uint8_t dur) {
+void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->setStutterDur(step, note, dur);
+        g_pPattern->setStutterVelfx(step, note, velfx);
         g_bDirty = true;
     }
 }
@@ -2074,18 +2091,18 @@ void changeDurationAll(float value) {
     }
 }
 
-void changeStutterCountAll(int value) {
+void changeStutterSpeedAll(int value) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeStutterCountAll(value);
+        g_pPattern->changeStutterSpeedAll(value);
         g_bDirty = true;
     }
 }
 
-void changeStutterDurAll(int value) {
+void changeStutterVelfxAll(int value) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeStutterDurAll(value);
+        g_pPattern->changeStutterVelfxAll(value);
         g_bDirty = true;
     }
 }

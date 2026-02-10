@@ -45,8 +45,8 @@ from zyngui.zynthian_gui_pated_base import *
 EDIT_PARAM_DUR = 0  # Edit event duration
 EDIT_PARAM_VEL = 1  # Edit event velocity
 EDIT_PARAM_OFFSET = 2  # Edit event offset
-EDIT_PARAM_STUT_CNT = 3  # Edit note stutter count
-EDIT_PARAM_STUT_DUR = 4  # Edit note stutter duration
+EDIT_PARAM_STUT_SPD = 3  # Edit note stutter count
+EDIT_PARAM_STUT_VFX = 4  # Edit note stutter duration
 EDIT_PARAM_CHANCE = 5  # Edit note play chance
 EDIT_PARAM_LAST = 5  # Index of last parameter
 
@@ -1149,10 +1149,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.set_title("Duration ALL")
             elif self.edit_param == EDIT_PARAM_VEL:
                 self.set_title("Velocity ALL")
-            elif self.edit_param == EDIT_PARAM_STUT_CNT:
-                self.set_title("Stutter count ALL")
-            elif self.edit_param == EDIT_PARAM_STUT_DUR:
-                self.set_title("Stutter duration ALL")
+            elif self.edit_param == EDIT_PARAM_STUT_SPD:
+                self.set_title("Stutter Speed ALL")
+            elif self.edit_param == EDIT_PARAM_STUT_VFX:
+                self.set_title("Stutter Fade ALL")
         else:
             if self.edit_param == EDIT_PARAM_DUR:
                 sel_duration = self.zynseq.libseq.getNoteDuration(step, note)
@@ -1172,10 +1172,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.set_title(f"Velocity: {velocity}")
             elif self.edit_param == EDIT_PARAM_OFFSET:
                 self.set_title(f"Offset: {round(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
-            elif self.edit_param == EDIT_PARAM_STUT_CNT:
-                self.set_title(f"Stutter count: {self.zynseq.libseq.getStutterCount(step, note)}")
-            elif self.edit_param == EDIT_PARAM_STUT_DUR:
-                self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
+            elif self.edit_param == EDIT_PARAM_STUT_SPD:
+                self.set_title(f"Stutter Speed: {self.zynseq.libseq.getStutterSpeed(step, note)}")
+            elif self.edit_param == EDIT_PARAM_STUT_VFX:
+                self.set_title(f"Stutter Fade: {self.zynseq.libseq.getStutterVelfx(step, note)}")
             elif self.edit_param == EDIT_PARAM_CHANCE:
                 self.set_title(f"Play chance: {round(100 * self.zynseq.libseq.getNotePlayChance(step, note))}%")
 
@@ -1279,17 +1279,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = 0
                     self.zynseq.libseq.setNoteOffset(step, note, val/100.0)
                     self.draw_row(index)
-                elif self.edit_param == EDIT_PARAM_STUT_CNT:
-                    val = self.zynseq.libseq.getStutterCount(step, note) + dval
+                elif self.edit_param == EDIT_PARAM_STUT_SPD:
+                    val = self.zynseq.libseq.getStutterSpeed(step, note) + dval
                     if val < 0:
                         val = 0
-                    self.zynseq.libseq.setStutterCount(step, note, val)
+                    self.zynseq.libseq.setStutterSpeed(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
-                elif self.edit_param == EDIT_PARAM_STUT_DUR:
-                    val = self.zynseq.libseq.getStutterDur(step, note) + dval
-                    if val < 1:
-                        val = 1
-                    self.zynseq.libseq.setStutterDur(step, note, val)
+                elif self.edit_param == EDIT_PARAM_STUT_VFX:
+                    val = self.zynseq.libseq.getStutterVelfx(step, note) + dval
+                    if val < 0:
+                        val = 0
+                    self.zynseq.libseq.setStutterVelfx(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
                 elif self.edit_param == EDIT_PARAM_CHANCE:
                     val = round(100 * self.zynseq.libseq.getNotePlayChance(step, note)) + dval
@@ -1311,11 +1311,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 elif self.edit_param == EDIT_PARAM_VEL:
                     self.zynseq.libseq.changeVelocityAll(dval)
                     self.redraw_pending = 3
-                elif self.edit_param == EDIT_PARAM_STUT_CNT:
-                    self.zynseq.libseq.changeStutterCountAll(dval)
+                elif self.edit_param == EDIT_PARAM_STUT_SPD:
+                    self.zynseq.libseq.changeStutterSpeedAll(dval)
                     self.redraw_pending = 3
-                elif self.edit_param == EDIT_PARAM_STUT_DUR:
-                    self.zynseq.libseq.changeStutterDurAll(dval)
+                elif self.edit_param == EDIT_PARAM_STUT_VFX:
+                    self.zynseq.libseq.changeStutterVelfxAll(dval)
                     self.redraw_pending = 3
             else:
                 self.select_cell(None, self.selected_cell[1] - dval)

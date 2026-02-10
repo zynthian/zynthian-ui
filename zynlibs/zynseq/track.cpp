@@ -212,18 +212,39 @@ SEQ_EVENT* Track::getEvent() {
             nInterpolateCount = 0;
             nInterpolateNum = pEvent->getDuration() * pPattern->getClocksPerStep();
             fInterpolateDelta = ((float)pEvent->getValue2end() - (float)pEvent->getValue2start()) / nInterpolateNum;
+            // If stutter FX is fade-in => start from lowest velocity
+            if (pEvent->getStutterSpeed() > 0 && pEvent->getStutterVelfx() == STUTTER_VELFX_FADEIN) {
+                nInterpolateCount = pPattern->getClocksPerStep() / pEvent->getStutterSpeed();
+                m_nEventValue = 1 - fInterpolateDelta * nInterpolateCount;
+            }
         }
         // Event already started
         else if (m_nEventValue != pEvent->getValue2end()) {
             // Process note stutter => Normal note off is processed like stutter. By default a note has stutter=0.
             if (nCommand == MIDI_NOTE_ON) {
                 // Add note off/on for each stutter
-                if (pEvent->getStutterCount() > 0) {
-                    uint32_t stutter_time = seqEvent.time + pPattern->getClocksPerStep() / pEvent->getStutterCount();
+                if (pEvent->getStutterSpeed() > 0) {
+                    uint32_t nclocks = pPattern->getClocksPerStep() / pEvent->getStutterSpeed();
+                    uint32_t stutter_time = seqEvent.time + nclocks;
                     if (stutter_time < nEventEndTime) {
                         seqEvent.time = stutter_time;
                         // Stutter alternate note-off and note-on events
                         seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON : MIDI_NOTE_OFF) | m_nChannel;
+                        // Stutter velocity FX => Interpolate velocity
+                        nInterpolateCount += nclocks;
+                        switch (pEvent->getStutterVelfx()) {
+                            // Flat
+                            case STUTTER_VELFX_NONE:
+                                break;
+                            // Fade-out
+                            case STUTTER_VELFX_FADEOUT:
+                                m_nEventValue = pEvent->getValue2start() + fInterpolateDelta * nInterpolateCount;
+                                break;
+                            // Fade-in
+                            case STUTTER_VELFX_FADEIN:
+                                m_nEventValue = - fInterpolateDelta * nInterpolateCount;
+                                break;
+                        }
                         nStutterCount++;
                     } else {
                         seqEvent.time = nEventEndTime;

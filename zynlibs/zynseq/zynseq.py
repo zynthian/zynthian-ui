@@ -109,8 +109,8 @@ PATTERN_PARAMS = [
     "val2Start", # MIDI value 2 at start of event
     "val2End", # MIDI value 2 at end of event
     "chance", # Probability % of event triggering
-    "stutCnt", # Quantity of stutters
-    "stutDur" # Duration of each stutter
+    "stutSpd", # Stutter speed (retriggers/beat)
+    "stutVfx" # Stutter velocity FX value
 ]
 
 
