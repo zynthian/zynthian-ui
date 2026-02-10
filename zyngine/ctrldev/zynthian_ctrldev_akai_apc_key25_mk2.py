@@ -1185,25 +1185,25 @@ class PadMatrixHandler(ModeHandlerBase):
         self._clear_sequence(dst_scene, dst_seq, create_empty=False)
 
         # Copy all patterns in all tracks
-        seq_len = self._libseq.getSequenceLength(src_scene, src_seq)
+        seq_len = self._libseq.getSequenceLength(src_scene, *src_seq)
         if seq_len != 0:
-            n_tracks = self._libseq.getTracksInSequence(src_scene, src_seq)
+            n_tracks = self._libseq.getTracksInSequence(src_scene, *src_seq)
             for track in range(n_tracks):
-                if track >= self._libseq.getTracksInSequence(dst_scene, dst_seq):
-                    self._libseq.addTrackToSequence(dst_scene, dst_seq)
+                if track >= self._libseq.getTracksInSequence(dst_scene, *dst_seq):
+                    self._libseq.addTrackToSequence(dst_scene, *dst_seq)
                 n_patts = self._libseq.getPatternsInTrack(
-                    src_scene, src_seq, track)
+                    src_scene, *src_seq, track)
                 if n_patts == 0:
                     continue
                 pos = 0
                 while pos < seq_len:
                     pattern = self._libseq.getPatternAt(
-                        src_scene, src_seq, track, pos)
+                        src_scene, *src_seq, track, pos)
                     if pattern != -1:
                         new_pattern = self._libseq.createPattern()
                         self._libseq.copyPattern(pattern, new_pattern)
                         self._libseq.addPattern(
-                            dst_scene, dst_seq, track, pos, new_pattern)
+                            dst_scene, *dst_seq, track, pos, new_pattern)
                         pos += self._libseq.getPatternLength(pattern)
                     else:
                         # Arranger's offset step is a quarter note (24 clocks)
