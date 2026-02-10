@@ -896,7 +896,7 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
-            self._clear_sequence(self._zynseq.scene, (midi_chan, phrase))
+            self._clear_sequence(self._zynseq.scene, (phrase, midi_chan))
         elif self._is_record_pressed:
             self._start_pattern_record(seq)
         elif self._recording_seq == seq:
