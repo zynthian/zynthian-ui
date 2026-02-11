@@ -1689,6 +1689,13 @@ class zynthian_gui:
     # ZS3 management CUIAs:
     # -------------------------------------------------------------------
 
+    def cuia_zs3_save(self, params=None):
+        if len(params) >= 1:
+            if isinstance(params[0], int):
+                self.state_manager.save_zs3_by_index(params[0])
+            else:
+                self.state_manager.save_zs3(params[0])
+
     def cuia_zs3_load(self, params=None):
         if len(params) >= 1:
             if isinstance(params[0], int):
