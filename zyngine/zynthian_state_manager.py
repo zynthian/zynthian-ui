@@ -1795,13 +1795,21 @@ class zynthian_state_manager:
     def get_last_zs3_index(self):
         return list(self.zs3.keys()).index(self.last_zs3_id)
 
-    def load_zs3_by_index(self, index):
+    def get_zs3_id_by_index(self, index):
         try:
-            zs3_id = list(self.zs3.keys())[index]
+            return list(self.zs3.keys())[index]
         except:
             logging.warning(f"Can't find ZS3 with index {index}")
-            return
-        return self.load_zs3(zs3_id)
+
+    def save_zs3_by_index(self, index):
+        zs3_id = get_zs3_id_by_index(index)
+        if zs3_id:
+            return self.save_zs3(zs3_id)
+
+    def load_zs3_by_index(self, index):
+        zs3_id = get_zs3_id_by_index(index)
+        if zs3_id:
+            return self.load_zs3(zs3_id)
 
     def load_next_zs3(self):
         try:
