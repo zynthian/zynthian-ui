@@ -195,7 +195,7 @@ SEQ_EVENT* Track::getEvent() {
                 uint32_t swingStep = m_nNextStep + swingDiv;
                 if (m_fEventOffset > 0.5) swingStep++;
                 if (swingStep % (2 * swingDiv) == 0) {
-                    m_fEventOffset += swingAmount;
+                    m_fEventOffset += swingAmount * swingDiv / 2;
                 }
                 // Time humanization => Add to offset
                 float humanTime = pPattern->getHumanTime();
