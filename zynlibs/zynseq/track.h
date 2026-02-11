@@ -71,10 +71,11 @@ class Track {
     uint8_t clock(uint32_t nTime, uint32_t nPosition, bool bSync);
 
     /** @brief  Gets next event at current clock cycle
+        @param  unit32_t Number of times the track has been played
         @retval SEQ_EVENT* Pointer to sequence event at this time or NULL if no more events
         @note   Start, end and interpolated events are returned on each call. Time is offset from start of clock cycle in ticks.
     */
-    SEQ_EVENT* getEvent();
+    SEQ_EVENT* getEvent(uint32_t nCount);
 
     /** @brief  Update length of track by iterating through all patterns to find last clock cycle
         @retval uint32_t Duration of track in clock cycles

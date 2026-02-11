@@ -9,11 +9,15 @@
 #define STUTTER_VELFX_FADEOUT 1
 #define STUTTER_VELFX_FADEIN 2
 #define MAX_STUTTER_VELFX 2
+#define STUTTER_RAMP_NONE 0
+#define STUTTER_RAMP_UP 1
+#define STUTTER_RAMP_DOWN 2
+#define MAX_STUTTER_RAMP 2
 
 #define FLAG_CC_INTERPOLATION 1
 
 /** StepEvent class provides an individual step event .
- *   The event may be part of a scene, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern
+ * The event may be part of a scene, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern
  * player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in steps. The epoch depends on the
  * function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of
  * MIDI events between the start and end positions.
@@ -34,7 +38,11 @@ class StepEvent {
         m_nValue2end = 0;
         m_nStutterSpeed = 0;
         m_nStutterVelfx = STUTTER_VELFX_NONE;
+        m_nStutterRamp = STUTTER_RAMP_NONE;
         m_fPlayChance = 1.0f;
+        m_nPlayFreq = 1;
+        m_fStutterChance = 1.0f;
+        m_nStutterFreq = 1;
     };
 
     /** Constructor - create an instance of StepEvent object
@@ -53,25 +61,34 @@ class StepEvent {
             m_nValue2end = value2;
         m_nStutterSpeed = 0;
         m_nStutterVelfx = STUTTER_VELFX_NONE;
+        m_nStutterRamp = STUTTER_RAMP_NONE;
         m_fPlayChance = 1.0f;
+        m_nPlayFreq = 1;
+        m_fStutterChance = 1.0f;
+        m_nStutterFreq = 1;
     };
 
     /** Copy constructor - create an copy of StepEvent object from an existing object
 */
     StepEvent(StepEvent* pEvent) {
-        m_nPosition = pEvent->getPosition();
-        m_fOffset = pEvent->getOffset();
-        m_fDuration = pEvent->getDuration();
-        m_nCommand = pEvent->getCommand();
-        m_nValue1start = pEvent->getValue1start();
-        m_nValue2start = pEvent->getValue2start();
-        m_nValue1end = pEvent->getValue1end();
-        m_nValue2end = pEvent->getValue2end();
-        m_nStutterSpeed = pEvent->getStutterSpeed();
-        m_nStutterVelfx = pEvent->getStutterVelfx();
-        m_fPlayChance = pEvent->getPlayChance();
+        m_nPosition = pEvent->m_nPosition;
+        m_fOffset = pEvent->m_fOffset;
+        m_fDuration = pEvent->m_fDuration;
+        m_nCommand = pEvent->m_nCommand;
+        m_nValue1start = pEvent->m_nValue1start;
+        m_nValue2start = pEvent->m_nValue2start;
+        m_nValue1end = pEvent->m_nValue1end;
+        m_nValue2end = pEvent->m_nValue2end;
+        m_nStutterSpeed = pEvent->m_nStutterSpeed;
+        m_nStutterVelfx = pEvent->m_nStutterVelfx;
+        m_nStutterRamp = pEvent->m_nStutterRamp;
+        m_fPlayChance = pEvent->m_fPlayChance;
+        m_nPlayFreq = pEvent->m_nPlayFreq;
+        m_fStutterChance = pEvent->m_fStutterChance;
+        m_nStutterFreq = pEvent->m_nStutterFreq;
     };
 
+    // Public Getters
     uint32_t getPosition() { return m_nPosition; }
     float getOffset() { return m_fOffset; }
     float getDuration() { return m_fDuration; }
@@ -82,7 +99,13 @@ class StepEvent {
     uint8_t getValue2end() { return m_nValue2end; }
     uint8_t getStutterSpeed() { return m_nStutterSpeed; }
     uint8_t getStutterVelfx() { return m_nStutterVelfx; }
+    uint8_t getStutterRamp() { return m_nStutterRamp; }
     float getPlayChance() { return m_fPlayChance; }
+    uint8_t getPlayFreq() { return m_nPlayFreq; }
+    float getStutterChance() { return m_fStutterChance; }
+    uint8_t getStutterFreq() { return m_nStutterFreq; }
+
+    // Public Setters
     void setPosition(uint32_t position) { m_nPosition = position; }
     void setOffset(float offset) { m_fOffset = offset; }
     void setDuration(float duration) { m_fDuration = duration; }
@@ -102,25 +125,40 @@ class StepEvent {
         else
             m_nStutterVelfx = MAX_STUTTER_VELFX;
     }
-    void setStutter(uint8_t speed, uint8_t velfx) {
+    void setStutterRamp(uint8_t value) {
+        if (value <= MAX_STUTTER_RAMP)
+            m_nStutterRamp = value;
+        else
+            m_nStutterRamp = MAX_STUTTER_RAMP;
+    }
+    void setStutter(uint8_t speed, uint8_t velfx, uint8_t ramp) {
         setStutterSpeed(speed);
         setStutterVelfx(velfx);
+        setStutterRamp(ramp);
     }
     void setPlayChance(float chance) { m_fPlayChance = chance; }
+    void setPlayFreq(uint8_t freq) { m_nPlayFreq = freq; }
+    void setStutterChance(float chance) { m_fStutterChance = chance; }
+    void setStutterFreq(uint8_t freq) { m_nStutterFreq = freq; }
 
   private:
-    uint32_t m_nPosition;    // Start position of event in steps
-    float m_fOffset;         // Offset of event position in steps
-    float m_fDuration;       // Duration of event in steps
-    uint8_t m_nCommand;      // MIDI command without channel
-    uint8_t m_nValue1start;  // MIDI value 1 at start of event
-    uint8_t m_nValue2start;  // MIDI value 2 at start of event
-    uint8_t m_nValue1end;    // MIDI value 1 at end of event
-    uint8_t m_nValue2end;    // MIDI value 2 at end of event
-    uint32_t m_nProgress;    // Progress through event (start value to end value)
-    uint8_t m_nStutterSpeed; // Stutter speed in retriggers/beat
-    uint8_t m_nStutterVelfx; // Stutter velocity FX (none=0, fade-out=1, fade-in=2)
-    float m_fPlayChance;     // Probability of playing (0 = not played, 0.5 = plays with 50%, 1.0 = always plays)
+    uint32_t m_nPosition;      // Start position of event in steps
+    float m_fOffset;           // Offset of event position in steps
+    float m_fDuration;         // Duration of event in steps
+    uint8_t m_nCommand;        // MIDI command without channel
+    uint8_t m_nValue1start;    // MIDI value 1 at start of event
+    uint8_t m_nValue2start;    // MIDI value 2 at start of event
+    uint8_t m_nValue1end;      // MIDI value 1 at end of event
+    uint8_t m_nValue2end;      // MIDI value 2 at end of event
+    uint8_t m_nStutterSpeed;   // Stutter speed in "retriggers every 2 steps"
+    uint8_t m_nStutterVelfx;   // Stutter velocity FX (none=0, fade-out=1, fade-in=2)
+    uint8_t m_nStutterRamp;    // Stutter speed ramp FX (none=0, ramp-up=1, ramp-down=2)
+    float m_fPlayChance;       // Probability of playing (0 = not played, 0.5 = plays with 50%, 1.0 = always plays)
+    uint8_t m_nPlayFreq;       // Play/Skip note each N loops: last bit => play/skip, higher bits => loop count
+                               // Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+    float m_fStutterChance;    // Probability of stutter (0 = not stutter, 0.5 = stutters with 50%, 1.0 = always stutters)
+    uint8_t m_nStutterFreq;    // Play/Skip stutter each N loops: last bit => play/skip, higher bits => loop count
+                               // Can be used for enabling/disabling the stutter: 0 => never stutter, 1 => stutter on every loop
 };
 
 typedef std::vector<StepEvent*> StepEventVector;
@@ -229,38 +267,53 @@ class Pattern {
     /** @brief  Set note stutter
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @param  count Quantity of stutters
-        @param  dur Length of each stutter in clock cycles (min=1)
+        @param  speed Speed in "retriggers every 2 steps"
+        @param  velfx velocity speed FX (0=None, 1=fadeIn, 2=fadeOut)
+        @param  ramp speed ramp FX (0=None, 1=down, 2=up)
     */
-    void setStutter(uint32_t step, uint8_t note, uint8_t speed, uint8_t velfx);
+    void setStutter(uint32_t step, uint8_t note, uint8_t speed, uint8_t velfx, uint8_t ramp);
 
     /** @brief  Set note stutter count
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @param  count Quantity of stutters
+        @param  speed Speed in "retriggers every 2 steps"
     */
     void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed);
 
     /** @brief  Set note stutter duration
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @param  dur Length of each stutter in clock cycles (min=1)
+        @param  velfx velocity speed FX (0=None, 1=fadeIn, 2=fadeOut)
     */
     void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx);
 
-    /** @brief  Get note stutter duration
+    /** @brief  Set note stutter duration
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @retval uint8_t Duration of stutter each stutter in clock cycles
+        @param  ramp speed ramp FX (0=None, 1=down, 2=up)
+    */
+    void setStutterRamp(uint32_t step, uint8_t note, uint8_t ramp);
+
+    /** @brief  Get note stutter spèed
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @retval uint8_t Speed in "retriggers every 2 steps"
     */
     uint8_t getStutterSpeed(uint32_t step, uint8_t note);
 
-    /** @brief  Get note stutter count
+    /** @brief  Get note stutter velcity speed FX value
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
-        @retval uint8_t Quantity of stutter repeats at start of note
+        @retval uint8_t velocity speed FX (0=None, 1=fadeIn, 2=fadeOut)
     */
     uint8_t getStutterVelfx(uint32_t step, uint8_t note);
+
+    /** @brief  Get note stutter ramp FX value
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @retval uint8_t speed ramp FX (0=None, 1=down, 2=up)
+    */
+    uint8_t getStutterRamp(uint32_t step, uint8_t note);
 
     /** @brief  Set note play chance
         @param  position Quantity of steps from start of pattern at which note starts
@@ -275,6 +328,49 @@ class Pattern {
         @retval float Chance, the note play probability (0..1 for 0%..100%)
     */
     float getPlayChance(uint32_t step, uint8_t note);
+
+    /** @brief  Set note play frequency
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @param  freq Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+                     Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+    */
+    void setPlayFreq(uint32_t step, uint8_t note, uint8_t freq);
+
+    /** @brief  Get note play frequency
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @retval uint8_t Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+    */
+    uint8_t getPlayFreq(uint32_t step, uint8_t note);
+
+    /** @brief  Set note stutter chance
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @param  chance Stutter play probability (0..1 for 0%..100%)
+    */
+    void setStutterChance(uint32_t step, uint8_t note, float chance);
+
+    /** @brief  Get stutter chance
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @retval float Chance, the stutter probability (0..1 for 0%..100%)
+    */
+    float getStutterChance(uint32_t step, uint8_t note);
+
+    /** @brief  Set stutter frequency
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @param  freq Stutter frequency: last bit => play/skip, higher bits => n loops to play/skip
+    */
+    void setStutterFreq(uint32_t step, uint8_t note, uint8_t freq);
+
+    /** @brief  Get stutter frequency
+        @param  position Quantity of steps from start of pattern at which note starts
+        @param  note MIDI note number
+        @retval uint8_t Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+    */
+    uint8_t getStutterFreq(uint32_t step, uint8_t note);
 
     /** @brief  Add program change to pattern
         @param  position Quantity of steps from start of pattern at which to add program change
@@ -495,25 +591,15 @@ class Pattern {
     */
     void transpose(int value);
 
-    /** @brief  Change velocity of all notes in patterm
+    /** @brief  Change velocity of all notes in pattern
         @param  value Offset to adjust +/-127
     */
     void changeVelocityAll(int value);
 
-    /** @brief  Change duration of all notes in patterm
+    /** @brief  Change duration of all notes in pattern
         @param  value Offset to adjust +/-100.0 or whatever
     */
     void changeDurationAll(float value);
-
-    /** @brief  Change stutter count of all notes in patterm
-        @param  value Offset to adjust +/-100 or whatever
-    */
-    void changeStutterSpeedAll(int value);
-
-    /** @brief  Change stutter dur of all notes in patterm
-        @param  value Offset to adjust +/-100 or whatever
-    */
-    void changeStutterVelfxAll(int value);
 
     /** @brief  Clear all events from pattern
     */

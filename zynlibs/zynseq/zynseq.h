@@ -413,16 +413,30 @@ void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed);
 /** @brief  Get stutter velocity FX of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @retval uint8_t Stutter velocity FX value
+    @retval uint8_t Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
 */
 uint8_t getStutterVelfx(uint32_t step, uint8_t note);
 
 /** @brief  Set stutter velocity FX value of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @param  dur Stutter velocity FX value
+    @param  velfx Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
 */
 void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx);
+
+/** @brief  Get stutter speed ramp of note in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval uint8_t Stutter speed ramp value (0=None, 1=up, 2=down)
+*/
+uint8_t getStutterRamp(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter speed ramp value of note in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  ramp Stutter speed ramp value (0=None, 1=up, 2=down)
+*/
+void setStutterRamp(uint32_t step, uint8_t note, uint8_t ramp);
 
 /** @brief  Get note play chance in selected pattern
     @param  step Index of step at which note resides
@@ -437,6 +451,50 @@ float getNotePlayChance(uint32_t step, uint8_t note);
     @param  chance Note play probability (0..1 for 0%..100%)
 */
 void setNotePlayChance(uint32_t step, uint8_t note, float chance);
+
+/** @brief  Get note play frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval uint8_t Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+                    Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+*/
+uint8_t getNotePlayFreq(uint32_t step, uint8_t note);
+
+/** @brief  Set note play frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  freq Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+                 Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+*/
+void setNotePlayFreq(uint32_t step, uint8_t note, uint8_t freq);
+
+/** @brief  Get note stutter chance in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval float Note stutter probability (0..1 for 0%..100%)
+*/
+float getNoteStutterChance(uint32_t step, uint8_t note);
+
+/** @brief  Set note stutter chance in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  chance Note stutter probability (0..1 for 0%..100%)
+*/
+void setNoteStutterChance(uint32_t step, uint8_t note, float chance);
+
+/** @brief  Get note stutter frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval uint8_t Note stutter frequency: last bit => play/skip, higher bits => n loops to play/skip
+*/
+uint8_t getNoteStutterFreq(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  freq Note stutter frequency: last bit => play/skip, higher bits => n loops to play/skip
+*/
+void setNoteStutterFreq(uint32_t step, uint8_t note, uint8_t freq);
 
 /** @brief  Get duration of note in selected pattern
     @param  position Index of step at which note starts
@@ -477,16 +535,6 @@ void changeVelocityAll(int value);
     @param  value Offset to adjust +/-100.0 or whatever
 */
 void changeDurationAll(float value);
-
-/** @brief  Change stutter speed of all notes in patterm
-    @param  value Offset to adjust +/-100 or whatever
-*/
-void changeStutterSpeedAll(int value);
-
-/** @brief  Change stutter velocity FX value of all notes in patterm
-    @param  value Velocity FX value
-*/
-void changeStutterVelfxAll(int value);
 
 /** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
     @param  pPattern Pointer to pattern

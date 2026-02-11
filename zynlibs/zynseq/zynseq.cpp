@@ -2021,6 +2021,20 @@ void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx) {
     }
 }
 
+uint8_t getStutterRamp(uint32_t step, uint8_t note) {
+    if (g_pPattern)
+        return g_pPattern->getStutterRamp(step, note);
+    return 0;
+}
+
+void setStutterRamp(uint32_t step, uint8_t note, uint8_t ramp) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setStutterRamp(step, note, ramp);
+        g_bDirty = true;
+    }
+}
+
 float getNotePlayChance(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getPlayChance(step, note);
@@ -2031,6 +2045,48 @@ void setNotePlayChance(uint32_t step, uint8_t note, float chance) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->setPlayChance(step, note, chance);
+        g_bDirty = true;
+    }
+}
+
+uint8_t getNotePlayFreq(uint32_t step, uint8_t note) {
+    if (g_pPattern)
+        return g_pPattern->getPlayFreq(step, note);
+    return 1.0;
+}
+
+void setNotePlayFreq(uint32_t step, uint8_t note, uint8_t freq) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setPlayFreq(step, note, freq);
+        g_bDirty = true;
+    }
+}
+
+float getNoteStutterChance(uint32_t step, uint8_t note) {
+    if (g_pPattern)
+        return g_pPattern->getStutterChance(step, note);
+    return 1.0;
+}
+
+void setNoteStutterChance(uint32_t step, uint8_t note, float chance) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setStutterChance(step, note, chance);
+        g_bDirty = true;
+    }
+}
+
+uint8_t getNoteStutterFreq(uint32_t step, uint8_t note) {
+    if (g_pPattern)
+        return g_pPattern->getStutterFreq(step, note);
+    return 1.0;
+}
+
+void setNoteStutterFreq(uint32_t step, uint8_t note, uint8_t freq) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setStutterFreq(step, note, freq);
         g_bDirty = true;
     }
 }
@@ -2087,22 +2143,6 @@ void changeDurationAll(float value) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->changeDurationAll(value);
-        g_bDirty = true;
-    }
-}
-
-void changeStutterSpeedAll(int value) {
-    if (g_pPattern) {
-        setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeStutterSpeedAll(value);
-        g_bDirty = true;
-    }
-}
-
-void changeStutterVelfxAll(int value) {
-    if (g_pPattern) {
-        setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeStutterVelfxAll(value);
         g_bDirty = true;
     }
 }

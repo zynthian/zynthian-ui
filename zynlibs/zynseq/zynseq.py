@@ -125,17 +125,18 @@ class zynseq(zynthian_engine):
         try:
             self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
             self.libseq.getSequenceName.restype = ctypes.c_char_p
-            self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float,
-                                            ctypes.c_float]
+
+            self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
             self.libseq.getNoteDuration.restype = ctypes.c_float
             self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
             self.libseq.getNoteOffset.restype = ctypes.c_float
             self.libseq.setNoteOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
-            self.libseq.addControl.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
-                                               ctypes.c_float, ctypes.c_float]
+
+            self.libseq.addControl.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
             self.libseq.getControlDuration.restype = ctypes.c_float
             self.libseq.getControlOffset.restype = ctypes.c_float
             self.libseq.setControlOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+
             self.libseq.setSwingAmount.argtypes = [ctypes.c_float]
             self.libseq.getSwingAmount.restype = ctypes.c_float
             self.libseq.setSwingDiv.argtypes = [ctypes.c_uint32]
@@ -146,25 +147,32 @@ class zynseq(zynthian_engine):
             self.libseq.getHumanVelo.restype = ctypes.c_float
             self.libseq.setPlayChance.argtypes = [ctypes.c_float]
             self.libseq.getPlayChance.restype = ctypes.c_float
+
             self.libseq.setNotePlayChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getNotePlayChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
             self.libseq.getNotePlayChance.restype = ctypes.c_float
+
+            self.libseq.setNoteStutterChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.getNoteStutterChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
+            self.libseq.getNoteStutterChance.restype = ctypes.c_float
+
             self.libseq.getTempo.restype = ctypes.c_double
             self.libseq.setTempo.argtypes = [ctypes.c_double]
             self.libseq.getTempoAt.restype = ctypes.c_float
             self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint16]
-            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16,
-                                                  ctypes.c_uint16]
+            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16, ctypes.c_uint16]
             self.libseq.getMetronomeVolume.restype = ctypes.c_float
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
             self.libseq.getStateChange.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
             self.libseq.getStateChange.restype = ctypes.c_uint32
             self.libseq.getProgress.restype = ctypes.POINTER(ctypes.c_uint8)
+
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
             self.libseq.convertPattern.argtypes = [ctypes.c_int32, ctypes.c_char_p]
             self.libseq.convertPattern.restype = ctypes.c_char_p
+
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
@@ -181,6 +189,7 @@ class zynseq(zynthian_engine):
 
             self.PPQN = self.libseq.getPPQN()
             self.libseq.init(bytes("zynseq", "utf-8"))
+
         except Exception as e:
             self.libseq = None
             print("Can't initialise zynseq library: %s" % str(e))
