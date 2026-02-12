@@ -965,29 +965,35 @@ const char* convertToJson(const char* filename) {
                 jEvent.push_back(fileRead8u(pFile)); // value 2 start
                 jEvent.push_back(fileRead8u(pFile)); // value 1 end
                 jEvent.push_back(fileRead8u(pFile)); // value 2 end
+
                 if (nVersion > 7) {
-                    // Read legacy values
-                    uint8_t stut_cnt = fileRead8u(pFile);    // stutter count
-                    uint8_t stut_dur = fileRead8u(pFile);    // stutter duration
-                    if (stut_cnt > 0) {
+                    // Read stutter legacy values
+                    uint8_t stut_cnt = fileRead8u(pFile);    // Legacy stutter count
+                    uint8_t stut_dur = fileRead8u(pFile);    // Legacy stutter duration
+                    if (stut_cnt > 0) {                      // Stutter speed calculated from legacy values
                         uint16_t legacy_clocks_step = 24 * patj.value("beats", 4) / patj.value("steps", 16);  // 6 by default (96/16) => 4 steps/beat
                         jEvent.push_back(legacy_clocks_step / stut_cnt);
                     } else {
                         jEvent.push_back(0);
                     }
-                    jEvent.push_back(0);
+                    jEvent.push_back(0);    // Stutter velocity FX
                     nBlockSize -= 2;
                 } else {
                     jEvent.push_back(0);
                     jEvent.push_back(0);
                 }
-                if (nVersion > 8) {
-                    jEvent.push_back(int(fileReadBCD(pFile) * 100)); // play chance
+                jEvent.push_back(0);        // Stutter speed ramp
+
+                if (nVersion > 8) {         // Play chance
+                    jEvent.push_back(int(fileReadBCD(pFile) * 100));
                     nBlockSize -= 1;
                 } else {
                     jEvent.push_back(100);
                 }
-                fileRead8(pFile); // Padding
+                jEvent.push_back(1);        // Play frequency
+                jEvent.push_back(100);      // Stutter chance
+                jEvent.push_back(1);        // Stutter frequency
+                fileRead8(pFile);           // Padding
                 nBlockSize -= 14;
                 // printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end,
                 // nValue2start, nValue2end);
@@ -1177,7 +1183,11 @@ void setPattern(uint32_t id, const char* patn_state) {
         pEvent->setValue2end(jEvent[7]);
         pEvent->setStutterSpeed(jEvent[8]);
         pEvent->setStutterVelfx(jEvent[9]);
-        pEvent->setPlayChance(float(jEvent[10]) / 100);
+        pEvent->setStutterRamp(jEvent[10]);
+        pEvent->setPlayChance(float(jEvent[11]) / 100);
+        pEvent->setPlayFreq(jEvent[12]);
+        pEvent->setStutterChance(float(jEvent[13]) / 100);
+        pEvent->setStutterFreq(jEvent[14]);
     }
 }
 
@@ -1227,7 +1237,18 @@ bool setState(const char* state) {
                     pEvent->setValue2end(jEvent[7]);
                     pEvent->setStutterSpeed(jEvent[8]);
                     pEvent->setStutterVelfx(jEvent[9]);
-                    pEvent->setPlayChance(float(jEvent[10]) / 100);
+                    // Legacy format
+                    if (jEvent.size() == 11) {
+                        pEvent->setPlayChance(float(jEvent[10]) / 100);
+                    }
+                    // Extended parameters: stutter speed-ramp, play freq, stutter chance, stutter freq
+                    else {
+                        pEvent->setStutterRamp(jEvent[10]);
+                        pEvent->setPlayChance(float(jEvent[11]) / 100);
+                        pEvent->setPlayFreq(jEvent[12]);
+                        pEvent->setStutterChance(float(jEvent[13]) / 100);
+                        pEvent->setStutterFreq(jEvent[14]);
+                    }
                 }
             }
         }
@@ -1381,7 +1402,11 @@ const char* getState() {
                 jEvt.push_back(pEvent->getValue2end());
                 jEvt.push_back(pEvent->getStutterSpeed());
                 jEvt.push_back(pEvent->getStutterVelfx());
+                jEvt.push_back(pEvent->getStutterRamp());
                 jEvt.push_back(int(pEvent->getPlayChance()) * 100);
+                jEvt.push_back(pEvent->getPlayFreq());
+                jEvt.push_back(int(pEvent->getStutterChance()) * 100);
+                jEvt.push_back(pEvent->getStutterFreq());
                 jPatn["events"].push_back(jEvt);
             }
             jState["patns"][std::to_string(nPattern)] = jPatn;
@@ -1559,27 +1584,31 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 jEvent.push_back(fileRead8u(pFile)); // value 2 end
                 if (nVersion > 7) {
                     // Read legacy values
-                    uint8_t stut_cnt = fileRead8u(pFile);    // stutter count
-                    uint8_t stut_dur = fileRead8u(pFile);    // stutter duration
-                    if (stut_cnt > 0) {
+                    uint8_t stut_cnt = fileRead8u(pFile);    // Legacy stutter count
+                    uint8_t stut_dur = fileRead8u(pFile);    // Legacy stutter duration
+                    if (stut_cnt > 0) {                      // Stutter speed calculated from legacy values
                         uint16_t legacy_clocks_step = 24 * jPattern.value("beats", 4) / jPattern.value("steps", 16);  // 6 by default (96/16) => 4 steps/beat
                         jEvent.push_back(legacy_clocks_step / stut_cnt);
                     } else {
                         jEvent.push_back(0);
                     }
-                    jEvent.push_back(0);
+                    jEvent.push_back(0);                     // Stutter velocity FX
                     nBlockSize -= 2;
                 } else {
                     jEvent.push_back(0);
                     jEvent.push_back(0);
                 }
-                if (nVersion > 8) {
-                    jEvent.push_back(int(100 * fileReadBCD(pFile))); // play chance
+                jEvent.push_back(0);                         // Stutter Ramp
+                if (nVersion > 8) {                          // Play chance
+                    jEvent.push_back(int(100 * fileReadBCD(pFile)));
                     nBlockSize -= 1;
                 } else {
                     jEvent.push_back(100);
                 }
-                fileRead8(pFile); // Padding
+                jEvent.push_back(1);                         // Play frequency
+                jEvent.push_back(100);                       // Stutter chance
+                jEvent.push_back(1);                         // Stutter frequency
+                fileRead8(pFile);                            // Padding
                 nBlockSize -= 14;
                 // printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end,
                 // nValue2start, nValue2end);
