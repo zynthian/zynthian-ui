@@ -143,6 +143,16 @@ void Pattern::clearNotes() {
     }
 }
 
+int32_t Pattern::getNoteIndex(uint32_t step, uint8_t note) {
+    int index;
+    for (index = 0; index < m_vEvents.size(); ++index) {
+        StepEvent* ev = m_vEvents[index];
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return index;
+    }
+    return -1;
+}
+
 int32_t Pattern::getNoteStart(uint32_t step, uint8_t note) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() <= step && int(std::ceil(ev->getPosition() + ev->getDuration())) > step && ev->getCommand() == MIDI_NOTE_ON &&

@@ -1915,6 +1915,12 @@ void clearNotes() {
     }
 }
 
+int32_t getNoteIndex(uint32_t step, uint8_t note) {
+    if (g_pPattern)
+        return g_pPattern->getNoteIndex(step, note);
+    return -1;
+}
+
 int32_t getNoteStart(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getNoteStart(step, note);
