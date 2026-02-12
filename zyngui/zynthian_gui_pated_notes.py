@@ -48,11 +48,58 @@ EDIT_PARAM_OFFSET = 2       # Edit event offset
 EDIT_PARAM_STUT_SPD = 3     # Edit note stutter speed
 EDIT_PARAM_STUT_VFX = 4     # Edit note stutter velocity FX (fade)
 EDIT_PARAM_STUT_RMP = 5     # Edit note stutter speed ramp
-EDIT_PARAM_CHANCE = 6       # Edit note play chance
-EDIT_PARAM_FREQ = 7         # Edit note play frequency
+EDIT_PARAM_PLAY_CHANCE = 6  # Edit note play chance
+EDIT_PARAM_PLAY_FREQ = 7    # Edit note play frequency
 EDIT_PARAM_STUT_CHANCE = 8  # Edit note stutter chance
 EDIT_PARAM_STUT_FREQ = 9    # Edit note stutter frequency
 EDIT_PARAM_LAST = 9         # Index of last parameter
+
+STUT_VFX_OPTIONS = (
+    "FLAT",
+    "FADE-IN",
+    "FADE-OUT"
+)
+STUT_RMP_OPTIONS = (
+    "NONE",
+    "SPEED-UP",
+    "SPEED-DOWN"
+)
+PLAY_FREQ_OPTIONS = (
+    "NEVER",
+    "ALWAYS",
+    "PLAY/2",
+    "SKIP/2",
+    "PLAY/3",
+    "SKIP/3",
+    "PLAY/4",
+    "SKIP/4",
+    "PLAY/5",
+    "SKIP/5",
+    "PLAY/6",
+    "SKIP/6",
+    "PLAY/7",
+    "SKIP/7",
+    "PLAY/8",
+    "SKIP/8"
+)
+STUT_FREQ_OPTIONS = (
+    "NEVER",
+    "ALWAYS",
+    "STUT/2",
+    "SKIP/2",
+    "STUT/3",
+    "SKIP/3",
+    "STUT/4",
+    "SKIP/4",
+    "STUT/5",
+    "SKIP/5",
+    "STUT/6",
+    "SKIP/6",
+    "STUT/7",
+    "SKIP/7",
+    "STUT/8",
+    "SKIP/8"
+)
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 SCALES = {
@@ -1173,19 +1220,23 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             elif self.edit_param == EDIT_PARAM_OFFSET:
                 self.set_title(f"Offset: {round(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
             elif self.edit_param == EDIT_PARAM_STUT_SPD:
-                self.set_title(f"Stutter Speed: {self.zynseq.libseq.getStutterSpeed(step, note)}")
+                self.set_title(f"Stutter speed: {self.zynseq.libseq.getStutterSpeed(step, note)}")
             elif self.edit_param == EDIT_PARAM_STUT_VFX:
-                self.set_title(f"Stutter Fade: {self.zynseq.libseq.getStutterVelfx(step, note)}")
+                val = STUT_VFX_OPTIONS[self.zynseq.libseq.getStutterVelfx(step, note)]
+                self.set_title(f"Stutter velo: {val}")
             elif self.edit_param == EDIT_PARAM_STUT_RMP:
-                self.set_title(f"Stutter Ramp: {self.zynseq.libseq.getStutterRamp(step, note)}")
-            elif self.edit_param == EDIT_PARAM_CHANCE:
+                val = STUT_RMP_OPTIONS[self.zynseq.libseq.getStutterRamp(step, note)]
+                self.set_title(f"Stutter ramp: {val}")
+            elif self.edit_param == EDIT_PARAM_PLAY_CHANCE:
                 self.set_title(f"Play chance: {round(100 * self.zynseq.libseq.getNotePlayChance(step, note))}%")
-            elif self.edit_param == EDIT_PARAM_FREQ:
-                self.set_title(f"Play frequency: {self.zynseq.libseq.getNotePlayFreq(step, note)}")
+            elif self.edit_param == EDIT_PARAM_PLAY_FREQ:
+                val = PLAY_FREQ_OPTIONS[self.zynseq.libseq.getNotePlayFreq(step, note)]
+                self.set_title(f"Play frequency: {val}")
             elif self.edit_param == EDIT_PARAM_STUT_CHANCE:
                 self.set_title(f"Stutter chance: {round(100 * self.zynseq.libseq.getNoteStutterChance(step, note))}%")
             elif self.edit_param == EDIT_PARAM_STUT_FREQ:
-                self.set_title(f"Stutter frequency: {self.zynseq.libseq.getNoteStutterFreq(step, note)}")
+                val = STUT_FREQ_OPTIONS[self.zynseq.libseq.getNoteStutterFreq(step, note)]
+                self.set_title(f"Stutter frequency: {val}")
 
         self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
                              (f"ZYNPOT {zynpot},+1", f"+{delta}"),
@@ -1305,7 +1356,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = 0
                     self.zynseq.libseq.setStutterRamp(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
-                elif self.edit_param == EDIT_PARAM_CHANCE:
+                elif self.edit_param == EDIT_PARAM_PLAY_CHANCE:
                     val = round(100 * self.zynseq.libseq.getNotePlayChance(step, note)) + dval
                     if val < -127:
                         val = -127
@@ -1314,7 +1365,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     val /= 100
                     self.zynseq.libseq.setNotePlayChance(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
-                elif self.edit_param == EDIT_PARAM_FREQ:
+                elif self.edit_param == EDIT_PARAM_PLAY_FREQ:
                     val = self.zynseq.libseq.getNotePlayFreq(step, note) + dval
                     if val < 0:
                         val = 0
