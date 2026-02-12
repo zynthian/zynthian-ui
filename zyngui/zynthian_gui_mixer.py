@@ -1317,7 +1317,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             else:
                 self.set_title(f"Volume: -∞dB ({strip.chain.get_description(1)})", None, None, 1)
         elif symbol == "balance":
-            strip.gui_mixer.set_title(f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
+            #strip.gui_mixer.set_title(f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
+            strip.gui_mixer.set_title(f"Balance: {int(value * 100):+}% ({strip.chain.get_name()})", None, None, 1)
 
     def update_control_rec(self, state):
         """ Function to handle audio recorder status
