@@ -834,8 +834,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # row: Index of row
     # white: True for white notes
     def draw_cell(self, step, row, white=None):
-        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
-        self.zynseq.libseq.isPatternModified()
         # Cells are stored in array sequentially: 1st row, 2nd row...
         cell_index = row * self.n_steps + step
         if cell_index >= len(self.cells):
@@ -848,34 +846,55 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             else:
                 white = True
 
-        velocity_colour = self.zynseq.libseq.getNoteVelocity(step, note)
-        if 0 < velocity_colour < 128:
-            velocity_colour += 70
-            duration = self.zynseq.libseq.getNoteDuration(step, note)
-            offset = self.zynseq.libseq.getNoteOffset(step, note)
-        else:
+        evdata = self.zynseq.get_note_data(step, note)
+        if not evdata:
             self.grid_canvas.delete(cell)
             self.cells[cell_index] = None
             return
 
+        velocity_colour = evdata.val2_start + 70
         fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
-        coord = self.get_cell(step, row, duration, offset)
+        coord = self.get_cell(step, row, evdata.duration, evdata.offset)
+        tags = (f"{step},{row}", f"step{step}")
         if white:
-            cell_tags = (f"{step},{row}", "gridcell", f"step{step}", "white")
+            cell_tags = tags + ("gridcell", "white")
         else:
-            cell_tags = (f"{step},{row}", "gridcell", f"step{step}")
+            cell_tags = tags + ("gridcell",)
 
         if cell:
             # Update existing cell
-            self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=cell_tags)
             self.grid_canvas.coords(cell, coord)
+            self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=cell_tags)
         else:
             # Create new cell
-            cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=cell_tags)
+            cell = self.grid_canvas.create_rectangle(coord, width=0, fill=fill_colour, tags=cell_tags)
             self.cells[cell_index] = cell
 
-        if step + duration > self.n_steps:
-            self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{duration - self.n_steps + step}", state="normal")
+        # Redraw cell decoration
+        deco_tag = f"deco_{step},{row}"
+        self.grid_canvas.delete(deco_tag)
+        self.draw_cell_deco(coord, evdata, deco_tag)
+
+        if step + evdata.duration > self.n_steps:
+            self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{evdata.duration - self.n_steps + step}", state="normal")
+
+    # THIS fragment is in QUARENTINE => Remove when we are sure it's not needed anymore
+    def _draw_cell(self, step, row, white=None):
+        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+        self.zynseq.libseq.isPatternModified()
+        # Call _draw_cell
+        self.draw_cell(step, row, white)
+    # ---------------------------------------------------------------------------------
+
+
+    def draw_cell_deco(self, coord, evdata, tags):
+        if evdata.stut_speed > 0:
+            y = (coord[1] + coord[3]) // 2
+            dx = self.step_width //  (2 * evdata.stut_speed)
+            if dx < 4:
+                dx = 4
+            self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y, fill="#404040", width=4, dash=(dx, dx), tags=tags)
+
 
     def redraw_grid_pending(self):
         if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
@@ -1140,7 +1159,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.play_canvas.coords("playCursor",
                                     1 + self.playhead * self.step_width, 0,
                                     1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
-        if (self.reload_keymap or self.zynseq.libseq.isPatternModified()) and self.redraw_pending < 3:
+        if (self.zynseq.libseq.isPatternModified() or self.reload_keymap) and self.redraw_pending < 3:
             self.redraw_pending = 3
         if self.reload_keymap:
             self.load_keymap()
