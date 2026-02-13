@@ -302,13 +302,13 @@ SEQ_EVENT* Track::getEvent(uint32_t nCount) {
                             // Flat
                             case STUTTER_VELFX_NONE:
                                 break;
-                            // Fade-out
-                            case STUTTER_VELFX_FADEOUT:
-                                m_nEventValue = pEvent->getValue2start() + fInterpolateDelta * nInterpolateCount;
-                                break;
                             // Fade-in
                             case STUTTER_VELFX_FADEIN:
                                 m_nEventValue = - fInterpolateDelta * nInterpolateCount;
+                                break;
+                            // Fade-out
+                            case STUTTER_VELFX_FADEOUT:
+                                m_nEventValue = pEvent->getValue2start() + fInterpolateDelta * nInterpolateCount;
                                 break;
                         }
                     }

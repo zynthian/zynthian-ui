@@ -873,7 +873,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Redraw cell decoration
         deco_tag = f"deco_{step},{row}"
         self.grid_canvas.delete(deco_tag)
-        self.draw_cell_deco(coord, evdata, deco_tag)
+        self.draw_cell_deco(coord, fill_colour, evdata, deco_tag)
 
         if step + evdata.duration > self.n_steps:
             self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{evdata.duration - self.n_steps + step}", state="normal")
@@ -886,15 +886,27 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.draw_cell(step, row, white)
     # ---------------------------------------------------------------------------------
 
-
-    def draw_cell_deco(self, coord, evdata, tags):
+    def draw_cell_deco(self, coord, fill_color, evdata, tags):
         if evdata.stut_speed > 0:
-            y = (coord[1] + coord[3]) // 2
+            stut_color = "#404040"
             dx = self.step_width //  (2 * evdata.stut_speed)
-            if dx < 4:
-                dx = 4
-            self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y, fill="#404040", width=4, dash=(dx, dx), tags=tags)
-
+            if dx < 2:
+                dx = 2
+            # Flat
+            if evdata.stut_vfx == 0:
+                w = self.row_height // 2
+                y = coord[3] - w // 2
+                self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y, fill=stut_color, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+            else:
+                w = self.row_height
+                y = (coord[1] + coord[3]) // 2
+                self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y, fill=stut_color, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+                # Fade-in
+                if evdata.stut_vfx == 1:
+                    self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[1], coord[0], coord[3], fill=fill_color, tags=tags)
+                # Fade-out
+                else:
+                    self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[3], coord[2], coord[1], fill=fill_color, tags=tags)
 
     def redraw_grid_pending(self):
         if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
