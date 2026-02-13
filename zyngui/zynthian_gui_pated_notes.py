@@ -861,13 +861,18 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             cell_tags = tags + ("gridcell",)
 
+        if evdata.play_freq == 0 and evdata.play_chance == 0:
+            stipple = 'gray12'
+        else:
+            stipple = ''
+
         if cell:
             # Update existing cell
             self.grid_canvas.coords(cell, coord)
-            self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=cell_tags)
+            self.grid_canvas.itemconfig(cell, fill=fill_colour, stipple=stipple, tags=cell_tags)
         else:
             # Create new cell
-            cell = self.grid_canvas.create_rectangle(coord, width=0, fill=fill_colour, tags=cell_tags)
+            cell = self.grid_canvas.create_rectangle(coord, width=0, fill=fill_colour, stipple=stipple, tags=cell_tags)
             self.cells[cell_index] = cell
 
         # Redraw cell decoration
@@ -889,6 +894,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def draw_cell_deco(self, coord, fill_color, evdata, tags):
         if evdata.stut_speed > 0:
             stut_color = "#404040"
+            if evdata.stut_freq == 0 and evdata.stut_chance == 0:
+                stipple = 'gray12'
+            else:
+                stipple = ''
             dx = self.step_width //  (2 * evdata.stut_speed)
             if dx < 2:
                 dx = 2
@@ -896,17 +905,49 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             if evdata.stut_vfx == 0:
                 w = self.row_height // 2
                 y = coord[3] - w // 2
-                self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y, fill=stut_color, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+                self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y,
+                                             fill=stut_color, stipple=stipple, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+                label_anchor = tkinter.CENTER
+                label_x = (coord[0] + coord[2]) // 2
             else:
                 w = self.row_height
                 y = (coord[1] + coord[3]) // 2
-                self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y, fill=stut_color, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+                self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y,
+                                             fill=stut_color, stipple=stipple, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
                 # Fade-in
                 if evdata.stut_vfx == 1:
-                    self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[1], coord[0], coord[3], fill=fill_color, tags=tags)
+                    self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[1], coord[0], coord[3],
+                                                    fill=fill_color, tags=tags)
+                    label_anchor = tkinter.W
+                    label_x = coord[0]
                 # Fade-out
-                else:
-                    self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[3], coord[2], coord[1], fill=fill_color, tags=tags)
+                elif evdata.stut_vfx == 2:
+                    self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[3], coord[2], coord[1],
+                                                    fill=fill_color, tags=tags)
+                    label_anchor = tkinter.E
+                    label_x = coord[2]
+        else:
+            label_anchor = tkinter.CENTER
+            label_x = (coord[0] + coord[2]) // 2
+
+        label_txt = None
+        if evdata.play_freq > 1:
+            label_color = "#008000"
+            label_txt = PLAY_FREQ_OPTIONS[evdata.play_freq]
+        elif evdata.play_chance < 1.0:
+            label_color = "#008000"
+            label_txt = f"{int(100 * evdata.play_chance)}%"
+        elif evdata.stut_freq > 1:
+            label_color = "#800080"
+            label_txt = PLAY_FREQ_OPTIONS[evdata.stut_freq]
+        elif evdata.stut_chance < 1.0:
+            label_color = "#800080"
+            label_txt = f"{int(100 * evdata.stut_chance)}%"
+        if label_txt:
+            label_y = (coord[1] + coord[3]) // 2
+            self.grid_canvas.create_text(label_x, label_y,
+                                         fill=label_color, text=label_txt, anchor=label_anchor, tags=tags)
+
 
     def redraw_grid_pending(self):
         if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
