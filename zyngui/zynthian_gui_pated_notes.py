@@ -939,7 +939,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             label_txt = f"{round(100 * evdata.play_chance)}%"
         elif evdata.stut_freq > 1:
             label_color = "#800080"
-            label_txt = PLAY_FREQ_OPTIONS[evdata.stut_freq]
+            label_txt = STUT_FREQ_OPTIONS[evdata.stut_freq]
         elif evdata.stut_chance < 1.0:
             label_color = "#800080"
             label_txt = f"{round(100 * evdata.stut_chance)}%"
