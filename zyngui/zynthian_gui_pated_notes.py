@@ -861,7 +861,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             cell_tags = tags + ("gridcell",)
 
-        if evdata.play_freq == 0 and evdata.play_chance == 0:
+        if evdata.play_freq == 0 or evdata.play_chance == 0:
             stipple = 'gray12'
         else:
             stipple = ''
@@ -894,8 +894,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def draw_cell_deco(self, coord, fill_color, evdata, tags):
         if evdata.stut_speed > 0:
             stut_color = "#404040"
-            if evdata.stut_freq == 0 and evdata.stut_chance == 0:
-                stipple = 'gray12'
+            if evdata.stut_freq == 0 or evdata.stut_chance == 0:
+                stipple = 'gray25'
             else:
                 stipple = ''
             dx = self.step_width //  (2 * evdata.stut_speed)
@@ -936,13 +936,13 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             label_txt = PLAY_FREQ_OPTIONS[evdata.play_freq]
         elif evdata.play_chance < 1.0:
             label_color = "#008000"
-            label_txt = f"{int(100 * evdata.play_chance)}%"
+            label_txt = f"{round(100 * evdata.play_chance)}%"
         elif evdata.stut_freq > 1:
             label_color = "#800080"
             label_txt = PLAY_FREQ_OPTIONS[evdata.stut_freq]
         elif evdata.stut_chance < 1.0:
             label_color = "#800080"
-            label_txt = f"{int(100 * evdata.stut_chance)}%"
+            label_txt = f"{round(100 * evdata.stut_chance)}%"
         if label_txt:
             label_y = (coord[1] + coord[3]) // 2
             self.grid_canvas.create_text(label_x, label_y,
@@ -1430,8 +1430,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     self.draw_cell(step, note - self.keymap_offset)
                 elif self.edit_param == EDIT_PARAM_PLAY_CHANCE:
                     val = round(100 * self.zynseq.libseq.getNotePlayChance(step, note)) + dval
-                    if val < -127:
-                        val = -127
+                    if val < 0:
+                        val = 0
                     elif val > 100:
                         val = 100
                     val /= 100
@@ -1445,8 +1445,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     self.draw_cell(step, note - self.keymap_offset)
                 elif self.edit_param == EDIT_PARAM_STUT_CHANCE:
                     val = round(100 * self.zynseq.libseq.getNoteStutterChance(step, note)) + dval
-                    if val < -127:
-                        val = -127
+                    if val < 0:
+                        val = 0
                     elif val > 100:
                         val = 100
                     val /= 100
