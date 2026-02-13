@@ -22,10 +22,32 @@
  * function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of
  * MIDI events between the start and end positions.
 */
+#pragma pack(1)     // Set pack to 1 to allow binary interfacing from python ctypes
 class StepEvent {
 
   public:
-    /** Default constructor of StepEvent object
+    uint32_t m_nPosition;      // Start position of event in steps
+    float m_fOffset;           // Offset of event position in steps
+    float m_fDuration;         // Duration of event in steps
+
+    uint8_t m_nCommand;        // MIDI command without channel
+    uint8_t m_nValue1start;    // MIDI value 1 at start of event
+    uint8_t m_nValue2start;    // MIDI value 2 at start of event
+    uint8_t m_nValue1end;      // MIDI value 1 at end of event
+
+    uint8_t m_nValue2end;      // MIDI value 2 at end of event
+    uint8_t m_nStutterSpeed;   // Stutter speed in "retriggers every 2 steps"
+    uint8_t m_nStutterVelfx;   // Stutter velocity FX (none=0, fade-out=1, fade-in=2)
+    uint8_t m_nStutterRamp;    // Stutter speed ramp FX (none=0, ramp-up=1, ramp-down=2)
+
+    uint8_t m_nPlayFreq;       // Play/Skip note each N loops: last bit => play/skip, higher bits => loop count
+                               // Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+    uint8_t m_nStutterFreq;    // Play/Skip stutter each N loops: last bit => play/skip, higher bits => loop count
+                               // Can be used for enabling/disabling the stutter: 0 => never stutter, 1 => stutter on every loop
+    float m_fPlayChance;       // Probability of playing (0 = not played, 0.5 = plays with 50%, 1.0 = always plays)
+    float m_fStutterChance;    // Probability of stutter (0 = not stutter, 0.5 = stutters with 50%, 1.0 = always stutters)
+
+      /** Default constructor of StepEvent object
 */
     StepEvent() {
         m_nPosition = 0;
@@ -140,27 +162,8 @@ class StepEvent {
     void setPlayFreq(uint8_t freq) { m_nPlayFreq = freq; }
     void setStutterChance(float chance) { m_fStutterChance = chance; }
     void setStutterFreq(uint8_t freq) { m_nStutterFreq = freq; }
-
-  private:
-    uint32_t m_nPosition;      // Start position of event in steps
-    float m_fOffset;           // Offset of event position in steps
-    float m_fDuration;         // Duration of event in steps
-    uint8_t m_nCommand;        // MIDI command without channel
-    uint8_t m_nValue1start;    // MIDI value 1 at start of event
-    uint8_t m_nValue2start;    // MIDI value 2 at start of event
-    uint8_t m_nValue1end;      // MIDI value 1 at end of event
-    uint8_t m_nValue2end;      // MIDI value 2 at end of event
-    uint8_t m_nStutterSpeed;   // Stutter speed in "retriggers every 2 steps"
-    uint8_t m_nStutterVelfx;   // Stutter velocity FX (none=0, fade-out=1, fade-in=2)
-    uint8_t m_nStutterRamp;    // Stutter speed ramp FX (none=0, ramp-up=1, ramp-down=2)
-    float m_fPlayChance;       // Probability of playing (0 = not played, 0.5 = plays with 50%, 1.0 = always plays)
-    uint8_t m_nPlayFreq;       // Play/Skip note each N loops: last bit => play/skip, higher bits => loop count
-                               // Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
-    float m_fStutterChance;    // Probability of stutter (0 = not stutter, 0.5 = stutters with 50%, 1.0 = always stutters)
-    uint8_t m_nStutterFreq;    // Play/Skip stutter each N loops: last bit => play/skip, higher bits => loop count
-                               // Can be used for enabling/disabling the stutter: 0 => never stutter, 1 => stutter on every loop
 };
-
+#pragma pack()
 typedef std::vector<StepEvent*> StepEventVector;
 
 /**    Pattern class provides a group of MIDI events within period of time
@@ -228,6 +231,14 @@ class Pattern {
         @retval int32_t index of the note event in the events vector
     */
     int32_t getNoteIndex(uint32_t step, uint8_t note);
+
+    /** @brief  Get data of a specified note
+        @param  position Quantity of steps from start of pattern at which to check for note
+        @param  note MIDI note number
+        @param  data pointer to a struct to contain event data
+        @retval int32_t index of the note event in the events vector
+    */
+    int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data);
 
     /** @brief  Get step that note starts
         @param  position Quantity of steps from start of pattern at which to check for note

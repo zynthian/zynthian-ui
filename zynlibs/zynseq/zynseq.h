@@ -296,6 +296,14 @@ void clearNotes();
 */
 int32_t getNoteIndex(uint32_t step, uint8_t note);
 
+/** @brief  Get data of specified note
+    @param  position Quantity of steps from start of pattern at which to check for note
+    @param  note MIDI note number
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the note event in the events vector
+*/
+int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data);
+
 /** @brief  Get step that note starts
     @param  position Quantity of steps from start of pattern at which to check for note
     @param  note MIDI note number

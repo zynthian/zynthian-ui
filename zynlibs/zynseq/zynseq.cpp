@@ -1921,6 +1921,12 @@ int32_t getNoteIndex(uint32_t step, uint8_t note) {
     return -1;
 }
 
+int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data){
+    if (g_pPattern)
+        return g_pPattern->getNoteData(step, note, data);
+    return -1;
+}
+
 int32_t getNoteStart(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getNoteStart(step, note);

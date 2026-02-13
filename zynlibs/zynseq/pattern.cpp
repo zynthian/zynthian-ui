@@ -1,5 +1,8 @@
-#include "pattern.h"
 #include <cmath>
+#include <cstring>
+#include <string>
+
+#include "pattern.h"
 
 /**    Pattern class methods implementation **/
 
@@ -149,6 +152,18 @@ int32_t Pattern::getNoteIndex(uint32_t step, uint8_t note) {
         StepEvent* ev = m_vEvents[index];
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
             return index;
+    }
+    return -1;
+}
+
+int32_t Pattern::getNoteData(uint32_t step, uint8_t note, StepEvent* data) {
+    int index;
+    for (index = 0; index < m_vEvents.size(); ++index) {
+        StepEvent* ev = m_vEvents[index];
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            memcpy(data, ev, sizeof(StepEvent));
+            return index;
+        }
     }
     return -1;
 }
