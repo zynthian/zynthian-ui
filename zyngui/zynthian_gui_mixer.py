@@ -263,8 +263,8 @@ class zynthian_gui_launcher_pad():
                         n_beats = self.gui_mixer.zynseq.libseq.getBeatsInPattern(pattern)
                         timesig_text = self.get_pattern_length(n_beats, state_phrase["bpb"])
                         try:
-                            empty = len(self.gui_mixer.zynseq.state["patns"][str(pattern)]["events"]) == 0
-                        except:
+                            empty = self.gui_mixer.zynseq.libseq.isEmpty(self.gui_mixer.zynseq.scene, self.phrase, self.chain.midi_chan)
+                        except Exception as e:
                             empty = True
                     except Exception as e:
                         logging.error(e)
