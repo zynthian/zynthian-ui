@@ -914,16 +914,16 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def update_seq_state(self, chan=None, phrase=None, state=None, mode=None, refresh=True):
         # col, row = self._zynseq.get_xy_from_pad(seq)
-        #chain_id = self._chain_manager.get_chain_ids_by_midi_chan(chan)[0]
-        #col = self._chain_manager.get_chain_index(chain_id)
-        col = chan
+        chain_id = self._chain_manager.get_chain_ids_by_midi_chan(chan)[0]
+        col = self._chain_manager.get_chain_index(chain_id)
+        # col = chan
         row = phrase
         idx = col * self._rows + row
         if idx >= len(self._pads):
             return
         btn = self._pads[idx]
 
-        seq = (chan, phrase)
+        seq = (phrase, chan)
 
         is_empty = all(
             self._zynseq.is_pattern_empty(pattern)
@@ -936,7 +936,7 @@ class PadMatrixHandler(ModeHandlerBase):
             if (self._seqman_func in (FN_COPY_SEQUENCE, FN_MOVE_SEQUENCE)
                     and self._seqman_src_seq is not None):
                 src_scene, src_seq = self._seqman_src_seq
-                if src_scene == self._zynseq.bank and src_seq == seq:
+                if src_scene == self._zynseq.scene and src_seq == seq:
                     led_mode = LED_BLINKING_24
             self._leds.led_on(btn, color, led_mode)
         # Otherwise, update according to sequence state
@@ -981,10 +981,10 @@ class PadMatrixHandler(ModeHandlerBase):
             return
 
         # FIXME: if pattern editor is open, and showing affected seq, update it!
-        # FIXME: if Zynpad is open, also update it!
+        # FIXME: if launcher is open, also update it!
         # You can use self._current_screen...
         self._libseq.updateSequenceInfo()
-        seq_is_empty = self._libseq.isEmpty(self._zynseq.bank, seq)
+        seq_is_empty = self._libseq.isEmpty(self._zynseq.scene, *seq)
         if self._seqman_func == FN_CLEAR_SEQUENCE:
             if not seq_is_empty:
                 self._clear_sequence(self._zynseq.scene, seq)
@@ -993,19 +993,19 @@ class PadMatrixHandler(ModeHandlerBase):
         # Set selected sequence as source
         if self._seqman_src_seq is None:
             if not seq_is_empty:
-                self._seqman_src_seq = (self._zynseq.bank, seq)
+                self._seqman_src_seq = (self._zynseq.scene, seq)
         else:
             # Clear source sequence
-            if self._seqman_src_seq == (self._zynseq.bank, seq):
+            if self._seqman_src_seq == (self._zynseq.scene, seq):
                 self._seqman_src_seq = None
             # Copy/Move source to selected sequence (will be overwritten)
             else:
                 if self._seqman_func == FN_COPY_SEQUENCE:
                     self._copy_sequence(
-                        *self._seqman_src_seq, self._zynseq.bank, seq)
+                        self._seqman_src_seq[0], self._seqman_src_seq[1], self._zynseq.scene, seq)
                 elif self._seqman_func == FN_MOVE_SEQUENCE:
                     self._copy_sequence(
-                        *self._seqman_src_seq, self._zynseq.bank, seq)
+                        *self._seqman_src_seq, self._zynseq.scene, seq)
                     self._clear_sequence(*self._seqman_src_seq)
                     self._seqman_src_seq = None
 
@@ -1073,12 +1073,12 @@ class PadMatrixHandler(ModeHandlerBase):
 
 
     def _update_pad(self, seq, refresh=True):
-        state = self._libseq.getSequenceState(self._zynseq.bank, seq)
+        state = self._libseq.getSequenceState(self._zynseq.scene, seq[0], seq[1])
         mode = (state >> 8) & 0xFF
         group = (state >> 16) & 0xFF
         state &= 0xFF
         self.update_seq_state(
-            bank=self._zynseq.bank, seq=seq, state=state, mode=mode, group=group,
+            chan=seq[1], phrase=seq[0], state=state, mode=mode,
             refresh=refresh)
 
     def _refresh_tool_buttons(self):
@@ -1096,7 +1096,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # If seqman is disabled, show playing status in row launchers
         playing_rows = {
-            phrase for (chan, phrase) in self._playing_seqs}
+            phrase for (phrase, chan) in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
@@ -2153,9 +2153,9 @@ class StepSeqHandler(ModeHandlerBase):
         self._selected_note = self._note_pads.get(index)
 
     # This will be called as an action (look for 'sync-sequences' requests)
-    def _action_sync_sequences(self, src_bank, src_seq, dst_bank, dst_seq):
-        src_chain = self._get_chain_id_by_sequence(src_bank, src_seq)
-        dst_chain = self._get_chain_id_by_sequence(dst_bank, dst_seq)
+    def _action_sync_sequences(self, src_scene, src_seq, dst_scene, dst_seq):
+        src_chain = self._get_chain_id_by_sequence(*src_seq)
+        dst_chain = self._get_chain_id_by_sequence(*dst_seq)
         src = self._saved_state.get_chain_by_id(src_chain)
         dst = self._saved_state.get_chain_by_id(dst_chain)
         dst["pages"] = deepcopy(src["pages"])

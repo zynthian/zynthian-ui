@@ -56,7 +56,7 @@ class ModeHandlerBase(ModeHandlerBase):
     def _refresh_pattern_editor(self):
         zynpad = zynthian_gui_config.zyngui.screens["launcher"]
         patted = zynthian_gui_config.zyngui.screens['pattern_editor']
-        pattern = self._zynseq.libseq.getPattern(self._zynseq.scene, zynpad.bank, zynpad.selected_pad, 0, 0)
+        pattern = self._zynseq.libseq.getPattern(self._zynseq.scene, self._zynseq.phrase, self._zynseq.chan, 0, 0)
 
         self._state_manager.start_busy("load_pattern", f"loading pattern {pattern}")
         patted.bank = zynpad.bank
