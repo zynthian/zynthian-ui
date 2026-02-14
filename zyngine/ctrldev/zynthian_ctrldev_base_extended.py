@@ -407,12 +407,12 @@ class ModeHandlerBase:
     # FIXME: Could this be in libseq?
     def _set_note_duration(self, step, note, duration):
         velocity = self._libseq.getNoteVelocity(step, note)
-        stutt_count = self._libseq.getStutterCount(step, note)
-        stutt_duration = self._libseq.getStutterDur(step, note)
+        stutt_speed = self._libseq.getStutterSpeed(step, note)
+        stutt_velfx = self._libseq.getStutterVelfx(step, note)
         self._libseq.removeNote(step, note)
         self._libseq.addNote(step, note, velocity, duration, 0)
-        self._libseq.setStutterCount(step, note, stutt_count)
-        self._libseq.setStutterDur(step, note, stutt_duration)
+        self._libseq.setStutterSpeed(step, note, stutt_speed)
+        self._libseq.setStutterVelfx(step, note, stutt_velfx)
 
     def _show_screen_briefly(self, screen, cuia, timeout):
         # Only created when/if needed
