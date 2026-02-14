@@ -46,8 +46,8 @@ from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
 
 
 # FIXME: these defines should be taken from where they are defined (zynseq.h)
-MAX_STUTTER_COUNT = 32
-MAX_STUTTER_DURATION = 96
+MAX_STUTTER_SPEED = 32
+MAX_STUTTER_VELFX = 96
 
 # MIDI channel events (first 4 bits), next 4 bits is the channel!
 EV_NOTE_ON = 0x09
@@ -1341,13 +1341,13 @@ class StepSyncConsumer(Thread):
 # Note: it inherits from dict to be json-serializable and easily comparable
 # --------------------------------------------------------------------------
 class NotePad(dict):
-    def __init__(self, note, velocity, duration=1, stutter_count=0, stutter_duration=1):
+    def __init__(self, note, velocity, duration=1, stutter_speed=0, stutter_velfx=1):
         super().__init__(
             note=note,
             velocity=velocity,
             duration=duration,
-            stutter_count=stutter_count,
-            stutter_duration=stutter_duration,
+            stutter_speed=stutter_speed,
+            stutter_velfx=stutter_velfx,
         )
 
     # To support dot-access
@@ -1416,10 +1416,10 @@ class StepSeqState:
 # Note objects used in NotePlayer's event queue
 # --------------------------------------------------------------------------
 class Note:
-    def __init__(self, note, velocity, duration_cycles, channel, stutt_count, stutt_duration):
+    def __init__(self, note, velocity, duration_cycles, channel, stutter_speed, stutter_velfx):
         self._duration = duration_cycles
-        self._stutter_count = stutt_count
-        self._stutter_duration = stutt_duration
+        self._stutter_speed = stutter_speed
+        self._stutter_velfx = stutter_velfx
         self._velocity = velocity
         self._elapsed = 0
         self._is_stopped = False
@@ -1442,21 +1442,21 @@ class Note:
         return next(self._iter)
 
     def __iter__(self):
-        if self._stutter_count > 0 and self._duration > 0:
-            while self._stutter_count:
-                total_stutt_duration = self._stutter_count * self._stutter_duration * 2
-                if total_stutt_duration < self._duration:
+        if self._stutter_speed > 0 and self._duration > 0:
+            while self._stutter_speed:
+                total_stutter_velfx = self._stutter_speed * self._stutter_velfx * 2
+                if total_stutter_velfx < self._duration:
                     break
-                self._stutter_count -= 1
+                self._stutter_speed -= 1
 
-        for _ in range(self._stutter_count):
+        for _ in range(self._stutter_speed):
             yield self._event("on", self.note, self.channel, self._velocity)
-            duration = self._stutter_duration - 1
+            duration = self._stutter_velfx - 1
             while duration > 0:
                 duration -= 1
                 yield self._event()
             yield self._event("off", self.note, self.channel, 0)
-            duration = self._stutter_duration - 1
+            duration = self._stutter_velfx - 1
             while duration > 0:
                 duration -= 1
                 yield self._event()
@@ -1509,7 +1509,7 @@ class NotePlayer(Thread):
             self._notes_pending.append(n)
             self._ready.set()
 
-    def play(self, note, velocity, duration, channel=0, stutt_count=0, stutt_duration=1):
+    def play(self, note, velocity, duration, channel=0, stutter_speed=0, stutter_velfx=1):
         duration_ms = int(self._get_step_duration() * duration)
         duration_cycles = duration_ms / self._clock_cycles_to_ms(1)
         with self._pending_lock:
@@ -1517,7 +1517,7 @@ class NotePlayer(Thread):
                 if n.note == note and n.channel == channel:
                     n.stop()
             n = Note(note, velocity, duration_cycles,
-                     channel, stutt_count, stutt_duration)
+                     channel, stutter_speed, stutter_velfx)
             self._notes_pending.append(n)
             self._ready.set()
 
@@ -1803,7 +1803,7 @@ class StepSeqHandler(ModeHandlerBase):
                 elif self._is_volume_pressed:
                     control = VelocityControl.KIND
                 elif self._is_send_pressed:
-                    control = StutterCountControl.KIND
+                    control = StutterSpeedControl.KIND
                 if control is not None:
                     return self._create_note_control(control, note)
 
@@ -1829,7 +1829,7 @@ class StepSeqHandler(ModeHandlerBase):
                     if self._is_volume_pressed:
                         control = VelocityControl.KIND
                     elif self._is_send_pressed:
-                        control = StutterCountControl.KIND
+                        control = StutterSpeedControl.KIND
                     if control is not None:
                         return self._create_note_control(control, note)
 
@@ -1857,14 +1857,14 @@ class StepSeqHandler(ModeHandlerBase):
             elif note == BTN_KNOB_CTRL_SEND:
                 self._is_send_pressed = True
                 if self._note_config is not None:
-                    if self._note_config.KIND == StutterCountControl.KIND:
+                    if self._note_config.KIND == StutterSpeedControl.KIND:
                         self._note_config = self._note_config.clone_to(
-                            StutterDurationControl.KIND)
-                    elif self._note_config.KIND == StutterDurationControl.KIND:
+                            StutterVelfxControl.KIND)
+                    elif self._note_config.KIND == StutterVelfxControl.KIND:
                         self._note_config = None
                     else:
                         self._note_config = self._note_config.clone_to(
-                            StutterCountControl.KIND)
+                            StutterSpeedControl.KIND)
                     self.refresh()
 
             elif note == BTN_LEFT and self._note_config is None:
@@ -1926,14 +1926,14 @@ class StepSeqHandler(ModeHandlerBase):
             adjust_pad_func = {
                 KNOB_1: self._update_note_pad_duration,
                 KNOB_2: self._update_note_pad_velocity,
-                KNOB_3: self._update_note_pad_stutter_count,
-                KNOB_4: self._update_note_pad_stutter_duration,
+                KNOB_3: self._update_note_pad_stutter_speed,
+                KNOB_4: self._update_note_pad_stutter_velfx,
             }.get(ccnum)
             adjust_step_func = {
                 KNOB_1: self._update_step_duration,
                 KNOB_2: self._update_step_velocity,
-                KNOB_3: self._update_step_stutter_count,
-                KNOB_4: self._update_step_stutter_duration,
+                KNOB_3: self._update_step_stutter_speed,
+                KNOB_4: self._update_step_stutter_velfx,
             }.get(ccnum)
 
             step_pads = self._pads[:self._used_pads]
@@ -2026,24 +2026,24 @@ class StepSeqHandler(ModeHandlerBase):
         self._leds.led_on(self._pads[step], self.COLOR_VELOCITY, int((velocity * 6) / 127))
         self._play_step(step)
 
-    def _update_step_stutter_count(self, step, delta):
+    def _update_step_stutter_speed(self, step, delta):
         if self._selected_note is None:
             return
 
         note = self._selected_note.note
-        count = self._libseq.getStutterCount(step, note) + delta
-        count = min(MAX_STUTTER_COUNT, max(0, count))
-        self._libseq.setStutterCount(step, note, count)
+        count = self._libseq.getStutterSpeed(step, note) + delta
+        count = min(MAX_STUTTER_SPEED, max(0, count))
+        self._libseq.setStutterSpeed(step, note, count)
         self._play_step(step)
 
-    def _update_step_stutter_duration(self, step, delta):
+    def _update_step_stutter_velfx(self, step, delta):
         if self._selected_note is None:
             return
 
         note = self._selected_note.note
-        duration = self._libseq.getStutterDur(step, note) + delta
-        duration = min(MAX_STUTTER_DURATION, max(1, duration))
-        self._libseq.setStutterDur(step, note, duration)
+        duration = self._libseq.getStutterVelfx(step, note) + delta
+        duration = min(MAX_STUTTER_VELFX, max(1, duration))
+        self._libseq.setStutterVelfx(step, note, duration)
         self._play_step(step)
 
     def _update_note_pad_duration(self, pad, note_spec, delta):
@@ -2063,14 +2063,14 @@ class StepSeqHandler(ModeHandlerBase):
         if is_selected:
             self._leds.delayed("led_on", 1000, pad, color, LED_PULSING_8)
 
-    def _update_note_pad_stutter_count(self, pad, note_spec, delta):
-        note_spec.stutter_count = \
-            min(MAX_STUTTER_COUNT, max(0, note_spec.stutter_count + delta))
+    def _update_note_pad_stutter_speed(self, pad, note_spec, delta):
+        note_spec.stutter_speed = \
+            min(MAX_STUTTER_SPEED, max(0, note_spec.stutter_speed + delta))
         self._play_note_pad(pad)
 
-    def _update_note_pad_stutter_duration(self, pad, note_spec, delta):
-        note_spec.stutter_duration = \
-            min(MAX_STUTTER_DURATION, max(0, note_spec.stutter_duration + delta))
+    def _update_note_pad_stutter_velfx(self, pad, note_spec, delta):
+        note_spec.stutter_velfx = \
+            min(MAX_STUTTER_VELFX, max(0, note_spec.stutter_velfx + delta))
         self._play_note_pad(pad)
 
     # NOTE: Do NOT change argument names here (is called using keyword args)
@@ -2193,7 +2193,7 @@ class StepSeqHandler(ModeHandlerBase):
         if on:
             self._note_player.play(
                 note_spec.note, velocity, 0, channel,
-                note_spec.stutter_count, note_spec.stutter_duration)
+                note_spec.stutter_speed, note_spec.stutter_velfx)
         else:
             self._note_player.stop(note_spec.note, channel)
 
@@ -2209,10 +2209,10 @@ class StepSeqHandler(ModeHandlerBase):
         duration = self._libseq.getNoteDuration(step, note)
         channel = self._libseq.getChannel(
             self._zynseq.scene, self._selected_seq[0], self._selected_seq[1], 0)
-        stutt_count = self._libseq.getStutterCount(step, note)
-        stutt_duration = self._libseq.getStutterDur(step, note)
+        stutter_speed = self._libseq.getStutterSpeed(step, note)
+        stutter_velfx = self._libseq.getStutterVelfx(step, note)
         self._note_player.play(
-            note, velocity, duration, channel, stutt_count, stutt_duration)
+            note, velocity, duration, channel, stutter_speed, stutter_velfx)
 
     def _toggle_step(self, step):
         if self._selected_note is None:
@@ -2224,8 +2224,8 @@ class StepSeqHandler(ModeHandlerBase):
             velocity = velocity if not self._is_shifted else velocity // 2
             self._libseq.addNote(
                 step, spec.note, velocity, spec.duration, 0)
-            self._libseq.setStutterCount(step, spec.note, spec.stutter_count)
-            self._libseq.setStutterDur(step, spec.note, spec.stutter_duration)
+            self._libseq.setStutterSpeed(step, spec.note, spec.stutter_speed)
+            self._libseq.setStutterVelfx(step, spec.note, spec.stutter_velfx)
         else:
             self._libseq.removeNote(step, spec.note)
             channel = self._libseq.getChannel(
@@ -2458,7 +2458,7 @@ class StepSeqHandler(ModeHandlerBase):
 
     def _create_note_control(self, kind, note):
         available = [VelocityControl,
-                     StutterCountControl, StutterDurationControl]
+                     StutterSpeedControl, StutterVelfxControl]
         for Control in available:
             if Control.KIND == kind:
                 break
@@ -2533,20 +2533,20 @@ class StepProxy:
         return self._libseq.getNoteDuration(self._step, self.note)
 
     @property
-    def stutter_count(self):
-        return self._libseq.getStutterCount(self._step, self.note)
+    def stutter_speed(self):
+        return self._libseq.getStutterSpeed(self._step, self.note)
 
-    @stutter_count.setter
-    def stutter_count(self, value):
-        self._libseq.setStutterCount(self._step, self.note, value)
+    @stutter_speed.setter
+    def stutter_speed(self, value):
+        self._libseq.setStutterSpeed(self._step, self.note, value)
 
     @property
-    def stutter_duration(self):
-        return self._libseq.getStutterDur(self._step, self.note)
+    def stutter_velfx(self):
+        return self._libseq.getStutterVelfx(self._step, self.note)
 
-    @stutter_duration.setter
-    def stutter_duration(self, value):
-        self._libseq.setStutterDur(self._step, self.note, value)
+    @stutter_velfx.setter
+    def stutter_velfx(self, value):
+        self._libseq.setStutterVelfx(self._step, self.note, value)
 
 
 # --------------------------------------------------------------------------
@@ -2578,7 +2578,7 @@ class BaseControl:
 
     def clone_to(self, kind):
         available = [VelocityControl,
-                     StutterCountControl, StutterDurationControl]
+                     StutterSpeedControl, StutterVelfxControl]
         for Control in available:
             if Control.KIND == kind:
                 return Control(self, self._notes, self._channel, self._row_led)
@@ -2627,7 +2627,7 @@ class BaseControl:
     def _play_note(self, note):
         if not self._is_playing:
             self._note_player.play(note.note, note.velocity, note.duration,
-                                   self._channel, note.stutter_count, note.stutter_duration)
+                                   self._channel, note.stutter_speed, note.stutter_velfx)
 
     def _draw_column(self, col, value):
         bright_values = [None, LED_BRIGHT_50, LED_BRIGHT_100]
@@ -2671,8 +2671,8 @@ class VelocityControl(BaseControl):
 # --------------------------------------------------------------------------
 # A controller utility to change stutter count of a NotePad/Step
 # --------------------------------------------------------------------------
-class StutterCountControl(BaseControl):
-    KIND = "stutter-count"
+class StutterSpeedControl(BaseControl):
+    KIND = "stutter-speed"
     INDICATOR_LED = BTN_KNOB_CTRL_SEND
     COLOR = COLORS.COLOR_LIME_DARK
 
@@ -2680,17 +2680,17 @@ class StutterCountControl(BaseControl):
     HALF_STEPS = [1, 3, 6, 10, 15]
 
     def _get_note_property(self, note):
-        return note.stutter_count
+        return note.stutter_speed
 
     def _set_note_property(self, note, value):
-        note.stutter_count = value
+        note.stutter_speed = value
 
 
 # --------------------------------------------------------------------------
 # A controller utility to change stutter duration of a NotePad/Step
 # --------------------------------------------------------------------------
-class StutterDurationControl(BaseControl):
-    KIND = "stutter-duration"
+class StutterVelfxControl(BaseControl):
+    KIND = "stutter-velfx"
     INDICATOR_LED = BTN_KNOB_CTRL_SEND
     INDICATOR_BLINK = True
     COLOR = COLORS.COLOR_RUSSET
@@ -2699,10 +2699,10 @@ class StutterDurationControl(BaseControl):
     HALF_STEPS = [1, 3, 6, 10, 30]
 
     def _get_note_property(self, note):
-        return note.stutter_duration
+        return note.stutter_velfx
 
     def _set_note_property(self, note, value):
-        note.stutter_duration = value
+        note.stutter_velfx = value
 
 
 # --------------------------------------------------------------------------
