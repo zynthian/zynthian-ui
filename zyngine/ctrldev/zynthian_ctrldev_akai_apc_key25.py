@@ -6,8 +6,8 @@ KNOB_5, KNOB_BACK,\
 KNOB_6, KNOB_SELECT,\
 KNOB_7,\
 KNOB_8, \
-MAX_STUTTER_DURATION, \
-MAX_STUTTER_COUNT, \
+MAX_STUTTER_VELFX, \
+MAX_STUTTER_SPEED, \
 LED_BRIGHT_10, \
 LED_BRIGHT_100, \
 EV_NOTE_OFF, \
@@ -287,24 +287,22 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             self._leds.led_on(self._pads[step], self.COLOR_VELOCITY, int((velocity * 6) / 127))
             self._play_step(step)
 
-        def _update_step_stutter_count(self, step, count):
+        def _update_step_stutter_speed(self, step, speed):
             if self._selected_note is None:
                 return
 
             note = self._selected_note.note
-            # count = self._libseq.getStutterCount(step, note) + delta
-            count = min(MAX_STUTTER_COUNT, max(0, count))
-            self._libseq.setStutterCount(step, note, count)
+            speed = min(MAX_STUTTER_SPEED, max(0, speed))
+            self._libseq.setStutterSpeed(step, note, speed)
             self._play_step(step)
 
-        def _update_step_stutter_duration(self, step, duration):
+        def _update_step_stutter_velfx(self, step, duration):
             if self._selected_note is None:
                 return
 
             note = self._selected_note.note
-            # duration = self._libseq.getStutterDur(step, note) + delta
-            duration = min(MAX_STUTTER_DURATION, max(1, duration))
-            self._libseq.setStutterDur(step, note, duration)
+            velfx = min(MAX_STUTTER_VELFX, max(1, velfx))
+            self._libseq.setStutterVelfx(step, note, velfx)
             self._play_step(step)
 
         def _update_note_pad_duration(self, pad, note_spec, duration):
@@ -324,14 +322,14 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             if is_selected:
                 self._leds.delayed("led_on", 1000, pad, color, LED_PULSING_8)
 
-        def _update_note_pad_stutter_count(self, pad, note_spec, stutter_count):
-            note_spec.stutter_count = \
-                min(MAX_STUTTER_COUNT, max(0, stutter_count))
+        def _update_note_pad_stutter_speed(self, pad, note_spec, stutter_speed):
+            note_spec.stutter_speed = \
+                min(MAX_STUTTER_SPEED, max(0, stutter_speed))
             self._play_note_pad(pad)
 
-        def _update_note_pad_stutter_duration(self, pad, note_spec, stutter_duration):
-            note_spec.stutter_duration = \
-                min(MAX_STUTTER_DURATION, max(0, stutter_duration))
+        def _update_note_pad_stutter_velfx(self, pad, note_spec, stutter_velfx):
+            note_spec.stutter_velfx = \
+                min(MAX_STUTTER_VELFX, max(0, stutter_velfx))
             self._play_note_pad(pad)
 
 
@@ -344,14 +342,14 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 adjust_pad_func = {
                     KNOB_1: self._update_note_pad_duration,
                     KNOB_2: self._update_note_pad_velocity,
-                    KNOB_3: self._update_note_pad_stutter_count,
-                    KNOB_4: self._update_note_pad_stutter_duration,
+                    KNOB_3: self._update_note_pad_stutter_speed,
+                    KNOB_4: self._update_note_pad_stutter_velfx,
                 }.get(ccnum)
                 adjust_step_func = {
                     KNOB_1: self._update_step_duration,
                     KNOB_2: self._update_step_velocity,
-                    KNOB_3: self._update_step_stutter_count,
-                    KNOB_4: self._update_step_stutter_duration,
+                    KNOB_3: self._update_step_stutter_speed,
+                    KNOB_4: self._update_step_stutter_velfx,
                 }.get(ccnum)
 
                 step_pads = self._pads[:self._used_pads]
