@@ -854,21 +854,20 @@ class PadMatrixHandler(ModeHandlerBase):
                 # if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
                 #     self.pad_off(c, r)
                 #     continue
-        # for note in range(0, 40):
+        for note in range(0, 40):
 
-        #     pos = self.driver.scroll_h + note % 8
-        #     row = note // 8
-        #     midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
+            pos = self.driver.scroll_h + note % 8
+            row = note // 8
+            midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
 
-        #     if midi_chan is None:
-        #         self.pad_off(note % 8, row)
-        #         continue
+            if midi_chan is None:
+                self.pad_off(note % 8, row)
+                continue
 
-        #     phrase = self._rows - 1 - row + self.driver.scroll_v
-        #     # seq = c * self._zynseq.col_in_bank + r
-        #     seq = (phrase, midi_chan)
-        #     pad_info = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"][phrase]["sequences"][midi_chan]
-        #     self.update_pad(4 - row, note % 8, pad_info)
+            phrase = self._rows - 1 - row + self.driver.scroll_v
+            
+            pad_info = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"][phrase]["sequences"][midi_chan]
+            self.update_pad(4 - row, note % 8, pad_info)
 
         self._refresh_tool_buttons()
 
@@ -1146,6 +1145,12 @@ class PadMatrixHandler(ModeHandlerBase):
     def _clear_sequence(self, scene, seq, create_empty=True):
         # Remove all patterns in all tracks
         seq_len = self._libseq.getSequenceLength(scene, *seq)
+        zyngui = zynthian_gui_config.zyngui
+        pated = zyngui.screens['pattern_editor']
+
+       # pated.do_clear_pattern_all()
+        
+#        self._libseq.clearSequence(scene, *seq)
         if seq_len != 0:
             n_tracks = self._libseq.getTracksInSequence(scene, *seq)
             for track in range(n_tracks):
@@ -1156,18 +1161,19 @@ class PadMatrixHandler(ModeHandlerBase):
                 while pos < seq_len:
                     pattern = self._libseq.getPatternAt(scene, seq[0], seq[1], track, pos)
                     if pattern != -1:
-                        self._libseq.removePattern(scene, seq[0], seq[1], track, pos)
+                        self._libseq.clearPattern(pattern)
                         pos += self._libseq.getPatternLength(pattern)
                     else:
                         # Arranger's offset step is a quarter note (24 clocks)
                         pos += 24
 
-            if n_tracks > 0:
-                for track in range(n_tracks-1):
-                    self._libseq.removeTrackFromSequence(scene, seq[0], seq[1], track)
+            # if n_tracks > 0:
+            #     for track in range(n_tracks-1):
+            #         self._libseq.removeTrackFromSequence(scene, seq[0], seq[1], track)
 
         # Add a new empty pattern at the beginning of first track
         if create_empty:
+            # pass
             pattern = self._libseq.createPattern()
             self._libseq.addPattern(scene, seq[0], seq[1], 0, 0, pattern)
             self._libseq.selectPattern(pattern)
@@ -1175,39 +1181,54 @@ class PadMatrixHandler(ModeHandlerBase):
             if self._pattern_template is not None:
                 self._action_apply_pattern_template(pattern)
 
-            zyngui = zynthian_gui_config.zyngui
             current_screen = zyngui.get_current_screen()
             if current_screen == 'pattern_editor':
                 pated = zyngui.screens['pattern_editor']
                 pated.load_pattern(pattern)
 
+        self._libseq.updateSequenceInfo()
+        zyngui.screens['launcher'].refresh_launchers()
+ 
+        # self._libseq.updateSequenceInfo()
+        # self._libseq.savePatternSnapshot()
+        # self._libseq.clearSequence(scene, *seq)
+        # self._libseq.savePatternSnapshot()
+
     def _copy_sequence(self, src_scene, src_seq, dst_scene, dst_seq):
         self._clear_sequence(dst_scene, dst_seq, create_empty=False)
-
-        # Copy all patterns in all tracks
-        seq_len = self._libseq.getSequenceLength(src_scene, *src_seq)
-        if seq_len != 0:
-            n_tracks = self._libseq.getTracksInSequence(src_scene, *src_seq)
-            for track in range(n_tracks):
-                if track >= self._libseq.getTracksInSequence(dst_scene, *dst_seq):
-                    self._libseq.addTrackToSequence(dst_scene, *dst_seq)
-                n_patts = self._libseq.getPatternsInTrack(
-                    src_scene, *src_seq, track)
-                if n_patts == 0:
-                    continue
-                pos = 0
-                while pos < seq_len:
-                    pattern = self._libseq.getPatternAt(
-                        src_scene, *src_seq, track, pos)
-                    if pattern != -1:
-                        new_pattern = self._libseq.createPattern()
-                        self._libseq.copyPattern(pattern, new_pattern)
-                        self._libseq.addPattern(
-                            dst_scene, *dst_seq, track, pos, new_pattern)
-                        pos += self._libseq.getPatternLength(pattern)
-                    else:
-                        # Arranger's offset step is a quarter note (24 clocks)
-                        pos += 24
+        pattern = self._libseq.getPatternAt(
+                        src_scene, *src_seq, 0, 0)
+        
+        destpattern = self._libseq.getPatternAt(
+                        dst_scene, *dst_seq, 0, 0)
+        
+        self._libseq.copyPattern(pattern, destpattern)
+        # self._libseq.copyPattern(paste[2], self.pattern)
+       #  self.load_pattern(self.pattern)
+        # # Copy all patterns in all tracks
+        # seq_len = self._libseq.getSequenceLength(src_scene, *src_seq)
+        # if seq_len != 0:
+        #     n_tracks = self._libseq.getTracksInSequence(src_scene, *src_seq)
+        #     for track in range(n_tracks):
+        #         if track >= self._libseq.getTracksInSequence(dst_scene, *dst_seq):
+        #             self._libseq.addTrackToSequence(dst_scene, *dst_seq)
+        #         n_patts = self._libseq.getPatternsInTrack(
+        #             src_scene, *src_seq, track)
+        #         if n_patts == 0:
+        #             continue
+        #         pos = 0
+        #         while pos < seq_len:
+        #             pattern = self._libseq.getPatternAt(
+        #                 src_scene, *src_seq, track, pos)
+        #             if pattern != -1:
+        #                 new_pattern = self._libseq.createPattern()
+        #                 self._libseq.copyPattern(pattern, new_pattern)
+        #                 self._libseq.addPattern(
+        #                     dst_scene, *dst_seq, track, pos, new_pattern)
+        #                 pos += self._libseq.getPatternLength(pattern)
+        #             else:
+        #                 # Arranger's offset step is a quarter note (24 clocks)
+        #                 pos += 24
 
         # Also copy StepSeq instrument pages
         self._request_action("stepseq", "sync-sequences",
@@ -1729,6 +1750,15 @@ class StepSeqHandler(ModeHandlerBase):
         self._chain_manager.set_active_chain_by_id(chain_id)
         self._zynseq.select_phrase(phrase)
         self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, chan)
+        pattern = self._sequence_patterns[0]
+        
+        zyngui = zynthian_gui_config.zyngui
+        current_screen = zyngui.get_current_screen()
+        if current_screen == 'pattern_editor':
+            pated = zyngui.screens['pattern_editor']
+            pated.refresh_sequence_info()
+            pated.load_pattern(pattern)
+
         self._update_instruments(chan, chain_id)
 
     def on_shift_changed(self, state):
