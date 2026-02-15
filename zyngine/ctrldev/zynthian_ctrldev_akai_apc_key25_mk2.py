@@ -47,7 +47,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
 
 # FIXME: these defines should be taken from where they are defined (zynseq.h)
 MAX_STUTTER_SPEED = 32
-MAX_STUTTER_VELFX = 96
+MAX_STUTTER_VELFX = 2
 
 # MIDI channel events (first 4 bits), next 4 bits is the channel!
 EV_NOTE_ON = 0x09
