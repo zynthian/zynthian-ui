@@ -840,26 +840,27 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             return
         note = self.keymap[row]["note"]
         cell = self.cells[cell_index]
+        cell_tag = f"{step},{row}"
+
+        evdata = self.zynseq.get_note_data(step, note)
+        if not evdata:
+            self.grid_canvas.delete(cell_tag)
+            self.cells[cell_index] = None
+            return
+
         if white is None:
             if cell:
                 white = "white" in self.grid_canvas.gettags(cell)
             else:
                 white = True
-
-        evdata = self.zynseq.get_note_data(step, note)
-        if not evdata:
-            self.grid_canvas.delete(cell)
-            self.cells[cell_index] = None
-            return
+        if white:
+            cell_tags = (cell_tag, f"step{step}", "gridcell", "white")
+        else:
+            cell_tags = (cell_tag, f"step{step}", "gridcell")
 
         velocity_colour = evdata.val2_start + 70
         fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
         coord = self.get_cell(step, row, evdata.duration, evdata.offset)
-        tags = (f"{step},{row}", f"step{step}")
-        if white:
-            cell_tags = tags + ("gridcell", "white")
-        else:
-            cell_tags = tags + ("gridcell",)
 
         if evdata.play_freq == 0 or evdata.play_chance == 0:
             stipple = 'gray12'
@@ -878,7 +879,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Redraw cell decoration
         deco_tag = f"deco_{step},{row}"
         self.grid_canvas.delete(deco_tag)
-        self.draw_cell_deco(coord, fill_colour, evdata, deco_tag)
+        self.draw_cell_deco(coord, fill_colour, evdata, (cell_tag, deco_tag))
 
         if step + evdata.duration > self.n_steps:
             self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{evdata.duration - self.n_steps + step}", state="normal")
@@ -892,8 +893,15 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # ---------------------------------------------------------------------------------
 
     def draw_cell_deco(self, coord, fill_color, evdata, tags):
+        # bright background - dark text
+        #if (zynthian_gui_config.get_color_lux(fill_color) > 0.5):
+        if (evdata.val2_start >= 58):
+            deco_color = "#101010"
+        # dark background - light text
+        else:
+            deco_color = "#E0E0E0"
+
         if evdata.stut_speed > 0:
-            stut_color = "#404040"
             if evdata.stut_freq == 0 or evdata.stut_chance == 0:
                 stipple = 'gray25'
             else:
@@ -906,14 +914,14 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 w = self.row_height // 2
                 y = coord[3] - w // 2
                 self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y,
-                                             fill=stut_color, stipple=stipple, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+                                             fill=deco_color, stipple=stipple, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
                 label_anchor = tkinter.CENTER
                 label_x = (coord[0] + coord[2]) // 2
             else:
-                w = self.row_height
+                w = self.row_height - 1
                 y = (coord[1] + coord[3]) // 2
                 self.grid_canvas.create_line(coord[0] + 1, y, coord[2] - 1, y,
-                                             fill=stut_color, stipple=stipple, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
+                                             fill=deco_color, stipple=stipple, width=w, dash=(dx, dx), dashoffset=dx, tags=tags)
                 # Fade-in
                 if evdata.stut_vfx == 1:
                     self.grid_canvas.create_polygon(coord[0], coord[1], coord[2], coord[1], coord[0], coord[3],
@@ -932,21 +940,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
         label_txt = None
         if evdata.play_freq > 1:
-            label_color = "#008000"
             label_txt = PLAY_FREQ_OPTIONS[evdata.play_freq]
         elif evdata.play_chance < 1.0:
-            label_color = "#008000"
             label_txt = f"{round(100 * evdata.play_chance)}%"
         elif evdata.stut_freq > 1:
-            label_color = "#800080"
             label_txt = STUT_FREQ_OPTIONS[evdata.stut_freq]
         elif evdata.stut_chance < 1.0:
-            label_color = "#800080"
             label_txt = f"{round(100 * evdata.stut_chance)}%"
         if label_txt:
             label_y = (coord[1] + coord[3]) // 2
             self.grid_canvas.create_text(label_x, label_y,
-                                         fill=label_color, text=label_txt, anchor=label_anchor, tags=tags)
+                                         fill=deco_color, text=label_txt, anchor=label_anchor, tags=tags)
 
 
     def redraw_grid_pending(self):
@@ -1009,10 +1013,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 # Draw row of note cells
                 self.draw_row(row, (colour == "white"))
 
-            # Set z-order to allow duration to show
+            # Set z-order to avoid vertical inlines overlapping note cells
             if self.redraw_pending > 2:
-                for step in range(self.n_steps):
-                    self.grid_canvas.tag_lower(f"step{step}")
+                self.grid_canvas.tag_lower("gridvline")
 
     # Function to draw pianoroll key outlines (does not fill key colour)
     def draw_pianoroll(self):
