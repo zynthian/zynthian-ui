@@ -304,6 +304,14 @@ int32_t getNoteIndex(uint32_t step, uint8_t note);
 */
 int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data);
 
+/** @brief  Set data of a specified note, excluding position, offset, command and note number (nValue1Start)
+    @param  position Quantity of steps from start of pattern at which to check for note
+    @param  note MIDI note number
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the note event in the events vector
+*/
+int32_t setNoteData(uint32_t step, uint8_t note, StepEvent* data);
+
 /** @brief  Get step that note starts
     @param  position Quantity of steps from start of pattern at which to check for note
     @param  note MIDI note number
@@ -411,47 +419,56 @@ float getControlOffset(uint32_t step, uint8_t control);
 */
 void setControlOffset(uint32_t step, uint8_t control, float offset);
 
+/** @brief  Set stutter parameters of note in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  speed Stutter speed
+    @param  velfx Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
+    @param  ramp Stutter speed ramp value (0=None, 1=up, 2=down)
+*/
+void setNoteStutter(uint32_t step, uint8_t note, uint8_t speed, uint8_t velfx, uint8_t ramp);
+
 /** @brief  Get stutter speed of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
     @retval uint8_t Stutter speed
 */
-uint8_t getStutterSpeed(uint32_t step, uint8_t note);
+uint8_t getNoteStutterSpeed(uint32_t step, uint8_t note);
 
 /** @brief  Set stutter speed of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
     @param  speed Stutter speed
 */
-void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed);
+void setNoteStutterSpeed(uint32_t step, uint8_t note, uint8_t speed);
 
 /** @brief  Get stutter velocity FX of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
     @retval uint8_t Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
 */
-uint8_t getStutterVelfx(uint32_t step, uint8_t note);
+uint8_t getNoteStutterVelfx(uint32_t step, uint8_t note);
 
 /** @brief  Set stutter velocity FX value of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
     @param  velfx Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
 */
-void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx);
+void setNoteStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx);
 
 /** @brief  Get stutter speed ramp of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
     @retval uint8_t Stutter speed ramp value (0=None, 1=up, 2=down)
 */
-uint8_t getStutterRamp(uint32_t step, uint8_t note);
+uint8_t getNoteStutterRamp(uint32_t step, uint8_t note);
 
 /** @brief  Set stutter speed ramp value of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
     @param  ramp Stutter speed ramp value (0=None, 1=up, 2=down)
 */
-void setStutterRamp(uint32_t step, uint8_t note, uint8_t ramp);
+void setNoteStutterRamp(uint32_t step, uint8_t note, uint8_t ramp);
 
 /** @brief  Get note play chance in selected pattern
     @param  step Index of step at which note resides

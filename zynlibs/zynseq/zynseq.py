@@ -126,7 +126,7 @@ class event_data(ctypes.Structure):
         ("val1_end", ctypes.c_uint8),       # MIDI value 1 at end of event
         ("val2_end", ctypes.c_uint8),       # MIDI value 2 at end of event
         ("stut_speed", ctypes.c_uint8),     # Stutter speed in "retriggers every 2 steps"
-        ("stut_vfx", ctypes.c_uint8),       # Stutter velocity FX (none=0, fade-out=1, fade-in=2)
+        ("stut_velfx", ctypes.c_uint8),     # Stutter velocity FX (none=0, fade-out=1, fade-in=2)
         ("stut_ramp", ctypes.c_uint8),      # Stutter speed ramp FX (none=0, ramp-up=1, ramp-down=2)
         ("play_freq", ctypes.c_uint8),      # Play/Skip note each N loops: last bit => play/skip, higher bits => loop count
                                             # Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
@@ -135,8 +135,29 @@ class event_data(ctypes.Structure):
         ("stut_chance", ctypes.c_float)     # Probability of stutter (0 = not stutter, 0.5 = stutters with 50%, 1.0 = always stutters)
     ]
 
+    def set_values(self, pos, os, dur, cmd, v1s, v2s, v1e, v2e, sspd, svfx, srmp, pf, sf, pc, sc):
+        self.position = pos
+        self.osffset = os
+        self.duration = dur
+        self.command = cmd
+        self.val1_start = v1s
+        self.val2_start = v2s
+        self.val1_end = v1e
+        self.val2_end = v2e
+        self.stut_speed = sspd
+        self.stut_velfx = svfx
+        self.stut_ramp = srmp
+        self.play_freq = pf
+        self.stut_freq = sf
+        self.play_chance = pc
+        self.stut_chance = sc
+
     def __str__(self):
-        return f"(position={self.position}, duration={self.duration}, command={self.command}, val1_start={self.val1_start}, val2_start={self.val2_start})"
+        return f"""(position={self.position}, offset={self.offset}, duration={self.duration}, command={self.command},
+    val1_start={self.val1_start}, val2_start={self.val2_start}, val1_end={self.val1_end}, val2_end={self.val2_end},
+    stut_speed={self.stut_speed}, stut_velfx={self.stut_velfx}, stut_ramp={self.stut_ramp},
+    play_freq={self.play_freq}, stut_freq={self.stut_freq},
+    play_chance={self.play_chance}, stut_chance={self.stut_chance})"""
 
 
 class zynseq(zynthian_engine):
@@ -153,6 +174,7 @@ class zynseq(zynthian_engine):
 
             self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
             self.libseq.getNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
+            self.libseq.setNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
             #self.libseq.getNoteData.restype = ctypes.c_int32
             self.libseq.getNoteDuration.restype = ctypes.c_float
             self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
@@ -440,6 +462,17 @@ class zynseq(zynthian_engine):
         if res >= 0:
             #logging.debug(f"Note ({step}, {note}) data => {evdata}")
             return evdata
+
+    def set_note_data(self, step, note, evdata):
+        """ Set note data, excepti position, searching by step & note number in the currently loaded pattern
+
+        step: Step index in the current pattern
+        note: Note number
+        evdata: event_data object
+        Returns: A data struct with event data
+        """
+
+        return self.libseq.setNoteData(step, note, evdata)
 
     # -------------------------------------------------------------------
     # MIDI transport & clock settings

@@ -240,6 +240,14 @@ class Pattern {
     */
     int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data);
 
+    /** @brief  Set data of a specified note, excluding position, offset, command and note number (nValue1Start)
+        @param  position Quantity of steps from start of pattern at which to check for note
+        @param  note MIDI note number
+        @param  data pointer to a struct to contain event data
+        @retval int32_t index of the note event in the events vector
+    */
+    int32_t setNoteData(uint32_t step, uint8_t note, StepEvent* data);
+
     /** @brief  Get step that note starts
         @param  position Quantity of steps from start of pattern at which to check for note
         @param  note MIDI note number

@@ -1927,6 +1927,15 @@ int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data){
     return -1;
 }
 
+int32_t setNoteData(uint32_t step, uint8_t note, StepEvent* data){
+    if (g_pPattern) {
+        int32_t i = g_pPattern->setNoteData(step, note, data);
+        if (i > 0) g_bDirty = true;
+        return i;
+    }
+    return -1;
+}
+
 int32_t getNoteStart(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getNoteStart(step, note);
@@ -2034,13 +2043,21 @@ void setControlOffset(uint32_t step, uint8_t control, float offset) {
     }
 }
 
-uint8_t getStutterSpeed(uint32_t step, uint8_t note) {
+void setNoteStutter(uint32_t step, uint8_t note, uint8_t speed, uint8_t velfx, uint8_t ramp) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setStutter(step, note, speed, velfx, ramp);
+        g_bDirty = true;
+    }
+}
+
+uint8_t getNoteStutterSpeed(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getStutterSpeed(step, note);
     return 0;
 }
 
-void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed) {
+void setNoteStutterSpeed(uint32_t step, uint8_t note, uint8_t speed) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->setStutterSpeed(step, note, speed);
@@ -2048,13 +2065,13 @@ void setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed) {
     }
 }
 
-uint8_t getStutterVelfx(uint32_t step, uint8_t note) {
+uint8_t getNoteStutterVelfx(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getStutterVelfx(step, note);
     return 0;
 }
 
-void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx) {
+void setNoteStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->setStutterVelfx(step, note, velfx);
@@ -2062,13 +2079,13 @@ void setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx) {
     }
 }
 
-uint8_t getStutterRamp(uint32_t step, uint8_t note) {
+uint8_t getNoteStutterRamp(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getStutterRamp(step, note);
     return 0;
 }
 
-void setStutterRamp(uint32_t step, uint8_t note, uint8_t ramp) {
+void setNoteStutterRamp(uint32_t step, uint8_t note, uint8_t ramp) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->setStutterRamp(step, note, ramp);

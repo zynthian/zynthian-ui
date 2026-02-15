@@ -168,6 +168,19 @@ int32_t Pattern::getNoteData(uint32_t step, uint8_t note, StepEvent* data) {
     return -1;
 }
 
+int32_t Pattern::setNoteData(uint32_t step, uint8_t note, StepEvent* data) {
+    int index;
+    for (index = 0; index < m_vEvents.size(); ++index) {
+        StepEvent* ev = m_vEvents[index];
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            uint8_t pos = sizeof(uint32_t) + 2 * sizeof(float) + 2 * sizeof(uint8_t);
+            memcpy((uint8_t *)ev + pos, (uint8_t *)data + pos, sizeof(StepEvent) - pos);
+            return index;
+        }
+    }
+    return -1;
+}
+
 int32_t Pattern::getNoteStart(uint32_t step, uint8_t note) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() <= step && int(std::ceil(ev->getPosition() + ev->getDuration())) > step && ev->getCommand() == MIDI_NOTE_ON &&
