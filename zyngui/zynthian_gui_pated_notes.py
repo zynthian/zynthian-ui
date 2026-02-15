@@ -1249,10 +1249,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         color_fg = zynthian_gui_config.color_header_bg
         color_bg = zynthian_gui_config.color_panel_tx
         if mode == EDIT_MODE_SINGLE:
-            self.set_title("Note Parameters", color_fg, color_bg)
+            #self.set_title("Note Parameters", color_fg, color_bg)
             self.set_edit_title()
         elif mode == EDIT_MODE_ALL:
-            self.set_title("Note Parameters ALL", color_fg, color_bg)
+            #self.set_title("Note Parameters ALL", color_fg, color_bg)
             self.set_edit_title()
         elif self.edit_mode == EDIT_MODE_ZOOM:
             self.set_title("Grid zoom", color_fg, color_bg)
@@ -1264,6 +1264,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.init_buttonbar()
 
     def set_edit_title(self):
+        color_fg = zynthian_gui_config.color_header_bg
+        color_bg = zynthian_gui_config.color_panel_tx
         step = self.selected_cell[0]
         note = self.get_note_from_row(self.selected_cell[1])
         delta = "1"
@@ -1272,46 +1274,50 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             if self.edit_param == EDIT_PARAM_DUR:
                 delta = "0.1"
                 zynpot = 1
-                self.set_title("Duration ALL")
+                self.set_title("Duration ALL", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_VEL:
-                self.set_title("Velocity ALL")
+                self.set_title("Velocity ALL", color_fg, color_bg)
         else:
             if self.edit_param == EDIT_PARAM_DUR:
-                sel_duration = self.zynseq.libseq.getNoteDuration(step, note)
+                sel_duration = self.zynseq.libseq.getNoteDuration(step, note, color_fg, color_bg)
                 if sel_duration > 0:
-                    duration = sel_duration
+                    val = sel_duration
                 else:
-                    duration = self.duration
-                self.set_title(f"Duration: {duration:0.1f} steps")
+                    val = self.duration
+                self.set_title(f"Duration: {val:0.1f} steps", color_fg, color_bg)
                 delta = "0.1"
                 zynpot = 1
             elif self.edit_param == EDIT_PARAM_VEL:
                 sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
                 if sel_velocity > 0:
-                    velocity = sel_velocity
+                    val = sel_velocity
                 else:
-                    velocity = self.velocity
-                self.set_title(f"Velocity: {velocity}")
+                    val = self.velocity
+                self.set_title(f"Velocity: {val}", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_OFFSET:
-                self.set_title(f"Offset: {round(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
+                val = round(100 * self.zynseq.libseq.getNoteOffset(step, note))
+                self.set_title(f"Offset: {val}%", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_STUT_SPD:
-                self.set_title(f"Stutter speed: {self.zynseq.libseq.getStutterSpeed(step, note)}")
+                val = self.zynseq.libseq.getStutterSpeed(step, note)
+                self.set_title(f"Stutter speed: {val}", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_STUT_VFX:
                 val = STUT_VFX_OPTIONS[self.zynseq.libseq.getStutterVelfx(step, note)]
-                self.set_title(f"Stutter velo: {val}")
+                self.set_title(f"Stutter velo: {val}", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_STUT_RMP:
                 val = STUT_RMP_OPTIONS[self.zynseq.libseq.getStutterRamp(step, note)]
-                self.set_title(f"Stutter ramp: {val}")
+                self.set_title(f"Stutter ramp: {val}", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_PLAY_CHANCE:
-                self.set_title(f"Play chance: {round(100 * self.zynseq.libseq.getNotePlayChance(step, note))}%")
+                val = round(100 * self.zynseq.libseq.getNotePlayChance(step, note))
+                self.set_title(f"Play chance: {val}%", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_PLAY_FREQ:
                 val = PLAY_FREQ_OPTIONS[self.zynseq.libseq.getNotePlayFreq(step, note)]
-                self.set_title(f"Play frequency: {val}")
+                self.set_title(f"Play frequency: {val}", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_STUT_CHANCE:
-                self.set_title(f"Stutter chance: {round(100 * self.zynseq.libseq.getNoteStutterChance(step, note))}%")
+                val = round(100 * self.zynseq.libseq.getNoteStutterChance(step, note))
+                self.set_title(f"Stutter chance: {val}%", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_STUT_FREQ:
                 val = STUT_FREQ_OPTIONS[self.zynseq.libseq.getNoteStutterFreq(step, note)]
-                self.set_title(f"Stutter frequency: {val}")
+                self.set_title(f"Stutter frequency: {val}", color_fg, color_bg)
 
         self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
                              (f"ZYNPOT {zynpot},+1", f"+{delta}"),
