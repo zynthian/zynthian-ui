@@ -1474,7 +1474,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     if val < 0 or val > 32:
                         return
                     if evdata:
-                        self.zynseq.libseq.setStutterSpeed(step, note, val)
+                        self.zynseq.libseq.setNoteStutterSpeed(step, note, val)
                         self.draw_cell(step, row)
                     else:
                         self.stut_speed = val
@@ -1488,7 +1488,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     if val < 0 or val >= len(STUT_VFX_OPTIONS):
                         return
                     if evdata:
-                        self.zynseq.libseq.setStutterVelfx(step, note, val)
+                        self.zynseq.libseq.setNoteStutterVelfx(step, note, val)
                         self.draw_cell(step, row)
                     else:
                         self.stut_velfx = val
@@ -1502,7 +1502,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     if val < 0 or val >= len(STUT_RMP_OPTIONS):
                         return
                     if evdata:
-                        self.zynseq.libseq.setStutterRamp(step, note, val)
+                        self.zynseq.libseq.setNoteStutterRamp(step, note, val)
                         self.draw_cell(step, row)
                     else:
                         self.stut_ramp = val
