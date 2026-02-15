@@ -2220,7 +2220,7 @@ class StepSeqHandler(ModeHandlerBase):
             velocity = note_spec.velocity
 
         channel = self._libseq.getChannel(
-            self._selected_seq[0], self._selected_seq[1], 0)
+            self._zynseq.scene, self._selected_seq[0], self._selected_seq[1], 0)
         if on:
             self._note_player.play(
                 note_spec.note, velocity, 0, channel,
@@ -2259,7 +2259,7 @@ class StepSeqHandler(ModeHandlerBase):
             self._libseq.setStutterVelfx(step, spec.note, spec.stutter_velfx)
         else:
             self._libseq.removeNote(step, spec.note)
-            channel = self._libseq.getChannel(
+            channel = self._libseq.getChannel(self._zynseq.scene,
                 self._selected_seq[0], self._selected_seq[1], 0)
             self._libseq.playNote(spec.note, 0, channel, 0)
         self.refresh(only_steps=True)
