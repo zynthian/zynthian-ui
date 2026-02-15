@@ -1011,9 +1011,11 @@ class PadMatrixHandler(ModeHandlerBase):
         self._update_pad(seq)
 
     def _change_scene(self, offset):
-        scene = min(64, max(1, self._zynseq.bank + offset))
-        if scene != self._zynseq.bank:
-            self._zynseq.select_bank(scene)
+        return
+        # scenes are moot right now?
+        scene = min(64, max(1, self._zynseq.scene + offset))
+        if scene != self._zynseq.scene:
+            self._zynseq.select_scene(scene)
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
 
     def update_pad(self, row, col, pad_info):
