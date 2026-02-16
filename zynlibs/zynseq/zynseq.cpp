@@ -1403,9 +1403,9 @@ const char* getState() {
                 jEvt.push_back(pEvent->getStutterSpeed());
                 jEvt.push_back(pEvent->getStutterVelfx());
                 jEvt.push_back(pEvent->getStutterRamp());
-                jEvt.push_back(int(pEvent->getPlayChance()) * 100);
+                jEvt.push_back(int(pEvent->getPlayChance() * 100));
                 jEvt.push_back(pEvent->getPlayFreq());
-                jEvt.push_back(int(pEvent->getStutterChance()) * 100);
+                jEvt.push_back(int(pEvent->getStutterChance() * 100));
                 jEvt.push_back(pEvent->getStutterFreq());
                 jPatn["events"].push_back(jEvt);
             }
