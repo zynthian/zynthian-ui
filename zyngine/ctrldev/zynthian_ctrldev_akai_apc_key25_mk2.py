@@ -2362,8 +2362,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._show_patterns_bar()
 
     def _change_to_next_pattern(self):
-        bank = self._zynseq.bank
-        seq = self._selected_seq
+        (phrase, midi_chan) = self._selected_seq
         # FIXME: Add support for track selection
         track = 0
 
@@ -2374,7 +2373,7 @@ class StepSeqHandler(ModeHandlerBase):
                 if not self._is_shifted:
                     return
                 pattern = self._libseq.createPattern()
-                if not self._add_pattern_to_end_of_track(bank, seq, track, pattern):
+                if not self._add_pattern_to_end_of_track(phrase, midi_chan, track, pattern):
                     logging.error(" could not add a new pattern!")
                     return
                 self._sequence_patterns.append(pattern)
