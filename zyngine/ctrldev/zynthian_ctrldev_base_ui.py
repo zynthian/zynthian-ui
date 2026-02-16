@@ -76,6 +76,8 @@ class ModeHandlerBase(ModeHandlerBase):
     # FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
     # NOTE: It runs in a thread to avoid lagging the hardware interface
     def _update_ui_arranger(self, cell_selected=(None, None)):
+        logging.debug('Arranger turned off until further notice')
+        return
         def run():
             arranger = zynthian_gui_config.zyngui.screens["arranger"]
             arranger.select_cell(*cell_selected)
