@@ -836,15 +836,24 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # row: Row number (keymap index)
     # colour: Black, white or None (default) to not care
     def draw_row(self, row, white=None):
+        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+        self.zynseq.libseq.isPatternModified()
+
         self.grid_canvas.itemconfig(f"lastnotetext{row}", state="hidden")
         for step in range(self.n_steps):
-            self.draw_cell(step, row, white)
+            self._draw_cell(step, row, white)
+
+    def draw_cell(self, step, row, white=None):
+        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+        self.zynseq.libseq.isPatternModified()
+        # Call _draw_cell
+        self._draw_cell(step, row, white)
 
     # Function to draw a grid cell
     # step: Step (column) index
     # row: Index of row
     # white: True for white notes
-    def draw_cell(self, step, row, white=None):
+    def _draw_cell(self, step, row, white=None):
         # Cells are stored in array sequentially: 1st row, 2nd row...
         cell_index = row * self.n_steps + step
         if cell_index >= len(self.cells):
@@ -890,20 +899,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Redraw cell decoration
         deco_tag = f"deco_{step},{row}"
         self.grid_canvas.delete(deco_tag)
-        self.draw_cell_deco(coord, fill_colour, evdata, (cell_tag, deco_tag))
+        self._draw_cell_deco(coord, fill_colour, evdata, (cell_tag, deco_tag))
 
         if step + evdata.duration > self.n_steps:
             self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{evdata.duration - self.n_steps + step}", state="normal")
 
-    # THIS fragment is in QUARENTINE => Remove when we are sure it's not needed anymore
-    def _draw_cell(self, step, row, white=None):
-        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
-        self.zynseq.libseq.isPatternModified()
-        # Call _draw_cell
-        self.draw_cell(step, row, white)
-    # ---------------------------------------------------------------------------------
-
-    def draw_cell_deco(self, coord, fill_color, evdata, tags):
+    def _draw_cell_deco(self, coord, fill_color, evdata, tags):
         # bright background - dark text
         #if (zynthian_gui_config.get_color_lux(fill_color) > 0.5):
         if (evdata.val2_start >= 58):
@@ -1117,7 +1118,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                                                      width=self.select_thickness, tags="selection")
         else:
             self.grid_canvas.coords(cell, coord)
-        self.grid_canvas.tag_raise(cell)
+        #self.grid_canvas.tag_raise(cell)
 
     # -------------------------------------------------------------------------
     # Event management
