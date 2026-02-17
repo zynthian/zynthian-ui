@@ -492,6 +492,12 @@ class MixerHandler(ModeHandlerBase):
         active_chain = self._chain_manager.get_active_chain()
         self._active_chain = active_chain.chain_id if active_chain else 0
 
+    def set_active(self, active):
+        super().set_active(active)
+        # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
+        if not active:
+            self._zynseq.libseq.updateSequenceInfo()
+
     def refresh(self):
         self._leds.control_leds_off()
 
@@ -1669,6 +1675,10 @@ class StepSeqHandler(ModeHandlerBase):
                 self._enable_arranger_mode(False)
             self._clock.disable()
             self._is_stage_play = False
+            # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
+            self.zynseq.libseq.updateSequenceInfo()
+            zynsigman.send(zynsigman.S_STEPSEQ, 1, #SS_SEQ_PLAY_STATE
+                           phrase=self._selected_seq[0], chan=self._selected_seq[1])
         self._pressed_pads_action = "activation"
 
     def _refresh_status_leds(self):
