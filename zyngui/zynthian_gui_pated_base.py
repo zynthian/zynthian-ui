@@ -273,7 +273,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         return row
 
     def get_row_from_evnum(self, num):
-        return num
+        return
 
     # Function to enable edit mode => It *MUST* be redefined in child class
     #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]
@@ -1291,8 +1291,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         coord = self.get_cell_pos(self.block_cell_start) + self.get_cell_pos(self.block_cell_end)
         if coord[2] >= coord[0]:
             coord[2] += self.step_width
+        else:
+            coord[0] +=  self.step_width
         if coord[3] >= coord[1]:
             coord[3] += self.row_height
+        else:
+            coord[1] += self.row_height
         if not self.rect_selected_block:
             self.rect_selected_block = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
                                               width=self.select_thickness, tags="selected_block")
@@ -1303,6 +1307,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.block_cell_start = copy.copy(self.selected_cell)
         self.block_cell_end = copy.copy(self.selected_cell)
         self.block_copied = None
+        self.select_block(0, 0)
 
     def end_select_block(self):
         self.block_copied = None
@@ -1332,18 +1337,18 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             step2 = self.block_cell_end[0]
         else:
             step1 = self.block_cell_end[0]
-            step2 = self.block_cell_start[0] - 1
+            step2 = self.block_cell_start[0]
         if self.block_cell_end[1] >= self.block_cell_start[1]:
             row1 = self.block_cell_start[1]
             row2 = self.block_cell_end[1]
         else:
-            row1 = self.block_cell_end[1] - 1
+            row1 = self.block_cell_end[1]
             row2 = self.block_cell_start[1]
         self.block_cell_start = [step1, row1]
         self.block_cell_end = [step2, row2]
         self.plot_select_block()
         # Copy subpattern to clipboard
-        self.zynseq.libseq.copyPatternBlock(self.pattern, step1, step2, self.get_evnum_from_row(row1 + 1), self.get_evnum_from_row(row2))
+        self.zynseq.libseq.copyPatternBlock(self.pattern, step1, step2, self.get_evnum_from_row(row1), self.get_evnum_from_row(row2))
         self.block_copied = [self.block_cell_start, self.block_cell_end]
         self.block_dstep = 0
         self.block_drow = 0
