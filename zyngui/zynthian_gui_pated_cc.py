@@ -34,6 +34,7 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_pated_base import *
+from zyngui.zynthian_gui_base import zynthian_gui_base
 
 # ------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern CC Editor GUI Class
@@ -67,11 +68,14 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             title = f"{title} ({zctrl.name})"
         return title
 
-    # Function to enable edit mode => It *MUST* be redefined in child class
-    #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]
     def set_edit_mode(self, mode):
-        #super().set_edit_mode(mode)
-        pass
+        # Currently EDIT modes disabled in CC editor
+        if mode in (EDIT_MODE_SINGLE, EDIT_MODE_ALL):
+            mode = EDIT_MODE_NONE
+        super().set_edit_mode(mode)
+
+    def set_edit_title(self):
+        super().set_edit_title()
 
     # -------------------------------------------------------------------------
     # Pattern menu
@@ -271,8 +275,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # Function to draw a grid cell
     # step: Step (column) index
     # row: Index of row
-    # white: True for white notes
-    def draw_cell(self, step, row, white=None):
+    def draw_cell(self, step, row):
         duration = self.zynseq.libseq.getControlDuration(step, self.cc_num)
         offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
         val2 = self.zynseq.libseq.getControlValueEnd(step, self.cc_num)
@@ -323,6 +326,12 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             else:
                 row = int(row)
         self.selected_cell = [step, row]
+
+        if self.edit_mode == EDIT_MODE_BLOCK:
+            return
+
+        # Hide selected block
+        self.hide_selected_block()
         # Position selector cell-frame
         coord = self.get_cell(step, row, 1, offset)
         if self.interpolateCC:
@@ -331,13 +340,12 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             coord[3] = coord[1] + sw
             coord[0] -= sw
             coord[1] -= sw
-        cell = self.grid_canvas.find_withtag("selection")
-        if not cell:
-            cell = self.grid_canvas.create_rectangle(coord, fill=SELECT_BORDER, outline=SELECT_BORDER,
-                                                     width=self.select_thickness, tags="selection")
+        if not self.rect_selected_cell:
+            self.rect_selected_cell = self.grid_canvas.create_rectangle(coord, fill=SELECT_BORDER, outline=SELECT_BORDER,
+                                                     width=self.select_thickness, tags="selected_cell")
         else:
-            self.grid_canvas.coords(cell, coord)
-        self.grid_canvas.tag_raise(cell)
+            self.grid_canvas.coords(self.rect_selected_cell, coord)
+        #self.grid_canvas.tag_raise(self.rect_selected_cell)
 
     # -------------------------------------------------------------------------
     # Event management
@@ -368,16 +376,14 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def refresh_status(self):
         super().refresh_status()
 
-    def set_edit_title(self):
-        super().set_edit_title()
-
     # Function to handle zynpots value change
     #   i: Zynpot index [0..n]
     #   dval: Current value of zyncoder
     def zynpot_cb(self, i, dval):
         #logging.debug(f"DVAL {i} => {dval}")
-        if super().zynpot_cb(i, dval):
-            return
+        if zynthian_gui_base.zynpot_cb(self, i, dval):
+            return True
+
         if i == self.ctrl_order[0]:
             if self.edit_mode == EDIT_MODE_NONE:
                 self.cc_num += dval
@@ -388,11 +394,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 self.set_title()
                 self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
                 self.redraw_pending = 2
-            return True
-        if i == self.ctrl_order[1]:
-            if self.edit_mode == EDIT_MODE_NONE:
-                self.set_grid_zoom(self.zoom + dval)
-            return True
+                return True
         elif i == self.ctrl_order[2]:
             if self.edit_mode == EDIT_MODE_NONE:
                 step = self.selected_cell[0]
@@ -408,10 +410,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                         self.zynseq.libseq.setControlValue(step, self.cc_num, newval, newval)
                 # Select cell
                 self.select_cell(step, self.selected_cell[1] + dval)
-            return True
-        elif i == self.ctrl_order[3]:
-            if self.edit_mode == EDIT_MODE_NONE:
-                self.select_cell(self.selected_cell[0] + dval, None)
+                return True
+
+        if super().zynpot_cb(i, dval):
             return True
 
 # ------------------------------------------------------------------------------

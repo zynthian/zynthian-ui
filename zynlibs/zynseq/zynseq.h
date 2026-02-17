@@ -245,6 +245,24 @@ uint32_t getPatternAt(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t 
 */
 void copyPattern(uint32_t source, uint32_t destination);
 
+/** @brief  Paste (merge) copy/paste buffer into the specified pattern
+    @param  pattern Index of pattern
+    @param  dpos Quantity of steps to offset
+    @param  doffset Fractional time offset
+    @param  dnote Note offset
+    @param  truncate Truncate time overflowed events
+*/
+void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate);
+
+/** @brief  Copy a block (subpattern) from the specified pattern to the copy/paste buffer
+    @param  pattern Index of pattern
+    @param  pos1 step-range start
+    @param  pos2 step-range end
+    @param  note1 note-range start
+    @param  note2 note-range end
+*/
+void copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2);
+
 // ** Functions acting on the globally selected pattern **
 
 /** @brief  Select active pattern
@@ -289,6 +307,20 @@ void removeNote(uint32_t step, uint8_t note);
 */
 void clearNotes();
 
+/** @brief  Get data of pattern event at specified index
+    @param  index Event index
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the event. -1 if index is out of range.
+*/
+int32_t getEventDataAt(uint32_t index, StepEvent* data);
+
+/** @brief  Get data of copy/paste buffer event at specified index
+    @param  index Event index
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the event. -1 if index is out of range.
+*/
+int32_t getBufferEventDataAt(uint32_t index, StepEvent* data);
+
 /** @brief  Get index of specified note
     @param  position Quantity of steps from start of pattern at which to check for note
     @param  note MIDI note number
@@ -302,7 +334,7 @@ int32_t getNoteIndex(uint32_t step, uint8_t note);
     @param  data pointer to a struct to contain event data
     @retval int32_t Index of the note event in the events vector
 */
-int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data);
+int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data, bool cp_buffer=false);
 
 /** @brief  Set data of a specified note, excluding position, offset, command and note number (nValue1Start)
     @param  position Quantity of steps from start of pattern at which to check for note

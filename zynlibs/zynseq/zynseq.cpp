@@ -89,9 +89,12 @@ uint32_t g_nLastStepCC              = 0;            // Step when last => WARNING
 uint8_t g_nPlayingSequences         = 0;            // Bitwise flga of playing/starting sequences
 
 char g_sName[256];                                  // Buffer to hold sequence name so that it can be sent back for Python to parse
-uint8_t g_nInputRest                = 0xFF;       // MIDI note number that creates rest in pattern
+uint8_t g_nInputRest                = 0xFF;         // MIDI note number that creates rest in pattern
 uint16_t g_nVerticalZoom            = 16;           // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom          = 16;           // Quantity of beats to show in arranger view
+
+// Patter copy/paste buffer
+Pattern* g_pPatternBuffer           = NULL;         // Pointer to pattern copy/paste buffer
 
 // Transport variables apply to next period
 uint32_t g_nDefaultBpb                = DEFAULT_BPB; // Default quantity of beats (quater notes) in each bar
@@ -118,6 +121,7 @@ uint8_t g_nMetronomeMode = 0;  // Metonome play mode
 struct metro_wav_t g_metro_pip;
 struct metro_wav_t g_metro_peep;
 struct metro_wav_t* g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
+
 char* g_pState = nullptr; // Pointer used for temporary transfer of state string
 
 using json = nlohmann::ordered_json;
@@ -1915,15 +1919,41 @@ void clearNotes() {
     }
 }
 
+int32_t getEventDataAt(uint32_t index, StepEvent* data){
+    if (g_pPattern) {
+        StepEvent* ev = g_pPattern->getEventAt(index);
+        if (ev) {
+            memcpy(data, ev, sizeof(StepEvent));
+            return index;
+        }
+    }
+    return -1;
+}
+
+int32_t getBufferEventDataAt(uint32_t index, StepEvent* data){
+    if (g_pPattern) {
+        StepEvent* ev = g_pPatternBuffer->getEventAt(index);
+        if (ev) {
+            memcpy(data, ev, sizeof(StepEvent));
+            return index;
+        }
+    }
+    return -1;
+}
+
 int32_t getNoteIndex(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getNoteIndex(step, note);
     return -1;
 }
 
-int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data){
-    if (g_pPattern)
-        return g_pPattern->getNoteData(step, note, data);
+int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data, bool cp_buffer){
+    if (g_pPattern) {
+        if (cp_buffer)
+            return g_pPatternBuffer->getNoteData(step, note, data);
+        else
+            return g_pPattern->getNoteData(step, note, data);
+    }
     return -1;
 }
 
@@ -2245,6 +2275,27 @@ void clearPattern(uint32_t pattern) {
 void copyPattern(uint32_t source, uint32_t destination) {
     g_seqMan.copyPattern(source, destination);
     g_bDirty = true;
+}
+
+void copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2) {
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
+    if (pPattern) {
+        // Free last selection
+        if (g_pPatternBuffer)
+            delete g_pPatternBuffer;
+        // Copy new selection to buffer
+        g_pPatternBuffer = pPattern->copyPattern(pos1, pos2, note1,note2);
+    }
+}
+
+void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate) {
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
+    if (pPattern) {
+        if (g_pPatternBuffer) {
+            pPattern->pastePattern(g_pPatternBuffer, dpos, doffset, dnote, truncate);
+            g_bDirty = true;
+        }
+    }
 }
 
 void setInputRest(uint8_t note) {

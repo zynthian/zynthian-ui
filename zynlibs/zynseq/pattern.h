@@ -110,6 +110,28 @@ class StepEvent {
         m_nStutterFreq = pEvent->m_nStutterFreq;
     };
 
+    StepEvent& operator=(StepEvent& ev) {
+        // Guard self assignment
+        if (this == &ev)
+            return *this;
+        m_nPosition = ev.m_nPosition;
+        m_fOffset = ev.m_fOffset;
+        m_fDuration = ev.m_fDuration;
+        m_nCommand = ev.m_nCommand;
+        m_nValue1start = ev.m_nValue1start;
+        m_nValue2start = ev.m_nValue2start;
+        m_nValue1end = ev.m_nValue1end;
+        m_nValue2end = ev.m_nValue2end;
+        m_nStutterSpeed = ev.m_nStutterSpeed;
+        m_nStutterVelfx = ev.m_nStutterVelfx;
+        m_nStutterRamp = ev.m_nStutterRamp;
+        m_fPlayChance = ev.m_fPlayChance;
+        m_nPlayFreq = ev.m_nPlayFreq;
+        m_fStutterChance = ev.m_fStutterChance;
+        m_nStutterFreq = ev.m_nStutterFreq;
+        return *this;
+    }
+
     // Public Getters
     uint32_t getPosition() { return m_nPosition; }
     float getOffset() { return m_fOffset; }
@@ -189,6 +211,29 @@ class Pattern {
         @param  p Pattern Reference to copy
     */
     Pattern& operator=(Pattern& p);
+
+    /** @brief  Copy+Add operator
+        @param  p Pattern Reference to copy
+    */
+    Pattern& operator+=(Pattern& p);
+
+    /** @brief  Paste pattern
+        @param  p Pattern Reference to paste (merge)
+        @param  dpos Quantity of steps to offset
+        @param  doffset Fractional time offset
+        @param  dnote Note offset
+        @param  truncate Truncate time overflowed events
+    */
+    void pastePattern(Pattern* p, int32_t dpos=0, float doffset=0.0, int8_t dnote=0, bool truncate=false);
+
+    /** @brief  Copy (sub)pattern from this pattern.
+        @param  pos1 step-range start
+        @param  pos2 step-range end
+        @param  note1 note-range start
+        @param  note2 note-range end
+        @retval Pattern* Pointer to a newly created pattern with the copied events. The caller must delete when not needed anymore.
+    */
+    Pattern* copyPattern(uint32_t pos1=0, uint32_t pos2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
 
     /** @brief  Add step event to pattern
         @param  position Quantity of steps from start of pattern

@@ -48,6 +48,26 @@ import zynautoconnect
 #
 # -------------------------------------------------------------------------------
 
+MIDI_NOTE_OFF = 0x80
+MIDI_NOTE_ON = 0x90
+MIDI_POLY_PRESSURE = 0xA0
+MIDI_CONTROL = 0xB0
+MIDI_PROGRAM = 0xC0
+MIDI_CHAN_PRESSURE = 0xD0
+MIDI_PITCHBEND = 0xE0
+MIDI_SYSEX_START = 0xF0
+MIDI_TIMECODE = 0xF1
+MIDI_POSITION = 0xF2
+MIDI_SONG = 0xF3
+MIDI_TUNE = 0xF6
+MIDI_SYSEX_END = 0xF7
+MIDI_CLOCK = 0xF8
+MIDI_START = 0xFA
+MIDI_CONTINUE = 0xFB
+MIDI_STOP = 0xFC
+MIDI_ACTIVE_SENSE = 0xFE
+MIDI_RESET = 0xFF
+
 SEQ_EVENT_SCENE = 1
 SEQ_EVENT_TEMPO = 2
 SEQ_EVENT_CHANNEL = 3
@@ -173,6 +193,9 @@ class zynseq(zynthian_engine):
             self.libseq.getSequenceName.restype = ctypes.c_char_p
 
             self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
+            self.libseq.pastePatternBlock.argtypes = [ctypes.c_uint32, ctypes.c_int32, ctypes.c_float, ctypes.c_int8, ctypes.c_bool]
+            self.libseq.getEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
+            self.libseq.getBufferEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
             self.libseq.getNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
             self.libseq.setNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
             #self.libseq.getNoteData.restype = ctypes.c_int32
@@ -449,16 +472,17 @@ class zynseq(zynthian_engine):
         if self.libseq.addPattern(chan, sequence, track, time, pattern, force):
             return True
 
-    def get_note_data(self, step, note):
+    def get_note_data(self, step, note, cp_buffer=False):
         """ Get note full data searching by step & note number in the currently loaded pattern
 
         step: Step index in the current pattern
         note: Note number
+        : Note number
         Returns: A data struct with event data
         """
 
         evdata = event_data()
-        res = self.libseq.getNoteData(step, note, evdata)
+        res = self.libseq.getNoteData(step, note, evdata, cp_buffer)
         if res >= 0:
             #logging.debug(f"Note ({step}, {note}) data => {evdata}")
             return evdata

@@ -38,7 +38,7 @@ from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
 from zyngui.multitouch import MultitouchTypes
 from zyngui.zynthian_gui_pated_base import *
-
+from zyngui.zynthian_gui_base import zynthian_gui_base
 
 # ------------------------------------------------------------------------------
 
@@ -186,7 +186,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.chord_mode = 0  # Chord entry mode. 0 for single note entry
         self.chord_type = 0  # Chord type. Index of CHORD
         self.diatonic_scale_tonic = 0  # Tonic of diatonic scale used for chords
-        self.cells = []  # Array of cells indices
         self.rows_pending = Queue()
 
         # Touch control variables
@@ -208,8 +207,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             return f"{title}: Notes"
 
-    def get_note_from_row(self, row):
+    def get_evnum_from_row(self, row):
         return self.keymap[row]["note"]
+
+    def get_row_from_evnum(self, num):
+        for row in range(0, len(self.keymap)):
+            if self.keymap[row]["note"] == num:
+                return row
+        return None
+
+    get_note_from_row = get_evnum_from_row
+    get_row_from_note = get_row_from_evnum
 
     def get_diatonic_chord(self, trigger_note):
         chord = []
@@ -786,9 +794,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Geometry management
     # -------------------------------------------------------------------------
 
-    def get_pianoroll_num_cells(self):
-        return len(self.keymap)
-
     def calculate_geometry_limits(self):
         self.n_rows = len(self.keymap)
         super().calculate_geometry_limits()
@@ -832,74 +837,84 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def set_velocity_indicator(self, velocity):
         self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * velocity / 127, PLAYHEAD_HEIGHT)
 
-    # Function to draw a grid row
-    # row: Row number (keymap index)
-    # colour: Black, white or None (default) to not care
-    def draw_row(self, row, white=None):
-        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+    # Draw all note events in pattern
+    def draw_events(self):
         self.zynseq.libseq.isPatternModified()
+        self.grid_canvas.delete("pat")
+        evdata = zynseq.event_data()
+        # Pattern events
+        index = 0
+        while True:
+            res = self.zynseq.libseq.getEventDataAt(index, evdata)
+            if res < 0:
+                break
+            #logging.debug(f"DRAWING EVENT AT {index} => {evdata.position}, {evdata.command}")
+            if evdata.command == zynseq.MIDI_NOTE_ON:
+                self.draw_event(evdata, False)
+            index += 1
 
-        self.grid_canvas.itemconfig(f"lastnotetext{row}", state="hidden")
-        for step in range(self.n_steps):
-            self._draw_cell(step, row, white)
+    def draw_cp_events(self):
+        self.grid_canvas.delete("cp")
+        evdata = zynseq.event_data()
+        if self.block_copied:
+            # Copy/paste buffer events
+            index = 0
+            while True:
+                res = self.zynseq.libseq.getBufferEventDataAt(index, evdata)
+                if res < 0:
+                    break
+                #logging.debug(f"DRAWING CP EVENT AT {index} => {evdata.position}, {evdata.command}")
+                if evdata.command == zynseq.MIDI_NOTE_ON:
+                    evdata.position += self.block_dstep
+                    evdata.val1_start += self.block_drow
+                    if 0 <= evdata.position < self.n_steps and 0 <= evdata.val1_start <= 127:
+                        self.draw_event(evdata, True)
+                index += 1
 
-    def draw_cell(self, step, row, white=None):
-        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
-        self.zynseq.libseq.isPatternModified()
-        # Call _draw_cell
-        self._draw_cell(step, row, white)
+    # Draw an event
+    # evdata: Event data
+    # cp: True if it's an event from the copy/paste buffer
+    # row: row index (optimization parameter)
+    def draw_event(self, evdata, cp=False, row=None):
+        step = evdata.position
+        # Calculate row if needed:
+        if row is None:
+            row = self.get_row_from_note(evdata.val1_start)
+            # Nothing to plot is event's note hasn't a row
+            if row is None:
+                return
 
-    # Function to draw a grid cell
-    # step: Step (column) index
-    # row: Index of row
-    # white: True for white notes
-    def _draw_cell(self, step, row, white=None):
-        # Cells are stored in array sequentially: 1st row, 2nd row...
-        cell_index = row * self.n_steps + step
-        if cell_index >= len(self.cells):
-            return
-        note = self.keymap[row]["note"]
-        cell = self.cells[cell_index]
-        cell_tag = f"{step},{row}"
-
-        evdata = self.zynseq.get_note_data(step, note)
-        if not evdata:
-            self.grid_canvas.delete(cell_tag)
-            self.cells[cell_index] = None
-            return
-
-        if white is None:
-            if cell:
-                white = "white" in self.grid_canvas.gettags(cell)
-            else:
-                white = True
-        if white:
-            cell_tags = (cell_tag, f"step{step}", "gridcell", "white")
-        else:
-            cell_tags = (cell_tag, f"step{step}", "gridcell")
+        #logging.debug(f"DRAWING EVENT AT CELL {step}, {row}")
 
         velocity_colour = evdata.val2_start + 70
-        fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
-        coord = self.get_cell(step, row, evdata.duration, evdata.offset)
-
+        if cp:
+            cell_tag = f"cp_{step},{row}"
+            cell_tags = (cell_tag, f"step{step}", "gridcell", "cp")
+            fill_colour = f"#{velocity_colour//2:02x}{velocity_colour:02x}{velocity_colour//2:02x}"
+        else:
+            cell_tag = f"pat_{step},{row}"
+            cell_tags = (cell_tag, f"step{step}", "gridcell", "pat")
+            fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
         if evdata.play_freq == 0 or evdata.play_chance == 0:
             stipple = 'gray12'
         else:
             stipple = ''
 
-        if cell:
+        coord = self.get_cell(step, row, evdata.duration, evdata.offset)
+        cells = self.grid_canvas.find_withtag(cell_tag)
+        if cells:
             # Update existing cell
-            self.grid_canvas.coords(cell, coord)
-            self.grid_canvas.itemconfig(cell, fill=fill_colour, stipple=stipple, tags=cell_tags)
+            self.grid_canvas.coords(cells[0], coord)
+            self.grid_canvas.itemconfig(cells[0], fill=fill_colour, stipple=stipple, tags=cell_tags)
         else:
             # Create new cell
-            cell = self.grid_canvas.create_rectangle(coord, width=0, fill=fill_colour, stipple=stipple, tags=cell_tags)
-            self.cells[cell_index] = cell
+            self.grid_canvas.create_rectangle(coord, width=0, fill=fill_colour, stipple=stipple, tags=cell_tags)
 
         # Redraw cell decoration
         deco_tag = f"deco_{step},{row}"
         self.grid_canvas.delete(deco_tag)
-        self._draw_cell_deco(coord, fill_colour, evdata, (cell_tag, deco_tag))
+        deco_tags = cell_tags + (deco_tag,)
+        self._draw_cell_deco(coord, fill_colour, evdata, deco_tags)
 
         if step + evdata.duration > self.n_steps:
             self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{evdata.duration - self.n_steps + step}", state="normal")
@@ -965,21 +980,64 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.grid_canvas.create_text(label_x, label_y,
                                          fill=deco_color, text=label_txt, anchor=label_anchor, tags=tags)
 
+    # Function to draw a grid row
+    # row: Row number (keymap index)
+    def draw_row(self, row):
+        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+        self.zynseq.libseq.isPatternModified()
+
+        self.grid_canvas.itemconfig(f"lastnotetext{row}", state="hidden")
+        for step in range(self.n_steps):
+            self._draw_cell(step, row)
+
+    def draw_cell(self, step, row):
+        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+        self.zynseq.libseq.isPatternModified()
+        # Call _draw_cell
+        self._draw_cell(step, row)
+
+    # Function to draw a grid cell
+    # step: Step (column) index
+    # row: Index of row
+    def _draw_cell(self, step, row):
+        note = self.keymap[row]["note"]
+        if self.block_copied:
+            evdata = self.zynseq.get_note_data(step - self.block_dstep, note - self.block_drow, True)
+            if evdata:
+                cp = True
+            else:
+                cp = False
+                evdata = self.zynseq.get_note_data(step, note)
+        else:
+            cp = False
+            evdata = self.zynseq.get_note_data(step, note)
+
+        if evdata:
+            self.draw_event(evdata, cp, row)
+        else:
+            if cp:
+                self.grid_canvas.delete(f"cp_{step},{row}")
+            else:
+                self.grid_canvas.delete(f"pat_{step},{row}")
 
     def redraw_grid_pending(self):
-        if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
-            self.redraw_pending = 4
+        if self.grid_rows != len(self.keymap) or self.grid_steps != self.n_steps:
+            self.grid_rows = len(self.keymap)
+            self.grid_steps = self.n_steps
             self.grid_canvas.delete(tkinter.ALL)
+            self.rect_selected_cell = None
+            self.rect_selected_block = None
+            self.redraw_pending = 4
             self.draw_pianoroll()
-            self.cells = [None] * self.get_pianoroll_num_cells() * self.n_steps
             self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width,
                                     0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
 
         super().redraw_grid_pending()
 
         if self.redraw_pending > 1:
-            self.piano_roll.delete("notename")
-            self.grid_canvas.delete("gridhline")
+            if self.redraw_pending > 3:
+                self.piano_roll.delete("notename")
+                self.grid_canvas.delete("gridhline")
 
             if self.redraw_pending > 2:
                 row_min = 0
@@ -995,36 +1053,42 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                                              int(self.row_height * (row - 0.5)),
                                              state=tkinter.HIDDEN, font=grid_font, anchor=tkinter.E,
                                              tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"))
+                if self.redraw_pending > 3:
+                    # fill = "black"
+                    # Update pianoroll keys
+                    row_id = f"row{row}"
+                    try:
+                        name = self.keymap[row]["name"]
+                    except:
+                        name = None
+                    if "colour" in self.keymap[row]:
+                        colour = self.keymap[row]["colour"]
+                    elif name and "#" in name:
+                        colour = "black"
+                    else:
+                        colour = "white"
+                    if colour == "black":
+                        fill = "white"
+                    else:
+                        fill = CANVAS_BACKGROUND
+                    self.piano_roll.itemconfig(row_id, fill=colour)
+                    # name = str(row)
+                    ypos = self.total_height - row * self.row_height
+                    if name:
+                        self.piano_roll.create_text(2, ypos - 0.5 * self.row_height, text=name, font=grid_font,
+                                                    anchor="w", fill=fill, tags="notename")
+                    if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
+                        self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridhline")
+                    else:
+                        self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridhline")
 
-                # fill = "black"
-                # Update pianoroll keys
-                row_id = f"row{row}"
-                try:
-                    name = self.keymap[row]["name"]
-                except:
-                    name = None
-                if "colour" in self.keymap[row]:
-                    colour = self.keymap[row]["colour"]
-                elif name and "#" in name:
-                    colour = "black"
-                else:
-                    colour = "white"
-                if colour == "black":
-                    fill = "white"
-                else:
-                    fill = CANVAS_BACKGROUND
-                self.piano_roll.itemconfig(row_id, fill=colour)
-                # name = str(row)
-                ypos = self.total_height - row * self.row_height
-                if name:
-                    self.piano_roll.create_text(2, ypos - 0.5 * self.row_height, text=name, font=grid_font,
-                                                anchor="w", fill=fill, tags="notename")
-                if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
-                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridhline")
-                else:
-                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridhline")
                 # Draw row of note cells
-                self.draw_row(row, (colour == "white"))
+                if self.redraw_pending <= 2:
+                    self.draw_row(row)
+
+            # Draw all notes
+            if self.redraw_pending > 2:
+                self.draw_events()
 
             # Set z-order to avoid vertical inlines overlapping note cells
             if self.redraw_pending > 2:
@@ -1099,26 +1163,58 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             # Step is off left of display
             self.set_step_offset(step)
         self.selected_cell = [step, row]
+
+        if self.edit_mode == EDIT_MODE_BLOCK:
+            return
+
         # Duration & velocity
-        duration = self.zynseq.libseq.getNoteDuration(step, note)
-        offset = self.zynseq.libseq.getNoteOffset(step, note)
-        if duration:
-            velocity = self.zynseq.libseq.getNoteVelocity(step, note)
+        evdata = self.zynseq.get_note_data(step, note)
+        if evdata:
+            duration = evdata.duration
+            offset = evdata.offset
+            velocity = evdata.val2_start
         else:
             duration = self.duration
+            offset = 0.0
             velocity = self.velocity
         self.set_velocity_indicator(velocity)
+
+        # Hide selected block
+        self.hide_selected_block()
         # Position selector cell-frame
         coord = self.get_cell(step, row, duration, offset)
         coord[0] -= 1
         coord[1] -= 1
-        cell = self.grid_canvas.find_withtag("selection")
-        if not cell:
-            cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
-                                                     width=self.select_thickness, tags="selection")
+        if not self.rect_selected_cell:
+            self.rect_selected_cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
+                                                                   width=self.select_thickness, tags="selected_cell")
         else:
-            self.grid_canvas.coords(cell, coord)
-        #self.grid_canvas.tag_raise(cell)
+            self.grid_canvas.coords(self.rect_selected_cell, coord)
+        #self.grid_canvas.tag_raise(self.rect_selected_cell)
+
+    # ---------------------------------------------------------------
+    # Block edit functionality => Copy/paste block
+    # ---------------------------------------------------------------
+
+    def move_cell(self, cell, dstep, drow):
+        inrange = True
+        if dstep:
+            cell[0] += dstep
+            if cell[0] >= self.n_steps:
+                cell[0] = self.n_steps - 1
+                inrange = False
+            elif cell[0] < 0:
+                cell[0] = 0
+                inrange = False
+        if drow:
+            cell[1] += drow
+            if cell[1] >= len(self.keymap):
+                cell[1] = len(self.keymap) - 1
+                inrange = False
+            elif cell[1] < 0:
+                cell[1] = 0
+                inrange = False
+        return inrange
 
     # -------------------------------------------------------------------------
     # Event management
@@ -1251,7 +1347,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             while not self.rows_pending.empty():
                 pending_rows.add(self.rows_pending.get_nowait())
             while len(pending_rows):
-                self.draw_row(pending_rows.pop(), None)
+                self.draw_row(pending_rows.pop())
         self.save_pattern_snapshot(now=False, force=False)
 
     # Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
@@ -1268,23 +1364,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Function to enable note duration/velocity direct edit mode
     # mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
     def set_edit_mode(self, mode):
-        self.edit_mode = mode
-        color_fg = zynthian_gui_config.color_header_bg
-        color_bg = zynthian_gui_config.color_panel_tx
-        if mode == EDIT_MODE_SINGLE:
-            #self.set_title("Note Parameters", color_fg, color_bg)
-            self.set_edit_title()
-        elif mode == EDIT_MODE_ALL:
-            #self.set_title("Note Parameters ALL", color_fg, color_bg)
-            self.set_edit_title()
-        elif self.edit_mode == EDIT_MODE_ZOOM:
-            self.set_title("Grid zoom", color_fg, color_bg)
-        elif self.edit_mode == EDIT_MODE_HISTORY:
-            self.set_title("Undo/Redo", color_fg, color_bg)
-            self.init_buttonbar([("ARROW_LEFT", "<< undo"), ("ARROW_RIGHT", "redo >>")])
-        else:
-            self.set_title()
-            self.init_buttonbar()
+        super().set_edit_mode(mode)
 
     def set_edit_title(self):
         color_fg = zynthian_gui_config.color_header_bg
@@ -1382,8 +1462,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     #   i: Zynpot index [0..n]
     #   dval: Current value of zyncoder
     def zynpot_cb(self, i, dval):
-        if super().zynpot_cb(i, dval):
-            return
+        if zynthian_gui_base.zynpot_cb(self, i, dval):
+            return True
 
         if i == self.ctrl_order[1]:
             if self.edit_mode == EDIT_MODE_SINGLE:
@@ -1407,16 +1487,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         self.duration = duration
                         self.select_cell()
                 self.set_edit_title()
+                return True
             elif self.edit_mode == EDIT_MODE_ALL:
                 if self.edit_param == EDIT_PARAM_DUR:
                     self.zynseq.libseq.changeDurationAll(dval * 0.1)
                     self.redraw_pending = 3
-            else:
-                self.set_grid_zoom(self.zoom + dval)
-                # patnum = self.pattern + dval
-                # if patnum > 0:
-                # self.pattern = patnum
-                # self.load_pattern(self.pattern)
+                    return True
 
         elif i == self.ctrl_order[2]:
             if self.edit_mode == EDIT_MODE_SINGLE:
@@ -1487,7 +1563,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = self.stut_velfx
                     val += dval
                     if val < 0 or val >= len(STUT_VFX_OPTIONS):
-                        return
+                        return True
                     if evdata:
                         self.zynseq.libseq.setNoteStutterVelfx(step, note, val)
                         self.draw_cell(step, row)
@@ -1501,7 +1577,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = self.stut_ramp
                     val += dval
                     if val < 0 or val >= len(STUT_RMP_OPTIONS):
-                        return
+                        return True
                     if evdata:
                         self.zynseq.libseq.setNoteStutterRamp(step, note, val)
                         self.draw_cell(step, row)
@@ -1515,7 +1591,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = self.play_chance
                     val = round(100 * val) + dval
                     if val < 0 or val > 100:
-                        return
+                        return True
                     if evdata:
                         self.zynseq.libseq.setNotePlayChance(step, note, val/100)
                         self.draw_cell(step, row)
@@ -1529,7 +1605,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = self.play_freq
                     val += dval
                     if val < 0 or val >= len(PLAY_FREQ_OPTIONS):
-                        return
+                        return True
                     if evdata:
                         self.zynseq.libseq.setNotePlayFreq(step, note, val)
                         self.draw_cell(step, row)
@@ -1543,7 +1619,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = self.stut_chance
                     val = round(100 * val) + dval
                     if val < 0 or val > 100:
-                        return
+                        return True
                     if evdata:
                         self.zynseq.libseq.setNoteStutterChance(step, note, val/100)
                         self.draw_cell(step, row)
@@ -1557,7 +1633,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         val = self.stut_freq
                     val += dval
                     if val < 0 or val >= len(STUT_FREQ_OPTIONS):
-                        return
+                        return True
                     if evdata:
                         self.zynseq.libseq.setNoteStutterFreq(step, note, val)
                         self.draw_cell(step, row)
@@ -1565,6 +1641,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         self.stut_freq = val
                         self.select_cell()
                 self.set_edit_title()
+                return True
             elif self.edit_mode == EDIT_MODE_ALL:
                 if self.edit_param == EDIT_PARAM_DUR:
                     if dval > 0:
@@ -1575,8 +1652,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 elif self.edit_param == EDIT_PARAM_VEL:
                     self.zynseq.libseq.changeVelocityAll(dval)
                     self.redraw_pending = 3
-            else:
-                self.select_cell(None, self.selected_cell[1] - dval)
+                return True
 
         elif i == self.ctrl_order[3]:
             if self.edit_mode == EDIT_MODE_SINGLE or self.edit_mode == EDIT_MODE_ALL:
@@ -1586,14 +1662,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 if self.edit_param > EDIT_PARAM_LAST:
                     self.edit_param = EDIT_PARAM_LAST
                 self.set_edit_title()
-            elif self.edit_mode == EDIT_MODE_ZOOM:
-                self.set_grid_zoom(self.zoom + dval)
-            elif self.edit_mode == EDIT_MODE_HISTORY:
-                if dval > 0:
-                    self.redo_pattern()
-                else:
-                    self.undo_pattern()
-            else:
-                self.select_cell(self.selected_cell[0] + dval, None)
+                return True
+
+        if super().zynpot_cb(i, dval):
+            return True
+
 
 # ------------------------------------------------------------------------------

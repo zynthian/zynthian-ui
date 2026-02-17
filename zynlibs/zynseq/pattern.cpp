@@ -52,6 +52,85 @@ Pattern& Pattern::operator=(Pattern& p) {
     return *this;
 }
 
+// add assignment (merge)
+Pattern& Pattern::operator+=(Pattern& p) {
+    pastePattern(&p, 0, 0.0, 0, true);
+    return *this;
+}
+
+// Paste (merge) a pattern into this
+void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote, bool truncate) {
+    // Add note events from argument pattern into this pattern. Ignore other events.
+    uint32_t nsteps = getSteps();
+    int32_t pos;
+    float offset;
+    int16_t note;
+    uint32_t i = 0;
+    while (StepEvent* ev = p->getEventAt(i++)) {
+        if (ev->m_nCommand != MIDI_NOTE_ON) continue;
+        // Calculate time offset
+        pos = ev->m_nPosition + dpos;
+        offset = ev->m_fOffset + doffset;
+        if (offset >= 1.0) {
+            pos++;
+            offset -= 1.0;
+        } else if (offset <= -1.0) {
+            pos--;
+            offset = 1.0 - offset;
+        }
+        // Skip notes out off time-range
+        if (truncate) {
+            if (pos < 0 || pos >= nsteps) continue;
+        }
+        // Implement circular overflow
+        else {
+            // Move left overflowed notes to the end of pattern
+            if (pos < 0) {
+                pos = nsteps - pos;
+            }
+            // Move right overflowed notes to the beggining of pattern
+            else if (pos >= nsteps) {
+                pos = pos - nsteps;
+            }
+        }
+        // Calculate note offset
+        note = int16_t(ev->m_nValue1start) + dnote;
+        // Skip notes out of note-range
+        if (note < 0 || note > 127) continue;
+
+        // Add event to this pattern. It will overwrite existing notes in the same position.
+        StepEvent pasted_ev = *ev;
+        pasted_ev.m_nPosition = pos;
+        pasted_ev.m_fOffset = offset;
+        pasted_ev.m_nValue1start = note;
+        addEvent(&pasted_ev);
+    }
+}
+
+// Returns a new pattern copying events from this in a time & note range
+Pattern* Pattern::copyPattern(uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2) {
+    uint32_t nsteps = getSteps();
+
+    // Check range of offset parameters
+    if (pos1 >= nsteps) pos1 = nsteps - 1;
+    if (pos2 >= nsteps) pos2 = nsteps - 1;
+    if (note1 > 127) note1 = 127;
+    if (note2 > 127) note2 = 127;
+
+    // Create an empty pattern for the result. The caller must delete when not needed anymore.
+    Pattern* res = new Pattern(m_nBeats, m_nStepsPerBeat);
+
+    // Copy note events from argument pattern into this pattern. Ignore other events.
+    uint32_t i = 0;
+    while (StepEvent* ev = getEventAt(i++)) {
+        if (ev->m_nCommand != MIDI_NOTE_ON) continue;
+        if (ev->m_nPosition < pos1 || ev->m_nPosition > pos2) continue;
+        if (ev->m_nValue1start < note1 || ev->m_nValue1start > note2) continue;
+        res->addEvent(ev);
+    }
+    return res;
+}
+
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration, float offset) {
     uint8_t nStutterSpeed = 0;
     uint8_t nStutterVelfx = 0;

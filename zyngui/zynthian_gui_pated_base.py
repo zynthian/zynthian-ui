@@ -25,6 +25,7 @@
 # ******************************************************************************
 
 import os
+import copy
 import tkinter
 import logging
 from datetime import datetime
@@ -59,14 +60,13 @@ EDIT_MODE_SINGLE = 1  # Edit mode enabled for selected note
 EDIT_MODE_ALL = 2  # Edit mode enabled for all notes
 EDIT_MODE_ZOOM = 3  # Zoom mode
 EDIT_MODE_HISTORY = 4  # Edit history mode (undo/redo)
+EDIT_MODE_BLOCK = 5  # Block edit mode
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
 # List of quantization divisors
-QUANTIZATION_DIVISORS = [0, 1, 2, 3]
-QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step"]
-#QUANTIZATION_DIVISORS = [0, 1, 2, 3, 4, 6, 8]  # This has not sense due to the current 24 ppq clock resolution
-#QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step", "1/6 step", "1/8 step"]
+QUANTIZATION_DIVISORS = [0, 1, 2, 3, 4, 6, 8]
+QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step", "1/6 step", "1/8 step"]
 # List of available MIDI channels
 INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
 
@@ -97,7 +97,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.title = "Pattern 0"
         self.alt_mode = False
         self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
-        self.clipboard = 8 * [None]  # Pattern clipboard: Array of pattern indexes to copy/paste.
+        self.clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste.
         self.phrase = 0  # Phrase where pattern is used
         self.pattern = 0  # Pattern to edit
         self.sequence = 0  # Sequence used for pattern editor sequence player
@@ -111,6 +111,17 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.n_steps_beat = 0  # Number of steps per beat (current pattern)
         self.step_offset = 0  # Step number of left column in grid
         self.selected_cell = [0, 60]
+        self.rect_selected_cell = None   # Rectangle object selected cell
+        self.grid_rows = 0
+        self.grid_steps = 0
+
+        # Block edit mode => Copy/paste pattern blocks
+        self.block_cell_start = None     # Block start for copy/past (block edit mode)
+        self.block_cell_end = None       # Block start for copy/past (block edit mode)
+        self.rect_selected_block = None  # Rectangle object for block edit mode
+        self.block_copied = None
+        self.block_dstep = None
+        self.block_drow = None
 
         # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
         self.redraw_pending = 4
@@ -258,18 +269,46 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             color_bg = zynthian_gui_config.color_header_bg
         super().set_title(title, color_fg, color_bg, timeout)
 
+    def get_evnum_from_row(self, row):
+        return row
+
+    def get_row_from_evnum(self, num):
+        return num
+
     # Function to enable edit mode => It *MUST* be redefined in child class
     #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]
     def set_edit_mode(self, mode):
         self.edit_mode = mode
-        if mode == EDIT_MODE_NONE:
+        color_fg = zynthian_gui_config.color_header_bg
+        color_bg = zynthian_gui_config.color_panel_tx
+        if mode == EDIT_MODE_SINGLE:
+            #self.set_title("Note Parameters", color_fg, color_bg)
+            self.set_edit_title()
+        elif mode == EDIT_MODE_ALL:
+            #self.set_title("Note Parameters ALL", color_fg, color_bg)
+            self.set_edit_title()
+        elif self.edit_mode == EDIT_MODE_ZOOM:
+            self.set_title("Grid zoom", color_fg, color_bg)
+        elif self.edit_mode == EDIT_MODE_HISTORY:
+            self.set_title("Undo/Redo", color_fg, color_bg)
+            self.init_buttonbar([("ARROW_LEFT", "<< undo"), ("ARROW_RIGHT", "redo >>")])
+        elif self.edit_mode == EDIT_MODE_BLOCK:
+            self.set_title("Copy/Paste", color_fg, color_bg)
+            self.start_select_block()
+            #self.init_buttonbar(...)
+        else:
             self.set_title()
             self.init_buttonbar()
-        else:
-            color_fg = zynthian_gui_config.color_header_bg
-            color_bg = zynthian_gui_config.color_panel_tx
-            self.set_title(f"EDIT MODE {mode}", color_fg, color_bg)
-            self.set_edit_title()
+
+    def set_edit_title(self):
+        #step = self.selected_cell[0]
+        delta = "1"
+        zynpot = 2
+        self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
+                             (f"ZYNPOT {zynpot},+1", f"+{delta}"),
+                             ("ZYNPOT 3,-1", "PREV\nPARAM"),
+                             ("ZYNPOT 3,+1", "NEXT\nPARAM"),
+                             (3, "OK")])
 
     # Function to show GUI
     def build_view(self):
@@ -1131,6 +1170,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         y2 = y1 + self.row_height - 1
         return [x1, y1, x2, y2]
 
+    def get_cell_pos(self, cell):
+        x1 = int(cell[0] * self.step_width) + 1
+        y1 = self.total_height - (cell[1] + 1) * self.row_height + 1
+        return [x1, y1]
+
     # -------------------------------------------------------------------------
     # Drawing functions
     # -------------------------------------------------------------------------
@@ -1187,19 +1231,156 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         #self.piano_roll.delete(tkinter.ALL)
         pass
 
+    def draw_events(self):
+        pass
+
+    def draw_cp_events(self):
+        pass
+
+    def draw_event(self, evdata, cp=False, row=None):
+        pass
+
+    def draw_row(self, row):
+        pass
+
     # Function to draw a grid cell
     # step: Step (column) index
     # row: Index of row
-    # white: True for white notes
-    def draw_cell(self, step, row, white=None):
+    def draw_cell(self, step, row):
         pass
 
     # Function to update selectedCell
     # step: Step (column) of selected cell (Optional - default to reselect current column)
     # row: Index of keymap to select (Optional - default to reselect current row).
     #      Maybe outside visible range to scroll display
+    # plot: plot cursor (True by default)
     def select_cell(self, step=None, row=None):
         pass
+
+    def hide_selected_cell(self):
+        if self.rect_selected_cell:
+            self.grid_canvas.delete(self.rect_selected_cell)
+            self.rect_selected_cell = None
+
+    # ---------------------------------------------------------------
+    # Block edit functionality => Copy/paste block
+    # ---------------------------------------------------------------
+
+    def _move_cell(self, cell, dstep, drow):
+        inrange = True
+        if dstep:
+            cell[0] += dstep
+            if cell[0] >= self.n_steps:
+                cell[0] = self.n_steps - 1
+                inrange = False
+            elif cell[0] < 0:
+                cell[0] = 0
+                inrange = False
+        if drow:
+            cell[1] += drow
+            if cell[1] > 127:
+                cell[1] = 127
+                inrange = False
+            elif cell[1] < 0:
+                cell[1] = 0
+                inrange = False
+        return inrange
+
+    def plot_select_block(self):
+        # Plot rectangle
+        coord = self.get_cell_pos(self.block_cell_start) + self.get_cell_pos(self.block_cell_end)
+        if coord[2] >= coord[0]:
+            coord[2] += self.step_width
+        if coord[3] >= coord[1]:
+            coord[3] += self.row_height
+        if not self.rect_selected_block:
+            self.rect_selected_block = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
+                                              width=self.select_thickness, tags="selected_block")
+        else:
+            self.grid_canvas.coords(self.rect_selected_block, coord)
+
+    def start_select_block(self):
+        self.block_cell_start = copy.copy(self.selected_cell)
+        self.block_cell_end = copy.copy(self.selected_cell)
+        self.block_copied = None
+
+    def end_select_block(self):
+        self.block_copied = None
+        self.set_edit_mode(EDIT_MODE_NONE)
+        self.select_cell()
+
+    def select_block(self, dstep, drow):
+        # Move end position
+        self._move_cell(self.block_cell_end, dstep, drow)
+        # Hide cursor
+        self.hide_selected_cell()
+        # Position cursor (hidden)
+        self.select_cell(self.block_cell_end[0], self.block_cell_end[1])
+        # Plot
+        self.plot_select_block()
+
+    def hide_selected_block(self):
+        if self.rect_selected_block:
+            self.grid_canvas.delete("cp")
+            self.grid_canvas.delete(self.rect_selected_block)
+            self.rect_selected_block = None
+
+    def copy_block(self):
+        # End block selection
+        if self.block_cell_end[0] > self.block_cell_start[0]:
+            step1 = self.block_cell_start[0]
+            step2 = self.block_cell_end[0]
+        else:
+            step1 = self.block_cell_end[0]
+            step2 = self.block_cell_start[0] - 1
+        if self.block_cell_end[1] >= self.block_cell_start[1]:
+            row1 = self.block_cell_start[1]
+            row2 = self.block_cell_end[1]
+        else:
+            row1 = self.block_cell_end[1] - 1
+            row2 = self.block_cell_start[1]
+        self.block_cell_start = [step1, row1]
+        self.block_cell_end = [step2, row2]
+        self.plot_select_block()
+        # Copy subpattern to clipboard
+        self.zynseq.libseq.copyPatternBlock(self.pattern, step1, step2, self.get_evnum_from_row(row1 + 1), self.get_evnum_from_row(row2))
+        self.block_copied = [self.block_cell_start, self.block_cell_end]
+        self.block_dstep = 0
+        self.block_drow = 0
+
+    def move_block(self, dstep, drow):
+        # Calculate new position
+        pos1 = copy.copy(self.block_cell_start)
+        pos2 = copy.copy(self.block_cell_end)
+        # Respect limits
+        if self._move_cell(pos1, dstep, drow) and self._move_cell(pos2, dstep, drow):
+            self.block_cell_start = pos1
+            self.block_cell_end = pos2
+            # Calculate position offset => current position - copy position
+            self.block_dstep = self.block_cell_start[0] - self.block_copied[0][0]
+            self.block_drow = self.block_cell_start[1] - self.block_copied[0][1]
+            # Redraw to show copied block in the new position
+            self.draw_cp_events()
+            # Plot block selection
+            self.plot_select_block()
+            # Position cursor (hidden) to center view area (scroll)
+            if dstep > 0:
+                step = self.block_cell_end[0]
+            else:
+                step = self.block_cell_start[0]
+            if drow > 0:
+                row = self.block_cell_end[1]
+            else:
+                row = self.block_cell_start[1] + 1
+            self.select_cell(step, row)
+
+    def paste_block(self):
+        # Save snapshot
+        self.save_pattern_snapshot(True, True)
+        # Paste buffer
+        self.zynseq.libseq.pastePatternBlock(self.pattern, self.block_dstep, 0.0, self.block_drow, True)
+        self.changed = True
+        self.redraw_pending = 3
 
     # -------------------------------------------------------------------------
     # Event management
@@ -1237,25 +1418,45 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.draw_grid()
         self.save_pattern_snapshot(now=False, force=False)
 
-    def set_edit_title(self):
-        #step = self.selected_cell[0]
-        delta = "1"
-        zynpot = 2
-        self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
-                             (f"ZYNPOT {zynpot},+1", f"+{delta}"),
-                             ("ZYNPOT 3,-1", "PREV\nPARAM"),
-                             ("ZYNPOT 3,+1", "NEXT\nPARAM"),
-                             (3, "OK")])
-
     # Function to handle zynpots value change
     #   i: Zynpot index [0..n]
     #   dval: Current value of zyncoder
     def zynpot_cb(self, i, dval):
-        if super().zynpot_cb(i, dval):
-            return True
+        # This will be called in the child class
+        #if super().zynpot_cb(i, dval):
+        #    return True
         if i == self.ctrl_order[1]:
             if self.edit_mode == EDIT_MODE_NONE:
                 self.set_grid_zoom(self.zoom + dval)
+                return True
+        elif i == self.ctrl_order[2]:
+            if self.edit_mode == EDIT_MODE_BLOCK:
+                if self.block_copied:
+                    self.move_block(0, -dval)
+                else:
+                    self.select_block(0, -dval)
+                return True
+            elif self.edit_mode == EDIT_MODE_NONE:
+                self.select_cell(None, self.selected_cell[1] - dval)
+                return True
+        elif i == self.ctrl_order[3]:
+            if self.edit_mode == EDIT_MODE_ZOOM:
+                self.set_grid_zoom(self.zoom + dval)
+                return True
+            elif self.edit_mode == EDIT_MODE_HISTORY:
+                if dval > 0:
+                    self.redo_pattern()
+                else:
+                    self.undo_pattern()
+                return True
+            elif self.edit_mode == EDIT_MODE_BLOCK:
+                if self.block_copied:
+                    self.move_block(dval, 0)
+                else:
+                    self.select_block(dval, 0)
+                return True
+            elif self.edit_mode == EDIT_MODE_NONE:
+                self.select_cell(self.selected_cell[0] + dval, None)
                 return True
 
     # Function to handle SELECT button press
@@ -1266,6 +1467,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if st == "S":
             if self.edit_mode == EDIT_MODE_NONE:
                 self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+            elif self.edit_mode == EDIT_MODE_BLOCK:
+                if not self.block_copied:
+                    self.copy_block()
+                else:
+                    self.paste_block()
             else:
                 self.set_edit_mode(EDIT_MODE_NONE)
         elif st == "B":
@@ -1316,7 +1522,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.reset_grid_zoom()
                 return True
         elif i == 2:
-            if t == 'S' or t == 'B':
+            if t == 'S':
+                self.set_edit_mode(EDIT_MODE_BLOCK)
+            elif t == 'B':
                 if self.param_editor_zctrl:
                     self.disable_param_editor()
                 else:
@@ -1329,21 +1537,25 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if self.edit_mode == EDIT_MODE_NONE:
             self.zynseq.libseq.updateSequenceInfo()
             return super().back_action()
-        self.set_edit_mode(EDIT_MODE_NONE)
-        return True
+        elif self.edit_mode == EDIT_MODE_BLOCK:
+            self.end_select_block()
+            return True
+        else:
+            self.set_edit_mode(EDIT_MODE_NONE)
+            return True
 
     # CUIA Actions
 
     # Function to handle CUIA ARROW_RIGHT
     def arrow_right(self):
-        if self.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
             self.redo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], 1)
 
     # Function to handle CUIA ARROW_LEFT
     def arrow_left(self):
-        if self.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
             self.undo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], -1)
@@ -1449,7 +1661,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif pb_status == zynseq.SEQ_STOPPED:
             wsl.set_led(leds[3], wsl.wscolor_active2)
         # Arrow buttons
-        if self.alt_mode and not (self.param_editor_zctrl or self.edit_mode):
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
             wsl.set_led(leds[4], wsl.wscolor_active2)
             wsl.set_led(leds[5], wsl.wscolor_active2)
             wsl.set_led(leds[6], wsl.wscolor_active2)
