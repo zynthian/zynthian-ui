@@ -293,7 +293,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
             note = self._selected_note.note
             speed = min(MAX_STUTTER_SPEED, max(0, speed))
-            self._libseq.setStutterSpeed(step, note, speed)
+            self._libseq.setNoteStutterSpeed(step, note, speed)
             self._play_step(step)
 
         def _update_step_stutter_velfx(self, step, duration):
@@ -302,7 +302,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
             note = self._selected_note.note
             velfx = min(MAX_STUTTER_VELFX, max(1, velfx))
-            self._libseq.setStutterVelfx(step, note, velfx)
+            self._libseq.setNoteStutterVelfx(step, note, velfx)
             self._play_step(step)
 
         def _update_note_pad_duration(self, pad, note_spec, duration):

@@ -2072,9 +2072,9 @@ class StepSeqHandler(ModeHandlerBase):
             return
 
         note = self._selected_note.note
-        count = self._libseq.getStutterSpeed(step, note) + delta
+        count = self._libseq.getNoteStutterSpeed(step, note) + delta
         count = min(MAX_STUTTER_SPEED, max(0, count))
-        self._libseq.setStutterSpeed(step, note, count)
+        self._libseq.setNoteStutterSpeed(step, note, count)
         self._play_step(step)
 
     def _update_step_stutter_velfx(self, step, delta):
@@ -2082,9 +2082,9 @@ class StepSeqHandler(ModeHandlerBase):
             return
 
         note = self._selected_note.note
-        duration = self._libseq.getStutterVelfx(step, note) + delta
+        duration = self._libseq.getNoteStutterVelfx(step, note) + delta
         duration = min(MAX_STUTTER_VELFX, max(1, duration))
-        self._libseq.setStutterVelfx(step, note, duration)
+        self._libseq.setNoteStutterVelfx(step, note, duration)
         self._play_step(step)
 
     def _update_note_pad_duration(self, pad, note_spec, delta):
@@ -2250,8 +2250,8 @@ class StepSeqHandler(ModeHandlerBase):
         duration = self._libseq.getNoteDuration(step, note)
         channel = self._libseq.getChannel(
             self._zynseq.scene, self._selected_seq[0], self._selected_seq[1], 0)
-        stutter_speed = self._libseq.getStutterSpeed(step, note)
-        stutter_velfx = self._libseq.getStutterVelfx(step, note)
+        stutter_speed = self._libseq.getNoteStutterSpeed(step, note)
+        stutter_velfx = self._libseq.getNoteStutterVelfx(step, note)
         self._note_player.play(
             note, velocity, duration, channel, stutter_speed, stutter_velfx)
 
@@ -2265,8 +2265,8 @@ class StepSeqHandler(ModeHandlerBase):
             velocity = velocity if not self._is_shifted else velocity // 2
             self._libseq.addNote(
                 step, spec.note, velocity, spec.duration, 0)
-            self._libseq.setStutterSpeed(step, spec.note, spec.stutter_speed)
-            self._libseq.setStutterVelfx(step, spec.note, spec.stutter_velfx)
+            self._libseq.setNoteStutterSpeed(step, spec.note, spec.stutter_speed)
+            self._libseq.setNoteStutterVelfx(step, spec.note, spec.stutter_velfx)
         else:
             self._libseq.removeNote(step, spec.note)
             channel = self._libseq.getChannel(self._zynseq.scene,
@@ -2574,19 +2574,19 @@ class StepProxy:
 
     @property
     def stutter_speed(self):
-        return self._libseq.getStutterSpeed(self._step, self.note)
+        return self._libseq.getNoteStutterSpeed(self._step, self.note)
 
     @stutter_speed.setter
     def stutter_speed(self, value):
-        self._libseq.setStutterSpeed(self._step, self.note, value)
+        self._libseq.setNoteStutterSpeed(self._step, self.note, value)
 
     @property
     def stutter_velfx(self):
-        return self._libseq.getStutterVelfx(self._step, self.note)
+        return self._libseq.getNoteStutterVelfx(self._step, self.note)
 
     @stutter_velfx.setter
     def stutter_velfx(self, value):
-        self._libseq.setStutterVelfx(self._step, self.note, value)
+        self._libseq.setNoteStutterVelfx(self._step, self.note, value)
 
 
 # --------------------------------------------------------------------------
