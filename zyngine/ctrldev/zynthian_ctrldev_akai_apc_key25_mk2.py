@@ -1675,7 +1675,7 @@ class StepSeqHandler(ModeHandlerBase):
             self._clock.disable()
             self._is_stage_play = False
             # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
-            self.zynseq.libseq.updateSequenceInfo()
+            self._libseq.updateSequenceInfo()
             zynsigman.send(zynsigman.S_STEPSEQ, 1, #SS_SEQ_PLAY_STATE
                            phrase=self._selected_seq[0], chan=self._selected_seq[1])
         self._pressed_pads_action = "activation"
