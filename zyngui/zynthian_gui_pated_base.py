@@ -1331,7 +1331,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.grid_canvas.delete(self.rect_selected_block)
             self.rect_selected_block = None
 
-    def copy_block(self):
+    def copy_block(self, cut=False):
         # End block selection
         if self.block_cell_end[0] > self.block_cell_start[0]:
             step1 = self.block_cell_start[0]
@@ -1347,12 +1347,21 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             row2 = self.block_cell_start[1]
         self.block_cell_start = [step1, row1]
         self.block_cell_end = [step2, row2]
-        self.plot_select_block()
-        # Copy subpattern to clipboard
-        self.zynseq.libseq.copyPatternBlock(self.pattern, step1, step2, self.get_evnum_from_row(row1), self.get_evnum_from_row(row2))
+        # if cutting => save snapshot
+        if cut:
+            self.save_pattern_snapshot(True, False)
+        # Copy/Cut subpattern to clipboard
+        n = self.zynseq.libseq.copyPatternBlock(self.pattern, step1, step2, self.get_evnum_from_row(row1), self.get_evnum_from_row(row2), cut)
         self.block_copied = [self.block_cell_start, self.block_cell_end]
         self.block_dstep = 0
         self.block_drow = 0
+        # Plot select block with contents
+        self.plot_select_block()
+        self.draw_cp_events()
+        # if cutting => redraw pattern notes
+        if cut and n > 0:
+            self.changed = True
+            self.redraw_pending = 3
 
     def move_block(self, dstep, drow):
         # Calculate new position
@@ -1362,7 +1371,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if self._move_cell(pos1, 0, drow) and self._move_cell(pos2, 0, drow):
             pos1[0] += dstep
             pos2[0] += dstep
-            # Circular move horinzotally
+            # Horizontal circular move
             if pos1[0] >= self.n_steps:
                 pos1[0] -= self.n_steps
                 pos2[0] -= self.n_steps
@@ -1391,7 +1400,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def paste_block(self):
         # Save snapshot
-        self.save_pattern_snapshot(True, True)
+        self.save_pattern_snapshot(True, False)
         # Paste buffer
         self.zynseq.libseq.pastePatternBlock(self.pattern, self.block_dstep, 0.0, self.block_drow, False)
         self.changed = True
@@ -1484,7 +1493,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.toggle_event(self.selected_cell[0], self.selected_cell[1])
             elif self.edit_mode == EDIT_MODE_BLOCK:
                 if not self.block_copied:
-                    self.copy_block()
+                    self.copy_block(cut=False)
                 else:
                     self.paste_block()
             else:
@@ -1494,6 +1503,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.set_edit_mode(EDIT_MODE_SINGLE)
             elif self.edit_mode == EDIT_MODE_SINGLE:
                 self.set_edit_mode(EDIT_MODE_ALL)
+            elif self.edit_mode == EDIT_MODE_BLOCK:
+                if not self.block_copied:
+                    self.copy_block(cut=True)
 
     # Function to handle switch press
     #   i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]

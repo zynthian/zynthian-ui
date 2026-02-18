@@ -231,9 +231,10 @@ class Pattern {
         @param  pos2 step-range end
         @param  note1 note-range start
         @param  note2 note-range end
+        @param  cut True to remove events from source pattern
         @retval Pattern* Pointer to a newly created pattern with the copied events. The caller must delete when not needed anymore.
     */
-    Pattern* copyPattern(uint32_t pos1=0, uint32_t pos2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
+    Pattern* copyPattern(uint32_t pos1=0, uint32_t pos2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127, bool cut=false);
 
     /** @brief  Add step event to pattern
         @param  position Quantity of steps from start of pattern

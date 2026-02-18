@@ -62,15 +62,12 @@ Pattern& Pattern::operator+=(Pattern& p) {
 void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote, bool truncate) {
     // Add note events from argument pattern into this pattern. Ignore other events.
     uint32_t nsteps = getSteps();
-    int32_t pos;
-    float offset;
-    int16_t note;
-    uint32_t i = 0;
-    while (StepEvent* ev = p->getEventAt(i++)) {
+    for (auto it = p->m_vEvents.begin(); it != p->m_vEvents.end(); ++it) {
+        StepEvent* ev = *it;
         if (ev->m_nCommand != MIDI_NOTE_ON) continue;
         // Calculate time offset
-        pos = ev->m_nPosition + dpos;
-        offset = ev->m_fOffset + doffset;
+        int32_t pos = ev->m_nPosition + dpos;
+        float offset = ev->m_fOffset + doffset;
         if (offset >= 1.0) {
             pos++;
             offset -= 1.0;
@@ -78,7 +75,7 @@ void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote
             pos--;
             offset = 1.0 - offset;
         }
-        // Skip notes out off time-range
+        // Skip notes out off step-range
         if (truncate) {
             if (pos < 0 || pos >= nsteps) continue;
         }
@@ -94,7 +91,7 @@ void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote
             }
         }
         // Calculate note offset
-        note = int16_t(ev->m_nValue1start) + dnote;
+        int16_t note = int16_t(ev->m_nValue1start) + dnote;
         // Skip notes out of note-range
         if (note < 0 || note > 127) continue;
 
@@ -108,7 +105,7 @@ void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote
 }
 
 // Returns a new pattern copying events from this in a time & note range
-Pattern* Pattern::copyPattern(uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2) {
+Pattern* Pattern::copyPattern(uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2, bool cut) {
     uint32_t nsteps = getSteps();
 
     // Check range of offset parameters
@@ -121,12 +118,21 @@ Pattern* Pattern::copyPattern(uint32_t pos1, uint32_t pos2, uint8_t note1, uint8
     Pattern* res = new Pattern(m_nBeats, m_nStepsPerBeat);
 
     // Copy note events from argument pattern into this pattern. Ignore other events.
-    uint32_t i = 0;
-    while (StepEvent* ev = getEventAt(i++)) {
-        if (ev->m_nCommand != MIDI_NOTE_ON) continue;
-        if (ev->m_nPosition < pos1 || ev->m_nPosition > pos2) continue;
-        if (ev->m_nValue1start < note1 || ev->m_nValue1start > note2) continue;
+    for (auto it = m_vEvents.begin(); it != m_vEvents.end(); /*don't increment here!*/) {
+        StepEvent* ev = *it;
+        if (ev->m_nCommand != MIDI_NOTE_ON ||
+            ev->m_nPosition < pos1 || ev->m_nPosition > pos2 ||
+            ev->m_nValue1start < note1 || ev->m_nValue1start > note2) {
+            it++;
+            continue;
+        }
         res->addEvent(ev);
+        if (cut) {
+            delete ev;
+            it = m_vEvents.erase(it);
+        } else {
+            it++;
+        }
     }
     return res;
 }

@@ -879,7 +879,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     #evdata.position += self.block_dstep
                     evdata.val1_start += self.block_drow
                     #if 0 <= evdata.position < self.n_steps and 0 <= evdata.val1_start <= 127:
-                    # "Circular" displaying of copy/paste block
+                    # Horizontal "circular" displaying
                     if 0 <= evdata.val1_start <= 127:
                         pos = evdata.position + self.block_dstep
                         if pos >= self.n_steps:
@@ -930,7 +930,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.grid_canvas.create_rectangle(coord, width=0, fill=fill_colour, stipple=stipple, tags=cell_tags)
 
         # Redraw cell decoration
-        deco_tag = f"deco_{step},{row}"
+        deco_tag = f"deco_{cell_tag}"
         self.grid_canvas.delete(deco_tag)
         deco_tags = cell_tags + (deco_tag,)
         self._draw_cell_deco(coord, fill_colour, evdata, deco_tags)

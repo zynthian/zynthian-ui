@@ -252,7 +252,7 @@ void copyPattern(uint32_t source, uint32_t destination);
     @param  dnote Note offset
     @param  truncate Truncate time overflowed events
 */
-void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate);
+void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate=false);
 
 /** @brief  Copy a block (subpattern) from the specified pattern to the copy/paste buffer
     @param  pattern Index of pattern
@@ -260,8 +260,10 @@ void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dno
     @param  pos2 step-range end
     @param  note1 note-range start
     @param  note2 note-range end
+    @param cut True tp delete events from source pattern
+    @retval uint32_t Number of events copied (or cutted!)
 */
-void copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2);
+uint32_t copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2, bool cut=false);
 
 // ** Functions acting on the globally selected pattern **
 

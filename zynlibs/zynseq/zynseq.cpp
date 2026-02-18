@@ -2280,15 +2280,21 @@ void copyPattern(uint32_t source, uint32_t destination) {
     g_bDirty = true;
 }
 
-void copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2) {
+uint32_t copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2, bool cut) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern) {
         // Free last selection
         if (g_pPatternBuffer)
             delete g_pPatternBuffer;
         // Copy new selection to buffer
-        g_pPatternBuffer = pPattern->copyPattern(pos1, pos2, note1,note2);
+        g_pPatternBuffer = pPattern->copyPattern(pos1, pos2, note1, note2, cut);
+        // If something was cutted ...
+        uint32_t n = g_pPatternBuffer->getEvents();
+        if (cut &&  n > 0)
+            g_bDirty = true;
+        return n;
     }
+    return 0;
 }
 
 void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate) {
