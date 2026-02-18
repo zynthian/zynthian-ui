@@ -293,8 +293,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.set_title("Undo/Redo", color_fg, color_bg)
             self.init_buttonbar([("ARROW_LEFT", "<< undo"), ("ARROW_RIGHT", "redo >>")])
         elif self.edit_mode == EDIT_MODE_BLOCK:
-            self.set_title("Copy/Paste", color_fg, color_bg)
-            self.start_select_block()
+            if self.block_copied:
+                self.set_title("Paste", color_fg, color_bg)
+            else:
+                self.set_title("Copy/Cut", color_fg, color_bg)
+                self.start_select_block()
             #self.init_buttonbar(...)
         else:
             self.set_title()
@@ -1369,6 +1372,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.block_dstep = 0
         self.block_drow = 0
         # Hide select block and plot copied notes
+        self.set_edit_mode(EDIT_MODE_BLOCK)
         self.hide_selected_block()
         self.draw_cp_events()
         # if cutting => redraw pattern notes
