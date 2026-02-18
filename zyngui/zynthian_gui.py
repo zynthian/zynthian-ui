@@ -2283,8 +2283,7 @@ class zynthian_gui:
 
         # Pattern recording
         if self.current_screen == 'pattern_editor':
-            if self.state_manager.zynseq.libseq.isMidiRecord():
-                self.screens['pattern_editor'].midi_note_on(note)
+            self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
         # => Now using delayed pre-load (see zynthian_gui_preset.py)
         #elif self.current_screen == 'preset':
@@ -2310,7 +2309,7 @@ class zynthian_gui:
         """
 
         # Pattern recording
-        if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
+        if self.current_screen == 'pattern_editor':
             self.screens['pattern_editor'].midi_note_off(note)
 
     def cb_show_file_selector(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):

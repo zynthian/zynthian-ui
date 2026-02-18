@@ -1025,6 +1025,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.fontsize_grid = self.row_height // 2
         if self.fontsize_grid > 20:
             self.fontsize_grid = 20  # Ugly font scale limiting
+        self.grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
         self.calculate_geometry_limits()
         self.update_scroll_regions()
 

@@ -208,7 +208,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             return f"{title}: Notes"
 
     def get_evnum_from_row(self, row):
-        return self.keymap[row]["note"]
+        try:
+            return self.keymap[row]["note"]
+        except:
+            return None
 
     def get_row_from_evnum(self, num):
         for row in range(0, len(self.keymap)):
@@ -1027,8 +1030,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.grid_canvas.delete(tkinter.ALL)
             self.rect_selected_cell = None
             self.rect_selected_block = None
-            self.redraw_pending = 4
             self.draw_pianoroll()
+            self.redraw_pending = 4
             self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width,
                                     0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
 
@@ -1046,37 +1049,15 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 row_min = self.selected_cell[1]
                 row_max = self.selected_cell[1]
 
-            grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
             for row in range(row_min, row_max):
                 # Create last note labels in grid
                 self.grid_canvas.create_text(self.total_width - self.select_thickness,
                                              int(self.row_height * (row - 0.5)),
-                                             state=tkinter.HIDDEN, font=grid_font, anchor=tkinter.E,
+                                             state=tkinter.HIDDEN, font=self.grid_font, anchor=tkinter.E,
                                              tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"))
                 if self.redraw_pending > 3:
-                    # fill = "black"
-                    # Update pianoroll keys
-                    row_id = f"row{row}"
-                    try:
-                        name = self.keymap[row]["name"]
-                    except:
-                        name = None
-                    if "colour" in self.keymap[row]:
-                        colour = self.keymap[row]["colour"]
-                    elif name and "#" in name:
-                        colour = "black"
-                    else:
-                        colour = "white"
-                    if colour == "black":
-                        fill = "white"
-                    else:
-                        fill = CANVAS_BACKGROUND
-                    self.piano_roll.itemconfig(row_id, fill=colour)
-                    # name = str(row)
+                    self.pianoroll_set_row(row)
                     ypos = self.total_height - row * self.row_height
-                    if name:
-                        self.piano_roll.create_text(2, ypos - 0.5 * self.row_height, text=name, font=grid_font,
-                                                    anchor="w", fill=fill, tags="notename")
                     if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
                         self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridhline")
                     else:
@@ -1104,6 +1085,47 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             y2 = y1 + self.row_height - 1
             tags = f"row{row}"
             self.piano_roll.create_rectangle(x1, y1, x2, y2, width=0, tags=tags)
+
+    def pianoroll_set_row(self, row, color=None):
+        row_id = f"row{row}"
+        try:
+            name = self.keymap[row]["name"]
+        except:
+            name = None
+        if color is None:
+            if "colour" in self.keymap[row]:
+                color = self.keymap[row]["colour"]
+            elif name and "#" in name:
+                color = "black"
+            else:
+                color = "white"
+            if color == "black":
+                fill = "white"
+            else:
+                fill = CANVAS_BACKGROUND
+        else:
+            fill = CANVAS_BACKGROUND
+        self.piano_roll.itemconfig(row_id, fill=color)
+        # name = str(row)
+        if name:
+            tag = f"notename{row}"
+            res = self.piano_roll.find_withtag(tag)
+            if res:
+                self.piano_roll.itemconfig(res[0], fill=fill)
+            else:
+                ypos = self.total_height - row * self.row_height
+                self.piano_roll.create_text(2, ypos - 0.5 * self.row_height, text=name, font=self.grid_font,
+                                            anchor="w", fill=fill, tags=(tag, "notename"))
+
+    def pianoroll_note_on(self, note):
+        row = self.get_row_from_note(note)
+        if row is not None:
+            self.pianoroll_set_row(row, "#40FF40")
+
+    def pianoroll_note_off(self, note):
+        row = self.get_row_from_note(note)
+        if row is not None:
+            self.pianoroll_set_row(row)
 
     # Function to update selectedCell
     # step: Step (column) of selected cell (Optional - default to reselect current column)
@@ -1352,14 +1374,18 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
     # Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
     def midi_note_on(self, note):
-        self.rows_pending.put_nowait(note)
+        self.pianoroll_note_on(note)
+        if self.zynseq.libseq.isMidiRecord():
+            self.rows_pending.put_nowait(note)
 
     def midi_note_off(self, note):
-        if self.playstate == zynseq.SEQ_STOPPED:
-            self.save_pattern_snapshot(now=True, force=True)
-        else:
-            self.changed = True
-        self.rows_pending.put_nowait(note)
+        self.pianoroll_note_off(note)
+        if self.zynseq.libseq.isMidiRecord():
+            if self.playstate == zynseq.SEQ_STOPPED:
+                self.save_pattern_snapshot(now=True, force=True)
+            else:
+                self.changed = True
+            self.rows_pending.put_nowait(note)
 
     # Function to enable note duration/velocity direct edit mode
     # mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
