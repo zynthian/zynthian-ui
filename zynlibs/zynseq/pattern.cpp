@@ -82,15 +82,15 @@ void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote
         if (truncate) {
             if (pos < 0 || pos >= nsteps) continue;
         }
-        // Implement circular overflow
+        // Circular horizontal overflow
         else {
             // Move left overflowed notes to the end of pattern
             if (pos < 0) {
-                pos = nsteps - pos;
+                pos += nsteps;
             }
             // Move right overflowed notes to the beggining of pattern
             else if (pos >= nsteps) {
-                pos = pos - nsteps;
+                pos -= nsteps;
             }
         }
         // Calculate note offset

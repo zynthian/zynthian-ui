@@ -1358,8 +1358,17 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         # Calculate new position
         pos1 = copy.copy(self.block_cell_start)
         pos2 = copy.copy(self.block_cell_end)
-        # Respect limits
-        if self._move_cell(pos1, dstep, drow) and self._move_cell(pos2, dstep, drow):
+        # Respect vertical limits, but allow horizontal overflow
+        if self._move_cell(pos1, 0, drow) and self._move_cell(pos2, 0, drow):
+            pos1[0] += dstep
+            pos2[0] += dstep
+            # Circular move horinzotally
+            if pos1[0] >= self.n_steps:
+                pos1[0] -= self.n_steps
+                pos2[0] -= self.n_steps
+            elif pos2[0] < 0:
+                pos1[0] += self.n_steps
+                pos2[0] += self.n_steps
             self.block_cell_start = pos1
             self.block_cell_end = pos2
             # Calculate position offset => current position - copy position
@@ -1384,7 +1393,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         # Save snapshot
         self.save_pattern_snapshot(True, True)
         # Paste buffer
-        self.zynseq.libseq.pastePatternBlock(self.pattern, self.block_dstep, 0.0, self.block_drow, True)
+        self.zynseq.libseq.pastePatternBlock(self.pattern, self.block_dstep, 0.0, self.block_drow, False)
         self.changed = True
         self.redraw_pending = 3
 

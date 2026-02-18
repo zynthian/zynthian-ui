@@ -876,9 +876,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     break
                 #logging.debug(f"DRAWING CP EVENT AT {index} => {evdata.position}, {evdata.command}")
                 if evdata.command == zynseq.MIDI_NOTE_ON:
-                    evdata.position += self.block_dstep
+                    #evdata.position += self.block_dstep
                     evdata.val1_start += self.block_drow
-                    if 0 <= evdata.position < self.n_steps and 0 <= evdata.val1_start <= 127:
+                    #if 0 <= evdata.position < self.n_steps and 0 <= evdata.val1_start <= 127:
+                    # "Circular" displaying of copy/paste block
+                    if 0 <= evdata.val1_start <= 127:
+                        pos = evdata.position + self.block_dstep
+                        if pos >= self.n_steps:
+                            pos -= self.n_steps
+                        elif pos < 0:
+                            pos += self.n_steps
+                        evdata.position = pos
                         self.draw_event(evdata, True)
                 index += 1
 
