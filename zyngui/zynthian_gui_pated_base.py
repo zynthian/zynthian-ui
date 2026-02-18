@@ -1336,7 +1336,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def hide_selected_block(self):
         if self.rect_selected_block:
-            self.grid_canvas.delete("cp")
             self.grid_canvas.delete(self.rect_selected_block)
             self.rect_selected_block = None
 
@@ -1361,14 +1360,19 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.save_pattern_snapshot(True, False)
         # Copy/Cut subpattern to clipboard
         n = self.zynseq.libseq.copyPatternBlock(self.pattern, step1, step2, self.get_evnum_from_row(row1), self.get_evnum_from_row(row2), cut)
+        # If selection is empty => end select mode
+        if n == 0:
+            self.end_select_block()
+            return
+        # If selection is not empty => save block coordinates
         self.block_copied = [self.block_cell_start, self.block_cell_end]
         self.block_dstep = 0
         self.block_drow = 0
-        # Plot select block with contents
-        self.plot_select_block()
+        # Hide select block and plot copied notes
+        self.hide_selected_block()
         self.draw_cp_events()
         # if cutting => redraw pattern notes
-        if cut and n > 0:
+        if cut:
             self.changed = True
             self.redraw_pending = 3
 
@@ -1392,10 +1396,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             # Calculate position offset => current position - copy position
             self.block_dstep = self.block_cell_start[0] - self.block_copied[0][0]
             self.block_drow = self.block_cell_start[1] - self.block_copied[0][1]
-            # Redraw to show copied block in the new position
+            # Redraw copied notes in the new position
             self.draw_cp_events()
-            # Plot block selection
-            self.plot_select_block()
             # Position cursor (hidden) to center view area (scroll)
             if dstep > 0:
                 step = self.block_cell_end[0]

@@ -1225,8 +1225,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             velocity = self.velocity
         self.set_velocity_indicator(velocity)
 
-        # Hide selected block
+        # Hide selected block and copy/paste notes
+        self.grid_canvas.delete("cp")
         self.hide_selected_block()
+
         # Position selector cell-frame
         coord = self.get_cell(step, row, duration, offset)
         coord[0] -= 1
