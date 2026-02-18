@@ -704,10 +704,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     self.select_cell(None, self.selected_cell[1] + 1)
                     self.play_note(self.keymap[self.selected_cell[1]]["note"])
         else:
-            step_offset = int(
-                DRAG_SENSIBILITY * (self.grid_drag_start.x - event.x) / self.step_width)
-            row_offset = int(DRAG_SENSIBILITY * (event.y -
-                             self.grid_drag_start.y) / self.row_height)
+            step_offset = int(DRAG_SENSIBILITY * (self.grid_drag_start.x - event.x) / self.step_width)
+            row_offset = int(DRAG_SENSIBILITY * (event.y - self.grid_drag_start.y) / self.row_height)
             if step_offset == 0 and row_offset == 0:
                 if self.grid_drag_count < 2 and (event.time - self.grid_drag_start.time) > 800:
                     self.drag_note = True
@@ -845,7 +843,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.zynseq.libseq.isPatternModified()
         self.grid_canvas.delete("pat")
         evdata = zynseq.event_data()
-        # Pattern events
         index = 0
         while True:
             res = self.zynseq.libseq.getEventDataAt(index, evdata)
@@ -856,11 +853,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.draw_event(evdata, False)
             index += 1
 
+    # Draw all note events in the copy/paste buffer
     def draw_cp_events(self):
         self.grid_canvas.delete("cp")
-        evdata = zynseq.event_data()
         if self.block_copied:
-            # Copy/paste buffer events
+            evdata = zynseq.event_data()
             index = 0
             while True:
                 res = self.zynseq.libseq.getBufferEventDataAt(index, evdata)
@@ -1118,9 +1115,14 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                                             anchor="w", fill=fill, tags=(tag, "notename"))
 
     def pianoroll_note_on(self, note):
+        # Highlight the note key
         row = self.get_row_from_note(note)
         if row is not None:
             self.pianoroll_set_row(row, "#40FF40")
+
+        # Re-center vertically if note is off the view area
+        if not self.keymap_offset <= row < self.keymap_offset + self.view_rows:
+            self.set_keymap_offset(row - self.view_rows // 2 + 1)
 
     def pianoroll_note_off(self, note):
         row = self.get_row_from_note(note)
@@ -1145,10 +1147,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             row = int(row)
         # Check keymap offset
         if row >= self.keymap_offset + self.view_rows:
-            # Note is off top of display
+            # Note is off top of view area
             self.set_keymap_offset(row - self.view_rows + 1)
         elif row < self.keymap_offset:
-            # Note is off bottom of display
+            # Note is off bottom of view area
             self.set_keymap_offset(row)
         note = self.keymap[row]['note']
 

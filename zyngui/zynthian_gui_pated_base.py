@@ -1101,10 +1101,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         # Adjust real zoom value
         if not step_width_changed:
             self.zoom = self.row_height - self.base_row_height
-            logging.debug(f"VZOOM! => {self.zoom}")
+            #logging.debug(f"VZOOM! => {self.zoom}")
         elif not row_height_changed:
             self.zoom = self.step_width - self.base_step_width
-            logging.debug(f"HZOOM! => {self.zoom}")
+            #logging.debug(f"HZOOM! => {self.zoom}")
         else:
             hzoom = self.step_width - self.base_step_width
             vzoom = self.row_height - self.base_row_height
@@ -1112,7 +1112,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.zoom = hzoom
             else:
                 self.zoom = vzoom
-            logging.debug(f"ZOOM! => {self.zoom} (hzoom={hzoom}, vzoom={vzoom})")
+            #logging.debug(f"ZOOM! => {self.zoom} (hzoom={hzoom}, vzoom={vzoom})")
         #self.zoom = new_zoom
 
         # Recalculate geometry parameters and scaling factor
