@@ -594,6 +594,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         if row < len(self.keymap):
             note = self.keymap[row]['note']
             self.play_note(note)
+            self.pianoroll_note_on(note)
+            zynthian_gui_config.top.after(200, self.pianoroll_note_off, note)
+
 
     # Function to handle mouse wheel over pianoroll
     def on_pianoroll_wheel(self, event):

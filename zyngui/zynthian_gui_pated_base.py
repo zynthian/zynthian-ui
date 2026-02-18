@@ -905,11 +905,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Function to handle pianoroll drag motion
     def on_pianoroll_motion(self, event):
         if not self.piano_roll_drag_start:
-            return
+            return 0
         self.piano_roll_drag_count += 1
         offset = int(DRAG_SENSIBILITY * (event.y - self.piano_roll_drag_start.y) / self.row_height)
         if offset == 0:
-            return
+            return 0
         self.swiping = True
         self.piano_roll_drag_start = event
         self.swipe_step_dir = 0
@@ -1230,6 +1230,15 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Function to draw pianoroll content
     def draw_pianoroll(self):
         #self.piano_roll.delete(tkinter.ALL)
+        pass
+
+    def pianoroll_set_row(self, row, color=None):
+        pass
+
+    def pianoroll_note_on(self, note):
+        pass
+
+    def pianoroll_note_off(self, note):
         pass
 
     def draw_events(self):
