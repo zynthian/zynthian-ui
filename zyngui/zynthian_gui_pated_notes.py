@@ -260,14 +260,14 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         scales = self.get_scales()
         options[f"Scale ({scales[self.zynseq.libseq.getScale()]})"] = 'Scale'
         options[f"Tonic ({NOTE_NAMES[self.zynseq.libseq.getTonic()]})"] = 'Tonic'
-        note = self.zynseq.libseq.getInputRest()
-        if note < 128:
-            options[f"Rest note ({NOTE_NAMES[note % 12]}{note // 12 - 1})"] = 'Rest note'
-        else:
-            options["Rest note (None)"] = 'Rest note'
         menu_options['PATTERN'].update(options)
         # Pattern Edit
         options = {}
+        note = self.zynseq.libseq.getInputRest()
+        if note < 128:
+            options[f"Rest-step note ({NOTE_NAMES[note % 12]}{note // 12 - 1})"] = 'Rest note'
+        else:
+            options["Rest note (None)"] = 'Rest note'
         options[f"Chord mode ({CHORD_MODES[self.chord_mode]})"] = 'Chord mode'
         if self.chord_mode == 1:
             options[f"Chord type ({CHORDS[self.chord_type][0]})"] = 'Chord type'
@@ -305,7 +305,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 value = self.zynseq.libseq.getInputRest() + 1
                 if value > 128:
                     value = 0
-                self.enable_param_editor(self, 'rest', {'name': 'Rest', 'labels': labels, 'value': value})
+                self.enable_param_editor(self, 'rest', {'name': 'Rest-step note', 'labels': labels, 'value': value})
             case 'Chord mode':
                 self.enable_param_editor(self, 'chord_mode', {'name': 'Chord mode', 'labels': CHORD_MODES,
                                                               'value': self.chord_mode})
@@ -374,9 +374,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Function to load new pattern
     # index: Pattern index
     def load_pattern(self, index):
-        # Save zoom value and vertical position in pattern object
-        self.zynseq.libseq.setRefNote(int(self.keymap_offset))
-        self.zynseq.libseq.setPatternZoom(self.zoom)
         # Load requested pattern
         self.zynseq.libseq.selectPattern(index)
         self.pattern = index
@@ -389,24 +386,32 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.n_steps_beat = n_steps_beat
             self.step_offset = 0
             self.update_geometry()
-            self.redraw_pending = 4
+            if self.duration > n_steps:
+                self.duration = 1
             keymap_len = len(self.keymap)
+            self.redraw_pending = 4
         else:
             self.redraw_pending = 3
+
+        # Vertical position => keymap_offset
+        if keymap_len > self.view_rows:
+            self.keymap_offset = int(self.zynseq.libseq.getRefNote())
+        else:
+            self.keymap_offset = 0
+            self.zynseq.libseq.setRefNote(0)
+        self.set_keymap_offset()
+
+        # Selected cell
         if self.selected_cell[0] >= n_steps:
             self.selected_cell[0] = int(n_steps) - 1
-        self.keymap_offset = int(self.zynseq.libseq.getRefNote())
-        if self.keymap_offset >= keymap_len:
-            self.keymap_offset = max(0, int((keymap_len - self.view_rows) / 2))
-            self.selected_cell[1] = int(self.keymap_offset + self.view_rows / 2)
-        if self.duration > n_steps:
-            self.duration = 1
+        self.selected_cell[1] = int(self.keymap_offset + self.view_rows / 2)
+
+        # Draw grid and adjust zoom
         self.draw_grid()
-        self.select_cell()
-        self.set_keymap_offset()
+        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+
         self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
         self.set_title()
-        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
         if not self.seq_info:
             # Populate editor sequence
             self.zynseq.libseq.clearSequence(self.zynseq.scene, self.phrase, self.sequence)
@@ -812,8 +817,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         ypos = (self.scroll_height - self.keymap_offset * self.row_height) / self.total_height
         self.grid_canvas.yview_moveto(ypos)
         self.piano_roll.yview_moveto(ypos)
-        # logging.debug(f"OFFSET: {self.keymap_offset} (keymap length: {len(self.keymap)})")
-        # logging.debug(f"GRID Y-SCROLL: {ypos}\n\n")
+        self.zynseq.libseq.setRefNote(int(self.keymap_offset))
+        #logging.debug(f"OFFSET: {self.keymap_offset} (keymap length: {len(self.keymap)})")
+        #logging.debug(f"GRID Y-SCROLL: {ypos}\n\n")
 
     # Update grid position
     def update_grid_position(self, step_width_changed, row_height_changed):
@@ -828,6 +834,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def reset_grid_offset(self):
         self.set_keymap_offset()
         self.set_step_offset()
+
+    def set_grid_zoom(self, new_zoom=0):
+        res = super().set_grid_zoom(new_zoom)
+        self.zynseq.libseq.setPatternZoom(self.zoom)
+        return res
 
     # -------------------------------------------------------------------------
     # Drawing functions

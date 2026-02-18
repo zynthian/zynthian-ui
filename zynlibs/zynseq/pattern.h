@@ -749,7 +749,6 @@ class Pattern {
     // Grid zoom management
     void setZoom(int16_t zoom) { m_nZoom = zoom; }
     int16_t getZoom() { return m_nZoom; }
-    // TODO => Implement saving/restore of zoom value
 
   private:
     void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);

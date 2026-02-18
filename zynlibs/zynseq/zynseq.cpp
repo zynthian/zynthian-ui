@@ -1165,6 +1165,7 @@ void setPattern(uint32_t id, const char* patn_state) {
     pPattern->setScale(jPattern.value("scale", 0));
     pPattern->setTonic(jPattern.value("tonic", 0));
     pPattern->setRefNote(jPattern.value("refNote", 60));
+    pPattern->setZoom(jPattern.value("zoom", 0));
     if (jPattern.contains("ccnum")) {
         for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
             pPattern->setInterpolateCC(ccnum, jPattern["ccnum"][ccnum]);
@@ -1219,6 +1220,7 @@ bool setState(const char* state) {
                 pPattern->setScale(jPattern.value("scale", 0));
                 pPattern->setTonic(jPattern.value("tonic", 0));
                 pPattern->setRefNote(jPattern.value("refNote", 60));
+                pPattern->setZoom(jPattern.value("zoom", 0));
                 if (jPattern.contains("ccnum")) {
                     for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
                         pPattern->setInterpolateCC(ccnum, jPattern["ccnum"][ccnum]);
@@ -1386,6 +1388,7 @@ const char* getState() {
             jPatn["scale"] = pPattern->getScale();
             jPatn["tonic"] = pPattern->getTonic();
             jPatn["refNote"] = pPattern->getRefNote();
+            jPatn["zoom"] = pPattern->getZoom();
             jPatn["quantize"] = pPattern->getQuantizeNotes();
             jPatn["swingDiv"] = pPattern->getSwingDiv();
             jPatn["swing"] = pPattern->getSwingAmount();
