@@ -180,6 +180,11 @@ class event_data(ctypes.Structure):
     play_chance={self.play_chance}, stut_chance={self.stut_chance})"""
 
 
+# Buffer to select pattern events (event indexes)
+event_indexes_limit = 10000
+event_indexes_buffer = (ctypes.c_uint32 * event_indexes_limit)()
+
+
 class zynseq(zynthian_engine):
 
     # Initiate library - performed by zynseq module
@@ -193,14 +198,21 @@ class zynseq(zynthian_engine):
             self.libseq.getSequenceName.restype = ctypes.c_char_p
 
             self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
-            self.libseq.pastePatternBlock.argtypes = [ctypes.c_uint32, ctypes.c_int32, ctypes.c_float, ctypes.c_int8, ctypes.c_bool]
+            self.libseq.pastePatternBuffer.argtypes = [ctypes.c_uint32, ctypes.c_int32, ctypes.c_float, ctypes.c_int8, ctypes.c_bool]
+            self.libseq.getPatternSelectionIndexes.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32,
+                                                               ctypes.c_uint32, ctypes.c_int32, ctypes.c_uint8, ctypes.c_uint8]
             self.libseq.getEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
             self.libseq.getBufferEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
             self.libseq.getNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
             self.libseq.setNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
             #self.libseq.getNoteData.restype = ctypes.c_int32
             self.libseq.getNoteDuration.restype = ctypes.c_float
+
             self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
+            self.libseq.changeVelocityAll.argtypes = [ctypes.c_float]
+            self.libseq.changeDurationList.argtypes = [ctypes.c_float, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
+            self.libseq.changeVelocityList.argtypes = [ctypes.c_float, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
+
             self.libseq.getNoteOffset.restype = ctypes.c_float
             self.libseq.setNoteOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
 
@@ -477,7 +489,7 @@ class zynseq(zynthian_engine):
 
         step: Step index in the current pattern
         note: Note number
-        : Note number
+        cp_buffer: Note number
         Returns: A data struct with event data
         """
 
@@ -488,7 +500,8 @@ class zynseq(zynthian_engine):
             return evdata
 
     def set_note_data(self, step, note, evdata):
-        """ Set note data, excepti position, searching by step & note number in the currently loaded pattern
+        """ Set note data searching by step & note number in the currently loaded pattern.
+            All event data is overwritten except: position, offset duration, command and val1_start,
 
         step: Step index in the current pattern
         note: Note number
@@ -497,6 +510,27 @@ class zynseq(zynthian_engine):
         """
 
         return self.libseq.setNoteData(step, note, evdata)
+
+    def get_pattern_selection(self, pattern, step1, step2, note1, note2):
+        """ Get event indexes from pattern in the specified step & note range.
+
+        pattern: Pattern index
+        step1: Start of step range
+        step2: End of step range
+        note1: Start of note range
+        note2: End of note range
+        Returns: A list of event indexes
+        """
+
+        # Initially, event indexes are copied into a ctypes buffer array
+        n = self.libseq.getPatternSelectionIndexes(pattern, event_indexes_buffer, event_indexes_limit,
+                                               step1, step2, note1, note2)
+        # Then copied and returned in a list
+        res = []
+        for i in range(n):
+            res.append(event_indexes_buffer[i])
+        return res
+        #return event_indexes_buffer
 
     # -------------------------------------------------------------------
     # MIDI transport & clock settings

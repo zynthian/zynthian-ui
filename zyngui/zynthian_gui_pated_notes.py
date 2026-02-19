@@ -42,6 +42,11 @@ from zyngui.zynthian_gui_base import zynthian_gui_base
 
 # ------------------------------------------------------------------------------
 
+# Event draw modes
+EVENT_DRAW_NORMAL = 0       # Draw as normal event
+EVENT_DRAW_CP = 1           # Draw as copied into the copy/paste buffer
+EVENT_DRAW_SEL = 2          # Draw as selected event
+
 EDIT_PARAM_DUR = 0          # Edit event duration
 EDIT_PARAM_VEL = 1          # Edit event velocity
 EDIT_PARAM_OFFSET = 2       # Edit event offset
@@ -377,6 +382,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Load requested pattern
         self.zynseq.libseq.selectPattern(index)
         self.pattern = index
+        self.selected_events = None
+        self.block_copied = None
         n_steps = self.zynseq.libseq.getSteps()
         n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
         keymap_len = len(self.keymap)
@@ -744,7 +751,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     if self.edit_mode == EDIT_MODE_NONE:
                         self.set_edit_mode(EDIT_MODE_SINGLE)
                     else:
-                        self.set_edit_mode(EDIT_MODE_ALL)
+                        self.set_edit_mode(EDIT_MODE_MULTI)
                 # Short click without drag: Add/remove single note/chord
                 else:
                     step = self.selected_cell[0]
@@ -864,7 +871,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 break
             #logging.debug(f"DRAWING EVENT AT {index} => {evdata.position}, {evdata.command}")
             if evdata.command == zynseq.MIDI_NOTE_ON:
-                self.draw_event(evdata, False)
+                if self.selected_events and index in self.selected_events:
+                    self.draw_event(evdata, EVENT_DRAW_SEL)
+                else:
+                    self.draw_event(evdata, EVENT_DRAW_NORMAL)
             index += 1
 
     # Draw all note events in the copy/paste buffer
@@ -890,14 +900,14 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         elif pos < 0:
                             pos += self.n_steps
                         evdata.position = pos
-                        self.draw_event(evdata, True)
+                        self.draw_event(evdata, EVENT_DRAW_CP)
                 index += 1
 
     # Draw an event
     # evdata: Event data
-    # cp: True if it's an event from the copy/paste buffer
+    # mode: draw mode => EVENT_DRAW_NORMAL, EVENT_DRAW_CP, EVENT_DRAW_SEL
     # row: row index (optimization parameter)
-    def draw_event(self, evdata, cp=False, row=None):
+    def draw_event(self, evdata, mode=EVENT_DRAW_NORMAL, row=None):
         step = evdata.position
         # Calculate row if needed:
         if row is None:
@@ -909,14 +919,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         #logging.debug(f"DRAWING EVENT AT CELL {step}, {row}")
 
         velocity_colour = evdata.val2_start + 70
-        if cp:
+        if mode == EVENT_DRAW_CP:
             cell_tag = f"cp_{step},{row}"
             cell_tags = (cell_tag, f"step{step}", "gridcell", "cp")
             fill_colour = f"#{velocity_colour//2:02x}{velocity_colour:02x}{velocity_colour//2:02x}"
         else:
             cell_tag = f"pat_{step},{row}"
             cell_tags = (cell_tag, f"step{step}", "gridcell", "pat")
-            fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
+            if mode == EVENT_DRAW_SEL:
+                fill_colour = f"#{velocity_colour//2:02x}{velocity_colour//2:02x}{velocity_colour:02x}"
+            else:
+                fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
         if evdata.play_freq == 0 or evdata.play_chance == 0:
             stipple = 'gray12'
         else:
@@ -1025,19 +1038,26 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         note = self.keymap[row]["note"]
         if self.block_copied:
             evdata = self.zynseq.get_note_data(step - self.block_dstep, note - self.block_drow, True)
-            if evdata:
-                cp = True
-            else:
-                cp = False
-                evdata = self.zynseq.get_note_data(step, note)
         else:
-            cp = False
-            evdata = self.zynseq.get_note_data(step, note)
-
+            evdata = None
         if evdata:
-            self.draw_event(evdata, cp, row)
+            mode = EVENT_DRAW_CP
         else:
-            if cp:
+            index = self.zynseq.libseq.getNoteIndex(step, note)
+            if index >= 0:
+                evdata = zynseq.event_data()
+                self.zynseq.libseq.getEventDataAt(index, evdata)
+                if self.selected_events and index in self.selected_events:
+                    mode = EVENT_DRAW_SEL
+                else:
+                    mode = EVENT_DRAW_NORMAL
+            else:
+                mode = EVENT_DRAW_NORMAL
+                evdata = None
+        if evdata:
+            self.draw_event(evdata, mode, row)
+        else:
+            if mode == EVENT_DRAW_CP:
                 self.grid_canvas.delete(f"cp_{step},{row}")
             else:
                 self.grid_canvas.delete(f"pat_{step},{row}")
@@ -1238,7 +1258,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                                                                    width=self.select_thickness, tags="selected_cell")
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
-        #self.grid_canvas.tag_raise(self.rect_selected_cell)
+        self.grid_canvas.tag_raise(self.rect_selected_cell)
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block
@@ -1413,11 +1433,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.changed = True
             self.rows_pending.put_nowait(note)
 
-    # Function to enable note duration/velocity direct edit mode
-    # mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
-    def set_edit_mode(self, mode):
-        super().set_edit_mode(mode)
-
     def set_edit_title(self):
         color_fg = zynthian_gui_config.color_header_bg
         color_bg = zynthian_gui_config.color_panel_tx
@@ -1425,13 +1440,13 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         note = self.get_note_from_row(self.selected_cell[1])
         delta = "1"
         zynpot = 2
-        if self.edit_mode == EDIT_MODE_ALL:
+        if self.edit_mode == EDIT_MODE_MULTI:
             if self.edit_param == EDIT_PARAM_DUR:
                 delta = "0.1"
                 zynpot = 1
-                self.set_title("Duration ALL", color_fg, color_bg)
+                self.set_title("MULTI Duration ", color_fg, color_bg)
             elif self.edit_param == EDIT_PARAM_VEL:
-                self.set_title("Velocity ALL", color_fg, color_bg)
+                self.set_title("MULTI Velocity", color_fg, color_bg)
         else:
             evdata = self.zynseq.get_note_data(step, note)
             if self.edit_param == EDIT_PARAM_DUR:
@@ -1540,9 +1555,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         self.select_cell()
                 self.set_edit_title()
                 return True
-            elif self.edit_mode == EDIT_MODE_ALL:
+            elif self.edit_mode == EDIT_MODE_MULTI:
                 if self.edit_param == EDIT_PARAM_DUR:
-                    self.zynseq.libseq.changeDurationAll(dval * 0.1)
+                    if self.selected_events:
+                        self.zynseq.libseq.changeDurationList(dval * 0.1, zynseq.event_indexes_buffer, len(self.selected_events))
+                    else:
+                        self.zynseq.libseq.changeDurationAll(dval * 0.1)
                     self.redraw_pending = 3
                     return True
 
@@ -1694,20 +1712,23 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                         self.select_cell()
                 self.set_edit_title()
                 return True
-            elif self.edit_mode == EDIT_MODE_ALL:
+            elif self.edit_mode == EDIT_MODE_MULTI:
                 if self.edit_param == EDIT_PARAM_DUR:
-                    if dval > 0:
-                        self.zynseq.libseq.changeDurationAll(1)
-                    if dval < 0:
-                        self.zynseq.libseq.changeDurationAll(-1)
+                    if self.selected_events:
+                        self.zynseq.libseq.changeDurationList(dval, zynseq.event_indexes_buffer, len(self.selected_events))
+                    else:
+                        self.zynseq.libseq.changeDurationAll(dval)
                     self.redraw_pending = 3
                 elif self.edit_param == EDIT_PARAM_VEL:
-                    self.zynseq.libseq.changeVelocityAll(dval)
+                    if self.selected_events:
+                        self.zynseq.libseq.changeVelocityList(dval, zynseq.event_indexes_buffer, len(self.selected_events))
+                    else:
+                        self.zynseq.libseq.changeVelocityAll(dval)
                     self.redraw_pending = 3
                 return True
 
         elif i == self.ctrl_order[3]:
-            if self.edit_mode == EDIT_MODE_SINGLE or self.edit_mode == EDIT_MODE_ALL:
+            if self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
                 self.edit_param += dval
                 if self.edit_param < 0:
                     self.edit_param = 0

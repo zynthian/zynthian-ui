@@ -345,7 +345,21 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                                                      width=self.select_thickness, tags="selected_cell")
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
-        #self.grid_canvas.tag_raise(self.rect_selected_cell)
+        self.grid_canvas.tag_raise(self.rect_selected_cell)
+
+
+    # ---------------------------------------------------------------
+    # Block edit functionality => Copy/paste block
+    # ---------------------------------------------------------------
+
+    def copy_block(self, cut=False):
+        self.end_select_block()
+
+    def move_block(self, dstep, drow):
+        pass
+
+    def paste_block(self):
+        pass
 
     # -------------------------------------------------------------------------
     # Event management

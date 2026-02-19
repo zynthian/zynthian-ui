@@ -2230,10 +2230,26 @@ void changeVelocityAll(int value) {
     }
 }
 
+void changeVelocityList(float value, uint32_t* evi_list, uint32_t n) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->changeVelocityList(value, evi_list, n);
+        g_bDirty = true;
+    }
+}
+
 void changeDurationAll(float value) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->changeDurationAll(value);
+        g_bDirty = true;
+    }
+}
+
+void changeDurationList(float value, uint32_t* evi_list, uint32_t n) {
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->changeDurationList(value, evi_list, n);
         g_bDirty = true;
     }
 }
@@ -2280,14 +2296,24 @@ void copyPattern(uint32_t source, uint32_t destination) {
     g_bDirty = true;
 }
 
-uint32_t copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2, bool cut) {
+void pastePatternBuffer(uint32_t pattern, int32_t dstep, float doffset, int8_t dnote, bool truncate) {
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
+    if (pPattern) {
+        if (g_pPatternBuffer) {
+            pPattern->pastePattern(g_pPatternBuffer, dstep, doffset, dnote, truncate);
+            g_bDirty = true;
+        }
+    }
+}
+
+uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2, bool cut) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern) {
         // Free last selection
         if (g_pPatternBuffer)
             delete g_pPatternBuffer;
         // Copy new selection to buffer
-        g_pPatternBuffer = pPattern->copyPattern(pos1, pos2, note1, note2, cut);
+        g_pPatternBuffer = pPattern->getPatternSelection(step1, step2, note1, note2, cut);
         // If something was cutted ...
         uint32_t n = g_pPatternBuffer->getEvents();
         if (cut &&  n > 0)
@@ -2297,14 +2323,12 @@ uint32_t copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_
     return 0;
 }
 
-void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate) {
+uint32_t getPatternSelectionIndexes(uint32_t pattern, uint32_t* ev_indexes, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern) {
-        if (g_pPatternBuffer) {
-            pPattern->pastePattern(g_pPatternBuffer, dpos, doffset, dnote, truncate);
-            g_bDirty = true;
-        }
+        return pPattern->getPatternSelectionIndexes(ev_indexes, limit, step1, step2, note1, note2);
     }
+    return 0;
 }
 
 void setInputRest(uint8_t note) {

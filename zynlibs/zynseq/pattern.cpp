@@ -59,14 +59,14 @@ Pattern& Pattern::operator+=(Pattern& p) {
 }
 
 // Paste (merge) a pattern into this
-void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote, bool truncate) {
+void Pattern::pastePattern(Pattern* p, int32_t dstep, float doffset, int8_t dnote, bool truncate) {
     // Add note events from argument pattern into this pattern. Ignore other events.
     uint32_t nsteps = getSteps();
     for (auto it = p->m_vEvents.begin(); it != p->m_vEvents.end(); ++it) {
         StepEvent* ev = *it;
         if (ev->m_nCommand != MIDI_NOTE_ON) continue;
         // Calculate time offset
-        int32_t pos = ev->m_nPosition + dpos;
+        int32_t pos = ev->m_nPosition + dstep;
         float offset = ev->m_fOffset + doffset;
         if (offset >= 1.0) {
             pos++;
@@ -104,24 +104,24 @@ void Pattern::pastePattern(Pattern* p, int32_t dpos, float doffset, int8_t dnote
     }
 }
 
-// Returns a new pattern copying events from this in a time & note range
-Pattern* Pattern::copyPattern(uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2, bool cut) {
+// Returns a new pattern copying note events from this pattern, in the specified step & note range
+Pattern* Pattern::getPatternSelection(uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2, bool cut) {
     uint32_t nsteps = getSteps();
 
     // Check range of offset parameters
-    if (pos1 >= nsteps) pos1 = nsteps - 1;
-    if (pos2 >= nsteps) pos2 = nsteps - 1;
+    if (step1 >= nsteps) step1 = nsteps - 1;
+    if (step2 >= nsteps) step2 = nsteps - 1;
     if (note1 > 127) note1 = 127;
     if (note2 > 127) note2 = 127;
 
     // Create an empty pattern for the result. The caller must delete when not needed anymore.
     Pattern* res = new Pattern(m_nBeats, m_nStepsPerBeat);
 
-    // Copy note events from argument pattern into this pattern. Ignore other events.
+    // Copy note events from this pattern into the result pattern. Ignore other events.
     for (auto it = m_vEvents.begin(); it != m_vEvents.end(); /*don't increment here!*/) {
         StepEvent* ev = *it;
         if (ev->m_nCommand != MIDI_NOTE_ON ||
-            ev->m_nPosition < pos1 || ev->m_nPosition > pos2 ||
+            ev->m_nPosition < step1 || ev->m_nPosition > step2 ||
             ev->m_nValue1start < note1 || ev->m_nValue1start > note2) {
             it++;
             continue;
@@ -135,6 +135,32 @@ Pattern* Pattern::copyPattern(uint32_t pos1, uint32_t pos2, uint8_t note1, uint8
         }
     }
     return res;
+}
+
+// Get indexes of note events in a time & note range, upto the specified limit => ev_indexes
+// Returns the number of event indexes copied into ev_indexes.
+uint32_t Pattern::getPatternSelectionIndexes(uint32_t* ev_indexes, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
+    uint32_t nsteps = getSteps();
+
+    // Check range of offset parameters
+    if (step1 >= nsteps) step1 = nsteps - 1;
+    if (step2 >= nsteps) step2 = nsteps - 1;
+    if (note1 > 127) note1 = 127;
+    if (note2 > 127) note2 = 127;
+
+    // Copy indexes of note events from argument pattern into this pattern. Ignore other events.
+    uint32_t i = 0;
+    for (auto it = m_vEvents.begin(); it != m_vEvents.end(); it++) {
+        StepEvent* ev = *it;
+        if (ev->m_nCommand != MIDI_NOTE_ON ||
+            ev->m_nPosition < step1 || ev->m_nPosition > step2 ||
+            ev->m_nValue1start < note1 || ev->m_nValue1start > note2) {
+            continue;
+        }
+        ev_indexes[i++] = std::distance(m_vEvents.begin(), it);
+        if (i >= limit) break;
+    }
+    return i;
 }
 
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration, float offset) {
@@ -748,8 +774,36 @@ void Pattern::changeVelocityAll(int value) {
     }
 }
 
+void Pattern::changeVelocityList(float value, uint32_t* evi_list, uint32_t n) {
+    for (uint32_t j = 0; j < n; ++j) {
+        StepEvent* ev = m_vEvents[evi_list[j]];
+        if (ev->getCommand() != MIDI_NOTE_ON)
+            continue;
+        int vel = ev->getValue2start() + value;
+        if (vel > 127)
+            vel = 127;
+        if (vel < 1)
+            vel = 1;
+        ev->setValue2start(vel);
+    }
+}
+
 void Pattern::changeDurationAll(float value) {
     for (StepEvent* ev : m_vEvents) {
+        if (ev->getCommand() != MIDI_NOTE_ON)
+            continue;
+        float duration = ev->getDuration() + value;
+        if (duration <= 0)
+            return;         // Don't allow jump larger than current value
+        if (duration < 0.1) //!@todo How short should we allow duration change?
+            duration = 0.1;
+        ev->setDuration(duration);
+    }
+}
+
+void Pattern::changeDurationList(float value, uint32_t* evi_list, uint32_t n) {
+    for (uint32_t j = 0; j < n; ++j) {
+        StepEvent* ev = m_vEvents[evi_list[j]];
         if (ev->getCommand() != MIDI_NOTE_ON)
             continue;
         float duration = ev->getDuration() + value;

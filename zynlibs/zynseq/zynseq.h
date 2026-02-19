@@ -247,23 +247,36 @@ void copyPattern(uint32_t source, uint32_t destination);
 
 /** @brief  Paste (merge) copy/paste buffer into the specified pattern
     @param  pattern Index of pattern
-    @param  dpos Quantity of steps to offset
+    @param  dstep Quantity of steps to offset
     @param  doffset Fractional time offset
     @param  dnote Note offset
-    @param  truncate Truncate time overflowed events
+    @param  truncate False to use circular horizontal overflow. True to skip events out of step range.
 */
-void pastePatternBlock(uint32_t pattern, int32_t dpos, float doffset, int8_t dnote, bool truncate=false);
+void pastePatternBuffer(uint32_t pattern, int32_t dstep, float doffset, int8_t dnote, bool truncate=false);
 
-/** @brief  Copy a block (subpattern) from the specified pattern to the copy/paste buffer
+/** @brief  Copy/Cut a selection from the specified pattern to the copy/paste buffer
     @param  pattern Index of pattern
-    @param  pos1 step-range start
-    @param  pos2 step-range end
+    @param  step1 step-range start
+    @param  step2 step-range end
     @param  note1 note-range start
     @param  note2 note-range end
     @param cut True tp delete events from source pattern
     @retval uint32_t Number of events copied (or cutted!)
 */
-uint32_t copyPatternBlock(uint32_t pattern, uint32_t pos1, uint32_t pos2, uint8_t note1, uint8_t note2, bool cut=false);
+uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127, bool cut=false);
+
+/** @brief  Get indexes of note events from a specified pattern in the specified step & note range.
+    @param  pattern Index of pattern
+    @param  ev_indexes pointer to integer array. It will be filled with the list of event indexes
+    @param  limit size of integer array (ev_indexes)
+    @param  step1 step-range start
+    @param  step2 step-range end
+    @param  note1 note-range start
+    @param  note2 note-range end
+    @retval uint32_t the number of event indexes copied into the array ev_indexes.
+*/
+uint32_t getPatternSelectionIndexes(uint32_t pattern, uint32_t* ev_indexes, uint32_t limit, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
+
 
 // ** Functions acting on the globally selected pattern **
 
@@ -597,10 +610,24 @@ void transpose(int8_t value);
 */
 void changeVelocityAll(int value);
 
+/** @brief  Change velocity of a list of notes in pattern
+    @param  value Offset to adjust +/-127
+    @param  evi_list Event index list
+    @param  n number of events in list
+*/
+void changeVelocityList(float value, uint32_t* evi_list, uint32_t n);
+
 /** @brief  Change duration of all notes in patterm
     @param  value Offset to adjust +/-100.0 or whatever
 */
 void changeDurationAll(float value);
+
+/** @brief  Change duration of a list of notes in pattern
+    @param  value Offset to adjust +/-127
+    @param  evi_list Event index list
+    @param  n number of events in list
+*/
+void changeDurationList(float value, uint32_t* evi_list, uint32_t n);
 
 /** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
     @param  pPattern Pointer to pattern
