@@ -444,10 +444,7 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 	def update_mixer_strip(self, chan, symbol, value, mixbus=False):
 		if self.idev_out is None:
 			return
-		if mixbus:
-			chain_id = chan
-		else:
-			chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
+		chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus)
 		#logging.debug(f"update_mixer_strip chan: {chan} symbol: {symbol} value: {value}, mixbus: {mixbus} => chain ID: {chain_id}")
 		if chain_id is not None:
 			# Master Strip Level
@@ -456,6 +453,8 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 					lib_zyncore.dev_send_pitchbend_change(self.idev_out, self.device_settings['masterfader_fader_num'], int(value * self.max_fader_value))
 				return
 			else:
+				if mixbus:		# TODO: Implement mixbuses!!
+					return
 				col = self.get_filtered_index_by_chain_id(chain_id) - self.scroll_h
 				if 0 <= col < self.device_settings['number_of_strips']:
 					if symbol == "mute":

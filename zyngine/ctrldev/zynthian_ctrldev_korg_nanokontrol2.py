@@ -186,11 +186,10 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 
     # Update LED status for a single strip
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
-        if self.idev_out is None:
+        if self.idev_out is None or mixbus:     # Nothing to update in main strip nor other mixbuses implementation
             return
-        chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
-        if chain_id:
-            col = self.get_filtered_index_by_chain_id(chain_id) - self.scroll_h
+        try:
+            col = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
             if 0 <= col < 8:
                 if symbol == "mute":
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.mute_ccnums[col], value * 0x7F)
@@ -198,6 +197,8 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.solo_ccnums[col], value * 0x7F)
                 elif symbol == "rec" and self.rec_mode:
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, self.midi_chan, self.rec_ccnums[col], value * 0x7F)
+        except:
+            pass
 
     # Update LED status for active chain
     def update_mixer_active_chain(self, active_chain):

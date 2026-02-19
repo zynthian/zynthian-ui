@@ -239,7 +239,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     now = monotonic()
                     if now < self.last_cc_send + 0.1:
                         return
-                    pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus)
+                    pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) -self.scroll_h
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, pos + 48, int((value + 1.0) * 63))
                 except:
                     pass
@@ -247,7 +247,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             if mixbus and chan == 0:
                 return  # No control for main mixbus
             try:
-                pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+                pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
                     lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
             except TypeError:
@@ -256,7 +256,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             if mixbus and chan == 0:
                 return  # No control for main mixbus
             try:
-                pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+                pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
                     lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_ACTIVATOR, value)
             except TypeError:
@@ -265,7 +265,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             if mixbus and chan == 0:
                 return  # No control for main mixbus
             try:
-                pos = self.chain_manager.get_chain_id_by_mixer_chan(chan, mixbus) - self.scroll_h
+                pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
                     lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_RECORD_ARM, value)
             except TypeError:

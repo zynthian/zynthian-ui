@@ -562,7 +562,7 @@ class zynthian_chain_manager:
             return None
 
     def get_chain_id_by_index(self, index):
-        """ Get a chain ID its display index
+        """ Get a chain ID by its display index
         Args:
             index: Display position
         Returns: Chain identifier (int) or None on failure
@@ -636,15 +636,20 @@ class zynthian_chain_manager:
         Returns: Chain identifier or None on failure
         """
 
-        #TODO: Optimise
-        if mixbus:
-            eng_code = "MR"
-        else:
-            eng_code = "MI"
-        for idx, chain in enumerate(self.chains.values()):
-            if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan and chain.zynmixer_proc.eng_code == eng_code:
-                return idx
-        return None
+        try:
+            pos = self._mixer_chan_2_pos[mixbus][chan]
+            return list(self.chains)[pos]
+        except:
+            return None
+
+        #if mixbus:
+        #    eng_code = "MR"
+        #else:
+        #    eng_code = "MI"
+        #for chain_id, chain in self.chains.items():
+        #    if chain.zynmixer_proc and chain.zynmixer_proc.mixer_chan == chan and chain.zynmixer_proc.eng_code == eng_code:
+        #        return chain_id
+        #return None
 
     def get_pos_by_mixer_chan(self, chan, mixbus=False):
         """ Get display position of a chain by the mixer channel
