@@ -297,7 +297,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             if self.block_copied:
                 self.set_title("Paste", color_fg, color_bg)
             else:
-                self.set_title("Copy/Cut", color_fg, color_bg)
+                self.set_title("Cut/Copy/Select", color_fg, color_bg)
                 self.start_select_block()
             #self.init_buttonbar(...)
         else:
