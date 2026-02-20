@@ -1165,6 +1165,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         # Re-center vertically if note is off the view area
         if not self.keymap_offset <= row < self.keymap_offset + self.view_rows:
             self.set_keymap_offset(row - self.view_rows // 2 + 1)
+            self.select_cell(None, row)
 
     def pianoroll_note_off(self, note):
         row = self.get_row_from_note(note)
