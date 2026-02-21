@@ -1710,15 +1710,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             # ALT button
             wsl.set_led(leds[0], wsl.wscolor_active2)
 
-            # Copy/paste buttons
-            for i, wsli in enumerate(self.wsleds_i_clipboard):
-                if self.clipboard[i] is not None:
-                    if self.clipboard[i][2] == self.pattern:
-                        wsl.blink(leds[wsli], wsl.wscolor_red)
+            if self.wsleds_i_clipboard:
+                # Copy/paste buttons
+                for i, wsli in enumerate(self.wsleds_i_clipboard):
+                    if self.clipboard[i] is not None:
+                        if self.clipboard[i][2] == self.pattern:
+                            wsl.blink(leds[wsli], wsl.wscolor_red)
+                        else:
+                            wsl.blink(leds[wsli], wsl.wscolor_active2)
                     else:
-                        wsl.blink(leds[wsli], wsl.wscolor_active2)
-                else:
-                    wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                        wsl.set_led(leds[wsli], wsl.wscolor_active2)
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
             wsl.set_led(leds[1], wsl.wscolor_red)
