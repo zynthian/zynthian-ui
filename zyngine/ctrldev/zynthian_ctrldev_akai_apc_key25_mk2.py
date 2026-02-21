@@ -2819,6 +2819,13 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler.refresh()
         if self._current_handler == self._mixer_handler:
             self._padmatrix_handler.refresh()
+    
+    def update_seq_state(self, *args, **kwargs):
+        if self._current_handler == self._mixer_handler:
+            super().update_seq_state(*args, **kwargs)
+#            self._padmatrix_handler.update_seq_state(*args, **kwargs)
+        elif self._current_handler == self._stepseq_handler:
+            self._current_handler.update_seq_state(*args, **kwargs)
 
     def update_pad(self, row, col, pad_info):
         if (self._current_handler == self._mixer_handler):
@@ -2966,13 +2973,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         refresh = self._current_handler == self._mixer_handler
         self._mixer_handler.set_active_chain(active_chain_id, refresh)
         super().on_active_chain(active_chain_id)
-
-    def update_seq_state(self, *args, **kwargs):
-        if self._current_handler == self._mixer_handler:
-            super().update_seq_state(*args, **kwargs)
-#            self._padmatrix_handler.update_seq_state(*args, **kwargs)
-        elif self._current_handler == self._stepseq_handler:
-            self._current_handler.update_seq_state(*args, **kwargs)
 
     def get_state(self):
         state = {}
