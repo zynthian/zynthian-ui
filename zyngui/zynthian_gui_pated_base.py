@@ -1699,6 +1699,14 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.toggle_playback()
         return True
 
+    def cuia_copy(self, params=None):
+        self.copy_pattern(params[0])
+        return True
+
+    def cuia_paste(self, params=None):
+        self.paste_pattern(params[0])
+        return True
+
     def update_wsleds(self, leds):
         wsl = self.zyngui.wsleds
 
