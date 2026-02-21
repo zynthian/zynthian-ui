@@ -1086,9 +1086,12 @@ class PadMatrixHandler(ModeHandlerBase):
             repeat = pad_info["repeat"]
             led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
             patterns = self._get_sequence_patterns(row, group)
-            is_empty = all(
-                self._zynseq.is_pattern_empty(pattern)
-                for pattern in patterns)
+            if (pad_info["group"] < 16):
+                is_empty = all(
+                     self._zynseq.is_pattern_empty(pattern)
+                         for pattern in patterns)
+            else:
+                is_empty = pad_info["empty"]
             if repeat == 0:
                 led_colour = 0 # Off
                 led_mode = RGB_MODE_PRIMARY
