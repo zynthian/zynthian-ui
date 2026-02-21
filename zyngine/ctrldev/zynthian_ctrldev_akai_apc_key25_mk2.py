@@ -126,7 +126,7 @@ class COLORS:
     COLOR_BLUE_LIGHT = 0x24
     COLOR_WHITE = COLOR_FN = 0x03
     COLOR_EGYPT = 0x6C
-    COLOR_ORANGE = COLOR_STATE_2 = 0x09
+    COLOR_ORANGE = COLOR_STATE_2 = COLOR_PATED_ALT_ON = 0x09
     COLOR_ORANGE_LIGHT = 0x08
     COLOR_AMBER = 0x54
     COLOR_RUSSET = 0x3D
@@ -284,11 +284,12 @@ class DeviceHandler(ModeHandlerBase):
         self._colors = colors
         self._knobs_ease = KnobSpeedControl()
         self._is_alt_active = False
+        self._is_pated_alt_active = False
         self._is_playing = set()
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
 
-        self._btn_actions = {
+        cyclable_actions = {
             BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
             BTN_MIX_LEVEL:      ("SCREEN_AUDIO_MIXER", "SCREEN_ALSA_MIXER"),
             BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET", "SCREEN_BANK"),
@@ -296,6 +297,9 @@ class DeviceHandler(ModeHandlerBase):
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
             BTN_RECORD:         ("TOGGLE_RECORD",),
+        }
+
+        press_length_actions = {
             BTN_PLAY: (
                 lambda is_bold: [
                     "AUDIO_FILE_LIST" if is_bold else "TOGGLE_PLAY"
@@ -310,9 +314,14 @@ class DeviceHandler(ModeHandlerBase):
             BTN_KNOB_2: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:1,{'B' if is_bold else 'S'}"]),
             BTN_KNOB_3: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:2,{'B' if is_bold else 'S'}"]),
             BTN_KNOB_4: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:3,{'B' if is_bold else 'S'}"]),
+            BTN_F1: (lambda is_bold: ["COPY:0" if is_bold else 'PASTE:0']),
+            BTN_F2: (lambda is_bold: ["COPY:1" if is_bold else 'PASTE:1']),
+            BTN_F3: (lambda is_bold: ["COPY:2" if is_bold else 'PASTE:2']),
+            BTN_F4: (lambda is_bold: ["COPY:3" if is_bold else 'PASTE:3'])
         }
 
-        self._btn_states = {k: -1 for k in self._btn_actions}
+        self._btn_actions = cyclable_actions | press_length_actions
+        self._btn_states = {k: -1 for k in cyclable_actions}
 
     def refresh(self):
         self._leds.all_off()
@@ -326,11 +335,34 @@ class DeviceHandler(ModeHandlerBase):
         self._leds.led_on(BTN_SEL_YES, self._colors.COLOR_GREEN, LED_BRIGHT_100)
         self._leds.led_on(BTN_BACK_NO, self._colors.COLOR_RED, LED_BRIGHT_100)
 
+        for btn in [BTN_KNOB_1, BTN_KNOB_2, BTN_KNOB_3, BTN_KNOB_4]:
+            self._leds.led_on(btn, self._colors.COLOR_GREEN, LED_BRIGHT_100)
+
         # Lit up alt-related buttons
-        alt_color = self._colors.COLOR_ALT_OFF if not self._is_alt_active else self._colors.COLOR_ALT_ON
-        fn_color = self._colors.COLOR_FN if not self._is_alt_active else self._colors.COLOR_ALT_ON
-        for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-            self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+        if self._current_screen == 'pattern_editor':
+            zyngui = zynthian_gui_config.zyngui
+            screenref = zyngui.screens['pattern_editor']
+            alt_color = self._colors.COLOR_ALT_OFF if not self._is_pated_alt_active else self._colors.COLOR_ALT_ON
+            fn_color = self._colors.COLOR_FN if not self._is_pated_alt_active else self._colors.COLOR_PATED_ALT_ON
+            if self._is_pated_alt_active:
+                for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
+                    if (screenref.clipboard[i] is not None):
+                        print(f"screenref cb: {screenref.clipboard[i][2]} pattern: {screenref.pattern}" )
+                        if (screenref.clipboard[i][2] == screenref.pattern):
+                            self._leds.led_on(btn, self._colors.COLOR_RED, LED_BLINKING_2)
+                        else:
+                            self._leds.led_on(btn, fn_color, LED_BLINKING_2)
+                    else:
+                        self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+            else:
+                for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
+                    self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+        else:
+            alt_color = self._colors.COLOR_ALT_OFF if not self._is_alt_active else self._colors.COLOR_ALT_ON
+            fn_color = self._colors.COLOR_FN if not self._is_alt_active else self._colors.COLOR_ALT_ON
+            for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
+                self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+
         self._leds.led_on(BTN_ALT, alt_color, LED_BRIGHT_100)
 
         # Lit up state-full control buttons
@@ -365,15 +397,20 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("BACK")
             elif note == BTN_ALT:
                 self._state_manager.send_cuia("TOGGLE_ALT_MODE")
-            else:
+            elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                 # Function buttons (F1-F4)
-                fn_btns = {BTN_F1: 1, BTN_F2: 2, BTN_F3: 3, BTN_F4: 4}
-                pgm = fn_btns.get(note)
-                if pgm is not None:
-                    pgm += 4 if self._is_alt_active else 0
-                    self._state_manager.send_cuia("PROGRAM_CHANGE", [pgm])
+                if self._current_screen == 'pattern_editor' and self._is_pated_alt_active:
+                    self._btn_timer.is_pressed(note, time.time())
+                    # implement clipboard copy here
                     return True
-
+                else:
+                    fn_btns = {BTN_F1: 1, BTN_F2: 2, BTN_F3: 3, BTN_F4: 4}
+                    pgm = fn_btns.get(note)
+                    if pgm is not None:
+                        pgm += 4 if self._is_alt_active else 0
+                        self._state_manager.send_cuia("PROGRAM_CHANGE", [pgm])
+                        return True
+            else:
                 # Buttons that may have bold/long press
                 self._btn_timer.is_pressed(note, time.time())
             return True
@@ -399,11 +436,15 @@ class DeviceHandler(ModeHandlerBase):
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
 
     def on_alt_mode(self, alt_mode, refresh=False):
-        self._is_alt_active = alt_mode
+        if self._current_screen == 'pattern_editor':
+            self._is_pated_alt_active = alt_mode
+        else:
+            self._is_alt_active = alt_mode
         if refresh:
             self.refresh()
 
     def on_screen_change(self, screen):
+        self._current_screen = screen
         screen_map = {
             "option":         (BTN_OPT_ADMIN, 0),
             "chain_manager":  (BTN_OPT_ADMIN, 0),
@@ -450,16 +491,17 @@ class DeviceHandler(ModeHandlerBase):
             return
         if callable(actions):
             actions = actions(press_type == CONST.PT_BOLD)
-
-        idx = -1
-        if press_type == CONST.PT_SHORT:
-            idx = self._btn_states[btn]
-            idx = (idx + 1) % len(actions)
-            cuia = actions[idx]
-        elif press_type == CONST.PT_BOLD:
-            # In buttons with 2 functions, the default on bold press is the second
-            idx = 1 if len(actions) > 1 else 0
-            cuia = actions[idx]
+            cuia = actions[0]
+        else:
+            idx = -1
+            if press_type == CONST.PT_SHORT:
+                idx = self._btn_states[btn]
+                idx = (idx + 1) % len(actions)
+                cuia = actions[idx]
+            elif press_type == CONST.PT_BOLD:
+                # In buttons with 2 functions, the default on bold press is the second
+                idx = 1 if len(actions) > 1 else 0
+                cuia = actions[idx]
 
         # Split params, if given
         params = []
