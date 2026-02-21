@@ -1418,6 +1418,12 @@ class zynthian_gui:
     def cuia_tap_tempo(self, params=None):
         self.state_manager.zynseq.tap_tempo()
 
+    def cuia_copy(self, params=None):
+        pass
+
+    def cuia_paste(self, params=None):
+        pass
+
     # Zynpot & Zynswitch emulation CUIAs (low level)
     def cuia_zynpot(self, params=None):
         try:
