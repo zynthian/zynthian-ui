@@ -869,12 +869,21 @@ class zynthian_processor:
             for symbol, ctrl_state in state["controllers"].items():
                 try:
                     zctrl = self.controllers_dict[symbol]
+                    reconfig = False
                     if "value" in ctrl_state:
                         zctrl.set_value(ctrl_state["value"], True)
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                     if "midi_cc_debounce" in ctrl_state:
                         zctrl.midi_cc_debounce = ctrl_state['midi_cc_debounce']
+                    if "midi_cc_val1" in ctrl_state and zctrl.midi_cc_val1 != ctrl_state['midi_cc_val1']:
+                        zctrl.midi_cc_val1 = ctrl_state['midi_cc_val1']
+                        reconfig = True
+                    if "midi_cc_val2" in ctrl_state and zctrl.midi_cc_val2 != ctrl_state['midi_cc_val2']:
+                        zctrl.midi_cc_val2 = ctrl_state['midi_cc_val2']
+                        reconfig = True
+                    if reconfig:
+                        zctrl._configure()
                 except Exception as e:
                     logging.warning(f"Invalid controller for processor {self.get_basepath()}: {e}")
 

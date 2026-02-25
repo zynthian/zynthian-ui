@@ -823,13 +823,15 @@ class zynthian_gui_control(zynthian_gui_selector):
                     match zctrl.midi_cc_mode:
                         case -1:
                             options["Relative Mode learning..."] = i
+                            options["CC Value Range"] = i
                         case 0:
                             if zctrl.range_reversed:
                                 options["Absolute Reverse"] = i
                             else:
                                 options["Absolute Mode"] = i
+                            options["CC Value Range"] = i
                         case _:
-                            options[f"Relative Mode {zctrl.midi_cc_mode}"] = i 
+                            options[f"Relative Mode {zctrl.midi_cc_mode}"] = i
                 if zctrl.processor:
                     options[f"Chain learn..."] = i
                 options[f"Global learn..."] = i
@@ -868,7 +870,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             logging.error(f"Can't show control options => {e}")
 
     def midi_learn_options_cb(self, option, param):
-        parts = option.split(" ")
         if option[2:] == "Chain Controller":
             if self.processors[0].chain:
                 self.processors[0].chain.toggle_zctrl(param)
@@ -878,66 +879,71 @@ class zynthian_gui_control(zynthian_gui_selector):
         elif option == "Clear":
             param.set_value("")
             self.select()
-        elif parts[1] == "X-axis":
-            zctrl = self.zgui_controllers[param].zctrl
-            if self.zyngui.state_manager.zctrl_x == zctrl:
-                self.zyngui.state_manager.zctrl_x = None
-            else:
-                self.zyngui.state_manager.zctrl_x = zctrl
-            if self.zyngui.state_manager.zctrl_y == zctrl:
-                self.zyngui.state_manager.zctrl_y = None
-            #self.refresh_midi_bind()
-            self.midi_learn_options(param, keep_selection=True)
-        elif parts[1] == "Y-axis":
-            zctrl = self.zgui_controllers[param].zctrl
-            if self.zyngui.state_manager.zctrl_y == zctrl:
-                self.zyngui.state_manager.zctrl_y = None
-            else:
-                self.zyngui.state_manager.zctrl_y = zctrl
-            if self.zyngui.state_manager.zctrl_x == zctrl:
-                self.zyngui.state_manager.zctrl_x = None
-            #self.refresh_midi_bind()
-            self.midi_learn_options(param, keep_selection=True)
-        elif parts[0] == "Chain":
-            self.midi_learn(param, MIDI_LEARNING_CHAIN)
-        elif parts[0] == "Global":
-            self.midi_learn(param, MIDI_LEARNING_GLOBAL)
-        elif parts[0] == "ZynStep":
-            try:
-                ccnum = int(parts[2][1:-1])
-            except:
-                ccnum = None
-            self.zyngui.screens['midi_cc_single'].config(self.zynstep_midi_cc_cb, ccnum, param)
-            self.zyngui.show_screen('midi_cc_single')
-        elif parts[0] == "Unlearn":
-            if param:
-                self.midi_unlearn(param)
-            else:
-                self.midi_unlearn_action()
-        elif parts[1] == "Momentary":
-            if parts[0] == '\u2612':
-                self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 0
-            else:
-                self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
-            self.midi_learn_options(param, keep_selection=True)
-        elif parts[1] == "Debounce":
-            if parts[0] == '\u2612':
-                self.zgui_controllers[param].zctrl.midi_cc_debounce = 0
-            else:
-                self.zgui_controllers[param].zctrl.midi_cc_debounce = 1
-            self.midi_learn_options(param, keep_selection=True)
-        elif parts[0] in ["Relative", "Absolute"]:
-            options = {
-                "Absolute Mode": (param, 0),
-                "Absolute Reverse": (param, 0),
-                "Relative Mode 1": (param, 1),
-                "Relative Mode 2": (param, 2),
-                "Relative Mode 3": (param, 3),
-                "Relative Mode 4": (param, 4),
-                "Learn Relative Mode": (param, -1)
-            }
-            self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
-            self.zyngui.show_screen('option')
+        elif option == "CC Value Range":
+            self.zyngui.screens["midi_cc_range"].config(self.zgui_controllers[param].zctrl)
+            self.zyngui.show_screen('midi_cc_range')
+        else:
+            parts = option.split(" ")
+            if parts[1] == "X-axis":
+                zctrl = self.zgui_controllers[param].zctrl
+                if self.zyngui.state_manager.zctrl_x == zctrl:
+                    self.zyngui.state_manager.zctrl_x = None
+                else:
+                    self.zyngui.state_manager.zctrl_x = zctrl
+                if self.zyngui.state_manager.zctrl_y == zctrl:
+                    self.zyngui.state_manager.zctrl_y = None
+                #self.refresh_midi_bind()
+                self.midi_learn_options(param, keep_selection=True)
+            elif parts[1] == "Y-axis":
+                zctrl = self.zgui_controllers[param].zctrl
+                if self.zyngui.state_manager.zctrl_y == zctrl:
+                    self.zyngui.state_manager.zctrl_y = None
+                else:
+                    self.zyngui.state_manager.zctrl_y = zctrl
+                if self.zyngui.state_manager.zctrl_x == zctrl:
+                    self.zyngui.state_manager.zctrl_x = None
+                #self.refresh_midi_bind()
+                self.midi_learn_options(param, keep_selection=True)
+            elif parts[0] == "Chain":
+                self.midi_learn(param, MIDI_LEARNING_CHAIN)
+            elif parts[0] == "Global":
+                self.midi_learn(param, MIDI_LEARNING_GLOBAL)
+            elif parts[0] == "ZynStep":
+                try:
+                    ccnum = int(parts[2][1:-1])
+                except:
+                    ccnum = None
+                self.zyngui.screens['midi_cc_single'].config(self.zynstep_midi_cc_cb, ccnum, param)
+                self.zyngui.show_screen('midi_cc_single')
+            elif parts[0] == "Unlearn":
+                if param:
+                    self.midi_unlearn(param)
+                else:
+                    self.midi_unlearn_action()
+            elif parts[1] == "Momentary":
+                if parts[0] == '\u2612':
+                    self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 0
+                else:
+                    self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
+                self.midi_learn_options(param, keep_selection=True)
+            elif parts[1] == "Debounce":
+                if parts[0] == '\u2612':
+                    self.zgui_controllers[param].zctrl.midi_cc_debounce = 0
+                else:
+                    self.zgui_controllers[param].zctrl.midi_cc_debounce = 1
+                self.midi_learn_options(param, keep_selection=True)
+            elif parts[0] in ["Relative", "Absolute"]:
+                options = {
+                    "Absolute Mode": (param, 0),
+                    "Absolute Reverse": (param, 0),
+                    "Relative Mode 1": (param, 1),
+                    "Relative Mode 2": (param, 2),
+                    "Relative Mode 3": (param, 3),
+                    "Relative Mode 4": (param, 4),
+                    "Learn Relative Mode": (param, -1)
+                }
+                self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
+                self.zyngui.show_screen('option')
 
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])

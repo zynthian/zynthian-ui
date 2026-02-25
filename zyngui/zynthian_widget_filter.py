@@ -48,7 +48,7 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
 
         # Persistent Polygon for performance
         self.filter_poly = self.widget_canvas.create_polygon(0, 0, fill=self.fill_color, outline=self.outline_color, width=2)
-        
+
         self.grid_items = []
         self.label_items = []
 
@@ -60,7 +60,7 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         self.cutoff_param = None
         self.resonance_param = None
         self.last_values = []
-        
+
         self.click_cutoff_val = 0.5
         self.click_res_val = 0.0
         self.is_dragging = False
@@ -111,7 +111,6 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
             self.grid_items.append(self.widget_canvas.create_line(self.m_l, y, self.width - self.m_r, y, fill=self.grid_color, dash=(2, 2)))
             #self.label_items.append(self.widget_canvas.create_text(5, y, text=f"{db} dB", fill=zynthian_gui_config.color_tx, anchor="w", font=("sans", 8)))
 
-
          # Evenly spaced vertical gridlines (linear spacing)
         num_vlines = 8  # adjust to taste
         for i in range(num_vlines + 1):
@@ -123,8 +122,6 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
                 )
             )
 
-
-
         # Single axis labels
         self.widget_canvas.create_text(
             10, 80,
@@ -133,7 +130,6 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
             fill=self.fg_color,
             font=self.font_small
         )
-
         self.widget_canvas.create_text(
             self.width - 270, self.height - 10,
             text="Hz",
@@ -168,11 +164,11 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         for px_offset in range(int(gw) + 1):
             log_pos = px_offset / gw
             freq = 20.0 * (20000.0 / 20.0) ** log_pos
-            
+
             f_ratio = freq / max(1.0, display_cutoff)
             resp = 1.0 / math.sqrt(1.0 + math.pow(f_ratio, 8))
             db_val = 20.0 * math.log10(resp + 1e-10)  # Base is ~ -3dB at cutoff
-            
+
             # Apply Resonance (Updated to 18.0 for a ~15dB total peak)
             if norm_res > 0:
                 peak = math.exp(-pow(math.log(f_ratio + 1e-10), 2) / 0.05)
@@ -206,7 +202,7 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
     def on_canvas_drag(self, event):
         """Pure XY-Pad: X=Cutoff, Y=Resonance regardless of start position"""
         if not self.is_dragging: return
-        
+
         dx = (event.x - self.last_click.x) / self.width
         dy = (event.y - self.last_click.y) / self.height
 
