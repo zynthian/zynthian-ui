@@ -675,6 +675,16 @@ class MixerHandler(ModeHandlerBase):
         self._active_chain = chain
         if refresh:
             self.refresh()
+            self.refresh_pads()
+            
+    def refresh_pads(self):
+        """Not a full refresh, just the matrix of pads"""
+        self.driver._leds.pad_leds_off()
+        for row in range(self.driver.rows):
+            phrase = row + self.driver.scroll_v
+            for chan in range(32):
+                self.driver.update_seq_state(phrase, chan)
+            self.driver.update_seq_state(phrase, zynseq.PHRASE_CHANNEL)
 
     def _update_volume(self, ccnum, ccval):
         return self._update_control("level", ccnum, ccval, 0, 100)
@@ -1068,7 +1078,7 @@ class PadMatrixHandler(ModeHandlerBase):
             repeat = pad_info["repeat"]
             led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
             patterns = self._get_sequence_patterns(row, group)
-            if (pad_info["group"] < 16):
+            if (group < 16):
                 is_empty = all(
                      self._zynseq.is_pattern_empty(pattern)
                          for pattern in patterns)
@@ -1102,7 +1112,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_4
         except:
-            pass
+            return
         self._leds.led_on(note, led_colour, led_mode, False)
         #lib_zyncore.dev_send_note_on(self.driver.idev_out, led_mode, note, led_colour)
 
@@ -2950,6 +2960,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     self._current_handler.note_on(note, vel, self._is_shifted)
                     super().refresh()
                     self._padmatrix_handler.refresh()
+                    self._mixer_handler.refresh()
                     return True
                 elif note == BTN_STOP_ALL_CLIPS:
                     self._padmatrix_handler.note_on(
@@ -2999,8 +3010,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         
     def on_active_chain(self, active_chain_id):
         refresh = self._current_handler == self._mixer_handler
-        self._mixer_handler.set_active_chain(active_chain_id, refresh)
         super().on_active_chain(active_chain_id)
+        self._mixer_handler.set_active_chain(active_chain_id, refresh)
 
     def get_state(self):
         state = {}
