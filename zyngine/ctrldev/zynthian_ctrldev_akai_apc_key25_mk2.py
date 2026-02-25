@@ -574,7 +574,7 @@ class MixerHandler(ModeHandlerBase):
             if self._track_buttons_function == FN_SCENE:
                 for i in range(8):
                     scene = i + self.driver.scroll_h
-                    state = scene == (self._zynseq.bank - 1)
+                    state = scene == (self._zynseq.scene - 1)
                     self._leds.led_state(BTN_TRACK_1 + i, state)
                 return
 
@@ -723,7 +723,9 @@ class MixerHandler(ModeHandlerBase):
 
         # FIXME: move this to padmatrix handler!
         if self._track_buttons_function == FN_SCENE:
-            self._zynseq.select_bank(index + 1)
+            return True
+            # Disable scene support for now
+            self._zynseq.libseq.setScene(index + 1)
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
             return True
 
@@ -1053,10 +1055,10 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def _change_scene(self, offset):
         return
-        # scenes are moot right now?
+        # scenes are moot right now
         scene = min(64, max(1, self._zynseq.scene + offset))
         if scene != self._zynseq.scene:
-            self._zynseq.select_scene(scene)
+            self._zynseq.libseq.setScene(scene)
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
 
     def update_pad(self, row, col, pad_info):
