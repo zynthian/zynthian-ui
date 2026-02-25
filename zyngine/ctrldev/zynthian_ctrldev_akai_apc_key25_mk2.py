@@ -1052,7 +1052,10 @@ class PadMatrixHandler(ModeHandlerBase):
                     self._copy_sequence(
                         *self._seqman_src_seq, self._zynseq.scene, seq)
                     self._clear_sequence(*self._seqman_src_seq)
+                    scene, old_seq = self._seqman_src_seq
                     self._seqman_src_seq = None
+                    if scene == self._zynseq.scene:
+                        self._update_seq_pad(old_seq)
 
         self._update_seq_pad(seq)
 
