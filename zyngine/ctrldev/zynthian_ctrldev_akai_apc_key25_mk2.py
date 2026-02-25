@@ -2964,9 +2964,11 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     track = note - BTN_TRACK_1
                     self._padmatrix_handler.on_track_changed(track, True)
                     self._current_handler.note_on(note, vel, self._is_shifted)
-                    super().refresh()
-                    self._padmatrix_handler.refresh()
-                    self._mixer_handler.refresh()
+                    if self._padmatrix_handler._seqman_func is None:
+                        super().refresh()
+                        self._mixer_handler.refresh()
+                    else:
+                        self._padmatrix_handler.refresh()
                     return True
                 elif note == BTN_STOP_ALL_CLIPS:
                     self._padmatrix_handler.note_on(
