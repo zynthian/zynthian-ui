@@ -868,7 +868,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 if func == FN_CLEAR_SEQUENCE and self._seqman_src_seq is not None:
                     scene, seq = self._seqman_src_seq
                     self._seqman_src_seq = None
-                    if scene == self._zynseq.bank:
+                    if scene == self._zynseq.scene:
                         self._update_seq_pad(seq)
 
     def on_shift_changed(self, state):
