@@ -533,7 +533,6 @@ class MixerHandler(ModeHandlerBase):
         self._is_shifted = False
         self._knobs_function = FN_VOLUME
         self._track_buttons_function = FN_SELECT
-        self._chains_bank = 0
 
         active_chain = self._chain_manager.get_active_chain()
         self._active_chain = active_chain.chain_id if active_chain else 0
@@ -567,14 +566,14 @@ class MixerHandler(ModeHandlerBase):
             self._leds.led_on(btn)
 
             # Clips bank selection
-            btn = BTN_LEFT if self._chains_bank == 0 else BTN_RIGHT
+            btn = BTN_LEFT if self.driver.scroll_h < 8 else BTN_RIGHT
             self._leds.led_on(btn)
 
         # Otherwise, show current function status
         else:
             if self._track_buttons_function == FN_SCENE:
                 for i in range(8):
-                    scene = i + (8 if self._chains_bank == 1 else 0)
+                    scene = i + self.driver.scroll_h
                     state = scene == (self._zynseq.bank - 1)
                     self._leds.led_state(BTN_TRACK_1 + i, state)
                 return
@@ -589,7 +588,7 @@ class MixerHandler(ModeHandlerBase):
                 FN_SELECT: lambda pos, c: c.chain_id == self._active_chain,
             }[self._track_buttons_function]
             for i in range(8):
-                pos = i + (8 if self._chains_bank == 1 else 0)
+                pos = i + self.driver.scroll_h
                 chain = self._chain_manager.get_chain_by_position(pos)
                 if not chain:
                     break
@@ -621,9 +620,9 @@ class MixerHandler(ModeHandlerBase):
             elif note == BTN_SOFT_KEY_CLIP_STOP:
                 self._track_buttons_function = FN_SEQUENCE_MANAGER
             elif note == BTN_LEFT:
-                self._chains_bank = 0
+                self.driver.scroll_h = 0
             elif note == BTN_RIGHT:
-                self._chains_bank = 1
+                self.driver.scroll_h = 8
             elif note == BTN_STOP_ALL_CLIPS:
                 self._stop_all_sounds()
             elif note == BTN_PLAY:
@@ -661,7 +660,7 @@ class MixerHandler(ModeHandlerBase):
 
         # Shift to current selection.
         # ToDo: maybe use driver.scroll_h instead.
-        pos -= self._chains_bank * 8
+        pos -= self.driver.scroll_h
         if 0 > pos > 8:
             return
         self._leds.led_state(BTN_TRACK_1 + pos, value)
@@ -672,7 +671,7 @@ class MixerHandler(ModeHandlerBase):
         if chain == 0:
             return
         index = self.driver.get_filtered_index_by_chain_id(chain)
-        self._chains_bank = 0 if index < 8 else 1
+        self.driver.scroll_h = 0 if index < 8 else 8
         self._active_chain = chain
         if refresh:
             self.refresh()
@@ -691,7 +690,7 @@ class MixerHandler(ModeHandlerBase):
             else:
                 index = -1
         else:
-            index = (ccnum - KNOB_1) + self._chains_bank * 8
+            index = (ccnum - KNOB_1) + self.driver.scroll_h
             chain = self._chain_manager.get_chain_by_index(index)
             if chain is None or chain.chain_id == 0:
                 return False
@@ -710,7 +709,7 @@ class MixerHandler(ModeHandlerBase):
         return True
 
     def _run_track_button_function(self, note):
-        index = (note - BTN_TRACK_1) + self._chains_bank * 8
+        index = (note - BTN_TRACK_1) + self.driver.scroll_h
 
         # FIXME: move this to padmatrix handler!
         if self._track_buttons_function == FN_SCENE:
@@ -946,8 +945,9 @@ class PadMatrixHandler(ModeHandlerBase):
     def update_seq_state(self, chan=None, phrase=None, state=None, mode=None, refresh=True):
         # col, row = self._zynseq.get_xy_from_pad(seq)
         chain_id = self._chain_manager.get_chain_ids_by_midi_chan(chan)[0]
-        col = self._chain_manager.get_chain_index(chain_id)
-        # col = chan
+        col = self._chain_manager.get_chain_index(chain_id) - self.driver.scroll_h
+        if not 0 <= col < self._cols:
+            return
         row = phrase
         idx = col * self._rows + row
         if idx >= len(self._pads):
