@@ -114,6 +114,10 @@ KNOB_6 = KNOB_SELECT = 0x35
 KNOB_7 = 0x36
 KNOB_8 = 0x37
 
+
+# NOTE: use this tool to help you getting the right colors:
+# https://github.com/oscaracena/mdevtk/blob/main/examples/apc_key25_mk2/09-pad-tool.py
+
 # APC Key25 MK2 LED colors and modes
 class COLORS:
     COLOR_BLACK = 0x00
@@ -751,26 +755,6 @@ class MixerHandler(ModeHandlerBase):
 # --------------------------------------------------------------------------
 class PadMatrixHandler(ModeHandlerBase):
 
-    # NOTE: use this tool to help you getting the right colors:
-    # https://github.com/oscaracena/mdevtk/blob/main/examples/apc_key25_mk2/09-pad-tool.py
-    GROUP_COLORS = [
-        0x05,   # #FF0000, Red Granate
-        0x66,   # #0D5038, Blue Aguamarine
-        0x12,   # #1D5900, Green Pistacho
-        0x31,   # #5400FF, Lila
-        0x25,   # #00A9FF, Mid Blue
-        0x03,   # #FFFFFF, Sky Blue
-        0x57,   # #00FF00, Dark Green
-        0x0D,   # #FFFF00, Ocre
-        0x0A,   # #591D00, Maroon
-        0x69,   # #693C1C, Dark Grey
-        0x04,   # #FF4C4C, Pink
-        0x43,   # #0000FF, Blue sat.
-        0x4D,   # #00FF87, Turquesa
-        0x3C,   # #FF1500, Orange
-        0x6C,   # #D86A1C, Light Maroon
-        0x56,   # #72FF15, Light Green
-    ]
     BRIGHT_OFF = LED_BRIGHT_25
 
     def __init__(self, state_manager, driver, leds: FeedbackLEDs):
@@ -871,7 +855,7 @@ class PadMatrixHandler(ModeHandlerBase):
                     scene, seq = self._seqman_src_seq
                     self._seqman_src_seq = None
                     if scene == self._zynseq.bank:
-                        self._update_pad(seq)
+                        self._update_seq_pad(seq)
 
     def on_shift_changed(self, state):
         retval = super().on_shift_changed(state)
@@ -975,7 +959,8 @@ class PadMatrixHandler(ModeHandlerBase):
         is_empty = all(
             self._zynseq.is_pattern_empty(pattern)
             for pattern in self._get_sequence_patterns(phrase, chan))
-        color = self.GROUP_COLORS[chan]
+
+        color = zynthian_gui_config.LAUNCHER_COLOUR[chan][self.driver.apc_color_variant]
 
         # If seqman is enabled, update according to it's function
         if self._seqman_func is not None:
@@ -988,7 +973,6 @@ class PadMatrixHandler(ModeHandlerBase):
             self._leds.led_on(btn, color, led_mode)
         # Otherwise, update according to sequence state
         else:
-            pass
             if self._recording_seq == seq:
                 led_mode = LED_BLINKING_16
             elif state == zynseq.SEQ_PLAYING:
@@ -999,8 +983,7 @@ class PadMatrixHandler(ModeHandlerBase):
             else:
                 led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
                 self._playing_seqs.discard(seq)
-
-
+            self._leds.led_on(btn, color, led_mode)
 
         if refresh:
             self._refresh_tool_buttons()
@@ -1056,7 +1039,7 @@ class PadMatrixHandler(ModeHandlerBase):
                     self._clear_sequence(*self._seqman_src_seq)
                     self._seqman_src_seq = None
 
-        self._update_pad(seq)
+        self._update_seq_pad(seq)
 
     def _change_scene(self, offset):
         return
@@ -1124,7 +1107,7 @@ class PadMatrixHandler(ModeHandlerBase):
         #lib_zyncore.dev_send_note_on(self.driver.idev_out, led_mode, note, led_colour)
 
 
-    def _update_pad(self, seq, refresh=True):
+    def _update_seq_pad(self, seq, refresh=True):
         state = self._libseq.getSequenceState(self._zynseq.scene, seq[0], seq[1])
         mode = (state >> 8) & 0xFF
         group = (state >> 16) & 0xFF
@@ -1171,7 +1154,7 @@ class PadMatrixHandler(ModeHandlerBase):
             self._state_manager.send_cuia("TOGGLE_RECORD")
   
         self._recording_seq = seq
-        self._update_pad(seq)
+        self._update_seq_pad(seq)
 
     def _stop_all_seqs(self, in_all_scenes=False):
         for scene in range(64):
@@ -1240,7 +1223,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         self._libseq.updateSequenceInfo()
         zyngui.screens['launcher'].refresh_launchers()
- 
+        self._update_seq_pad(seq)
         # self._libseq.updateSequenceInfo()
         # self._libseq.savePatternSnapshot()
         # self._libseq.clearSequence(scene, *seq)
