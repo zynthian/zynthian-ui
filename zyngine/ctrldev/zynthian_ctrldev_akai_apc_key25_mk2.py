@@ -633,7 +633,10 @@ class MixerHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("TOGGLE_RECORD")
                 return True  # skip refresh
             elif note == BTN_UP:
-                self._state_manager.send_cuia("BACK")
+                if self.driver._device_handler._current_screen != 'pattern_editor':
+                    self._state_manager.send_cuia("SCREEN_MIXER")
+                else:
+                    self._state_manager.send_cuia("BACK")
                 return True  # skip refresh
             elif note == BTN_DOWN:
                 self._state_manager.send_cuia("SCREEN_ZYNPAD")
