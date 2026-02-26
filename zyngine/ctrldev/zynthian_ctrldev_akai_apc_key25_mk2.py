@@ -2355,10 +2355,12 @@ class StepSeqHandler(ModeHandlerBase):
         self._is_arranger_mode = status
         if status:
             self._note_pads_function = FN_SELECT_PATTERN
-            self._previous_screen = self._current_screen
-            self._state_manager.send_cuia("SCREEN_ARRANGER")
-            self._update_ui_arranger(
-                cell_selected=(self._pattern_clock_offset // 24, self._selected_seq))
+            if False:
+                # Arranger is moot  
+                self._previous_screen = self._current_screen
+                self._state_manager.send_cuia("SCREEN_ARRANGER")
+                self._update_ui_arranger(
+                    cell_selected=(self._pattern_clock_offset // 24, self._selected_seq))
         else:
             self._note_pads_function = FN_PLAY_NOTE
             previous_screen = getattr(self, "_previous_screen", None)
@@ -2457,7 +2459,7 @@ class StepSeqHandler(ModeHandlerBase):
         current = self._libseq.getPatternIndex()
         pattern = self._sequence_patterns[index]
         self._libseq.selectPattern(pattern)
-        self._libseq.clear()
+        self._libseq.clearPattern(pattern)
         self._libseq.updateSequenceInfo()
         if current != -1 and current != pattern:
             self._libseq.selectPattern(current)
@@ -2466,7 +2468,7 @@ class StepSeqHandler(ModeHandlerBase):
             self.refresh(only_steps=True)
 
     def _remove_pattern(self, index):
-        bank = self._zynseq.bank
+        scene = self._zynseq.scene
         seq = self._selected_seq
         # FIXME: Add support for track selection
         track = 0
@@ -2480,17 +2482,16 @@ class StepSeqHandler(ModeHandlerBase):
         for offset, pattern in enumerate(self._sequence_patterns[index:]):
             prev_position = position
             position = self._get_pattern_position(index + offset)
-            self._libseq.removePattern(bank, seq, track, position)
+            self._libseq.removePattern(scene, *seq, track, position)
             if offset > 0:
                 self._libseq.addPattern(
-                    bank, seq, track, prev_position, pattern)
+                    scene, *seq, track, prev_position, pattern)
 
         # If pattern to remove is to the left of selected, then update selected
         if index <= self._selected_pattern_idx:
             self._selected_pattern_idx = max(0, self._selected_pattern_idx - 1)
 
-        self._sequence_patterns = self._get_sequence_patterns(
-            self._zynseq.bank, seq, create=True)
+        self._sequence_patterns = self._get_sequence_patterns(*seq, create=True)
         self._change_to_pattern_index(0, self._selected_pattern_idx)
         new_position = self._get_pattern_position(self._selected_pattern_idx)
         self._update_ui_arranger(cell_selected=(
