@@ -1867,10 +1867,11 @@ class StepSeqHandler(ModeHandlerBase):
 
             elif note == BTN_PLAY:
                 self._libseq.togglePlayState(
-                    self._zynseq.bank, self._selected_seq)
+                    self._zynseq.scene, *self._selected_seq)
                 state = self._libseq.getPlayState(
-                    self._zynseq.bank, self._selected_seq)
-                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING, zynseq.SEQ_RESTARTING):
+                    self._zynseq.scene, *self._selected_seq)
+                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING #, zynseq.SEQ_RESTARTING
+                             ):
                     self._is_stage_play = True
                     self.refresh()
 
@@ -2379,14 +2380,9 @@ class StepSeqHandler(ModeHandlerBase):
         self._cursor = self._get_pattern_playhead()
 
     def _get_pattern_playhead(self):
-        # NOTE: libseq.getPatternPlayhead() does not work here!
         cps = self._libseq.getClocksPerStep()
-        # NOTE: is function of pattern, I Think
-        playhead = self._libseq.getPatternPlayhead()
-        return playhead
-    
-        playpos = self._libseq.getPlayPosition(
-            self._zynseq.bank, self._selected_seq)
+        playpos = self._libseq.getSequencePlayPosition(
+            self._zynseq.scene, *self._selected_seq)
         playpos -= self._pattern_clock_offset
 
         # If playhead is in previous patterns, return a big number (which will be ignored)
