@@ -2091,11 +2091,18 @@ class zynthian_state_manager:
             # Set MIDI Master Channel
             lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
             # Setup MIDI filter rules
-            if self.midi_filter_script:
-                self.midi_filter_script.clean()
-            self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+            self.init_midi_filter()
         except Exception as e:
             logging.error(f"ERROR initializing MIDI : {e}")
+
+    def init_midi_filter(self):
+        """Reload MIDI Filter Rules"""
+        if self.midi_filter_script:
+            self.midi_filter_script.clean()
+        midi_filter_rules = zynthian_gui_config.midi_filter_rules
+        if zynthian_gui_config.midi_chanpress_cc > 0:
+            midi_filter_rules += f"\nMAP  CP =>  CC#{zynthian_gui_config.midi_chanpress_cc}\n"
+        self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(midi_filter_rules)
 
     def reload_midi_config(self):
         """Reload MIDI configuration from saved state"""

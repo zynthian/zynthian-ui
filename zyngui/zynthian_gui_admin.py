@@ -158,9 +158,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             display_val = f"+{gtrans}"
         else:
             display_val = f"{gtrans}"
-        self.list_data.append((self.edit_global_transpose, 0, f"[{display_val}] Global Transpose",
+        self.list_data.append((self.edit_global_transpose, 0, f"Global Transpose ({display_val})",
                                ["MIDI note transpose.\nThis effects all MIDI messages and is in addition to individual chain transpose.",
                                 "midi_settings.png"]))
+
+        if zynthian_gui_config.midi_chanpress_cc:
+            display_val = str(zynthian_gui_config.midi_chanpress_cc)
+        else:
+            display_val = "NONE"
+        self.list_data.append((self.set_chanpress_cc, 0, f"Channel Pressure => CC ({display_val})",
+                               ["Map channel pressure messages (monoAT) to the selected CC.",
+                                "midi_settings.png"]))
+
 
         self.list_data.append((None, 0, "> AUDIO"))
 
@@ -567,6 +576,32 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def edit_global_transpose(self):
         self.enable_param_editor(self, "Global Transpose",
                                  {'value_min': -24, 'value_max': 24, 'value': lib_zyncore.get_global_transpose()})
+
+    # -------------------------------------------------------------------------
+    # Setting Channel Pressure => CC
+    # -------------------------------------------------------------------------
+
+    def set_chanpress_cc(self):
+        val = zynthian_gui_config.midi_chanpress_cc
+        if val is None:
+           val = 0
+        self.enable_param_editor(self, "Channel Pressure => CC",
+                                 {'value_min': 0, 'value_max': 119, 'value': val},
+                                 self.set_chanpress_cc_cb)
+
+    def set_chanpress_cc_cb(self, value):
+        zynthian_gui_config.midi_chanpress_cc = value
+        self.state_manager.init_midi_filter()
+
+        # Update Config
+        zynconf.update_midi_profile({
+            "ZYNTHIAN_MIDI_CHANPRESS_CC": str(int(zynthian_gui_config.midi_chanpress_cc))
+        })
+        self.update_list()
+
+    # -------------------------------------------------------------------------
+    # Param Editor knob action
+    # -------------------------------------------------------------------------
 
     def send_controller_value(self, zctrl):
         """ Handle param editor value change """

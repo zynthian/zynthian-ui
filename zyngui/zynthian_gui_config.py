@@ -373,8 +373,8 @@ def config_zyntof():
 # Setup MIDI options
 def set_midi_config():
     global active_midi_channel, midi_prog_change_zs3, midi_bank_change, midi_fine_tuning
-    global midi_usb_by_port, transport_clock_source
-    global midi_filter_rules, midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
+    global midi_usb_by_port, transport_clock_source, midi_filter_rules, midi_chanpress_cc
+    global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
     global midi_touchosc_enabled, bluetooth_enabled, ble_controller, midi_aubionotes_enabled
 
     # MIDI options
@@ -395,6 +395,7 @@ def set_midi_config():
     # Filter Rules
     midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
     midi_filter_rules = midi_filter_rules.replace("\\n", "\n")
+    midi_chanpress_cc = get_env_int('ZYNTHIAN_MIDI_CHANPRESS_CC', 0)
 
 
 # Setup MIDI Master Channel options
