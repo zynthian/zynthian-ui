@@ -358,21 +358,21 @@ class ModeHandlerBase:
         )
 
     # FIXME: Could this (or part of this) be in libseq?
-    def _get_sequence_patterns(self, phrase, seq, create=False):
-        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, seq)
+    def _get_sequence_patterns(self, phrase, midi_chan, create=False):
+        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, midi_chan)
         pattern = -1
         retval = []
 
         if seq_len == 0:
             if create:
                 pattern = self._libseq.createPattern()
-                self._libseq.addPattern(self._zynseq.scene, phrase, seq, 0, 0, pattern)
+                self._libseq.addPattern(self._zynseq.scene, phrase, midi_chan, 0, 0, pattern)
                 retval.append(pattern)
             return retval
 
-        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq)
+        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, midi_chan)
         for track in range(n_tracks):
-            retval.extend(self._get_patterns_in_track(phrase, seq, track))
+            retval.extend(self._get_patterns_in_track(phrase, midi_chan, track))
         return retval
 
     # FIXME: Could this be in libseq?
