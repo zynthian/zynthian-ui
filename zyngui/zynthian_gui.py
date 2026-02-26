@@ -1421,6 +1421,8 @@ class zynthian_gui:
             i = int(params[0])
             d = int(params[1])
             self.get_current_screen_obj().zynpot_cb(i, d)
+            if self.capture_log_fname:
+                self.write_capture_log("ZYNPOT:{},{}".format(i, d))
         except IndexError:
             logging.error("zynpot requires 2 parameters: index, delta, not {params}")
             return
@@ -2108,9 +2110,6 @@ class zynthian_gui:
     def zynswitch_push(self, i):
         self.state_manager.set_event_flag()
 
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:P,{}".format(i))
-
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'P'):
                 return True
@@ -2125,9 +2124,6 @@ class zynthian_gui:
 
     def zynswitch_long(self, i):
         logging.debug('Looooooooong Switch '+str(i))
-
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:L,{}".format(i))
 
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'L'):
@@ -2156,9 +2152,6 @@ class zynthian_gui:
 
     def zynswitch_bold(self, i):
         logging.debug('Bold Switch '+str(i))
-
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:B,{}".format(i))
 
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'B'):
@@ -2194,9 +2187,6 @@ class zynthian_gui:
 
     def zynswitch_short(self, i):
         logging.debug('Short Switch ' + str(i))
-
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:S,{}".format(i))
 
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'S'):
@@ -2543,6 +2533,10 @@ class zynthian_gui:
                                 zp_pr_state = 0
                             if zp_pr_state <= 1:
                                 self.zynswitch_long(i)
+                                # Capture log: ZYNSWITCH LONG (autolong)
+                                if self.capture_log_fname:
+                                    self.write_capture_log(f"ZYNSWITCH:L,{i}")
+                # Process events from queue
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None
                 if isinstance(event, str):
@@ -2612,6 +2606,10 @@ class zynthian_gui:
                             logging.warning("Unknown Action Type: {}".format(t))
                         if i in zynswitch_repeat:
                             del zynswitch_repeat[i]
+
+                    # Capture log: ZYNSWITCH
+                    if self.capture_log_fname:
+                        self.write_capture_log(f"ZYNSWITCH:{t},{i}")
 
                 elif cuia == "zynpot":
                     # zynpot has parameters: [pot, delta, 'P'|'R']. 'P'&'R' are only used for keybinding to zynpot
