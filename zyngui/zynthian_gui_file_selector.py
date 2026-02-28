@@ -137,7 +137,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
 
     def hide(self):
         # Restore initial selection if it was changed while preloading
-        if self.shown and self.cb_func and self.sel_path != self.init_path and os.path.isfile(self.init_path):
+        if self.shown and self.cb_func and self.init_path and self.sel_path != self.init_path and os.path.isfile(self.init_path):
             self.cb_func(self.init_path)
         super().hide()
 
