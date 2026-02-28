@@ -70,16 +70,15 @@ class zynthian_controller:
         if full:
             self.value = 0  # Absolute value of the control
         self.value_default = None  # Default value to use when reset control
-        self.value_min = None  # Minimum value of control range
-        # Mid-point value of control range (used for toggle controls)
-        self.value_mid = None
-        self.value_max = None  # Maximum value of control range
-        self.value_range = 0  # Span of permissible values
-        # Factor to scale each up/down nudge
+        self.value_min = None      # Minimum value of control range
+        self.value_max = None      # Maximum value of control range
+        self.value_range = 0       # Span of permissible values
+        self.value_mid = None      # Mid-point value of control range (used for toggle controls)
 
         # TODO: This is not set if configure is not called or options not passed
-        self.nudge_factor = None
+        self.nudge_factor = None       # Factor to scale each up/down nudge
         self.nudge_factor_fine = None  # Fine factor to scale
+
         self.labels = None  # List of discrete value labels
         self.ticks = None  # List of discrete value ticks
         self.range_reversed = False  # Flag if ticks order is reversed
@@ -101,6 +100,9 @@ class zynthian_controller:
         self.midi_chan = None  # MIDI channel to send CC messages from control
         self.midi_cc = None  # MIDI CC number to send CC messages from control
         self.midi_autolearn = True  # Auto-learn MIDI-CC based controllers
+        self.midi_cc_val1 = None    # MIDI CC => controller value when CC value is 0
+        self.midi_cc_val2 = None    # MIDI CC => controller value when CC value is 127
+        self.midi_cc_range = None   # self.midi_cc_val2 - self.midi_cc_val1
         self.midi_cc_momentary_switch = False
         self.midi_cc_mode = -1                  # CC mode: -1=unknown,  0=abs, 1=rel1, 2=rel2, 3=rel3
         self.midi_cc_mode_detecting = 0         # Used by CC mode detection algorithm
@@ -256,12 +258,10 @@ class zynthian_controller:
                     self.ticks.append(self.value_max)
                 elif self.is_integer:
                     for i in range(n):
-                        self.ticks.append(
-                            self.value_min + int(i * value_range / (n - 1)))
+                        self.ticks.append(self.value_min + int(i * value_range / (n - 1)))
                 else:
                     for i in range(n):
-                        self.ticks.append(
-                            self.value_min + i * value_range / (n - 1))
+                        self.ticks.append(self.value_min + i * value_range / (n - 1))
 
             # Calculate min, max
             if self.ticks[0] <= self.ticks[-1]:
@@ -295,6 +295,12 @@ class zynthian_controller:
         self._set_value(self.value)
         if self.value_default is None:
             self.value_default = self.value
+
+        if self.midi_cc_val1 is None:
+            self.midi_cc_val1 = self.value_min
+        if self.midi_cc_val2 is None:
+            self.midi_cc_val2 = self.value_max
+        self.midi_cc_range = self.midi_cc_val2 - self.midi_cc_val1
 
         if not self.nudge_factor:
             if self.is_logarithmic:
@@ -568,12 +574,12 @@ class zynthian_controller:
 
     def get_ctrl_midi_val(self):
         try:
-            if self.value_range == 0:
+            if self.midi_cc_range == 0:
                 return 0
             elif self.is_logarithmic:
-                val = int(127 * math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range))
+                val = int(127 * math.log10((9 * self.value - (10 * self.midi_cc_val1 - self.midi_cc_val2)) / self.midi_cc_range))
             else:
-                val = min(127, int(127 * (self.value - self.value_min) / self.value_range))
+                val = max(0, min(127, int(127 * (self.value - self.midi_cc_val1) / self.midi_cc_range)))
         except Exception as e:
             logging.error(e)
             val = 0
@@ -609,6 +615,10 @@ class zynthian_controller:
         except:
             state['value'] = self.value
 
+        if self.midi_cc_val1 is not None and self.midi_cc_val1 != self.value_min:
+            state['midi_cc_val1'] = self.midi_cc_val1
+        if self.midi_cc_val2 is not None and self.midi_cc_val2 != self.value_max:
+            state['midi_cc_val2'] = self.midi_cc_val2
         if self.midi_cc_momentary_switch:
             state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
         if self.midi_cc_debounce:
@@ -627,14 +637,11 @@ class zynthian_controller:
         # CC mode not detected yet!
         if self.midi_cc_mode == -1:
             self.midi_cc_mode_detect(val)
-
         # CC mode absolute
         if self.midi_cc_mode == 0:
             if self.range_reversed:
                 val = 127 - val
-            if self.is_logarithmic:
-                value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
-            elif self.is_toggle:
+            if self.is_toggle:
                 if self.midi_cc_momentary_switch:
                     if val >= 64:
                         self.toggle()
@@ -645,7 +652,10 @@ class zynthian_controller:
                     else:
                         value = self.value_min
             else:
-                value = self.value_min + val * self.value_range / 127
+                if self.is_logarithmic:
+                    value = self.midi_cc_val1 + self.midi_cc_range * (math.pow(10, val/127) - 1) / 9
+                else:
+                    value = self.midi_cc_val1 + val * self.midi_cc_range / 127
             # Debounce
             if self.midi_cc_debounce:
                 if self.midi_cc_debounce_timer:

@@ -49,7 +49,7 @@
 #define CLOCK_TRIG_PHRASE 16  // Clock has triggered a phrase change
 
 // Clock rates
-#define PPQN_INTERNAL 1920  // Quantity of sequencer clock pulses in each beat 
+#define PPQN_INTERNAL 1920  // Quantity of sequencer clock pulses in each beat
 #define PPQN_MIDI 24        // Quantity of MIDI clock pulses in each beat
 
 // Play status (bit 0 = playing)

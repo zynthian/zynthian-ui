@@ -373,8 +373,8 @@ def config_zyntof():
 # Setup MIDI options
 def set_midi_config():
     global active_midi_channel, midi_prog_change_zs3, midi_bank_change, midi_fine_tuning
-    global midi_usb_by_port, transport_clock_source
-    global midi_filter_rules, midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
+    global midi_usb_by_port, transport_clock_source, midi_filter_rules, midi_chanpress_cc
+    global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
     global midi_touchosc_enabled, bluetooth_enabled, ble_controller, midi_aubionotes_enabled
 
     # MIDI options
@@ -395,6 +395,7 @@ def set_midi_config():
     # Filter Rules
     midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
     midi_filter_rules = midi_filter_rules.replace("\\n", "\n")
+    midi_chanpress_cc = get_env_int('ZYNTHIAN_MIDI_CHANPRESS_CC', 0)
 
 
 # Setup MIDI Master Channel options
@@ -701,18 +702,60 @@ LAUNCHER_PLAYING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STOPPING_COLOUR = {"rgb": "#D00000", "launchpad": 5, "apc": 72} #red
 
+def get_color_relux(hex_color):
+    if len(hex_color) != 7:
+        raise Exception("Passed %s into get_color_relux2(), needs to be in #RRGGBB format." % hex_color)
+    R, G, B = [int(hex_color[x:x + 2], 16) for x in [1, 3, 5]]
+    if R <= 10:
+        Rg = R / 3294.0
+    else:
+        Rg = (R / 269.0 + 0.0513) ** 2.4
+    if G <= 10:
+        Gg = G / 3294.0
+    else:
+        Gg = (G / 269.0 + 0.0513) ** 2.4
+    if B <= 10:
+        Bg = B / 3294.0
+    else:
+        Bg = (B / 269.0 + 0.0513) ** 2.4
+    return 0.2126 * Rg + 0.7152 * Gg + 0.0722 * Bg
+
+def get_color_lux(hex_color):
+    if len(hex_color) != 7:
+        raise Exception("Passed %s into get_color_relux(), needs to be in #RRGGBB format." % hex_color)
+    R, G, B = [int(hex_color[x:x + 2], 16) for x in [1, 3, 5]]
+    # Counting the perceptive luminance - human eye favors green color...
+    return (0.299 * R + 0.587 * G + 0.114 * B) / 255.0;
+
+def get_contrast_ratio(hex_color1, hex_color2):
+    L1 = get_color_relux(hex_color1)
+    L2 = get_color_relux(hex_color2)
+    if L1 > L2:
+        return (L1 + 0.05) / (L2 + 0.05)
+    else:
+        return (L2 + 0.05) / (L1 + 0.05)
 
 def color_variant(hex_color, brightness_offset=1):
     """ takes a color like #87c95f and produces a lighter or darker variant """
     if len(hex_color) != 7:
-        raise Exception("Passed %s into color_variant(), needs to be in #87c95f format." % hex_color)
-    rgb_hex = [hex_color[x:x + 2] for x in [1, 3, 5]]
-    new_rgb_int = [int(hex_value, 16) + brightness_offset for hex_value in rgb_hex]
+        raise Exception("Passed %s into color_variant(), needs to be in #RRGGBB format." % hex_color)
+    rgb_int = [int(hex_color[x:x + 2], 16) for x in [1, 3, 5]]
+    new_rgb_int = [val + brightness_offset for val in rgb_int]
     # make sure new values are between 0 and 255
-    new_rgb_int = [min([255, max([0, i])]) for i in new_rgb_int]
+    new_rgb_int = [min(255, max(0, i)) for i in new_rgb_int]
     # hex() produces "0x88", we want just "88"
     return "#" + "".join([hex(i)[2:].zfill(2) for i in new_rgb_int])
 
+def color_scale(hex_color, brightness_scale=1.0):
+    """ takes a color like #87c95f and produces a lighter or darker variant """
+    if len(hex_color) != 7:
+        raise Exception("Passed %s into color_scale(), needs to be in #87c95f format." % hex_color)
+    rgb_int = [int(hex_color[x:x + 2], 16) for x in [1, 3, 5]]
+    new_rgb_int = [int(val * brightness_scale) for val in rgb_int]
+    # make sure new values are between 0 and 255
+    new_rgb_int = [min(255, i) for i in new_rgb_int]
+    # hex() produces "0x88", we want just "88"
+    return "#" + "".join([hex(i)[2:].zfill(2) for i in new_rgb_int])
 
 for i, value in enumerate(LAUNCHER_COLOUR):
     LAUNCHER_COLOUR[i]["rgb_light"] = color_variant(value["rgb"], 40)

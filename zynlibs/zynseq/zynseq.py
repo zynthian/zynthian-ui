@@ -48,6 +48,26 @@ import zynautoconnect
 #
 # -------------------------------------------------------------------------------
 
+MIDI_NOTE_OFF = 0x80
+MIDI_NOTE_ON = 0x90
+MIDI_POLY_PRESSURE = 0xA0
+MIDI_CONTROL = 0xB0
+MIDI_PROGRAM = 0xC0
+MIDI_CHAN_PRESSURE = 0xD0
+MIDI_PITCHBEND = 0xE0
+MIDI_SYSEX_START = 0xF0
+MIDI_TIMECODE = 0xF1
+MIDI_POSITION = 0xF2
+MIDI_SONG = 0xF3
+MIDI_TUNE = 0xF6
+MIDI_SYSEX_END = 0xF7
+MIDI_CLOCK = 0xF8
+MIDI_START = 0xFA
+MIDI_CONTINUE = 0xFB
+MIDI_STOP = 0xFC
+MIDI_ACTIVE_SENSE = 0xFE
+MIDI_RESET = 0xFF
+
 SEQ_EVENT_SCENE = 1
 SEQ_EVENT_TEMPO = 2
 SEQ_EVENT_CHANNEL = 3
@@ -109,9 +129,60 @@ PATTERN_PARAMS = [
     "val2Start", # MIDI value 2 at start of event
     "val2End", # MIDI value 2 at end of event
     "chance", # Probability % of event triggering
-    "stutCnt", # Quantity of stutters
-    "stutDur" # Duration of each stutter
+    "stutSpd", # Stutter speed (retriggers/beat)
+    "stutVfx" # Stutter velocity FX value
 ]
+
+
+class event_data(ctypes.Structure):
+    _pack_ = 1                              # Crucial for matching C's packing
+    _fields_ = [
+        ("position", ctypes.c_uint32),      # Start position of event in steps
+        ("offset", ctypes.c_float),         # Offset of event position in steps
+        ("duration", ctypes.c_float),       # Duration of event in steps
+        ("command", ctypes.c_uint8),        # MIDI command without channel
+        ("val1_start", ctypes.c_uint8),     # MIDI value 1 at start of event
+        ("val2_start", ctypes.c_uint8),     # MIDI value 2 at start of event
+        ("val1_end", ctypes.c_uint8),       # MIDI value 1 at end of event
+        ("val2_end", ctypes.c_uint8),       # MIDI value 2 at end of event
+        ("stut_speed", ctypes.c_uint8),     # Stutter speed in "retriggers every 2 steps"
+        ("stut_velfx", ctypes.c_uint8),     # Stutter velocity FX (none=0, fade-out=1, fade-in=2)
+        ("stut_ramp", ctypes.c_uint8),      # Stutter speed ramp FX (none=0, ramp-up=1, ramp-down=2)
+        ("play_freq", ctypes.c_uint8),      # Play/Skip note each N loops: last bit => play/skip, higher bits => loop count
+                                            # Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+        ("stut_freq", ctypes.c_uint8),      # Play/Skip stutter each N loops: last bit => play/skip, higher bits => loop count
+        ("play_chance", ctypes.c_float),    # Probability of playing (0 = not played, 0.5 = plays with 50%, 1.0 = always plays)
+        ("stut_chance", ctypes.c_float)     # Probability of stutter (0 = not stutter, 0.5 = stutters with 50%, 1.0 = always stutters)
+    ]
+
+    def set_values(self, pos, os, dur, cmd, v1s, v2s, v1e, v2e, sspd, svfx, srmp, pf, sf, pc, sc):
+        self.position = pos
+        self.osffset = os
+        self.duration = dur
+        self.command = cmd
+        self.val1_start = v1s
+        self.val2_start = v2s
+        self.val1_end = v1e
+        self.val2_end = v2e
+        self.stut_speed = sspd
+        self.stut_velfx = svfx
+        self.stut_ramp = srmp
+        self.play_freq = pf
+        self.stut_freq = sf
+        self.play_chance = pc
+        self.stut_chance = sc
+
+    def __str__(self):
+        return f"""(position={self.position}, offset={self.offset}, duration={self.duration}, command={self.command},
+    val1_start={self.val1_start}, val2_start={self.val2_start}, val1_end={self.val1_end}, val2_end={self.val2_end},
+    stut_speed={self.stut_speed}, stut_velfx={self.stut_velfx}, stut_ramp={self.stut_ramp},
+    play_freq={self.play_freq}, stut_freq={self.stut_freq},
+    play_chance={self.play_chance}, stut_chance={self.stut_chance})"""
+
+
+# Buffer to select pattern events (event indexes)
+event_indexes_limit = 10000
+event_indexes_buffer = (ctypes.c_uint32 * event_indexes_limit)()
 
 
 class zynseq(zynthian_engine):
@@ -125,17 +196,31 @@ class zynseq(zynthian_engine):
         try:
             self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
             self.libseq.getSequenceName.restype = ctypes.c_char_p
-            self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float,
-                                            ctypes.c_float]
+
+            self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
+            self.libseq.pastePatternBuffer.argtypes = [ctypes.c_uint32, ctypes.c_int32, ctypes.c_float, ctypes.c_int8, ctypes.c_bool]
+            self.libseq.getPatternSelectionIndexes.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32,
+                                                               ctypes.c_uint32, ctypes.c_int32, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
+            self.libseq.getBufferEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
+            self.libseq.getNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
+            self.libseq.setNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
+            #self.libseq.getNoteData.restype = ctypes.c_int32
             self.libseq.getNoteDuration.restype = ctypes.c_float
+
             self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
+            self.libseq.changeVelocityAll.argtypes = [ctypes.c_float]
+            self.libseq.changeDurationList.argtypes = [ctypes.c_float, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
+            self.libseq.changeVelocityList.argtypes = [ctypes.c_float, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
+
             self.libseq.getNoteOffset.restype = ctypes.c_float
             self.libseq.setNoteOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
-            self.libseq.addControl.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
-                                               ctypes.c_float, ctypes.c_float]
+
+            self.libseq.addControl.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
             self.libseq.getControlDuration.restype = ctypes.c_float
             self.libseq.getControlOffset.restype = ctypes.c_float
             self.libseq.setControlOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+
             self.libseq.setSwingAmount.argtypes = [ctypes.c_float]
             self.libseq.getSwingAmount.restype = ctypes.c_float
             self.libseq.setSwingDiv.argtypes = [ctypes.c_uint32]
@@ -146,25 +231,32 @@ class zynseq(zynthian_engine):
             self.libseq.getHumanVelo.restype = ctypes.c_float
             self.libseq.setPlayChance.argtypes = [ctypes.c_float]
             self.libseq.getPlayChance.restype = ctypes.c_float
+
             self.libseq.setNotePlayChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getNotePlayChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
             self.libseq.getNotePlayChance.restype = ctypes.c_float
+
+            self.libseq.setNoteStutterChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.getNoteStutterChance.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
+            self.libseq.getNoteStutterChance.restype = ctypes.c_float
+
             self.libseq.getTempo.restype = ctypes.c_double
             self.libseq.setTempo.argtypes = [ctypes.c_double]
             self.libseq.getTempoAt.restype = ctypes.c_float
             self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint16]
-            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16,
-                                                  ctypes.c_uint16]
+            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16, ctypes.c_uint16]
             self.libseq.getMetronomeVolume.restype = ctypes.c_float
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
             self.libseq.getStateChange.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
             self.libseq.getStateChange.restype = ctypes.c_uint32
             self.libseq.getProgress.restype = ctypes.POINTER(ctypes.c_uint8)
+
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
             self.libseq.convertPattern.argtypes = [ctypes.c_int32, ctypes.c_char_p]
             self.libseq.convertPattern.restype = ctypes.c_char_p
+
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
@@ -181,6 +273,7 @@ class zynseq(zynthian_engine):
 
             self.PPQN = self.libseq.getPPQN()
             self.libseq.init(bytes("zynseq", "utf-8"))
+
         except Exception as e:
             self.libseq = None
             print("Can't initialise zynseq library: %s" % str(e))
@@ -236,51 +329,41 @@ class zynseq(zynthian_engine):
         self.libseq.reset()
         self.refresh_state()
 
-    def update_state(self):
-        # Get all pending states, send signals for each, update phrase lauchers and send signals if necessary
-        # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
-        # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
+    # Load a zynseq file
+    # filename: Full path and filename
+    def load(self, filename):
+        self.libseq.load(bytes(filename, "utf-8"))
 
-        tempo = self.libseq.getTempo()
-        if tempo != self.zctrl_tempo.value:
-            self.zctrl_tempo.set_value(tempo)
-        size = self.phrases * 33
-        states = (ctypes.c_uint32 * size)()
-        count = self.libseq.getStateChange(states, size)
-        if count:
-            self.playing_sequences = self.libseq.getPlayingSequences()
-            bpb = self.libseq.getBpb()
-            if bpb != self.bpb:
-                self.bpb = bpb
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, bpb=bpb)
-            # Iterate state changes
-            for i in range(count):
-                if self.pause_update:
-                    return  # Stop processing updates if changing structure
-                phrase = (states[i] >> 24) & 0xff
-                chan = min((states[i] >> 16) & 0xff, 32)
-                mode = (states[i] >> 8) & 0xff
-                state = states[i] & 0xff
-                try:
-                    if chan == PHRASE_CHANNEL:
-                        info = self.state["scenes"][self.scene]["phrases"][phrase]
-                    else:
-                        info = self.state["scenes"][self.scene]["phrases"][phrase]["sequences"][chan]
-                except:
-                    logging.warning(f"No launcher info for sequence ({phrase},{chan})")
-                    continue
-                info["state"] = state
-                info["mode"] = mode
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan)
-        # Update progress
-        progress = self.libseq.getProgress()
-        for i in range(33):
-            self.progress[i] = progress[i]  # TODO: Can we just point at getProgress()?
-        self.beat = self.libseq.getBeat()
+    # -------------------------------------------------------------------
+    # Channel management
+    # -------------------------------------------------------------------
+
+    def set_midi_channel(self, chan, sequence, track, channel):
+        self.libseq.setChannel(chan, sequence, track, channel)
+        self.refresh_state()
 
     def enable_channel(self, channel, enable, refresh=False):
         self.libseq.enableChannel(channel, enable)
         self.refresh_state(refresh)
+
+    # -------------------------------------------------------------------
+    # Miscelaneous
+    # -------------------------------------------------------------------
+
+    # Get sequence name
+    # Returns: Sequence name (maximum 16 characters)
+    def get_sequence_name(self, scene, phrase, sequence):
+        if self.libseq:
+            name = self.libseq.getSequenceName(scene, phrase, sequence).decode("utf-8")
+            if not name:
+                name = f"{chr(ord('A') + phrase)}{sequence + 1}"
+            return name
+        else:
+            return f"{sequence}"
+
+    # -------------------------------------------------------------------
+    # Phrase Management
+    # -------------------------------------------------------------------
 
     def insert_phrase(self, scene, phrase=None):
         """ Insert a row of sequences to the current scene
@@ -329,11 +412,26 @@ class zynseq(zynthian_engine):
             self.phrase = phrase1
         self.refresh_state()
 
-    # Load a zynseq file
-    # filename: Full path and filename
+    def select_phrase(self, phrase, force=False):
+        """
+        Select a phrase
 
-    def load(self, filename):
-        self.libseq.load(bytes(filename, "utf-8"))
+        :param: phrase Index of phrase
+        :param: force True to select phrase even if same as currently selected
+        """
+
+        if (phrase >= self.phrases):
+            phrase = self.phrases - 1
+        if (phrase < 0):
+            phrase = 0
+        if not force and phrase == self.phrase:
+            return False
+        self.phrase = phrase
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
+
+    # -------------------------------------------------------------------
+    # Pattern and event management
+    # -------------------------------------------------------------------
 
     # Load a zynseq pattern file
     # patnum: Pattern number
@@ -379,16 +477,64 @@ class zynseq(zynthian_engine):
             return self.libseq.isPatternEmpty(patnum)
         return False
 
-    # Get sequence name
-    # Returns: Sequence name (maximum 16 characters)
-    def get_sequence_name(self, scene, phrase, sequence):
-        if self.libseq:
-            name = self.libseq.getSequenceName(scene, phrase, sequence).decode("utf-8")
-            if not name:
-                name = f"{chr(ord('A') + phrase)}{sequence + 1}"
-            return name
-        else:
-            return f"{sequence}"
+    def remove_pattern(self, chan, sequence, track, time):
+        self.libseq.removePattern(chan, sequence, track, time)
+
+    def add_pattern(self, chan, sequence, track, time, pattern, force=False):
+        if self.libseq.addPattern(chan, sequence, track, time, pattern, force):
+            return True
+
+    def get_note_data(self, step, note, cp_buffer=False):
+        """ Get note full data searching by step & note number in the currently loaded pattern
+
+        step: Step index in the current pattern
+        note: Note number
+        cp_buffer: Note number
+        Returns: A data struct with event data
+        """
+
+        evdata = event_data()
+        res = self.libseq.getNoteData(step, note, evdata, cp_buffer)
+        if res >= 0:
+            #logging.debug(f"Note ({step}, {note}) data => {evdata}")
+            return evdata
+
+    def set_note_data(self, step, note, evdata):
+        """ Set note data searching by step & note number in the currently loaded pattern.
+            All event data is overwritten except: position, offset duration, command and val1_start,
+
+        step: Step index in the current pattern
+        note: Note number
+        evdata: event_data object
+        Returns: A data struct with event data
+        """
+
+        return self.libseq.setNoteData(step, note, evdata)
+
+    def get_pattern_selection(self, pattern, step1, step2, note1, note2):
+        """ Get event indexes from pattern in the specified step & note range.
+
+        pattern: Pattern index
+        step1: Start of step range
+        step2: End of step range
+        note1: Start of note range
+        note2: End of note range
+        Returns: A list of event indexes
+        """
+
+        # Initially, event indexes are copied into a ctypes buffer array
+        n = self.libseq.getPatternSelectionIndexes(pattern, event_indexes_buffer, event_indexes_limit,
+                                               step1, step2, note1, note2)
+        # Then copied and returned in a list
+        res = []
+        for i in range(n):
+            res.append(event_indexes_buffer[i])
+        return res
+        #return event_indexes_buffer
+
+    # -------------------------------------------------------------------
+    # MIDI transport & clock settings
+    # -------------------------------------------------------------------
 
     # Request JACK transport start
     # client: Name to register with transport to avoid other clients stopping whilst in use
@@ -410,10 +556,6 @@ class zynseq(zynthian_engine):
         if self.libseq:
             self.libseq.transportToggle(bytes(client, "utf-8"))
 
-    # -------------------------------------------------------------------
-    # MIDI transport & clock settings
-    # -------------------------------------------------------------------
-
     def set_tempo(self, tempo):
         self.zctrl_tempo.set_value(tempo)
         zynaudioplayer.set_tempo(tempo)
@@ -426,6 +568,10 @@ class zynseq(zynthian_engine):
 
     def tap_tempo(self):
         self.libseq.tapTempo()
+
+    # -------------------------------------------------------------------
+    # Zynseq Zctrls management
+    # -------------------------------------------------------------------
 
     def send_controller_value(self, zctrl):
         if zctrl == self.zctrl_tempo:
@@ -441,16 +587,9 @@ class zynseq(zynthian_engine):
         elif zctrl == self.zctrl_ppqn:
             self.libseq.setExtClockPPQN(zctrl.value)
 
-    def set_midi_channel(self, chan, sequence, track, channel):
-        self.libseq.setChannel(chan, sequence, track, channel)
-        self.refresh_state()
-
-    def remove_pattern(self, chan, sequence, track, time):
-        self.libseq.removePattern(chan, sequence, track, time)
-
-    def add_pattern(self, chan, sequence, track, time, pattern, force=False):
-        if self.libseq.addPattern(chan, sequence, track, time, pattern, force):
-            return True
+    # -------------------------------------------------------------------
+    # Zynseq MIDI learn ==> Is this still used?
+    # -------------------------------------------------------------------
 
     def enable_midi_learn(self, chan, sequence):
         try:
@@ -463,6 +602,52 @@ class zynseq(zynthian_engine):
             self.libseq.enableMidiLearn(0, 0, ctypes.py_object(self), self.midi_learn_cb)
         except Exception as e:
             logging.error(e)
+
+    # -------------------------------------------------------------------
+    # State management
+    # -------------------------------------------------------------------
+
+    def update_state(self):
+        # Get all pending states, send signals for each, update phrase lauchers and send signals if necessary
+        # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
+        # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
+
+        tempo = self.libseq.getTempo()
+        if tempo != self.zctrl_tempo.value:
+            self.zctrl_tempo.set_value(tempo)
+        size = self.phrases * 33
+        states = (ctypes.c_uint32 * size)()
+        count = self.libseq.getStateChange(states, size)
+        if count:
+            self.playing_sequences = self.libseq.getPlayingSequences()
+            bpb = self.libseq.getBpb()
+            if bpb != self.bpb:
+                self.bpb = bpb
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, bpb=bpb)
+            # Iterate state changes
+            for i in range(count):
+                if self.pause_update:
+                    return  # Stop processing updates if changing structure
+                phrase = (states[i] >> 24) & 0xff
+                chan = min((states[i] >> 16) & 0xff, 32)
+                mode = (states[i] >> 8) & 0xff
+                state = states[i] & 0xff
+                try:
+                    if chan == PHRASE_CHANNEL:
+                        info = self.state["scenes"][self.scene]["phrases"][phrase]
+                    else:
+                        info = self.state["scenes"][self.scene]["phrases"][phrase]["sequences"][chan]
+                except:
+                    logging.warning(f"No launcher info for sequence ({phrase},{chan})")
+                    continue
+                info["state"] = state
+                info["mode"] = mode
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan)
+        # Update progress
+        progress = self.libseq.getProgress()
+        for i in range(33):
+            self.progress[i] = progress[i]  # TODO: Can we just point at getProgress()?
+        self.beat = self.libseq.getBeat()
 
     def refresh_state(self, send=True):
         self.state = loads(self.libseq.getState().decode("utf-8"))
@@ -567,7 +752,7 @@ class zynseq(zynthian_engine):
         return None
 
     def get_pattern_event(self, pattern, event, param):
-        """ Get a pattern event parameter
+        """ Get a pattern event parameter from the state cache
 
         pattern: Index of pattern
         event: Index of event
@@ -580,23 +765,6 @@ class zynseq(zynthian_engine):
             return self.state["patns"][str(pattern)]["events"][event][idx]
         except Exception as e:
             logging.warning(f"Failed to get pattern event parameter {param}")
-
-    def select_phrase(self, phrase, force=False):
-        """
-        Select a phrase
-
-        :param: phrase Index of phrase
-        :param: force True to select phrase even if same as currently selected
-        """
-
-        if (phrase >= self.phrases):
-            phrase = self.phrases - 1
-        if (phrase < 0):
-            phrase = 0
-        if not force and phrase == self.phrase:
-            return False
-        self.phrase = phrase
-        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
 
 
 # -------------------------------------------------------------------------------

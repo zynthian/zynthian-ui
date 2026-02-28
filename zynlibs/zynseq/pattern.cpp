@@ -1,5 +1,8 @@
-#include "pattern.h"
 #include <cmath>
+#include <cstring>
+#include <string>
+
+#include "pattern.h"
 
 /**    Pattern class methods implementation **/
 
@@ -49,27 +52,149 @@ Pattern& Pattern::operator=(Pattern& p) {
     return *this;
 }
 
+// add assignment (merge)
+Pattern& Pattern::operator+=(Pattern& p) {
+    pastePattern(&p, 0, 0.0, 0, true);
+    return *this;
+}
+
+// Paste (merge) a pattern into this
+void Pattern::pastePattern(Pattern* p, int32_t dstep, float doffset, int8_t dnote, bool truncate) {
+    // Add note events from argument pattern into this pattern. Ignore other events.
+    uint32_t nsteps = getSteps();
+    for (auto it = p->m_vEvents.begin(); it != p->m_vEvents.end(); ++it) {
+        StepEvent* ev = *it;
+        if (ev->m_nCommand != MIDI_NOTE_ON) continue;
+        // Calculate time offset
+        int32_t pos = ev->m_nPosition + dstep;
+        float offset = ev->m_fOffset + doffset;
+        if (offset >= 1.0) {
+            pos++;
+            offset -= 1.0;
+        } else if (offset <= -1.0) {
+            pos--;
+            offset = 1.0 - offset;
+        }
+        // Skip notes out off step-range
+        if (truncate) {
+            if (pos < 0 || pos >= nsteps) continue;
+        }
+        // Circular horizontal overflow
+        else {
+            // Move left overflowed notes to the end of pattern
+            if (pos < 0) {
+                pos += nsteps;
+            }
+            // Move right overflowed notes to the beggining of pattern
+            else if (pos >= nsteps) {
+                pos -= nsteps;
+            }
+        }
+        // Calculate note offset
+        int16_t note = int16_t(ev->m_nValue1start) + dnote;
+        // Skip notes out of note-range
+        if (note < 0 || note > 127) continue;
+
+        // Add event to this pattern. It will overwrite existing notes in the same position.
+        StepEvent pasted_ev = *ev;
+        pasted_ev.m_nPosition = pos;
+        pasted_ev.m_fOffset = offset;
+        pasted_ev.m_nValue1start = note;
+        addEvent(&pasted_ev);
+    }
+}
+
+// Returns a new pattern copying note events from this pattern, in the specified step & note range
+Pattern* Pattern::getPatternSelection(uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2, bool cut) {
+    uint32_t nsteps = getSteps();
+
+    // Check range of offset parameters
+    if (step1 >= nsteps) step1 = nsteps - 1;
+    if (step2 >= nsteps) step2 = nsteps - 1;
+    if (note1 > 127) note1 = 127;
+    if (note2 > 127) note2 = 127;
+
+    // Create an empty pattern for the result. The caller must delete when not needed anymore.
+    Pattern* res = new Pattern(m_nBeats, m_nStepsPerBeat);
+
+    // Copy note events from this pattern into the result pattern. Ignore other events.
+    for (auto it = m_vEvents.begin(); it != m_vEvents.end(); /*don't increment here!*/) {
+        StepEvent* ev = *it;
+        if (ev->m_nCommand != MIDI_NOTE_ON ||
+            ev->m_nPosition < step1 || ev->m_nPosition > step2 ||
+            ev->m_nValue1start < note1 || ev->m_nValue1start > note2) {
+            it++;
+            continue;
+        }
+        res->addEvent(ev);
+        if (cut) {
+            delete ev;
+            it = m_vEvents.erase(it);
+        } else {
+            it++;
+        }
+    }
+    return res;
+}
+
+// Get indexes of note events in a time & note range, upto the specified limit => ev_indexes
+// Returns the number of event indexes copied into ev_indexes.
+uint32_t Pattern::getPatternSelectionIndexes(uint32_t* ev_indexes, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
+    uint32_t nsteps = getSteps();
+
+    // Check range of offset parameters
+    if (step1 >= nsteps) step1 = nsteps - 1;
+    if (step2 >= nsteps) step2 = nsteps - 1;
+    if (note1 > 127) note1 = 127;
+    if (note2 > 127) note2 = 127;
+
+    // Copy indexes of note events from argument pattern into this pattern. Ignore other events.
+    uint32_t i = 0;
+    for (auto it = m_vEvents.begin(); it != m_vEvents.end(); it++) {
+        StepEvent* ev = *it;
+        if (ev->m_nCommand != MIDI_NOTE_ON ||
+            ev->m_nPosition < step1 || ev->m_nPosition > step2 ||
+            ev->m_nValue1start < note1 || ev->m_nValue1start > note2) {
+            continue;
+        }
+        ev_indexes[i++] = std::distance(m_vEvents.begin(), it);
+        if (i >= limit) break;
+    }
+    return i;
+}
+
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration, float offset) {
+    uint8_t nStutterSpeed = 0;
+    uint8_t nStutterVelfx = 0;
+    uint8_t nStutterRamp = 0;
+    float fPlayChance = 1.0;
+    uint8_t nPlayFreq = 1;
+    float fStutterChance = 1.0;
+    uint8_t nStutterFreq = 1;
     // Delete overlapping events
-    uint8_t nStutterCount = 0;
-    uint8_t nStutterDur = 1;
     bool bFirstNote = false;
     for (auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
-        uint32_t nEventStart = position;
-        float fEventEnd = nEventStart + duration;
-        uint32_t nCheckStart = (*it)->getPosition();
-        float fCheckEnd = nCheckStart + (*it)->getDuration();
-        bool bOverlap = (nCheckStart >= nEventStart && nCheckStart < fEventEnd) || (fCheckEnd > nEventStart && fCheckEnd <= fEventEnd);
-        if (bOverlap && (*it)->getCommand() == command && (*it)->getValue1start() == value1) {
-            if (!bFirstNote) {
-                nStutterCount = (*it)->getStutterCount();
-                nStutterDur = (*it)->getStutterDur();
-                bFirstNote = true;
+        if ((*it)->getCommand() == command && (*it)->getValue1start() == value1) {
+            float fEventEnd = position + duration;
+            uint32_t nCheckStart = (*it)->getPosition();
+            float fCheckEnd = nCheckStart + (*it)->getDuration();
+            bool bOverlap = (nCheckStart >= position && nCheckStart < fEventEnd) || (fCheckEnd > position && fCheckEnd <= fEventEnd);
+            if (bOverlap) {
+                if (!bFirstNote) {
+                    nStutterSpeed = (*it)->getStutterSpeed();
+                    nStutterVelfx = (*it)->getStutterVelfx();
+                    nStutterRamp = (*it)->getStutterRamp();
+                    fPlayChance = (*it)->getPlayChance();
+                    nPlayFreq = (*it)->getPlayFreq();
+                    fStutterChance = (*it)->getStutterChance();
+                    nStutterFreq = (*it)->getStutterFreq();
+                    bFirstNote = true;
+                }
+                delete *it;
+                it = m_vEvents.erase(it) - 1;
+                if (it == m_vEvents.end())
+                    break;
             }
-            delete *it;
-            it = m_vEvents.erase(it) - 1;
-            if (it == m_vEvents.end())
-                break;
         }
     }
     uint32_t nTime = position % (m_nBeats * m_nStepsPerBeat);
@@ -79,8 +204,11 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
             break;
     }
     auto itInserted = m_vEvents.insert(it, new StepEvent(position, command, value1, value2, duration, offset));
-    (*itInserted)->setStutterCount(nStutterCount);
-    (*itInserted)->setStutterDur(nStutterDur);
+    (*itInserted)->setStutter(nStutterSpeed, nStutterVelfx, nStutterRamp);
+    (*itInserted)->setPlayChance(fPlayChance);
+    (*itInserted)->setPlayFreq(nPlayFreq);
+    (*itInserted)->setStutterChance(fStutterChance);
+    (*itInserted)->setStutterFreq(nStutterFreq);
     return *itInserted;
 }
 
@@ -89,9 +217,11 @@ StepEvent* Pattern::addEvent(StepEvent* pEvent) {
         addEvent(pEvent->getPosition(), pEvent->getCommand(), pEvent->getValue1start(), pEvent->getValue2start(), pEvent->getDuration(), pEvent->getOffset());
     sev->setValue1end(pEvent->getValue1end());
     sev->setValue2end(pEvent->getValue2end());
-    sev->setStutterCount(pEvent->getStutterCount());
-    sev->setStutterDur(pEvent->getStutterDur());
+    sev->setStutter(pEvent->getStutterSpeed(), pEvent->getStutterVelfx(), pEvent->getStutterRamp());
     sev->setPlayChance(pEvent->getPlayChance());
+    sev->setPlayFreq(pEvent->getPlayFreq());
+    sev->setStutterChance(pEvent->getStutterChance());
+    sev->setStutterFreq(pEvent->getStutterFreq());
     return sev;
 }
 
@@ -125,6 +255,41 @@ void Pattern::clearNotes() {
         	++it;
         }
     }
+}
+
+int32_t Pattern::getNoteIndex(uint32_t step, uint8_t note) {
+    int index;
+    for (index = 0; index < m_vEvents.size(); ++index) {
+        StepEvent* ev = m_vEvents[index];
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return index;
+    }
+    return -1;
+}
+
+int32_t Pattern::getNoteData(uint32_t step, uint8_t note, StepEvent* data) {
+    int index;
+    for (index = 0; index < m_vEvents.size(); ++index) {
+        StepEvent* ev = m_vEvents[index];
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            memcpy(data, ev, sizeof(StepEvent));
+            return index;
+        }
+    }
+    return -1;
+}
+
+int32_t Pattern::setNoteData(uint32_t step, uint8_t note, StepEvent* data) {
+    int index;
+    for (index = 0; index < m_vEvents.size(); ++index) {
+        StepEvent* ev = m_vEvents[index];
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            uint8_t pos = sizeof(uint32_t) + 2 * sizeof(float) + 2 * sizeof(uint8_t);
+            memcpy((uint8_t *)ev + pos, (uint8_t *)data + pos, sizeof(StepEvent) - pos);
+            return index;
+        }
+    }
+    return -1;
 }
 
 int32_t Pattern::getNoteStart(uint32_t step, uint8_t note) {
@@ -183,52 +348,58 @@ void Pattern::setNoteOffset(uint32_t step, uint8_t note, float offset) {
     }
 }
 
-void Pattern::setStutter(uint32_t step, uint8_t note, uint8_t count, uint8_t dur) {
+void Pattern::setStutter(uint32_t step, uint8_t note, uint8_t speed, uint8_t velfx, uint8_t ramp) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
-            if (ev->getDuration() > count * dur) {
-                ev->setStutterCount(count);
-                ev->setStutterDur(dur);
-            }
+            ev->setStutter(speed, velfx, ramp);
             return;
         }
 }
 
-uint8_t Pattern::getStutterCount(uint32_t step, uint8_t note) {
+uint8_t Pattern::getStutterSpeed(uint32_t step, uint8_t note) {
     for (StepEvent* ev : m_vEvents) {
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
-            return ev->getStutterCount();
+            return ev->getStutterSpeed();
         }
     }
     return 0;
 }
 
-void Pattern::setStutterCount(uint32_t step, uint8_t note, uint8_t count) {
-    if (count > MAX_STUTTER_COUNT)
-        return;
+void Pattern::setStutterSpeed(uint32_t step, uint8_t note, uint8_t speed) {
     for (StepEvent* ev : m_vEvents) {
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
-            // if (ev->getDuration() > count * ev->getStutterDur())
-            ev->setStutterCount(count);
+            ev->setStutterSpeed(speed);
             return;
         }
     }
 }
 
-uint8_t Pattern::getStutterDur(uint32_t step, uint8_t note) {
+uint8_t Pattern::getStutterVelfx(uint32_t step, uint8_t note) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
-            return ev->getStutterDur();
+            return ev->getStutterVelfx();
     return 1;
 }
 
-void Pattern::setStutterDur(uint32_t step, uint8_t note, uint8_t dur) {
-    if (dur > MAX_STUTTER_DUR)
-        return;
+void Pattern::setStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
-            // if (ev.getDuration() > dur * ev.getStutterCount())
-            ev->setStutterDur(dur);
+            ev->setStutterVelfx(velfx);
+            return;
+        }
+}
+
+uint8_t Pattern::getStutterRamp(uint32_t step, uint8_t note) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return ev->getStutterRamp();
+    return 1;
+}
+
+void Pattern::setStutterRamp(uint32_t step, uint8_t note, uint8_t ramp) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            ev->setStutterRamp(ramp);
             return;
         }
 }
@@ -246,6 +417,53 @@ void Pattern::setPlayChance(uint32_t step, uint8_t note, float chance) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
             ev->setPlayChance(chance);
+            return;
+        }
+}
+
+uint8_t Pattern::getPlayFreq(uint32_t step, uint8_t note) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return ev->getPlayFreq();
+    return 1.0;
+}
+
+void Pattern::setPlayFreq(uint32_t step, uint8_t note, uint8_t freq) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            ev->setPlayFreq(freq);
+            return;
+        }
+}
+
+float Pattern::getStutterChance(uint32_t step, uint8_t note) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return ev->getStutterChance();
+    return 1.0;
+}
+
+void Pattern::setStutterChance(uint32_t step, uint8_t note, float chance) {
+    if (chance > 1.0f)
+        chance = 1.0f;
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            ev->setStutterChance(chance);
+            return;
+        }
+}
+
+uint8_t Pattern::getStutterFreq(uint32_t step, uint8_t note) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return ev->getStutterFreq();
+    return 1.0;
+}
+
+void Pattern::setStutterFreq(uint32_t step, uint8_t note, uint8_t freq) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            ev->setStutterFreq(freq);
             return;
         }
 }
@@ -556,6 +774,20 @@ void Pattern::changeVelocityAll(int value) {
     }
 }
 
+void Pattern::changeVelocityList(float value, uint32_t* evi_list, uint32_t n) {
+    for (uint32_t j = 0; j < n; ++j) {
+        StepEvent* ev = m_vEvents[evi_list[j]];
+        if (ev->getCommand() != MIDI_NOTE_ON)
+            continue;
+        int vel = ev->getValue2start() + value;
+        if (vel > 127)
+            vel = 127;
+        if (vel < 1)
+            vel = 1;
+        ev->setValue2start(vel);
+    }
+}
+
 void Pattern::changeDurationAll(float value) {
     for (StepEvent* ev : m_vEvents) {
         if (ev->getCommand() != MIDI_NOTE_ON)
@@ -569,29 +801,17 @@ void Pattern::changeDurationAll(float value) {
     }
 }
 
-void Pattern::changeStutterCountAll(int value) {
-    for (StepEvent* ev : m_vEvents) {
+void Pattern::changeDurationList(float value, uint32_t* evi_list, uint32_t n) {
+    for (uint32_t j = 0; j < n; ++j) {
+        StepEvent* ev = m_vEvents[evi_list[j]];
         if (ev->getCommand() != MIDI_NOTE_ON)
             continue;
-        int count = ev->getStutterCount() + value;
-        if (count < 0)
-            count = 0;
-        if (count > 255)
-            count = 255;
-        ev->setStutterCount(count);
-    }
-}
-
-void Pattern::changeStutterDurAll(int value) {
-    for (StepEvent* ev : m_vEvents) {
-        if (ev->getCommand() != MIDI_NOTE_ON)
-            continue;
-        int dur = ev->getStutterDur() + value;
-        if (dur < 1)
-            dur = 1;
-        if (dur > 255)
-            dur = 255;
-        ev->setStutterDur(dur);
+        float duration = ev->getDuration() + value;
+        if (duration <= 0)
+            return;         // Don't allow jump larger than current value
+        if (duration < 0.1) //!@todo How short should we allow duration change?
+            duration = 0.1;
+        ev->setDuration(duration);
     }
 }
 

@@ -305,7 +305,7 @@ SEQ_EVENT* Sequence::getEvent() {
 
     SEQ_EVENT* pEvent;
     while (m_nCurrentTrack < m_vTracks.size()) {
-        pEvent = m_vTracks[m_nCurrentTrack].getEvent();
+        pEvent = m_vTracks[m_nCurrentTrack].getEvent(m_nCount);
         if (pEvent)
             return pEvent;
         ++m_nCurrentTrack;

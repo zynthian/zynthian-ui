@@ -245,6 +245,39 @@ uint32_t getPatternAt(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t 
 */
 void copyPattern(uint32_t source, uint32_t destination);
 
+/** @brief  Paste (merge) copy/paste buffer into the specified pattern
+    @param  pattern Index of pattern
+    @param  dstep Quantity of steps to offset
+    @param  doffset Fractional time offset
+    @param  dnote Note offset
+    @param  truncate False to use circular horizontal overflow. True to skip events out of step range.
+*/
+void pastePatternBuffer(uint32_t pattern, int32_t dstep, float doffset, int8_t dnote, bool truncate=false);
+
+/** @brief  Copy/Cut a selection from the specified pattern to the copy/paste buffer
+    @param  pattern Index of pattern
+    @param  step1 step-range start
+    @param  step2 step-range end
+    @param  note1 note-range start
+    @param  note2 note-range end
+    @param cut True tp delete events from source pattern
+    @retval uint32_t Number of events copied (or cutted!)
+*/
+uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127, bool cut=false);
+
+/** @brief  Get indexes of note events from a specified pattern in the specified step & note range.
+    @param  pattern Index of pattern
+    @param  ev_indexes pointer to integer array. It will be filled with the list of event indexes
+    @param  limit size of integer array (ev_indexes)
+    @param  step1 step-range start
+    @param  step2 step-range end
+    @param  note1 note-range start
+    @param  note2 note-range end
+    @retval uint32_t the number of event indexes copied into the array ev_indexes.
+*/
+uint32_t getPatternSelectionIndexes(uint32_t pattern, uint32_t* ev_indexes, uint32_t limit, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
+
+
 // ** Functions acting on the globally selected pattern **
 
 /** @brief  Select active pattern
@@ -288,6 +321,43 @@ void removeNote(uint32_t step, uint8_t note);
 /** @brief  Remove all note events from pattern
 */
 void clearNotes();
+
+/** @brief  Get data of pattern event at specified index
+    @param  index Event index
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the event. -1 if index is out of range.
+*/
+int32_t getEventDataAt(uint32_t index, StepEvent* data);
+
+/** @brief  Get data of copy/paste buffer event at specified index
+    @param  index Event index
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the event. -1 if index is out of range.
+*/
+int32_t getBufferEventDataAt(uint32_t index, StepEvent* data);
+
+/** @brief  Get index of specified note
+    @param  position Quantity of steps from start of pattern at which to check for note
+    @param  note MIDI note number
+    @retval int32_t Index of the note event in the events vector
+*/
+int32_t getNoteIndex(uint32_t step, uint8_t note);
+
+/** @brief  Get data of specified note
+    @param  position Quantity of steps from start of pattern at which to check for note
+    @param  note MIDI note number
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the note event in the events vector
+*/
+int32_t getNoteData(uint32_t step, uint8_t note, StepEvent* data, bool cp_buffer=false);
+
+/** @brief  Set data of a specified note, excluding position, offset, command and note number (nValue1Start)
+    @param  position Quantity of steps from start of pattern at which to check for note
+    @param  note MIDI note number
+    @param  data pointer to a struct to contain event data
+    @retval int32_t Index of the note event in the events vector
+*/
+int32_t setNoteData(uint32_t step, uint8_t note, StepEvent* data);
 
 /** @brief  Get step that note starts
     @param  position Quantity of steps from start of pattern at which to check for note
@@ -396,33 +466,56 @@ float getControlOffset(uint32_t step, uint8_t control);
 */
 void setControlOffset(uint32_t step, uint8_t control, float offset);
 
-/** @brief  Get stutter count of note in selected pattern
+/** @brief  Set stutter parameters of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @retval uint8_t Stutter count
+    @param  speed Stutter speed
+    @param  velfx Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
+    @param  ramp Stutter speed ramp value (0=None, 1=up, 2=down)
 */
-uint8_t getStutterCount(uint32_t step, uint8_t note);
+void setNoteStutter(uint32_t step, uint8_t note, uint8_t speed, uint8_t velfx, uint8_t ramp);
 
-/** @brief  Set stutter count of note in selected pattern
+/** @brief  Get stutter speed of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @param  count Stutter count
+    @retval uint8_t Stutter speed
 */
-void setStutterCount(uint32_t step, uint8_t note, uint8_t count);
+uint8_t getNoteStutterSpeed(uint32_t step, uint8_t note);
 
-/** @brief  Get stutter duration of note in selected pattern
+/** @brief  Set stutter speed of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @retval uint8_t Stutter duration in clock cycles
+    @param  speed Stutter speed
 */
-uint8_t getStutterDur(uint32_t step, uint8_t note);
+void setNoteStutterSpeed(uint32_t step, uint8_t note, uint8_t speed);
 
-/** @brief  Set stutter duration of note in selected pattern
+/** @brief  Get stutter velocity FX of note in selected pattern
     @param  step Index of step at which note resides
     @param  note MIDI note number
-    @param  dur Stutter duration in clock cycles
+    @retval uint8_t Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
 */
-void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
+uint8_t getNoteStutterVelfx(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter velocity FX value of note in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  velfx Stutter velocity FX value (0=none, 1=fadeIn, 2=fadeOut)
+*/
+void setNoteStutterVelfx(uint32_t step, uint8_t note, uint8_t velfx);
+
+/** @brief  Get stutter speed ramp of note in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval uint8_t Stutter speed ramp value (0=None, 1=up, 2=down)
+*/
+uint8_t getNoteStutterRamp(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter speed ramp value of note in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  ramp Stutter speed ramp value (0=None, 1=up, 2=down)
+*/
+void setNoteStutterRamp(uint32_t step, uint8_t note, uint8_t ramp);
 
 /** @brief  Get note play chance in selected pattern
     @param  step Index of step at which note resides
@@ -437,6 +530,50 @@ float getNotePlayChance(uint32_t step, uint8_t note);
     @param  chance Note play probability (0..1 for 0%..100%)
 */
 void setNotePlayChance(uint32_t step, uint8_t note, float chance);
+
+/** @brief  Get note play frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval uint8_t Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+                    Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+*/
+uint8_t getNotePlayFreq(uint32_t step, uint8_t note);
+
+/** @brief  Set note play frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  freq Note play frequency: last bit => play/skip, higher bits => n loops to play/skip
+                 Can be used for enabling/disabling the event: 0 => play never, 1 => play on every loop
+*/
+void setNotePlayFreq(uint32_t step, uint8_t note, uint8_t freq);
+
+/** @brief  Get note stutter chance in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval float Note stutter probability (0..1 for 0%..100%)
+*/
+float getNoteStutterChance(uint32_t step, uint8_t note);
+
+/** @brief  Set note stutter chance in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  chance Note stutter probability (0..1 for 0%..100%)
+*/
+void setNoteStutterChance(uint32_t step, uint8_t note, float chance);
+
+/** @brief  Get note stutter frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @retval uint8_t Note stutter frequency: last bit => play/skip, higher bits => n loops to play/skip
+*/
+uint8_t getNoteStutterFreq(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter frequency in selected pattern
+    @param  step Index of step at which note resides
+    @param  note MIDI note number
+    @param  freq Note stutter frequency: last bit => play/skip, higher bits => n loops to play/skip
+*/
+void setNoteStutterFreq(uint32_t step, uint8_t note, uint8_t freq);
 
 /** @brief  Get duration of note in selected pattern
     @param  position Index of step at which note starts
@@ -473,20 +610,24 @@ void transpose(int8_t value);
 */
 void changeVelocityAll(int value);
 
+/** @brief  Change velocity of a list of notes in pattern
+    @param  value Offset to adjust +/-127
+    @param  evi_list Event index list
+    @param  n number of events in list
+*/
+void changeVelocityList(float value, uint32_t* evi_list, uint32_t n);
+
 /** @brief  Change duration of all notes in patterm
     @param  value Offset to adjust +/-100.0 or whatever
 */
 void changeDurationAll(float value);
 
-/** @brief  Change stutter count of all notes in patterm
-    @param  value Offset to adjust +/-100 or whatever
+/** @brief  Change duration of a list of notes in pattern
+    @param  value Offset to adjust +/-127
+    @param  evi_list Event index list
+    @param  n number of events in list
 */
-void changeStutterCountAll(int value);
-
-/** @brief  Change stutter duration of all notes in patterm
-    @param  value Offset to adjust +/-100 or whatever
-*/
-void changeStutterDurAll(int value);
+void changeDurationList(float value, uint32_t* evi_list, uint32_t n);
 
 /** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
     @param  pPattern Pointer to pattern

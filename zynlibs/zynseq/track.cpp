@@ -124,9 +124,32 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, bool bSync) {
     return m_nCurrentPatternPos >= 0 && m_nDivCount == 0;
 }
 
-SEQ_EVENT* Track::getEvent() {
+bool get_skip_from_freq(uint8_t freq, uint32_t nCount) {
+    uint8_t n = 1 + (freq >> 1);
+    uint8_t skip = freq & 0x1;
+    if (n == 1) {
+        if (skip) return false;     // Skip never (note enabled)
+        else return true;           // Skip always (note disabled)
+    }
+    else {
+        // if skip == 1 => skip each n counts
+        if (skip) {
+            if (nCount % n == 0) return true;
+            else return false;
+        }
+        // if skip == 0 => play each n counts
+        else {
+            if (nCount % n != 0) return true;
+            else return false;
+        }
+    }
+}
+
+SEQ_EVENT* Track::getEvent(uint32_t nCount) {
     // This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
     static SEQ_EVENT seqEvent;             // A MIDI event timestamped for some imminent or future time
+    static uint32_t nEventEndTime;         // End of event time (optimization)
+    static uint32_t nStutterSpeed = 0;     // Current stutter speed for this event
     static uint32_t nStutterCount = 0;     // Count stutters already added to this event
     static uint32_t nInterpolateCount = 0; // Count interpolations already added to this event
     static uint32_t nInterpolateNum = 0;   // Number of interpolation points for this event
@@ -151,26 +174,37 @@ SEQ_EVENT* Track::getEvent() {
         }
 
         uint8_t nCommand = pEvent->getCommand();
-        seqEvent.msg.command = nCommand | m_nChannel;
+
         seqEvent.output = m_nOutput;
         //fprintf(stderr, "  found event at %u => %x, %u, %u\n", m_nNextStep, nCommand, pEvent->getValue1start(), pEvent->getValue2start());
 
-        // Have not yet started to interpolate value => process start value
+        // Last event already finished => Start new event!
         if (m_nEventValue == -1) {
-            // Note Play Chance
+            // Play Frequency & Chance
             if (nCommand == MIDI_NOTE_ON) {
-                unsigned playChance = unsigned(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance());
-                if (playChance < RAND_MAX && playChance < rand()) {
+                // Play frequency
+                bool skip = get_skip_from_freq(pEvent->getPlayFreq(), nCount);
+                // Play chance (probability) => concatenated with frequency calc
+                if (!skip) {
+                    if (unsigned(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance()) < rand())
+                        skip = true;
+                }
+                if (skip) {
                     m_nEventValue = pEvent->getValue2end();
                     seqEvent.msg.command = 0xFE;
                     return &seqEvent;
                 }
             }
-            // Start interpolation
+            seqEvent.msg.command = nCommand | m_nChannel;
+            // Start value (interpolation)
             m_nEventValue = pEvent->getValue2start();
-            // Recorded Offset (fraction of step => float)
+            // Offset (fraction of step => float)
             m_fEventOffset = pEvent->getOffset();
-            // Notes => Quantization, swing & time humanization
+            // Setup interpolation
+            nInterpolateCount = 0;
+            nInterpolateNum = pEvent->getDuration() * pPattern->getClocksPerStep();
+            fInterpolateDelta = ((float)pEvent->getValue2end() - (float)pEvent->getValue2start()) / nInterpolateNum;
+            // Note quantization, swing & time humanization
             if (nCommand == MIDI_NOTE_ON) {
                 // Real-time quantization (step quantization
                 uint8_t qn = pPattern->getQuantizeNotes();
@@ -194,55 +228,125 @@ SEQ_EVENT* Track::getEvent() {
                 uint32_t swingStep = m_nNextStep + swingDiv;
                 if (m_fEventOffset > 0.5) swingStep++;
                 if (swingStep % (2 * swingDiv) == 0) {
-                    m_fEventOffset += swingAmount;
+                    m_fEventOffset += swingAmount * swingDiv / 2;
                 }
                 // Time humanization => Add to offset
                 float humanTime = pPattern->getHumanTime();
                 if (humanTime > 0.0)
                     m_fEventOffset += humanTime * d(gen);
+                // Setup stutter
+                nStutterCount = 0;
+                nStutterSpeed = pEvent->getStutterSpeed();
+                if (nStutterSpeed > 0) {
+                    // Stutter frequency
+                    bool skip = get_skip_from_freq(pEvent->getStutterFreq(), nCount);
+                    // Stutter chance (probability) => concatenated with frequency calc
+                    if (!skip) {
+                        if (unsigned(RAND_MAX * pEvent->getStutterChance()) < rand())
+                            skip = true;
+                    }
+                    if (skip)
+                        nStutterSpeed = 0;
+                    else
+                        // If stutter FX is fade-in => start interpolation from lowest velocity value
+                        if (pEvent->getStutterVelfx() == STUTTER_VELFX_FADEIN) {
+                            nInterpolateCount = pPattern->getClocksPerStep() / nStutterSpeed;
+                            m_nEventValue = 1 - fInterpolateDelta * nInterpolateCount;
+                        }
+                }
+            }
+            else {
+                //nStutterCount = 0;
+                nStutterSpeed = 0;
             }
             // Calculate event scheduled time
             seqEvent.time = m_nLastClockTime + m_fEventOffset * pPattern->getClocksPerStep();
-            // Reset Stutter and Interpolation counters
-            nStutterCount = 0;
-            nInterpolateCount = 0;
-            nInterpolateNum = pEvent->getDuration() * pPattern->getClocksPerStep();
-            fInterpolateDelta = ((float)pEvent->getValue2end() - (float)pEvent->getValue2start()) / nInterpolateNum;
+            // Calculate note-off event scheduled time
+            // -1 to send note-off one tick before next step
+            nEventEndTime = seqEvent.time + pEvent->getDuration() * pPattern->getClocksPerStep() - 1;
         }
-        // Stutter (a single note has stutter=1) & CC interpolation
+        // Event already started
         else if (m_nEventValue != pEvent->getValue2end()) {
-            // Add note off/on for each stutter
+            // Process note stutter => Normal note off is processed like stutter. By default a note has stutter=0.
             if (nCommand == MIDI_NOTE_ON) {
-                // Calculate event scheduled time
-                // -1 to send note-off one tick before next step
-                seqEvent.time = m_nLastClockTime + (m_fEventOffset + pEvent->getDuration()) * pPattern->getClocksPerStep() - 1;
-
-                seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON : MIDI_NOTE_OFF) | m_nChannel;
-                if (pEvent->getStutterCount()) {
-                    uint32_t stutter_time = m_nLastClockTime + (m_fEventOffset + pEvent->getStutterDur()) * ++nStutterCount;
-                    if (stutter_time < seqEvent.time && 2 * pEvent->getStutterCount() >= nStutterCount)
+                // Stutter enabled => Add note off/on for each stutter
+                if (nStutterSpeed > 0) {
+                    uint32_t clocks_per_step= pPattern->getClocksPerStep();
+                    // Stutter speed-ramp FX
+                    uint8_t speed = nStutterSpeed;
+                    switch (pEvent->getStutterRamp()) {
+                        case STUTTER_RAMP_NONE:
+                            break;
+                        case STUTTER_RAMP_UP:
+                            speed += (seqEvent.time - m_nLastClockTime) / clocks_per_step;
+                            break;
+                        case STUTTER_RAMP_DOWN:
+                            speed += pEvent->getDuration() - (seqEvent.time - m_nLastClockTime) / clocks_per_step;
+                            break;
+                    }
+                    // Calculate stutter event time
+                    uint32_t nclocks;
+                    if (speed > clocks_per_step) uint32_t nclocks = 1;
+                    else if (speed <= 0) nclocks = clocks_per_step;
+                    else nclocks = clocks_per_step / speed;
+                    uint32_t stutter_time = seqEvent.time + nclocks;
+                    // If not reached end of note
+                    if (stutter_time < nEventEndTime) {
                         seqEvent.time = stutter_time;
-                    else
-                        m_nEventValue = pEvent->getValue2end();
-                }
-                else {
-                    m_nEventValue = pEvent->getValue2end(); // Send end value
+                        // Stutter alternate note-off and note-on events
+                        seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON : MIDI_NOTE_OFF) | m_nChannel;
+                        nStutterCount++;
+                        // Stutter velocity FX => Interpolate velocity
+                        nInterpolateCount += nclocks;
+                        switch (pEvent->getStutterVelfx()) {
+                            // Flat
+                            case STUTTER_VELFX_NONE:
+                                break;
+                            // Fade-in
+                            case STUTTER_VELFX_FADEIN:
+                                m_nEventValue = - fInterpolateDelta * nInterpolateCount;
+                                break;
+                            // Fade-out
+                            case STUTTER_VELFX_FADEOUT:
+                                m_nEventValue = pEvent->getValue2start() + fInterpolateDelta * nInterpolateCount;
+                                break;
+                        }
+                    }
+                    // End of note
+                    else {
+                        seqEvent.time = nEventEndTime;
+                        seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
+                        m_nEventValue = pEvent->getValue2end(); // send end value
+                    }
+                // Stutter disabled (stutter speed = 0)
+                } else {
+                    seqEvent.time = nEventEndTime;
+                    seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
+                    m_nEventValue = pEvent->getValue2end();     // send end value
                 }
             }
+            // CC interpolation => one value per clock but don't repeat values
             else if (nCommand == MIDI_CONTROL) {
-                if (nInterpolateCount < nInterpolateNum - 1) {
-                    int8_t value = m_nEventValue;
-                    while (value == m_nEventValue) {
-                        nInterpolateCount++;
-                        value = pEvent->getValue2start() + fInterpolateDelta * nInterpolateCount;
-                    }
-                    m_nEventValue = value;
-                } else {
+                int8_t start_value = pEvent->getValue2start();
+                int8_t next_value;
+                do {
+                    seqEvent.time++;
                     nInterpolateCount++;
-                    m_nEventValue = pEvent->getValue2end();
+                    next_value = start_value + fInterpolateDelta * nInterpolateCount;
+                } while (seqEvent.time < nEventEndTime && next_value == m_nEventValue);
+                // If reached event's end time, send end value
+                if (seqEvent.time >= nEventEndTime) {
+                    seqEvent.time = nEventEndTime;
+                    next_value = pEvent->getValue2end();     // send end value
                 }
-                seqEvent.time = m_nLastClockTime + (m_fEventOffset * pPattern->getClocksPerStep() + nInterpolateCount);
-                  //fprintf(stderr, "Scheduling CC%u interpolated value => %u, %u\n", pEvent->getValue1start(), seqEvent.time, m_nEventValue);
+                // Don't send repeated values
+                if (next_value == m_nEventValue) {
+                    seqEvent.msg.command = 0xFE;
+                    return &seqEvent;
+                }
+                seqEvent.msg.command = nCommand | m_nChannel;
+                m_nEventValue = next_value;
+                //fprintf(stderr, "Scheduling CC%u interpolated value => %u, %u\n", pEvent->getValue1start(), seqEvent.time, m_nEventValue);
             }
         }
 

@@ -158,6 +158,7 @@ class zynthian_gui_base(tkinter.Frame):
         self.topbar_timer = None
         self.title_timer = None
         self.status_timer = None
+        self.set_title_ts = 0
         col += 1
 
         # Topbar's Select Path
@@ -231,6 +232,12 @@ class zynthian_gui_base(tkinter.Frame):
     # timeout: If set, title is shown for this period (seconds) then reverts to previous title
 
     def set_title(self, title, fg=None, bg=None, timeout=None):
+        # Limit title update rate (30fps)
+        ts = time.monotonic()
+        if ts -self.set_title_ts < 0.0333:
+            return
+        self.set_title_ts = ts
+
         if self.title_timer:
             self.title_timer.cancel()
             self.title_timer = None

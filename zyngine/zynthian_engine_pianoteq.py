@@ -582,7 +582,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
         try:
             sr = self.state_manager.get_jackd_samplerate()
         except:
-            sr = 44100
+            sr = 48000
         fix_pianoteq_config(sr)
         super().start()  # TODO: Use lightweight Popen - last attempt stopped RPC working
         # Wait for RPC interface to be available or 10s for <7.5 with GUI

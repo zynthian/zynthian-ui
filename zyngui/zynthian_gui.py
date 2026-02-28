@@ -67,6 +67,7 @@ from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
 from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
+from zyngui.zynthian_gui_midi_cc_range import zynthian_gui_midi_cc_range
 from zyngui.zynthian_gui_midi_cc_single import zynthian_gui_midi_cc_single
 from zyngui.zynthian_gui_midi_prog import zynthian_gui_midi_prog
 from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
@@ -486,6 +487,7 @@ class zynthian_gui:
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
         self.screens['midi_cc'] = zynthian_gui_midi_cc()
+        self.screens['midi_cc_range'] = zynthian_gui_midi_cc_range()
         self.screens['midi_cc_single'] = zynthian_gui_midi_cc_single()
         self.screens['midi_prog'] = zynthian_gui_midi_prog()
         self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
@@ -1419,6 +1421,8 @@ class zynthian_gui:
             i = int(params[0])
             d = int(params[1])
             self.get_current_screen_obj().zynpot_cb(i, d)
+            if self.capture_log_fname:
+                self.write_capture_log("ZYNPOT:{},{}".format(i, d))
         except IndexError:
             logging.error("zynpot requires 2 parameters: index, delta, not {params}")
             return
@@ -1688,6 +1692,13 @@ class zynthian_gui:
     # -------------------------------------------------------------------
     # ZS3 management CUIAs:
     # -------------------------------------------------------------------
+
+    def cuia_zs3_save(self, params=None):
+        if len(params) >= 1:
+            if isinstance(params[0], int):
+                self.state_manager.save_zs3_by_index(params[0])
+            else:
+                self.state_manager.save_zs3(params[0])
 
     def cuia_zs3_load(self, params=None):
         if len(params) >= 1:
@@ -2099,9 +2110,6 @@ class zynthian_gui:
     def zynswitch_push(self, i):
         self.state_manager.set_event_flag()
 
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:P,{}".format(i))
-
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'P'):
                 return True
@@ -2116,9 +2124,6 @@ class zynthian_gui:
 
     def zynswitch_long(self, i):
         logging.debug('Looooooooong Switch '+str(i))
-
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:L,{}".format(i))
 
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'L'):
@@ -2147,9 +2152,6 @@ class zynthian_gui:
 
     def zynswitch_bold(self, i):
         logging.debug('Bold Switch '+str(i))
-
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:B,{}".format(i))
 
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'B'):
@@ -2185,9 +2187,6 @@ class zynthian_gui:
 
     def zynswitch_short(self, i):
         logging.debug('Short Switch ' + str(i))
-
-        if self.capture_log_fname:
-            self.write_capture_log("ZYNSWITCH:S,{}".format(i))
 
         if callable(getattr(self.screens[self.current_screen], "switch", None)):
             if self.screens[self.current_screen].switch(i, 'S'):
@@ -2276,8 +2275,7 @@ class zynthian_gui:
 
         # Pattern recording
         if self.current_screen == 'pattern_editor':
-            if self.state_manager.zynseq.libseq.isMidiRecord():
-                self.screens['pattern_editor'].midi_note_on(note)
+            self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
         # => Now using delayed pre-load (see zynthian_gui_preset.py)
         #elif self.current_screen == 'preset':
@@ -2303,7 +2301,7 @@ class zynthian_gui:
         """
 
         # Pattern recording
-        if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
+        if self.current_screen == 'pattern_editor':
             self.screens['pattern_editor'].midi_note_off(note)
 
     def cb_show_file_selector(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):
@@ -2373,7 +2371,6 @@ class zynthian_gui:
                 # Refresh GUI Controllers
                 try:
                     self.screens[self.current_screen].plot_zctrls()
-                    pass
                 except AttributeError:
                     pass
                 except Exception as e:
@@ -2536,6 +2533,10 @@ class zynthian_gui:
                                 zp_pr_state = 0
                             if zp_pr_state <= 1:
                                 self.zynswitch_long(i)
+                                # Capture log: ZYNSWITCH LONG (autolong)
+                                if self.capture_log_fname:
+                                    self.write_capture_log(f"ZYNSWITCH:L,{i}")
+                # Process events from queue
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None
                 if isinstance(event, str):
@@ -2605,6 +2606,10 @@ class zynthian_gui:
                             logging.warning("Unknown Action Type: {}".format(t))
                         if i in zynswitch_repeat:
                             del zynswitch_repeat[i]
+
+                    # Capture log: ZYNSWITCH
+                    if self.capture_log_fname:
+                        self.write_capture_log(f"ZYNSWITCH:{t},{i}")
 
                 elif cuia == "zynpot":
                     # zynpot has parameters: [pot, delta, 'P'|'R']. 'P'&'R' are only used for keybinding to zynpot
