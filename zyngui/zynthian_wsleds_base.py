@@ -190,18 +190,19 @@ class zynthian_wsleds_base:
                 logging.exception(traceback.format_exc())
             self.wsleds.show()
 
-            if self.zyngui.capture_log_fname:
+            if self.zyngui.capture_log:
                 try:
                     wsled_state = []
                     for i in range(self.num_leds):
                         c = str(self.get_led(i))
-                        if c in self.wscolors_dict:
+                        try:
                             wsled_state.append(self.wscolors_dict[c])
+                        except:
+                            wsled_state.append("0")
                     wsled_state = ",".join(wsled_state)
                     if wsled_state != self.last_wsled_state:
                         self.last_wsled_state = wsled_state
-                        self.zyngui.write_capture_log(
-                            "LEDSTATE:" + wsled_state)
+                        self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
                         # logging.debug(f"Capturing LED state log => {wsled_state}")
                 except Exception as e:
                     logging.error(f"Capturing LED state log => {e}")

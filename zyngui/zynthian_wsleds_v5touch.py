@@ -42,6 +42,7 @@ class touchkeypad_button_colors:
     def __init__(self, wsleds):
         self.wsleds = wsleds
         self.zyngui = wsleds.zyngui
+        self.led_status = [None] * 20
         # A wanna-be abstraction: derive a named "mode" from the requested colors
         self.mode_map = {}
         self.mode_map[wsleds.wscolor_default] = 'default'
@@ -50,11 +51,12 @@ class touchkeypad_button_colors:
         self.mode_map[wsleds.wscolor_active2] = 'active2'
 
     def __setitem__(self, index, color):
+        self.led_status[index] = color
         mode = self.mode_map.get(color, None)
         # request color change on the onscreen touchkeypad
         if isinstance(color, int):
             color = f"#{color:06x}" # color conversion to hex cod
-        # tkinter is not able to set RGBA/alpha color, 
+        # tkinter is not able to set RGBA/alpha color,
         # so we need to blend the foreground color with the background color
         if zynthian_gui_config.zyngui:
             fgcolor = self.hex_to_rgb(color)
@@ -62,6 +64,14 @@ class touchkeypad_button_colors:
             blended = self.ablend(1-self.wsleds.brightness, fgcolor, bgcolor)
             color = self.rgb_to_hex(blended)
         zynthian_gui_config.touch_keypad.set_button_color(index, color, mode)
+
+
+    def __getitem__(self, index):
+        try:
+            return self.led_status[index]
+        except:
+            return None
+
 
     def show(self):
         # nothing to do here
@@ -101,6 +111,9 @@ class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
         self.wsleds = touchkeypad_button_colors(self)
         self.light_on_all()
 
+    def get_led(self, i):
+        return self.wsleds[i]
+
     def setup_colors(self):
         # Predefined colors
         self.wscolor_off = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_OFF', zynthian_gui_config.color_bg)
@@ -127,4 +140,5 @@ class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
             str(self.wscolor_orange): "O",
             str(self.wscolor_yellow): "Y",
             str(self.wscolor_purple): "P"
-}
+        }
+

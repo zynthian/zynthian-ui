@@ -180,6 +180,7 @@ class zynthian_gui:
 
         self.modify_chain_status = {"midi_thru": False, "audio_thru": False}
 
+        self.capture_log = False
         self.capture_log_ts0 = None
         self.capture_log_fname = None
         self.capture_ffmpeg_proc = None
@@ -217,6 +218,7 @@ class zynthian_gui:
         now = datetime.now()
         self.capture_log_ts0 = now
         self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
+        self.capture_log = True
         self.start_capture_ffmpeg()
         if self.wsleds:
             self.wsleds.reset_last_state()
@@ -244,6 +246,7 @@ class zynthian_gui:
 
     def stop_capture_log(self):
         self.stop_capture_ffmpeg()
+        self.capture_log = False
         self.capture_log_fname = None
         self.capture_log_ts0 = None
 
@@ -1203,7 +1206,7 @@ class zynthian_gui:
                 else:
                     logging.error("Unknown CUIA '{}'".format(cuia))
         # Capture CUIA for UI log
-        if self.capture_log_fname:
+        if self.capture_log:
             self.write_capture_log("CUIA:{},{}".format(cuia, str(params)))
 
     def callable_ui_action_params(self, cuia_str):
@@ -1421,7 +1424,7 @@ class zynthian_gui:
             i = int(params[0])
             d = int(params[1])
             self.get_current_screen_obj().zynpot_cb(i, d)
-            if self.capture_log_fname:
+            if self.capture_log:
                 self.write_capture_log("ZYNPOT:{},{}".format(i, d))
         except IndexError:
             logging.error("zynpot requires 2 parameters: index, delta, not {params}")
@@ -2342,7 +2345,7 @@ class zynthian_gui:
                         self.zynpot_lock.release()
                         self.screens[self.current_screen].zynpot_cb(i, dval)
                         self.state_manager.set_event_flag()
-                        if self.capture_log_fname:
+                        if self.capture_log:
                             self.write_capture_log("ZYNPOT:{},{}".format(i, dval))
                     except Exception as err:
                         pass  # Some screens don't use controllers
@@ -2534,7 +2537,7 @@ class zynthian_gui:
                             if zp_pr_state <= 1:
                                 self.zynswitch_long(i)
                                 # Capture log: ZYNSWITCH LONG (autolong)
-                                if self.capture_log_fname:
+                                if self.capture_log:
                                     self.write_capture_log(f"ZYNSWITCH:L,{i}")
                 # Process events from queue
                 event = self.cuia_queue.get(True, repeat_interval)
@@ -2608,7 +2611,7 @@ class zynthian_gui:
                             del zynswitch_repeat[i]
 
                     # Capture log: ZYNSWITCH
-                    if self.capture_log_fname:
+                    if self.capture_log:
                         self.write_capture_log(f"ZYNSWITCH:{t},{i}")
 
                 elif cuia == "zynpot":
