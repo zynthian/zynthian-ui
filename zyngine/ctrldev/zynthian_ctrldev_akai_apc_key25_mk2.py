@@ -2936,6 +2936,20 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                         
                         if chan is None:
                             return False
+                        if chan > 15:
+                            # Open Clip options page, change to device mode?
+                            chain = self.get_filtered_chain_by_index(pos)
+                            proc = chain.get_processors()[0]
+                            proc.engine.set_phrase(proc, phrase)
+                            zyngui = zynthian_gui_config.zyngui
+                            zyngui.chain_control(chain.chain_id, proc)
+                            self._current_handler.set_active(False)
+                            self._current_handler = self._device_handler
+                            self._current_handler.set_active(True)
+                            self._current_handler.refresh(
+                                shifted_override=self._is_shifted)
+                            return True
+                        
                         if self._current_handler != self._stepseq_handler:
                             self._current_handler.set_active(False)
                         self._current_handler = self._stepseq_handler
