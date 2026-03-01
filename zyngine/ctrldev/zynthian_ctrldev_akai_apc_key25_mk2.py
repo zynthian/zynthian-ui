@@ -296,7 +296,7 @@ class DeviceHandler(ModeHandlerBase):
         cyclable_actions = {
             BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
             BTN_MIX_LEVEL:      ("SCREEN_AUDIO_MIXER", "SCREEN_ALSA_MIXER"),
-            BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET", "BANK_PRESET"),
+            BTN_CTRL_PRESET:    ("CHAIN_CONTROL", "PRESET", "BANK_PRESET"),
             BTN_ZS3_SHOT:       ("SCREEN_ZS3", "SCREEN_SNAPSHOT"),
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
