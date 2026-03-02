@@ -136,8 +136,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
         """
 
-        if not zynthian_gui_config.midi_prog_change_zs3 and self.curproc and
-        self.curproc.midi_chan is not None and self.curproc.midi_chan = chan:
+        if not zynthian_gui_config.midi_prog_change_zs3 and self.curproc and \
+            self.curproc.midi_chan is not None and self.curproc.midi_chan == chan:
             # Refresh control screen after changing preset with program change
             self.zyngui.chain_control()
 
