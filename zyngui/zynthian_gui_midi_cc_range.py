@@ -27,6 +27,7 @@ import logging
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
@@ -75,6 +76,27 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
         self.plot_canvas.bind("<B1-Motion>", self.on_plot_motion)
 
         self.plot()
+        self.replot = True
+
+    def build_view(self):
+        if not self.shown:
+            self.set_zctrls()
+            self.replot = True
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+        return True
+
+    def hide(self):
+        if self.shown:
+            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+        super().hide()
+
+    def cb_load_zs3(self, zs3_id):
+        """Handle LOAD_ZS3 signal
+
+        zs3_id : ID of loaded zs3
+        """
+        self.v1_zgui_ctrl.is_dirty = True
+        self.v2_zgui_ctrl.is_dirty = True
         self.replot = True
 
     def config(self, zctrl):
@@ -128,11 +150,6 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
                     zgui_ctrl.zctrl.is_dirty = False
             self.update_plot()
             self.replot = False
-
-    def build_view(self):
-        self.set_zctrls()
-        self.replot = True
-        return True
 
     def switch_select(self, t='S'):
         self.zyngui.close_screen()

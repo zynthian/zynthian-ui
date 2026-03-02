@@ -91,21 +91,21 @@ class zynthian_gui_control(zynthian_gui_selector):
         #curproc = self.zyngui.get_current_processor()
         super().build_view()
         if not self.shown:
-            zynsigman.register(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
-            zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
-                zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
-                zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, self.cb_control_mode)
+                zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
+                zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, self.cb_control_mode)
         #self.set_mode_control()
         return True
 
     def hide(self):
         if self.shown:
             self.exit_midi_learn()
+            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
-            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, self.cb_control_mode)
@@ -120,12 +120,10 @@ class zynthian_gui_control(zynthian_gui_selector):
         # Refresh control screen after changing active chain
         self.zyngui.chain_control()
 
-    def cb_midi_pc(self, izmip, chan, num):
-        """Handle MIDI_PC signal
+    def cb_load_zs3(self, zs3_id):
+        """Handle LOAD_ZS3 signal
 
-        izmip : MIDI input device index
-        chan : MIDI channel
-        num : CC number
+        zs3_id : ID of loaded zs3
         """
 
         # Refresh control screen after loading ZS3
