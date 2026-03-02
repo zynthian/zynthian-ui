@@ -145,6 +145,7 @@ class zynthian_controller:
                 self.value = self.value_default
         if 'value_min' in options:
             self.value_min = options['value_min']
+            self.nudge_factor = None
         if 'value_max' in options:
             value_max = options['value_max']
             # Selector
@@ -160,9 +161,11 @@ class zynthian_controller:
             elif isinstance(value_max, int):
                 self.value_max = value_max
                 self.is_integer = True
+                self.nudge_factor = None
             elif isinstance(value_max, float):
                 self.value_max = value_max
                 self.is_integer = False
+                self.nudge_factor = None
         if 'labels' in options:
             self.labels = options['labels']
         if 'ticks' in options:
@@ -301,6 +304,8 @@ class zynthian_controller:
         if self.midi_cc_val2 is None:
             self.midi_cc_val2 = self.value_max
         self.midi_cc_range = self.midi_cc_val2 - self.midi_cc_val1
+
+        self.is_dirty = True
 
         if not self.nudge_factor:
             if self.is_logarithmic:

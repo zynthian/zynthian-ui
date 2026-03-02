@@ -44,10 +44,6 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
 
         self.zctrl = None
 
-        self.zgui_ctrls = [None, None, None, None]
-        self.v1_zgui_ctrl = None
-        self.v2_zgui_ctrl = None
-
         self.text_color = zynthian_gui_config.color_tx
         self.plot_color = zynthian_gui_config.color_on
         self.axis_color = zynthian_gui_config.color_hl
@@ -75,13 +71,39 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
         self.plot_canvas.bind("<Button-1>", self.cb_plot_press)
         self.plot_canvas.bind("<B1-Motion>", self.on_plot_motion)
 
+        # Create and plot controllers
+        self.zgui_ctrls = [None, None, None, None]
+        # Slots 1 & 2 are empty
+        for j in range(0, 2):
+            i = zynthian_gui_config.layout['ctrl_order'][j]
+            self.zgui_ctrls[i] = zynthian_gui_controller(i, self.main_frame, None)
+        # Slot 3 => Val1
+        i = zynthian_gui_config.layout['ctrl_order'][2]
+        self.v1_zctrl = zynthian_controller(self, 'Value at Min')
+        self.v1_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.v1_zctrl)
+        self.zgui_ctrls[i] = self.v1_zgui_ctrl
+        # Slot 4 => Val2
+        i = zynthian_gui_config.layout['ctrl_order'][3]
+        self.v2_zctrl = zynthian_controller(self, 'Value at Max')
+        self.v2_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.v2_zctrl)
+        self.zgui_ctrls[i] = self.v2_zgui_ctrl
+        # Display widgets
+        if zynthian_gui_config.layout['columns'] == 3:
+            self.v1_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
+            self.v2_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
+            self.v1_zgui_ctrl.grid(row=0, column=2, pady=(0, 1))
+            self.v2_zgui_ctrl.grid(row=1, column=2, pady=(1, 0))
+        else:
+            for i in range(0, 4):
+                self.zgui_ctrls[i].configure(height=self.height // 4, width=self.width // 4)
+                self.zgui_ctrls[i].grid(row=i, column=2, pady=(1, 1))
+
         self.plot()
         self.replot = True
 
     def build_view(self):
+        self.replot = True
         if not self.shown:
-            self.set_zctrls()
-            self.replot = True
             zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
         return True
 
@@ -89,6 +111,27 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
         if self.shown:
             zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
         super().hide()
+
+    def config(self, zctrl):
+        self.zctrl = zctrl
+        self.setup_zctrls()
+        self.replot = True
+        self.set_select_path()
+
+    def setup_zctrls(self):
+        self.v1_zctrl.set_options({
+            'value_min': self.zctrl.value_min,
+            'value_max': self.zctrl.value_max,
+            'value': self.zctrl.midi_cc_val1})
+        self.v1_zgui_ctrl.config(self.v1_zctrl)
+        self.v1_zgui_ctrl.setup_zynpot()
+
+        self.v2_zctrl.set_options({
+            'value_min': self.zctrl.value_min,
+            'value_max': self.zctrl.value_max,
+            'value': self.zctrl.midi_cc_val2})
+        self.v2_zgui_ctrl.config(self.v2_zctrl)
+        self.v2_zgui_ctrl.setup_zynpot()
 
     def cb_load_zs3(self, zs3_id):
         """Handle LOAD_ZS3 signal
@@ -99,48 +142,6 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
         self.v1_zgui_ctrl.is_dirty = True
         self.v2_zgui_ctrl.is_dirty = True
         self.replot = True
-
-    def config(self, zctrl):
-        self.zctrl = zctrl
-        self.set_select_path()
-
-    def set_zctrls(self):
-        for j in range(0, 2):
-            i = zynthian_gui_config.layout['ctrl_order'][j]
-            if not self.zgui_ctrls[i]:
-                self.zgui_ctrls[i] = zynthian_gui_controller(i, self.main_frame, None)
-
-        if not self.v1_zgui_ctrl:
-            i = zynthian_gui_config.layout['ctrl_order'][2]
-            self.v1_zctrl = zynthian_controller(self, 'Value at Min', {
-                'value_min': self.zctrl.value_min,
-                'value_max': self.zctrl.value_max,
-                'value': self.zctrl.midi_cc_val1})
-            self.v1_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.v1_zctrl)
-            self.zgui_ctrls[i] = self.v1_zgui_ctrl
-        self.v1_zgui_ctrl.setup_zynpot()
-        #self.v1_zgui_ctrl.erase_midi_bind()
-
-        if not self.v2_zgui_ctrl:
-            i = zynthian_gui_config.layout['ctrl_order'][3]
-            self.v2_zctrl = zynthian_controller(self, 'Value at Max', {
-                'value_min': self.zctrl.value_min,
-                'value_max': self.zctrl.value_max,
-                'value': self.zctrl.midi_cc_val2})
-            self.v2_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.v2_zctrl)
-            self.zgui_ctrls[i] = self.v2_zgui_ctrl
-        self.v2_zgui_ctrl.setup_zynpot()
-        #self.v2_zgui_ctrl.erase_midi_bind()
-
-        if zynthian_gui_config.layout['columns'] == 3:
-            self.v1_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
-            self.v2_zgui_ctrl.configure(height=self.height // 2, width=self.width // 4)
-            self.v1_zgui_ctrl.grid(row=0, column=2, pady=(0, 1))
-            self.v2_zgui_ctrl.grid(row=1, column=2, pady=(1, 0))
-        else:
-            for i in range(0, 4):
-                self.zgui_ctrls[i].configure(height=self.height // 4, width=self.width // 4)
-                self.zgui_ctrls[i].grid(row=i, column=2, pady=(1, 1))
 
     def plot_zctrls(self):
         if self.replot:
@@ -239,9 +240,9 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
         else:
             a1 = tkinter.NW
             a2 = tkinter.NE
-        self.plot_canvas.create_text(x1, y0, anchor=a1, text=f"{self.zctrl.midi_cc_val1:.3f}",
+        self.plot_canvas.create_text(x1, y0, anchor=a1, text=self.v1_zgui_ctrl.format_print.format(self.zctrl.midi_cc_val1),
                                      fill=self.text_color, font=self.font_axis, tags="replot")
-        self.plot_canvas.create_text(x2, y0, anchor=a2, text=f"{self.zctrl.midi_cc_val2:.3f}",
+        self.plot_canvas.create_text(x2, y0, anchor=a2, text=self.v2_zgui_ctrl.format_print.format(self.zctrl.midi_cc_val2),
                                      fill=self.text_color, font=self.font_axis, tags="replot")
 
 
