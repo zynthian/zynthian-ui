@@ -1053,6 +1053,7 @@ class zynthian_chain_manager:
 
         logging.debug(f"Adding processor '{eng_code}' with ID '{proc_id}'")
         processor = zynthian_processor(eng_code, self.engine_info[eng_code], proc_id)
+        processor.set_midi_autolearn(midi_autolearn)
         # Add proc early to allow engines to add more as required, e.g. Aeolus
         self.processors[proc_id] = processor
 
@@ -1501,7 +1502,7 @@ class zynthian_chain_manager:
                             eng_config = None
                         # TODO: insert in correct slot, accounting for slot being relative to subchain type
                         # Use index to identify first proc in slot (add in series)
-                        processor = self.add_processor(chain_id, eng_code, slot, proc_id=int(proc_id), eng_config=eng_config)
+                        processor = self.add_processor(chain_id, eng_code, slot, proc_id=int(proc_id), eng_config=eng_config, midi_autolearn=False)
                         if processor:
                             slot = self.chains[chain_id].get_slot(processor)
                     slot += 1
