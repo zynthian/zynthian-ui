@@ -93,6 +93,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+            zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_pc)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
@@ -105,6 +106,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.exit_midi_learn()
             zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_pc)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
@@ -128,6 +130,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 
         # Refresh control screen after loading ZS3
         self.zyngui.chain_control()
+
+    def cb_midi_pc(self, izmip, chan, num):
+        """Handle MIDI_PC signal
+
+        """
+
+        if not zynthian_gui_config.midi_prog_change_zs3 and self.curproc and
+        self.curproc.midi_chan is not None and self.curproc.midi_chan = chan:
+            # Refresh control screen after changing preset with program change
+            self.zyngui.chain_control()
 
     def show_sidebar(self, show):
         self.sidebar_shown = show

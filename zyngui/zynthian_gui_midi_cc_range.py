@@ -95,6 +95,7 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
 
         zs3_id : ID of loaded zs3
         """
+
         self.v1_zgui_ctrl.is_dirty = True
         self.v2_zgui_ctrl.is_dirty = True
         self.replot = True
