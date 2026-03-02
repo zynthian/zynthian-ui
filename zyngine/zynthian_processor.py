@@ -876,11 +876,19 @@ class zynthian_processor:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                     if "midi_cc_debounce" in ctrl_state:
                         zctrl.midi_cc_debounce = ctrl_state['midi_cc_debounce']
-                    if "midi_cc_val1" in ctrl_state and zctrl.midi_cc_val1 != ctrl_state['midi_cc_val1']:
-                        zctrl.midi_cc_val1 = ctrl_state['midi_cc_val1']
+                    if "midi_cc_val1" in ctrl_state:
+                        if zctrl.midi_cc_val1 != ctrl_state['midi_cc_val1']:
+                            zctrl.midi_cc_val1 = ctrl_state['midi_cc_val1']
+                            reconfig = True
+                    elif zctrl.midi_cc_val1 != zctrl.value_min:
+                        zctrl.midi_cc_val1 = zctrl.value_min
                         reconfig = True
-                    if "midi_cc_val2" in ctrl_state and zctrl.midi_cc_val2 != ctrl_state['midi_cc_val2']:
-                        zctrl.midi_cc_val2 = ctrl_state['midi_cc_val2']
+                    if "midi_cc_val2" in ctrl_state:
+                        if zctrl.midi_cc_val2 != ctrl_state['midi_cc_val2']:
+                            zctrl.midi_cc_val2 = ctrl_state['midi_cc_val2']
+                            reconfig = True
+                    elif zctrl.midi_cc_val2 != zctrl.value_max:
+                        zctrl.midi_cc_val2 = zctrl.value_max
                         reconfig = True
                     if reconfig:
                         zctrl._configure()
