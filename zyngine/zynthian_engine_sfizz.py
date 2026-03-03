@@ -286,7 +286,7 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
 
     @classmethod
     def zynapi_get_formats(cls):
-        return "zip,tgz,tar.gz,tar.bz2,tar.xz,7z"
+        return "zip,tgz,tar.gz,tar.bz2,tar.xz,7z,rar"
 
     @classmethod
     def zynapi_martifact_formats(cls):
