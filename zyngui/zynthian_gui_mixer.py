@@ -181,14 +181,14 @@ class zynthian_gui_launcher_pad():
             # Moving phrase
             if self.gui_mixer.moving_phrase and self.phrase == self.gui_mixer.zynseq.phrase:
                 if self.phrase == 0:
-                    title = f"⇓ {name[:5]}"
+                    title = f"⇓ {name[:8]}"
                 elif self.phrase == self.gui_mixer.zynseq.phrases - 1:
-                    title = f"⇑ {name[:5]}"
+                    title = f"⇑ {name[:8]}"
                 else:
-                    title = f"⇕ {name[:5]}"
+                    title = f"⇕ {name[:8]}"
             # Normal draw
             else:
-                title = name[:5]
+                title = name[:8]
 
             # Chain launcher =>
             if self.chain.chain_id:
@@ -248,10 +248,15 @@ class zynthian_gui_launcher_pad():
                         #mode_text += "→"
                         pass
                     case zynseq.FOLLOW_ACTION_RELATIVE:
-                        if state_seq["followParam"] < 0:
-                            mode_text += "↑"
-                        elif state_seq["followParam"] > 0:
-                            mode_text += "↓"
+                        offset = state_seq["followParam"]
+                        if offset < -1:
+                            mode_text += f"↑{-offset}"
+                        elif offset == -1:
+                            mode_text += f"↑"
+                        elif offset == 1:
+                            mode_text += f"↓"
+                        elif offset > 1:
+                            mode_text += f"↓{offset}"
                         else:
                             mode_text = "↻"
                     case _:
@@ -1693,7 +1698,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         name = info["name"]
         repeat = info["repeat"]
         follow_action = info["followAction"]
-        follow_phrase = info["followParam"]
+        follow_phrase = phrase + info["followParam"]
         title = f"Phrase options"
         if name:
             title += f": {name}"
@@ -1712,13 +1717,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
                 options[f"Follow action (NONE)"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
-                match follow_phrase:
-                    case 0:  # Loop
-                        options[f"Follow action (LOOP)"] = 1
-                    case 1:  # Next
-                        options[f"Follow action (NEXT)"] = 2
-                    case -1:  # Previous
-                        options[f"Follow action (PREV)"] = 3
+                offset, follow_name = self.get_follow_info(follow_phrase)
+                options[f"Follow action ({follow_name})"] = offset
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
@@ -1742,6 +1742,29 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.zyngui.screens['option'].config(title, options, self.phrase_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
+    def get_follow_info(self, phrase):
+        """ Get the offset and text representing the follow action
+        Args:
+            phrase: Index of phrase
+        Returns: Tuple (offset, title)
+        """
+
+        offset = phrase - self.zynseq.phrase
+        title = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["name"]
+        if not title:
+            title = chr(ord('A') + phrase)
+        if offset == -1:
+            title = f"PREV ({title})"
+        elif offset == 0:
+            title = "NONE"
+        elif offset == 1:
+            title = f"NEXT ({title})"
+        elif offset > 0:
+            title = f"+{offset} ({title})"
+        else:
+            title = f"{offset} ({title})"
+        return (offset, title)
+
     def phrase_menu_cb(self, option, params):
         option_screen = self.zyngui.screens["option"]
         if option.startswith("Rename"):
@@ -1756,7 +1779,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.zyngui.show_screen("launcher")
         elif option.startswith("Clone phrase"):
             self.zynseq.duplicate_phrase(self.zynseq.scene, params)
+            self.zynseq.phrase += 1
             self.build_launchers()
+            self.moving_phrase = True
             self.zyngui.show_screen("launcher")
         elif option.startswith("Delete phrase"):
             self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
@@ -1806,14 +1831,16 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 'value': params
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            labels = ["NONE"]
-            if self.zynseq.phrase < self.zynseq.phrases - 1:
-                labels.append("NEXT")
-            if self.zynseq.phrase > 0:
-                labels.append("PREV")
+            ticks = []
+            labels = []
+            for phrase in range(self.zynseq.phrases):
+                offset, title = self.get_follow_info(phrase)
+                ticks.append(offset)
+                labels.append(title)
             option_screen.enable_param_editor(option_screen, "follow", {
                 "name": "Follow action",
                 "labels": labels,
+                "ticks": ticks,
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
 
@@ -1892,18 +1919,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     value = 0
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", value)
             case "follow":
-                match zctrl.value2label[str(zctrl.value)]:
-                    case "NONE":
-                        followAction = zynseq.FOLLOW_ACTION_NONE
-                        followParam = 0
-                    case "NEXT":
-                        followAction = zynseq.FOLLOW_ACTION_RELATIVE
-                        followParam = +1
-                    case "PREV":
-                        followAction = zynseq.FOLLOW_ACTION_RELATIVE
-                        followParam = -1
-                    case _:
-                        return
+                if zctrl.value == 0:
+                    followAction = zynseq.FOLLOW_ACTION_NONE
+                    followParam = 0
+                else:
+                    followAction = zynseq.FOLLOW_ACTION_RELATIVE
+                    followParam = zctrl.value
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", followAction)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", followParam)
 
