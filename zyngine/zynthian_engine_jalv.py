@@ -84,7 +84,9 @@ class zynthian_engine_jalv(zynthian_engine):
         'http://gareus.org/oss/lv2/tuna#mod': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
         'http://looperlative.com/plugins/lp3-basic': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_looper.py",
         'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_aidax.py",
-        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py"
+        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py",
+        'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
+        'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
     }
 
     # For certain plugins its beneficial to set parameters not set

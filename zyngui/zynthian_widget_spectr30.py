@@ -97,16 +97,13 @@ class zynthian_widget_spectr30(zynthian_widget_base.zynthian_widget_base):
         fpad = self.font_labels_size // 4
         x = self.padx + fpad
         for i in range(self.n_bands):
-            self.widget_canvas.itemconfig(
-                self.mon_labels[i], font=self.font_labels)
-            self.widget_canvas.coords(
-                self.mon_labels[i], x, self.height - fpad)
+            self.widget_canvas.itemconfig(self.mon_labels[i], font=self.font_labels)
+            self.widget_canvas.coords(self.mon_labels[i], x, self.height - fpad)
             x += self.bar_width
 
     def refresh_gui(self):
         try:
-            scale = (
-                12.0 + self.processor.controllers_dict['UIgain'].value) / 12.0
+            scale = (12.0 + self.processor.controllers_dict['UIgain'].value) / 12.0
         except:
             scale = 1.0
 
@@ -114,21 +111,19 @@ class zynthian_widget_spectr30(zynthian_widget_base.zynthian_widget_base):
         x0 = self.padx
         for freq in self.band_freqs:
             try:
-                bar_y = int(
-                    scale * (100 + self.monitors["band{}".format(freq)]) * self.height / 100)
+                bar_y = int(scale * (100 + self.monitors["band{}".format(freq)]) * self.height / 100)
             except:
                 bar_y = 0
             try:
-                tick_y = int(
-                    scale * (100 + self.monitors["max{}".format(freq)]) * self.height / 100)
+                tick_y = int(scale * (100 + self.monitors["max{}".format(freq)]) * self.height / 100)
             except:
                 tick_y = 0
 
             # logging.debug("FREQ {} => {}, {}".format(freq, bar_y, tick_y))
-            self.widget_canvas.coords(
-                self.mon_bars[i], x0, self.height, x0 + self.bar_width, self.height - bar_y)
-            self.widget_canvas.coords(
-                self.mon_ticks[i], x0, self.height - tick_y, x0 + self.bar_width, self.height - tick_y - self.tick_height)
+            self.widget_canvas.coords(self.mon_bars[i], x0, self.height,
+                                      x0 + self.bar_width, self.height - bar_y)
+            self.widget_canvas.coords(self.mon_ticks[i], x0, self.height - tick_y,
+                                      x0 + self.bar_width, self.height - tick_y - self.tick_height)
 
             x0 += self.bar_width
             i += 1
