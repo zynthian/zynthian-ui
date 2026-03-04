@@ -55,6 +55,7 @@ class zynthian_gui_selector(zynthian_gui_base):
         if "ctrl_width" not in self.layout:
             self.layout['ctrl_width'] = 0.25
 
+        self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
         self.index = 0
         self.scroll_y = 0
         self.list_data = []
@@ -421,10 +422,16 @@ class zynthian_gui_selector(zynthian_gui_base):
         return False
 
     def arrow_up(self):
-        self.select(self.index - 1)
+        if self.param_editor_zctrl:
+            self.zynpot_cb(self.ctrl_order[3], 1)
+        else:
+            self.select(self.index - 1)
 
     def arrow_down(self):
-        self.select(self.index + 1)
+        if self.param_editor_zctrl:
+            self.zynpot_cb(self.ctrl_order[3], -1)
+        else:
+            self.select(self.index + 1)
 
     # --------------------------------------------------------------------------
     # Keyboard & Mouse/Touch Callbacks
