@@ -1737,7 +1737,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 options[f"Follow action (NONE)"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
                 offset, follow_name = self.get_follow_info(follow_phrase)
+                flags = info["playFlags"]
+                exclude_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
                 options[f"Follow action ({follow_name})"] = offset
+                options[f"  Exclude loops ({exclude_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
@@ -1773,15 +1776,15 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if not title:
             title = chr(ord('A') + phrase)
         if offset == -1:
-            title = f"PREV ({title})"
+            title = f"PREV: {title}"
         elif offset == 0:
             title = "NONE"
         elif offset == 1:
-            title = f"NEXT ({title})"
+            title = f"NEXT: {title}"
         elif offset > 0:
-            title = f"+{offset} ({title})"
+            title = f"+{offset}: {title}"
         else:
-            title = f"{offset} ({title})"
+            title = f"{offset}: {title}"
         return (offset, title)
 
     def phrase_menu_cb(self, option, params):
@@ -1862,6 +1865,27 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 "ticks": ticks,
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
+        elif option.startswith("  Exclude loops"):
+            options = {}
+            val = params
+            for i in range(32):
+                if val & 1:
+                    options[f"[X] {i + 1}"] = (i, params, True)
+                else:
+                    options[f"[ ] {i + 1}"] = (i, params, False)
+                val >>= 1
+            self.zyngui.screens['option'].config("Select loop exclude", options, self.play_flag_cb, close_on_select=False)
+            self.zyngui.show_screen('option')
+
+    def play_flag_cb(self, option, params):
+        if params[2]:
+            # Reset flag
+            flags = params[1] & ~(1 << params[0])
+        else:
+            # Set flag
+            flags = params[1] | (1 << params[0])
+        self.zynseq.set_sequence_param(self.zynseq.scene, self.zynseq.phrase, zynseq.PHRASE_CHANNEL, "playFlags", flags)
+        self.phrase_menu_cb("  Exclude loops", flags)
 
     def remove_phrase(self, phrase):
         self.zynseq.remove_phrase(self.zynseq.scene, phrase)
