@@ -44,11 +44,11 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         "nam": [["Neural Models"], "file_model.png"],
         "nammodel": [["Neural Models"], "file_model.png"],
         "json": [["Neural Models"], "file_model.png"],
-        "wav": [["IRs", "Samples"], "file_audio.png"],
-        "flac": [["IRs", "Samples"], "file_audio.png"],
-        "aiff": [["IRs", "Samples"], "file_audio.png"],
-        "ogg": [["Audio"], "file_audio.png"],
-        "mp3": [["Audio"], "file_audio.png"],
+        "wav": [["IRs", "Samples", "Audio", "Capture"], "file_audio.png"],
+        "flac": [["IRs", "Samples", "Audio"], "file_audio.png"],
+        "aiff": [["IRs", "Samples", "Audio"], "file_audio.png"],
+        "ogg": [["Samples", "Audio", "Capture"], "file_audio.png"],
+        "mp3": [["Samples", "Audio"], "file_audio.png"],
         "scl": [["Tuning"], "file.png"]
     }
 
