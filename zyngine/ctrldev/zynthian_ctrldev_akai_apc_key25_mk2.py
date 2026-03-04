@@ -2950,8 +2950,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                             self._current_handler.set_active(False)
                             self._current_handler = self._device_handler
                             self._current_handler.set_active(True)
-                            self._current_handler.refresh(
-                                shifted_override=self._is_shifted)
+                            self._current_handler.refresh()
                             return True
                         
                         if self._current_handler != self._stepseq_handler:
