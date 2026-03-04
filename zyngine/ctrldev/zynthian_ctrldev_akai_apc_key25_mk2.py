@@ -2703,6 +2703,9 @@ class BaseControl:
             if value == current_value:
                 value = self.HALF_STEPS[row]
 
+        if value is None:
+            return
+        
         self._set_note_property(note_spec, value)
         self._draw_column(col, value)
         self._play_note(note_spec)
@@ -2717,8 +2720,11 @@ class BaseControl:
 
         for r in range(self.PAD_ROWS):
             pad = r * self.PAD_COLS + col
-            brightness = bright_values[bisect(
-                (self.HALF_STEPS[r], self.STEPS[r]), value)]
+            try:
+                brightness = bright_values[bisect(
+                    (self.HALF_STEPS[r], self.STEPS[r]), value)]
+            except:
+                brightness = None
             if brightness is not None:
                 self._leds.led_on(pad, self.COLOR, brightness)
             else:
@@ -2778,8 +2784,8 @@ class StutterVelfxControl(BaseControl):
     INDICATOR_BLINK = True
     COLOR = COLORS.COLOR_RUSSET
 
-    STEPS = [2, 4, 8, 20, 40]
-    HALF_STEPS = [1, 3, 6, 10, 30]
+    STEPS = [0, 1, 2, None, None]
+    HALF_STEPS = [0, 1, 2, None, None]
 
     def _get_note_property(self, note):
         return note.stutter_velfx
