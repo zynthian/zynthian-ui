@@ -2141,7 +2141,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def arrow_up(self, nudge=1):
         """ Function to handle CUIA ARROW_UP
         """
-        if self.launcher_mode:
+        if self.param_editor_zctrl:
+            self.zynpot_cb(self.ctrl_order[3], 1)
+        elif self.launcher_mode:
             if self.zynseq.phrase > 0:
                 if self.moving_phrase:
                     self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
@@ -2156,7 +2158,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def arrow_down(self, nudge=-1):
         """ Function to handle CUIA ARROW_DOWN
         """
-        if self.launcher_mode:
+        if self.param_editor_zctrl:
+            self.zynpot_cb(self.ctrl_order[3], -1)
+        elif self.launcher_mode:
             if self.zynseq.phrase < self.zynseq.phrases:
                 if self.moving_phrase:
                     if self.zynseq.phrase < self.zynseq.phrases - 1:
