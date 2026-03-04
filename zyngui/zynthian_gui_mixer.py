@@ -151,6 +151,18 @@ class zynthian_gui_launcher_pad():
         else:
             return bars_text + beats_text
 
+    def get_clippy_file(self):
+        try:
+            return self.chain.get_clippy_processor().controllers_dict[f"file {self.phrase + 1}"].get_value()
+        except:
+            return None
+
+    def get_clippy_timesig(self):
+        try:
+            return self.chain.get_clippy_processor().controllers_dict[f"beats {self.phrase + 1}"].get_value() // 4
+        except:
+            return None
+
     def draw(self):
         """ Update the launcher button elements"""
 
@@ -207,9 +219,16 @@ class zynthian_gui_launcher_pad():
                         disabled = True
                 # Clippy
                 else:
-                    # TODO => Fix this!!
-                    timesig_text = "1"
-                    empty = False
+                    if self.get_clippy_file():
+                        empty = False
+                        timesig = self.get_clippy_timesig()
+                        if timesig is not None:
+                            timesig_text = str(timesig)
+                        else:
+                            timesig_text = "1"
+                    else:
+                        empty = True
+                        timesig = "1"
 
                 match state_seq["followAction"]:
                     case zynseq.FOLLOW_ACTION_NONE:
@@ -1898,11 +1917,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 if "CL" in self.chain_manager.zyngines:
                     # Warp clips in this phrase to match tempo
                     clippy_engine = self.chain_manager.zyngines["CL"]
+                    note = phrase + 1
                     for processor in clippy_engine.processors:
                         try:
-                            pattern = self.zynseq.get_pattern(self.zynseq.scene, phrase, processor.midi_chan, 0, 0)
-                            note = self.zynseq.get_pattern_param(pattern, 0, "val1Start")
-                            if processor.controllers_dict[f"warp {note}"]:
+                            if processor.controllers_dict[f"warp {note}"].get_value():
                                 clippy_engine.set_file(processor, note, phrase=phrase)
                         except:
                             continue

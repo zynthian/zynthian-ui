@@ -170,7 +170,7 @@ class zynthian_engine_clippy(zynthian_engine):
         zctrl_crop_end.nudge_factor = nudge_factor
 
     """ Set play mode
-    
+
         phrase - Index of phrase
         chan - MIDI channel
         mode - play mode [0=disabled, 1=loop, 2..25=play 1..24 times]
@@ -206,7 +206,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     pass # Ignore unpopulated phrases
             self.add_controllers(processor, phrase + 1)
-            processor.controllers_dict[f"mode {idx}"].set_value(0)
+            processor.controllers_dict[f"mode {idx}"].set_value(1)
 
     def remove_phrase(self, phrase):
         """ Remove a phrase
@@ -524,7 +524,7 @@ class zynthian_engine_clippy(zynthian_engine):
         for phrase in range(self.zynseq.phrases):
             note = phrase + 1
             self.add_controllers(processor, note)
-            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
+            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 1)
         self.set_phrase(processor, self.zynseq.phrase)
 
     def remove_processor(self, processor):

@@ -594,6 +594,14 @@ class zynthian_chain:
             procs_by_id[proc.id] = proc
         return procs_by_id
 
+    def get_clippy_processor(self):
+        try:
+            if self.synth_slots[0][0].eng_code == "CL":
+                return self.synth_slots[0][0]
+        except:
+            pass
+        return None
+
     def insert_processor(self, processor, slot=None):
         """Insert a processor in the chain
 
