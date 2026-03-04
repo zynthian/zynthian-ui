@@ -319,10 +319,14 @@ class SequenceManager {
         @param  sequence Pointer to sequence
         @param  action Follow action @see FOLLOW_ACTION enum
         @param  param Parameter of action, e.g. offset
+        @param  flags Bitwise flags indicating which play loops should be skipped
         @retval bool True on success
     */
-    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param);
+    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param, uint32_t flags);
 
+    /** @brief  Reset all sequence play counters
+    */
+    void resetPlayCounters(uint8_t scene);
 
     private:
 

@@ -230,17 +230,12 @@ class Sequence {
     */
     std::string getName();
 
-    /** @brief  Set follow sequence
-        @param  sequence Pointer to follow sequence
+    /** @brief  Set follow action
         @param  action Follow action @see FOLLOW_ACTION enum
         @param  param Follow action parameter
+        @param  flags Bitwise flags indicating which play loops should be skipped
     */
-    void setFollowSequence(Sequence* pSequence, uint8_t action, int16_t param);
-
-    /** @brief  Get follow sequence
-        @retval Sequence* Pointer to follow sequence
-    */
-    Sequence* getFollowSequence();
+    void setFollowAction(uint8_t action, int16_t param, uint32_t flags);
 
     /** @brief  Get follow action
         @retval uint8_t Follow action
@@ -251,6 +246,16 @@ class Sequence {
         @retval int16_t Follow action parameter
     */
     int16_t getFollowParam();
+
+    /** @brief  Get play flags
+        @retval uint32_t Bitwise flags indicating which play loops should be skipped
+    */
+    uint32_t getPlayFlags();
+
+    /** @brief  Check if sequence is inhibited from playing on this iteration
+        @retval bool True if sequence should be played
+    */
+   bool isFollowPlay();
 
     /** @brief  Set times to play
         @param  repeat Quantity of times to play (0 to disable)
@@ -266,13 +271,25 @@ class Sequence {
     */
     void updateAutoFollow();
 
-    /** @brief Set times played
+    /** @brief  Set times played
+        @param  played Value to set played count
     */
     void setPlayed(uint8_t played);
 
     /** @brief Get times played
+        @retval uint8_t Quantity of times played
     */
     uint8_t getPlayed();
+
+    /** @brief  Set times played in full (including repeats)
+        @param  played Value to set played count
+    */
+    void setPlayedFull(uint8_t played);
+
+    /** @brief Get times played in full (including repeats)
+        @retval uint8_t Quantity of times played
+    */
+    uint8_t getPlayedFull();
 
     /** @brief  Is this sequence a phrase launcher?
         @retval bool True if phrase launcher
@@ -310,7 +327,8 @@ class Sequence {
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
     uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence. 0 to disable, 255 for auto follow time 
     uint32_t m_nAutoFollow = 0;                 // Calculated duration (pulses) before auto follow action - Only used by phrases
-    uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
+    uint8_t m_nCount = 0;                       // Quantity of times sequence has played
+    uint8_t m_nPlayed = 0;                      // Quantity of times sequence has played with its repeats (used for follow break)
     uint8_t m_nPhrase = 0xff;                   // Index of phrase this sequence belongs - 0xff for none
     bool m_bChanged = false;                    // True if sequence content changed
     bool m_bStateChanged = false;               // True if state changed since last clock cycle
@@ -318,6 +336,6 @@ class Sequence {
     std::string m_sName;                        // Sequence name
     uint8_t m_nFollowAction = FOLLOW_ACTION_NONE; // Follow action to perform when sequence ends
     int16_t m_nFollowParam = 0;                 // Follow action parameter
-    Sequence* m_pFollowSequence = nullptr;      // Pointer to follow sequence (null for no follow action)
+    uint32_t m_nPlayFlags = 0;                  // Bitwise flags indicating which times to not play the phrase
     Sequence* m_pPhraseSequence = nullptr;      // Pointer to phrase sequence (null if not in a phrase, e.g. is a phrase)
 };

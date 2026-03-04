@@ -46,7 +46,7 @@
 #define CLOCK_TRIG_TEMPO 2   // Clock has triggered a tempo change
 #define CLOCK_TRIG_TIMESIG 4 // Clock has triggered a time signature change
 #define CLOCK_TRIG_SEQEND 8  // Clock has triggered a sequence end
-#define CLOCK_TRIG_PHRASE 16  // Clock has triggered a phrase change
+#define CLOCK_TRIG_PHRASE 16 // Clock has triggered a phrase change
 
 // Clock rates
 #define PPQN_INTERNAL 1920  // Quantity of sequencer clock pulses in each beat

@@ -1254,14 +1254,6 @@ uint8_t getSequenceBpb(uint8_t scene, uint8_t phrase, uint8_t sequence);
 */
 void setSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t action);
 
-/** @brief  Set sequence follow action parameter
-    @param  scene Index of scene
-    @param  phrase Index of phrase
-    @param  sequence Index of sequence
-    @param  param  Follow action parameter
-*/
-void setSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param);
-
 /** @brief  Get the action to perform when sequence ends
     @param  scene Index of scene
     @param  phrase Index of phrase
@@ -1270,6 +1262,14 @@ void setSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int
 */
 uint8_t getSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
+/** @brief  Set sequence follow action parameter
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @param  param  Follow action parameter
+*/
+void setSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param);
+
 /** @brief  Get the parameter of follow action, e.g. offset
     @param  scene Index of scene
     @param  phrase Index of phrase
@@ -1277,6 +1277,27 @@ uint8_t getSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence)
     @retval int16_t Follow action parameter
 */
 int16_t getSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence);
+
+/** @brief  Set sequence follow play flags
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @param  flags Bitwise flags indicating which play loops should be skipped
+*/
+void setSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t flags);
+
+/** @brief  Get the follow play flags
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @retval uint32_t Bitwise flags indicating which play loops should be skipped
+*/
+uint32_t getSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence);
+
+/** @brief  Get phrase schedule
+    @param  scene Index of scene
+    @retval 
+*/
 
 /** @brief  Update all sequence lengths and empty status
 */

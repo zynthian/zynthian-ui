@@ -194,6 +194,7 @@ ZynthianState = {
                         "repeat": 1, # Quantity of repeats
                         "followAction": 0, # Follow action
                         "followParam": 0, # Follow action param
+                        "playFlags": 0, # Bitwise flags indicating which follow loops should be skipped
                         "state": 0, # Play state (when snapshot saved)
                         "sequences": [ # List of sequences in phrase
                             {
@@ -227,7 +228,7 @@ ZynthianState = {
                             }, # ... Other sequences
                         ],
                     }, # .. Other phrases
-                ]
+                ],
             }, # Other scenes
         ]
     },

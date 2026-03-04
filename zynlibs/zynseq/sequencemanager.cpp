@@ -155,7 +155,7 @@ Sequence* SequenceManager::getSequence(uint8_t scene, uint8_t phrase, uint8_t se
     auto& vPhrases = m_vScenes[scene];
     if (sequence == PHRASE_CHANNEL && phrase < vPhrases.size())
         return vPhrases[phrase];
-    if (phrase >= vPhrases.size() || sequence >= 32)
+    if (phrase >= vPhrases.size() || sequence >= PHRASE_CHANNEL)
         return nullptr;
     return vPhrases[phrase]->m_aChildSequences[sequence];
 }
@@ -226,7 +226,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     uint8_t nCount = pSequence->getPlayed() + 1;
                     if (nCount >= pSequence->getRepeat()) {
                         // End of repeats...
-                        if (pSequence->getFollowSequence() == pSequence)
+                        if (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)
                             pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
                         pSequence->setPlayed(0);
                     } else {
@@ -288,9 +288,26 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             }
             if (nEventType & CLOCK_TRIG_SEQEND) {
                 // Reached end of sequence repeats
-                Sequence* pFollowSequence = pSequence->getFollowSequence();
-                if (pFollowSequence && pFollowSequence->getRepeat())
-                    setPlayState(pFollowSequence, PLAYING);
+                static uint32_t mycount = 0;
+                uint8_t nFollowAction = pSequence->getFollowAction();
+                if (nFollowAction == FOLLOW_ACTION_RELATIVE) {
+                    int16_t nFollowOffset = pSequence->getFollowParam();
+                    if (nFollowOffset) {
+                        uint8_t nPhrase = pSequence->getPhrase();
+                        if (nPhrase != 0xFF) {
+                            // Look for the next automated and playable phrase
+                            nPhrase += pSequence->getFollowParam();
+                            while(auto pFollowSequence = getSequence(m_nScene, nPhrase, PHRASE_CHANNEL)) {
+                                if (pFollowSequence->isFollowPlay()) {
+                                    pFollowSequence = getSequence(m_nScene, nPhrase, PHRASE_CHANNEL);
+                                    setPlayState(pFollowSequence, PLAYING);
+                                    break;
+                                }
+                                ++nPhrase;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -545,7 +562,7 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
            addPattern(pSequence, 0, 0, nPattern);
         }
         pPhrase->m_aChildSequences[chan] = pSequence;
-        setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0); // Loop
+        setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0, 0); // Loop
         if (m_bEnabled[chan])
             pSequence->setRepeat(1);
     }
@@ -570,7 +587,7 @@ Sequence* SequenceManager::duplicatePhrase(uint8_t scene, uint8_t phrase) {
     pPhrase->setName(pSrcPhrase->getName());
     pPhrase->setGroup(32);
     pPhrase->setRepeat(pSrcPhrase->getRepeat());
-    setFollowAction(scene, pPhrase, pSrcPhrase->getFollowAction(), pSrcPhrase->getFollowParam());
+    setFollowAction(scene, pPhrase, pSrcPhrase->getFollowAction(), pSrcPhrase->getFollowParam(), pSrcPhrase->getPlayFlags());
     pPhrase->setTimeSig(pSrcPhrase->getTimeSig());
     pPhrase->setTempo(pSrcPhrase->getTempo());
     for (uint8_t chan = 0; chan < 32; ++chan) {
@@ -580,7 +597,7 @@ Sequence* SequenceManager::duplicatePhrase(uint8_t scene, uint8_t phrase) {
         pSequence->setGroup(chan);
         pSequence->setName(pSrcSeq->getName());
         pSequence->setRepeat(pSrcSeq->getRepeat());
-        setFollowAction(scene, pSequence, pSrcSeq->getFollowAction(), pSrcSeq->getFollowParam());
+        setFollowAction(scene, pSequence, pSrcSeq->getFollowAction(), pSrcSeq->getFollowParam(), pSrcSeq->getPlayFlags());
         if (chan < 16) {
             Track* pTrack = pSequence->getTrack(0);
             pTrack->setChannel(chan);
@@ -635,7 +652,7 @@ void SequenceManager::removePhrase(uint8_t scene, uint8_t phrase) {
 
     // Refresh follow actions
     for (auto& pPhrase2: vPhrases)
-        setFollowAction(scene, pPhrase2, pPhrase2->getFollowAction(), pPhrase2->getFollowParam());
+        setFollowAction(scene, pPhrase2, pPhrase2->getFollowAction(), pPhrase2->getFollowParam(), pPhrase2->getPlayFlags());
     refreshPhrases(scene);
 }
 
@@ -648,7 +665,7 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
     std::iter_swap(vPhrases.begin() + phrase1, vPhrases.begin() + phrase2);
     // Update follow actions for all phrases in this scene to handle jumps into and out of these phrases
     for (auto& phraseSeq: m_vScenes[scene])
-        setFollowAction(scene, phraseSeq, phraseSeq->getFollowAction(), phraseSeq->getFollowParam());
+        setFollowAction(scene, phraseSeq, phraseSeq->getFollowAction(), phraseSeq->getFollowParam(), phraseSeq->getPlayFlags());
     refreshPhrases(scene);
 }
 
@@ -694,20 +711,20 @@ bool SequenceManager::isPhraseEmpty(uint8_t scene, uint8_t phrase) {
     return vPhrases[phrase]->isPhraseEmpty();
 }
 
-bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param) {
+bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param, uint32_t flags) {
     if (sequence && scene < m_vScenes.size()) {
         auto& vPhrases = m_vScenes[scene];
         switch (action) {
             case FOLLOW_ACTION_ABSOLUTE:
                 if (param < 0 || param > vPhrases.size())
                     return false;
-                sequence->setFollowSequence(vPhrases[param], action, param);
+                sequence->setFollowAction(action, param, flags);
                 return true;
                 break;
             case FOLLOW_ACTION_RELATIVE:
                 if (param == 0) {
                     // Loop
-                    sequence->setFollowSequence(sequence, action, param);
+                    sequence->setFollowAction(action, param, flags);
                     return true;
                 } else {
                     // Find index of sequence - this should already be known by caller!!!
@@ -715,11 +732,11 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                         if (vPhrases[i] == sequence) {
                             int16_t offset = param + i;
                             if (offset >= 0 && offset < vPhrases.size()) {
-                                sequence->setFollowSequence(vPhrases[offset], action, param);
+                                sequence->setFollowAction(action, param, flags);
                                 return true;
                             } else {
                                 // Attempt to select non-existing phrase so set to none.
-                                sequence->setFollowSequence(nullptr, 0, 0);
+                                sequence->setFollowAction(0, 0, 0);
                             }
                             break;
                         }
@@ -727,8 +744,15 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                 }
                 break;
             default:
-                sequence->setFollowSequence(nullptr, 0, 0);
+                sequence->setFollowAction(0, 0, 0);
         }
     }
     return false;
+}
+
+void SequenceManager::resetPlayCounters(uint8_t scene) {
+    if (scene >= m_vScenes.size())
+        return;
+    for (const auto seq: m_vScenes[scene])
+        seq->setPlayedFull(0);
 }

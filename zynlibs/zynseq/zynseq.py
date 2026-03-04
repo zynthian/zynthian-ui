@@ -32,9 +32,6 @@ from zyngine import zynthian_engine
 from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
 from zynlibs.zynaudioplayer import *
-from zyngui import zynthian_gui_config
-import zynconf
-import zynautoconnect
 
 # -------------------------------------------------------------------------------
 # Zynthian Step Sequencer Library Wrapper
@@ -267,6 +264,8 @@ class zynseq(zynthian_engine):
             self.libseq.getSequenceFollowAction.restype = ctypes.c_uint8
             self.libseq.setSequenceFollowParam.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_int16]
             self.libseq.getSequenceFollowParam.restype = ctypes.c_int16
+            self.libseq.setSequencePlayFlags.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint32]
+            self.libseq.getSequencePlayFlags.restype = ctypes.c_uint32
 
             self.libseq.convertToJson.restype = ctypes.c_char_p
             self.libseq.getState.restype = ctypes.c_char_p
