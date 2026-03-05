@@ -73,7 +73,6 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.selected_proc = None
         self.selected_phrase = None
-        self.selected_note = None
         self.tmp_file_idx = 0
 
         self.tempo_timer = None
@@ -81,7 +80,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.tempo_mutex = False
         self.crop_cb_timer = None
         self.samplerate = zynautoconnect.get_jackd_samplerate()
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+        #zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -90,7 +89,7 @@ class zynthian_engine_clippy(zynthian_engine):
     def stop(self):
         logging.info("Stopping Engine " + self.name)
         self.zynseq.clippy = None
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+        #zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
         self.libclippy.end()
 
     def set_phrase(self, processor, phrase):
@@ -105,60 +104,63 @@ class zynthian_engine_clippy(zynthian_engine):
                 self._ctrl_screens = [
                     ["Clip", [f"file {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]],
                     ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]]
-                    ]
+                ]
                 for symbol in ["zoom", "crop_start", "crop_end"]:
                     self.monitors_dict[symbol] = processor.controllers_dict[f"{symbol} {note}"].value
+                # Set processor name for display
+                processor.preset_name = processor.controllers_dict[f"file {note}"].value.split("/")[-1]
             else:
                 self._ctrl_screens = [["Clip", [f"file {note}"]]]
-            # Set processor name for display
-            processor.preset_name = processor.controllers_dict[f"file {note}"].value.split("/")[-1]
+                processor.preset_name = ""
         except:
             self._ctrl_screens = [["Clip", ["file"]]]
             processor.preset_name = ""
-            self.selected_note = 0
         processor.init_ctrl_screens()
 
     def send_controller_value(self, zctrl):
         try:
-            note = int(zctrl.symbol.split(" ")[1])
+            symparts = zctrl.symbol.split(" ")
+            symbol = symparts[0]
+            note = int(symparts[1])
             phrase = note - 1
-            #beats_zctrl = zctrl.processor.controllers_dict[f"beats {note}"]
-            #mode_zctrl = zctrl.processor.controllers_dict[f"mode {note}"]
         except Exception as e:
-            logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
+            logging.error(f"Can't determine sample index for '{zctrl.symbol}' => {e}")
             return
-        if zctrl.symbol.startswith("file"):
-            self.set_file(zctrl.processor, phrase, True)
-        elif zctrl.symbol.startswith("warp"):
-            self.set_file(zctrl.processor, phrase)
-        elif zctrl.symbol.startswith("mode"):
-            self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
-        elif zctrl.symbol.startswith("crop_start"):
-            zctrl_crop_end = zctrl.processor.controllers_dict[zctrl.symbol.replace("start", "end")]
-            if zctrl.value >= zctrl_crop_end.value:
-                zctrl.set_value(zctrl.crop_end.value - 1)
+
+        #logging.debug(f"ZCTRL {symbol}, {note} => {zctrl.value}")
+        match symbol:
+            case "file":
+                self.set_file(zctrl.processor, phrase, True)
+            case "warp":
+                self.set_file(zctrl.processor, phrase)
+            case "mode":
+                self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
+            case "crop_start":
+                zctrl_crop_end = zctrl.processor.controllers_dict[f"crop_end {note}"]
+                if zctrl.value >= zctrl_crop_end.value:
+                    zctrl.set_value(zctrl.crop_end.value - 1)
+                    return
+                self.monitors_dict["crop_start"] = zctrl.value
+                self.start_crop_timer(zctrl.processor, phrase)
                 return
-            self.monitors_dict["crop_start"] = zctrl.value
-            self.start_crop_timer(zctrl.processor, phrase)
-            return
-        elif zctrl.symbol.startswith("crop_end"):
-            zctrl_crop_start = zctrl.processor.controllers_dict[zctrl.symbol.replace("end", "start")]
-            if zctrl.value <= zctrl_crop_start.value:
-                zctrl.set_value(zctrl_crop_start.value + 1)
+            case "crop_end":
+                zctrl_crop_start = zctrl.processor.controllers_dict[f"crop_start {note}"]
+                if zctrl.value <= zctrl_crop_start.value:
+                    zctrl.set_value(zctrl_crop_start.value + 1)
+                    return
+                self.monitors_dict["crop_end"] = zctrl.value
+                self.start_crop_timer(zctrl.processor, phrase)
                 return
-            self.monitors_dict["crop_end"] = zctrl.value
-            self.start_crop_timer(zctrl.processor, phrase)
-            return
-        elif zctrl.symbol.startswith("gain"):
-            try:
-                self.libclippy.setGain(zctrl.processor.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
-            except Exception as e:
-                logging.warning(e)
-            return
-        elif zctrl.symbol.startswith("zoom"):
-            self.update_nudge(zctrl.processor, note)
-            self.monitors_dict["zoom"] = zctrl.value
-            return
+            case "gain":
+                try:
+                    self.libclippy.setGain(zctrl.processor.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
+                except Exception as e:
+                    logging.warning(e)
+                return
+            case "zoom":
+                self.update_nudge(zctrl.processor, note)
+                self.monitors_dict["zoom"] = zctrl.value
+                return
 
     def update_nudge(self, processor, note):
         zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
@@ -269,11 +271,13 @@ class zynthian_engine_clippy(zynthian_engine):
             write_file = (sr != self.samplerate)
             processor.preset_name = path.split("/")[-1] # Used for display purpose only
 
-            # Try to determine tempo from filename
-            filename = os.path.basename(path)
+            # Try to determine playing tempo
             tempo = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo")
             if not tempo:
                 tempo = self.zynseq.libseq.getTempo()
+
+            # Try to determine sample tempo from filename
+            filename = os.path.basename(path)
             regptn = r"(\d+)\s*(?=bpm|BPM)"
             matches = re.findall(regptn, filename)
             try:
@@ -341,14 +345,17 @@ class zynthian_engine_clippy(zynthian_engine):
                         warp_zctrl.value = 0
 
                 # Setup zynseq sequence
-                new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
-                if note != new_note:
-                    logging.warning(f"Clippy error - wrong note {note}/{new_note} assigned!")
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
-                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
                 if whole_beats < 1:
                     whole_beats = beats_per_bar
                 self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
+                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
+                self.libseq.updateSequenceInfo()
+                # Setup clippy note
+                new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
+                if note != new_note:
+                    logging.warning(f"Clippy error - wrong note {note}/{new_note} assigned!")
+                # Refresh UI
                 if phrase == self.selected_phrase:
                     self.set_phrase(processor, phrase)
 
@@ -356,7 +363,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
         else:
             self.libseq.setPlayState(self.zynseq.scene, phrase, processor.midi_chan, zynseq.SEQ_STOPPED)
-            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
+            #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 1)
+            self.set_mode(phrase, processor.midi_chan, 1)
             self.libseq.updateSequenceInfo()
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
@@ -409,60 +417,62 @@ class zynthian_engine_clippy(zynthian_engine):
         """
 
         # Add default controllers for each phrase
-        zctrls = {}
-        zctrls[f"file {note}"] = zynthian_controller(self, f"file {note}", {
-                "name": "file",
-                "processor": processor,
-                "is_path": True,
-                "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
-        })
-        zctrls[f"warp {note}"] = zynthian_controller(self, f"warp {note}", {
-                "name": "warp",
-                "processor": processor,
-                "is_toggle": True,
-                "labels": ["off", "on"],
-                "value": "on"
-        })
-        zctrls[f"beats {note}"] = zynthian_controller(self, f"beats {note}", {
-            "name": "beats",
-            "processor": processor,
-            "is_integer": True,
-            "value": 0,
-            "value_min": 0,
-            "value_max": MAX_BEATS
-        })
-        zctrls[f"mode {note}"] = zynthian_controller(self, f"mode {note}", {
-            "name": "mode",
-            "processor": processor,
-            "is_integer": True,
-            "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
-            "value_min": 0,
-            "value_max": 25,
-            "value": 1
-        })
-        zctrls[f"gain {note}"] = zynthian_controller(self, f"gain {note}", {
-            "name": "gain (dB)",
-            "processor": processor,
-            "value_min": -12.0,
-            "value_max": 6.0,
-            "value": 0.0,
-        })
-        zctrls[f"crop_start {note}"] = zynthian_controller(self, f"crop_start {note}", {
-            "name": "crop start",
-            "processor": processor,
-            "is_integer": True
-        })
-        zctrls[f"crop_end {note}"] = zynthian_controller(self, f"crop_end {note}", {
-            "name": "crop end",
-            "processor": processor,
-            "is_integer": True
-        })
-        zctrls[f"zoom {note}"] = zynthian_controller(self, f"zoom {note}", {
-            "name": "zoom",
-            "processor": processor,
-            "ticks": [0, 1, 2],
-            "labels": ["x1", "x2", "x4"]
-        })
+        zctrls = {
+            f"file {note}": zynthian_controller(self, f"file {note}", {
+                    "name": "file",
+                    "processor": processor,
+                    "is_path": True,
+                    "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"]
+                }),
+            f"warp {note}": zynthian_controller(self, f"warp {note}", {
+                    "name": "warp",
+                    "processor": processor,
+                    "is_toggle": True,
+                    "labels": ["off", "on"],
+                    "ticks": [0, 1],
+                    "value": "on"
+                }),
+            f"beats {note}": zynthian_controller(self, f"beats {note}", {
+                    "name": "beats",
+                    "processor": processor,
+                    "is_integer": True,
+                    "value": 0,
+                    "value_min": 0,
+                    "value_max": MAX_BEATS
+                }),
+            f"mode {note}": zynthian_controller(self, f"mode {note}", {
+                    "name": "mode",
+                    "processor": processor,
+                    "is_integer": True,
+                    "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
+                    "value_min": 0,
+                    "value_max": 25,
+                    "value": 1
+                }),
+            f"gain {note}": zynthian_controller(self, f"gain {note}", {
+                    "name": "gain (dB)",
+                    "processor": processor,
+                    "value_min": -12.0,
+                    "value_max": 6.0,
+                    "value": 0.0
+                }),
+            f"crop_start {note}": zynthian_controller(self, f"crop_start {note}", {
+                    "name": "crop start",
+                    "processor": processor,
+                    "is_integer": True
+                }),
+            f"crop_end {note}": zynthian_controller(self, f"crop_end {note}", {
+                    "name": "crop end",
+                    "processor": processor,
+                    "is_integer": True
+                }),
+            f"zoom {note}": zynthian_controller(self, f"zoom {note}", {
+                    "name": "zoom",
+                    "processor": processor,
+                    "ticks": [0, 1, 2],
+                    "labels": ["x1", "x2", "x4"]
+                })
+        }
         processor.controllers_dict.update(zctrls)
 
     def update_controllers(self, processor, note, frames=100, reset=False):
@@ -493,6 +503,7 @@ class zynthian_engine_clippy(zynthian_engine):
         note = phrase + 1
         try:
             path = processor.controllers_dict[f"file {note}"].path
+            logging.debug(f"REMOVING TMP FILE: CHAIN {processor.chain_id}, PHRASE {phrase} => {path}")
             if path.startswith("/tmp"):
                 os.remove(path)
         except:
@@ -532,8 +543,11 @@ class zynthian_engine_clippy(zynthian_engine):
         if self.libclippy.removePlayer(processor.midi_chan - 16) != 0:
             return
         for phrase in range(self.zynseq.phrases):
+            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
+            self.set_mode(phrase, processor.midi_chan, 1)
             self.remove_tmp_file(processor, phrase)
         super().remove_processor(processor)
+
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management

@@ -854,7 +854,7 @@ class zynthian_processor:
         # Set controller values
         if "controllers" in state:
             # Flag controllers to avoid collisions from preset feedback values
-            # It should be do it before setting the preset, but i need to know if preset has been changed,
+            # It should be done before setting the preset, but i need to know if preset has been changed,
             # so it's done after, but ASAP, to avoid tallies from setting preset arrive before
             if res:
                 for symbol, ctrl_state in state["controllers"].items():
