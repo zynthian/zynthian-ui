@@ -193,14 +193,14 @@ class zynthian_gui_launcher_pad():
             # Moving phrase
             if self.gui_mixer.moving_phrase and self.phrase == self.gui_mixer.zynseq.phrase:
                 if self.phrase == 0:
-                    title = f"⇓ {name[:8]}"
+                    title = f"⇓ {name[:6]}"
                 elif self.phrase == self.gui_mixer.zynseq.phrases - 1:
-                    title = f"⇑ {name[:8]}"
+                    title = f"⇑ {name[:6]}"
                 else:
-                    title = f"⇕ {name[:8]}"
+                    title = f"⇕ {name[:6]}"
             # Normal draw
             else:
-                title = name[:8]
+                title = name[:7]
 
             # Chain launcher =>
             if self.chain.chain_id:
