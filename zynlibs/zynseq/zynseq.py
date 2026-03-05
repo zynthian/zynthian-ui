@@ -266,6 +266,8 @@ class zynseq(zynthian_engine):
             self.libseq.getSequenceFollowParam.restype = ctypes.c_int16
             self.libseq.setSequencePlayFlags.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint32]
             self.libseq.getSequencePlayFlags.restype = ctypes.c_uint32
+            self.libseq.setSequenceFollowRepeat.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getSequenceFollowRepeat.restype = ctypes.c_uint8
 
             self.libseq.convertToJson.restype = ctypes.c_char_p
             self.libseq.getState.restype = ctypes.c_char_p

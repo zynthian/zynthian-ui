@@ -1738,9 +1738,15 @@ class zynthian_gui_mixer(zynthian_gui_base):
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
                 offset, follow_name = self.get_follow_info(follow_phrase)
                 flags = info["playFlags"]
-                exclude_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
-                options[f"Follow action ({follow_name})"] = offset
-                options[f"  Exclude loops ({exclude_loops})"] = flags
+                skip_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
+                if offset < 0:
+                    options[f"Follow action (LOOP from {follow_name})"] = offset
+                else:
+                    options[f"Follow action ({follow_name})"] = offset
+                if follow_phrase < phrase:
+                    loop_count = info["followRepeat"]
+                    options[f"  Loop count ({loop_count})"] = loop_count
+                options[f"  Skip loops ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
@@ -1782,9 +1788,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
         elif offset == 1:
             title = f"NEXT: {title}"
         elif offset > 0:
-            title = f"+{offset}: {title}"
+            title = f"{title}: +{offset}"
         else:
-            title = f"{offset}: {title}"
+            title = f"{title}: {offset}"
         return (offset, title)
 
     def phrase_menu_cb(self, option, params):
@@ -1865,7 +1871,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 "ticks": ticks,
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("  Exclude loops"):
+        elif option.startswith("  Skip loops"):
             options = {}
             val = params
             for i in range(32):
@@ -1874,8 +1880,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 else:
                     options[f"[ ] {i + 1}"] = (i, params, False)
                 val >>= 1
-            self.zyngui.screens['option'].config("Select loop exclude", options, self.play_flag_cb, close_on_select=False)
+            self.zyngui.screens['option'].config("Select loop skips", options, self.play_flag_cb, close_on_select=False)
             self.zyngui.show_screen('option')
+        elif option.startswith("  Loop count"):
+            option_screen.enable_param_editor(option_screen, "loop_count", {
+                "name": "Loop count",
+                "value_max": 32,
+                "value": params
+            }, assert_cb=self.cb_assert_param_editor)
 
     def play_flag_cb(self, option, params):
         if params[2]:
@@ -1885,7 +1897,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             # Set flag
             flags = params[1] | (1 << params[0])
         self.zynseq.set_sequence_param(self.zynseq.scene, self.zynseq.phrase, zynseq.PHRASE_CHANNEL, "playFlags", flags)
-        self.phrase_menu_cb("  Exclude loops", flags)
+        self.phrase_menu_cb("  Skip loops", flags)
 
     def remove_phrase(self, phrase):
         self.zynseq.remove_phrase(self.zynseq.scene, phrase)
@@ -1969,6 +1981,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     followParam = zctrl.value
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", followAction)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", followParam)
+            case "loop_count":
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followRepeat", zctrl.value)
 
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches

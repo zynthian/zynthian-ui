@@ -320,13 +320,14 @@ class SequenceManager {
         @param  action Follow action @see FOLLOW_ACTION enum
         @param  param Parameter of action, e.g. offset
         @param  flags Bitwise flags indicating which play loops should be skipped
+        @param  repeat Quantity of repeats of follow action
         @retval bool True on success
     */
-    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param, uint32_t flags);
+    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param=0, uint32_t flags=0, uint8_t repeat=0);
 
-    /** @brief  Reset all sequence play counters
+    /** @brief  Reset all follow repeat counter
     */
-    void resetPlayCounters(uint8_t scene);
+    void resetFollowRepeat();
 
     private:
 
@@ -349,6 +350,7 @@ class SequenceManager {
     uint8_t m_nBeatsPerBar = 4;       // Time signature in beats
     uint8_t m_bEnabled[32];           // Array indicating if channel is enabled
     uint8_t m_nScene = 0;             // Index of selected scene
+    uint8_t m_nFollowCount = 0;           // Quantity of times the current follow loop has repeated
     std::vector<std::vector<Sequence*>> m_vScenes; // Vector of vectors of pointers to phrase sequences, indexed by scene.
         // m_vScenes[scene][phrase] = pPhrase, a sequence with child sequences.
 

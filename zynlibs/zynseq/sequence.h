@@ -234,8 +234,9 @@ class Sequence {
         @param  action Follow action @see FOLLOW_ACTION enum
         @param  param Follow action parameter
         @param  flags Bitwise flags indicating which play loops should be skipped
+        @param  repeat Quantity of repeats of follow action
     */
-    void setFollowAction(uint8_t action, int16_t param, uint32_t flags);
+    void setFollowAction(uint8_t action, int16_t param=0, uint32_t flags=0, uint8_t repeat=0);
 
     /** @brief  Get follow action
         @retval uint8_t Follow action
@@ -252,10 +253,15 @@ class Sequence {
     */
     uint32_t getPlayFlags();
 
+    /** @brief  Get follow action repeats
+        @retval uint8_t Quantity of times a follow action is repeated
+    */
+    uint8_t getFollowRepeat();
+
     /** @brief  Check if sequence is inhibited from playing on this iteration
         @retval bool True if sequence should be played
     */
-   bool isFollowPlay();
+   bool isFollowPlay(uint8_t repeat);
 
     /** @brief  Set times to play
         @param  repeat Quantity of times to play (0 to disable)
@@ -280,11 +286,6 @@ class Sequence {
         @retval uint8_t Quantity of times played
     */
     uint8_t getPlayed();
-
-    /** @brief  Set times played in full (including repeats)
-        @param  played Value to set played count
-    */
-    void setPlayedFull(uint8_t played);
 
     /** @brief Get times played in full (including repeats)
         @retval uint8_t Quantity of times played
@@ -328,7 +329,6 @@ class Sequence {
     uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence. 0 to disable, 255 for auto follow time 
     uint32_t m_nAutoFollow = 0;                 // Calculated duration (pulses) before auto follow action - Only used by phrases
     uint8_t m_nCount = 0;                       // Quantity of times sequence has played
-    uint8_t m_nPlayed = 0;                      // Quantity of times sequence has played with its repeats (used for follow break)
     uint8_t m_nPhrase = 0xff;                   // Index of phrase this sequence belongs - 0xff for none
     bool m_bChanged = false;                    // True if sequence content changed
     bool m_bStateChanged = false;               // True if state changed since last clock cycle
@@ -337,5 +337,6 @@ class Sequence {
     uint8_t m_nFollowAction = FOLLOW_ACTION_NONE; // Follow action to perform when sequence ends
     int16_t m_nFollowParam = 0;                 // Follow action parameter
     uint32_t m_nPlayFlags = 0;                  // Bitwise flags indicating which times to not play the phrase
+    uint8_t m_nFollowRepeat = 0;                // Quantity of times a follow action is repeated
     Sequence* m_pPhraseSequence = nullptr;      // Pointer to phrase sequence (null if not in a phrase, e.g. is a phrase)
 };
