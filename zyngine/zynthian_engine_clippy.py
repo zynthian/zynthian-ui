@@ -80,7 +80,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.tempo_mutex = False
         self.crop_cb_timer = None
         self.samplerate = zynautoconnect.get_jackd_samplerate()
-        #zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -89,7 +89,7 @@ class zynthian_engine_clippy(zynthian_engine):
     def stop(self):
         logging.info("Stopping Engine " + self.name)
         self.zynseq.clippy = None
-        #zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
         self.libclippy.end()
 
     def set_phrase(self, processor, phrase):
