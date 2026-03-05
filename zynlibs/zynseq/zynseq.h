@@ -1294,6 +1294,22 @@ void setSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence, uint3
 */
 uint32_t getSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence);
 
+/** @brief  Set sequence follow repeat
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @param  repeat Quantity of times follow action is repeated
+*/
+void setSequenceFollowRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t repeat);
+
+/** @brief  Get the follow repeat
+    @param  scene Index of scene
+    @param  phrase Index of phrase
+    @param  sequence Index of sequence
+    @retval uint8_t Quantity of times follow action is repeated
+*/
+uint8_t getSequenceFollowRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence);
+
 /** @brief  Get phrase schedule
     @param  scene Index of scene
     @retval 

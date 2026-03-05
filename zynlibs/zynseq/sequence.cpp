@@ -274,8 +274,6 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
             if (bFollow) {
                 // Follow action
                 nReturn |= CLOCK_TRIG_SEQEND;
-                if (m_nPlayed < 31)
-                    ++m_nPlayed;
                 // Stop if not looping self
                 if (m_nFollowAction != FOLLOW_ACTION_RELATIVE || m_nFollowParam != 0)
                     setPlayState(STOPPED);
@@ -360,10 +358,11 @@ std::string Sequence::getName() {
     return m_sName;
 }
 
-void Sequence::setFollowAction(uint8_t action, int16_t param, uint32_t playFlags) {
+void Sequence::setFollowAction(uint8_t action, int16_t param, uint32_t playFlags, uint8_t repeat) {
     m_nFollowAction = action;
     m_nFollowParam = param;
     m_nPlayFlags = playFlags;
+    m_nFollowRepeat = repeat;
 }
 
 
@@ -379,8 +378,12 @@ uint32_t Sequence::getPlayFlags() {
     return m_nPlayFlags;
 }
 
-bool Sequence::isFollowPlay() {
-    return ((1 << m_nPlayed) & m_nPlayFlags) == 0;
+uint8_t Sequence::getFollowRepeat() {
+    return m_nFollowRepeat;
+}
+
+bool Sequence::isFollowPlay(uint8_t repeat) {
+    return ((1 << repeat) & m_nPlayFlags) == 0;
 }
 
 void Sequence::setRepeat(uint8_t repeat) {
@@ -414,14 +417,6 @@ void Sequence::setPlayed(uint8_t played) {
 
 uint8_t Sequence::getPlayed() {
     return m_nCount;
-}
-
-void Sequence::setPlayedFull(uint8_t played) {
-    m_nPlayed = played;
-}
-
-uint8_t Sequence::getPlayedFull() {
-    return m_nPlayed;
 }
 
 bool Sequence::isPhraseLauncher() {

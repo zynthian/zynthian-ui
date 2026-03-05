@@ -459,7 +459,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 g_nTransportState = STOPPED;
                 jack_transport_stop(g_pJackClient);
                 jack_transport_locate(g_pJackClient, 0);
-                g_seqMan.resetPlayCounters(g_nScene);
+                g_seqMan.resetFollowRepeat();
             }
         }
 
@@ -1266,7 +1266,7 @@ bool setState(const char* state) {
                     nLowestScene = nScene;
                 uint32_t nPhrase = 0;
                 uint8_t phrase_bpb;
-                std::vector<std::array<int16_t, 5>> vFollowActions;
+                std::vector<std::array<int16_t, 6>> vFollowActions;
                 for (auto& jPhrase: jScene["phrases"]) {
                     Sequence* pPhrase = g_seqMan.insertPhrase(nScene, -1);
                     if (!pPhrase)
@@ -1288,12 +1288,13 @@ bool setState(const char* state) {
                     pPhrase->setRepeat(jPhrase.value("repeat", 1));
 
                     // Store the follow configuration to apply after all sequences have been created
-                    std::array<int16_t, 5> followAction;
+                    std::array<int16_t, 6> followAction;
                     followAction[0] = nPhrase;
                     followAction[1] = PHRASE_CHANNEL;
                     followAction[2] = jPhrase.value("followAction", FOLLOW_ACTION_NONE);
                     followAction[3] = jPhrase.value("followParam", 0);
                     followAction[4] = jPhrase.value("playFlags", 0);
+                    followAction[5] = jPhrase.value("followRepeat", 0);
                     vFollowActions.push_back(followAction);
 
                     uint8_t nSeq = 0;
@@ -1318,12 +1319,13 @@ bool setState(const char* state) {
                         pSequence->setRepeat(jSeq.value("repeat", 1));
 
                         // Store the follow configuration to apply after all sequences have been created
-                        std::array<int16_t, 5> followAction;
+                        std::array<int16_t, 6> followAction;
                         followAction[0] = nPhrase;
                         followAction[1] = nSeq;
                         followAction[2] = jSeq.value("followAction", FOLLOW_ACTION_NONE);
                         followAction[3] = jSeq.value("followParam", 0);
                         followAction[4] = jSeq.value("playFlags", 0);
+                        followAction[5] = jSeq.value("followRepeat", 0);
                         vFollowActions.push_back(followAction);
                         uint32_t nTrack = 0;
                         for (auto& jTrack: jSeq["tracks"]) {
@@ -1354,7 +1356,7 @@ bool setState(const char* state) {
                 // Set follow actions late, after creating all sequence objects
                 for (auto& followAction : vFollowActions) {
                     Sequence* pSeq = g_seqMan.getSequence(nScene, followAction[0], followAction[1]);
-                    g_seqMan.setFollowAction(nScene, pSeq, followAction[2], followAction[3], followAction[4]);
+                    g_seqMan.setFollowAction(nScene, pSeq, followAction[2], followAction[3], followAction[4], followAction[5]);
                 }
             }
         }
@@ -1441,6 +1443,7 @@ const char* getState() {
             jPhrase["followAction"] = pPhrase->getFollowAction();
             jPhrase["followParam"] = pPhrase->getFollowParam();
             jPhrase["playFlags"] = pPhrase->getPlayFlags();
+            jPhrase["followRepeat"] = pPhrase->getFollowRepeat();
             jPhrase["state"] = pPhrase->getPlayState();
             for (const auto& pSequence : pPhrase->m_aChildSequences) {
                 json jSeq;
@@ -2788,7 +2791,7 @@ const char* getSequenceName(uint8_t scene, uint8_t phrase, uint8_t sequence) {
 void setSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t action) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence)
-        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, action, pSequence->getFollowParam(), pSequence->getPlayFlags());
+        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, action, pSequence->getFollowParam(), pSequence->getPlayFlags(), pSequence->getFollowRepeat());
 }
 
 uint8_t getSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence) {
@@ -2801,7 +2804,7 @@ uint8_t getSequenceFollowAction(uint8_t scene, uint8_t phrase, uint8_t sequence)
 void setSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence, int16_t param) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence)
-        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, pSequence->getFollowAction(), param, pSequence->getPlayFlags());
+        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, pSequence->getFollowAction(), param, pSequence->getPlayFlags(), pSequence->getFollowRepeat());
 }
 
 int16_t getSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence) {
@@ -2821,6 +2824,19 @@ uint32_t getSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence)
         return pSequence->getPlayFlags();
+    return 0;
+}
+
+void setSequenceFollowRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence, uint8_t repeat) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, pSequence->getFollowAction(), pSequence->getFollowParam(), pSequence->getPlayFlags(), repeat);
+}
+
+uint8_t getSequenceFollowRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
+    if (pSequence)
+        return pSequence->getFollowRepeat();
     return 0;
 }
 
