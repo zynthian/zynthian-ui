@@ -1862,7 +1862,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 'labels': labels,
                 'value': params
             }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("Follow action"):
+        elif option.startswith("Follow"):
             ticks = []
             labels = []
             for phrase in range(self.zynseq.phrases):
