@@ -131,7 +131,7 @@ class COLORS:
     COLOR_BLUE_LIGHT = 0x24
     COLOR_WHITE = COLOR_FN = 0x03
     COLOR_EGYPT = 0x6C
-    COLOR_ORANGE = COLOR_STATE_2 = COLOR_PATED_ALT_ON = 0x09
+    COLOR_ORANGE = COLOR_STATE_2 = COLOR_LOCAL_ALT_ON = 0x09
     COLOR_ORANGE_LIGHT = 0x08
     COLOR_AMBER = 0x54
     COLOR_RUSSET = 0x3D
@@ -289,10 +289,12 @@ class DeviceHandler(ModeHandlerBase):
         self._colors = colors
         self._knobs_ease = KnobSpeedControl()
         self._is_alt_active = False
+        self._is_sl_alt_active = False
         self._is_pated_alt_active = False
         self._is_playing = set()
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
+        self._current_screen_obj = None
 
         cyclable_actions = {
             BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
@@ -348,7 +350,7 @@ class DeviceHandler(ModeHandlerBase):
             zyngui = zynthian_gui_config.zyngui
             screenref = zyngui.screens['pattern_editor']
             alt_color = self._colors.COLOR_ALT_OFF if not self._is_pated_alt_active else self._colors.COLOR_ALT_ON
-            fn_color = self._colors.COLOR_FN if not self._is_pated_alt_active else self._colors.COLOR_PATED_ALT_ON
+            fn_color = self._colors.COLOR_FN if not self._is_pated_alt_active else self._colors.COLOR_LOCAL_ALT_ON
             if self._is_pated_alt_active:
                 for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
                     if (screenref.clipboard[i] is not None):
@@ -363,10 +365,18 @@ class DeviceHandler(ModeHandlerBase):
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
         else:
-            alt_color = self._colors.COLOR_ALT_OFF if not self._is_alt_active else self._colors.COLOR_ALT_ON
-            fn_color = self._colors.COLOR_FN if not self._is_alt_active else self._colors.COLOR_ALT_ON
-            for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+            widget_obj = getattr(self._current_screen_obj, "current_widget", None)
+            print(f"classname: |{widget_obj.__class__.__name__}|alt mode:{getattr(widget_obj, 'alt_mode', None)} widgetob: {widget_obj}")
+            if widget_obj is not None and widget_obj.__class__.__name__ == 'zynthian_widget_sooperlooper':
+                alt_color = self._colors.COLOR_ALT_OFF if not self._is_sl_alt_active else self._colors.COLOR_LOCAL_ALT_ON
+                fn_color = self._colors.COLOR_FN if not self._is_sl_alt_active else self._colors.COLOR_LOCAL_ALT_ON
+                for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
+                    self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+            else:
+                alt_color = self._colors.COLOR_ALT_OFF if not self._is_alt_active else self._colors.COLOR_ALT_ON
+                fn_color = self._colors.COLOR_FN if not self._is_alt_active else self._colors.COLOR_ALT_ON
+                for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
+                    self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
 
         self._leds.led_on(BTN_ALT, alt_color, LED_BRIGHT_100)
 
@@ -441,8 +451,12 @@ class DeviceHandler(ModeHandlerBase):
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
 
     def on_alt_mode(self, alt_mode, refresh=False):
+        screen_obj = self._current_screen_obj
+        widget_obj = getattr(screen_obj, "current_widget", None)
         if self._current_screen == 'pattern_editor':
             self._is_pated_alt_active = alt_mode
+        elif widget_obj and widget_obj.__class__.__name__ == 'zynthian_widget_sooperlooper':
+            self._is_sl_alt_active = alt_mode
         else:
             self._is_alt_active = alt_mode
         if refresh:
@@ -450,6 +464,8 @@ class DeviceHandler(ModeHandlerBase):
 
     def on_screen_change(self, screen):
         self._current_screen = screen
+        zyngui = zynthian_gui_config.zyngui
+        self._current_screen_obj = zyngui.get_current_screen_obj()
         screen_map = {
             "option":         (BTN_OPT_ADMIN, 0),
             "chain_manager":  (BTN_OPT_ADMIN, 0),
