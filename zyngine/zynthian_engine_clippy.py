@@ -503,7 +503,7 @@ class zynthian_engine_clippy(zynthian_engine):
         note = phrase + 1
         try:
             path = processor.controllers_dict[f"file {note}"].path
-            logging.debug(f"REMOVING TMP FILE: CHAIN {processor.chain_id}, PHRASE {phrase} => {path}")
+            #logging.debug(f"REMOVING TMP FILE: CHAIN {processor.chain_id}, PHRASE {phrase} => {path}")
             if path.startswith("/tmp"):
                 os.remove(path)
         except:

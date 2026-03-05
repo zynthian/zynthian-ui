@@ -1734,15 +1734,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     unit = "bars"
                 options[f"Duration ({repeat} {unit})"] = repeat
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
-                options[f"Follow action (NONE)"] = 0
+                options[f"Follow => NONE"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
                 offset, follow_name = self.get_follow_info(follow_phrase)
                 flags = info["playFlags"]
                 skip_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
-                if offset < 0:
-                    options[f"Follow action (LOOP from {follow_name})"] = offset
-                else:
-                    options[f"Follow action ({follow_name})"] = offset
+                options[f"Follow => {follow_name}"] = offset
                 if follow_phrase < phrase:
                     loop_count = info["followRepeat"]
                     options[f"  Loop count ({loop_count})"] = loop_count
@@ -1770,6 +1767,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.zyngui.screens['option'].config(title, options, self.phrase_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
+    def get_phrase_title(self, phrase):
+        title = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["name"]
+        if not title:
+            title = chr(ord('A') + phrase)
+        return title
+
     def get_follow_info(self, phrase):
         """ Get the offset and text representing the follow action
         Args:
@@ -1778,19 +1781,20 @@ class zynthian_gui_mixer(zynthian_gui_base):
         """
 
         offset = phrase - self.zynseq.phrase
-        title = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["name"]
-        if not title:
-            title = chr(ord('A') + phrase)
-        if offset == -1:
-            title = f"PREV: {title}"
-        elif offset == 0:
-            title = "NONE"
-        elif offset == 1:
-            title = f"NEXT: {title}"
-        elif offset > 0:
-            title = f"{title}: +{offset}"
-        else:
-            title = f"{title}: {offset}"
+        match offset:
+            case 0:
+                title = "NONE"
+            case -1:
+                title = f"{self.get_phrase_title(phrase)} (PREV)"
+            case 1:
+                title = f"{self.get_phrase_title(phrase)} (NEXT)"
+            case _:
+                title = f"{self.get_phrase_title(phrase)} ({offset:+})"
+                if offset < 0:
+                    title = "LOOP from " + title
+                elif offset > 1:
+                    title = "JUMP to " + title
+
         return (offset, title)
 
     def phrase_menu_cb(self, option, params):
@@ -1866,7 +1870,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 ticks.append(offset)
                 labels.append(title)
             option_screen.enable_param_editor(option_screen, "follow", {
-                "name": "Follow action",
+                "name": "Follow",
                 "labels": labels,
                 "ticks": ticks,
                 "value": params
