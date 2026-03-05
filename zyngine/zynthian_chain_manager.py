@@ -1454,19 +1454,6 @@ class zynthian_chain_manager:
             state[chain_id] = self.chains[chain_id].get_state()
         return state
 
-    def get_zs3_processor_state(self):
-        """Get dictionary of ZS3 processors indexed by processor id"""
-
-        state = {}
-        for id, processor in self.processors.items():
-            state[id] = {
-                "bank_info": processor.bank_info,
-                "preset_info": processor.preset_info,
-                "controllers": processor.controllers_dict
-            }
-        # TODO: Remove superfluous parameters
-        return state
-
     def set_state(self, state, engine_config, merge=False):
         """Create chains from state
 
