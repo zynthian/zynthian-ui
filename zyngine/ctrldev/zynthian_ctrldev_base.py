@@ -444,8 +444,16 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
                         pad_info["empty"] = True
                 # Clippy
                 else:
-                    # TODO Fix this!
-                    pad_info["empty"] = False
+                    try:
+                        chain_id = self.chain_manager.get_chain_ids_by_midi_chan(chan)[0]
+                        chain = self.chain_manager.chains[chain_id]
+                        clippy_proc = chain.get_clippy_processor()
+                        if clippy_proc.controllers_dict[f"file {phrase + 1}"].get_value():
+                            pad_info["empty"] = False
+                        else:
+                            pad_info["empty"] = True
+                    except:
+                        pad_info["empty"] = True
             except IndexError:
                 pad_info = None
             for idx in self.chain_manager.get_pos_by_midi_chan(chan):
