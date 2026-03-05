@@ -1743,7 +1743,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 if follow_phrase < phrase:
                     loop_count = info["followRepeat"]
                     options[f"  Loop count ({loop_count})"] = loop_count
-                options[f"  Skip loops ({skip_loops})"] = flags
+                if self.get_phrase_loop_count():
+                    options[f"  Skip loops ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
@@ -1796,6 +1797,23 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     title = "JUMP to " + title
 
         return (offset, title)
+
+    def get_phrase_loop_count(self):
+        i = self.zynseq.phrase
+        while True:
+            try:
+                info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][i]
+            except:
+                return 0
+            if info["followAction"] == zynseq.FOLLOW_ACTION_RELATIVE and info["followParam"] < 0:
+                # If current phrase is inside the next loop, return the loop count
+                loop_from = i + info["followParam"]
+                if self.zynseq.phrase >= loop_from:
+                    return info["followRepeat"]
+                # else loop count is 0 (current phrase not in the next loop)
+                else:
+                    return 0
+            i += 1
 
     def phrase_menu_cb(self, option, params):
         option_screen = self.zyngui.screens["option"]
@@ -1876,13 +1894,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("  Skip loops"):
-            options = {}
             val = params
-            for i in range(32):
+            loop_count = self.get_phrase_loop_count()
+            options = {}
+            for i in range(loop_count):
                 if val & 1:
-                    options[f"[X] {i + 1}"] = (i, params, True)
+                    options[f"\u2612 {i + 1}"] = (i, params, True)
                 else:
-                    options[f"[ ] {i + 1}"] = (i, params, False)
+                    options[f"\u2610 {i + 1}"] = (i, params, False)
                 val >>= 1
             self.zyngui.screens['option'].config("Select loop skips", options, self.play_flag_cb, close_on_select=False)
             self.zyngui.show_screen('option')
