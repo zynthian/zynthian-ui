@@ -1185,6 +1185,14 @@ class zynthian_state_manager:
                 self.chain_manager.stop_unused_engines()
                 zynautoconnect.resume()
 
+            # Load Sequences after loading chains
+            if load_sequences and "zynseq" in state:
+                if not self.zynseq.set_state(state["zynseq"]):
+                    self.set_busy_warning("Invalid sequence data within snapshot")
+                    sleep(2)
+
+            # After loading sequiences, load initial state (ZS3-0)
+            if load_chains:
                 if "last_zs3_id" in state:
                     self.last_zs3_id = state["last_zs3_id"]
                 else:
@@ -1198,23 +1206,17 @@ class zynthian_state_manager:
                 except:
                     pass
 
-                if "midi_profile_state" in state:
-                    self.set_midi_profile_state(state["midi_profile_state"])
-
                 # After loading initial state, enable midi autolearn in all processors
                 for proc in self.chain_manager.processors.values():
                     proc.set_midi_autolearn(True)
+
+                if "midi_profile_state" in state:
+                    self.set_midi_profile_state(state["midi_profile_state"])
 
                 # GUI
                 if "gui" in state:
                     self.chain_manager.set_pinned(state["gui"].get("pinned_chains", 1))
 
-
-            # Load Sequences after loading chains
-            if load_sequences and "zynseq" in state:
-                if not self.zynseq.set_state(state["zynseq"]):
-                    self.set_busy_warning("Invalid sequence data within snapshot")
-                    sleep(2)
 
             # Save last snapshot info and get snapshot's program number
             self.last_snapshot_count += 1
