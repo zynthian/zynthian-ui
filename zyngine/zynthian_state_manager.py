@@ -687,6 +687,8 @@ class zynthian_state_manager:
         while not self.exit_flag:
             # Process MIDI events
             self.zynmidi_read()
+            # Sequencer Progress => TODO Improved by callbacks?
+            self.zynseq.update_progress()
             sleep(0.01)
 
     def add_slow_update_callback(self, rate, cb):
