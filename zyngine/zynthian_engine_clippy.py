@@ -278,7 +278,6 @@ class zynthian_engine_clippy(zynthian_engine):
 
                 if warp_value and not bpm_match and can_warp:
                     # Warp audio to fit sequence length, only if short enough to avoid slow warp
-                    ratio = factor
                     write_file = True
 
                 try:
@@ -286,7 +285,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     dst_path = f"/tmp/clippy_{self.tmp_file_idx:04x}.wav"
                     self.tmp_file_idx += 1
-                if write_file and self.libclippy.copyFile(bytes(path, "utf-8"), bytes(dst_path, "utf-8"), 2, ctypes.c_float(ratio), crop_start, crop_end) == 0:
+                quality = 4     # Re-sampling quality (1-4)
+                if write_file and self.libclippy.copyFile(bytes(path, "utf-8"), bytes(dst_path, "utf-8"), quality, ctypes.c_float(factor), crop_start, crop_end) == 0:
+                    #logging.debug(f"SAMPLE COPIED with WARP FACTOR {factor} =>  {path}")
                     path = dst_path
                     file_zctrl.path = path
                     #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
@@ -343,7 +344,7 @@ class zynthian_engine_clippy(zynthian_engine):
         #TODO: This can cause a lot of file writing
         if self.crop_timer:
             self.crop_timer.cancel()
-        self.crop_timer = Timer(0.5, self.crop_timer_cb, args=(processor, phrase))
+        self.crop_timer = Timer(1.0, self.crop_timer_cb, args=(processor, phrase))
         self.crop_timer.start()
 
     def crop_timer_cb(self, processor, phrase):
@@ -356,7 +357,7 @@ class zynthian_engine_clippy(zynthian_engine):
         #TODO: This crashes with double free at high tempo
         if self.tempo_timer:
             self.tempo_timer.cancel()
-        self.tempo_timer = Timer(0.5, self.tempo_timer_cb)
+        self.tempo_timer = Timer(1.0, self.tempo_timer_cb)
         self.tempo_timer.start()
 
     def tempo_timer_cb(self):
@@ -364,7 +365,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.tempo_timer.cancel()
         self.tempo_timer = None
         while self.tempo_mutex:
-            sleep(0.001)
+            sleep(0.01)
         self.tempo_mutex = True
         for processor in self.processors:
             for phrase in range(self.zynseq.phrases):
