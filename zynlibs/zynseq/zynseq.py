@@ -430,6 +430,31 @@ class zynseq(zynthian_engine):
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
 
+    def get_phrase_loop_info(self, phrase=None):
+        """ Get info for loop that this phrase is within
+        Args:
+            phrase: Index of phrase to check
+        Returns: Tuple of phrase loop info (loop_end_phrase, loop_length, repeat_count) or None if not in loop
+        """
+
+        if phrase == None:
+            phrase = self.phrase
+        i = phrase
+        while True:
+            try:
+                info = self.state["scenes"][self.scene]["phrases"][i]
+            except:
+                return None
+            if info["followAction"] == FOLLOW_ACTION_RELATIVE and info["followParam"] < 0:
+                # If current phrase is inside the next loop, return the loop count
+                loop_from = i + info["followParam"]
+                if phrase >= loop_from:
+                    return (i, -info["followParam"], info["followRepeat"])
+                # else loop count is 0 (current phrase not in the next loop)
+                else:
+                    return None
+            i += 1
+
     # -------------------------------------------------------------------
     # Pattern and event management
     # -------------------------------------------------------------------

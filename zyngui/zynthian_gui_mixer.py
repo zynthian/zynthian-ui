@@ -82,12 +82,24 @@ class zynthian_gui_launcher_pad():
         self.phrase = phrase
 
         id = self.chain.chain_id
-        tags = ("launcher", f"strip_{id}", f"launcher_{id}_{phrase}")
+        x_offset = 0 if id else 3
+        tags = ("launcher", "launcher_show", f"strip_{id}", f"launcher_{id}_{phrase}")
         # Launcher pad (background)
-        self.pad = self.canvas.create_rectangle(x, y, x + self.width - 1, y + self.height - 1,
+        self.pad = self.canvas.create_rectangle(x + x_offset, y, x + self.width - 1, y + self.height - 1,
                                                 width=3,
                                                 fill=zynthian_gui_config.color_panel_bg,
                                                 tags=(*tags, "launcher_pad"))
+        # Loop indicator
+        self.loop_top = self.canvas.create_rectangle(x, y, x + x_offset, y + self.height // 2,
+                                                 width=0,
+                                                 fill="#50FF50",
+                                                 tags=("launcher",),
+                                                 state=tkinter.HIDDEN)
+        self.loop_bottom = self.canvas.create_rectangle(x, y + self.height // 2, x + x_offset, y + self.height,
+                                                 width=0,
+                                                 fill="#50FF50",
+                                                 tags=("launcher",),
+                                                 state=tkinter.HIDDEN)
         # Play state text
         self.play_state = self.canvas.create_text(x + self.width - 3,  y - 3, text="",
                                                   anchor=tkinter.NE,
@@ -263,6 +275,25 @@ class zynthian_gui_launcher_pad():
                     #title = "⏹"
                     pass
 
+                loop_info = self.gui_mixer.zynseq.get_phrase_loop_info(self.phrase)
+                self.canvas.itemconfig(self.loop_top, state=tkinter.HIDDEN)
+                self.canvas.itemconfig(self.loop_bottom, state=tkinter.HIDDEN)
+                if loop_info:
+                    if loop_info[2]:
+                        c1 = c2 = "#50FF50"
+                    else:
+                        c1 = c2 = "#FFB080"
+                    if state_seq["followAction"] == zynseq.FOLLOW_ACTION_NONE:
+                        c2 = "#" + "".join(f"{int(int(c1[i:i+2],16)*0.85):02x}" for i in (1,3,5))
+
+                    if loop_info[0] == self.phrase:
+                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL, fill=c1)
+                    elif loop_info[0] - loop_info[1] == self.phrase:
+                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL, fill=c2)
+                    else:
+                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL, fill=c1)
+                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL, fill=c2)
+
                 match state_seq["followAction"]:
                     case zynseq.FOLLOW_ACTION_NONE:
                         #mode_text += "→"
@@ -295,7 +326,6 @@ class zynthian_gui_launcher_pad():
                         # Forward Jump
                         elif offset > 1:
                             color_mode = "#B0FFFF"
-
                     case _:
                         #mode_text += "↦"
                         pass
@@ -1708,16 +1738,16 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.right_canvas.itemconfig("fader_horizontal", state=tkinter.NORMAL)
             self.left_canvas.tag_lower("launcher")
             self.right_canvas.tag_lower("launcher")
-            self.left_canvas.itemconfig("launcher", state=tkinter.NORMAL)
-            self.right_canvas.itemconfig("launcher", state=tkinter.NORMAL)
+            self.left_canvas.itemconfig("launcher_show", state=tkinter.NORMAL)
+            self.right_canvas.itemconfig("launcher_show", state=tkinter.NORMAL)
             self.highlight_launcher()
         else:
             self.left_canvas.itemconfig("fader", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("fader", state=tkinter.NORMAL)
             self.left_canvas.itemconfig("fader_horizontal", state=tkinter.HIDDEN)
             self.right_canvas.itemconfig("fader_horizontal", state=tkinter.HIDDEN)
-            self.left_canvas.itemconfig("launcher", state=tkinter.HIDDEN)
-            self.right_canvas.itemconfig("launcher", state=tkinter.HIDDEN)
+            self.left_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
+            self.right_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
         zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
 
     def toggle_launcher_mode(self):
@@ -1766,12 +1796,18 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         options[f"  Loop count ({loop_count})"] = loop_count
                     else:
                         options[f"  Loop count (∞)"] = loop_count
-                loop_count = self.get_phrase_loop_count()
-                if loop_count is not None:
-                    if flags:
-                        skip_loops = ",".join(str(i + 1) for i in range(loop_count) if not (flags >> i) & 1)
+                loop_info = self.zynseq.get_phrase_loop_info()
+                if loop_info:
+                    if loop_info[2] > 0:
+                        if flags:
+                            skip_loops = ",".join(str(i + 1) for i in range(loop_info[2]) if not (flags >> i) & 1)
+                        else:
+                            skip_loops = "All"
                     else:
-                        skip_loops = "All"
+                        if flags & 1:
+                            skip_loops = "None"
+                        else:
+                            skip_loops = "All"
                     options[f"  Loops to play ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
@@ -1825,23 +1861,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     title = "JUMP to " + title
 
         return (offset, title)
-
-    def get_phrase_loop_count(self):
-        i = self.zynseq.phrase
-        while True:
-            try:
-                info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][i]
-            except:
-                return None
-            if info["followAction"] == zynseq.FOLLOW_ACTION_RELATIVE and info["followParam"] < 0:
-                # If current phrase is inside the next loop, return the loop count
-                loop_from = i + info["followParam"]
-                if self.zynseq.phrase >= loop_from:
-                    return info["followRepeat"]
-                # else loop count is 0 (current phrase not in the next loop)
-                else:
-                    return None
-            i += 1
 
     def phrase_menu_cb(self, option, params):
         option_screen = self.zyngui.screens["option"]
@@ -1923,20 +1942,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("  Loops to play"):
             val = params
-            loop_count = self.get_phrase_loop_count()
+            loop_info = self.zynseq.get_phrase_loop_info()
             options = {}
-            if loop_count > 0:
-                for i in range(loop_count):
+            if loop_info:
+                if loop_info[2] > 0:
+                    for i in range(loop_info[2]):
+                        if val & 1:
+                            options[f"\u2610 {i + 1}"] = (i, params, True)
+                        else:
+                            options[f"\u2612 {i + 1}"] = (i, params, False)
+                        val >>= 1
+                elif loop_info[2] == 0:
                     if val & 1:
-                        options[f"\u2610 {i + 1}"] = (i, params, True)
+                        options[f"\u2612 Skip Always"] = (0, params, True)
                     else:
-                        options[f"\u2612 {i + 1}"] = (i, params, False)
-                    val >>= 1
-            elif loop_count == 0:
-                if val & 1:
-                    options[f"\u2612 Skip Always"] = (0, params, True)
-                else:
-                    options[f"\u2610 Skip Always"] = (0, params, False)
+                        options[f"\u2610 Skip Always"] = (0, params, False)
             if options:
                 self.zyngui.screens['option'].config("Select loops to play", options, self.play_flag_cb, close_on_select=False)
                 self.zyngui.show_screen('option')
