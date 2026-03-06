@@ -82,19 +82,20 @@ class zynthian_gui_launcher_pad():
         self.phrase = phrase
 
         id = self.chain.chain_id
+        x_offset = 0 if id else 3
         tags = ("launcher", "launcher_show", f"strip_{id}", f"launcher_{id}_{phrase}")
         # Launcher pad (background)
-        self.pad = self.canvas.create_rectangle(x, y, x + self.width - 1, y + self.height - 1,
+        self.pad = self.canvas.create_rectangle(x + x_offset, y, x + self.width - 1, y + self.height - 1,
                                                 width=3,
                                                 fill=zynthian_gui_config.color_panel_bg,
                                                 tags=(*tags, "launcher_pad"))
         # Loop indicator
-        self.loop_top = self.canvas.create_rectangle(x, y, x + 2, y + self.height // 2,
+        self.loop_top = self.canvas.create_rectangle(x, y, x + x_offset, y + self.height // 2,
                                                  width=0,
                                                  fill="#50FF50",
                                                  tags=("launcher",),
                                                  state=tkinter.HIDDEN)
-        self.loop_bottom = self.canvas.create_rectangle(x, y + self.height // 2, x + 2, y + self.height,
+        self.loop_bottom = self.canvas.create_rectangle(x, y + self.height // 2, x + x_offset, y + self.height,
                                                  width=0,
                                                  fill="#50FF50",
                                                  tags=("launcher",),
@@ -278,13 +279,20 @@ class zynthian_gui_launcher_pad():
                 self.canvas.itemconfig(self.loop_top, state=tkinter.HIDDEN)
                 self.canvas.itemconfig(self.loop_bottom, state=tkinter.HIDDEN)
                 if loop_info:
-                    if loop_info[0] == self.phrase:
-                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL)
-                    elif loop_info[0] - loop_info[1] == self.phrase:
-                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL)
+                    if loop_info[2]:
+                        c1 = c2 = "#50FF50"
                     else:
-                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL)
-                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL)
+                        c1 = c2 = "#FFB080"
+                    if state_seq["followAction"] == zynseq.FOLLOW_ACTION_NONE:
+                        c2 = "#" + "".join(f"{int(int(c1[i:i+2],16)*0.85):02x}" for i in (1,3,5))
+
+                    if loop_info[0] == self.phrase:
+                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL, fill=c1)
+                    elif loop_info[0] - loop_info[1] == self.phrase:
+                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL, fill=c2)
+                    else:
+                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL, fill=c1)
+                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL, fill=c2)
 
                 match state_seq["followAction"]:
                     case zynseq.FOLLOW_ACTION_NONE:
@@ -318,7 +326,6 @@ class zynthian_gui_launcher_pad():
                         # Forward Jump
                         elif offset > 1:
                             color_mode = "#B0FFFF"
-
                     case _:
                         #mode_text += "↦"
                         pass
@@ -1793,7 +1800,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 if loop_info:
                     if loop_info[2] > 0:
                         if flags:
-                            skip_loops = ",".join(str(i + 1) for i in range(loop_count) if not (flags >> i) & 1)
+                            skip_loops = ",".join(str(i + 1) for i in range(loop_info[2]) if not (flags >> i) & 1)
                         else:
                             skip_loops = "All"
                     else:
