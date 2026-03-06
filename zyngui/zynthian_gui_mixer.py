@@ -170,6 +170,7 @@ class zynthian_gui_launcher_pad():
         mode_text = ""
         timesig_text = ""
         tempo_text = ""
+        color_mode = self.gui_mixer.legend_txt_color
         color_text = self.gui_mixer.legend_txt_color
         try:
             state_phrase = self.gui_mixer.zynseq.state["scenes"][self.gui_mixer.zynseq.scene]["phrases"][self.phrase]
@@ -278,9 +279,21 @@ class zynthian_gui_launcher_pad():
                             mode_text += f"↓{offset}"
                         else:
                             mode_text = "↻"
+                        # Mode text color => by action type
+                        if offset < 0:
+                            # Infinite Loop
+                            if state_seq["followRepeat"] == 0:
+                                color_mode = "#FFB080"
+                            # Finite Loop
+                            elif state_seq["followRepeat"] > 0:
+                                color_mode = "#50FF50"
+                        # Forward Jump
+                        elif offset > 1:
+                            color_mode = "#B0FFFF"
+
                     case _:
                         #mode_text += "↦"
-                        mode_text += ""
+                        pass
 
                 if "bpb" in state_seq:
                     sig = state_seq["bpb"]
@@ -293,6 +306,7 @@ class zynthian_gui_launcher_pad():
 
             if disabled:
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED
+                color_mode = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                 color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                 color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                 state_text = ""
@@ -321,6 +335,7 @@ class zynthian_gui_launcher_pad():
                         color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
                         state_text = "⏹"
                     case _:
+                        color_mode = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                         color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                         color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
                         state_text = "?"
@@ -328,6 +343,7 @@ class zynthian_gui_launcher_pad():
             #logging.exception(traceback.format_exc())
             title = ""
             color = zynthian_gui_config.PAD_COLOUR_DISABLED
+            color_mode = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             state_text = "?"
@@ -343,7 +359,7 @@ class zynthian_gui_launcher_pad():
             self.canvas.itemconfig(self.mode_icon, state=tkinter.HIDDEN)
         else:
             # Phrase launcher
-            self.canvas.itemconfig(self.mode_text, text=mode_text, fill=color_text, state=tkinter.NORMAL)
+            self.canvas.itemconfig(self.mode_text, text=mode_text, fill=color_mode, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.timesig, text=timesig_text, fill=color_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.tempo, text=tempo_text, fill=color_text, state=tkinter.NORMAL)
             self.canvas.itemconfig(self.mode_icon, state=tkinter.HIDDEN)
@@ -1743,7 +1759,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 if follow_phrase < phrase:
                     loop_count = info["followRepeat"]
                     options[f"  Loop count ({loop_count})"] = loop_count
-                if self.get_phrase_loop_count():
+                if self.get_phrase_loop_count() is not None:
                     options[f"  Skip loops ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
@@ -1804,7 +1820,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             try:
                 info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][i]
             except:
-                return 0
+                return None
             if info["followAction"] == zynseq.FOLLOW_ACTION_RELATIVE and info["followParam"] < 0:
                 # If current phrase is inside the next loop, return the loop count
                 loop_from = i + info["followParam"]
@@ -1812,7 +1828,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     return info["followRepeat"]
                 # else loop count is 0 (current phrase not in the next loop)
                 else:
-                    return 0
+                    return None
             i += 1
 
     def phrase_menu_cb(self, option, params):
@@ -1897,14 +1913,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
             val = params
             loop_count = self.get_phrase_loop_count()
             options = {}
-            for i in range(loop_count):
+            if loop_count > 0:
+                for i in range(loop_count):
+                    if val & 1:
+                        options[f"\u2612 {i + 1}"] = (i, params, True)
+                    else:
+                        options[f"\u2610 {i + 1}"] = (i, params, False)
+                    val >>= 1
+            elif loop_count == 0:
                 if val & 1:
-                    options[f"\u2612 {i + 1}"] = (i, params, True)
+                    options[f"\u2612 Skip Always"] = (0, params, True)
                 else:
-                    options[f"\u2610 {i + 1}"] = (i, params, False)
-                val >>= 1
-            self.zyngui.screens['option'].config("Select loop skips", options, self.play_flag_cb, close_on_select=False)
-            self.zyngui.show_screen('option')
+                    options[f"\u2610 Skip Always"] = (0, params, False)
+            if options:
+                self.zyngui.screens['option'].config("Select loop skips", options, self.play_flag_cb, close_on_select=False)
+                self.zyngui.show_screen('option')
         elif option.startswith("  Loop count"):
             option_screen.enable_param_editor(option_screen, "loop_count", {
                 "name": "Loop count",
