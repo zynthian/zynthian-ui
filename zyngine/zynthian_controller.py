@@ -182,6 +182,8 @@ class zynthian_controller:
             self.is_integer = options['is_integer']
         if 'nudge_factor' in options:
             self.nudge_factor = options['nudge_factor']
+        if 'nudge_factor_fine' in options:
+            self.nudge_factor_fine = options['nudge_factor_fine']
         if 'is_logarithmic' in options:
             self.is_logarithmic = options['is_logarithmic']
         if 'is_path' in options:
@@ -255,9 +257,6 @@ class zynthian_controller:
                     self.value_max = n - 1
                 value_range = self.value_max - self.value_min
                 if n == 1:
-                    # This shouldn't happen!
-                    if self.value_max is None:
-                        self.value_max = self.value_min
                     self.ticks.append(self.value_max)
                 elif self.is_integer:
                     for i in range(n):
@@ -268,10 +267,8 @@ class zynthian_controller:
 
             # Calculate min, max
             if self.ticks[0] <= self.ticks[-1]:
-                if self.value_min is None:
-                    self.value_min = self.ticks[0]
-                if self.value_max is None:
-                    self.value_max = self.ticks[-1]
+                self.value_min = self.ticks[0]
+                self.value_max = self.ticks[-1]
                 self.range_reversed = False
             else:
                 self.value_min = self.ticks[-1]

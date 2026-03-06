@@ -162,14 +162,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.monitors_dict["zoom"] = zctrl.value
                 return
 
-    def update_nudge(self, processor, note):
-        zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
-        zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
-        zctrl_zoom = processor.controllers_dict[f"zoom {note}"]
-        frames = zctrl_crop_end.value_max
-        nudge_factor = max(1, frames // (zctrl_zoom.value * 100))
-        zctrl_crop_start.nudge_factor = nudge_factor
-        zctrl_crop_end.nudge_factor = nudge_factor
 
     """ Set play mode
 
@@ -266,7 +258,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
             frames = self.libclippy.getFileFrames(bytes(path, "utf-8"))
-            self.update_controllers(processor, note, frames, reset)
+            self.update_controllers(processor, note, frames)
             ratio = 1.0
             write_file = (sr != self.samplerate)
             processor.preset_name = path.split("/")[-1] # Used for display purpose only
@@ -476,11 +468,13 @@ class zynthian_engine_clippy(zynthian_engine):
         processor.controllers_dict.update(zctrls)
 
     def update_controllers(self, processor, note, frames=100, reset=False):
+        crop_start_options = {"value_max": frames}
+        crop_end_options =  {"value_max": frames}
         if reset:
-            processor.controllers_dict[f"crop_start {note}"].value_max = frames
-            processor.controllers_dict[f"crop_start {note}"].value = 0
-            processor.controllers_dict[f"crop_end {note}"].value_max = frames
-            processor.controllers_dict[f"crop_end {note}"].value = frames
+            crop_start_options["value"] = 0
+            crop_start_options["value"] = frames
+        processor.controllers_dict[f"crop_start {note}"].set_options(crop_start_options)
+        processor.controllers_dict[f"crop_end {note}"].set_options(crop_end_options)
         ticks = []
         labels = []
         i = 0
@@ -491,13 +485,28 @@ class zynthian_engine_clippy(zynthian_engine):
             ticks.append(val)
             labels.append(f"x{ticks[i]}")
             i += 1
-        processor.controllers_dict[f"zoom {note}"] = zynthian_controller(self, f"zoom {note}", {
-            "name": "zoom",
-            "processor": processor,
+        processor.controllers_dict[f"zoom {note}"].set_options({
             "ticks": ticks,
             "labels": labels
         })
         self.update_nudge(processor, note)
+
+    def update_nudge(self, processor, note):
+        zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
+        zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
+        zctrl_zoom = processor.controllers_dict[f"zoom {note}"]
+        frames = zctrl_crop_end.value_max
+        zoom_val = zctrl_zoom.value
+        nudge_factor = frames // (100 * zoom_val)
+        if nudge_factor < 1:
+            nudge_factor = 1
+        nudge_factor_fine = nudge_factor // 100
+        if nudge_factor_fine < 1:
+            nudge_factor_fine = 1
+        zctrl_crop_start.nudge_factor = nudge_factor
+        zctrl_crop_start.nudge_factor_fine = nudge_factor_fine
+        zctrl_crop_end.nudge_factor = nudge_factor
+        zctrl_crop_end.nudge_factor_fine = nudge_factor_fine
 
     def remove_tmp_file(self, processor, phrase):
         note = phrase + 1
