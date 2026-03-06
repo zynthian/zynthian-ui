@@ -1802,12 +1802,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         if flags:
                             skip_loops = ",".join(str(i + 1) for i in range(loop_info[2]) if not (flags >> i) & 1)
                         else:
-                            skip_loops = "All"
+                            skip_loops = "ALL"
                     else:
                         if flags & 1:
-                            skip_loops = "None"
+                            skip_loops = "NONE"
                         else:
-                            skip_loops = "All"
+                            skip_loops = "ALL"
                     options[f"  Loops to play ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
@@ -1958,7 +1958,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     else:
                         options[f"\u2610 Skip Always"] = (0, params, False)
             if options:
-                self.zyngui.screens['option'].config("Select loops to play", options, self.play_flag_cb, close_on_select=False)
+                self.zyngui.screens['option'].config("Loops to play", options, self.play_flag_cb, close_on_select=False)
                 self.zyngui.show_screen('option')
         elif option.startswith("  Loop count"):
             ticks = [0]
