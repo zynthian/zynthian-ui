@@ -32,6 +32,7 @@ from threading import Thread
 from os.path import basename
 
 # Zynthian specific modules
+#from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
@@ -71,6 +72,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         self.bg_color = zynthian_gui_config.color_bg
         self.waveform_color = zynthian_gui_config.color_info
+        self.playcur_color = zynthian_gui_config.color_hl
         self.bg_crop_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 30)
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
@@ -88,6 +90,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             justify=tkinter.CENTER,
             fill=zynthian_gui_config.color_tx_off,
             text="No file loaded"
+        )
+        self.playing_cursor_line = self.widget_canvas.create_line(
+            0, 0, 0, self.height,
+            fill=self.playcur_color,
+            width=2,
+            tags="overlay"
         )
         self.crop_start_rect = self.widget_canvas.create_rectangle(
             0, 0, 0, self.height,
@@ -346,13 +354,21 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 update_markers = True
                 self.refresh_waveform = False
 
-            if update_markers and self.frames:
+            if self.frames:
                 h = self.waveform_height
                 f = self.width / self.frames * self.zoom
-                x = int(f * (self.crop_start - self.offset))
-                self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
-                x = int(f * (self.crop_end - self.offset))
-                self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
+                if update_markers:
+                    # Crop markers
+                    x = int(f * (self.crop_start - self.offset))
+                    self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
+                    x = int(f * (self.crop_end - self.offset))
+                    self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
+                if self.zctrl.engine.nickname == "CL":
+                    # Playing cursor
+                    progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
+                    current_frame = (progress * self.frames // 100) - self.offset
+                    x = int(f * current_frame)
+                    self.widget_canvas.coords(self.playing_cursor_line, x, 0, x, h)
                 refresh_info = True
 
             if refresh_info:
@@ -375,16 +391,54 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     # CUIA & LEDs methods
     # -------------------------------------------------------------------------
 
+    def get_clippy_info(self):
+        if self.zctrl.engine.nickname == "CL":
+            midi_chan = self.zctrl.processor.midi_chan
+            scene = self.zyngui.state_manager.zynseq.scene
+            try:
+                symparts = self.zctrl.symbol.split(" ")
+                #symbol = symparts[0]  # should be "file"!
+                note = int(symparts[1])
+                phrase = note - 1
+            except Exception as e:
+                logging.error(f"Can't determine clippy sample index for '{self.zctrl.symbol}' => {e}")
+                return None
+            return (scene, phrase, midi_chan)
+        else:
+            return None
+
     def cuia_stop(self, param=None):
-        #TODO: Handle transport
+        # Handle transport for clippy
+        clinfo = self.get_clippy_info()
+        if clinfo:
+            self.zyngui.state_manager.zynseq.libseq.setPlayState(clinfo[0], clinfo[1], clinfo[2], 0)
+            return True
         return False
 
     def cuia_toggle_play(self, param=None):
-        #TODO: Handle transport
+        # Handle transport for clippy
+        clinfo = self.get_clippy_info()
+        if clinfo:
+            self.zyngui.state_manager.zynseq.libseq.togglePlayState(clinfo[0], clinfo[1], clinfo[2])
+            return True
         return False
 
     def update_wsleds(self, leds):
-        #TODO: Handle LEDs
-        return
+        # Handle LEDs for clippy
+        clinfo = self.get_clippy_info()
+        if clinfo:
+            wsl = self.zyngui.wsleds
+            color_default = wsl.wscolor_active2
+            play_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(clinfo[0], clinfo[1], clinfo[2])
+            # STOP button:
+            wsl.set_led(leds[2], color_default)
+            # PLAY button:
+            if play_state in (2, 3, 4, 5):
+                wsl.blink(leds[3], wsl.wscolor_green)
+            elif play_state == 1:
+                wsl.set_led(leds[3], wsl.wscolor_green)
+            else:  # play_state == 0:`
+                wsl.set_led(leds[3], color_default)
+
 
 # ------------------------------------------------------------------------------
