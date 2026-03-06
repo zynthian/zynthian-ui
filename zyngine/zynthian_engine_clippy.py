@@ -4,7 +4,8 @@
 #
 # zynthian_engine implementation for clip launcher
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Brian Walton <brian@riban.co.uk>
+#                         Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -23,17 +24,16 @@
 # ******************************************************************************
 
 import os
-import logging
 import re
-from threading import Timer
 import ctypes
+import logging
 from time import sleep
+from threading import Timer
 
 from zynlibs.zynseq import zynseq
+from zyngine.zynthian_engine import zynthian_engine
+from zyngine.zynthian_controller import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
-
-from . import zynthian_engine
-from . import zynthian_controller
 
 import zynautoconnect
 
@@ -92,6 +92,10 @@ class zynthian_engine_clippy(zynthian_engine):
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
         self.libclippy.end()
 
+    # ---------------------------------------------------------------------------
+    # Phrase management => launcher & zynseq integration
+    # ---------------------------------------------------------------------------
+
     def set_phrase(self, processor, phrase):
         """ Select the phrase for control, etc"""
 
@@ -116,60 +120,6 @@ class zynthian_engine_clippy(zynthian_engine):
             self._ctrl_screens = [["Clip", ["file"]]]
             processor.preset_name = ""
         processor.init_ctrl_screens()
-
-    def send_controller_value(self, zctrl):
-        try:
-            symparts = zctrl.symbol.split(" ")
-            symbol = symparts[0]
-            note = int(symparts[1])
-            phrase = note - 1
-        except Exception as e:
-            logging.error(f"Can't determine sample index for '{zctrl.symbol}' => {e}")
-            return
-
-        #logging.debug(f"ZCTRL {symbol}, {note} => {zctrl.value}")
-        match symbol:
-            case "file":
-                self.set_file(zctrl.processor, phrase, True)
-            case "warp":
-                self.set_file(zctrl.processor, phrase)
-            case "mode":
-                self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
-            case "crop_start":
-                zctrl_crop_end = zctrl.processor.controllers_dict[f"crop_end {note}"]
-                if zctrl.value >= zctrl_crop_end.value:
-                    zctrl.set_value(zctrl.crop_end.value - 1)
-                    return
-                self.monitors_dict["crop_start"] = zctrl.value
-                self.start_crop_timer(zctrl.processor, phrase)
-                return
-            case "crop_end":
-                zctrl_crop_start = zctrl.processor.controllers_dict[f"crop_start {note}"]
-                if zctrl.value <= zctrl_crop_start.value:
-                    zctrl.set_value(zctrl_crop_start.value + 1)
-                    return
-                self.monitors_dict["crop_end"] = zctrl.value
-                self.start_crop_timer(zctrl.processor, phrase)
-                return
-            case "gain":
-                try:
-                    self.libclippy.setGain(zctrl.processor.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
-                except Exception as e:
-                    logging.warning(e)
-                return
-            case "zoom":
-                self.update_nudge(zctrl.processor, note)
-                self.monitors_dict["zoom"] = zctrl.value
-                return
-
-    def update_nudge(self, processor, note):
-        zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
-        zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
-        zctrl_zoom = processor.controllers_dict[f"zoom {note}"]
-        frames = zctrl_crop_end.value_max
-        nudge_factor = max(1, frames // (zctrl_zoom.value * 100))
-        zctrl_crop_start.nudge_factor = nudge_factor
-        zctrl_crop_end.nudge_factor = nudge_factor
 
     """ Set play mode
 
@@ -249,6 +199,10 @@ class zynthian_engine_clippy(zynthian_engine):
             except:
                 pass # Ignore unpopulated phrases
 
+    # ---------------------------------------------------------------
+    # Sample loading, cropping & warping
+    # ---------------------------------------------------------------
+
     def set_file(self, processor, phrase, reset=False):
         """ Loads a file into a clip. SRC and warp to new file if necessary
 
@@ -266,7 +220,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
             frames = self.libclippy.getFileFrames(bytes(path, "utf-8"))
-            self.update_controllers(processor, note, frames, reset)
+            self.update_controllers(processor, note, frames)
             ratio = 1.0
             write_file = (sr != self.samplerate)
             processor.preset_name = path.split("/")[-1] # Used for display purpose only
@@ -372,6 +326,19 @@ class zynthian_engine_clippy(zynthian_engine):
 
         processor.init_ctrl_screens()
 
+    def remove_tmp_file(self, processor, phrase):
+        note = phrase + 1
+        try:
+            path = processor.controllers_dict[f"file {note}"].path
+            if path.startswith("/tmp"):
+                os.remove(path)
+        except:
+            pass
+
+    # ---------------------------------------------------------------
+    # Callbacks to re-warp sample file when needed (on-the-fly)
+    # ---------------------------------------------------------------
+
     def start_crop_timer(self, processor, phrase):
         #TODO: This can cause a lot of file writing
         if self.crop_timer:
@@ -408,6 +375,10 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     continue
         self.tempo_mutex = False
+
+    # ---------------------------------------------------------------
+    # Controller management
+    # ---------------------------------------------------------------
 
     def add_controllers(self, processor, note):
         """ Adds a controllers to processor
@@ -476,11 +447,13 @@ class zynthian_engine_clippy(zynthian_engine):
         processor.controllers_dict.update(zctrls)
 
     def update_controllers(self, processor, note, frames=100, reset=False):
+        crop_start_options = {"value_max": frames}
+        crop_end_options =  {"value_max": frames}
         if reset:
-            processor.controllers_dict[f"crop_start {note}"].value_max = frames
-            processor.controllers_dict[f"crop_start {note}"].value = 0
-            processor.controllers_dict[f"crop_end {note}"].value_max = frames
-            processor.controllers_dict[f"crop_end {note}"].value = frames
+            crop_start_options["value"] = 0
+            crop_start_options["value"] = frames
+        processor.controllers_dict[f"crop_start {note}"].set_options(crop_start_options)
+        processor.controllers_dict[f"crop_end {note}"].set_options(crop_end_options)
         ticks = []
         labels = []
         i = 0
@@ -491,23 +464,73 @@ class zynthian_engine_clippy(zynthian_engine):
             ticks.append(val)
             labels.append(f"x{ticks[i]}")
             i += 1
-        processor.controllers_dict[f"zoom {note}"] = zynthian_controller(self, f"zoom {note}", {
-            "name": "zoom",
-            "processor": processor,
+        processor.controllers_dict[f"zoom {note}"].set_options({
             "ticks": ticks,
             "labels": labels
         })
         self.update_nudge(processor, note)
 
-    def remove_tmp_file(self, processor, phrase):
-        note = phrase + 1
+    def update_nudge(self, processor, note):
+        zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
+        zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
+        zctrl_zoom = processor.controllers_dict[f"zoom {note}"]
+        frames = zctrl_crop_end.value_max
+        zoom_val = zctrl_zoom.value
+        nudge_factor = frames // (100 * zoom_val)
+        if nudge_factor < 1:
+            nudge_factor = 1
+        nudge_factor_fine = nudge_factor // 100
+        if nudge_factor_fine < 1:
+            nudge_factor_fine = 1
+        zctrl_crop_start.nudge_factor = nudge_factor
+        zctrl_crop_start.nudge_factor_fine = nudge_factor_fine
+        zctrl_crop_end.nudge_factor = nudge_factor
+        zctrl_crop_end.nudge_factor_fine = nudge_factor_fine
+
+    def send_controller_value(self, zctrl):
         try:
-            path = processor.controllers_dict[f"file {note}"].path
-            #logging.debug(f"REMOVING TMP FILE: CHAIN {processor.chain_id}, PHRASE {phrase} => {path}")
-            if path.startswith("/tmp"):
-                os.remove(path)
-        except:
-            pass
+            symparts = zctrl.symbol.split(" ")
+            symbol = symparts[0]
+            note = int(symparts[1])
+            phrase = note - 1
+        except Exception as e:
+            logging.error(f"Can't determine sample index for '{zctrl.symbol}' => {e}")
+            return
+
+        #logging.debug(f"ZCTRL {symbol}, {note} => {zctrl.value}")
+        match symbol:
+            case "file":
+                self.set_file(zctrl.processor, phrase, True)
+            case "warp":
+                self.set_file(zctrl.processor, phrase)
+            case "mode":
+                self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
+            case "crop_start":
+                zctrl_crop_end = zctrl.processor.controllers_dict[f"crop_end {note}"]
+                if zctrl.value >= zctrl_crop_end.value:
+                    zctrl.set_value(zctrl.crop_end.value - 1)
+                    return
+                self.monitors_dict["crop_start"] = zctrl.value
+                self.start_crop_timer(zctrl.processor, phrase)
+                return
+            case "crop_end":
+                zctrl_crop_start = zctrl.processor.controllers_dict[f"crop_start {note}"]
+                if zctrl.value <= zctrl_crop_start.value:
+                    zctrl.set_value(zctrl_crop_start.value + 1)
+                    return
+                self.monitors_dict["crop_end"] = zctrl.value
+                self.start_crop_timer(zctrl.processor, phrase)
+                return
+            case "gain":
+                try:
+                    self.libclippy.setGain(zctrl.processor.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
+                except Exception as e:
+                    logging.warning(e)
+                return
+            case "zoom":
+                self.update_nudge(zctrl.processor, note)
+                self.monitors_dict["zoom"] = zctrl.value
+                return
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -572,10 +595,6 @@ class zynthian_engine_clippy(zynthian_engine):
 
     #def set_preset(self, processor, preset, preload=False):
     #    return False
-
-    # ---------------------------------------------------------------------------
-    # Specific functions
-    # ---------------------------------------------------------------------------
 
     # ---------------------------------------------------------------------------
     # API methods
