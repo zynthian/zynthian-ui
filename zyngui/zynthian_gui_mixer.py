@@ -1754,12 +1754,18 @@ class zynthian_gui_mixer(zynthian_gui_base):
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
                 offset, follow_name = self.get_follow_info(follow_phrase)
                 flags = info["playFlags"]
-                skip_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
                 options[f"Follow => {follow_name}"] = offset
                 if follow_phrase < phrase:
                     loop_count = info["followRepeat"]
-                    options[f"  Loop count ({loop_count})"] = loop_count
+                    if loop_count:
+                        options[f"  Loop count ({loop_count})"] = loop_count
+                    else:
+                        options[f"  Loop count (∞)"] = loop_count
                 if self.get_phrase_loop_count() is not None:
+                    if flags:
+                        skip_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
+                    else:
+                        skip_loops = "None"
                     options[f"  Skip loops ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
@@ -1929,9 +1935,15 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 self.zyngui.screens['option'].config("Select loop skips", options, self.play_flag_cb, close_on_select=False)
                 self.zyngui.show_screen('option')
         elif option.startswith("  Loop count"):
+            ticks = [0]
+            labels = ["∞"]
+            for i in range(2, 33):
+                ticks.append(i)
+                labels.append(f"{i}")
             option_screen.enable_param_editor(option_screen, "loop_count", {
                 "name": "Loop count",
-                "value_max": 32,
+                "ticks": ticks,
+                "labels": labels,
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
 
