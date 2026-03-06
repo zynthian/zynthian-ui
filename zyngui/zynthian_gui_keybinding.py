@@ -205,6 +205,11 @@ def get_key_action(keycode, modifier):
     logging.debug(
         f"Get keybinding function name for keycode: {keycode}, modifier: {modifier}")
     try:
+        # Hotfix: Map F11 and F12
+        if keycode == 95:
+            keycode = 77
+        if keycode == 96:
+            keycode = 78
         # Check for defined modifier
         if keycode in [63, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 104, 106]:
             modifier &= 253
