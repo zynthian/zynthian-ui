@@ -553,8 +553,6 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         vPhrases.insert(vPhrases.begin() + phrase, pPhrase);
     }
     std::string s;
-    //s = 'A' + phrase;
-    //pPhrase->setName(s);
     pPhrase->setGroup(32);
     pPhrase->setRepeat(255);
     pPhrase->setTimeSig(m_nDefaultTimeSig);
@@ -573,6 +571,17 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         if (m_bEnabled[chan])
             pSequence->setRepeat(1);
     }
+    // Extend loop if required
+    for (uint8_t p = phrase; p < m_vScenes[m_nScene].size(); ++p) {
+        auto pSeq = m_vScenes[m_nScene][p];
+        int16_t nParam = pSeq->getFollowParam();
+        if (pSeq->getFollowAction() == FOLLOW_ACTION_RELATIVE && nParam < 0) {
+            fprintf(stderr, "Inserted phase %u. Checking phrase %u with offset %d\n", phrase, p, nParam + p);
+            if (nParam + p <= phrase + 1)
+                setFollowAction(scene, pSeq, pSeq->getFollowAction(), nParam - 1, pSeq->getPlayFlags(), pSeq->getFollowRepeat());
+            break;
+        }
+    }
     refreshPhrases(scene);
     return pPhrase;
 }
@@ -583,14 +592,9 @@ Sequence* SequenceManager::duplicatePhrase(uint8_t scene, uint8_t phrase) {
         m_vScenes.emplace_back(); // Create missing scenes
     auto& vPhrases = m_vScenes[scene];
     Sequence* pSrcPhrase = vPhrases[phrase];
-    Sequence* pPhrase = new Sequence(nullptr);
+    auto pPhrase = insertPhrase(scene, phrase);
     if (!pPhrase)
         return nullptr;
-    if (phrase + 1 >= vPhrases.size()) {
-        vPhrases.push_back(pPhrase);
-    } else {
-        vPhrases.insert(vPhrases.begin() + phrase + 1, pPhrase);
-    }
     pPhrase->setName(pSrcPhrase->getName());
     pPhrase->setGroup(32);
     pPhrase->setRepeat(pSrcPhrase->getRepeat());
@@ -644,22 +648,21 @@ void SequenceManager::removePhrase(uint8_t scene, uint8_t phrase) {
         pPhrase->m_aChildSequences[nSeq] = nullptr;
     }
 
-    // Delete the pattern used by phrase launcher
-    Track* pTrack = pPhrase->getTrack(0);
-    if (pTrack) {
-       Pattern* pPattern = pTrack->getPattern(0);
-       if (pPattern) {
-           deletePattern(getPatternIndex(pPattern));
-       }
-    }
-
     // Delete phrase launcher sequence
     delete pPhrase;
     vPhrases.erase(vPhrases.begin() + phrase);
 
-    // Refresh follow actions
-    for (auto& pPhrase2: vPhrases)
-        setFollowAction(scene, pPhrase2, pPhrase2->getFollowAction(), pPhrase2->getFollowParam(), pPhrase2->getPlayFlags(), pPhrase2->getFollowRepeat());
+    // Reduce loop if requred
+    for (uint8_t p = phrase; p < vPhrases.size(); ++p) {
+        auto pSeq = vPhrases[p];
+        int16_t nParam = pSeq->getFollowParam();
+        if (pSeq->getFollowAction() == FOLLOW_ACTION_RELATIVE && nParam < 0) {
+            if (nParam + p < phrase)
+                setFollowAction(scene, pSeq, pSeq->getFollowAction(), nParam + 1, pSeq->getPlayFlags(), pSeq->getFollowRepeat());
+            break;
+        }
+    }
+
     refreshPhrases(scene);
 }
 
@@ -670,9 +673,15 @@ void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2
     if (phrase1 == phrase2 || phrase1 >= vPhrases.size() || phrase2 >= vPhrases.size())
         return;
     std::iter_swap(vPhrases.begin() + phrase1, vPhrases.begin() + phrase2);
-    // Update follow actions for all phrases in this scene to handle jumps into and out of these phrases
-    for (auto& phraseSeq: m_vScenes[scene])
-        setFollowAction(scene, phraseSeq, phraseSeq->getFollowAction(), phraseSeq->getFollowParam(), phraseSeq->getPlayFlags(), phraseSeq->getFollowRepeat());
+    int nDiff = phrase1 - phrase2;
+    auto pPhrase = m_vScenes[scene][phrase1];
+    int16_t nParam = pPhrase->getFollowParam();
+    if (pPhrase->getFollowAction() == FOLLOW_ACTION_RELATIVE && pPhrase->getFollowParam() < 0)
+        setFollowAction(scene, pPhrase, pPhrase->getFollowAction(), nParam - nDiff, pPhrase->getPlayFlags(), pPhrase->getFollowRepeat());
+    pPhrase = m_vScenes[scene][phrase2];
+    nParam = pPhrase->getFollowParam();
+    if (pPhrase->getFollowAction() == FOLLOW_ACTION_RELATIVE && pPhrase->getFollowParam() < 0)
+        setFollowAction(scene, pPhrase, pPhrase->getFollowAction(), nParam + nDiff, pPhrase->getPlayFlags(), pPhrase->getFollowRepeat());
     refreshPhrases(scene);
 }
 
