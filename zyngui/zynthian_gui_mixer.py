@@ -269,10 +269,15 @@ class zynthian_gui_launcher_pad():
                         pass
                     case zynseq.FOLLOW_ACTION_RELATIVE:
                         offset = state_seq["followParam"]
+                        repeat = state_seq["followRepeat"]
+                        if repeat:
+                            repeat = f" x{repeat}"
+                        else:
+                            repeat = " x∞"
                         if offset < -1:
-                            mode_text += f"↑{-offset}"
+                            mode_text += f"↑{-offset}{repeat}"
                         elif offset == -1:
-                            mode_text += f"↑"
+                            mode_text += f"↑{repeat}"
                         elif offset == 1:
                             mode_text += f"↓"
                         elif offset > 1:
@@ -1750,23 +1755,24 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     unit = "bars"
                 options[f"Duration ({repeat} {unit})"] = repeat
             if follow_action == zynseq.FOLLOW_ACTION_NONE:
-                options[f"Follow => NONE"] = 0
+                options[f"Automate => NONE"] = 0
             elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
                 offset, follow_name = self.get_follow_info(follow_phrase)
                 flags = info["playFlags"]
-                options[f"Follow => {follow_name}"] = offset
+                options[f"Automate => {follow_name}"] = offset
                 if follow_phrase < phrase:
                     loop_count = info["followRepeat"]
                     if loop_count:
                         options[f"  Loop count ({loop_count})"] = loop_count
                     else:
                         options[f"  Loop count (∞)"] = loop_count
-                if self.get_phrase_loop_count() is not None:
+                loop_count = self.get_phrase_loop_count()
+                if loop_count is not None:
                     if flags:
-                        skip_loops = ",".join(str(i + 1) for i in range(32) if (flags >> i) & 1)
+                        skip_loops = ",".join(str(i + 1) for i in range(loop_count) if not (flags >> i) & 1)
                     else:
-                        skip_loops = "None"
-                    options[f"  Skip loops ({skip_loops})"] = flags
+                        skip_loops = "All"
+                    options[f"  Loops to play ({skip_loops})"] = flags
             if 'tempo' not in info or info['tempo'] == 0.0:
                 options[f"Tempo (NONE)"] = False
             else:
@@ -1902,7 +1908,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 'labels': labels,
                 'value': params
             }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("Follow"):
+        elif option.startswith("Automate"):
             ticks = []
             labels = []
             for phrase in range(self.zynseq.phrases):
@@ -1910,21 +1916,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 ticks.append(offset)
                 labels.append(title)
             option_screen.enable_param_editor(option_screen, "follow", {
-                "name": "Follow",
+                "name": "Automate",
                 "labels": labels,
                 "ticks": ticks,
                 "value": params
             }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("  Skip loops"):
+        elif option.startswith("  Loops to play"):
             val = params
             loop_count = self.get_phrase_loop_count()
             options = {}
             if loop_count > 0:
                 for i in range(loop_count):
                     if val & 1:
-                        options[f"\u2612 {i + 1}"] = (i, params, True)
+                        options[f"\u2610 {i + 1}"] = (i, params, True)
                     else:
-                        options[f"\u2610 {i + 1}"] = (i, params, False)
+                        options[f"\u2612 {i + 1}"] = (i, params, False)
                     val >>= 1
             elif loop_count == 0:
                 if val & 1:
@@ -1932,7 +1938,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 else:
                     options[f"\u2610 Skip Always"] = (0, params, False)
             if options:
-                self.zyngui.screens['option'].config("Select loop skips", options, self.play_flag_cb, close_on_select=False)
+                self.zyngui.screens['option'].config("Select loops to play", options, self.play_flag_cb, close_on_select=False)
                 self.zyngui.show_screen('option')
         elif option.startswith("  Loop count"):
             ticks = [0]
@@ -1955,7 +1961,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             # Set flag
             flags = params[1] | (1 << params[0])
         self.zynseq.set_sequence_param(self.zynseq.scene, self.zynseq.phrase, zynseq.PHRASE_CHANNEL, "playFlags", flags)
-        self.phrase_menu_cb("  Skip loops", flags)
+        self.phrase_menu_cb("  Loops to play", flags)
 
     def remove_phrase(self, phrase):
         self.zynseq.remove_phrase(self.zynseq.scene, phrase)
