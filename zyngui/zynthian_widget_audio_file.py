@@ -69,6 +69,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.v_zoom = 1
         self.crop_start = 0
         self.crop_end = 0
+        self.last_progress = 0
 
         self.bg_color = zynthian_gui_config.color_bg
         self.waveform_color = zynthian_gui_config.color_info
@@ -366,9 +367,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 if self.zctrl.engine.nickname == "CL":
                     # Playing cursor
                     progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
-                    current_frame = (progress * self.frames // 100) - self.offset
-                    x = int(f * current_frame)
-                    self.widget_canvas.coords(self.playing_cursor_line, x, 0, x, h)
+                    if self.last_progress != progress:
+                        self.last_progress = progress
+                        current_frame = int(progress * self.frames / 100) - self.offset
+                        logging.debug(f"PROGRESS: {progress}, FRAME = {current_frame}")
+                        x = int(f * current_frame)
+                        self.widget_canvas.coords(self.playing_cursor_line, x, 0, x, h)
                 refresh_info = True
 
             if refresh_info:
