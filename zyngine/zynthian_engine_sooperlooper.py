@@ -419,7 +419,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
             ['selected_loop_num', {'name': 'selected loop', 'value': 1, 'value_min': 1, 'value_max': 6}],
             ['single_pedal', {'name': 'single pedal', 'value': 0, 'value_max': 1, 'labels': ['>', '<'], 'is_toggle': True}],
             ['selected_loop_cc', {'name': 'midi cc to selected loop', 'value': 127, 'labels':['off', 'on']}],
-            ['load_file', {'name': 'load file', 'is_path': True, 'path_file_types': ["wav"], 'path_dir_names': []}]
+            ['load_file', {'name': 'load file', 'is_path': True, 'path_file_types': ["wav"], 'path_dir_names': None}]
         ]
 
         # Controller Screens
