@@ -389,8 +389,7 @@ class zynseq(zynthian_engine):
             phrase = self.phrases
         self.libseq.duplicatePhrase(scene, phrase)
         if scene == self.scene and self.clippy:
-            self.clippy.insert_phrase(phrase)
-            # TODO Duplicate clips
+            self.clippy.duplicate_phrase(phrase)
         self.refresh_state()
 
     def remove_phrase(self, scene, phrase):

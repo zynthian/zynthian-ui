@@ -180,6 +180,23 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     pass # Ignore unpopulated phrases
 
+    def duplicate_phrase(self, phrase):
+        """ Duplicate a phrase
+        Args:
+            phrase: Index of phrase to duplicate
+        """
+
+        self.insert_phrase(phrase)
+        for processor in self.processors:
+            for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
+                try:
+                    src_zctrl = processor.controllers_dict[f"{symbol} {phrase + 2}"]
+                    dst_zctrl = processor.controllers_dict[f"{symbol} {phrase + 1}"]
+                    dst_zctrl.set_value(src_zctrl.value)
+                except:
+                    pass
+
+
     def nudge_phrase(self, phrase, forward):
         """ Move a phrase forward or backward by one position
         Args:
@@ -195,9 +212,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
                     a = processor.controllers_dict[f"{symbol} {phrase + 1}"]
                     processor.controllers_dict[f"{symbol} {phrase + 1}"] = processor.controllers_dict[f"{symbol} {phrase2 + 1}"]
-                    processor.controllers_dict[f"{symbol} {phrase + 2}"] = a
-                    processor.controllers_dict[f"{symbol} {phrase + 1}"].symbol = f"{symbol} {phrase + 1}"
-                    processor.controllers_dict[f"{symbol} {phrase + 2}"].symbol = f"{symbol} {phrase + 2}"
+                    processor.controllers_dict[f"{symbol} {phrase2 + 1}"] = a
+                    processor.controllers_dict[f"{symbol} {phrase + 1}"].symbol = f"{symbol} {phrase2 + 1}"
+                    processor.controllers_dict[f"{symbol} {phrase + 2}"].symbol = f"{symbol} {phrase2 + 1}"
             except:
                 pass # Ignore unpopulated phrases
 
