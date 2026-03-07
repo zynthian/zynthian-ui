@@ -42,7 +42,7 @@ from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
-from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
+from zyngine.ctrldev.zynthian_ctrldev_base_extended import IntervalTimer, RunTimer, KnobSpeedControl, ButtonTimer, CONST
 from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
 
 
@@ -279,6 +279,9 @@ class FeedbackLEDs:
         self._timer.remove(led)
 
 
+class RefreshTimer(IntervalTimer):
+    RESOLUTION = 0.4
+
 # --------------------------------------------------------------------------
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
@@ -289,11 +292,10 @@ class DeviceHandler(ModeHandlerBase):
         self._colors = colors
         self._knobs_ease = KnobSpeedControl()
         self._is_alt_active = False
-        self._is_sl_alt_active = False
-        self._is_pated_alt_active = False
         self._is_playing = set()
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
+        self._refresh_timer = RefreshTimer()
         self._current_screen_obj = None
 
         cyclable_actions = {
@@ -330,9 +332,27 @@ class DeviceHandler(ModeHandlerBase):
         self._btn_actions = cyclable_actions | press_length_actions
         self._btn_states = {k: -1 for k in cyclable_actions}
 
+    def set_active(self, active):
+        super().set_active(active)
+        # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
+        if not active:
+            self._refresh_timer.remove('refresh_leds')
+            pass
+            #self._zynseq.libseq.updateSequenceInfo()
+        else:
+            self._refresh_timer.add('refresh_leds', 1, self.refresh_timed)
+            pass
+
+    def refresh_timed(self, name):
+        if (name == 'refresh_leds'):
+            self._refresh()
+
     def refresh(self):
         self._leds.all_off()
+        self._refresh()
 
+    def _refresh(self):
+        # self._leds.all_off()
         # On this mode, DEVICE led is always lit
         self._leds.led_blink(BTN_KNOB_CTRL_DEVICE)
 
@@ -347,14 +367,14 @@ class DeviceHandler(ModeHandlerBase):
 
         # Lit up alt-related buttons
         if self._current_screen == 'pattern_editor':
-            zyngui = zynthian_gui_config.zyngui
-            screenref = zyngui.screens['pattern_editor']
-            alt_color = self._colors.COLOR_ALT_OFF if not self._is_pated_alt_active else self._colors.COLOR_ALT_ON
-            fn_color = self._colors.COLOR_FN if not self._is_pated_alt_active else self._colors.COLOR_LOCAL_ALT_ON
-            if self._is_pated_alt_active:
+            screenref = self._current_screen_obj
+            is_pated_alt_active = screenref.alt_mode
+            alt_color = self._colors.COLOR_ALT_OFF if not is_pated_alt_active else self._colors.COLOR_ALT_ON
+            fn_color = self._colors.COLOR_FN if not is_pated_alt_active else self._colors.COLOR_LOCAL_ALT_ON
+            if is_pated_alt_active:
                 for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
                     if (screenref.clipboard[i] is not None):
-                        print(f"screenref cb: {screenref.clipboard[i][2]} pattern: {screenref.pattern}" )
+                        # print(f"screenref cb: {screenref.clipboard[i][2]} pattern: {screenref.pattern}" )
                         if (screenref.clipboard[i][2] == screenref.pattern):
                             self._leds.led_on(btn, self._colors.COLOR_RED, LED_BLINKING_2)
                         else:
@@ -366,10 +386,10 @@ class DeviceHandler(ModeHandlerBase):
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
         else:
             widget_obj = getattr(self._current_screen_obj, "current_widget", None)
-            print(f"classname: |{widget_obj.__class__.__name__}|alt mode:{getattr(widget_obj, 'alt_mode', None)} widgetob: {widget_obj}")
+            # print(f"classname: |{widget_obj.__class__.__name__}|alt mode:{getattr(widget_obj, 'alt_mode', None)} widgetob: {widget_obj}")
             if widget_obj is not None and widget_obj.__class__.__name__ == 'zynthian_widget_sooperlooper':
-                alt_color = self._colors.COLOR_ALT_OFF if not self._is_sl_alt_active else self._colors.COLOR_LOCAL_ALT_ON
-                fn_color = self._colors.COLOR_FN if not self._is_sl_alt_active else self._colors.COLOR_LOCAL_ALT_ON
+                alt_color = self._colors.COLOR_ALT_OFF if not getattr(widget_obj, 'alt_mode', None) else self._colors.COLOR_LOCAL_ALT_ON
+                fn_color = self._colors.COLOR_FN if not getattr(widget_obj, 'alt_mode', None) else self._colors.COLOR_LOCAL_ALT_ON
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
             else:
@@ -414,7 +434,7 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("TOGGLE_ALT_MODE")
             elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                 # Function buttons (F1-F4)
-                if self._current_screen == 'pattern_editor' and self._is_pated_alt_active:
+                if self._current_screen == 'pattern_editor' and self._current_screen_obj.alt_mode:
                     self._btn_timer.is_pressed(note, time.time())
                     # implement clipboard copy here
                     return True
@@ -451,14 +471,7 @@ class DeviceHandler(ModeHandlerBase):
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
 
     def on_alt_mode(self, alt_mode, refresh=False):
-        screen_obj = self._current_screen_obj
-        widget_obj = getattr(screen_obj, "current_widget", None)
-        if self._current_screen == 'pattern_editor':
-            self._is_pated_alt_active = alt_mode
-        elif widget_obj and widget_obj.__class__.__name__ == 'zynthian_widget_sooperlooper':
-            self._is_sl_alt_active = alt_mode
-        else:
-            self._is_alt_active = alt_mode
+        self._is_alt_active = alt_mode
         if refresh:
             self.refresh()
 
@@ -2863,6 +2876,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
         # NOTE: init will call refresh(), so _current_hanlder must be ready!
         super().__init__(state_manager, idev_in, idev_out)
+        self._current_handler.set_active(True)
         self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
         self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
