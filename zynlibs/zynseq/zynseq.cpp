@@ -3127,11 +3127,11 @@ void removePhrase(uint8_t scene, uint8_t phrase) {
     g_bDirty = true;
 }
 
-void swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2) {
+void nudgePhrase(uint8_t scene, uint8_t phrase, bool forward) {
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
-    g_seqMan.swapPhrase(scene, phrase1, phrase2);
+    g_seqMan.nudgePhrase(scene, phrase, forward);
     g_bMutex = false;
     g_bDirty = true;
 }

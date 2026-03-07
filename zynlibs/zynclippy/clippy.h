@@ -90,13 +90,13 @@ uint8_t insertClip(uint8_t channel, uint8_t clip);
 */
 uint8_t removeClip(uint8_t channel, uint8_t clip);
 
-/** @brief  Swap two clips
+/** @brief  Nudge (move) a clip one position
     @param  channel MIDI channel
-    @param  clip1 Index of first clip
-    @param  clip2 Index of second clip
+    @param  clip Index of clip
+    @param  forward True to move the clip forward
     @retval uint8_t Error code
 */
-uint8_t swapClip(uint8_t channel, uint8_t clip1, uint8_t clip2);
+uint8_t nudgeClip(uint8_t channel, uint8_t clip, uint8_t forward);
 
 /** @brief  Set clip gain
     @param  channel MIDI channel

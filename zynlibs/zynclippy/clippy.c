@@ -430,17 +430,19 @@ uint32_t removePlayer(uint8_t channel) {
     return ERROR_SUCCESS;
 }
 
-uint8_t swapClip(uint8_t channel, uint8_t clip1, uint8_t clip2) {
-    if (clip1 >= MAX_CLIPS || clip2 >= MAX_CLIPS || channel > 15)
+uint8_t nudgeClip(uint8_t channel, uint8_t clip, uint8_t forward) {
+    int nDiff = forward ? 1 : -1;
+    int clip2 = clip + nDiff;
+    if (clip >= MAX_CLIPS || clip2 >= MAX_CLIPS || channel > 15)
         return ERROR_RANGE;
     Player* pPlayer = players[channel];
     if (!pPlayer)
         return ERROR_RANGE;
-    Clip* pClip1 = pPlayer->clips[clip1];
+    Clip* pClip = pPlayer->clips[clip];
     Clip* pClip2 = pPlayer->clips[clip2];
     getMutex(); //!@todo Check this won't leave stuck notes
-    pPlayer->clips[clip1] = pClip2;
-    pPlayer->clips[clip2] = pClip1;
+    pPlayer->clips[clip] = pClip2;
+    pPlayer->clips[clip2] = pClip;
     releaseMutex();
     return ERROR_SUCCESS;
 }

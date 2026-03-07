@@ -2226,7 +2226,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if self.launcher_mode:
             if self.zynseq.phrase > 0:
                 if self.moving_phrase:
-                    self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
+                    self.zynseq.nudge_phrase(self.zynseq.scene, self.zynseq.phrase, False)
                     self.build_launchers()
                     self.highlight_launcher()
                 else:
@@ -2242,7 +2242,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             if self.zynseq.phrase < self.zynseq.phrases:
                 if self.moving_phrase:
                     if self.zynseq.phrase < self.zynseq.phrases - 1:
-                        self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
+                        self.zynseq.nudge_phrase(self.zynseq.scene, self.zynseq.phrase, True)
                         self.build_launchers()
                         self.highlight_launcher()
                 else:

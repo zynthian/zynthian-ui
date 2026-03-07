@@ -180,22 +180,24 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     pass # Ignore unpopulated phrases
 
-    def swap_phrase(self, phrase1, phrase2):
-        """ Swap two phrases
-
-        phrase1 Index of first phrase
-        phrase1 Index of second phrase
+    def nudge_phrase(self, phrase, forward):
+        """ Move a phrase forward or backward by one position
+        Args:
+            scene: Index of scene
+            phrase: Index of phrase
+            forward: True to move forward, else move backwards
         """
 
         for processor in self.processors:
-            self.libclippy.swapClip(processor.midi_chan - 16, phrase1, phrase2)
+            self.libclippy.nudgeClip(processor.midi_chan - 16, phrase, forward)
+            phrase2 = phrase + 1 if forward else phrase - 1
             try:
                 for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
-                    a = processor.controllers_dict[f"{symbol} {phrase1 + 1}"]
-                    processor.controllers_dict[f"{symbol} {phrase1 + 1}"] = processor.controllers_dict[f"{symbol} {phrase2 + 1}"]
-                    processor.controllers_dict[f"{symbol} {phrase1 + 2}"] = a
-                    processor.controllers_dict[f"{symbol} {phrase1 + 1}"].symbol = f"{symbol} {phrase1 + 1}"
-                    processor.controllers_dict[f"{symbol} {phrase1 + 2}"].symbol = f"{symbol} {phrase1 + 2}"
+                    a = processor.controllers_dict[f"{symbol} {phrase + 1}"]
+                    processor.controllers_dict[f"{symbol} {phrase + 1}"] = processor.controllers_dict[f"{symbol} {phrase2 + 1}"]
+                    processor.controllers_dict[f"{symbol} {phrase + 2}"] = a
+                    processor.controllers_dict[f"{symbol} {phrase + 1}"].symbol = f"{symbol} {phrase + 1}"
+                    processor.controllers_dict[f"{symbol} {phrase + 2}"].symbol = f"{symbol} {phrase + 2}"
             except:
                 pass # Ignore unpopulated phrases
 

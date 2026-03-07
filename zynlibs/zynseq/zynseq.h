@@ -1462,12 +1462,12 @@ void duplicatePhrase(uint8_t scene, uint8_t phrase);
 */
 void removePhrase(uint8_t scene, uint8_t phrase);
 
-/** @brief  Swap position of two phrases
+/** @brief  Nudge a phrase up of down
     @param  scene Index of scene
-    @param  phrase1 Index of first phrase
-    @param  phrase2 Index of second phrase
+    @param  phrase Index of phrase
+    @param  forward True to move forward, else move backward
 */
-void swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2);
+void nudgePhrase(uint8_t scene, uint8_t phrase, bool forward);
 
 /** @brief  Set phrase time signature in Beats per Bar
     @param  scene Index of scene
