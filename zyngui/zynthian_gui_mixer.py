@@ -1206,6 +1206,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         for strip in self.chain_strips:
             for launcher in strip.launchers:
                 launcher.draw()
+        self.right_canvas.tag_lower("launcher")
         self.highlight_launcher()
 
     def refresh_mixer_controls(self):
@@ -2081,10 +2082,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         if super().switch_select(type):
             return True
-        if self.moving_phrase:
-            self.end_moving_phrase()
-            return True
         elif type == "S":
+            if self.moving_phrase:
+                self.end_moving_phrase()
+                return True
             if self.launcher_mode:
                 if self.zynseq.phrase < self.zynseq.phrases:
                     self.highlighted_strip.launchers[self.zynseq.phrase].on_clip_short_press()
@@ -2128,9 +2129,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     self.highlighted_strip.toggle_solo()
                 return True
         elif swi == 1:
-            if self.moving_phrase:
-                self.end_moving_phrase()
-                return True
             if t == "S":
                 if self.highlighted_strip is not None and not self.back_action():
                     self.highlighted_strip.toggle_mute()

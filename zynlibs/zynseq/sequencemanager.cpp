@@ -296,13 +296,14 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                         // Look for the next automated and playable phrase
                         int16_t nFollowOffset = pSequence->getFollowParam();
                         auto pFollowSequence = pSequence;
-                        for (const auto& safety : m_vScenes[m_nScene]) {
+                        for (const auto& safety : m_vScenes[m_nScene]) { // only used to limit iterations & avoid infinite loop
                             uint8_t nRepeat = pFollowSequence->getFollowRepeat();
+                            //fprintf(stderr, "Phrase end. Looking at phrase %u with follow offset %d and repeat %u\n", nPhrase, nFollowOffset, nRepeat);
                             if (nRepeat && nFollowOffset < 0 && ++m_nFollowCount + 1 > nRepeat) {
                                 nFollowOffset = 1;
                                 m_nFollowCount = 0;
                             }
-                            nPhrase += nFollowOffset; //!@todo Can this cause infinite loop in code?
+                            nPhrase += nFollowOffset;
                             pFollowSequence = getSequence(m_nScene, nPhrase, PHRASE_CHANNEL);
                             if (!pFollowSequence)
                                 break;
