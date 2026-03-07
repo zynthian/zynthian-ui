@@ -538,9 +538,6 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
     def cuia_toggle_alt_mode(self, params=None):
         self.alt_mode = not self.alt_mode
-        # listeners such as device drivers need to check current
-        # screen themselves to account for the special alt mode
-        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, alt_mode=self.alt_mode)
         return True
 
     def cuia_toggle_record(self, params=None):
