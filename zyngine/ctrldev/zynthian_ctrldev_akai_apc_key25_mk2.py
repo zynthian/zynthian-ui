@@ -642,6 +642,11 @@ class MixerHandler(ModeHandlerBase):
         self.refresh()
         return retval
 
+    def scroll_vertically(self, delta):
+        max_phrase = len(self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"]) - 1
+        self.driver.scroll_v = min(max_phrase, max(0, self.driver.scroll_v + delta))
+        zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scroll: {self.driver.scroll_v}")
+
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
 
@@ -673,9 +678,8 @@ class MixerHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("TOGGLE_RECORD")
                 return True  # skip refresh
             elif note == BTN_UP:
-                if self._track_buttons_function == FN_SCENE:
-                    self.driver.scroll_v = max(0, self.driver.scroll_v - 1)
-                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scroll: {self.driver.scroll_v}")
+                if self._track_buttons_function in (FN_SCENE, FN_SEQUENCE_MANAGER):
+                    self.scroll_vertically(-1)
                 else:
                     if self.driver._device_handler._current_screen != 'pattern_editor':
                         self._state_manager.send_cuia("SCREEN_MIXER")
@@ -683,10 +687,8 @@ class MixerHandler(ModeHandlerBase):
                         self._state_manager.send_cuia("BACK")
                 return True  # skip refresh
             elif note == BTN_DOWN:
-                if self._track_buttons_function == FN_SCENE:
-                    max_phrases = len(self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"])
-                    self.driver.scroll_v = min(max_phrases - 1, self.driver.scroll_v + 1)
-                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scroll: {self.driver.scroll_v}")
+                if self._track_buttons_function in (FN_SCENE, FN_SEQUENCE_MANAGER):
+                    self.scroll_vertically(1)
                 else:
                     self._state_manager.send_cuia("SCREEN_ZYNPAD")
                 return True  # skip refresh
