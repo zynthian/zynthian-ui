@@ -674,13 +674,22 @@ class MixerHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("TOGGLE_RECORD")
                 return True  # skip refresh
             elif note == BTN_UP:
-                if self.driver._device_handler._current_screen != 'pattern_editor':
-                    self._state_manager.send_cuia("SCREEN_MIXER")
+                if self._track_buttons_function == FN_SCENE:
+                    self.driver.scroll_v = max(0, self.driver.scroll_v - 1)
+                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scroll: {self.driver.scroll_v}")
                 else:
-                    self._state_manager.send_cuia("BACK")
+                    if self.driver._device_handler._current_screen != 'pattern_editor':
+                        self._state_manager.send_cuia("SCREEN_MIXER")
+                    else:
+                        self._state_manager.send_cuia("BACK")
                 return True  # skip refresh
             elif note == BTN_DOWN:
-                self._state_manager.send_cuia("SCREEN_ZYNPAD")
+                if self._track_buttons_function == FN_SCENE:
+                    max_phrases = len(self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"])
+                    self.driver.scroll_v = min(max_phrases - 1, self.driver.scroll_v + 1)
+                    zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scroll: {self.driver.scroll_v}")
+                else:
+                    self._state_manager.send_cuia("SCREEN_ZYNPAD")
                 return True  # skip refresh
             else:
                 return False
@@ -767,6 +776,7 @@ class MixerHandler(ModeHandlerBase):
 
         # FIXME: move this to padmatrix handler!
         if self._track_buttons_function == FN_SCENE:
+            zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scenes currently unsupported")
             return True
             # Disable scene support for now
             self._zynseq.libseq.setScene(index + 1)
@@ -854,7 +864,7 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._seqman_func is not None:
             return False
         
-        phrase = row
+        phrase = row + self.driver.scroll_v
         self._zynseq.libseq.togglePlayState(self._zynseq.scene, phrase, 32)
         
         # if row >= self._zynseq.col_in_bank:
@@ -932,6 +942,8 @@ class PadMatrixHandler(ModeHandlerBase):
         if not self._libseq.isMidiRecord():
             self._recording_seq = None
         
+        phrases = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"]
+        max_phrase = len(phrases) - 1
         # for phrase in range(self.driver.scroll_v + 0, self.driver.scroll_v + 6):
         #     pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
         # for c in range(self._cols):
@@ -951,9 +963,11 @@ class PadMatrixHandler(ModeHandlerBase):
                 continue
 
             phrase = self._rows - 1 - row + self.driver.scroll_v
+            if phrase > max_phrase:
+                continue
             
-            pad_info = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"][phrase]["sequences"][midi_chan]
-            self.update_pad(4 - row, note % 8, pad_info)
+            pad_info = phrases[phrase]["sequences"][midi_chan]
+            self.update_pad(self._rows - 1 - row, note % 8, pad_info)
 
         self._refresh_tool_buttons()
 
@@ -1004,7 +1018,7 @@ class PadMatrixHandler(ModeHandlerBase):
         col = self._chain_manager.get_chain_index(chain_id) - self.driver.scroll_h
         if not 0 <= col < self._cols:
             return
-        row = phrase
+        row = phrase - self.driver.scroll_v
         idx = col * self._rows + row
         if idx >= len(self._pads):
             return
@@ -1089,6 +1103,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 if self._seqman_func == FN_COPY_SEQUENCE:
                     self._copy_sequence(
                         self._seqman_src_seq[0], self._seqman_src_seq[1], self._zynseq.scene, seq)
+                    self._refresh_ui()
                 elif self._seqman_func == FN_MOVE_SEQUENCE:
                     self._copy_sequence(
                         *self._seqman_src_seq, self._zynseq.scene, seq)
@@ -1101,6 +1116,7 @@ class PadMatrixHandler(ModeHandlerBase):
         self._update_seq_pad(seq)
 
     def _change_scene(self, offset):
+        zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scenes currently unsupported")
         return
         # scenes are moot right now
         scene = min(64, max(1, self._zynseq.scene + offset))
@@ -1118,6 +1134,8 @@ class PadMatrixHandler(ModeHandlerBase):
         led_mode = RGB_MODE_PRIMARY
         led_colour = 0
         group = 32
+        phrase = row + self.driver.scroll_v
+
         try:
             group = pad_info["group"]
         except:
@@ -1126,7 +1144,7 @@ class PadMatrixHandler(ModeHandlerBase):
             state = pad_info["state"]
             repeat = pad_info["repeat"]
             led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
-            patterns = self._get_sequence_patterns(row, group)
+            patterns = self._get_sequence_patterns(phrase, group)
             if (group < 16):
                 is_empty = all(
                      self._zynseq.is_pattern_empty(pattern)
@@ -1195,8 +1213,13 @@ class PadMatrixHandler(ModeHandlerBase):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
 
+    def _refresh_ui(self):
+        self._libseq.updateSequenceInfo()
+        zyngui = zynthian_gui_config.zyngui
+        zyngui.screens['launcher'].refresh_launchers()
+
     def _start_pattern_record(self, seq):
-        midi_chan = seq[1]
+        phrase, midi_chan = seq
         chain_indices = self._chain_manager.get_pos_by_midi_chan(midi_chan)
         if not chain_indices:
             return
@@ -1206,7 +1229,7 @@ class PadMatrixHandler(ModeHandlerBase):
         if self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
         
-        playstate = self._libseq.getPlayState(self._zynseq.scene, seq[0], seq[1])
+        playstate = self._libseq.getPlayState(self._zynseq.scene, phrase, midi_chan)
         if playstate == zynseq.SEQ_STOPPED:
             self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
@@ -1280,8 +1303,7 @@ class PadMatrixHandler(ModeHandlerBase):
                 pated = zyngui.screens['pattern_editor']
                 pated.load_pattern(pattern)
 
-        self._libseq.updateSequenceInfo()
-        zyngui.screens['launcher'].refresh_launchers()
+        self._refresh_ui()
         self._update_seq_pad(seq)
         # self._libseq.updateSequenceInfo()
         # self._libseq.savePatternSnapshot()
@@ -2977,7 +2999,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     if self._is_shifted:
                         pos = self.scroll_h + note % 8
                         row = 4 - note // 8
-                        phrase = row
+                        phrase = self.scroll_v + row
                         chan = self.get_filtered_midi_chan_by_index(pos)
                         
                         if chan is None:
