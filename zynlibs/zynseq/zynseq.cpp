@@ -2817,7 +2817,7 @@ int16_t getSequenceFollowParam(uint8_t scene, uint8_t phrase, uint8_t sequence) 
 void setSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t flags) {
     Sequence* pSequence = g_seqMan.getSequence(scene, phrase, sequence);
     if (pSequence)
-        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, pSequence->getFollowAction(), pSequence->getFollowParam(), flags);
+        g_bDirty |= g_seqMan.setFollowAction(scene, pSequence, pSequence->getFollowAction(), pSequence->getFollowParam(), flags, pSequence->getFollowRepeat());
 }
 
 uint32_t getSequencePlayFlags(uint8_t scene, uint8_t phrase, uint8_t sequence) {

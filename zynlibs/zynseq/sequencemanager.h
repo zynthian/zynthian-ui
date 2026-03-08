@@ -323,7 +323,7 @@ class SequenceManager {
         @param  repeat Quantity of repeats of follow action
         @retval bool True on success
     */
-    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param=0, uint32_t flags=0, uint8_t repeat=0);
+    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param, uint32_t flags, uint8_t repeat);
 
     /** @brief  Reset all follow repeat counter
     */

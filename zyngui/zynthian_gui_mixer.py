@@ -1804,6 +1804,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
                             skip_loops = ",".join(str(i + 1) for i in range(loop_info[2]) if not (flags >> i) & 1)
                         else:
                             skip_loops = "ALL"
+                        if skip_loops == "":
+                            skip_loops = "NONE"
                     else:
                         if flags & 1:
                             skip_loops = "NONE"
