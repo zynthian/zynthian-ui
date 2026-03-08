@@ -41,15 +41,14 @@ class ModeHandlerBase(ModeHandlerBase):
     # FIXME: This way avoids to show Zynpad every time, BUT is coupled to UI!
     def _show_pattern_editor(self, seq=None):
         if seq is not None:
-            self._select_launcher(seq)
+            self._select_launcher(*seq)
         zynthian_gui_config.zyngui.screens["launcher"].edit_pattern()
         
-    def _select_launcher(self, seq):
-        self._zynseq.select_phrase(seq[0])
-        pos = self._chain_manager.get_pos_by_midi_chan(seq[1])
+    def _select_launcher(self, phrase, midi_chan):
+        self._zynseq.select_phrase(phrase)
+        pos = self._chain_manager.get_pos_by_midi_chan(midi_chan)
         self._chain_manager.set_active_chain_by_index(pos[0])
-        self._zynseq.libseq.selectSequence(self._zynseq.scene, seq[0], seq[1])
-        # self._chain_manager.set_active_chain_by_index(seq[1])
+        self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, midi_chan)
 
     # This SHOULD not be coupled to UI! This is needed because when the pattern is changed in
     # zynseq, it is not reflected in pattern editor.
