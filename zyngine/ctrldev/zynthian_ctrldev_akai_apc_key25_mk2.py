@@ -291,7 +291,6 @@ class DeviceHandler(ModeHandlerBase):
         self._leds = leds
         self._colors = colors
         self._knobs_ease = KnobSpeedControl()
-        self._is_alt_active = False
         self._is_playing = set()
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
@@ -331,6 +330,19 @@ class DeviceHandler(ModeHandlerBase):
 
         self._btn_actions = cyclable_actions | press_length_actions
         self._btn_states = {k: -1 for k in cyclable_actions}
+
+    def is_global_alt_active(self):
+        return getattr(zynthian_gui_config.zyngui, "alt_mode", False)
+
+    def is_alt_active(self):
+        widget_obj = getattr(self._current_screen_obj, "current_widget", None)
+        widget_alt = getattr(widget_obj, "alt_mode", None)
+        if widget_alt is not None:
+            return widget_alt
+        screen_alt = getattr(self._current_screen_obj, "alt_mode", None)
+        if screen_alt is not None:
+            return screen_alt
+        return self.is_global_alt_active()
 
     def set_active(self, active):
         super().set_active(active)
@@ -393,8 +405,8 @@ class DeviceHandler(ModeHandlerBase):
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
             else:
-                alt_color = self._colors.COLOR_ALT_OFF if not self._is_alt_active else self._colors.COLOR_ALT_ON
-                fn_color = self._colors.COLOR_FN if not self._is_alt_active else self._colors.COLOR_ALT_ON
+                alt_color = self._colors.COLOR_ALT_OFF if not self.is_alt_active() else self._colors.COLOR_ALT_ON
+                fn_color = self._colors.COLOR_FN if not self.is_alt_active() else self._colors.COLOR_ALT_ON
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
 
@@ -442,7 +454,7 @@ class DeviceHandler(ModeHandlerBase):
                     fn_btns = {BTN_F1: 1, BTN_F2: 2, BTN_F3: 3, BTN_F4: 4}
                     pgm = fn_btns.get(note)
                     if pgm is not None:
-                        pgm += 4 if self._is_alt_active else 0
+                        pgm += 4 if self.is_alt_active() else 0
                         self._state_manager.send_cuia("PROGRAM_CHANGE", [pgm])
                         return True
             else:
@@ -471,7 +483,6 @@ class DeviceHandler(ModeHandlerBase):
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
 
     def on_alt_mode(self, alt_mode, refresh=False):
-        self._is_alt_active = alt_mode
         if refresh:
             self.refresh()
 
@@ -2888,6 +2899,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     def end(self):
         for signal, subsignal, callback in self._signals:
             zynsigman.unregister(signal, subsignal, callback)
+        self._current_handler.set_active(False)
         super().end()
         zynthian_ctrldev_zynpad.end(self)
 
