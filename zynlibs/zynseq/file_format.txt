@@ -29,7 +29,6 @@ Block:
 	Map / scale [1] (Added in V1)
 	Scale tonic [1] (Added in V1)
 	Reference note [1] (Added in V5. May be used to remember location in pattern editor)
-	CC interpolation mode [128] (Added in V11. Interpolation mode for each CC number from 0 to 127)
 	Quantize notes [1] (Added in V9)
     Swing Divisor [1] (Added in V9)
     Swing Amount [4] (Added in V9. BCD with 4 decimal positions)

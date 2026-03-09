@@ -990,7 +990,7 @@ const char* convertToJson(const char* filename) {
                 jEvent.push_back(0);        // Stutter speed ramp
 
                 if (nVersion > 8) {         // Play chance
-                    jEvent.push_back(int(fileReadBCD(pFile) * 100));
+                    jEvent.push_back(int(fileRead8u(pFile) * 100));
                     nBlockSize -= 1;
                 } else {
                     jEvent.push_back(100);
@@ -1061,13 +1061,13 @@ const char* convertToJson(const char* filename) {
                 fileRead8u(pFile); // No longer use trigger note
                 fileRead8(pFile); // Padding
                 char sName[17];
-                memset(sName, '\0', 17);
                 if (nVersion > 5) {
                     if (checkBlock(pFile, nBlockSize, 24))
                         continue;
-                    for (size_t nIndex = 0; nIndex < 16; ++nIndex)
+                    size_t nIndex;
+                    for (nIndex = 0; nIndex < 16; ++nIndex)
                         sName[nIndex] = fileRead8u(pFile);
-                    sName[16] = '\0';
+                    sName[nIndex] = '\0';
                     nBlockSize -= 16;
                 } else {
                     sprintf(sName, "%d", nSequence + 1);
@@ -1128,7 +1128,6 @@ const char* convertToJson(const char* filename) {
                     if (jScene["phrases"].size() <= nPhrase) {
                         // Create phrase
                         json jPhrase;
-                        jPhrase["name"] = std::string(1, 'A' + nPhrase);
                         jPhrase["mode"] = 4; // Phrase play mode
                         jScene["phrases"].push_back(jPhrase);
                     }

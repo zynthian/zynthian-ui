@@ -2,6 +2,11 @@
 
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+BUILD_TYPE="Release"
+if [ $# -ge 1 ]; then
+    BUILD_TYPE=$1
+fi
+
 scripts=(
   "zynsmf/build.sh"
   "zynseq/build.sh"
@@ -15,7 +20,7 @@ failed_scripts=()
 
 for script in "${scripts[@]}"; do
   echo "Running $script..."
-  "$SCRIPT_PATH/$script"
+  "$SCRIPT_PATH/$script" $BUILD_TYPE
   exit_code=$?
 
   if [ $exit_code -ne 0 ]; then
