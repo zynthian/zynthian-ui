@@ -116,13 +116,13 @@ class zynthian_gui_launcher_pad():
                                                   anchor=tkinter.NW,
                                                   tags=(*tags, "launcher_mode_icon"))
         # Play mode text
-        self.mode_text = self.canvas.create_text(x + 3, y - 3,
+        self.mode_text = self.canvas.create_text(x + 4, y - 2,
                                                  anchor=tkinter.NW,
                                                  fill=self.gui_mixer.legend_txt_color,
                                                  font=self.gui_mixer.font_clip_state,
                                                  tags=(*tags, "launcher_mode_text"))
         # Timesig text
-        self.timesig = self.canvas.create_text(x + 3, y + self.height,
+        self.timesig = self.canvas.create_text(x + 4, y + self.height,
                                                anchor=tkinter.SW,
                                                fill=self.gui_mixer.legend_txt_color,
                                                font=self.gui_mixer.font_timebase,
@@ -322,7 +322,7 @@ class zynthian_gui_launcher_pad():
                                 color_mode = "#FFB080"
                             # Finite Loop
                             elif state_seq["followRepeat"] > 0:
-                                color_mode = "#50FF50"
+                                color_mode = "#FFFFFF"
                         # Forward Jump
                         elif offset > 1:
                             color_mode = "#B0FFFF"
