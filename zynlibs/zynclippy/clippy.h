@@ -72,6 +72,12 @@ uint8_t addPlayer(uint8_t channel);
 */
 uint32_t removePlayer(uint8_t channel);
 
+/** @brief  Idle a clip player
+    @param  channel MIDI channel
+    @retval uint8_t Error code
+*/
+uint32_t idlePlayer(uint8_t channel);
+
 //!@todo Remove clip manipulation (insert, remove, swap).
 
 /** @brief  Insert clip

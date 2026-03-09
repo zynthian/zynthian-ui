@@ -218,6 +218,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.remove_tmp_file(processor, phrase)
 
         if path:
+            self.libclippy.unloadClip(processor.midi_chan - 16, note)
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
             frames = self.libclippy.getFileFrames(bytes(path, "utf-8"))
             self.update_controllers(processor, note, frames)
