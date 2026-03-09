@@ -1937,7 +1937,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 offset, title = self.get_follow_info(phrase)
                 ticks.append(offset)
                 labels.append(title)
-            option_screen.enable_param_editor(option_screen, "follow", {
+            option_screen.enable_param_editor(option_screen, "automate", {
                 "name": "Automate",
                 "labels": labels,
                 "ticks": ticks,
@@ -2059,7 +2059,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 else:
                     value = 0
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", value)
-            case "follow":
+            case "automate":
                 if zctrl.value == 0:
                     followAction = zynseq.FOLLOW_ACTION_NONE
                     followParam = 0
@@ -2068,6 +2068,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     followParam = zctrl.value
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", followAction)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", followParam)
+                if followParam < 0: 
+                    # Set (unset) loop contents to automate NEXT
+                    for p in range(phrase + followParam, phrase):
+                        if self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][p]["followAction"] == zynseq.FOLLOW_ACTION_NONE:
+                            self.zynseq.set_sequence_param(self.zynseq.scene, p, zynseq.PHRASE_CHANNEL, "followAction", zynseq.FOLLOW_ACTION_RELATIVE)
+                            self.zynseq.set_sequence_param(self.zynseq.scene, p, zynseq.PHRASE_CHANNEL, "followParam", 1)
             case "loop_count":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followRepeat", zctrl.value)
 
