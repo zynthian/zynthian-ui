@@ -288,21 +288,20 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             }
             if (nEventType & CLOCK_TRIG_SEQEND) {
                 // Reached end of sequence repeats
-                if (pSequence->isPhraseLauncher()) {
+                if (pSequence->isPhraseLauncher() && pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE) {
                     // Handle phrase follow actions
-                    if (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE) {
-                        uint8_t nPhrase = pSequence->getPhrase();
-                        //!@todo check for non-zero follow offset
-                        // Look for the next automated and playable phrase
-                        int16_t nFollowOffset = pSequence->getFollowParam();
+                    uint8_t nPhrase = pSequence->getPhrase();
+                    int16_t nFollowOffset = pSequence->getFollowParam();
+                    if (nFollowOffset) {
                         auto pFollowSequence = pSequence;
-                        for (const auto& safety : m_vScenes[m_nScene]) {
+                        for (const auto& safety : m_vScenes[m_nScene]) { // limit iterations to avoid infinite loop
+                            // Look for the next automated and playable phrase
                             uint8_t nRepeat = pFollowSequence->getFollowRepeat();
                             if (nRepeat && nFollowOffset < 0 && ++m_nFollowCount + 1 > nRepeat) {
                                 nFollowOffset = 1;
                                 m_nFollowCount = 0;
                             }
-                            nPhrase += nFollowOffset; //!@todo Can this cause infinite loop in code?
+                            nPhrase += nFollowOffset;
                             pFollowSequence = getSequence(m_nScene, nPhrase, PHRASE_CHANNEL);
                             if (!pFollowSequence)
                                 break;
@@ -556,6 +555,15 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
     pPhrase->setGroup(32);
     pPhrase->setRepeat(255);
     pPhrase->setTimeSig(m_nDefaultTimeSig);
+    if (phrase + 1 < vPhrases.size()) {
+        auto pPrevPhrase = vPhrases[phrase + 1];
+        uint8_t nFollowAction = pPrevPhrase->getFollowAction();
+        int16_t nFollowParam = pPrevPhrase->getFollowParam();
+        if (nFollowAction == FOLLOW_ACTION_RELATIVE && nFollowParam) {
+            pPhrase->setTimeSig(pPrevPhrase->getTimeSig());
+            pPhrase->setFollowAction(FOLLOW_ACTION_RELATIVE, 1, 0, 0);
+        }
+    }
     for (uint8_t chan = 0; chan < 32; ++chan) {
         Sequence* pSequence = new Sequence(pPhrase);
         pSequence->setGroup(chan);
@@ -567,7 +575,7 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
            addPattern(pSequence, 0, 0, nPattern);
         }
         pPhrase->m_aChildSequences[chan] = pSequence;
-        setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0, 0); // Loop
+        setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0, 0, 0); // Loop
         if (m_bEnabled[chan])
             pSequence->setRepeat(1);
     }
@@ -576,7 +584,6 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         auto pSeq = m_vScenes[m_nScene][p];
         int16_t nParam = pSeq->getFollowParam();
         if (pSeq->getFollowAction() == FOLLOW_ACTION_RELATIVE && nParam < 0) {
-            fprintf(stderr, "Inserted phase %u. Checking phrase %u with offset %d\n", phrase, p, nParam + p);
             if (nParam + p <= phrase + 1)
                 setFollowAction(scene, pSeq, pSeq->getFollowAction(), nParam - 1, pSeq->getPlayFlags(), pSeq->getFollowRepeat());
             break;
@@ -666,15 +673,16 @@ void SequenceManager::removePhrase(uint8_t scene, uint8_t phrase) {
     refreshPhrases(scene);
 }
 
-void SequenceManager::swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2) {
+void SequenceManager::nudgePhrase(uint8_t scene, uint8_t phrase, bool forward) {
     if (scene >= m_vScenes.size())
         return;
+    int nDiff = forward ? 1 : -1;
+    int phrase2 = phrase + nDiff;
     auto& vPhrases = m_vScenes[scene];
-    if (phrase1 == phrase2 || phrase1 >= vPhrases.size() || phrase2 >= vPhrases.size())
+    if (phrase >= vPhrases.size() || phrase2 >= vPhrases.size() || phrase2 < 0)
         return;
-    std::iter_swap(vPhrases.begin() + phrase1, vPhrases.begin() + phrase2);
-    int nDiff = phrase1 - phrase2;
-    auto pPhrase = m_vScenes[scene][phrase1];
+    std::iter_swap(vPhrases.begin() + phrase, vPhrases.begin() + phrase2);
+    auto pPhrase = m_vScenes[scene][phrase];
     int16_t nParam = pPhrase->getFollowParam();
     if (pPhrase->getFollowAction() == FOLLOW_ACTION_RELATIVE && pPhrase->getFollowParam() < 0)
         setFollowAction(scene, pPhrase, pPhrase->getFollowAction(), nParam - nDiff, pPhrase->getPlayFlags(), pPhrase->getFollowRepeat());
@@ -734,7 +742,7 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
             case FOLLOW_ACTION_ABSOLUTE:
                 if (param < 0 || param > vPhrases.size())
                     return false;
-                sequence->setFollowAction(action, param, flags);
+                sequence->setFollowAction(action, param, flags, 0);
                 return true;
                 break;
             case FOLLOW_ACTION_RELATIVE:
@@ -752,7 +760,7 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                                 return true;
                             } else {
                                 // Attempt to select non-existing phrase so set to none.
-                                sequence->setFollowAction(0);
+                                sequence->setFollowAction(0, 0, 0, 0);
                             }
                             break;
                         }
@@ -760,7 +768,7 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                 }
                 break;
             default:
-                sequence->setFollowAction(0, 0, 0);
+                sequence->setFollowAction(0, 0, 0, 0);
         }
     }
     return false;

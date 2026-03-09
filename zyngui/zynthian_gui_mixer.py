@@ -116,13 +116,13 @@ class zynthian_gui_launcher_pad():
                                                   anchor=tkinter.NW,
                                                   tags=(*tags, "launcher_mode_icon"))
         # Play mode text
-        self.mode_text = self.canvas.create_text(x + 3, y - 3,
+        self.mode_text = self.canvas.create_text(x + 4, y - 2,
                                                  anchor=tkinter.NW,
                                                  fill=self.gui_mixer.legend_txt_color,
                                                  font=self.gui_mixer.font_clip_state,
                                                  tags=(*tags, "launcher_mode_text"))
         # Timesig text
-        self.timesig = self.canvas.create_text(x + 3, y + self.height,
+        self.timesig = self.canvas.create_text(x + 4, y + self.height,
                                                anchor=tkinter.SW,
                                                fill=self.gui_mixer.legend_txt_color,
                                                font=self.gui_mixer.font_timebase,
@@ -322,7 +322,7 @@ class zynthian_gui_launcher_pad():
                                 color_mode = "#FFB080"
                             # Finite Loop
                             elif state_seq["followRepeat"] > 0:
-                                color_mode = "#50FF50"
+                                color_mode = "#FFFFFF"
                         # Forward Jump
                         elif offset > 1:
                             color_mode = "#B0FFFF"
@@ -1206,6 +1206,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         for strip in self.chain_strips:
             for launcher in strip.launchers:
                 launcher.draw()
+        self.right_canvas.tag_lower("launcher")
         self.highlight_launcher()
 
     def refresh_mixer_controls(self):
@@ -1803,6 +1804,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
                             skip_loops = ",".join(str(i + 1) for i in range(loop_info[2]) if not (flags >> i) & 1)
                         else:
                             skip_loops = "ALL"
+                        if skip_loops == "":
+                            skip_loops = "NONE"
                     else:
                         if flags & 1:
                             skip_loops = "NONE"
@@ -1934,7 +1937,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 offset, title = self.get_follow_info(phrase)
                 ticks.append(offset)
                 labels.append(title)
-            option_screen.enable_param_editor(option_screen, "follow", {
+            option_screen.enable_param_editor(option_screen, "automate", {
                 "name": "Automate",
                 "labels": labels,
                 "ticks": ticks,
@@ -2056,7 +2059,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 else:
                     value = 0
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", value)
-            case "follow":
+            case "automate":
                 if zctrl.value == 0:
                     followAction = zynseq.FOLLOW_ACTION_NONE
                     followParam = 0
@@ -2065,6 +2068,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     followParam = zctrl.value
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", followAction)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", followParam)
+                if followParam < 0: 
+                    # Set (unset) loop contents to automate NEXT
+                    for p in range(phrase + followParam, phrase):
+                        if self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][p]["followAction"] == zynseq.FOLLOW_ACTION_NONE:
+                            self.zynseq.set_sequence_param(self.zynseq.scene, p, zynseq.PHRASE_CHANNEL, "followAction", zynseq.FOLLOW_ACTION_RELATIVE)
+                            self.zynseq.set_sequence_param(self.zynseq.scene, p, zynseq.PHRASE_CHANNEL, "followParam", 1)
             case "loop_count":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followRepeat", zctrl.value)
 
@@ -2081,10 +2090,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         if super().switch_select(type):
             return True
-        if self.moving_phrase:
-            self.end_moving_phrase()
-            return True
         elif type == "S":
+            if self.moving_phrase:
+                self.end_moving_phrase()
+                return True
             if self.launcher_mode:
                 if self.zynseq.phrase < self.zynseq.phrases:
                     self.highlighted_strip.launchers[self.zynseq.phrase].on_clip_short_press()
@@ -2128,9 +2137,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     self.highlighted_strip.toggle_solo()
                 return True
         elif swi == 1:
-            if self.moving_phrase:
-                self.end_moving_phrase()
-                return True
             if t == "S":
                 if self.highlighted_strip is not None and not self.back_action():
                     self.highlighted_strip.toggle_mute()
@@ -2228,7 +2234,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if self.launcher_mode:
             if self.zynseq.phrase > 0:
                 if self.moving_phrase:
-                    self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
+                    self.zynseq.nudge_phrase(self.zynseq.scene, self.zynseq.phrase, False)
                     self.build_launchers()
                     self.highlight_launcher()
                 else:
@@ -2244,7 +2250,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             if self.zynseq.phrase < self.zynseq.phrases:
                 if self.moving_phrase:
                     if self.zynseq.phrase < self.zynseq.phrases - 1:
-                        self.zynseq.swap_phrase(self.zynseq.scene, self.zynseq.phrase, self.zynseq.phrase - nudge)
+                        self.zynseq.nudge_phrase(self.zynseq.scene, self.zynseq.phrase, True)
                         self.build_launchers()
                         self.highlight_launcher()
                 else:

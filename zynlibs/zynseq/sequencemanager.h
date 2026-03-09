@@ -286,12 +286,12 @@ class SequenceManager {
     */
     void removePhrase(uint8_t scene, uint8_t phrase);
 
-    /** @brief  Swap position of two phrases
+    /** @brief  Nudge a phrase up of down
         @param  scene Index of scene
-        @param  phrase1 Index of first phrase
-        @param  phrase2 Index of second phrase
+        @param  phrase Index of phrase
+        @param  forward True to move forward, else move backward
     */
-    void swapPhrase(uint8_t scene, uint8_t phrase1, uint8_t phrase2);
+    void nudgePhrase(uint8_t scene, uint8_t phrase, bool forward);
 
     /** @brief  Set the time signature for a phrase
         @param  scene Index of scene
@@ -323,7 +323,7 @@ class SequenceManager {
         @param  repeat Quantity of repeats of follow action
         @retval bool True on success
     */
-    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param=0, uint32_t flags=0, uint8_t repeat=0);
+    bool setFollowAction(uint8_t scene, Sequence* sequence, uint8_t action, int16_t param, uint32_t flags, uint8_t repeat);
 
     /** @brief  Reset all follow repeat counter
     */

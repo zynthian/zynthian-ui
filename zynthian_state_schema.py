@@ -172,12 +172,16 @@ ZynthianState = {
                         1.0, # Duration of event
                         144, # MIDI command
                         60, # MIDI value 1 at start of event
-                        60, # MIDI value 1 at end of event
                         100, # MIDI value 2 at start of event
+                        60, # MIDI value 1 at end of event
                         0, # MIDI value 2 at end of event
                         0, # Quantity of stutters
                         1, # Duration of each stutter
-                        100 # Probability % of event triggering
+                        0, # Stutter ramp
+                        100, # Probability % of event triggering
+                        1, # Play frequency
+                        100, # Stutter play chance (%)
+                        1 # Stutter frequency
                     ], # ... Other events
                 ]
             }, # ... Other patterns

@@ -236,7 +236,7 @@ class Sequence {
         @param  flags Bitwise flags indicating which play loops should be skipped
         @param  repeat Quantity of repeats of follow action
     */
-    void setFollowAction(uint8_t action, int16_t param=0, uint32_t flags=0, uint8_t repeat=0);
+    void setFollowAction(uint8_t action, int16_t param, uint32_t flags, uint8_t repeat);
 
     /** @brief  Get follow action
         @retval uint8_t Follow action
