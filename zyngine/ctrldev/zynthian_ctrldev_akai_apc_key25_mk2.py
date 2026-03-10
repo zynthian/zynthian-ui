@@ -365,7 +365,9 @@ class DeviceHandler(ModeHandlerBase):
         self._refresh()
 
     def _refresh(self):
-        # self._leds.all_off()
+        if self._state_manager.power_save_mode:
+            return True
+
         # On this mode, DEVICE led is always lit
         self._leds.led_blink(BTN_KNOB_CTRL_DEVICE)
 
