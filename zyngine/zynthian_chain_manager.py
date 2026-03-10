@@ -369,7 +369,9 @@ class zynthian_chain_manager:
             for processor in chain.get_processors():
                 self.remove_processor(chain_id, processor, False)
             chain.reset()
-            if chain_id != 0:
+            if chain_id == 0:
+                chain.zynmixer_proc.zynmixer.set_mute(chain.zynmixer_proc.mixer_chan, False) # Unmute main chain
+            else:
                 self.chains.pop(chain_id)
                 del chain
 

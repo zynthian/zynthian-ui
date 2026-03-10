@@ -216,13 +216,15 @@ class zynthian_gui:
     def start_capture_log(self, title="ui_sesion"):
         now = datetime.now()
         self.capture_log_ts0 = now
-        self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
+        self.capture_log_fname = f"{title}-{now.strftime('%Y%m%d%H%M%S')}"
+        if title == "ui_session":
+            title = self.capture_log_fname
         self.capture_log = True
         self.start_capture_ffmpeg()
         if self.wsleds:
             self.wsleds.reset_last_state()
-        self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
-        self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
+        self.write_capture_log(f"LAYOUT: {zynthian_gui_config.wiring_layout}")
+        self.write_capture_log(f"TITLE: {title}")
         zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
     def start_capture_ffmpeg(self):
@@ -1258,7 +1260,7 @@ class zynthian_gui:
         self.screens['admin'].last_state_action()
 
     def cuia_start_workflow_capture(self, params=None):
-        self.start_capture_log()
+        self.start_capture_log(*params)
 
     def cuia_stop_workflow_capture(self, params=None):
         self.stop_capture_log()
@@ -1937,6 +1939,31 @@ class zynthian_gui:
             lib_zyncore.zynaptik_cvout_set_note0(int(params[0]))
         except Exception as err:
             logging.debug(err)
+
+    # -------------------------------------------------------------------
+    # CUIA backend API - TODO: Move to non-gui api
+    # -------------------------------------------------------------------
+
+    def cuia_api(self, params):
+        """ Access the backend API
+        params (tuple):
+            api: Which api to access: "sm" for state manager, "cm" for chain manager
+            method: Name of method to call
+            params: comma separated list of method parameters
+        """
+
+        try:
+            api, method, *params = params
+            match api:
+                case "sm":
+                    fn = getattr(self.state_manager, method)
+                case "cm":
+                    fn = getattr(self.chain_manager, method)
+                case _:
+                    return
+            fn(*params)
+        except Exception as err:
+             logging.debug(err)
 
     # -------------------------------------------------------------------
     # Zynswitch Event Management
