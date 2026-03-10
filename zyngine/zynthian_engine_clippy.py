@@ -237,7 +237,6 @@ class zynthian_engine_clippy(zynthian_engine):
             self.remove_tmp_file(processor, phrase)
 
         if path:
-            self.libclippy.unloadClip(processor.midi_chan - 16, note)
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
             frames = self.libclippy.getFileFrames(bytes(path, "utf-8"))
             self.update_controllers(processor, note, frames)
@@ -311,6 +310,15 @@ class zynthian_engine_clippy(zynthian_engine):
                     path = dst_path
                     file_zctrl.path = path
                     #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
+
+                # Setup zynseq sequence
+                self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
+                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
+                self.libseq.updateSequenceInfo()
+
+                if whole_beats < 1:
+                    whole_beats = beats_per_bar
                 if f"beats {note}" in processor.controllers_dict:
                     if can_warp:
                         beats_zctrl.value = whole_beats
@@ -319,17 +327,11 @@ class zynthian_engine_clippy(zynthian_engine):
                         beats_zctrl.value = 0
                         warp_zctrl.value = 0
 
-                # Setup zynseq sequence
-                if whole_beats < 1:
-                    whole_beats = beats_per_bar
-                self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
-                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
-                self.libseq.updateSequenceInfo()
                 # Setup clippy note
-                new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"))
+                new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"), whole_beats)
                 if note != new_note:
                     logging.warning(f"Clippy error - wrong note {note}/{new_note} assigned!")
+
                 # Refresh UI
                 if phrase == self.selected_phrase:
                     self.set_phrase(processor, phrase)
@@ -371,6 +373,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if self.crop_timer:
             self.crop_timer.cancel()
         self.crop_timer = None
+        self.libclippy.idlePlayerClip(processor.midi_chan - 16, phrase)
         self.set_file(processor, phrase)
 
     def start_tempo_timer(self, tempo=None):
@@ -379,6 +382,16 @@ class zynthian_engine_clippy(zynthian_engine):
             self.tempo_timer.cancel()
         self.tempo_timer = Timer(1.0, self.tempo_timer_cb)
         self.tempo_timer.start()
+        # Silence (Idle) all playing samples:
+        for processor in self.processors:
+            for phrase in range(self.zynseq.phrases):
+                symbol = f"warp {phrase + 1}"
+                try:
+                    if processor.controllers_dict.get(symbol).value:
+                        self.libclippy.idlePlayerClip(processor.midi_chan - 16, phrase)
+                except:
+                    continue
+
 
     def tempo_timer_cb(self):
         if self.tempo_timer:

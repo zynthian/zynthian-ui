@@ -11,7 +11,8 @@ enum STATE {
     STATE_READY,    // Cached, ready for use
     STATE_STARTING, // Switch sndfile
     STATE_PLAYING,  // Buffer in use for playback (may be from preload or ring buffer)
-    STATE_STOPPING  // Fade to avoid stop clitch
+    STATE_STOPPING,  // Fade to avoid stop clitch
+    STATE_SYNCYNG
 };
 
 enum ERROR {
@@ -49,9 +50,10 @@ uint8_t getFreeClip(uint8_t channel);
     @param  channel MIDI channel
     @param  note MIDI note to trigger clip or 0 for next available
     @param  path Full (or relative) path and filename
+    @param  nbeats Total number of beats in sample file
     @retval uint8_t Clip ID (MIDI note) or 0 on error
 */
-uint8_t loadClip(uint8_t channel, uint8_t note, const char* path);
+uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats);
 
 /** @brief  Unload a file from a player
     @param  channel MIDI channel
@@ -70,13 +72,14 @@ uint8_t addPlayer(uint8_t channel);
     @param  channel MIDI channel
     @retval uint8_t Error code
 */
-uint32_t removePlayer(uint8_t channel);
+uint8_t removePlayer(uint8_t channel);
 
-/** @brief  Idle a clip player
+/** @brief  Idle Player
     @param  channel MIDI channel
+    @param  clip Index of clip to insert
     @retval uint8_t Error code
 */
-uint32_t idlePlayer(uint8_t channel);
+uint8_t idlePlayerClip(uint8_t channel, uint8_t clip);
 
 //!@todo Remove clip manipulation (insert, remove, swap).
 

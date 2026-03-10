@@ -39,6 +39,7 @@ typedef struct {
     uint32_t frames;  // Quantity of frames in loaded clip
     uint8_t channels; // Quantity of channels in clip
     float gain;       // Gain factor
+    uint16_t nbeats;  // Number of beats
     char path[256];   // Loaded file path and filename
     float *data_a;    // Sample data for A channel (L)
     float *data_b;    // Sample data for B channel (R)
@@ -47,6 +48,7 @@ typedef struct {
 typedef struct {
     uint8_t state;           // Play state
     uint32_t play_pos;       // Position of playhead in frames
+    uint32_t beat;           // Beat counter
     jack_port_t* jack_out_a; // Left jack output port
     jack_port_t* jack_out_b; // Right jack output port
     SNDFILE* sndfile;        // Pointer to an open sndfile used to read current clip data
@@ -115,6 +117,7 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                         // Note 0 stops playback
                         if (player->state == STATE_PLAYING) {
                             player->state = STATE_STOPPING;
+                            player->beat = 0;
                         }
                     } else {
                         if (player->state == STATE_READY || player->state == STATE_PLAYING) {
@@ -124,6 +127,7 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                                 break;
                             player->play_pos = event.time;
                             player->state = STATE_STARTING;
+                            player->beat = 0;
                         }
                     }
                     break;
@@ -134,6 +138,28 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                 break;
             case MIDI_CC:
                 //setGain(event.buffer[0] & 0x0f, event.buffer[1], (float)(event.buffer[2]) / 64);
+                break;
+            case MIDI_AFTERTOUCH:
+                // Used for beat sync
+                uint8_t channel = event.buffer[0] & 0x0f;
+                player = players[channel];
+                if (!player)
+                    break;
+                // Resume playing at beat sync
+                if (player->state == STATE_SYNCYNG && player->current_clip) {
+                    player->beat = player->beat % player->current_clip->nbeats;
+                    if (player->beat == 0) {
+                        player->play_pos = event.time;
+                        player->state = STATE_STARTING;
+                    }
+                    else {
+                        player->play_pos = (player->beat * player->current_clip->frames / player->current_clip->nbeats) - event.time;
+                        player->state = STATE_PLAYING;
+                    }
+                    //printf("SYNCYNG AT => %d / %d (NUM BEATS = %d)\n", player->play_pos, player->current_clip->frames, player->current_clip->nbeats);
+                }
+                player->beat++;
+                //printf("Beat => %d\n", player->beat);
                 break;
         }
     }
@@ -196,18 +222,6 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
             //TODO Crossfade
             //printf("POSTPLAYING CHANNEL %d, STATE=%d => %d\n", channel, player->state, player->play_pos);
         }
-        else {
-            if (player->state == STATE_STARTING) {
-                player->state = STATE_PLAYING;
-            }
-            else if (player->state == STATE_PLAYING) {
-                player->play_pos += frames;
-            }
-            else if ( player->state == STATE_STOPPING) {
-                player->play_pos = 0;
-                player->state = STATE_READY;
-            }
-        }
     }
     mutex = 0;
     return 0;
@@ -223,7 +237,7 @@ void reset() {
         for (uint32_t id = 0; id < MAX_CLIPS; ++id) {
             Clip* clip = player->clips[id];
             if (clip)
-                loadClip(channel, id, clip->path);
+                loadClip(channel, id, clip->path, clip->nbeats);
         }
     }
     releaseMutex();
@@ -328,7 +342,7 @@ uint8_t addPlayer(uint8_t channel) {
     return channel;
 }
 
-uint32_t removePlayer(uint8_t channel) {
+uint8_t removePlayer(uint8_t channel) {
     if(channel >= 16)
         return ERROR_RANGE;
     Player* player = players[channel];
@@ -346,6 +360,20 @@ uint32_t removePlayer(uint8_t channel) {
     jack_port_unregister(jack_client, player->jack_out_a);
     jack_port_unregister(jack_client, player->jack_out_b);
     free(player);
+    return ERROR_SUCCESS;
+}
+
+uint8_t idlePlayerClip(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return ERROR_RANGE;
+    Player* player = players[channel];
+    if(player == NULL)
+        return ERROR_CREATE;
+    if (player->current_clip == player->clips[clip] && player->state == STATE_PLAYING) {
+        getMutex();
+        player->state = STATE_IDLE;
+        releaseMutex();
+    }
     return ERROR_SUCCESS;
 }
 
@@ -409,7 +437,7 @@ uint8_t getFreeClip(uint8_t channel) {
     return 0;
 }
 
-uint8_t loadClip(uint8_t channel, uint8_t note, const char* path) {
+uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats) {
     if(channel >= 16 || note >= MAX_CLIPS)
         return 0;
     Player* player = players[channel];
@@ -464,6 +492,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path) {
         strcpy(clip->path, path);
         clip->channels = info.channels;
         clip->frames = info.frames;
+        clip->nbeats = nbeats;
         // Load mono sample data
         if (info.channels == 1) {
             sf_count_t frames = sf_readf_float(sndfile, clip->data_a, info.frames);
@@ -488,16 +517,14 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path) {
         sf_close(sndfile);
         return 0;
     }
-    uint8_t clip_playing;
-    if (player->current_clip == player->clips[id] && player->state == STATE_PLAYING)
-        clip_playing = 1;
-    else
-        clip_playing = 0;
+    uint8_t curclip = (player->current_clip == player->clips[id]);
     unloadClip(channel, note);
     player->clips[id] = clip;
-    if (clip_playing) {
+    if (curclip) {
         getMutex();
         player->current_clip = clip;
+        if (player->state == STATE_IDLE)
+            player->state = STATE_SYNCYNG;
         releaseMutex();
     }
     //fprintf(stderr, "clippy loadClip(channel=%u, note=%u, path=%s) id=%u\n", channel, note, path, id);
@@ -516,10 +543,11 @@ uint8_t unloadClip(uint8_t channel, uint8_t note) {
     Clip* clip = player->clips[id];
     if(clip == NULL)
         return ERROR_RANGE;
-
-    if (player->current_clip == player->clips[id] && player->state == STATE_PLAYING) {
+    if (player->current_clip == player->clips[id]) {
         getMutex();
         player->current_clip = NULL;
+        if (player->state == STATE_PLAYING)
+            clip->state = STATE_IDLE;
         releaseMutex();
     }
     player->clips[id] = NULL;
