@@ -104,6 +104,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             else:
                 self.list_data.append(
                     (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
+            self.list_data.append((self.zyngui.cuia_screen_audio_player, 0, "Audio Recorder", ["Show audio recorder/player.", "audio_recorder.png"]))
+            self.list_data.append((self.zyngui.cuia_screen_midi_recorder, 0, "MIDI Recorder", ["Show SMF recorder/player.", "midi_recorder.png"]))
+            self.list_data.append((self.zyngui.cuia_screen_alsa_mixer, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
 
         super().fill_list()
 

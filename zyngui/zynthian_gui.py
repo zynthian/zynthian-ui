@@ -82,7 +82,6 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3 import zynthian_gui_zs3
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
 from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
@@ -217,13 +216,15 @@ class zynthian_gui:
     def start_capture_log(self, title="ui_sesion"):
         now = datetime.now()
         self.capture_log_ts0 = now
-        self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
+        self.capture_log_fname = f"{title}-{now.strftime('%Y%m%d%H%M%S')}"
+        if title == "ui_session":
+            title = self.capture_log_fname
         self.capture_log = True
         self.start_capture_ffmpeg()
         if self.wsleds:
             self.wsleds.reset_last_state()
-        self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
-        self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
+        self.write_capture_log(f"LAYOUT: {zynthian_gui_config.wiring_layout}")
+        self.write_capture_log(f"TITLE: {title}")
         zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
     def start_capture_ffmpeg(self):
@@ -508,17 +509,10 @@ class zynthian_gui:
         self.screens['admin'] = zynthian_gui_admin()
         self.screens['mixer'] = zynthian_gui_mixer()
 
-        # Create the right main menu screen
-        if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            self.screens['main_menu'] = zynthian_gui_chain_menu()
-        else:
-            self.screens['main_menu'] = zynthian_gui_main_menu()
-
         # Create UI Apps Screens
         self.screens['audio_player'] = self.screens['control']
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
-        self.screens['launcher'] = self.screens['mixer']
         #self.screens['arranger'] = zynthian_gui_arranger()
         self.screens['pattern_editor'] = zynthian_gui_pated_notes()
         self.screens['pated_cc'] = zynthian_gui_pated_cc()
@@ -1266,7 +1260,7 @@ class zynthian_gui:
         self.screens['admin'].last_state_action()
 
     def cuia_start_workflow_capture(self, params=None):
-        self.start_capture_log()
+        self.start_capture_log(*params)
 
     def cuia_stop_workflow_capture(self, params=None):
         self.stop_capture_log()
@@ -1525,9 +1519,6 @@ class zynthian_gui:
         if params:
             self.show_screen_reset(params[0])
 
-    def cuia_screen_main_menu(self, params=None):
-        self.show_screen("main_menu")
-
     def cuia_screen_admin(self, params=None):
         self.show_screen("admin")
 
@@ -1549,6 +1540,9 @@ class zynthian_gui:
 
     def cuia_screen_midi_recorder(self, params=None):
         self.show_screen("midi_recorder")
+
+    def cuia_screen_audio_player(self, params=None):
+        self.show_screen("audio_player")
 
     def cuia_screen_alsa_mixer(self, params=None):
         self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
@@ -1947,6 +1941,31 @@ class zynthian_gui:
             logging.debug(err)
 
     # -------------------------------------------------------------------
+    # CUIA backend API - TODO: Move to non-gui api
+    # -------------------------------------------------------------------
+
+    def cuia_api(self, params):
+        """ Access the backend API
+        params (tuple):
+            api: Which api to access: "sm" for state manager, "cm" for chain manager
+            method: Name of method to call
+            params: comma separated list of method parameters
+        """
+
+        try:
+            api, method, *params = params
+            match api:
+                case "sm":
+                    fn = getattr(self.state_manager, method)
+                case "cm":
+                    fn = getattr(self.chain_manager, method)
+                case _:
+                    return
+            fn(*params)
+        except Exception as err:
+             logging.debug(err)
+
+    # -------------------------------------------------------------------
     # Zynswitch Event Management
     # -------------------------------------------------------------------
 
@@ -1976,7 +1995,7 @@ class zynthian_gui:
                 return True
 
     def is_current_screen_menu(self):
-        if self.current_screen in ("main_menu", "engine", "chain_manager", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
+        if self.current_screen in ("chain_manager", "engine", "chain_manager", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
                                    "audio_out", "midi_prog") or self.current_screen.endswith("_options"):
             return True
         if len(self.screen_history) > 1:
@@ -1984,7 +2003,7 @@ class zynthian_gui:
                 return True
             if self.current_screen in ("option", "confirm", "keyboard"):
                 parent_views = ("arranger", "pattern_editor", "preset",
-                                "bank", "main_menu", "chain_options", "processor_options")
+                                "bank", "chain_manager", "chain_options", "processor_options")
                 if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
                     return True
                 elif self.screen_history[-2] == "midi_config" and len(self.screen_history) > 2 and self.screen_history[-3] != "admin":
@@ -2009,10 +2028,7 @@ class zynthian_gui:
         if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ("bank", "preset", "audio_player"):
             return True
         # if self.is_current_screen_menu():
-        if self.current_screen == "main_menu":
-            screen_name = "menu"
-        else:
-            screen_name = self.current_screen
+        screen_name = self.current_screen
         if action_config['S'] and action_config['S'].lower().endswith(screen_name):
             return True
         return False
@@ -2162,8 +2178,7 @@ class zynthian_gui:
 
         # Default actions for the 4 standard ZynSwitches
         if i == 0:
-            self.show_screen('main_menu')
-            return True
+            return False
 
         elif i == 1:
             try:

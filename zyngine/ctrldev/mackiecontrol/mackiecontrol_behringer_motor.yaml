@@ -260,7 +260,7 @@ ccnum_buttons:
     command: None
   84:
     name: transport_marker
-    command: cuia_SCREEN_MAIN_MENU
+    command: cuia_SCREEN_CHAIN_MANAGER
   85:
     name: transport_nudge
     command: cuia_SCREEN_ADMIN
