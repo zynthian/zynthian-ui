@@ -249,7 +249,7 @@ class ModeHandlerBase:
 
     SCREEN_CUIA_MAP = {
         "option":         "MENU",
-        "main_menu":      "MENU",
+        "chain_manager":  "MENU",
         "admin":          "SCREEN_ADMIN",
         "mixer":          "SCREEN_MIXER",
         "alsa_mixer":     "SCREEN_ALSA_MIXER",

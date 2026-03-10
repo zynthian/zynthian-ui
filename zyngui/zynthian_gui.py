@@ -82,7 +82,6 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3 import zynthian_gui_zs3
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
 from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
@@ -508,17 +507,10 @@ class zynthian_gui:
         self.screens['admin'] = zynthian_gui_admin()
         self.screens['mixer'] = zynthian_gui_mixer()
 
-        # Create the right main menu screen
-        if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            self.screens['main_menu'] = zynthian_gui_chain_menu()
-        else:
-            self.screens['main_menu'] = zynthian_gui_main_menu()
-
         # Create UI Apps Screens
         self.screens['audio_player'] = self.screens['control']
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
-        self.screens['launcher'] = self.screens['mixer']
         #self.screens['arranger'] = zynthian_gui_arranger()
         self.screens['pattern_editor'] = zynthian_gui_pated_notes()
         self.screens['pated_cc'] = zynthian_gui_pated_cc()
@@ -1525,9 +1517,6 @@ class zynthian_gui:
         if params:
             self.show_screen_reset(params[0])
 
-    def cuia_screen_main_menu(self, params=None):
-        self.show_screen("main_menu")
-
     def cuia_screen_admin(self, params=None):
         self.show_screen("admin")
 
@@ -1549,6 +1538,9 @@ class zynthian_gui:
 
     def cuia_screen_midi_recorder(self, params=None):
         self.show_screen("midi_recorder")
+
+    def cuia_screen_audio_player(self, params=None):
+        self.show_screen("audio_player")
 
     def cuia_screen_alsa_mixer(self, params=None):
         self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
@@ -1976,7 +1968,7 @@ class zynthian_gui:
                 return True
 
     def is_current_screen_menu(self):
-        if self.current_screen in ("main_menu", "engine", "chain_manager", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
+        if self.current_screen in ("chain_manager", "engine", "chain_manager", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
                                    "audio_out", "midi_prog") or self.current_screen.endswith("_options"):
             return True
         if len(self.screen_history) > 1:
@@ -1984,7 +1976,7 @@ class zynthian_gui:
                 return True
             if self.current_screen in ("option", "confirm", "keyboard"):
                 parent_views = ("arranger", "pattern_editor", "preset",
-                                "bank", "main_menu", "chain_options", "processor_options")
+                                "bank", "chain_manager", "chain_options", "processor_options")
                 if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
                     return True
                 elif self.screen_history[-2] == "midi_config" and len(self.screen_history) > 2 and self.screen_history[-3] != "admin":
@@ -2009,10 +2001,7 @@ class zynthian_gui:
         if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ("bank", "preset", "audio_player"):
             return True
         # if self.is_current_screen_menu():
-        if self.current_screen == "main_menu":
-            screen_name = "menu"
-        else:
-            screen_name = self.current_screen
+        screen_name = self.current_screen
         if action_config['S'] and action_config['S'].lower().endswith(screen_name):
             return True
         return False
@@ -2162,8 +2151,7 @@ class zynthian_gui:
 
         # Default actions for the 4 standard ZynSwitches
         if i == 0:
-            self.show_screen('main_menu')
-            return True
+            return False
 
         elif i == 1:
             try:

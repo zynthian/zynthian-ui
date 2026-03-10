@@ -196,7 +196,7 @@ class zynthian_gui:
         self.state_manager.start_busy("ui startup")
 
         snapshot_loaded = False
-        init_screen = "main_menu"
+        init_screen = "chain_manager"
         # Try to load "last_state" snapshot...
         if zynthian_gui_config.restore_last_state:
             snapshot_loaded = self.state_manager.load_last_state_snapshot()
@@ -461,13 +461,13 @@ class zynthian_gui:
         if self.chain_manager.get_chain_count() > 1:
             self.state_manager.save_last_state_snapshot()
         self.state_manager.clean_all()
-        self.show_screen_reset('main_menu')
+        self.show_screen_reset('chain_manager')
 
     def clean_chains(self):
         if self.chain_manager.get_chain_count() > 1:
             self.state_manager.save_last_state_snapshot()
         self.state_manager.clean_chains()
-        self.show_screen_reset('main_menu')
+        self.show_screen_reset('chain_manager')
 
     # -------------------------------------------------------------------
     # Callable UI Actions
@@ -877,7 +877,7 @@ class zynthian_gui:
 
         # Default actions for the 4 standard ZynSwitches
         if i == 0:
-            self.show_screen('main_menu')
+            self.show_screen('chain_manager')
             return True
 
         elif i == 1:

@@ -269,7 +269,7 @@ ccnum_buttons:
     command: cuia_SCREEN_LAUNCHER
   86:
     name: transport_cycle
-    command: cuia_SCREEN_MAIN_MENU
+    command: cuia_SCREEN_CHAIN_MANAGER
   87:
     name: transport_drop
     command: cuia_SCREEN_CONTROL

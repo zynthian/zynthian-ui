@@ -382,7 +382,7 @@ class DeviceHandler(ModeHandlerBase):
     def on_screen_change(self, screen):
         screen_map = {
             "option":         (BTN_OPT_ADMIN, 0),
-            "main_menu":      (BTN_OPT_ADMIN, 0),
+            "chain_manager":      (BTN_OPT_ADMIN, 0),
             "admin":          (BTN_OPT_ADMIN, 1),
             "mixer":    (BTN_MIX_LEVEL, 0),
             "alsa_mixer":     (BTN_MIX_LEVEL, 1),

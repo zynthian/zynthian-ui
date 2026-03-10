@@ -834,7 +834,7 @@ class DeviceHandler(ModeHandlerBase):
                         else "SCREEN_BANK" if self._current_screen == "preset"
                         else "SCREEN_CONTROL")
             elif btn == self.CC_PAD_OPT_ADMIN:
-                cuia = "SCREEN_ADMIN" if self._current_screen == "main_menu" else "MENU"
+                cuia = "SCREEN_ADMIN" if self._current_screen == "chain_manager" else "MENU"
             elif btn == self.CC_PAD_SEL_YES:
                 self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
 

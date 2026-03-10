@@ -94,7 +94,7 @@ NoteCuiaDefault = {
     "53": "ARROW_LEFT",
     "55": "BACK",
     "57": "SELECT",
-    "60": "SCREEN_MAIN_MENU",
+    "60": "SCREEN_CHAIN_MANAGER",
     "62": "SCREEN_ADMIN",
     "64": "SCREEN_MIXER",
     "65": "SCREEN_SNAPSHOT",
