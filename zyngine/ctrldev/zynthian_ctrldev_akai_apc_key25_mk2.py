@@ -100,6 +100,7 @@ BTN_PAD_14 = BTN_PAD_UP = 0x0D
 BTN_PAD_15 = BTN_SEL_YES = 0x0E
 BTN_PAD_16 = BTN_F3 = 0x0F
 BTN_PAD_21 = BTN_PAD_RECORD = 0x14
+BTN_PAD_22 = BTN_INSERT_CHAIN = 0x15
 BTN_PAD_23 = BTN_PAD_PLAY = 0x16
 BTN_PAD_24 = BTN_F2 = 0x17
 BTN_PAD_32 = BTN_F1 = 0x1F
@@ -128,7 +129,7 @@ class COLORS:
     COLOR_AQUA = 0x21
     COLOR_BLUE_DARK = COLOR_ALT_OFF = 0x2D
     COLOR_BLUE_LIGHT = 0x24
-    COLOR_WHITE = COLOR_FN = 0x03
+    COLOR_WHITE = COLOR_INSERT_CHAIN = COLOR_FN = 0x03
     COLOR_EGYPT = 0x6C
     COLOR_ORANGE = COLOR_STATE_2 = COLOR_LOCAL_ALT_ON = 0x09
     COLOR_ORANGE_LIGHT = 0x08
@@ -410,6 +411,7 @@ class DeviceHandler(ModeHandlerBase):
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
 
         self._leds.led_on(BTN_ALT, alt_color, LED_BRIGHT_100)
+        self._leds.led_on(BTN_INSERT_CHAIN, self._colors.COLOR_INSERT_CHAIN, LED_BRIGHT_100)
 
         # Lit up state-full control buttons
         for btn, state in self._btn_states.items():
@@ -421,6 +423,14 @@ class DeviceHandler(ModeHandlerBase):
             self._leds.led_on(BTN_PAD_PLAY, self._colors.COLOR_PLAYING, LED_BLINKING_8)
         if self._is_recording:
             self._leds.led_on(BTN_PAD_RECORD, self._colors.COLOR_RED, LED_BLINKING_8)
+
+    def insert_chain(self, params=None):
+        zyngui = zynthian_gui_config.zyngui
+        # pos = zyngui.chain_manager.get_chain_index(self.chain.chain_id)
+        active_chain = self._chain_manager.get_active_chain()
+        pos = zyngui.chain_manager.get_chain_index(active_chain.chain_id if active_chain else 0)
+        zyngui.screens["add_chain"].set_chain_pos(pos)
+        zyngui.show_screen("add_chain")
 
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
@@ -441,6 +451,8 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
             elif note == BTN_BACK_NO:
                 self._state_manager.send_cuia("BACK")
+            elif note == BTN_INSERT_CHAIN:
+                self.insert_chain()
             elif note == BTN_ALT:
                 self._state_manager.send_cuia("TOGGLE_ALT_MODE")
             elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
