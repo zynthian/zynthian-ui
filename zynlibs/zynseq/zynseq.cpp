@@ -482,7 +482,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
             // *** THIS IS WHERE THE SEQUENCES ARE CLOCKED ***
             //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
-            uint8_t nPlayingSequences = g_seqMan.clock(nTickTime, &g_mSchedule, bSync);
+            uint8_t nPlayingSequences = g_seqMan.clock(nTickTime, &g_mSchedule, bSync, bBeat);
 
             // Check for sequenced timebase changes (from patterns)
             if (g_seqMan.isTempoChanged()) {

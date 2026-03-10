@@ -192,7 +192,7 @@ void SequenceManager::updateAllSequenceLengths() {
     }
 }
 
-uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync) {
+uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync, bool bBeat) {
     /** Get events scheduled for next tick from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
@@ -234,6 +234,9 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                         pSequence->setPlayed(nCount);
                         pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
                     }
+                }
+                if (bBeat) {
+                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_CHAN_PRESSURE | nChannel), 1, 0}));
                 }
                 pSequence->setPlayPosition(nPos);
             } else if (bSync &&(nPlayState == STOPPING || nPlayState == STOPPING_SYNC)) {

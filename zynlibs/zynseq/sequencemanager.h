@@ -109,10 +109,11 @@ class SequenceManager {
     /** @brief  Handle clock
         @param  nTime Offset since sequence tick epoch for this tick
         @param  pSchedule Pointer to the schedule to populate with events
-        @param  bSync True indicates a sync pulse
+        @param  bSync True indicates a bar sync pulse
+        @param  bBeat True indicates a beat pulse
         @retval uint8_t Bitwise flag indication sumary of playing sequences. [1: Playing 2:Starting]
     */
-    uint8_t clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync);
+    uint8_t clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync, bool bBeat);
 
     /** @brief  Get pointer to sequence
         @param  scene Index of scene
