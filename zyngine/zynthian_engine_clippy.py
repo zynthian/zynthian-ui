@@ -240,9 +240,10 @@ class zynthian_engine_clippy(zynthian_engine):
             sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
             frames = self.libclippy.getFileFrames(bytes(path, "utf-8"))
             self.update_controllers(processor, note, frames)
-            ratio = 1.0
-            write_file = (sr != self.samplerate)
             processor.preset_name = path.split("/")[-1] # Used for display purpose only
+
+            quality = 4     # Re-sampling quality (1-4)
+            ratio = 1.0
 
             # Try to determine playing tempo
             tempo = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo")
@@ -289,27 +290,11 @@ class zynthian_engine_clippy(zynthian_engine):
                 can_warp = whole_beats <= MAX_BEATS and duration <= MAX_DURATION
                 factor = (whole_beats * file_tempo) / (beats * tempo)
 
-                # File BPM matches current BPM
-                if abs(factor - 1.0) < 0.0001:
-                    bpm_match = True
-                else:
-                    bpm_match = False
-
-                if warp_value and not bpm_match and can_warp:
-                    # Warp audio to fit sequence length, only if short enough to avoid slow warp
-                    write_file = True
-
-                try:
-                    dst_path = file_zctrl.path
-                except:
-                    dst_path = f"/tmp/clippy_{self.tmp_file_idx:04x}.wav"
-                    self.tmp_file_idx += 1
-                quality = 4     # Re-sampling quality (1-4)
-                if write_file and self.libclippy.copyFile(bytes(path, "utf-8"), bytes(dst_path, "utf-8"), quality, ctypes.c_float(factor), crop_start, crop_end) == 0:
-                    #logging.debug(f"SAMPLE COPIED with WARP FACTOR {factor} =>  {path}")
-                    path = dst_path
-                    file_zctrl.path = path
-                    #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
+                #try:
+                #    dst_path = file_zctrl.path
+                #except:
+                #    dst_path = f"/tmp/clippy_{self.tmp_file_idx:04x}.wav"
+                #    self.tmp_file_idx += 1
 
                 # Setup zynseq sequence
                 self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
@@ -327,10 +312,14 @@ class zynthian_engine_clippy(zynthian_engine):
                         beats_zctrl.value = 0
                         warp_zctrl.value = 0
 
+                #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] x{factor} => {path}")
                 # Setup clippy note
-                new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"), whole_beats)
+                new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"),
+                                          whole_beats, crop_start, crop_end, quality, ctypes.c_float(factor))
                 if note != new_note:
                     logging.warning(f"Clippy error - wrong note {note}/{new_note} assigned!")
+
+                #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
 
                 # Refresh UI
                 if phrase == self.selected_phrase:
@@ -401,6 +390,7 @@ class zynthian_engine_clippy(zynthian_engine):
             sleep(0.01)
         self.tempo_mutex = True
         for processor in self.processors:
+            # TODO: Reload clips starting for the playing one!!
             for phrase in range(self.zynseq.phrases):
                 symbol = f"warp {phrase + 1}"
                 try:
