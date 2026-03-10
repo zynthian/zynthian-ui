@@ -117,8 +117,10 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                         // Note 0 stops playback
                         if (player->state == STATE_PLAYING) {
                             player->state = STATE_STOPPING;
-                            player->beat = 0;
+                        } else {
+                            player->state == STATE_READY;
                         }
+                        player->beat = 0;
                     } else {
                         if (player->state == STATE_READY || player->state == STATE_PLAYING) {
                             // Start playing clip
