@@ -204,6 +204,20 @@ class zynthian_gui_base(tkinter.Frame):
         self.fg_color = zynthian_gui_config.color_header_tx
         self.init_buttonbar()
 
+        # Status menu
+        self.status_menu_actions = []
+        self.status_menu_visible = False
+        self.status_menu_canvas = tkinter.Canvas(
+            self.main_frame,
+            bg=zynthian_gui_config.color_bg,
+            highlightthickness=0
+        )
+        self.configure_status_menu([
+            ("Tempo", "tempo"),
+            ("Play", "toggle_play"),
+            ("Record", "toggle_record")
+        ])
+
         self.button_push_ts = 0
 
         self.main_mute = 0
@@ -444,7 +458,10 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default status short touch action
     def status_short_touch_action(self):
-        self.zyngui.callable_ui_action('tempo')
+        if self.status_menu_visible:
+            self.hide_status_menu()
+        elif self.status_menu_actions:
+            self.show_status_menu()
 
     # Default status bold touch action
     def status_bold_touch_action(self):
@@ -535,6 +552,7 @@ class zynthian_gui_base(tkinter.Frame):
         if self.shown:
             if self.param_editor_zctrl:
                 self.disable_param_editor()
+            self.hide_status_menu()
             self.shown = False
             self.grid_remove()
 
@@ -652,6 +670,72 @@ class zynthian_gui_base(tkinter.Frame):
             int(self.status_h * 0.9),
             fill=zynthian_gui_config.color_status_midi,
             state=tkinter.HIDDEN)
+
+    def configure_status_menu(self, items):
+        """ Configure the status menu
+        Args:
+            items: List of (label, action). Action can be CUIA string or callable
+        """
+
+        self.status_menu_actions = items or []
+        self.build_status_menu()
+
+    def build_status_menu(self):
+        self.status_menu_canvas.delete("all")
+        if not self.status_menu_actions:
+            return
+
+        panel_width = self.width // 6
+        button_height = self.height // 6
+
+        for i, (label, action) in enumerate(self.status_menu_actions):
+            y0 = i * button_height
+            y1 = y0 + button_height
+            rect = self.status_menu_canvas.create_rectangle(
+                0, y0,
+                panel_width, y1,
+                fill=self.bg_color,
+                outline=self.fg_color
+            )
+            txt = self.status_menu_canvas.create_text(
+                panel_width // 2,
+                (y0 + y1) // 2,
+                text=label,
+                fill=self.fg_color,
+                font=zynthian_gui_config.font_buttonbar
+            )
+        self.status_menu_canvas.bind("<Button-1>", self.cb_status_menu_click)
+
+    def cb_status_menu_click(self, event):
+        button_height = self.height // 6
+        idx = int(event.y // button_height)
+        if idx >= len(self.status_menu_actions):
+            return
+        label, action = self.status_menu_actions[idx]
+        if callable(action):
+            action()
+        else:
+            self.zyngui.callable_ui_action(action)
+        self.hide_status_menu()
+
+    def show_status_menu(self):
+        if not self.status_menu_actions:
+            return
+        if not self.status_menu_visible:
+            panel_width = self.width // 6
+            self.status_menu_canvas.place(
+                x=self.width - panel_width - 2,
+                y=0,
+                width=panel_width,
+                height=self.height // 6 * len(self.status_menu_actions) + 2
+            )
+            tkinter.Misc.tkraise(self.status_menu_canvas)
+            self.status_menu_visible = True
+
+    def hide_status_menu(self):
+        if self.status_menu_visible:
+            self.status_menu_canvas.place_forget()
+            self.status_menu_visible = False
 
     def init_dpmeter(self):
         width = int(self.status_l - 2 * self.status_rh - 1)

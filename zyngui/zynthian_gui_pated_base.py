@@ -1682,9 +1682,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def get_playback_status(self):
         return self.zynseq.libseq.getPlayState(self.zynseq.scene, self.phrase, self.sequence)
 
-    def status_short_touch_action(self):
-        self.toggle_playback()
-
     # -------------------------------------------------------------------------
     # CUIA & LEDs methods
     # -------------------------------------------------------------------------
