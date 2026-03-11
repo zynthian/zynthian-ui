@@ -420,6 +420,10 @@ class DeviceHandler(ModeHandlerBase):
             color = [self._colors.COLOR_STATE_1, self._colors.COLOR_STATE_2, self._colors.COLOR_STATE_0][state]
             self._leds.led_on(btn, color, LED_BRIGHT_100)
 
+        # Tempo Screen
+        if self._current_screen != "tempo" and self._zynseq.libseq.getMetronomeMode() > 0:
+            self._leds.led_on(BTN_METRONOME, self._colors.COLOR_BLUE, LED_BLINKING_2)
+
         # Lit up play/record buttons
         if self._is_playing:
             self._leds.led_on(BTN_PAD_PLAY, self._colors.COLOR_PLAYING, LED_BLINKING_8)
