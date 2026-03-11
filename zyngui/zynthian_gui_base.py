@@ -685,19 +685,19 @@ class zynthian_gui_base(tkinter.Frame):
         if not self.status_menu_actions:
             return
 
-        panel_width = self.width // 6
-        button_height = self.height // 6
+        panel_width = self.width // 6 - 2
+        button_height = self.height // 6 - 2
 
         for i, (label, action) in enumerate(self.status_menu_actions):
             y0 = i * button_height
             y1 = y0 + button_height
-            rect = self.status_menu_canvas.create_rectangle(
+            self.status_menu_canvas.create_rectangle(
                 0, y0,
                 panel_width, y1,
                 fill=self.bg_color,
                 outline=self.fg_color
             )
-            txt = self.status_menu_canvas.create_text(
+            self.status_menu_canvas.create_text(
                 panel_width // 2,
                 (y0 + y1) // 2,
                 text=label,
@@ -724,7 +724,7 @@ class zynthian_gui_base(tkinter.Frame):
         if not self.status_menu_visible:
             panel_width = self.width // 6
             self.status_menu_canvas.place(
-                x=self.width - panel_width - 2,
+                x=self.width - panel_width,
                 y=0,
                 width=panel_width,
                 height=self.height // 6 * len(self.status_menu_actions) + 2
