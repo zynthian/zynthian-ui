@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Base Class: Status Bar + Basic layout & events
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -496,6 +496,20 @@ class zynthian_gui_base(tkinter.Frame):
     # Default backbutton long touch action
     def backbutton_long_touch_action(self):
         self.zyngui.callable_ui_action('zynswitch', (1, 'L'))
+
+    def arrow_up(self, nudge=1):
+        """ Function to handle CUIA ARROW_UP
+        """
+        if self.param_editor_zctrl:
+            self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
+            return True
+
+    def arrow_down(self, nudge=-1):
+        """ Function to handle CUIA ARROW_DOWN
+        """
+        if self.param_editor_zctrl:
+            self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
+            return True
 
     # ---------------------------------
     # Layout managing methods

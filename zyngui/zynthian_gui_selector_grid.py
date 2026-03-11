@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Selector Grid Class
 #
-# Copyright (C) 2025 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2025-2026 Brian Walton <riban@zynthian.org>
 #
 #
 # ******************************************************************************
@@ -208,19 +208,21 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self._draw_selection()
 
     def arrow_up(self):
-        """
-        Handle arrow up action
-        """
+        """ Handle arrow up action """
+
+        if super().arrow_up():
+            return True
         idx = self.selected_node - self.columns
         if idx < 0:
-            return
+            return True
         self.selected_node = idx
         self._draw_selection()
 
     def arrow_down(self):
-        """
-        Handle arrow down action
-        """
+        """ Handle arrow down action """
+
+        if super().arrow_down():
+            return
         idx = self.selected_node + self.columns
         if idx >= len(self.config):
             return
