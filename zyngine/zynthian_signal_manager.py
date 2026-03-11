@@ -48,9 +48,12 @@ class zynthian_signal_manager:
     S_GUI = 11
     S_MIDI = 12
     S_TRANSPORT = 13
+    S_PROCESSOR = 14
 
     SS_CUIA_REFRESH = 0
     SS_CUIA_MIDI_EVENT = 1
+
+    SS_PROCESSOR_CTRL_SCREENS = 0
 
     #TODO: These are duplicates of definitions within zyngui!!!
     SS_GUI_SHOW_SCREEN = 0
@@ -69,7 +72,7 @@ class zynthian_signal_manager:
     SS_MIDI_NOTE_OFF = 4
     SS_MIDI_SYSEX = 5
 
-    last_signal = 13
+    last_signal = 14
     last_subsignal = 10
 
     def __init__(self):
@@ -99,9 +102,9 @@ class zynthian_signal_manager:
     def reset_register(self):
         # self.signal_register = [[[]] * self.last_subsignal] * self.last_signal
         self.signal_register = []
-        for i in range(self.last_signal):
+        for i in range(self.last_signal + 1):
             self.signal_register.append([])
-            for j in range(self.last_subsignal):
+            for j in range(self.last_subsignal + 1):
                 self.signal_register[i].append([])
 
     def register(self, signal, subsignal, callback, queued=False):

@@ -42,7 +42,7 @@ import zynautoconnect
 # Clippy Engine Class
 # ------------------------------------------------------------------------------
 
-MAX_BEATS = 64 # Maximum quantity of beats in a clip
+MAX_BEATS = 128 # Maximum quantity of beats in a clip
 MAX_DURATION = 30 # Maximum audio duration to warp, in seconds
 MAX_STORAGE = 500 * 1000 * 1024 # Maximum storage for temporary files
 
@@ -54,18 +54,19 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def __init__(self, state_manager=None, jackname=None):
         super().__init__(state_manager)
+        self.name = "Clippy"
+        self.nickname = "CL"
+        self.type = "Audio Generator"
+        self.options["replace"] = False
+
         self.zynseq = state_manager.zynseq
         self.libseq = self.zynseq.libseq
+
         self.libclippy = ctypes.cdll.LoadLibrary("/zynthian/zynthian-ui/zynlibs/zynclippy/build/libzynclippy.so")
         self.libclippy.init()
         self.libclippy.getGain.restype = ctypes.c_float
         self.libclippy.getJackname.restype = ctypes.c_char_p
         self.zynseq.clippy = self
-
-        self.name = "Clippy"
-        self.nickname = "CL"
-        self.type = "Audio Generator"
-        self.options["replace"] = False
 
         self.jackname = self.libclippy.getJackname().decode("utf-8")
         self._ctrls = []
@@ -73,12 +74,12 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.selected_proc = None
         self.selected_phrase = None
-        self.tmp_file_idx = 0
 
+        self.reload_timer = None
         self.tempo_timer = None
         self.crop_timer = None
         self.tempo_mutex = False
-        self.crop_cb_timer = None
+
         self.samplerate = zynautoconnect.get_jackd_samplerate()
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
 
@@ -101,25 +102,29 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.selected_proc = processor
         self.selected_phrase = phrase
-        self.monitors_dict = {}
         note = phrase + 1
         try:
-            if processor.controllers_dict[f"file {note}"].value:
+            file_path = processor.controllers_dict[f"file {note}"].value
+            if file_path:
+                # Setup controllers screens
                 self._ctrl_screens = [
                     ["Clip", [f"file {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]],
                     ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]]
                 ]
+                # Set monitor values (for widget)
                 for symbol in ["zoom", "crop_start", "crop_end"]:
                     self.monitors_dict[symbol] = processor.controllers_dict[f"{symbol} {note}"].value
                 # Set processor name for display
-                processor.preset_name = processor.controllers_dict[f"file {note}"].value.split("/")[-1]
+                processor.preset_name = file_path.split("/")[-1]
             else:
                 self._ctrl_screens = [["Clip", [f"file {note}"]]]
+                self.monitors_dict = {}
                 processor.preset_name = ""
         except:
             self._ctrl_screens = [["Clip", ["file"]]]
+            self.monitors_dict = {}
             processor.preset_name = ""
-        processor.init_ctrl_screens()
+        processor.init_ctrl_screens(force_refresh=True)
 
     """ Set play mode
 
@@ -243,7 +248,6 @@ class zynthian_engine_clippy(zynthian_engine):
             processor.preset_name = path.split("/")[-1] # Used for display purpose only
 
             quality = 4     # Re-sampling quality (1-4)
-            ratio = 1.0
 
             # Try to determine playing tempo
             tempo = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo")
@@ -288,13 +292,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 else:
                     whole_beats = bars * beats_per_bar
                 can_warp = whole_beats <= MAX_BEATS and duration <= MAX_DURATION
-                factor = (whole_beats * file_tempo) / (beats * tempo)
-
-                #try:
-                #    dst_path = file_zctrl.path
-                #except:
-                #    dst_path = f"/tmp/clippy_{self.tmp_file_idx:04x}.wav"
-                #    self.tmp_file_idx += 1
+                if not can_warp:
+                    tempo = 0.0
 
                 # Setup zynseq sequence
                 self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
@@ -312,12 +311,14 @@ class zynthian_engine_clippy(zynthian_engine):
                         beats_zctrl.value = 0
                         warp_zctrl.value = 0
 
-                #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] x{factor} => {path}")
+                #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] {tempo}BPM => {path}")
                 # Setup clippy note
                 new_note = self.libclippy.loadClip(processor.midi_chan - 16, note, bytes(path, "utf-8"),
-                                          whole_beats, crop_start, crop_end, quality, ctypes.c_float(factor))
-                if note != new_note:
-                    logging.warning(f"Clippy error - wrong note {note}/{new_note} assigned!")
+                                          whole_beats, crop_start, crop_end, quality, ctypes.c_float(tempo))
+                if new_note == 0:
+                    logging.warning(f"Can't load/process sample file!")
+                elif note != new_note:
+                    logging.warning(f"Wrong note assigned ({note}!={new_note})!")
 
                 #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
 
@@ -351,10 +352,37 @@ class zynthian_engine_clippy(zynthian_engine):
     # Callbacks to re-warp sample file when needed (on-the-fly)
     # ---------------------------------------------------------------
 
-    def start_crop_timer(self, processor, phrase):
-        #TODO: This can cause a lot of file writing
+    def start_reload_timer(self, processor, phrase):
+        # Wait to finish loading other clips, but discount the waiting from the timeout
+        ts = 0.3
+        while self.reload_timer:
+            ts -= 0.01
+            sleep(0.01)
         if self.crop_timer:
             self.crop_timer.cancel()
+        if self.tempo_timer:
+            self.tempo_timer.cancel()
+        if ts > 0.0:
+            self.reload_timer = Timer(ts, self.reload_timer_cb, args=(processor, phrase))
+            self.reload_timer.start()
+        else:
+            self.reload_timer_cb(processor, phrase)
+
+    def reload_timer_cb(self, processor, phrase):
+        if self.reload_timer:
+            self.reload_timer.cancel()
+        if self.crop_timer:
+            self.crop_timer.cancel()
+        if self.tempo_timer:
+            self.tempo_timer.cancel()
+        self.reload_timer = None
+        self.set_file(processor, phrase, True)
+
+    def start_crop_timer(self, processor, phrase):
+        if self.crop_timer:
+            self.crop_timer.cancel()
+        if self.reload_timer:
+            return
         self.crop_timer = Timer(1.0, self.crop_timer_cb, args=(processor, phrase))
         self.crop_timer.start()
 
@@ -369,6 +397,8 @@ class zynthian_engine_clippy(zynthian_engine):
         #TODO: This crashes with double free at high tempo
         if self.tempo_timer:
             self.tempo_timer.cancel()
+        if self.reload_timer:
+            return
         self.tempo_timer = Timer(1.0, self.tempo_timer_cb)
         self.tempo_timer.start()
         # Silence (Idle) all playing samples:
@@ -381,7 +411,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     continue
 
-
     def tempo_timer_cb(self):
         if self.tempo_timer:
             self.tempo_timer.cancel()
@@ -389,15 +418,8 @@ class zynthian_engine_clippy(zynthian_engine):
         while self.tempo_mutex:
             sleep(0.01)
         self.tempo_mutex = True
-        for processor in self.processors:
-            # TODO: Reload clips starting for the playing one!!
-            for phrase in range(self.zynseq.phrases):
-                symbol = f"warp {phrase + 1}"
-                try:
-                    if processor.controllers_dict.get(symbol).value:
-                        self.set_file(processor, phrase)
-                except:
-                    continue
+        tempo = self.zynseq.libseq.getTempo()
+        self.libclippy.changeTempo(ctypes.c_float(tempo))
         self.tempo_mutex = False
 
     # ---------------------------------------------------------------
@@ -524,9 +546,9 @@ class zynthian_engine_clippy(zynthian_engine):
         #logging.debug(f"ZCTRL {symbol}, {note} => {zctrl.value}")
         match symbol:
             case "file":
-                self.set_file(zctrl.processor, phrase, True)
+                self.start_reload_timer(zctrl.processor, phrase)
             case "warp":
-                self.set_file(zctrl.processor, phrase)
+                self.start_crop_timer(zctrl.processor, phrase)
             case "mode":
                 self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
             case "crop_start":

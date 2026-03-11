@@ -1,7 +1,5 @@
 #include <stdint.h> // Provides fixed width integer defininitions
 
-#define PRELOAD_FRAMES 2048 // Size of preload buffers in frames
-#define RINGBUFFER PRELOAD_FRAMES * 2 // Size of ring buffers in frames
 #define MAX_CLIPS 127 // Maximum quantity of clips per player/channel
 #define MIN_FRAMES 1024 // Minimum quantity of frames to allow in audio files
 
@@ -40,6 +38,11 @@ enum MIDI_COMMANDS {
 
 // ***Function declarations***
 
+/** @brief Change tempo (timestretch) of loaded clips
+    @param  tempo New tempo to recalculate timestretch
+*/
+void changeTempo(float tempo);
+
 /** @brief  Get the next available clip
     @param  channel MIDI channel
     @retval uint8_t Clip ID (MIDI note) or 0 on error
@@ -58,7 +61,7 @@ uint8_t getFreeClip(uint8_t channel);
     @retval uint8_t Clip ID (MIDI note) or 0 on error
 */
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,
-                 uint32_t start, uint32_t end, uint8_t quality, float ratio);
+                 uint32_t start, uint32_t end, uint8_t quality, float tempo);
 
 /** @brief  Unload a file from a player
     @param  channel MIDI channel

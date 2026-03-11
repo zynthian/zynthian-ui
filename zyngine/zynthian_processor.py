@@ -32,8 +32,11 @@ import traceback
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
+from zyngine.zynthian_signal_manager import *
 
 class zynthian_processor:
+
+    SS_PROCESSOR_CTRL_SCREENS = 0
 
     # ---------------------------------------------------------------------------
     # Data dirs
@@ -579,7 +582,7 @@ class zynthian_processor:
             self.engine.get_controllers_dict(self)
         self.init_ctrl_screens()
 
-    def init_ctrl_screens(self):
+    def init_ctrl_screens(self, force_refresh=False):
         """Create controller screens from zynthian controller keys
 
         TODO: This should be in UI
@@ -596,6 +599,10 @@ class zynthian_processor:
                 self.current_screen_index = 0
         else:
             self.current_screen_index = -1
+        if force_refresh:
+            zynsigman.send(zynsigman.S_PROCESSOR,
+                           zynsigman.SS_PROCESSOR_CTRL_SCREENS,
+                           proc=self)
 
     def get_ctrl_screens(self):
         """Get processor controller screens

@@ -369,7 +369,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
                     if self.last_progress != progress:
                         self.last_progress = progress
-                        current_frame = int(progress * self.frames / 100) - self.offset
+                        current_frame = self.crop_start + int(progress * (self.crop_end - self.crop_start) / 100) - self.offset
                         x = int(f * current_frame)
                         self.widget_canvas.coords(self.playing_cursor_line, x, 0, x, h)
                 refresh_info = True
