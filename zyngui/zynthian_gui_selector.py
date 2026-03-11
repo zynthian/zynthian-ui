@@ -503,4 +503,6 @@ class zynthian_gui_selector(zynthian_gui_base):
                 elif dts >= zynthian_gui_config.zynswitch_long_seconds:
                     self.zyngui.zynswitch_defered('L', 2)
 
+    def status_short_touch_action(self):
+        pass # Disable default action
 # ------------------------------------------------------------------------------
