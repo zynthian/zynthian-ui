@@ -364,9 +364,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
                     x = int(f * (self.crop_end - self.offset))
                     self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
-                if self.zctrl.engine.nickname == "CL":
-                    # Playing cursor
-                    progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
+                # Playing cursor (implemented for clippy)
+                clinfo = self.get_clippy_info()
+                if clinfo:
+                    clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(clinfo[0], clinfo[1], clinfo[2])
+                    if clip_state == 1:
+                        progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
+                    else:
+                        progress = 0
                     if self.last_progress != progress:
                         self.last_progress = progress
                         current_frame = self.crop_start + int(progress * (self.crop_end - self.crop_start) / 100) - self.offset
