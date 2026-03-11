@@ -664,7 +664,7 @@ class MixerHandler(ModeHandlerBase):
     def scroll_vertically(self, delta):
         max_phrase = len(self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"]) - 1
         self.driver.scroll_v = min(max_phrase, max(0, self.driver.scroll_v + delta))
-        zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scroll: {self.driver.scroll_v}")
+        zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"APCKey25 scroll: {self.driver.scroll_v}")
 
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
