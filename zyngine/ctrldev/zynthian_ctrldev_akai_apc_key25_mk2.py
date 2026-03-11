@@ -538,7 +538,7 @@ class DeviceHandler(ModeHandlerBase):
             cuia = {
                 BTN_OPT_ADMIN:   "POWER",
                 BTN_CTRL_PRESET: "PRESET_FAV",
-                BTN_PAD_STEP:    "SCREEN_ARRANGER",
+#                BTN_PAD_STEP:    "SCREEN_ARRANGER",
             }.get(btn)
             if cuia:
                 self._state_manager.send_cuia(cuia)
