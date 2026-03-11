@@ -51,9 +51,14 @@ uint8_t getFreeClip(uint8_t channel);
     @param  note MIDI note to trigger clip or 0 for next available
     @param  path Full (or relative) path and filename
     @param  nbeats Total number of beats in sample file
+    @param  start Start frame
+    @param  end End frame
+    @param  quality Re-sample quality
+    @param  ratio Time stretch ratio (1.0 for no stretch)
     @retval uint8_t Clip ID (MIDI note) or 0 on error
 */
-uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats);
+uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,
+                 uint32_t start, uint32_t end, uint8_t quality, float ratio);
 
 /** @brief  Unload a file from a player
     @param  channel MIDI channel
@@ -166,13 +171,12 @@ uint32_t getFileSamplerate(const char* path);
 */
 uint32_t getFileFrames(const char* path);
 
-/** @brief  Copy a file, applying samplerate conversion and time stretch
-    @param  src_path Full path and filename of file to copy
+/** @brief  Write sample data to file
     @param  dst_path Full path and filename of file to create
-    @param  quality Samplerate quality
-    @param  ratio Time stretch ratio (1.0 for no stretch)
-    @param  start Start frame
-    @param  end End frame
+    @param  *data[] Array of deinterleaved (per-channel) sample data
+    @param samplerate Sample rate
+    @param channels Number of channels in data array
+    @param frames Number of frames in data array
     @retval int Error code
 */
-int copyFile(const char* src_path, const char* dst_path, uint8_t quality, float ratio, uint32_t start, uint32_t end);
+int saveFile(const char* dst_path, float *data[], int samplerate, int channels, uint32_t frames);
