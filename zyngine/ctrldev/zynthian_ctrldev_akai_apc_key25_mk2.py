@@ -414,7 +414,6 @@ class DeviceHandler(ModeHandlerBase):
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
 
         self._leds.led_on(BTN_ALT, alt_color, LED_BRIGHT_100)
-        self._leds.led_on(BTN_INSERT_CHAIN, self._colors.COLOR_INSERT_CHAIN, LED_BRIGHT_100)
 
         # Lit up state-full control buttons
         for btn, state in self._btn_states.items():
@@ -525,6 +524,7 @@ class DeviceHandler(ModeHandlerBase):
             "pattern_editor": (BTN_PAD_STEP, 1),
             "arranger":       (BTN_PAD_STEP, 1),
             "tempo":          (BTN_METRONOME, 0),
+            "add_chain":      (BTN_INSERT_CHAIN, 0)
         }
 
         self._btn_states = {k: -1 for k in self._btn_states}
