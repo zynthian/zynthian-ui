@@ -291,15 +291,12 @@ class zynthian_engine_clippy(zynthian_engine):
                     whole_beats = beats_value
                 else:
                     whole_beats = bars * beats_per_bar
-                can_warp = whole_beats <= MAX_BEATS and duration <= MAX_DURATION
-                if not can_warp:
-                    tempo = 0.0
 
-                # Setup zynseq sequence
-                self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
-                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
-                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
-                self.libseq.updateSequenceInfo()
+                if whole_beats <= MAX_BEATS and (60 / file_tempo) <= duration <= MAX_DURATION:
+                    can_warp = True
+                else:
+                    can_warp = False
+                    tempo = 0.0
 
                 if whole_beats < 1:
                     whole_beats = beats_per_bar
@@ -319,6 +316,12 @@ class zynthian_engine_clippy(zynthian_engine):
                     logging.warning(f"Can't load/process sample file!")
                 elif note != new_note:
                     logging.warning(f"Wrong note assigned ({note}!={new_note})!")
+
+                # Setup zynseq sequence
+                self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
+                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
+                self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
+                self.libseq.updateSequenceInfo()
 
                 #zctrl_crop_end.value_max = zctrl_crop_end.value_range = self.libclippy.getFileFrames(bytes(dst_path, "utf-8"))
 

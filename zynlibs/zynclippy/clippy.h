@@ -1,7 +1,7 @@
 #include <stdint.h> // Provides fixed width integer defininitions
 
-#define MAX_CLIPS 127 // Maximum quantity of clips per player/channel
-#define MIN_FRAMES 1024 // Minimum quantity of frames to allow in audio files
+#define MAX_CLIPS 127   // Maximum quantity of clips per player/channel
+#define MIN_FRAMES 4096 // Minimum quantity of frames to allow in audio files
 
 enum STATE {
     STATE_IDLE,     // Not ready for use

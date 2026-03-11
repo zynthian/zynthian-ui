@@ -685,7 +685,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
         rubberband_study(rb, (const float* const*)data_deinterleaved, frames, 1);
 
         // Calculate result size and setup an array for the result
-        const int block_size = 4096;
+        const int block_size = MIN_FRAMES;
         sf_count_t max_stretched_frames = (int)(frames * ratio) + block_size;
         float* data_stretched[channels];
         for (int ch = 0; ch < channels; ch++)
