@@ -183,6 +183,7 @@ class zynthian_gui:
         self.capture_log_ts0 = None
         self.capture_log_fname = None
         self.capture_ffmpeg_proc = None
+        self.touch = 0
 
         # Init LEDs
         self.wsleds = None
@@ -2410,6 +2411,9 @@ class zynthian_gui:
 
     def cb_touch(self, event):
         # logging.debug("CB EVENT TOUCH!!!")
+        if self.capture_log:
+            self.touch += 1
+            self.write_capture_log(f"TOUCH:{event.x},{event.y}")
         if self.state_manager.power_save_mode:
             self.state_manager.set_event_flag()
             self.ignore_next_touch_release = True
@@ -2421,6 +2425,9 @@ class zynthian_gui:
 
     def cb_touch_release(self, event):
         # logging.debug("CB EVENT TOUCH RELEASE!!!")
+        if self.capture_log and self.touch:
+            self.touch -= 1
+            self.write_capture_log(f"RELEASE:{event.x},{event.y}")
         self.state_manager.set_event_flag()
         if self.ignore_next_touch_release:
             # logging.debug("IGNORING EVENT TOUCH RELEASE!!!")

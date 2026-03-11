@@ -406,6 +406,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar release callback
     def cb_topbar_release(self, params=None):
+        self.hide_status_menu()
         if self.topbar_timer:
             self.topbar_timer.cancel()
             self.topbar_timer = None
@@ -487,6 +488,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default menu button release callback
     def cb_backbutton_release(self, params=None):
+        self.hide_status_menu()
         if self.backbutton_timer:
             self.backbutton_timer.cancel()
             self.backbutton_timer = None

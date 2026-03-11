@@ -965,6 +965,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def __init__(self):
         super().__init__(has_backbutton=False)
 
+        self.status_menu_actions.append(("Add chain", self.zyngui.screens["chain_options"].insert_chain))
+
         self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.columnconfigure(1, weight=0)
         self.main_frame.rowconfigure(0, weight=1)
