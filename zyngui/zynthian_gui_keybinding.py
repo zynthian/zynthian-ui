@@ -87,6 +87,8 @@ html2tk = {
     "Numpad0": 90,
     "NumpadDecimal": 91,
     "IntlBackslash": 94,
+    "F11": 95,
+    "F12": 96,
     "NumpadEnter": 104,
     "ControlRight": 105,
     "NumpadDivide": 106,
@@ -107,7 +109,7 @@ html2tk = {
     "BrowserForward": 167,
     "BrowserReload": 181
 }
-for i in range(12):
+for i in range(10):
     html2tk[f"F{i + 1}"] = 67 + i  # TODO: add F13..F24
 for i in range(9):
     html2tk[f"Digit{i + 1}"] = 10 + i

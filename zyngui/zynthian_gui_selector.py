@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Selector Base Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -421,9 +421,13 @@ class zynthian_gui_selector(zynthian_gui_base):
         return False
 
     def arrow_up(self):
+        if super().arrow_up():
+            return True
         self.select(self.index - 1)
 
     def arrow_down(self):
+        if super().arrow_down():
+            return True
         self.select(self.index + 1)
 
     # --------------------------------------------------------------------------

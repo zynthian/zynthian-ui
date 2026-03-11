@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Chain View Class
 #
-# Copyright (C) 2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2025-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -752,7 +752,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Handle arrow down action.
         Moves selection down or nudges processor if in move mode.
         """
-        if self.moving_chain:
+
+        if self.moving_chain or super().arrow_down():
             return
         if self.moving_proc:
             proc = self.moving_proc
@@ -770,7 +771,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Handle arrow up action.
         Moves selection up or nudges processor if in move mode.
         """
-        if self.moving_chain:
+
+        if self.moving_chain or super().arrow_up():
             return
         if self.moving_proc:
             proc = self.moving_proc

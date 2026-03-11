@@ -2231,6 +2231,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def arrow_up(self, nudge=1):
         """ Function to handle CUIA ARROW_UP
         """
+
+        if super().arrow_up():
+            return
         if self.launcher_mode:
             if self.zynseq.phrase > 0:
                 if self.moving_phrase:
@@ -2246,6 +2249,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def arrow_down(self, nudge=-1):
         """ Function to handle CUIA ARROW_DOWN
         """
+
+        if super().arrow_down():
+            return
         if self.launcher_mode:
             if self.zynseq.phrase < self.zynseq.phrases:
                 if self.moving_phrase:

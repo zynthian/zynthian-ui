@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Instrument-Control Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -515,14 +515,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             return True
         else:
             return False
-
-    def arrow_up(self):
-        self.previous_page()
-        return True
-
-    def arrow_down(self):
-        self.next_page()
-        return True
 
     def arrow_right(self):
         self.exit_midi_learn()

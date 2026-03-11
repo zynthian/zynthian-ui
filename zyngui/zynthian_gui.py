@@ -5,7 +5,7 @@
 #
 # Main Class for Zynthian GUI
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -411,7 +411,7 @@ class zynthian_gui:
             if self.state_manager.is_busy():
                 logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
                 return
-            self.cuia_queue.put_nowait((cuia, args))
+            self.cuia_queue.put_nowait((cuia, args, src))
             # Run autoconnect if needed
             zynautoconnect.request_audio_connect()
             zynautoconnect.request_midi_connect()
@@ -1259,11 +1259,14 @@ class zynthian_gui:
     def cuia_last_state_action(self, params=None):
         self.screens['admin'].last_state_action()
 
-    def cuia_start_workflow_capture(self, params=None):
-        self.start_capture_log(*params)
+    def cuia_workflow_capture_start(self, params=["ui_sesion"]):
+        self.start_capture_log(params[0])
 
-    def cuia_stop_workflow_capture(self, params=None):
+    def cuia_workflow_capture_stop(self, params=None):
         self.stop_capture_log()
+
+    def cuia_workflow_capture_text(self, params=None):
+        self.write_capture_log(f"TEXT: {params[0]}")
 
     # Panic Actions
 
@@ -2642,7 +2645,14 @@ class zynthian_gui:
                         self.cuia_zynpot(params)
 
                 else:
-                    self.callable_ui_action(cuia, params)
+                    result = self.callable_ui_action(cuia, params)
+                    if len(event) > 2:
+                        osc_src = event[2]
+                        try:
+                            osc_src = ("localhost", 1371)
+                            liblo.send(osc_src, "/cuia_response", result)
+                        except:
+                            pass
 
                 if cuia != "power_save":
                     self.state_manager.set_event_flag()

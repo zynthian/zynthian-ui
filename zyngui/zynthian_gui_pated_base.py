@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Base Class
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -35,7 +35,7 @@ import tkinter.font as tkfont
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf
-from zyngui import zynthian_gui_base
+from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
+class zynthian_gui_pated_base(zynthian_gui_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
@@ -1645,8 +1645,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to handle CUIA ARROW_UP
     def arrow_up(self):
-        if self.param_editor_zctrl:
-            self.zynpot_cb(self.ctrl_order[3], 1)
+        if super().arrow_up():
+            return
         elif self.edit_mode:
             self.zynpot_cb(self.ctrl_order[2], 1)
         elif self.alt_mode:
@@ -1656,8 +1656,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to handle CUIA ARROW_DOWN
     def arrow_down(self):
-        if self.param_editor_zctrl:
-            self.zynpot_cb(self.ctrl_order[3], -1)
+        if super().arrow_down():
+            return
         elif self.edit_mode:
             self.zynpot_cb(self.ctrl_order[2], -1)
         elif self.alt_mode:
@@ -1681,9 +1681,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def get_playback_status(self):
         return self.zynseq.libseq.getPlayState(self.zynseq.scene, self.phrase, self.sequence)
-
-    def status_short_touch_action(self):
-        self.toggle_playback()
 
     # -------------------------------------------------------------------------
     # CUIA & LEDs methods
