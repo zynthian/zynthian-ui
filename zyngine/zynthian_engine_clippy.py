@@ -274,6 +274,9 @@ class zynthian_engine_clippy(zynthian_engine):
                     warp_zctrl.value = 1
                     crop_start_zctrl.value = 0
                     crop_end_zctrl.value = frames
+                    min_duration = (60 / file_tempo)
+                else:
+                    min_duration = (15 / file_tempo)
 
                 beats_value = beats_zctrl.value
                 warp_value = warp_zctrl.value
@@ -290,22 +293,24 @@ class zynthian_engine_clippy(zynthian_engine):
                 if beats_value:
                     whole_beats = beats_value
                 else:
-                    whole_beats = bars * beats_per_bar
+                    #whole_beats = bars * beats_per_bar
+                    whole_beats = int(round(beats))
+                    if whole_beats < 1:
+                        whole_beats = 1
 
-                if whole_beats <= MAX_BEATS and (60 / file_tempo) <= duration <= MAX_DURATION:
+                if whole_beats <= MAX_BEATS and min_duration <= duration <= MAX_DURATION:
                     can_warp = True
                 else:
                     can_warp = False
                     tempo = 0.0
 
-                if whole_beats < 1:
-                    whole_beats = beats_per_bar
                 if f"beats {note}" in processor.controllers_dict:
+                    beats_zctrl.value = whole_beats
                     if can_warp:
-                        beats_zctrl.value = whole_beats
-                        beats_zctrl.set_readonly(warp_zctrl.value != 0)
+                        # QUESTION: Should we allow modifying number of beats when warping?
+                        #beats_zctrl.set_readonly(warp_zctrl.value != 0)
+                        pass
                     else:
-                        beats_zctrl.value = 0
                         warp_zctrl.value = 0
 
                 #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] {tempo}BPM => {path}")
@@ -338,9 +343,10 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libseq.updateSequenceInfo()
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
-            self._ctrl_screens = [["Clip", [f"file {note}"]]]
+            if phrase == self.selected_phrase:
+                self._ctrl_screens = [["Clip", [f"file {note}"]]]
+                processor.init_ctrl_screens(force_refresh=True)
 
-        processor.init_ctrl_screens()
 
     def remove_tmp_file(self, processor, phrase):
         note = phrase + 1
@@ -456,8 +462,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     "name": "beats",
                     "processor": processor,
                     "is_integer": True,
-                    "value": 0,
-                    "value_min": 0,
+                    "value": 1,
+                    "value_min": 1,
                     "value_max": MAX_BEATS
                 }),
             f"mode {note}": zynthian_controller(self, f"mode {note}", {
@@ -570,6 +576,13 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.monitors_dict["crop_end"] = zctrl.value
                 self.start_crop_timer(zctrl.processor, phrase)
                 return
+            case "beats":
+                zctrl_warp = zctrl.processor.controllers_dict[f"warp {note}"]
+                if zctrl_warp.value == 0:
+                    self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
+                    self.libseq.updateSequenceInfo()
+                else:
+                    self.start_crop_timer(zctrl.processor, phrase)
             case "gain":
                 try:
                     self.libclippy.setGain(zctrl.processor.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
