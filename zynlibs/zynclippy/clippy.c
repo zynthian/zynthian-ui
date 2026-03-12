@@ -196,7 +196,6 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                 player->state = STATE_PLAYING;
             }
             else if (player->state == STATE_PLAYING || player->state == STATE_STOPPING) {
-                //printf("PLAYING CURRENT CLIP => %s\n", player->current_clip->path);
                 // Playing sample
                 if (player->play_pos < player->current_clip->frames - frames) {
                     size_t count = frames * sizeof(float);
@@ -758,7 +757,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
             data_deinterleaved[i] = NULL;
         }
     }
-    if (clip->channels == 2)
+    if (clip->channels == 1)
         clip->data[1] = clip->data[0];
     clip->frames = frames;
     clip->nbeats = nbeats;
