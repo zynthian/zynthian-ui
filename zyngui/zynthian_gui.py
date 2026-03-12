@@ -225,6 +225,7 @@ class zynthian_gui:
         if self.wsleds:
             self.wsleds.reset_last_state()
         self.write_capture_log(f"LAYOUT: {zynthian_gui_config.wiring_layout}")
+        self.write_capture_log(f"RESOLUTION: {zynthian_gui_config.display_width},{zynthian_gui_config.display_height}")
         self.write_capture_log(f"TITLE: {title}")
         zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
