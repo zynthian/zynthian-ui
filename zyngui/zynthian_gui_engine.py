@@ -25,6 +25,7 @@
 
 import tkinter
 import logging
+from time import sleep
 
 # Zynthian specific modules
 from zyngine import *
@@ -52,18 +53,21 @@ class zynthian_gui_engine(zynthian_gui_selector):
         # Custom layout for GUI engine
         self.layout = {
             'name': 'gui_engine',
-            'columns': 2,
+            'columns': 3,
             'rows': 4,
             'ctrl_pos': [
-                    (0, 1),
-                    (1, 1),
-                    (2, 1),
-                    (3, 1)
+                    (0, 2),
+                    (1, 2),
+                    (2, 2),
+                    (3, 2)
             ],
-            'list_pos': (0, 0),
+            'list_pos': (0, 1),
+            'list_width': 0.5,
+            'list2_pos': (0, 0),
+            'list2_width': 0.21,
             'ctrl_orientation': 'horizontal',
             'ctrl_order': (0, 1, 2, 3),
-            'ctrl_width': 0.3
+            'ctrl_width': 0.29
         }
         self.proc_type = None
         self.zsel2 = None
@@ -77,6 +81,28 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.chain_manager = self.zyngui.chain_manager
         self.engine_info_dirty = False
         self.xswipe_sens = 10
+
+        # ListBox for Categories
+        self.lb2_bg = zynthian_gui_config.color_panel_bg
+        self.lb2_fg = zynthian_gui_config.color_panel_tx
+        self.listbox2 = tkinter.Listbox(
+            self.main_frame,
+            font=zynthian_gui_config.font_listbox,
+            bd=7,
+            highlightthickness=0,
+            relief='flat',
+            bg=self.lb2_bg,
+            fg=self.lb2_fg,
+            selectbackground=zynthian_gui_config.color_ctrl_bg_on,
+            selectforeground=zynthian_gui_config.color_ctrl_tx,
+            selectmode=tkinter.SINGLE)
+        self.listbox2.grid(
+            row=self.layout['list2_pos'][0],
+            column=self.layout['list2_pos'][1],
+            rowspan=self.layout['rows'],
+            padx=self.padx,
+            pady=self.pady,
+            sticky="news")
 
         # Canvas for engine info
         self.info_canvas = tkinter.Canvas(
@@ -156,6 +182,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
     def update_layout(self):
         super().update_layout()
+        ctrl_width = int(self.width * self.layout['ctrl_width'] * self.sidebar_shown)
+        lb_width = int(self.width * self.layout['list_width'])
+        lb2_width = int(self.width * self.layout['list2_width'])
+        lb_weight = 3
+        self.main_frame.columnconfigure(0, minsize=lb2_width, weight=lb_weight)
+        self.main_frame.columnconfigure(1, minsize=lb_width, weight=lb_weight)
+        self.main_frame.columnconfigure(2, minsize=ctrl_width, weight=self.sidebar_shown)
         if self.info_canvas:
             self.info_canvas.configure(height=int(0.6 * self.height))
             # self.description_label.configure(height=int(0.35 * self.height))
@@ -166,7 +199,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         try:
             return self.chain_manager.engine_info[eng_code]
         except:
-            logging.info(f"Can't get info for engine '{eng_code}'")
+            #logging.warning(f"Can't get info for engine '{eng_code}'")
             return {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
 
     def update_info(self):
@@ -204,7 +237,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
             except:
                 pass
         self.engine_cats = list(self.engines_by_cat.keys())
-        logging.debug(f"CATEGORIES => {self.engine_cats}")
+        self.cat_index = min(self.cat_index, len(self.engine_cats) - 1)
+        # Fill category list
+        self.listbox2.delete(0, tkinter.END)
+        for cat in self.engine_cats:
+            self.listbox2.insert(tkinter.END, cat)
+        self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_fg, 'fg': self.lb2_bg})
         # self.engines_by_cat = sorted(self.engines_by_cat.items(), key=lambda kv: "!" if kv[0] is None else kv[0])
 
     def recall_context_index(self):
@@ -236,54 +274,20 @@ class zynthian_gui_engine(zynthian_gui_selector):
         if self.proc_type in ("MIDI Tool", "Audio Effect"):
             self.list_data.append(("None", 0, "None", "None"))
 
-        # Show a single category or all
         if self.engine_cats:
-            if self.cat_index < 0:
-                cats = self.engine_cats
-            else:
-                if self.cat_index >= len(self.engine_cats):
-                    self.cat_index = len(self.engine_cats) - 1
-                cats = [self.engine_cats[self.cat_index]]
-        else:
-            cats = []
-
-        for cat in cats:
-            infos = self.engines_by_cat[cat]
-
-            # Add category header when showing several cats...
-            if len(cats) > 1:
-                self.list_data.append((None, len(self.list_data), "> {}".format(cat)))
-
-            # Split engines in standalone & plugins
-            # standalone = []
-            # plugins = []
-            # for eng in infos:
-            # if eng[0:2] == "JV":
-            # plugins.append(eng)
-            # else:
-            # standalone.append(eng)
-
-            # Local function to add engines to the list
-            def add_engines(engines):
-                for eng in engines:
-                    i = len(self.list_data)
-                    info = infos[eng]
-                    if self.show_all:
-                        if info["ENABLED"]:
-                            self.list_data.append((eng, i, "\u2612 " + info["TITLE"], info["NAME"]))
-                        else:
-                            self.list_data.append((eng, i, "\u2610 " + info["TITLE"], info["NAME"]))
+            # Fill engine list
+            cat = self.engine_cats[self.cat_index]
+            engines_info = self.engines_by_cat[cat]
+            for eng in engines_info:
+                i = len(self.list_data)
+                info = engines_info[eng]
+                if self.show_all:
+                    if info["ENABLED"]:
+                        self.list_data.append((eng, i, "\u2612 " + info["TITLE"], info["NAME"]))
                     else:
-                        self.list_data.append((eng, i, info["TITLE"], info["NAME"]))
-
-            # if len(standalone) > 0:
-            # self.list_data.append((None, None, "> Standalone"))
-            # add_engines(standalone)
-            # if len(plugins) > 0:
-            # self.list_data.append((None, None, "> Plugins"))
-            # add_engines(plugins)
-
-            add_engines(infos)
+                        self.list_data.append((eng, i, "\u2610 " + info["TITLE"], info["NAME"]))
+                else:
+                    self.list_data.append((eng, i, info["TITLE"], info["NAME"]))
 
         # Display help if no engines are enabled ...
         if len(self.list_data) == 0:
@@ -392,9 +396,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
             self.zsel2.zctrl.is_dirty = False
 
     def set_cat(self, cat_index):
-        self.cat_index = cat_index
+        # Highlight category in category lisbox
+        self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_bg, 'fg': self.lb2_fg})
+        self.cat_index = max(0, min(cat_index, len(self.engine_cats) - 1))
+        self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_fg, 'fg': self.lb2_bg})
+        # Load engines for the category
         self.recall_context_index()
         self.update_list()
+        # Update header breadcrumb
         self.set_select_path()
 
     def zynpot_cb(self, i, dval):

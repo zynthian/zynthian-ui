@@ -231,13 +231,16 @@ class zynthian_gui:
     def start_capture_ffmpeg(self):
         fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
         fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
+        #fpath = "rtp://localhost:1234"
         self.capture_ffmpeg_proc = ffmpeg.output(
             ffmpeg.input(":0", r=20, f="x11grab"),
             # ffmpeg.input(fbdev, r=20, f="fbdev"),
             # ffmpeg.input("sine=frequency=500", f="lavfi"),
             ffmpeg.input("ffmpeg", f="jack"),
-            # fpath, vcodec="h264_v4l2m2m", acodec="aac") \
-            fpath, vcodec="libx264", pix_fmt="yuv420p", acodec="aac", preset="ultrafast", tune="zerolatency", movflags="faststart") \
+            fpath,
+            # vcodec="h264_v4l2m2m", acodec="aac") \
+            #rtsp_transport="tcp",
+            vcodec="libx264", pix_fmt="yuv420p", acodec="aac", preset="ultrafast", tune="zerolatency", movflags="faststart") \
             .global_args('-nostdin', '-hide_banner', '-nostats') \
             .run_async(quiet=True, overwrite_output=True)
 

@@ -68,16 +68,17 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.last_release_ts = 0
 
         # ListBox
-        self.listbox = tkinter.Listbox(self.main_frame,
-                                       font=zynthian_gui_config.font_listbox,
-                                       bd=7,
-                                       highlightthickness=0,
-                                       relief='flat',
-                                       bg=zynthian_gui_config.color_panel_bg,
-                                       fg=zynthian_gui_config.color_panel_tx,
-                                       selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-                                       selectforeground=zynthian_gui_config.color_ctrl_tx,
-                                       selectmode=tkinter.SINGLE)
+        self.listbox = tkinter.Listbox(
+            self.main_frame,
+            font=zynthian_gui_config.font_listbox,
+            bd=7,
+            highlightthickness=0,
+            relief='flat',
+            bg=zynthian_gui_config.color_panel_bg,
+            fg=zynthian_gui_config.color_panel_tx,
+            selectbackground=zynthian_gui_config.color_ctrl_bg_on,
+            selectforeground=zynthian_gui_config.color_ctrl_tx,
+            selectmode=tkinter.SINGLE)
 
         # Configure layout
         if tiny_ctrls:
@@ -103,19 +104,20 @@ class zynthian_gui_selector(zynthian_gui_base):
         else:
             self.wide = True
         if self.wide:
-            padx = (0, 2)
+            self.padx = (0, 2)
         else:
-            padx = (2, 2)
+            self.padx = (2, 2)
         if self.buttonbar_config:
-            pady = (0, 1)
+            self.pady = (0, 1)
         else:
-            pady = (0, 0)
-        self.listbox.grid(row=self.layout['list_pos'][0],
-                          column=self.layout['list_pos'][1],
-                          rowspan=self.layout['rows'],
-                          padx=padx,
-                          pady=pady,
-                          sticky="news")
+            self.pady = (0, 0)
+        self.listbox.grid(
+            row=self.layout['list_pos'][0],
+            column=self.layout['list_pos'][1],
+            rowspan=self.layout['rows'],
+            padx=self.padx,
+            pady=self.pady,
+            sticky="news")
 
         # Bind listbox events
         self.listbox_push_ts = 0
@@ -128,12 +130,13 @@ class zynthian_gui_selector(zynthian_gui_base):
 
         if loading_anim:
             # Canvas for loading image animation
-            self.loading_canvas = tkinter.Canvas(self.main_frame,
-                                                 width=1,  # zynthian_gui_config.fw2, #self.width // 4 - 2,
-                                                 height=1,  # zynthian_gui_config.fh2, #self.height // 2 - 1,
-                                                 bd=0,
-                                                 highlightthickness=0,
-                                                 bg=zynthian_gui_config.color_bg)
+            self.loading_canvas = tkinter.Canvas(
+                self.main_frame,
+                width=1,  # zynthian_gui_config.fw2, #self.width // 4 - 2,
+                height=1,  # zynthian_gui_config.fh2, #self.height // 2 - 1,
+                bd=0,
+                highlightthickness=0,
+                bg=zynthian_gui_config.color_bg)
             # Position at top of column containing selector
             self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
             self.loading_push_ts = None
@@ -142,9 +145,10 @@ class zynthian_gui_selector(zynthian_gui_base):
 
             # Setup Loading Logo Animation
             self.loading_index = 0
-            self.loading_item = self.loading_canvas.create_image(3, 3,
-                                                  image=zynthian_gui_config.loading_imgs[0],
-                                                  anchor=tkinter.NW)
+            self.loading_item = self.loading_canvas.create_image(
+                3, 3,
+                image=zynthian_gui_config.loading_imgs[0],
+                anchor=tkinter.NW)
         else:
             self.loading_canvas = None
             self.loading_index = 0
