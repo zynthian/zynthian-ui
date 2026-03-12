@@ -31,6 +31,7 @@ from time import sleep
 from zyngine import *
 from zyngine import zynthian_lv2
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
@@ -93,9 +94,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
             relief='flat',
             bg=self.lb2_bg,
             fg=self.lb2_fg,
-            selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-            selectforeground=zynthian_gui_config.color_ctrl_tx,
+            selectbackground=self.lb2_bg,
+            selectforeground=self.lb2_fg,
             selectmode=tkinter.SINGLE)
+        self.listbox2.bind("<Button-1>", self.cb_listbox2_push)
+        self.listbox2.bind("<ButtonRelease-1>", self.cb_listbox2_release)
+        self.listbox2.bind("<B1-Motion>", self.cb_listbox2_motion)
+        self.listbox2.bind("<Button-4>", self.cb_listbox2_wheel)
+        self.listbox2.bind("<Button-5>", self.cb_listbox2_wheel)
         self.listbox2.grid(
             row=self.layout['list2_pos'][0],
             column=self.layout['list2_pos'][1],
@@ -181,7 +187,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
             fill=zynthian_gui_config.color_panel_tx)
 
     def update_layout(self):
-        super().update_layout()
+        # Call grandpa's method
+        zynthian_gui_base.update_layout(self)
         ctrl_width = int(self.width * self.layout['ctrl_width'] * self.sidebar_shown)
         lb_width = int(self.width * self.layout['list_width'])
         lb2_width = int(self.width * self.layout['list2_width'])
@@ -427,6 +434,37 @@ class zynthian_gui_engine(zynthian_gui_selector):
         if zctrl.symbol == "Engine":
             self.select(zctrl.value)
 
+    # --------------------------------------------------------------------------
+    # Keyboard & Mouse/Touch Callbacks
+    # --------------------------------------------------------------------------
+
+    def cb_listbox2_push(self, event):
+        if self.zyngui.cb_touch(event):
+            return "break"
+        cursel = self.listbox2.nearest(event.y)
+        if cursel != self.cat_index:
+            self.set_cat(cursel)
+        return "break"
+
+    def cb_listbox2_motion(self, event):
+        cursel = self.listbox2.nearest(event.y)
+        if cursel != self.cat_index:
+            self.set_cat(cursel)
+
+    def cb_listbox2_release(self, event):
+        if self.zyngui.cb_touch_release(event):
+            return "break"
+        cursel = self.listbox2.nearest(event.y)
+        if cursel != self.cat_index:
+            self.set_cat(cursel)
+
+    def cb_listbox2_wheel(self, event):
+        if event.num == 5 or event.delta == -120:
+            self.set_cat(self.cat_index + 1)
+        elif event.num == 4 or event.delta == 120:
+            self.set_cat(self.cat_index - 1)
+        return "break"  # Consume event to stop scrolling of listbox
+
     def cb_listbox_motion(self, event):
         super().cb_listbox_motion(event)
         dx = self.listbox_x0 - event.x
@@ -440,6 +478,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
     def cb_info_press(self, event):
         self.show_details()
+
+    # -------------------------------------------------------------------------
 
     def set_select_path(self):
         path = ""

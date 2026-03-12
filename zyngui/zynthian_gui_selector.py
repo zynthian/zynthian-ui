@@ -68,14 +68,16 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.last_release_ts = 0
 
         # ListBox
+        self.lb_bg = zynthian_gui_config.color_panel_bg
+        self.lb_fg = zynthian_gui_config.color_panel_tx
         self.listbox = tkinter.Listbox(
             self.main_frame,
             font=zynthian_gui_config.font_listbox,
             bd=7,
             highlightthickness=0,
             relief='flat',
-            bg=zynthian_gui_config.color_panel_bg,
-            fg=zynthian_gui_config.color_panel_tx,
+            bg=self.lb_bg,
+            fg=self.lb_fg,
             selectbackground=zynthian_gui_config.color_ctrl_bg_on,
             selectforeground=zynthian_gui_config.color_ctrl_tx,
             selectmode=tkinter.SINGLE)
