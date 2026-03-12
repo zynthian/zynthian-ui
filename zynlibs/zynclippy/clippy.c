@@ -758,6 +758,8 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
             data_deinterleaved[i] = NULL;
         }
     }
+    if (clip->channels == 2)
+        clip->data[1] = clip->data[0];
     clip->frames = frames;
     clip->nbeats = nbeats;
     clip->start = start;
