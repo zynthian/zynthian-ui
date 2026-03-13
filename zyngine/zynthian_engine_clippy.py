@@ -32,9 +32,8 @@ from threading import Timer
 
 from zynlibs.zynseq import zynseq
 from zyngine.zynthian_engine import zynthian_engine
-from zyngine.zynthian_controller import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
-
+from zyngine.zynthian_controller import zynthian_controller
 import zynautoconnect
 
 
@@ -62,13 +61,6 @@ class zynthian_engine_clippy(zynthian_engine):
         self.zynseq = state_manager.zynseq
         self.libseq = self.zynseq.libseq
 
-        self.libclippy = ctypes.cdll.LoadLibrary("/zynthian/zynthian-ui/zynlibs/zynclippy/build/libzynclippy.so")
-        self.libclippy.init()
-        self.libclippy.getGain.restype = ctypes.c_float
-        self.libclippy.getJackname.restype = ctypes.c_char_p
-        self.zynseq.clippy = self
-
-        self.jackname = self.libclippy.getJackname().decode("utf-8")
         self._ctrls = []
         self._ctrl_screens = []
 
@@ -81,11 +73,25 @@ class zynthian_engine_clippy(zynthian_engine):
         self.tempo_mutex = False
 
         self.samplerate = zynautoconnect.get_jackd_samplerate()
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+
+        self.monitors_dict = {}
+        self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
+
+        self.libclippy =  None
+        self.start()
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
     # ---------------------------------------------------------------------------
+
+    def start(self):
+        self.libclippy = ctypes.cdll.LoadLibrary("/zynthian/zynthian-ui/zynlibs/zynclippy/build/libzynclippy.so")
+        self.libclippy.init()
+        self.libclippy.getGain.restype = ctypes.c_float
+        self.libclippy.getJackname.restype = ctypes.c_char_p
+        self.jackname = self.libclippy.getJackname().decode("utf-8")
+        self.zynseq.clippy = self
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
 
     def stop(self):
         logging.info("Stopping Engine " + self.name)
@@ -109,7 +115,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Setup controllers screens
                 self._ctrl_screens = [
                     ["Clip", [f"file {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]],
-                    ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]]
+                    ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]],
+                    ["Recording", ["record"]]
                 ]
                 # Set monitor values (for widget)
                 for symbol in ["zoom", "crop_start", "crop_end"]:
@@ -117,7 +124,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Set processor name for display
                 processor.preset_name = file_path.split("/")[-1]
             else:
-                self._ctrl_screens = [["Clip", [f"file {note}"]]]
+                self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
                 self.monitors_dict = {}
                 processor.preset_name = ""
         except:
@@ -344,7 +351,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
             if phrase == self.selected_phrase:
-                self._ctrl_screens = [["Clip", [f"file {note}"]]]
+                self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
                 processor.init_ctrl_screens(force_refresh=True)
 
 
@@ -435,8 +442,21 @@ class zynthian_engine_clippy(zynthian_engine):
     # Controller management
     # ---------------------------------------------------------------
 
+    def add_record_controller(self, processor):
+        zctrls = {
+            "record": zynthian_controller(self, "record", {
+                    "name": "record",
+                    "processor": processor,
+                    "is_toggle": True,
+                    "labels": ["stopped", "recording"],
+                    "ticks": [0, 1],
+                    "value": "stopped"
+                })
+        }
+        processor.controllers_dict.update(zctrls)
+
     def add_controllers(self, processor, note):
-        """ Adds a controllers to processor
+        """ Adds controllers to processor
 
             processor: Clippy processor object
             note: MIDI note (clip id)
@@ -543,6 +563,13 @@ class zynthian_engine_clippy(zynthian_engine):
         zctrl_crop_end.nudge_factor_fine = nudge_factor_fine
 
     def send_controller_value(self, zctrl):
+        if zctrl.symbol == "record":
+            if zctrl.value:
+                self.state_manager.audio_recorder.start_recording()
+            else:
+                self.state_manager.audio_recorder.stop_recording()
+            return
+
         try:
             symparts = zctrl.symbol.split(" ")
             symbol = symparts[0]
@@ -617,6 +644,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.state_manager.chain_manager.set_midi_chan(processor.chain_id, midi_chan + 16)
         processor.jackname = f"{self.jackname}:out_{midi_chan + 1 :02d}"
 
+        self.add_record_controller(processor)
         self.zynseq.enable_channel(processor.midi_chan, True)
         for phrase in range(self.zynseq.phrases):
             note = phrase + 1

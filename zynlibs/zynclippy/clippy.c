@@ -637,7 +637,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
         ratio = 1.0;
     } else {
         ratio = (60 * samplerate * nbeats) / (tempo * frames);
-        if (ratio < 0.1 || ratio > 10) {
+        if (ratio < 0.01 || ratio > 100) {
             // Don't stretch if excessive stretch requested.
             ratio = 1.0;
             timestretch = 0;

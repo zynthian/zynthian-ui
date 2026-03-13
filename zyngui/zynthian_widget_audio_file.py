@@ -23,6 +23,7 @@
 #
 # ******************************************************************************
 
+import os
 import logging
 import tkinter
 import soundfile
@@ -32,7 +33,8 @@ from threading import Thread
 from os.path import basename
 
 # Zynthian specific modules
-#from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
@@ -136,11 +138,30 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
         self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
 
+    def set_processor(self, processor):
+        super().set_processor(processor)
+        if self.zyngui_control.widget_zctrl:
+            self.zctrl = self.zyngui_control.widget_zctrl
+        else:
+            try:
+                note = self.processor.engine.selected_phrase + 1
+                self.zctrl = self.processor.controllers_dict[f"file {note}"]
+            except:
+                for zctrl in self.processor.controllers_dict.values():
+                    if zctrl.is_path:
+                        self.zctrl = zctrl
+                        break
+        self.clip_info = self.get_clippy_info()
+
     def show(self):
         self.refreshing = False
         super().show()
+        if self.clip_info:
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
 
     def hide(self):
+        if self.clip_info:
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
         super().hide()
 
     def on_size(self, event):
@@ -292,18 +313,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.itemconfig(f"overlay", state=tkinter.NORMAL)
 
     def refresh_gui(self):
-        #if self.refreshing:
-        #    return
+        if not self.zctrl:
+            return
         self.refreshing = True
+
         refresh_info = False
         update_markers = False
-
-        try:
-            if self.zctrl != self.zyngui_control.widget_zctrl:
-                self.zctrl = self.zyngui_control.widget_zctrl
-        except:
-            self.refreshing = False
-            return
 
         if "zoom" in self.monitors and self.zoom != self.monitors["zoom"]:
             self.zoom = self.monitors["zoom"]
@@ -376,15 +391,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                         x = x1 + i * (x2 - x1) // self.beats
                         self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tag="beat_markers")
                 # Beat markers and playing cursor (implemented for clippy)
-                clinfo = self.get_clippy_info()
-                if clinfo:
+                if self.clip_info:
                     # Beat markers
-                    note = clinfo[1] + 1
+                    note = self.clip_info[1] + 1
                     # Get number of beats
                     self.zctrl.processor.controllers_dict[f"beats {note}"].value
 
                     # Playing cursor
-                    clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(clinfo[0], clinfo[1], clinfo[2])
+                    clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
                     if clip_state == 1:
                         progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
                     else:
@@ -413,12 +427,29 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
 
     # -------------------------------------------------------------------------
+    # Audio recorder signal callback
+    # -------------------------------------------------------------------------
+
+    def audio_recorder_cb(self, state):
+        if self.clip_info:
+            #self.zyngui.state_manager.audio_recorder.status:
+            try:
+                self.processor.controllers_dict['record'].set_value(state, False)
+            except:
+                logging.error("Clippy processor doesn't have a record controller!")
+            # Manage stop recording => load recorded sample!
+            if not state:
+                fpath = self.zyngui.state_manager.audio_recorder.filename
+                if os.path.isfile(fpath):
+                    self.zctrl.set_value(fpath)
+
+    # -------------------------------------------------------------------------
     # CUIA & LEDs methods
     # -------------------------------------------------------------------------
 
     def get_clippy_info(self):
-        if self.zctrl.engine.nickname == "CL":
-            midi_chan = self.zctrl.processor.midi_chan
+        if self.processor.eng_code == "CL":
+            midi_chan = self.processor.midi_chan
             scene = self.zyngui.state_manager.zynseq.scene
             try:
                 symparts = self.zctrl.symbol.split(" ")
@@ -432,32 +463,41 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         else:
             return None
 
+    def cuia_toggle_record(self, param=None):
+        # Handle transport for clippy
+        if self.clip_info:
+            self.zyngui.state_manager.audio_recorder.toggle_recording()
+            return True
+        return False
+
     def cuia_stop(self, param=None):
         # Handle transport for clippy
-        clinfo = self.get_clippy_info()
-        if clinfo:
-            self.zyngui.state_manager.zynseq.libseq.setPlayState(clinfo[0], clinfo[1], clinfo[2], 0)
+        if self.clip_info:
+            self.zyngui.state_manager.zynseq.libseq.setPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2], 0)
             return True
         return False
 
     def cuia_toggle_play(self, param=None):
         # Handle transport for clippy
-        clinfo = self.get_clippy_info()
-        if clinfo:
-            self.zyngui.state_manager.zynseq.libseq.togglePlayState(clinfo[0], clinfo[1], clinfo[2])
+        if self.clip_info:
+            self.zyngui.state_manager.zynseq.libseq.togglePlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
             return True
         return False
 
     def update_wsleds(self, leds):
         # Handle LEDs for clippy
-        clinfo = self.get_clippy_info()
-        if clinfo:
+        if self.clip_info:
             wsl = self.zyngui.wsleds
             color_default = wsl.wscolor_active2
-            play_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(clinfo[0], clinfo[1], clinfo[2])
+            # REC Button
+            if self.zyngui.state_manager.audio_recorder.status:
+                wsl.set_led(leds[1], wsl.wscolor_red)
+            else:
+                wsl.set_led(leds[1], color_default)
             # STOP button:
             wsl.set_led(leds[2], color_default)
             # PLAY button:
+            play_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
             if play_state in (2, 3, 4, 5):
                 wsl.blink(leds[3], wsl.wscolor_green)
             elif play_state == 1:
