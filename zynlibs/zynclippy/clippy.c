@@ -28,7 +28,6 @@
 #include <string.h> // provides memset, memcpy, strcpy
 #include <jack/jack.h> // provides jack API
 #include <jack/midiport.h> // provides jack midi port API
-//#include <jack/ringbuffer.h> //provides jack ring buffer
 #include <sndfile.h>   // provides sound file manipulation
 #include <samplerate.h> // provides samplerate convertor
 #include <rubberband/rubberband-c.h> // provides time stretch
@@ -472,7 +471,7 @@ uint8_t removeClip(uint8_t channel, uint8_t clip) {
 }
 
 uint8_t getFreeClip(uint8_t channel) {
-    if(channel >= 16)
+    if (channel >= 16)
         return 0;
     Player* player = players[channel];
     if (!player)
@@ -482,6 +481,28 @@ uint8_t getFreeClip(uint8_t channel) {
             return id + 1;
     }
     return 0;
+}
+
+const char * getClipPath(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return NULL;
+    Player* player = players[channel];
+    if (!player)
+        return NULL;
+    if (player->clips[clip] == NULL)
+        return NULL;
+    return player->clips[clip]->path;
+}
+
+uint32_t getClipFrames(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return 0;
+    Player* player = players[channel];
+    if (!player)
+        return 0;
+    if (player->clips[clip] == NULL)
+        return 0;
+    return player->clips[clip]->frames;
 }
 
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,

@@ -115,6 +115,21 @@ uint8_t removeClip(uint8_t channel, uint8_t clip);
 */
 uint8_t nudgeClip(uint8_t channel, uint8_t clip, uint8_t forward);
 
+/** @brief  Return file path of loaded clip
+    @param  channel MIDI channel
+    @param  clip Index of clip
+    @retval const char[]  Pointer to string
+*/
+const char * getClipPath(uint8_t channel, uint8_t clip);
+
+/** @brief  Return number of frames of loaded clip
+    @param  channel MIDI channel
+    @param  clip Index of clip
+    @retval uint32_t Number of frames
+*/
+uint32_t getClipFrames(uint8_t channel, uint8_t clip);
+
+
 /** @brief  Set clip gain
     @param  channel MIDI channel
     @param  id Clip index
