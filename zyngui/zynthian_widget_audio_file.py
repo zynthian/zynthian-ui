@@ -69,12 +69,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.v_zoom = 1
         self.crop_start = 0
         self.crop_end = 0
+        self.beats = 0
         self.last_progress = 0
 
         self.bg_color = zynthian_gui_config.color_bg
         self.waveform_color = zynthian_gui_config.color_info
-        self.playcur_color = zynthian_gui_config.color_hl
+        self.playcur_color = zynthian_gui_config.color_on
         self.bg_crop_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 30)
+        self.bmarker_color = zynthian_gui_config.color_hl
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
         self.widget_canvas = tkinter.Canvas(self,
@@ -330,6 +332,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 if self.auto_offset:
                     self.auto_offset = 2
 
+        if "beats" in self.monitors and self.beats != self.monitors["beats"]:
+                self.beats = self.monitors["beats"]
+                update_markers = True
+
         try:
             if self.zctrl and self.fpath != self.zctrl.value:
                 # Audio file changed so reload waveform from file audio data
@@ -360,19 +366,30 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 f = self.width / self.frames * self.zoom
                 if update_markers:
                     # Crop markers
-                    x = int(f * (self.crop_start - self.offset))
-                    self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
-                    x = int(f * (self.crop_end - self.offset))
-                    self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
-                # Playing cursor (implemented for clippy)
+                    x1 = int(f * (self.crop_start - self.offset))
+                    x2 = int(f * (self.crop_end - self.offset))
+                    self.widget_canvas.coords(self.crop_start_rect, 0, 0, x1, h)
+                    self.widget_canvas.coords(self.crop_end_rect, x2, 0, self.width, h)
+                    # Beat markers
+                    self.widget_canvas.delete("beat_markers")
+                    for i in range(1, self.beats):
+                        x = x1 + i * (x2 - x1) // self.beats
+                        self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tag="beat_markers")
+                # Beat markers and playing cursor (implemented for clippy)
                 clinfo = self.get_clippy_info()
                 if clinfo:
+                    # Beat markers
+                    note = clinfo[1] + 1
+                    # Get number of beats
+                    self.zctrl.processor.controllers_dict[f"beats {note}"].value
+
+                    # Playing cursor
                     clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(clinfo[0], clinfo[1], clinfo[2])
                     if clip_state == 1:
                         progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
                     else:
                         progress = 0
-                    if self.last_progress != progress:
+                    if self.last_progress != progress or update_markers:
                         self.last_progress = progress
                         current_frame = self.crop_start + int(progress * (self.crop_end - self.crop_start) / 100) - self.offset
                         x = int(f * current_frame)

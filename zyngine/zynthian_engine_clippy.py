@@ -578,6 +578,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 return
             case "beats":
                 zctrl_warp = zctrl.processor.controllers_dict[f"warp {note}"]
+                self.monitors_dict["beats"] = zctrl.value
                 if zctrl_warp.value == 0:
                     self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
                     self.libseq.updateSequenceInfo()
