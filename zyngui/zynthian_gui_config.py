@@ -579,7 +579,7 @@ except:
     force_enable_cursor = 0
 
 # Configure switch actions for touch only configuration so it works with touch-keypad
-if enable_touch_navigation and wiring_layout =="TOUCH_ONLY":
+if enable_touch_navigation:
     if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
