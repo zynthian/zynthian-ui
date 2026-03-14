@@ -4,7 +4,7 @@
 #
 # Zynthian GUI MIDI key-range config class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -67,7 +67,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
                                      bg=zynthian_gui_config.color_panel_bg,
                                      bd=0,
                                      highlightthickness=0)
-        self.piano_canvas_width = self.width
 
         self.piano_canvas_height = self.height // 4
         self.main_frame.rowconfigure(2, weight=1)
@@ -87,12 +86,11 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
         # Piano canvas
         self.piano_canvas = tkinter.Canvas(self.main_frame,
-                                           width=self.piano_canvas_width,
                                            height=self.piano_canvas_height,
                                            bd=0,
                                            highlightthickness=0,
                                            bg="#000099")
-        self.piano_canvas.grid(row=3, columnspan=3)
+        self.piano_canvas.grid(row=3, columnspan=3, sticky="ew")
 
         # Setup Piano's Callback
         self.piano_canvas.bind("<Button-1>", self.cb_piano_press)
@@ -115,8 +113,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         self.set_select_path()
 
     def plot_piano(self):
+        self.piano_canvas.delete("all")
         n_wkeys = 52
-        key_width = int(self.piano_canvas_width / n_wkeys)
+        key_width = int(self.width / n_wkeys)
         black_height = int(0.65 * self.piano_canvas_height)
 
         self.midi_key0 = 21  # A1
@@ -126,7 +125,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         x1 = 0
         x2 = key_width - 1
         midi_note = self.midi_key0
-        while x1 < self.piano_canvas_width:
+        while x1 < self.width:
             # plot white-key
             if self.note_low > midi_note or self.note_high < midi_note:
                 bgcolor = "#D0D0D0"
@@ -145,7 +144,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
             if self.black_keys_pattern[i % 7]:
                 x1b = x1 - int(key_width / 3)
                 x2b = x1b + int(2 * key_width / 3)
-                if x2b < self.piano_canvas_width:
+                if x2b < self.width:
                     if self.note_low > midi_note or self.note_high < midi_note:
                         bgcolor = "#707070"
                     else:
@@ -179,6 +178,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
                 j += 1
                 midi_note += 1
             i += 1
+
+    def on_size(self, event=None):
+        super().on_size()
+        self.plot_piano()
 
     @staticmethod
     def get_midi_note_name(num):

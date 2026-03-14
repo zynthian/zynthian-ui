@@ -556,39 +556,21 @@ touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION2', '_UNDEF_')
 # Backward compatibility
 if touch_navigation == "_UNDEF_":
     touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', '')
-    if touch_navigation == "1":
-        touch_navigation = "touch_widgets"
-    elif touch_navigation == "0":
-        touch_keypad = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', '')
-        if touch_keypad == "V5":
+    if touch_navigation == "0":
+        if os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', '') == "V5":
             touch_navigation = "v5_keypad_left"
         else:
             touch_navigation = None
 
 match touch_navigation:
-    case "touch_widgets":
-        enable_touch_navigation = True
-        touch_keypad_option = ""
-        touch_keypad_side_left = True
-        enable_touch_controller_switches = 1
-        main_screen_column = 0
     case "v5_keypad_left":
-        enable_touch_navigation = False
-        touch_keypad_option = "V5"
-        touch_keypad_side_left = True
-        enable_touch_controller_switches = 1
+        enable_touch_navigation = True
         main_screen_column = 1
     case "v5_keypad_right":
-        enable_touch_navigation = False
-        touch_keypad_option = "V5"
-        touch_keypad_side_left = False
-        enable_touch_controller_switches = 1
+        enable_touch_navigation = True
         main_screen_column = 0
     case _:
         enable_touch_navigation = False
-        touch_keypad_option = ""
-        touch_keypad_side_left = True
-        enable_touch_controller_switches = 0
         main_screen_column = 0
 
 try:
@@ -597,7 +579,7 @@ except:
     force_enable_cursor = 0
 
 # Configure switch actions for touch only configuration so it works with touch-keypad
-if touch_keypad_option == "V5" and wiring_layout =="TOUCH_ONLY":
+if enable_touch_navigation and wiring_layout =="TOUCH_ONLY":
     if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
@@ -801,19 +783,22 @@ if "zynthian_main.py" in sys.argv[0]:
 
         touch_keypad = None
         # Touch Keypad enabled =>
-        if touch_keypad_option == 'V5':
+        if enable_touch_navigation:
             # Screen dimensions < Display dimensions
             touch_keypad_side_width = display_height // 3
             touch_keypad_bottom_height = display_height // 6
             screen_width = display_width - touch_keypad_side_width
             screen_height = display_height - touch_keypad_bottom_height
+            top.grid_columnconfigure(0, weight=0)
+            top.grid_columnconfigure(1, weight=1)
+            top.grid_rowconfigure(0, weight=1)
             # Create touch keypad frame and show it!
             try:
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
-                touch_keypad = zynthian_gui_touchkeypad_v5(top, side_width=touch_keypad_side_width, left_side=touch_keypad_side_left)
+                touch_keypad = zynthian_gui_touchkeypad_v5(top, side_width=touch_keypad_side_width, left_side=touch_navigation=="v5_keypad_left")
                 touch_keypad.show()
             except Exception as e:
-                logging.error(f"Can't start touch keypad {touch_keypad_option} => {e}")
+                logging.error(f"Can't start touch keypad => {e}")
 
         # Touch Keypad disabled or failed to start =>
         if not touch_keypad:
@@ -850,7 +835,6 @@ if "zynthian_main.py" in sys.argv[0]:
         # Fonts
         font_listbox = (font_family, int(1.0*font_size))
         font_topbar = (font_family, topbar_fs)
-        font_buttonbar = (font_family, int(0.8*font_size))
 
         # Loading Logo Animation
         loading_imgs = []

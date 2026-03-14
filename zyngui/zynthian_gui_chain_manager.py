@@ -50,7 +50,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         Sets up the canvas, data structures for nodes and grid navigation,
         and initializes mouse drag state variables.
         """
-        super().__init__('Chain View')
+        super().__init__()
         
         # Canvas for drawing the graph
         self.canvas = tkinter.Canvas(self.main_frame,
@@ -88,9 +88,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             bool: Always True.
         """
         self.set_title(f"Chain: {self.chain_manager.active_chain.get_name()}")
-
-        if zynthian_gui_config.enable_touch_navigation:
-            self.show_back_button()
 
         # Bind Mouse Events
         self.canvas.bind("<Button-1>", self.on_press)

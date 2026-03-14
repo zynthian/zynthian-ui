@@ -65,13 +65,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.screen_type = None
         self.screen_title = None
 
-        self.buttonbar_config = [
-            ("arrow_left", '<< Prev'),
-            ("zynswitch 0,B", 'Preset'),
-            ("zynswitch 3,S", 'Pages'),
-            ("arrow_right", 'Next >>')
-        ]
-
         super().__init__(selcap, wide=False, loading_anim=False, tiny_ctrls=False)
 
         # Configure layout
@@ -186,16 +179,6 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.processors = [curproc]
             else:
                 self.processors = self.chain_manager.get_processors(curproc.chain_id)
-        try:
-            self.init_buttonbar(curproc.engine.buttonbar_config)
-        except:
-            self.init_buttonbar([
-            ("arrow_left", '<< Prev'),
-            ("zynswitch 0,B", 'Preset'),
-            ("zynswitch 3,S", 'Pages'),
-            ("arrow_right", 'Next >>')
-        ])
-
 
     def fill_list(self):
         self.list_data = []

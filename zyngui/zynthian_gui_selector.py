@@ -109,10 +109,7 @@ class zynthian_gui_selector(zynthian_gui_base):
             self.padx = (0, 2)
         else:
             self.padx = (2, 2)
-        if self.buttonbar_config:
-            self.pady = (0, 1)
-        else:
-            self.pady = (0, 0)
+        self.pady = (0, 0)
         self.listbox.grid(
             row=self.layout['list_pos'][0],
             column=self.layout['list_pos'][1],
@@ -499,7 +496,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def cb_loading_release(self, event):
         if self.loading_push_ts:
-            if zynthian_gui_config.enable_touch_controller_switches:
+            if zynthian_gui_config.enable_touch_navigation:
                 dts = (event.time - self.loading_push_ts)/1000
                 logging.debug("LOADING RELEASE => %s" % dts)
                 if dts < zynthian_gui_config.zynswitch_bold_seconds:
@@ -509,6 +506,4 @@ class zynthian_gui_selector(zynthian_gui_base):
                 elif dts >= zynthian_gui_config.zynswitch_long_seconds:
                     self.zyngui.zynswitch_defered('L', 2)
 
-    def status_short_touch_action(self):
-        pass # Disable default action
 # ------------------------------------------------------------------------------

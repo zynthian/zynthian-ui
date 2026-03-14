@@ -272,10 +272,9 @@ class zynthian_gui:
 
     def init_wsleds(self):
         if zynthian_gui_config.touch_keypad:
-            if zynthian_gui_config.touch_keypad_option == "V5":
-                from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
-                self.wsleds = zynthian_wsleds_v5touch(self)
-                self.wsleds.start()
+            from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
+            self.wsleds = zynthian_wsleds_v5touch(self)
+            self.wsleds.start()
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
             from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
             self.wsleds = zynthian_wsleds_z2(self)
@@ -1883,18 +1882,6 @@ class zynthian_gui:
     def cuia_hide_topbar(self, params=None):
         try:
             self.screens[self.current_screen].show_topbar(False)
-        except (AttributeError, TypeError):
-            pass
-
-    def cuia_show_buttonbar(self, params=None):
-        try:
-            self.screens[self.current_screen].show_buttonbar(True)
-        except (AttributeError, TypeError):
-            pass
-
-    def cuia_hide_buttonbar(self, params=None):
-        try:
-            self.screens[self.current_screen].show_buttonbar(False)
         except (AttributeError, TypeError):
             pass
 

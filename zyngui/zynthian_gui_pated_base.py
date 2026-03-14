@@ -145,7 +145,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.piano_roll_drag_start = None
         self.piano_roll_drag_count = 0
 
-        # Geometry contants
+        # Geometry constants
         self.grid_height = self.height - PLAYHEAD_HEIGHT
         self.grid_width = int(self.width * 0.91)
         self.piano_roll_width = self.width - self.grid_width
@@ -166,31 +166,29 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         # Create pattern grid canvas
         self.grid_canvas = tkinter.Canvas(self.main_frame,
-                                          width=self.grid_width,
-                                          height=self.grid_height,
-                                          scrollregion=(0, 0, self.grid_width, self.grid_height),
+                                          #scrollregion=(0, 0, self.grid_width, self.grid_height),
                                           bg=CANVAS_BACKGROUND,
                                           bd=0,
                                           highlightthickness=0)
         self.update_geometry()
-        self.grid_canvas.grid(column=1, row=0)
+        self.grid_canvas.grid(column=1, row=0, sticky="nsew")
         self.grid_canvas.bind('<ButtonPress-1>', self.on_grid_press)
         self.grid_canvas.bind('<ButtonRelease-1>', self.on_grid_release)
         self.grid_canvas.bind('<B1-Motion>', self.on_grid_drag)
         self.grid_canvas.bind('<Button-4>', self.on_grid_wheel)
         self.grid_canvas.bind('<Button-5>', self.on_grid_wheel)
         self.zyngui.multitouch.tag_bind(self.grid_canvas, None, "gesture", self.on_gesture)
-
+        self.main_frame.grid_columnconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(0, weight=1)
 
         # Create pianoroll canvas
         self.piano_roll = tkinter.Canvas(self.main_frame,
                                          width=self.piano_roll_width,
-                                         height=self.grid_height,
-                                         scrollregion=(0, 0, self.piano_roll_width, self.total_height),
+                                         #scrollregion=(0, 0, self.piano_roll_width, self.total_height),
                                          bg=CANVAS_BACKGROUND,
                                          bd=0,
                                          highlightthickness=0)
-        self.piano_roll.grid(row=0, column=0)
+        self.piano_roll.grid(row=0, column=0, stick="ns")
         self.piano_roll.bind("<ButtonPress-1>", self.on_pianoroll_press)
         self.piano_roll.bind("<ButtonRelease-1>", self.on_pianoroll_release)
         self.piano_roll.bind("<B1-Motion>", self.on_pianoroll_motion)
@@ -199,9 +197,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         # Create playhead canvas
         self.play_canvas = tkinter.Canvas(self.main_frame,
-                                          width=self.grid_width,
                                           height=PLAYHEAD_HEIGHT,
-                                          scrollregion=(0, 0, self.grid_width, PLAYHEAD_HEIGHT),
+                                          #scrollregion=(0, 0, self.grid_width, PLAYHEAD_HEIGHT),
                                           bg=PLAYHEAD_BACKGROUND,
                                           bd=0,
                                           highlightthickness=0)
@@ -210,7 +207,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                                           state="normal",
                                           width=0,
                                           tags="playCursor")
-        self.play_canvas.grid(column=1, row=1)
+        self.play_canvas.grid(column=1, row=1, sticky="ew")
 
         # Create velocity level indicator canvas
         self.velocity_canvas = tkinter.Canvas(self.main_frame,
@@ -284,35 +281,22 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         color_bg = zynthian_gui_config.color_panel_tx
         if mode == EDIT_MODE_SINGLE:
             #self.set_title("Note Parameters", color_fg, color_bg)
-            self.set_edit_title()
+            pass
         elif mode == EDIT_MODE_MULTI:
             #self.set_title("Note Parameters ALL", color_fg, color_bg)
-            self.set_edit_title()
+            pass
         elif self.edit_mode == EDIT_MODE_ZOOM:
             self.set_title("Grid zoom", color_fg, color_bg)
         elif self.edit_mode == EDIT_MODE_HISTORY:
             self.set_title("Undo/Redo", color_fg, color_bg)
-            self.init_buttonbar([("ARROW_LEFT", "<< undo"), ("ARROW_RIGHT", "redo >>")])
         elif self.edit_mode == EDIT_MODE_BLOCK:
             if self.block_copied:
                 self.set_title("Paste", color_fg, color_bg)
             else:
                 self.set_title("Cut/Copy/Select", color_fg, color_bg)
                 self.start_select_block()
-            #self.init_buttonbar(...)
         else:
             self.set_title()
-            self.init_buttonbar()
-
-    def set_edit_title(self):
-        #step = self.selected_cell[0]
-        delta = "1"
-        zynpot = 2
-        self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
-                             (f"ZYNPOT {zynpot},+1", f"+{delta}"),
-                             ("ZYNPOT 3,-1", "PREV\nPARAM"),
-                             ("ZYNPOT 3,+1", "NEXT\nPARAM"),
-                             (3, "OK")])
 
     # Function to show GUI
     def build_view(self):
@@ -389,7 +373,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     def get_menu_options(self):
         menu_options = {}
-        extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
+        extra_options = zynthian_gui_config.enable_touch_navigation
         # Global Options
         # Sequence options
         if self.seq_info:
@@ -1013,9 +997,17 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def get_pianoroll_num_cells(self):
         return 128
 
+    def on_size(self, event=None):
+        super().on_size()
+        self.update_geometry()
+        self.update_grid_position(True, True)
+        self.redraw_pending = 4
+
     # Function to calculate variable gemoetry parameters
     def update_geometry(self):
         # Width & height
+        self.grid_height = self.height - PLAYHEAD_HEIGHT
+        self.grid_width = int(self.width * 0.91)
         self.total_width = self.n_steps * self.step_width
         self.total_height = 128 * self.row_height
         self.scroll_height = self.total_height - self.grid_height
@@ -1155,8 +1147,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.set_step_offset()
         if row_height_changed:
             pass
-        self.view_rows = self.grid_height / self.row_height
-        self.view_steps = self.grid_width / self.step_width
+        self.view_rows = self.grid_height // self.row_height
+        self.view_steps = self.grid_width // self.step_width
 
     # Reset grid offset
     def reset_grid_offset(self):

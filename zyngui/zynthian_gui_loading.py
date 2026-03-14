@@ -28,24 +28,21 @@ import logging
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_fullscreen_modal import zynthian_gui_fullscreen_modal
 
 # ------------------------------------------------------------------------------
 # Zynthian Loading GUI Class (busy logo animation)
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_loading:
+class zynthian_gui_loading(zynthian_gui_fullscreen_modal):
 
     def __init__(self):
-        self.shown = False
+        super().__init__()
         self.zyngui = zynthian_gui_config.zyngui
-        self.width = zynthian_gui_config.screen_width
-        self.height = zynthian_gui_config.screen_height
         # Canvas for loading image animation
         self.canvas = tkinter.Canvas(
-            zynthian_gui_config.top,
-            width=self.width,
-            height=self.height,
+            self,
             bg=zynthian_gui_config.color_bg,
             bd=0,
             highlightthickness=0)
@@ -71,19 +68,7 @@ class zynthian_gui_loading:
             self.width//2, self.height//2,
             image=zynthian_gui_config.loading_imgs[0],
             anchor=tkinter.CENTER)
-
-    def build_view(self):
-        return True
-
-    def hide(self):
-        if self.shown:
-            self.shown = False
-            self.canvas.grid_forget()
-
-    def show(self):
-        if not self.shown:
-            self.shown = True
-            self.canvas.grid(row=0, column=zynthian_gui_config.main_screen_column)
+        self.canvas.grid(sticky="nsew")
 
     def set_error(self, txt):
         self.set_title(txt, zynthian_gui_config.color_error)

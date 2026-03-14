@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Touchscreen Calibration Class
 #
-# Copyright (C) 2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2022-2026 Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 #
@@ -36,7 +36,7 @@ import glob
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
-
+from zyngui.zynthian_gui_fullscreen_modal import zynthian_gui_fullscreen_modal
 
 # Little class to represent x,y coordinates
 class point:
@@ -56,25 +56,19 @@ class point:
 # TODO: Derive touchscreen calibration from gui base class
 
 
-class zynthian_gui_touchscreen_calibration:
+class zynthian_gui_touchscreen_calibration(zynthian_gui_fullscreen_modal):
 
     # Function to initialise class
     def __init__(self):
-        self.shown = False
+        super().__init__()
         self.zyngui = zynthian_gui_config.zyngui
-        self.height = zynthian_gui_config.display_height
-        self.width = zynthian_gui_config.display_width
         self.debounce = 0.5 * self.height  # Clicks cannot be closer than this
 
         # Main Frame
-        self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-                                        width=self.width,
-                                        height=self.height,
-                                        bg=zynthian_gui_config.color_bg,
-                                        cursor="none")
+        self.config(cursor="none")
 
         # Canvas
-        self.canvas = tkinter.Canvas(self.main_frame,
+        self.canvas = tkinter.Canvas(self,
                                      height=self.height,
                                      width=self.width,
                                      bg="black",
@@ -426,16 +420,12 @@ class zynthian_gui_touchscreen_calibration:
             self.timer.cancel()
             self.running = False
             self.setCalibration(self.device_id, self.ctm)
-            self.main_frame.grid_forget()
-            self.shown = False
-            if zynthian_gui_config.touch_keypad:
-                zynthian_gui_config.touch_keypad.show()
+            super().hide()
 
     # Build display
     def build_view(self):
         if self.zyngui.test_mode:
             logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-        self.shown = True
         self.device_id = None
         self.ctm = [1, 0, 0, 0, 1, 0, 0, 0, 1]
         self.canvas.unbind('<Button-1>')
@@ -450,9 +440,7 @@ class zynthian_gui_touchscreen_calibration:
 
     # Show display
     def show(self):
-        if zynthian_gui_config.touch_keypad:
-            zynthian_gui_config.touch_keypad.hide()
-        self.main_frame.grid()
+        super().show()
         self.onTimer()
         self.detect_thread = Thread(
             target=self.detectDevice, args=(), daemon=True)

@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Note Editor Class
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -837,8 +837,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.set_step_offset()
         if row_height_changed:
             self.set_keymap_offset()
-        self.view_rows = self.grid_height / self.row_height
-        self.view_steps = self.grid_width / self.step_width
+        self.view_rows = self.grid_height // self.row_height
+        self.view_steps = self.grid_width // self.step_width
 
     # Reset grid offset
     def reset_grid_offset(self):
@@ -1192,7 +1192,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         if row >= self.keymap_offset + self.view_rows:
             # Note is off top of view area
             self.set_keymap_offset(row - self.view_rows + 1)
-        elif row < self.keymap_offset:
+        elif row <= self.keymap_offset:
             # Note is off bottom of view area
             self.set_keymap_offset(row)
         note = self.keymap[row]['note']
@@ -1519,12 +1519,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                     val = self.stut_freq
                 val = STUT_FREQ_OPTIONS[val]
                 self.set_title(f"Stutter frequency: {val}", color_fg, color_bg)
-
-        self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),
-                             (f"ZYNPOT {zynpot},+1", f"+{delta}"),
-                             ("ZYNPOT 3,-1", "PREV\nPARAM"),
-                             ("ZYNPOT 3,+1", "NEXT\nPARAM"),
-                             (3, "OK")])
 
     # Function to handle zynpots value change
     #   i: Zynpot index [0..n]

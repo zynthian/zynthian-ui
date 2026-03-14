@@ -963,9 +963,7 @@ class zynthian_gui_mixer_strip():
 class zynthian_gui_mixer(zynthian_gui_base):
 
     def __init__(self):
-        super().__init__(has_backbutton=False)
-
-        self.status_menu_actions.append(("Add chain", self.zyngui.screens["chain_options"].insert_chain))
+        super().__init__()
 
         self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.columnconfigure(1, weight=0)
@@ -1244,8 +1242,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
         #self.set_launcher_mode()
 
         self.build_mixer()
-        if zynthian_gui_config.enable_touch_navigation and self.moving_phrase:
-            self.show_back_button()
         self.set_title()
         if zynthian_gui_config.enable_dpm:
             self.state_manager.zynmixer_chan.enable_dpm(True)
@@ -2289,8 +2285,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.zynseq.select_phrase(phrase)
 
     def end_moving_phrase(self):
-        if zynthian_gui_config.enable_touch_navigation:
-            self.show_back_button(False)
         self.moving_phrase = False
         self.strip_drag_start = None
         self.refresh_launchers()

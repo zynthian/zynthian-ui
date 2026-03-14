@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Splash Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -29,39 +29,27 @@ import os
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_fullscreen_modal import zynthian_gui_fullscreen_modal
 
 # ------------------------------------------------------------------------------
 # Zynthian Splash GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_splash:
+class zynthian_gui_splash(zynthian_gui_fullscreen_modal):
 
     def __init__(self):
-        self.shown = False
+        super().__init__()
         self.zyngui = zynthian_gui_config.zyngui
-        self.width = zynthian_gui_config.display_width
-        self.height = zynthian_gui_config.display_height
 
-        self.canvas = tkinter.Canvas(zynthian_gui_config.top,
-                                     width=self.width,
-                                     height=self.height,
+        self.canvas = tkinter.Canvas(self,
                                      bg=zynthian_gui_config.color_bg,
                                      bd=0,
                                      highlightthickness=0)
-
+        self.canvas.grid(sticky="nsew")
         self.image = None
 
-    def hide(self):
-        if self.shown:
-            self.shown = False
-            self.canvas.grid_forget()
-            if zynthian_gui_config.touch_keypad:
-                zynthian_gui_config.touch_keypad.show()
-
     def show(self, text):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         if len(text) > 40:
             font_size = 28
         else:
@@ -81,11 +69,7 @@ class zynthian_gui_splash:
                 self.canvas.itemconfig(self.image, image=self.img)
         except:
             pass
-        if not self.shown:
-            if zynthian_gui_config.touch_keypad:
-                zynthian_gui_config.touch_keypad.hide()
-            self.shown = True
-            self.canvas.grid()
+        super().show()
 
     def zynpot_cb(self, i, dval):
         pass

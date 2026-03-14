@@ -42,7 +42,7 @@ OSK_QWERTY = 1
 
 
 # Class implements renaming dialog
-class zynthian_gui_keyboard():
+class zynthian_gui_keyboard(tkinter.Frame):
 
     # Function to initialise class
     #  function: Callback function called when <Enter> pressed
@@ -59,22 +59,18 @@ class zynthian_gui_keyboard():
         self.last_key = None # Last pressed key
 
         # Geometry vars
-        self.width = zynthian_gui_config.screen_width
-        self.height = zynthian_gui_config.screen_height - zynthian_gui_config.topbar_height
-
+        self.width = zynthian_gui_config.display_width
+        self.height = zynthian_gui_config.display_height #- zynthian_gui_config.topbar_height
 
         # Fonts
         self.font_button = (zynthian_gui_config.font_family, int(1.2*zynthian_gui_config.font_size))
 
         # Create main frame
-        self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-                                        width=zynthian_gui_config.screen_width,
-                                        height=zynthian_gui_config.screen_height,
-                                        bg=zynthian_gui_config.color_bg)
-        self.main_frame.grid_propagate(False)
+        super().__init__(zynthian_gui_config.top, bg=zynthian_gui_config.color_bg)
+        self.grid_propagate(False)
 
         # Display string being edited
-        self.text_canvas = tkinter.Canvas(self.main_frame, width=self.width, height=zynthian_gui_config.topbar_height)
+        self.text_canvas = tkinter.Canvas(self, width=self.width, height=zynthian_gui_config.topbar_height)
         self.text_label = self.text_canvas.create_text(self.width / 2, zynthian_gui_config.topbar_height / 2,
                                                        font=zynthian_gui_config.font_topbar,
                                                        # font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
@@ -83,7 +79,7 @@ class zynthian_gui_keyboard():
         self.text_canvas.grid(column=0, row=0, sticky="nsew")
 
         # Display keyboard grid
-        self.key_canvas = tkinter.Canvas(self.main_frame, width=self.width, height=self.height, bg="grey")
+        self.key_canvas = tkinter.Canvas(self, width=self.width, height=self.height, bg="grey")
         self.key_canvas.grid_propagate(False)
         self.key_canvas.grid(column=0, row=1, sticky="nesw")
         self.set_mode(OSK_QWERTY)
@@ -106,6 +102,8 @@ class zynthian_gui_keyboard():
             self.columns = 10
             self.rows = 5
             span = 1
+        self.width = zynthian_gui_config.display_width
+        self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height
         self.key_width = (self.width - 2) / self.columns
         self.key_height = (self.height - 2) / self.rows
         for row in range(self.rows - 1):
@@ -286,7 +284,7 @@ class zynthian_gui_keyboard():
         if self.shown:
             self.shown = False
             self.keypress_queue = []
-            self.main_frame.grid_forget()
+            self.grid_forget()
 
     # Function to show keyboard screen
     #  function: Function to call when "Enter" selected
@@ -309,7 +307,7 @@ class zynthian_gui_keyboard():
             self.highlight(self.selected_button)
             self.setup_zynpots()
             self.refresh_keys()
-            self.main_frame.grid(row=0, column=zynthian_gui_config.main_screen_column)
+            self.grid(row=0, column=0, rowspan=3, columnspan=10, sticky="nsew")
             self.shown = True
 
     # Function to register encoders

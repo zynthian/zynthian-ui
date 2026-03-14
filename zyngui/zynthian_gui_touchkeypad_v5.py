@@ -120,6 +120,10 @@ class zynthian_gui_touchkeypad_v5:
         self.shown = False
         self.side_frame_width = side_width
         self.bottom_frame_width = zynthian_gui_config.display_width - self.side_frame_width
+        self.button_height = zynthian_gui_config.display_height // 6
+        self.button_width = zynthian_gui_config.display_width // 10
+        self.ui_width = zynthian_gui_config.display_width - self.button_width * 2
+        self.ui_height = zynthian_gui_config.display_height - self.button_height
         self.side_frame_col = 0 if left_side else 1
         self.bottom_frame_col = 1 if left_side else 0
         self.font_size = zynthian_gui_config.font_size
@@ -328,13 +332,31 @@ class zynthian_gui_touchkeypad_v5:
             self.side_frame.grid(row=0, column=self.side_frame_col, rowspan=2, sticky="nws")
             self.bottom_frame.grid_propagate(False)
             self.bottom_frame.grid(row=1, column=self.bottom_frame_col, sticky="wse")
+            zynthian_gui_config.screen_width = self.ui_width
+            zynthian_gui_config.screen_height = self.ui_height
+            try:
+                zynthian_gui_config.zyngui.get_current_screen_obj().on_size()
+            except:
+                pass
             self.shown = True
 
     def hide(self):
         if self.shown:
             self.side_frame.grid_remove()
             self.bottom_frame.grid_remove()
+            zynthian_gui_config.screen_width = zynthian_gui_config.display_width
+            zynthian_gui_config.screen_height = zynthian_gui_config.display_height
+            try:
+                zynthian_gui_config.zyngui.get_current_screen_obj().on_size()
+            except:
+                pass
             self.shown = False
+
+    def toggle(self):
+        if self.shown:
+            self.hide()
+        else:
+            self.show()
 
     def apply_user_config(self):
         for n in range(0, 20):

@@ -43,7 +43,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         Sets up the canvas, data structures for nodes and grid navigation,
         and initializes mouse drag state variables.
         """
-        super().__init__('Selector Grid')
+        super().__init__()
 
         self.columns = 3
 

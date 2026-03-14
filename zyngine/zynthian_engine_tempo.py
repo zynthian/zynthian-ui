@@ -71,13 +71,6 @@ class zynthian_engine_tempo(zynthian_engine):
 
         self.zctrls = None
 
-        self.buttonbar_config = [
-            ("toggle_audio_play", "Play\nAudio"),
-            ("toggle_audio_record", "Record\nAudio"),
-            ("toggle_midi_play", "Play\nMIDI"),
-            ("toggle_midi_record", "Record\nMIDI")
-        ]
-
     # ---------------------------------------------------------------------------
     # Processor Management
     # ---------------------------------------------------------------------------

@@ -717,7 +717,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			self.canvas_push_event = None
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
 			if self.active_motion_axis == 0:
-				if zynthian_gui_config.enable_touch_controller_switches:
+				if zynthian_gui_config.enable_touch_navigation:
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
 						if self.zctrl.is_toggle:
 							self.zctrl.toggle()
