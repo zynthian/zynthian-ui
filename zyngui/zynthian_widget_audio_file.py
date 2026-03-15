@@ -72,6 +72,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.crop_start = 0
         self.crop_end = 0
         self.beats = 0
+        self.warp = False
         self.last_progress = 0
 
         self.bg_color = zynthian_gui_config.color_bg
@@ -347,6 +348,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 if self.auto_offset:
                     self.auto_offset = 2
 
+        if "warp" in self.monitors and self.warp != self.monitors["warp"]:
+                self.warp = self.monitors["warp"]
+                update_markers = True
+
         if "beats" in self.monitors and self.beats != self.monitors["beats"]:
                 self.beats = self.monitors["beats"]
                 update_markers = True
@@ -387,16 +392,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.widget_canvas.coords(self.crop_end_rect, x2, 0, self.width, h)
                     # Beat markers
                     self.widget_canvas.delete("beat_markers")
-                    for i in range(1, self.beats):
-                        x = x1 + i * (x2 - x1) // self.beats
-                        self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tag="beat_markers")
-                # Beat markers and playing cursor (implemented for clippy)
+                    if self.beats > 0 and self.warp:
+                        for i in range(1, self.beats):
+                            x = x1 + i * (x2 - x1) // self.beats
+                            self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tag="beat_markers")
+                # Playing cursor (implemented for clippy)
                 if self.clip_info:
-                    # Beat markers
-                    note = self.clip_info[1] + 1
-                    # Get number of beats
-                    self.zctrl.processor.controllers_dict[f"beats {note}"].value
-
                     # Playing cursor
                     clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
                     if clip_state == 1:
