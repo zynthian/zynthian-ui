@@ -117,7 +117,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     ["Recording", ["record"]]
                 ]
                 # Set monitor values (for widget)
-                for symbol in ["zoom", "crop_start", "crop_end"]:
+                for symbol in ["zoom", "crop_start", "crop_end", "warp", "beats"]:
                     self.monitors_dict[symbol] = processor.controllers_dict[f"{symbol} {note}"].value
                 # Set processor name for display
                 processor.preset_name = file_path.split("/")[-1]
@@ -306,14 +306,10 @@ class zynthian_engine_clippy(zynthian_engine):
                     can_warp = True
                 else:
                     can_warp = False
-                    tempo = 0.0
-
-                if can_warp:
-                    # QUESTION: Should we allow modifying number of beats when warping?
-                    #beats_zctrl.set_readonly(warp_zctrl.value != 0)
-                    pass
-                else:
                     warp_zctrl.value = 0
+
+                if not warp_zctrl.value:
+                    tempo = 0.0
 
                 #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] {tempo}BPM => {path}")
                 # Setup clippy note
@@ -357,6 +353,8 @@ class zynthian_engine_clippy(zynthian_engine):
     # ---------------------------------------------------------------
 
     def start_reload_timer(self, processor, phrase):
+        if processor.set_state_flag:
+            return
         try:
             self.reload_timers[(processor, phrase)].cancel()
             self.reload_timers.pop((processor, phrase), None)
@@ -371,7 +369,8 @@ class zynthian_engine_clippy(zynthian_engine):
             self.reload_timers[(processor, phrase)].cancel()
         except:
             pass
-        self.set_file(processor, phrase)
+        if not processor.set_state_flag:
+            self.set_file(processor, phrase)
         self.reload_timers.pop((processor, phrase), None)
 
     def start_tempo_timer(self, tempo=None):
@@ -477,8 +476,8 @@ class zynthian_engine_clippy(zynthian_engine):
             f"zoom {note}": zynthian_controller(self, f"zoom {note}", {
                     "name": "zoom",
                     "processor": processor,
-                    "ticks": [0, 1, 2],
-                    "labels": ["x1", "x2", "x4"]
+                    "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
+                    "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
                 })
         }
         processor.controllers_dict.update(zctrls)
@@ -488,7 +487,7 @@ class zynthian_engine_clippy(zynthian_engine):
         crop_end_options =  {"value_max": frames}
         if reset:
             crop_start_options["value"] = 0
-            crop_start_options["value"] = frames
+            crop_end_options["value"] = frames
         processor.controllers_dict[f"crop_start {note}"].set_options(crop_start_options)
         processor.controllers_dict[f"crop_end {note}"].set_options(crop_end_options)
         ticks = []
@@ -525,9 +524,6 @@ class zynthian_engine_clippy(zynthian_engine):
         zctrl_crop_end.nudge_factor_fine = nudge_factor_fine
 
     def send_controller_value(self, zctrl):
-
-        logging.debug(f"ZCTRL[{zctrl.symbol}] => {zctrl.value}")
-
         if zctrl.symbol == "record":
             if zctrl.value:
                 self.state_manager.audio_recorder.start_recording()
@@ -535,6 +531,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.state_manager.audio_recorder.stop_recording()
             return
 
+        proc = zctrl.processor
         try:
             symparts = zctrl.symbol.split(" ")
             symbol = symparts[0]
@@ -547,8 +544,9 @@ class zynthian_engine_clippy(zynthian_engine):
         #logging.debug(f"ZCTRL {symbol}, {note} => {zctrl.value}")
         match symbol:
             case "file":
-                self.start_reload_timer(zctrl.processor, phrase)
+                self.start_reload_timer(proc, phrase)
             case "warp":
+                self.monitors_dict["warp"] = zctrl.value
                 self.start_reload_timer(zctrl.processor, phrase)
             case "mode":
                 self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
@@ -558,6 +556,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     zctrl.set_value(zctrl.crop_end.value - 1)
                     return
                 self.monitors_dict["crop_start"] = zctrl.value
+
                 self.start_reload_timer(zctrl.processor, phrase)
                 return
             case "crop_end":
@@ -586,6 +585,39 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.update_nudge(zctrl.processor, note)
                 self.monitors_dict["zoom"] = zctrl.value
                 return
+
+    def set_state_pre(self, processor):
+        # Set crop and zoom limits to big-enough values so it can receive the new state values
+        note = 1
+        while True:
+            try:
+                crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
+                crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
+                zoom_zctrl = processor.controllers_dict[f"zoom {note}"]
+            except:
+                break
+            crop_start_options = {"value_max": 999999999}
+            crop_end_options =  {"value_max": 999999999}
+            crop_start_zctrl.set_options(crop_start_options)
+            crop_end_zctrl.set_options(crop_end_options)
+            zoom_option = {
+                "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
+                "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
+            }
+            zoom_zctrl.set_options(zoom_options)
+            note += 1
+
+    def set_state_post(self, processor):
+        note = 1
+        while True:
+            try:
+                processor.controllers_dict[f"file {note}"]
+            except:
+                break
+            phrase = note - 1
+            self.set_file(processor, phrase)
+            note += 1
+
 
     # ---------------------------------------------------------------------------
     # Processor Management
