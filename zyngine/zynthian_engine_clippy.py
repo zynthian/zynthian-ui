@@ -231,7 +231,7 @@ class zynthian_engine_clippy(zynthian_engine):
     # Sample loading, cropping & warping
     # ---------------------------------------------------------------
 
-    def set_file(self, processor, phrase):
+    def set_file(self, processor, phrase, autoreset=True):
         """ Loads a file into a clip. SRC and warp to new file if necessary
 
         processor: Clippy processor
@@ -270,9 +270,12 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Configure clip with required beats to play whole file at this tempo
             try:
-                # This will fail when loading ZS3 that changes sample files
-                current_path = self.libclippy.getClipPath(clip_channel, phrase)
-                if current_path and current_path.decode("utf-8") != path:
+                reset = False
+                if autoreset:
+                    current_path = self.libclippy.getClipPath(clip_channel, phrase)
+                    if not current_path or current_path.decode("utf-8") != path:
+                        reset = True
+                if reset:
                     beats_zctrl.value = 0
                     warp_zctrl.value = 1
                     crop_start_zctrl.value = 0
@@ -615,7 +618,7 @@ class zynthian_engine_clippy(zynthian_engine):
             except:
                 break
             phrase = note - 1
-            self.set_file(processor, phrase)
+            self.set_file(processor, phrase, autoreset=False)
             note += 1
 
 
