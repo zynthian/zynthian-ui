@@ -1256,6 +1256,7 @@ bool setState(const char* state) {
                         pEvent->setStutterFreq(jEvent[14]);
                     }
                 }
+                pPattern->resetSnapshots();
             }
         }
         if (j.contains("scenes")) {
