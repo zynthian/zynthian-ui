@@ -247,15 +247,15 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar short touch action
     def topbar_short_touch_action(self):
-        pass
+        self.zyngui.callable_ui_action('show_screen', ('root',))
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.zyngui.callable_ui_action('screen_launcher')
+        self.topbar_short_touch_action()
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):
-        self.zyngui.callable_ui_action('screen_admin')
+        self.topbar_short_touch_action()
 
     # Default status touch callback
     def cb_status_press(self, params=None):
@@ -289,10 +289,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default status bold touch action
     def status_bold_touch_action(self):
-        if self.zyngui.get_current_screen() == 'zs3':
-            self.zyngui.callable_ui_action('screen_snapshot')
-        else:
-            self.zyngui.callable_ui_action('screen_zs3')
+        self.status_short_touch_action()
 
     # Default status long touch action
     def status_long_touch_action(self):

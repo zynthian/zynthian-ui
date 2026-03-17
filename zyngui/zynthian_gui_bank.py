@@ -107,9 +107,6 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
             self.zyngui.show_screen('preset')
         self.zyngui.screens["preset"].autoselect()
 
-    def topbar_bold_touch_action(self):
-        self.zyngui.zynswitch_defered('B', 1)
-
     def show_bank_options(self):
         options = {}
         engine = self.processor.engine

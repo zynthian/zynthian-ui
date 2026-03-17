@@ -104,8 +104,8 @@ class zynthian_gui_touchkeypad_v5:
             self.x_offset = 0
             layout = (
                 (0, 1),
-                (2, 3),
-                (5, 6),
+                (2, 6),
+                (5, 3),
                 (12, 14),
                 (4, 13),
                 (16, 17, 18, 8, 9, 10, 7, 11, 15, 19)
@@ -114,8 +114,8 @@ class zynthian_gui_touchkeypad_v5:
             self.x_offset = zynthian_gui_config.display_width - self.button_width * 2
             layout = (
             (0, 1),
-            (2, 3),
-            (5, 6),
+            (2, 6),
+            (5, 3),
             (12, 14),
             (13, 4),
             (7, 11, 15, 19, 8, 9, 10, 16, 17, 18)

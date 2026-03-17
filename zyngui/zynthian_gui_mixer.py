@@ -1498,7 +1498,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 if strip.chain.midi_chan == chan:
                     strip.launchers[phrase].draw()
 
-    def topbar_bold_touch_action(self):
+    def topbar_short_touch_action(self):
         self.toggle_launcher_mode()
 
     def toggle_menu(self):
