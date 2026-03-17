@@ -92,7 +92,7 @@ def check_wiring_layout(wls):
 gui_layout = os.environ.get('ZYNTHIAN_UI_GRAPHIC_LAYOUT', '')
 
 if not gui_layout:
-    if check_wiring_layout(["Z2", "V5"]):
+    if check_wiring_layout(["Z2", "V5", "TOUCH_ONLY"]):
         gui_layout = "Z2"
     else:
         gui_layout = "V4"
@@ -551,35 +551,19 @@ font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
 # Touch Options
 # ------------------------------------------------------------------------------
 
-touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION2', '_UNDEF_')
+main_screen_column = 1
 
-# Backward compatibility
-if touch_navigation == "_UNDEF_":
-    touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', '')
-    if touch_navigation == "0":
-        if os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', '') == "V5":
-            touch_navigation = "v5_keypad_left"
-        else:
-            touch_navigation = None
+touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION',
+    os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION',
+    os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', None)))
 
-match touch_navigation:
-    case "v5_keypad_left":
-        enable_touch_navigation = True
-        main_screen_column = 1
-    case "v5_keypad_right":
-        enable_touch_navigation = True
-        main_screen_column = 0
-    case _:
-        enable_touch_navigation = False
-        main_screen_column = 0
+if touch_navigation not in (None, "v5_keypad_left", "v5_keypad_right"):
+    touch_navigation = "v5_keypad_left"
 
-try:
-    force_enable_cursor = get_env_int('ZYNTHIAN_UI_ENABLE_CURSOR', 0)
-except:
-    force_enable_cursor = 0
+force_enable_cursor = get_env_int('ZYNTHIAN_UI_ENABLE_CURSOR', 0)
 
 # Configure switch actions for touch only configuration so it works with touch-keypad
-if enable_touch_navigation:
+if touch_navigation:
     if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
@@ -746,6 +730,24 @@ for i, value in enumerate(LAUNCHER_COLOUR):
 # X11 Related Stuff
 # ------------------------------------------------------------------------------
 
+main_x = 0
+touch_shown = False
+
+def toggle_touch():
+    global main_x, screen_width, screen_height, touch_shown
+    if touch_shown:
+        main_x = 0
+        screen_width = display_width
+        screen_height = display_height
+        touch_shown = False
+    else:
+        panel_width = display_width // 5
+        if touch_navigation == "v5_keypad_left":
+            main_x = panel_width
+        screen_width = display_width - panel_width
+        screen_height = display_height // 6 * 5
+        touch_shown = True
+
 if "zynthian_main.py" in sys.argv[0]:
     import tkinter
     from PIL import Image, ImageTk
@@ -776,40 +778,25 @@ if "zynthian_main.py" in sys.argv[0]:
                 logging.warning("Can't get screen height. Using default 240!")
                 display_height = 240
 
+        # Screen dimensions within which to display main UI (excluding V5 buttons)
+        screen_width = display_width
+        screen_height = display_height
+
         # Global font size
         font_size = get_env_int('ZYNTHIAN_UI_FONT_SIZE', 16)
         if not font_size:
             font_size = int(display_width / 40)
 
-        touch_keypad = None
-        # Touch Keypad enabled =>
-        if enable_touch_navigation:
-            # Screen dimensions < Display dimensions
-            touch_keypad_side_width = display_height // 3
-            touch_keypad_bottom_height = display_height // 6
-            screen_width = display_width - touch_keypad_side_width
-            screen_height = display_height - touch_keypad_bottom_height
-            top.grid_columnconfigure(0, weight=0)
-            top.grid_columnconfigure(1, weight=1)
-            top.grid_rowconfigure(0, weight=1)
+        touch_keypad = None # V5 button overlay
+        if touch_navigation:
             # Create touch keypad frame and show it!
             try:
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
-                touch_keypad = zynthian_gui_touchkeypad_v5(top, side_width=touch_keypad_side_width, left_side=touch_navigation=="v5_keypad_left")
-                touch_keypad.show()
+                touch_keypad = zynthian_gui_touchkeypad_v5()
             except Exception as e:
                 logging.error(f"Can't start touch keypad => {e}")
 
-        # Touch Keypad disabled or failed to start =>
-        if not touch_keypad:
-            # Screen dimensions = Display dimensions
-            touch_keypad_side_width = 0
-            touch_keypad_bottom_height = 0
-            screen_width = display_width
-            screen_height = display_height
-
         # Geometric params
-        button_width = screen_width // 4
         if screen_width >= 800:
             topbar_height = screen_height // 12
             topbar_fs = int(1.5*font_size)

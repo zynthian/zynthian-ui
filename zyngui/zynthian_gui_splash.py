@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import tkinter
+from PIL import Image, ImageDraw, ImageFont
 import logging
 import os
 
@@ -58,17 +59,21 @@ class zynthian_gui_splash(zynthian_gui_fullscreen_modal):
         pos_x = self.width / 2 - strlen / 2
         pos_y = int(self.height / 10)
         try:
-            os.system('convert -strip -family \\"{}\\" -pointsize {} -fill white -draw "text {},{} \\"{}\\"" {}/img/fb_zynthian_boot.jpg {}/img/fb_zynthian_message.jpg'.format(
-                zynthian_gui_config.font_family, font_size, pos_x, pos_y, text, os.environ.get("ZYNTHIAN_CONFIG_DIR"), os.environ.get("ZYNTHIAN_CONFIG_DIR")))
-            self.img = tkinter.PhotoImage(
-                file="/zynthian/config/img/fb_zynthian_message.jpg")
+            boot_file = f'{os.environ.get("ZYNTHIAN_CONFIG_DIR")}/img/fb_zynthian_boot.jpg'
+            file = f'{os.environ.get("ZYNTHIAN_CONFIG_DIR")}/img/fb_zynthian_message.jpg'
+            img = Image.open(boot_file).convert("RGB")
+            draw = ImageDraw.Draw(img)
+            font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # adjust if needed
+            font = ImageFont.truetype(font_path, font_size)
+            draw.text((pos_x, pos_y), text, fill="white", font=font)
+            img.save(file, "PNG")
+            self.img = tkinter.PhotoImage(file=file)
             if self.image is None:
-                self.image = self.canvas.create_image(
-                    0, 0, anchor='nw', image=self.img)
+                self.image = self.canvas.create_image(0, 0, anchor='nw', image=self.img)
             else:
                 self.canvas.itemconfig(self.image, image=self.img)
-        except:
-            pass
+        except Exception as e:
+            logging.error(e)
         super().show()
 
     def zynpot_cb(self, i, dval):

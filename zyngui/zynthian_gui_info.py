@@ -4,7 +4,7 @@
 #
 # Zynthian GUI Info Class
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -27,30 +27,25 @@ import logging
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_fullscreen_modal import zynthian_gui_fullscreen_modal
 
 # ------------------------------------------------------------------------------
 # Zynthian Info GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_info:
+class zynthian_gui_info(zynthian_gui_fullscreen_modal):
 
     def __init__(self):
-        self.shown = False
+        super().__init__()
         self.zyngui = zynthian_gui_config.zyngui
-
-        # Main Frame
-        self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-                                        width=zynthian_gui_config.screen_width,
-                                        height=zynthian_gui_config.screen_height,
-                                        bg=zynthian_gui_config.color_bg)
-
         # Textarea
-        self.textarea = tkinter.Text(self.main_frame,
+        self.textarea = tkinter.Text(self,
                                      height=int(
                                          zynthian_gui_config.screen_height/(zynthian_gui_config.font_size + 8)),
                                      font=(zynthian_gui_config.font_family,
                                            zynthian_gui_config.font_size, "normal"),
+                                    wrap=tkinter.WORD,
                                      # font=("sans-serif", zynthian_gui_config.font_size, "normal"),
                                      # wraplength=80,
                                      # justify=tkinter.LEFT,
@@ -61,7 +56,7 @@ class zynthian_gui_info:
                                      fg=zynthian_gui_config.color_tx)
         self.textarea.bind("<ButtonRelease-1>", self.cb_push)
         # self.textarea.pack(fill="both", expand=True)
-        self.textarea.place(x=0, y=0)
+        self.textarea.grid(stick="news")
 
         self.textarea.tag_config("ERROR", foreground="#C00000")
         self.textarea.tag_config("WARNING", foreground="#FF9000")
@@ -82,18 +77,9 @@ class zynthian_gui_info:
     def build_view(self):
         return True
 
-    def hide(self):
-        if self.shown:
-            self.shown = False
-            self.main_frame.grid_forget()
-
     def show(self, text):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         self.set(text)
-        if not self.shown:
-            self.shown = True
-            self.main_frame.grid(row=0, column=zynthian_gui_config.main_screen_column)
+        super().show()
 
     def zynpot_cb(self, i, dval):
         return True

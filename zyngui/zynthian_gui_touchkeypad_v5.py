@@ -5,7 +5,8 @@
 #
 # Zynthian Touchscreen Keypad V5 Class
 #
-# Copyright (C) 2024 Pavel Vondřička <pavel.vondricka@ff.cuni.cz>
+# Copyright (C) 2024-2026 Pavel Vondřička <pavel.vondricka@ff.cuni.cz>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -27,6 +28,7 @@ import os
 import tkinter
 from io import BytesIO
 from PIL import Image, ImageTk
+import tkinter.font as tkfont
 
 try:
     import cairosvg
@@ -36,68 +38,16 @@ except:
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 
-# ------------------------------------------------------------------------------
-# Touchscreen V5 keypad configuration
-# ------------------------------------------------------------------------------
-
-# Button definitions and mapping
-
-BUTTONS = {
-    # labels, ZYNSWITCH number, wsLED number
-    'OPT_ADMIN': ({'default': 'OPT/ADMIN'}, 4, 0),
-    'MIX_LEVEL': ({'default': 'MIX/LEVEL'}, 5, 1),
-    'CTRL_PRESET': ({'default': 'CTRL/PRESET'}, 6, 2),
-    'ZS3_SHOT': ({'default': 'ZS3/SHOT'}, 7, 3),
-    'METRONOME': ({'default': '_icons/metronome.svg'}, 9, 6),
-    'PAD_STEP': ({'default': 'PAD/STEP'}, 10, 5),
-    'ALT': ({'default': 'ALT'}, 8, 4),
-
-    'REC': ({'default': '\uf111'}, 12, 8),
-    'STOP': ({'default': '\uf04d'}, 13, 9),
-    'PLAY': ({'default': '\uf04b', 'active': '\uf04c'}, 14, 10),
-
-    'UP': ({'default': '\uf077'}, 17, 14),
-    'DOWN': ({'default': '\uf078'}, 21, 17),
-    'LEFT': ({'default': '\uf053'}, 20, 16),
-    'RIGHT': ({'default': '\uf054'}, 22, 18),
-    'SEL_YES': ({'default': 'SEL/YES'}, 18, 13),
-    'BACK_NO': ({'default': 'BACK/NO'}, 16, 15),
-
-    'F1': ({'default': 'F1', 'alt': 'F5'}, 11, 7),
-    'F2': ({'default': 'F2', 'alt': 'F6'}, 15, 11),
-    'F3': ({'default': 'F3', 'alt': 'F7'}, 19, 12),
-    'F4': ({'default': 'F4', 'alt': 'F8'}, 23, 19)
-}
-
-FKEY2SWITCH = [BUTTONS['F1'][1], BUTTONS['F2'][1], BUTTONS['F3'][1], BUTTONS['F4'][1]]
-
-LED2BUTTON = {btn[2]: btn[1]-4 for btn in BUTTONS.values()}
-
-# Layout definitions
-
-LAYOUT_RIGHT = {
-    'SIDE': (
-        ('OPT_ADMIN', 'MIX_LEVEL'),
-        ('CTRL_PRESET', 'ZS3_SHOT'),
-        ('METRONOME', 'PAD_STEP'),
-        ('BACK_NO', 'SEL_YES'),
-        ('UP', 'ALT'),
-        ('DOWN', 'RIGHT')
-    ),
-    'BOTTOM': ('F1', 'F2', 'F3', 'F4', 'REC', 'STOP', 'PLAY', 'LEFT')
-}
-
-LAYOUT_LEFT = {
-    'SIDE': (
-        ('OPT_ADMIN', 'MIX_LEVEL'),
-        ('CTRL_PRESET', 'ZS3_SHOT'),
-        ('METRONOME', 'PAD_STEP'),
-        ('BACK_NO', 'SEL_YES'),
-        ('ALT', 'UP'),
-        ('LEFT', 'DOWN')
-    ),
-    'BOTTOM': ('RIGHT', 'REC', 'STOP', 'PLAY', 'F1', 'F2', 'F3', 'F4')
-}
+LABEL       = 0
+ALT_LABEL   = 1
+ACT_LABEL   = 2
+ACT2_LABEL  = 3
+RECT_ID     = 4
+TXT_ID      = 5
+IMG_ID      = 6
+IMG         = 7
+TKIMG       = 8
+LED_STATE   = 9
 
 # ------------------------------------------------------------------------------
 # Zynthian Touchscreen Keypad V5 Class
@@ -106,126 +56,105 @@ LAYOUT_LEFT = {
 
 class zynthian_gui_touchkeypad_v5:
 
-    def __init__(self, parent, side_width, left_side=True):
-        """
-        Parameters
-        ----------
-        parent : tkinter widget
-            Parent widget
-        side_width : int
-            Width of the side panel: base for the geometry
-        left_side : bool
-            Left or right side layout for the side frame
-        """
+    def __init__(self):
+
         self.shown = False
-        self.side_frame_width = side_width
-        self.bottom_frame_width = zynthian_gui_config.display_width - self.side_frame_width
-        self.button_height = zynthian_gui_config.display_height // 6
         self.button_width = zynthian_gui_config.display_width // 10
-        self.ui_width = zynthian_gui_config.display_width - self.button_width * 2
+        self.button_height = zynthian_gui_config.display_height // 6
+        self.ui_width = zynthian_gui_config.display_width - self.button_width * 2 - 1
         self.ui_height = zynthian_gui_config.display_height - self.button_height
-        self.side_frame_col = 0 if left_side else 1
-        self.bottom_frame_col = 1 if left_side else 0
         self.font_size = zynthian_gui_config.font_size
         self.bg_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, -28)
         self.bg_color_over = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, -22)
         self.border_color = zynthian_gui_config.color_bg
         self.text_color = zynthian_gui_config.color_header_tx
 
-        # configure side frame for 2x6 buttons
-        self.side_frame = tkinter.Frame(parent,
-            width=self.side_frame_width,
-            height=zynthian_gui_config.display_height,
-            bg=zynthian_gui_config.color_bg)
-        for column in range(2):
-            self.side_frame.columnconfigure(column, weight=1)
-        for row in range(6):
-            self.side_frame.rowconfigure(row, weight=1)
+        self.canvas = tkinter.Canvas(zynthian_gui_config.top,
+                width=zynthian_gui_config.display_width,
+                height=zynthian_gui_config.display_height,
+                bg=zynthian_gui_config.color_bg,
+                bd=0,
+                highlightthickness=0)
+        self.canvas.place(x=0, y=0)
 
-        # 2 columns by 6 buttons at the full diplay height and requested side frame width
-        self.side_button_width = self.side_frame_width // 2
-        self.side_button_height = zynthian_gui_config.display_height // 6
+        self.buttons = [
+            # default label, alt label, rectangle id, text id, image id, image, tk image, led state
+            ["OPT\nADMIN", None] + [None] * 8,             #0 OPT
+            ["MIX\nLEVEL", None] + [None] * 8,             #1 MIX
+            ["CTRL\nPRESET", None] + [None] * 8,           #2 CTRL
+            ["ZS3\nSHOT", None] + [None] * 8,              #3 ZS3
+            ["ALT", None] + [None] * 8,                    #4 ALT
+            ["_icons/metronome.svg", None] + [None] * 8,   #5 METRO
+            ["PAD\nSTEP", None] + [None] * 8,              #6 PAD
+            ["F1", "F5"] + [None] * 8,                     #7 F1
+            ["\uf111", None] + [None] * 8,                 #8 RECORD
+            ["\uf04d", None] + [None] * 8,                 #9 STOP
+            ["\uf04b", None] + [None] * 8,                 #10 PLAY
+            ["F2", "F6"] + [None] * 8,                     #11 F2
+            ["BACK\nNO", None] + [None] * 8,               #12 BACK
+            ["\uf077", None] + [None] * 8,                 #13 UP
+            ["SEL\nYES", None] + [None] * 8,               #14 SEL
+            ["F3", "F7"] + [None] * 8,                     #15 F3
+            ["\uf053", None] + [None] * 8,                 #16 LEFT
+            ["\uf078", None] + [None] * 8,                 #17 DOWN
+            ["\uf054", None] + [None] * 8,                 #18 RIGHT
+            ["F4", "F8"] + [None] * 8                      #19 F4
+        ]
+        if zynthian_gui_config.touch_navigation == "v5_keypad_left":
+            self.x_offset = 0
+            layout = (
+                (0, 1),
+                (2, 3),
+                (5, 6),
+                (12, 14),
+                (4, 13),
+                (16, 17, 18, 8, 9, 10, 7, 11, 15, 19)
+            )
+        else:
+            self.x_offset = zynthian_gui_config.display_width - self.button_width * 2
+            layout = (
+            (0, 1),
+            (2, 3),
+            (5, 6),
+            (12, 14),
+            (13, 4),
+            (7, 11, 15, 19, 8, 9, 10, 16, 17, 18)
+        )
 
-        # configure bottom frame for a single row of 8 buttons
-        self.bottom_frame = tkinter.Frame(parent,
-            width=self.bottom_frame_width,
-            # the height must correspond to the height of buttons in the side frame
-            height=zynthian_gui_config.display_height // 6,
-            bg=zynthian_gui_config.color_bg)
-        for column in range(8):
-            self.bottom_frame.columnconfigure(column, weight=1)
-        self.bottom_frame.rowconfigure(0, weight=1)
-
-        # select layout as requested
-        layout = LAYOUT_LEFT if left_side else LAYOUT_RIGHT
-
-        # buffers to remember the buttons and their contents and state
-        self.buttons = [None] * 20  # actual button widgets
-        self.btndefs = [None] * 20  # original definition of the button parameters
-        self.images = [None] * 20   # original image/icon used (if any)
-        self.btnstate = [None] * 20 # last state of the button (<=color)
-        self.tkimages = [None] * 20 # current image in tkinter format (avoid discarding by the garbage collector!)
-
-        # create side frame buttons
-        for row in range(6):
-            for col in range(2):
-                btn = BUTTONS[layout['SIDE'][row][col]]
-                zynswitch = btn[1]
-                n = zynswitch - 4
-                label = btn[0]['default']
-                pady = (1, 0) if row == 5 else (0, 0) if row == 4 else (0, 1)
-                padx = (0, 1) if left_side else (1, 0)
-                self.btndefs[n] = btn
-                self.buttons[n] = self.add_button(n, self.side_frame, row, col, zynswitch, label, padx, pady)
-        # create bottom frame buttons
-        for col in range(8):
-            btn = BUTTONS[layout['BOTTOM'][col]]
-            zynswitch = btn[1]
-            n = zynswitch - 4
-            label = btn[0]['default']
-            padx = (0, 0) if col == 7 else (0, 1)
-            self.btndefs[n] = btn
-            self.buttons[n] = self.add_button(n, self.bottom_frame, 0, col, zynswitch, label, padx, (1, 0))
+        for row, row_data in enumerate(layout):
+            for column, button in enumerate(row_data):
+                self.draw_button(row, column, button)
 
         # update with user settings from the environment
         self.apply_user_config()
 
-    def add_button(self, n, parent, row, column, zynswitch, label, padx, pady):
+    def draw_button(self, row, column, button):
+        """ Draw button onto canvas
+        Args:
+            row: Row in which to draw button
+            column: Column in which to draw button
+            button: Button index
         """
-        Create button
 
-        Parameters:
-        -----------
-        n : int
-            Number of the button
-        parent : tkinter widget
-            Parent widget
-        row : int
-        column : int
-            Position of the button in the grid
-        zynswitch : int
-            Number of the zynswitch to emulate
-        label : str
-            Default label for the button
-        padx : (int, int)
-        pady : (int, int)
-            Button padding
-        """
-        button = tkinter.Button(
-            parent,
+        try:
+            config = self.buttons[button]
+            label = config[0]
+        except:
+            return
+        if row == 5:
+            x = self.button_width * column
+        else:
+            x = self.x_offset + self.button_width * column
+        y = self.button_height * row
+        tag = f"v5_button_{button}"
+        config[RECT_ID] = self.canvas.create_rectangle(
+            x, y,
+            x+self.button_width, y+self.button_height,
+            outline=zynthian_gui_config.color_bg,
             width=1,
-            height=1,
-            bg=self.bg_color,
-            fg=self.text_color,
-            activebackground=self.bg_color,
-            activeforeground=self.border_color,
-            highlightbackground=self.border_color,
-            highlightcolor=self.border_color,
-            highlightthickness=1,
-            bd=0,
-            relief='flat')
-        # set default button state (<=color)
-        self.btnstate[n] = self.text_color
+            fill=self.bg_color,
+            tags=tag
+        )
         if label.startswith('_'):
             # button contains an icon/image instead of a label
             img_width = int(1.8 * self.font_size)
@@ -241,7 +170,6 @@ class zynthian_gui_touchkeypad_v5:
                     image = Image.open(png)
                     img_height = int(img_width * image.size[1] / image.size[0])
                     image = image.resize((img_width, img_height), Image.Resampling.LANCZOS)
-
             elif img_name.endswith('.png'):
                 # PNG icons can be imported directly
                 image = Image.open(img_name)
@@ -251,141 +179,106 @@ class zynthian_gui_touchkeypad_v5:
                 image = None
             if image:
                 # store the original image for the purpose of later changes of color (useful for image icons)
-                self.images[n] = image
-                tkimage = ImageTk.PhotoImage(image)
-                # if we don't keep the image in the object,
-                # it will be discarded by garbage collection at the end of this method!
-                self.tkimages[n] = tkimage
-                button.config(image=tkimage, text='')
+                config[IMG] = image
+                config[TKIMG] = ImageTk.PhotoImage(image)
+                config[IMG_ID] = self.canvas.create_image(
+                    x+self.button_width//2, y+self.button_height//2,
+                    image=config[TKIMG],
+                    tags=tag
+                )
         else:
             # button has a simple text label: either standard text
             # or an icon included in the "forkawesome" font (unicode char >= \uf000)
             if label[0] >= '\uf000':
-                font = ("forkawesome", int(1.0 * self.font_size))
+                font_family = "forkawesome"
             else:
-                font = (zynthian_gui_config.font_family, int(0.9 * self.font_size))
-            button.config(font=font, text=label.replace('/', "\n"))
-        button.grid_propagate(False)
-        button.grid(row=row, column=column, sticky='nswe', padx=padx, pady=pady)
-        button.bind('<ButtonPress-1>', lambda e: self.cb_button_push(zynswitch, e))
-        button.bind('<ButtonRelease-1>', lambda e: self.cb_button_release(zynswitch, e))
-        return button
+                font_family = zynthian_gui_config.font_family
 
-    def cb_button_push(self, n, event):
-        """
-        Call ZYNSWITCH Push CUIA on button push
-        """
-        zynthian_gui_config.zyngui.cuia_queue.put_nowait(f"zynswitch {n},P")
+            label = label.replace("/", "\n")
 
-    def cb_button_release(self, n, event):
-        """
-        Call ZYNSWITCH Release CUIA on button release
-        """
-        zynthian_gui_config.zyngui.cuia_queue.put_nowait(f"zynswitch {n},R")
+            font_size = self.font_size
+            font = tkfont.Font(family=font_family, size=font_size)
+            text = ""
+            width = 0
+            for line in label.split("\n"):
+                w = font.measure(line)
+                if (w > width):
+                    width = w
+                    text = line
+            # reduce font until text width fits
+            while font.measure(text) > self.button_width - 2:
+                font_size -= 1
+                if font_size <= 1:
+                    break
+                font = tkfont.Font(family=font_family, size=font_size)
 
-    def set_button_color(self, led_num, color, mode):
+            config[TXT_ID] =  self.canvas.create_text(
+                x+self.button_width//2, y+self.button_height//2,
+                text=label,
+                font=font,
+                justify=tkinter.CENTER,
+                fill=self.text_color,
+                tags=tag
+            )
+        self.canvas.tag_bind(tag, "<Button-1>", lambda e,i=button:self.cb_button_push(i))
+        self.canvas.tag_bind(tag, "<ButtonRelease-1>", lambda e,i=button:self.cb_button_release(i))
+
+    def cb_button_push(self, button):
+        """ Handle button press
+        Args:
+            button: Index of button
         """
-        Change color of a button according to the wsleds signal
 
-        Parameters
-        ----------
+        self.canvas.move(f"v5_button_{button}", 2, 2)
+        zynthian_gui_config.zyngui.cuia_queue.put_nowait(f"zynswitch {button + 4},P")
 
-        led_num : int
-            Number of the RGB wsled corresponding to the button
-        color : int
-            Color requested by the wsled system
-        mode : str
-            A wanna-be abstraction (string name) of the mode/state - currently 
+    def cb_button_release(self, button):
+        """ Handle button release
+        Args:
+            button: Index of button
+        """
+
+        self.canvas.move(f"v5_button_{button}", -2, -2)
+        zynthian_gui_config.zyngui.cuia_queue.put_nowait(f"zynswitch {button + 4},R")
+
+    def set_button_color(self, button, color, mode):
+        """ Change color of a button according to the wsleds signal
+        Args:
+            button: Index of the button
+            color : Color requested by the wsled system
+            mode : A wanna-be abstraction (string name) of the mode/state - currently 
             just derived from the requested color by the `wsleds_v5touch` "fake NeoPixel" emulator
         """
-        # get the button number associated with the wsled number
-        n = LED2BUTTON[led_num]
+
+        config = self.buttons[button]
         # don't bother with update if nothing has really changed (redrawing images causes visible blinking!)
-        if self.btnstate[n] == (mode or color):
+        if config[LED_STATE] == mode:
             return
-        self.btnstate[n] = mode or color
+        config[LED_STATE] = mode
         # in case the color is still the original wsled integer number, convert it
-        label = self.btndefs[n][0]['default']
+        label = config[LABEL]
         if  label.startswith('_'):
             # image buttons must be recomposed to change the foreground color
-            image = self.images[n]
+            image = config[IMG]
             mask = image.convert("LA")
             bgimage = Image.new("RGBA", image.size, color)
             fgimage = Image.new("RGBA", image.size, (0, 0, 0, 0))
             composed = Image.composite(bgimage, fgimage, mask)
             tkimage = ImageTk.PhotoImage(composed)
-            self.tkimages[n] = tkimage
-            self.buttons[n].config(image=tkimage)
+            config[TKIMG] = tkimage
+            self.canvas.itemconfig(config[IMG_ID], image=tkimage)
         else:
             # plain text labels may just change the color and possibly also its label if a special label 
             # is associated with the requested mode (<=color) in the button definition
-            self.refresh_button_label(n, mode)
-            self.buttons[n].config(fg=color, activeforeground=color)
-
-    def refresh_button_label(self, n, mode):
-            text = self.btndefs[n][0].get(mode, self.btndefs[n][0]['default']).replace('/', "\n")
-            self.buttons[n].config(text=text)
-
-    def show(self):
-        if not self.shown:
-            self.side_frame.grid_propagate(False)
-            self.side_frame.grid(row=0, column=self.side_frame_col, rowspan=2, sticky="nws")
-            self.bottom_frame.grid_propagate(False)
-            self.bottom_frame.grid(row=1, column=self.bottom_frame_col, sticky="wse")
-            zynthian_gui_config.screen_width = self.ui_width
-            zynthian_gui_config.screen_height = self.ui_height
-            try:
-                zynthian_gui_config.zyngui.get_current_screen_obj().on_size()
-            except:
-                pass
-            self.shown = True
-
-    def hide(self):
-        if self.shown:
-            self.side_frame.grid_remove()
-            self.bottom_frame.grid_remove()
-            zynthian_gui_config.screen_width = zynthian_gui_config.display_width
-            zynthian_gui_config.screen_height = zynthian_gui_config.display_height
-            try:
-                zynthian_gui_config.zyngui.get_current_screen_obj().on_size()
-            except:
-                pass
-            self.shown = False
-
-    def toggle(self):
-        if self.shown:
-            self.hide()
-        else:
-            self.show()
+            if mode == "alt" and config[ALT_LABEL]:
+                label = config[ALT_LABEL]
+            else:
+                label = config[LABEL]
+            self.canvas.itemconfig(config[TXT_ID], text=label, fill=color)
 
     def apply_user_config(self):
-        for n in range(0, 20):
-            default = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_DEFAULT'.format(n+1), None)
-            alt = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_ALT'.format(n+1), None)
-            active = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_ACTIVE'.format(n+1), None)
-            active2 = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_ACTIVE2'.format(n+1), None)
-            if default:
-                self.btndefs[n][0]['default'] = default
-            if alt:
-                self.btndefs[n][0]['alt'] = alt
-            if active:
-                self.btndefs[n][0]['active'] = active
-            if active2:
-                self.btndefs[n][0]['active2'] = active2
-
-    def _fkey2btn(self, n):
-        mode = 'default'
-        if n >= 4:
-            mode = 'alt'
-            n -= 4
-        return FKEY2SWITCH[n]-4, mode
-
-    def set_fkey_label(self, n, label):
-        btn, mode = self._fkey2btn(n)
-        self.btndefs[btn][0][mode] = label
-        self.refresh_button_label(btn, label)
-
-    def get_fkey_label(self, n):
-        btn, mode = self._fkey2btn(n)
-        return self.btndefs[btn][0][mode]
-
+        for i, config in enumerate(self.buttons):
+            config[LABEL] = os.environ.get(f'ZYNTHIAN_TOUCH_KEYPAD_LABEL_{i+1:02d}_DEFAULT', config[LABEL])
+            config[ALT_LABEL] = os.environ.get(f'ZYNTHIAN_TOUCH_KEYPAD_LABEL_{i+1:02d}_ALT', config[ALT_LABEL])
+            config[ACT_LABEL] = os.environ.get(f'ZYNTHIAN_TOUCH_KEYPAD_LABEL_{i+1:02d}_ACTIVE', config[ACT_LABEL])
+            config[ACT2_LABEL] = os.environ.get(f'ZYNTHIAN_TOUCH_KEYPAD_LABEL_{i+1:02d}_ACTIVE2', config[ACT2_LABEL])

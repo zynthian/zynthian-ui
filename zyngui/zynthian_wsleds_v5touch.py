@@ -33,6 +33,7 @@ from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
 # Fake NeoPixel emulation for onscreen touch keypad "buttons"
 # ---------------------------------------------------------------------------
 
+LED2BUTTON = [0, 1, 2, 3, 7, 6, 5, 4, 8, 9, 10, 11, 15, 14, 13, 12, 16, 17, 18, 19]
 
 class touchkeypad_button_colors:
     """
@@ -63,7 +64,7 @@ class touchkeypad_button_colors:
             bgcolor = self.hex_to_rgb(self.wsleds.wscolor_off)
             blended = self.ablend(1-self.wsleds.brightness, fgcolor, bgcolor)
             color = self.rgb_to_hex(blended)
-        zynthian_gui_config.touch_keypad.set_button_color(index, color, mode)
+        zynthian_gui_config.touch_keypad.set_button_color(LED2BUTTON[index], color, mode)
 
 
     def __getitem__(self, index):

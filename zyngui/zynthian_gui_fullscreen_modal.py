@@ -41,12 +41,16 @@ class zynthian_gui_fullscreen_modal(tkinter.Frame):
     # Function to initialise class
     #  function: Callback function called when <Enter> pressed
     def __init__(self):
-        tkinter.Frame.__init__(self, zynthian_gui_config.top, bg=zynthian_gui_config.color_bg)
+        self.width = zynthian_gui_config.display_width
+        self.height = zynthian_gui_config.display_height
+        tkinter.Frame.__init__(
+            self, zynthian_gui_config.top,
+            width=self.width,
+            height=self.height,
+            bg=zynthian_gui_config.color_bg)
         self.grid_propagate(False)
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
-        self.width = zynthian_gui_config.display_width
-        self.height = zynthian_gui_config.display_height
         self.shown = False
 
     def on_size(self, event=None):
@@ -59,12 +63,12 @@ class zynthian_gui_fullscreen_modal(tkinter.Frame):
     def hide(self):
         if self.shown:
             self.shown = False
-            self.grid_forget()
+            self.place_forget()
 
     def show(self):
         if self.zyngui.test_mode:
             logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         if not self.shown:
-            self.grid(row=0, column=0, rowspan=3, columnspan=10, sticky="nsew")
+            self.place(x=0, y=0)
             self.tkraise()
             self.shown = True

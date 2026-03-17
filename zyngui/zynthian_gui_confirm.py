@@ -29,6 +29,7 @@ import logging
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_fullscreen_modal import zynthian_gui_fullscreen_modal
 
 # TODO: Derive confirm from gui base class
 
@@ -37,22 +38,18 @@ from zyngui import zynthian_gui_config
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_confirm():
+class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
 
     def __init__(self):
-        self.shown = False
         self.callback = None
         self.callback_params = None
         self.zyngui = zynthian_gui_config.zyngui
         
         # Main Frame
-        self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-                                        bg=zynthian_gui_config.color_bg)
-        self.main_frame.columnconfigure(0, weight=1)
-        self.main_frame.rowconfigure(0, weight=1)
+        super().__init__()
 
         self.text = tkinter.StringVar()
-        self.label_text = tkinter.Label(self.main_frame,
+        self.label_text = tkinter.Label(self,
                                         font=(zynthian_gui_config.font_family,
                                               zynthian_gui_config.font_size, "normal"),
                                         textvariable=self.text,
@@ -63,7 +60,7 @@ class zynthian_gui_confirm():
                                         fg=zynthian_gui_config.color_tx)
         self.label_text.grid(sticky="nsew")
 
-        self.yes_text_label = tkinter.Label(self.main_frame,
+        self.yes_text_label = tkinter.Label(self,
                                             font=(
                                                 zynthian_gui_config.font_family,
                                                 zynthian_gui_config.font_size*2, "normal"),
@@ -77,7 +74,7 @@ class zynthian_gui_confirm():
         self.yes_text_label.bind("<ButtonRelease-1>", self.cb_yes_push)
         self.yes_text_label.grid(row=1, sticky="e")
 
-        self.no_text_label = tkinter.Label(self.main_frame,
+        self.no_text_label = tkinter.Label(self,
                                            font=(
                                                zynthian_gui_config.font_family,
                                                zynthian_gui_config.font_size*2, "normal"),
@@ -91,14 +88,6 @@ class zynthian_gui_confirm():
         self.no_text_label.bind("<ButtonRelease-1>", self.cb_no_push)
         self.no_text_label.grid(row=1, sticky="w")
 
-    def hide(self):
-        if self.shown:
-            self.shown = False
-            self.main_frame.grid_forget()
-
-    def build_view(self):
-        return True
-
     def show(self, text, callback=None, cb_params=None):
         if self.zyngui.test_mode:
             logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
@@ -107,8 +96,7 @@ class zynthian_gui_confirm():
         self.callback = callback
         self.callback_params = cb_params
         if not self.shown:
-            self.shown = True
-            self.main_frame.grid(row=0, column=zynthian_gui_config.main_screen_column, stick="nsew")
+            super().show()
 
     def zynpot_cb(self, i, dval):
         pass

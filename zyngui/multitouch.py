@@ -272,6 +272,8 @@ class MultiTouch(object):
                 # Touchscreen driver may have been unloaded so stop thread and enable detection of multitouch (on next xinput touch event)
                 logging.info(f"Multitouch device {self.device_name} disconnected")
                 break
+            except Exception as e:
+                logging.warning(e)
         self.detect = True
 
     def __enter__(self):
@@ -349,7 +351,10 @@ class MultiTouch(object):
 
             if event._type == MultitouchTypes.MULTI_PRESS:
                 # Find a widget for the touch event
-                event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
+                try:
+                    event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
+                except:
+                    event.widget = None
                 if event.widget is None:
                     gui_obj = zynthian_gui_config.zyngui.get_current_screen_obj()
                     if isinstance(gui_obj, tkinter.Frame):

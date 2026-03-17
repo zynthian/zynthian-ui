@@ -229,8 +229,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                     "settings.png"]))
         if not zynthian_gui_config.wiring_layout.startswith("V5"):
             match zynthian_gui_config.touch_navigation:
-                case "touch_widgets":
-                    touch_navigation_option = "touch-widgets"
                 case "v5_keypad_left":
                     touch_navigation_option = "V5 keypad at Left"
                 case "v5_keypad_right":
@@ -554,7 +552,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                      self.touch_navigation_cb_confirmed, value)
 
     def touch_navigation_cb_confirmed(self, value=""):
-        zynconf.save_config({"ZYNTHIAN_UI_TOUCH_NAVIGATION2": value})
+        zynconf.save_config({"ZYNTHIAN_UI_TOUCH_NAVIGATION": value})
         self.restart_gui()
 
     def visible_chains_cb(self, value):

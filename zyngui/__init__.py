@@ -7,7 +7,6 @@ __all__ = [
     "zynthian_gui_selector",
     "zynthian_gui_selector_info",
     "zynthian_gui_file_selector",
-    "zynthian_gui_details",
     "zynthian_gui_admin",
     "zynthian_gui_snapshot",
     "zynthian_gui_processor_options",

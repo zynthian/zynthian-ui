@@ -210,6 +210,8 @@ class zynthian_gui_base(tkinter.Frame):
     # Function called when frame resized
     def on_size(self, event=None):
         self.update_layout()
+        self.configure(width=zynthian_gui_config.screen_width, height=zynthian_gui_config.screen_height)
+        self.place(x=zynthian_gui_config.main_x, y=0)
         # self.width = self.main_frame.winfo_width()
         # self.height = self.main_frame.winfo_height()
 
@@ -281,7 +283,8 @@ class zynthian_gui_base(tkinter.Frame):
     # Default status short touch action
     def status_short_touch_action(self):
         if zynthian_gui_config.touch_keypad:
-            zynthian_gui_config.touch_keypad.toggle()
+            zynthian_gui_config.toggle_touch()
+            self.on_size()
             return
 
     # Default status bold touch action
@@ -325,7 +328,7 @@ class zynthian_gui_base(tkinter.Frame):
                 logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
             self.shown = True
             self.refresh_status()
-            self.grid(row=0, column=zynthian_gui_config.main_screen_column, sticky='nsew')
+            self.place(x=zynthian_gui_config.main_x, y=0)
             self.propagate(False)
         self.main_frame.focus()
 
@@ -335,7 +338,7 @@ class zynthian_gui_base(tkinter.Frame):
             if self.param_editor_zctrl:
                 self.disable_param_editor()
             self.shown = False
-            self.grid_remove()
+            self.place_forget()
 
     # Show topbar (if allowed)
     # show: True to show, False to hide

@@ -4,7 +4,7 @@
 #
 # Zynthian GUI Help view class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -25,6 +25,7 @@
 import os
 import logging
 from tkinterweb import HtmlFrame
+import tkinter
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -69,6 +70,11 @@ class zynthian_gui_help:
         self.main_frame.bind("<ButtonRelease-1>", self.cb_touch_release)
         self.main_frame.bind("<B1-Motion>", self.cb_touch_motion)
 
+        if zynthian_gui_config.touch_navigation:
+            self.img = tkinter.PhotoImage(file="icons/close_button.png")
+            self.close_btn = tkinter.Label(zynthian_gui_config.top, image=self.img, bd=0, highlightthickness=0)
+            self.close_btn.bind("<Button-1>", lambda e: self.zyngui.cuia_back())
+
     def done_loading(self):
         self.zyngui.show_screen("help")
 
@@ -87,7 +93,8 @@ class zynthian_gui_help:
     def hide(self):
         if self.shown:
             self.shown = False
-            self.main_frame.grid_forget()
+            self.main_frame.place_forget()
+            self.close_btn.place_forget()
 
     def show(self):
         if self.zyngui.test_mode:
@@ -95,7 +102,8 @@ class zynthian_gui_help:
         if not self.shown:
             self.shown = True
             self.main_frame.grid_propagate(False)
-            self.main_frame.grid(row=0, column=zynthian_gui_config.main_screen_column)
+            self.main_frame.place(x=0, y=0)
+            self.close_btn.place(x=0, y=0, anchor="nw")
 
     def zynpot_cb(self, i, dval):
         if i == 3:

@@ -425,7 +425,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
 
         # LED indicator and control buttons.
         if self.show_touch_widgets:
-            if zynthian_gui_config.enable_touch_navigation:
+            if zynthian_gui_config.touch_navigation:
                 self.volume_slider = None
             else:
                 self.volume_slider = VolumeSlider(self.controls_frame, zyngui_control=self.zyngui_control, width=self.width, height=6*self.hunit)

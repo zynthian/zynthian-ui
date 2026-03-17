@@ -496,7 +496,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def cb_loading_release(self, event):
         if self.loading_push_ts:
-            if zynthian_gui_config.enable_touch_navigation:
+            if zynthian_gui_config.touch_navigation:
                 dts = (event.time - self.loading_push_ts)/1000
                 logging.debug("LOADING RELEASE => %s" % dts)
                 if dts < zynthian_gui_config.zynswitch_bold_seconds:

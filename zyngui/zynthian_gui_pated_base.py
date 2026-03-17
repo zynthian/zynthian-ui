@@ -373,7 +373,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     def get_menu_options(self):
         menu_options = {}
-        extra_options = zynthian_gui_config.enable_touch_navigation
         # Global Options
         # Sequence options
         if self.seq_info:
@@ -405,7 +404,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             menu_options['_SEQUENCE'] = options
         # Pattern Options
         options = {}
-        if extra_options:
+        if zynthian_gui_config.touch_navigation:
+            #TODO: Enable CC editor from V5 buttons, e.g. ALT
             if self.get_name() == "pattern editor":
                 options['\u2610 CC editor'] = 'CC editor'
             else:
@@ -428,11 +428,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         options = {}
         if not self.zyngui.multitouch._f_device:
             options['Grid zoom'] = 'Grid zoom'
-        if extra_options:
-            if self.zynseq.libseq.isMidiRecord():
-                options['\u2612 Record from MIDI'] = 'Record MIDI'
-            else:
-                options['\u2610 Record from MIDI'] = 'Record MIDI'
         if self.seq_info:
             name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
             options[f"Copy this ({name}) to clipboard#1"] = ('Copy pattern', 0)
