@@ -99,6 +99,7 @@ class zynthian_processor:
         self.current_screen_index = -1
         self.auto_save_bank = False
         self.midi_autolearn = True  # When true, auto-learn MIDI-CC based controllers
+        self.set_state_flag = False
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
@@ -828,6 +829,12 @@ class zynthian_processor:
         returns : list of cc learn config: [chain, chan, cc, zctrl]
         """
 
+        self.set_state_flag = True
+        try:
+            self.engine.set_state_pre(self)
+        except:
+            pass
+
         if "bank_subdir_info" in state and state["bank_subdir_info"]:
             self.bank_subdir_info = state["bank_subdir_info"]
         try:
@@ -901,6 +908,13 @@ class zynthian_processor:
                         zctrl._configure()
                 except Exception as e:
                     logging.warning(f"Invalid controller for processor {self.get_basepath()}: {e}")
+
+        self.set_state_flag = False
+        try:
+            self.engine.set_state_post(self)
+        except:
+            pass
+
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

@@ -28,11 +28,15 @@
 #include <string.h> // provides memset, memcpy, strcpy
 #include <jack/jack.h> // provides jack API
 #include <jack/midiport.h> // provides jack midi port API
-//#include <jack/ringbuffer.h> //provides jack ring buffer
 #include <sndfile.h>   // provides sound file manipulation
 #include <samplerate.h> // provides samplerate convertor
 #include <rubberband/rubberband-c.h> // provides time stretch
 #include <math.h> // provides pow for dB calcs
+
+
+#define FX_NONE 0
+#define FX_FADE_IN 1
+#define FX_FADE_OUT 2
 
 typedef struct {
     uint8_t state;    // Clip state
@@ -51,13 +55,16 @@ typedef struct {
 typedef struct {
     uint8_t state;           // Play state
     uint32_t play_pos;       // Position of playhead in frames
+    uint32_t start_frame;    // Starting position in frames => note-on event time
     uint32_t beat;           // Beat counter
     jack_port_t* jack_out_a; // Left jack output port
     jack_port_t* jack_out_b; // Right jack output port
     SNDFILE* sndfile;        // Pointer to an open sndfile used to read current clip data
     Clip* clips[MAX_CLIPS];  // Array of pointers to clip objects
-    Clip* current_clip;      // Pointer to the currently selected / playing clip
-    int current_clip_id;     // Index of current clip
+    Clip* current_clip;      // Pointer to the currently playing clip
+    int current_clip_id;     // Index of currently playing clip
+    Clip* starting_clip;     // Pointer to the starting clip
+    int starting_clip_id;    // Index of starting clip
 } Player;
 
 typedef union {
@@ -88,10 +95,49 @@ static void inline releaseMutex() {
     mutex = 0;
 }
 
+float* out_buff_a[16];
+float* out_buff_b[16];
+
+jack_nframes_t process_clip(uint8_t channel, Clip* clip, jack_nframes_t frames, int32_t pos, uint8_t fx) {
+    jack_nframes_t offset = 0;
+    // Playing offset => Starting => Fade-in
+    if (pos < 0) {
+        offset = -pos;
+        frames -= offset;
+        pos = 0;
+    }
+    // Out of range
+    if (pos >= clip->frames)
+        return 0;
+    // Last fragment
+    if (pos >= clip->frames - frames)
+        frames = clip->frames - pos;
+
+    float gain;
+    float dGain = clip->gain / frames;
+    for (jack_nframes_t i = 0; i < frames; i++) {
+        switch (fx) {
+            case FX_NONE:
+                gain = clip->gain;
+                break;
+            case FX_FADE_IN:
+                gain = i * dGain;
+                break;
+            case FX_FADE_OUT:
+                gain = clip->gain - i * dGain;
+                break;
+        }
+        out_buff_a[channel][offset + i] += clip->data[0][pos + i] * gain;
+        out_buff_b[channel][offset + i] += clip->data[1][pos + i] * gain;
+    }
+
+    //printf("PROCESSING CLIP %u AT %u WITH FX %u (%f => %f) => %d -> %u (%u)\n", channel, offset, fx, clip->gain, gain, pos, pos + frames, clip->frames);
+
+    return frames;
+}
+
 static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
-    static Player* player;
-    float* out_buff_a[16];
-    float* out_buff_b[16];
+    Player* player;
 
     while (mutex)
         usleep(10);
@@ -124,21 +170,17 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                         } else {
                             player->state == STATE_READY;
                         }
-                        player->beat = 0;
                     } else {
                         if (player->state == STATE_READY || player->state == STATE_PLAYING) {
-                            // Set playing clip
+                            // Set starting clip
                             uint8_t clip_id = event.buffer[1] - 1;
                             if (clip_id < MAX_CLIPS) {
-                                player->current_clip = player->clips[clip_id];
-                                player->current_clip_id = clip_id;
-                            }
-                            // Reset playing position
-                            if (player->current_clip) {
-                                player->play_pos = event.time;
-                                player->state = STATE_STARTING;
+                                player->starting_clip = player->clips[clip_id];
+                                player->starting_clip_id = clip_id;
+                                player->start_frame = event.time;
                                 player->beat = 0;
                             }
+                            player->state = STATE_PLAYING;
                         }
                     }
                     break;
@@ -158,15 +200,18 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                     break;
                 // Resume playing at beat sync
                 if (player->state == STATE_SYNCYNG && player->current_clip) {
+                    // Sync to start position
                     player->beat = player->beat % player->current_clip->nbeats;
                     if (player->beat == 0) {
-                        player->play_pos = event.time;
-                        player->state = STATE_STARTING;
+                        player->starting_clip = player->current_clip;
+                        player->starting_clip_id = player->current_clip_id;
+                        player->start_frame = event.time;
                     }
+                    // Sync to beat position
                     else {
                         player->play_pos = (player->beat * player->current_clip->frames / player->current_clip->nbeats) - event.time;
-                        player->state = STATE_PLAYING;
                     }
+                    player->state = STATE_PLAYING;
                     //printf("SYNCYNG AT => %d / %d (NUM BEATS = %d)\n", player->play_pos, player->current_clip->frames, player->current_clip->nbeats);
                 }
                 player->beat++;
@@ -176,61 +221,50 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
     }
 
     // Populate player audio output buffers from sample data buffers
-    for (uint8_t channel = 0; channel < 16; ++channel) {
+    for (uint8_t channel = 0; channel < 16; channel++) {
         player = players[channel];
         if (!player) continue;
-        //printf("PREPLAYING CHANNEL %d, STATE=%d => %d\n", channel, player->state, player->play_pos);
         out_buff_a[channel] = jack_port_get_buffer(player->jack_out_a, frames);
         out_buff_b[channel] = jack_port_get_buffer(player->jack_out_b, frames);
         memset(out_buff_a[channel], 0, frames * sizeof(float));
         memset(out_buff_b[channel], 0, frames * sizeof(float));
-        if (player->current_clip) {
-            float dGain;
-            // Starting sample synced with note event time
-            if (player->state == STATE_STARTING) {
-                size_t start = player->play_pos * sizeof(float);
-                uint32_t count = (frames - player->play_pos) * sizeof(float);
-                memcpy(out_buff_a[channel] + start, player->current_clip->data[0], count);
-                memcpy(out_buff_b[channel] + start, player->current_clip->data[1], count);
-                dGain = 0.0f;
-                player->state = STATE_PLAYING;
-            }
-            else if (player->state == STATE_PLAYING || player->state == STATE_STOPPING) {
-                // Playing sample
-                if (player->play_pos < player->current_clip->frames - frames) {
-                    size_t count = frames * sizeof(float);
-                    memcpy(out_buff_a[channel], player->current_clip->data[0] + player->play_pos, count);
-                    memcpy(out_buff_b[channel], player->current_clip->data[1] + player->play_pos, count);
-                    if (player->state == STATE_STOPPING) {
-                        dGain = player->current_clip->gain / frames; // Soft fade
-                        player->state = STATE_READY;
-                        player->play_pos = 0;
-                    } else {
-                        dGain = 0.0f;
-                        player->play_pos += frames;
-                    }
-                }
-                // Reached end of clip
-                else if (player->play_pos < player->current_clip->frames) {
-                    uint32_t frame_count = player->current_clip->frames - player->play_pos;
-                    size_t count = frame_count * sizeof(float);
-                    memcpy(out_buff_a[channel], player->current_clip->data[0] + player->play_pos, count);
-                    memcpy(out_buff_b[channel], player->current_clip->data[1] + player->play_pos, count);
-                    dGain = player->current_clip->gain / frame_count; // Soft fade
-                    player->play_pos = 0;
+
+        // New clip starting => Cross-fade exiting and starting clips
+        if (player->starting_clip) {
+            // Stop current clip if any => fade-out
+            if (player->current_clip && player->state == STATE_PLAYING)
+                process_clip(channel, player->current_clip, frames, player->play_pos, FX_FADE_OUT);
+            // Set current clip
+            player->current_clip = player->starting_clip;
+            player->current_clip_id = player->starting_clip_id;
+            player->starting_clip = NULL;
+            // Start new clip => fade-in
+            player->play_pos = process_clip(channel, player->current_clip, frames, -player->start_frame, FX_FADE_IN);
+            player->state = STATE_PLAYING;
+        }
+        // Clip playing or stopping
+        else if (player->current_clip) {
+            uint8_t fx;
+            switch (player->state) {
+                case STATE_PLAYING:
+                    fx = FX_NONE;
+                    break;
+                case STATE_STOPPING:
                     player->state = STATE_READY;
-                } else {
-                    player->play_pos = 0;
-                    player->state = STATE_READY;
-                }
+                    fx = FX_FADE_OUT;
+                    break;
+                case STATE_IDLE:
+                case STATE_LOAD:
+                case STATE_READY:
+                case STATE_SYNCYNG:
+                case STATE_STARTING:
+                    continue;
             }
-            // Adjust volume
-            for (uint32_t i = 0; i < frames; ++i) {
-                out_buff_a[channel][i] *= (player->current_clip->gain - i * dGain);
-                out_buff_b[channel][i] *= (player->current_clip->gain - i * dGain);
-            }
-            //TODO Crossfade
-            //printf("POSTPLAYING CHANNEL %d, STATE=%d => %d\n", channel, player->state, player->play_pos);
+            jack_nframes_t dpos = process_clip(channel, player->current_clip, frames, player->play_pos, fx);
+            if (dpos > 0)
+                player->play_pos += dpos;
+            else
+                player->state = STATE_READY;
         }
     }
     mutex = 0;
@@ -472,7 +506,7 @@ uint8_t removeClip(uint8_t channel, uint8_t clip) {
 }
 
 uint8_t getFreeClip(uint8_t channel) {
-    if(channel >= 16)
+    if (channel >= 16)
         return 0;
     Player* player = players[channel];
     if (!player)
@@ -482,6 +516,28 @@ uint8_t getFreeClip(uint8_t channel) {
             return id + 1;
     }
     return 0;
+}
+
+const char * getClipPath(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return NULL;
+    Player* player = players[channel];
+    if (!player)
+        return NULL;
+    if (player->clips[clip] == NULL)
+        return NULL;
+    return player->clips[clip]->path;
+}
+
+uint32_t getClipFrames(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return 0;
+    Player* player = players[channel];
+    if (!player)
+        return 0;
+    if (player->clips[clip] == NULL)
+        return 0;
+    return player->clips[clip]->frames;
 }
 
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,
@@ -637,7 +693,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
         ratio = 1.0;
     } else {
         ratio = (60 * samplerate * nbeats) / (tempo * frames);
-        if (ratio < 0.1 || ratio > 10) {
+        if (ratio < 0.01 || ratio > 100) {
             // Don't stretch if excessive stretch requested.
             ratio = 1.0;
             timestretch = 0;

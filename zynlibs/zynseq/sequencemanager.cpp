@@ -199,8 +199,17 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
 
     // Clock ticks from start of bar
     static uint32_t barPos = 0;
-    if (bSync) barPos = 0;
-    else barPos++;
+    static uint8_t beatPos = 0;
+    if (bSync) {
+        barPos = 0;
+        beatPos = 0;
+    }
+    else {
+        barPos++;
+        if (bBeat) {
+            beatPos++;
+        }
+    }
 
     uint8_t nResult = 0; // Summary of playing sequences (0:None, 1:Starting, 2:Playing/stopping)
     size_t nSequence = 0;
@@ -214,37 +223,56 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             uint8_t nChannel = nGroup - 16;
             uint8_t nPhrase = pSequence->getPhrase();
             uint8_t nNote = nPhrase + 1;
-            if (nPlayState == STARTING && bSync) {
-                // Start playing clip at bar sync
-                nPlayState = PLAYING;
-                pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 1}));
-                pSequence->setPlayState(PLAYING);
-            } else if (nPlayState == PLAYING) {
-                uint32_t nPos = pSequence->getPlayPosition() + 1;
-                if (nPos >= pSequence->getLength()) {
-                    nPos = 0;
-                    uint8_t nCount = pSequence->getPlayed() + 1;
-                    if (nCount >= pSequence->getRepeat()) {
-                        // End of repeats...
-                        if (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)
-                            pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
-                        pSequence->setPlayed(0);
-                    } else {
-                        // Triggering repeat
-                        pSequence->setPlayed(nCount);
-                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
+            switch (nPlayState) {
+                case STARTING:
+                    // Start playing clip at bar sync
+                    if (bSync) {
+                        nPlayState = PLAYING;
+                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 1}));
+                        pSequence->setPlayState(PLAYING);
                     }
+                    // Send beat sync messages to clippy
+                    if (bBeat) {
+                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}));
+                    }
+                    break;
+                case PLAYING: {
+                    uint32_t nPos = pSequence->getPlayPosition() + 1;
+                    if (nPos >= pSequence->getLength()) {
+                        nPos = 0;
+                        uint8_t nCount = pSequence->getPlayed() + 1;
+                        if (nCount >= pSequence->getRepeat()) {
+                            // End of repeats...
+                            if (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)
+                                pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
+                            pSequence->setPlayed(0);
+                        } else {
+                            // Triggering repeat
+                            pSequence->setPlayed(nCount);
+                            pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
+                        }
+                    }
+                    pSequence->setPlayPosition(nPos);
+                    // Send beat sync messages to clippy
+                    if (bBeat) {
+                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}));
+                    }
+                    break;
                 }
-                if (bBeat) {
-                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_CHAN_PRESSURE | nChannel), 1, 0}));
-                }
-                pSequence->setPlayPosition(nPos);
-            } else if (bSync &&(nPlayState == STOPPING || nPlayState == STOPPING_SYNC)) {
-                // Stop clip
-                pSequence->setPlayState(STOPPED);
-                pSequence->setPlayed(0);
-                pSequence->setPlayPosition(0);
-                nPlayState = STOPPED;
+                case STOPPING:
+                case STOPPING_SYNC:
+                    // Stop clip
+                    if (bSync) {
+                        pSequence->setPlayState(STOPPED);
+                        pSequence->setPlayed(0);
+                        pSequence->setPlayPosition(0);
+                        nPlayState = STOPPED;
+                    }
+                    // Send beat sync messages to clippy
+                    if (bBeat) {
+                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}));
+                    }
+                    break;
             }
         }
         // Step or phrase sequence

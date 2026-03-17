@@ -39,7 +39,7 @@ from zyngui import zynthian_gui_config
 
 
 class zynthian_gui_controller(tkinter.Canvas):
-	
+
 	GUI_CTRL_NONE		= 0
 	GUI_CTRL_ARC		= 1
 	GUI_CTRL_TRIANGLE	= 2
@@ -718,18 +718,26 @@ class zynthian_gui_controller(tkinter.Canvas):
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
 			if self.active_motion_axis == 0:
 				if zynthian_gui_config.touch_navigation:
+					# Touch widgets emulates V5 hardware knob-switches
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
-						if self.zctrl.is_toggle:
-							self.zctrl.toggle()
-						elif self.zctrl.is_trigger:
-							self.zctrl.set_value(self.zctrl.value_max)
-						elif self.zctrl.is_path:
-							self.zctrl.nudge(1)
-						#self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 					elif zynthian_gui_config.zynswitch_bold_seconds <= dts < zynthian_gui_config.zynswitch_long_seconds:
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 					elif dts >= zynthian_gui_config.zynswitch_long_seconds:
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'L')) # TODO: This should trigger before release
+				# else toggle/trigger the zcontrol when it has sense
+				elif dts < zynthian_gui_config.zynswitch_long_seconds:
+					if self.zctrl.is_toggle:
+						self.zctrl.toggle()
+					elif self.zctrl.is_trigger:
+						self.zctrl.set_value(self.zctrl.value_max)
+					elif self.zctrl.is_path:
+						self.zctrl.nudge(1)
+					else:
+						if self.zctrl.value == self.zctrl.value_max:
+							self.zctrl.set_value(self.zctrl.value_min)
+						else:
+							self.zctrl.nudge(1)
 
 	def cb_canvas_motion(self, event):
 		if self.canvas_push_event:

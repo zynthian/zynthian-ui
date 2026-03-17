@@ -1605,10 +1605,17 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     # Function to handle BACK button
     def back_action(self):
         if self.edit_mode == EDIT_MODE_NONE:
-            self.zynseq.libseq.updateSequenceInfo()
-            return super().back_action()
+            if self.selected_events:
+                self.clean_selected_events()
+                return True
+            else:
+                self.zynseq.libseq.updateSequenceInfo()
+                return super().back_action()
         elif self.edit_mode == EDIT_MODE_BLOCK:
             self.end_select_block()
+            return True
+        elif self.edit_mode == EDIT_MODE_MULTI:
+            self.set_edit_mode(EDIT_MODE_NONE)
             return True
         else:
             self.set_edit_mode(EDIT_MODE_NONE)
