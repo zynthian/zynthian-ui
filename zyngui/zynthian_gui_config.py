@@ -553,9 +553,7 @@ font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
 
 main_screen_column = 1
 
-touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION',
-    os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION',
-    os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', "")))
+touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', "")
 
 if touch_navigation not in ("", "v5_keypad_left", "v5_keypad_right"):
     touch_navigation = "v5_keypad_left"
@@ -564,10 +562,12 @@ force_enable_cursor = get_env_int('ZYNTHIAN_UI_ENABLE_CURSOR', 0)
 
 # Configure switch actions for touch only configuration so it works with touch-keypad
 if touch_navigation:
+    logging.debug(f"TOUCH NAVIGATION = {touch_navigation}")
     if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
         os.environ["ZYNTHIAN_WIRING_SWITCHES"] = ",".join(36 * ["-1"])
+
 
 # ------------------------------------------------------------------------------
 # UI Options

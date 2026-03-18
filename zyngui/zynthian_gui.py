@@ -274,13 +274,13 @@ class zynthian_gui:
             from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
             self.wsleds = zynthian_wsleds_v5touch(self)
             self.wsleds.start()
-        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
-            from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
-            self.wsleds = zynthian_wsleds_z2(self)
-            self.wsleds.start()
         elif zynthian_gui_config.check_wiring_layout(["V5"]):
             from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
             self.wsleds = zynthian_wsleds_v5(self)
+            self.wsleds.start()
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+            from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
+            self.wsleds = zynthian_wsleds_z2(self)
             self.wsleds.start()
 
     # ---------------------------------------------------------------------------
