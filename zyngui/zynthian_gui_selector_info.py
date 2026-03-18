@@ -107,7 +107,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             if self.icons[icon_fname][zynthian_gui_config.touch_shown]:
                 return self.icons[icon_fname][zynthian_gui_config.touch_shown]
         except:
-            logging.warning(f"Creating icon {icon_fname}")
+            pass
         try:
             img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
             side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
