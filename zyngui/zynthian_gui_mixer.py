@@ -54,6 +54,7 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 # This provides a UI element that represents a launcher button
 # --------------------------------------------------------------
 
+LOOP_INFO_WIDTH = 0.2
 DRAG_THRESHOLD = 5
 
 class zynthian_gui_launcher_pad():
@@ -74,68 +75,98 @@ class zynthian_gui_launcher_pad():
 
         self.gui_mixer = parent
         self.canvas = canvas
-        self.x = x
-        self.y = y
         self.height = height
         self.width = width
         self.chain = chain
         self.phrase = phrase
 
-        id = self.chain.chain_id
-        x_offset = 0 if id else 3
-        tags = ("launcher", "launcher_show", f"strip_{id}", f"launcher_{id}_{phrase}")
+        chain_id = self.chain.chain_id
+        if chain_id == 0:
+            loop_info_width = int(LOOP_INFO_WIDTH * self.width)
+        else:
+            loop_info_width = 0
+
+        self.x = x + loop_info_width
+        self.y = y
+
+        tags = ("launcher", "launcher_show", f"strip_{chain_id}", f"launcher_{chain_id}_{phrase}")
         # Launcher pad (background)
-        self.pad = self.canvas.create_rectangle(x + x_offset, y, x + self.width - 1, y + self.height - 1,
-                                                width=3,
+        self.pad = self.canvas.create_rectangle(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1,
+                                                width=2,
                                                 fill=zynthian_gui_config.color_panel_bg,
                                                 tags=(*tags, "launcher_pad"))
-        # Loop indicator
-        self.loop_top = self.canvas.create_rectangle(x, y, x + x_offset, y + self.height // 2,
-                                                 width=0,
-                                                 fill="#50FF50",
-                                                 tags=("launcher",),
-                                                 state=tkinter.HIDDEN)
-        self.loop_bottom = self.canvas.create_rectangle(x, y + self.height // 2, x + x_offset, y + self.height,
-                                                 width=0,
-                                                 fill="#50FF50",
-                                                 tags=("launcher",),
-                                                 state=tkinter.HIDDEN)
+        if chain_id == 0:
+            line_width = int(0.3 * loop_info_width)
+            # Loop indicators
+            self.loop1_top = self.canvas.create_rectangle(x, self.y, x + line_width, self.y + self.height // 2,
+                                                    width=0,
+                                                    fill="#50FF50",
+                                                    tags=("launcher",),
+                                                    state=tkinter.HIDDEN)
+            self.loop1_bottom = self.canvas.create_rectangle(x, self.y + self.height // 2, x + line_width, self.y + self.height,
+                                                    width=0,
+                                                    fill="#50FF50",
+                                                    tags=("launcher",),
+                                                    state=tkinter.HIDDEN)
+            self.loop1_text = self.canvas.create_text(x, self.y + self.height // 2 - 1,
+                                                    anchor=tkinter.NW,
+                                                    fill=self.gui_mixer.legend_txt_color,
+                                                    font=self.gui_mixer.font_clip_state,
+                                                    tags=("launcher",),
+                                                    state=tkinter.HIDDEN)
+            x += loop_info_width // 2
+            self.loop2_top = self.canvas.create_rectangle(x, self.y, x + line_width, self.y + self.height // 2,
+                                                    width=0,
+                                                    fill="#50FF50",
+                                                    tags=("launcher",),
+                                                    state=tkinter.HIDDEN)
+            self.loop2_bottom = self.canvas.create_rectangle(x, self.y + self.height // 2, x + line_width, self.y + self.height,
+                                                    width=0,
+                                                    fill="#50FF50",
+                                                    tags=("launcher",),
+                                                    state=tkinter.HIDDEN)
+            self.loop2_text = self.canvas.create_text(x + line_width // 2, self.y + self.height // 2 - 1,
+                                                    anchor=tkinter.N,
+                                                    fill=self.gui_mixer.legend_txt_color,
+                                                    font=self.gui_mixer.font_clip_state,
+                                                    tags=("launcher",),
+                                                    state=tkinter.HIDDEN)
         # Play state text
-        self.play_state = self.canvas.create_text(x + self.width - 3,  y - 3, text="",
+        self.play_state = self.canvas.create_text(self.x + self.width - 3,  self.y - 3, text="",
                                                   anchor=tkinter.NE,
                                                   font=self.gui_mixer.font_clip_state,
                                                   tags=(*tags, "launcher_play_state"))
         # Title text
-        self.title = self.canvas.create_text(x + self.width // 2, y + 0.5 * self.height, text="",
+        self.title = self.canvas.create_text(self.x + self.width // 2, self.y + 0.5 * self.height, text="",
                                              anchor=tkinter.CENTER,
                                              font=self.gui_mixer.font_clip_title,
                                              fill=self.gui_mixer.legend_txt_color,
                                              tags=(*tags, "launcher_title"))
         # Play mode image
-        self.mode_icon = self.canvas.create_image(x + 3, y + 2,
+        self.mode_icon = self.canvas.create_image(self.x + 3, self.y + 2,
                                                   anchor=tkinter.NW,
                                                   tags=(*tags, "launcher_mode_icon"))
         # Play mode text
-        self.mode_text = self.canvas.create_text(x + 4, y - 2,
+        self.mode_text = self.canvas.create_text(self.x + 4, self.y - 2,
                                                  anchor=tkinter.NW,
                                                  fill=self.gui_mixer.legend_txt_color,
                                                  font=self.gui_mixer.font_clip_state,
                                                  tags=(*tags, "launcher_mode_text"))
         # Timesig text
-        self.timesig = self.canvas.create_text(x + 4, y + self.height,
+        self.timesig = self.canvas.create_text(self.x + 4, self.y + self.height,
                                                anchor=tkinter.SW,
                                                fill=self.gui_mixer.legend_txt_color,
                                                font=self.gui_mixer.font_timebase,
                                                tags=(*tags, "launcher_timesig"))
         # Tempo text
-        self.tempo = self.canvas.create_text(x + self.width - 1, y + self.height,
+        self.tempo = self.canvas.create_text(self.x + self.width - 1, self.y + self.height,
                                              anchor=tkinter.SE,
                                              fill=self.gui_mixer.legend_txt_color,
                                              justify=tkinter.RIGHT,
                                              font=self.gui_mixer.font_timebase,
                                              tags=(*tags, "launcher_tempo"))
 
-        self.canvas.tag_bind(f"launcher_{id}_{phrase}", '<ButtonRelease-1>', self.on_clip_release)
+        self.canvas.tag_bind(f"launcher_{chain_id}_{phrase}", '<ButtonRelease-1>', self.on_clip_release)
 
     def highlight(self):
         """ Show selection cursor highlight"""
@@ -266,74 +297,78 @@ class zynthian_gui_launcher_pad():
             # Phrase launcher =>
             else:
                 color = zynthian_gui_config.PAD_COLOUR_PHRASE
-                if state_seq["repeat"]:
+
+                # Side Loop Info
+                loop_info = self.gui_mixer.zynseq.get_phrase_loop_info_all(self.phrase)
+                self.canvas.itemconfig(self.loop1_top, state=tkinter.HIDDEN)
+                self.canvas.itemconfig(self.loop1_bottom, state=tkinter.HIDDEN)
+                self.canvas.itemconfig(self.loop2_text, state=tkinter.HIDDEN)
+                self.canvas.itemconfig(self.loop2_top, state=tkinter.HIDDEN)
+                self.canvas.itemconfig(self.loop2_bottom, state=tkinter.HIDDEN)
+                self.canvas.itemconfig(self.loop2_text, state=tkinter.HIDDEN)
+                if loop_info:
+                    for i, linfo in enumerate(reversed(loop_info)):
+                        if i == 0:
+                            loop_top = self.loop1_top
+                            loop_bottom = self.loop1_bottom
+                            loop_text = self.loop1_text
+                            c1 = c2 = "#5050FF"
+                        elif i == 1:
+                            loop_top = self.loop2_top
+                            loop_bottom = self.loop2_bottom
+                            loop_text = self.loop2_text
+                            c1 = c2 = "#40C040"
+                        else:
+                            logging.warning("Loop at level {i} not displayable!")
+                        if state_seq["followAction"] == zynseq.FOLLOW_ACTION_NONE:
+                            c2 = "#" + "".join(f"{int(int(c1[i:i+2],16)*0.85):02x}" for i in (1,3,5))
+                        if linfo[0] == self.phrase:
+                            self.canvas.itemconfig(loop_top, state=tkinter.NORMAL, fill=c1)
+                            repeat = state_seq["followRepeat"]
+                            if repeat:
+                                ltext = f"{repeat}"
+                            else:
+                                ltext = "∞"
+                            self.canvas.itemconfig(loop_text, state=tkinter.NORMAL, text=ltext)
+                        elif linfo[0] - linfo[1] == self.phrase:
+                            self.canvas.itemconfig(loop_bottom, state=tkinter.NORMAL, fill=c2)
+                        else:
+                            self.canvas.itemconfig(loop_top, state=tkinter.NORMAL, fill=c1)
+                            self.canvas.itemconfig(loop_bottom, state=tkinter.NORMAL, fill=c2)
+
+                # Duration in bars) => 255=auto
+                try:
                     if state_seq["repeat"] == 255:
-                        mode_text = "a"
-                    else:
+                        #mode_text = "a"
+                        pass
+                    elif state_seq["repeat"] > 0:
                         mode_text = f"{state_seq['repeat']}"
-                else:
-                    #title = "⏹"
+                except:
                     pass
 
-                loop_info = self.gui_mixer.zynseq.get_phrase_loop_info(self.phrase)
-                self.canvas.itemconfig(self.loop_top, state=tkinter.HIDDEN)
-                self.canvas.itemconfig(self.loop_bottom, state=tkinter.HIDDEN)
-                if loop_info:
-                    if loop_info[2]:
-                        c1 = c2 = "#50FF50"
-                    else:
-                        c1 = c2 = "#FFB080"
-                    if state_seq["followAction"] == zynseq.FOLLOW_ACTION_NONE:
-                        c2 = "#" + "".join(f"{int(int(c1[i:i+2],16)*0.85):02x}" for i in (1,3,5))
-
-                    if loop_info[0] == self.phrase:
-                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL, fill=c1)
-                    elif loop_info[0] - loop_info[1] == self.phrase:
-                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL, fill=c2)
-                    else:
-                        self.canvas.itemconfig(self.loop_top, state=tkinter.NORMAL, fill=c1)
-                        self.canvas.itemconfig(self.loop_bottom, state=tkinter.NORMAL, fill=c2)
-
+                # Flow info
                 match state_seq["followAction"]:
                     case zynseq.FOLLOW_ACTION_NONE:
-                        #mode_text += "→"
-                        pass
+                        mode_text += "↻"
                     case zynseq.FOLLOW_ACTION_RELATIVE:
                         offset = state_seq["followParam"]
-                        repeat = state_seq["followRepeat"]
-                        if repeat:
-                            repeat = f" x{repeat}"
-                        else:
-                            repeat = " x∞"
-                        if offset < -1:
-                            mode_text += f"↑{-offset}{repeat}"
-                        elif offset == -1:
-                            mode_text += f"↑{repeat}"
+                        if offset < 0:
+                            mode_text += "↑"
+                        elif offset == 0:
+                            mode_text += "↻"
                         elif offset == 1:
                             mode_text += f"↓"
                         elif offset > 1:
                             mode_text += f"↓{offset}"
-                        else:
-                            mode_text = "↻"
-                        # Mode text color => by action type
-                        if offset < 0:
-                            # Infinite Loop
-                            if state_seq["followRepeat"] == 0:
-                                color_mode = "#FFB080"
-                            # Finite Loop
-                            elif state_seq["followRepeat"] > 0:
-                                color_mode = "#FFFFFF"
-                        # Forward Jump
-                        elif offset > 1:
-                            color_mode = "#B0FFFF"
-                    case _:
-                        #mode_text += "↦"
-                        pass
 
-                if "bpb" in state_seq:
-                    sig = state_seq["bpb"]
-                    if sig:
+                # Timesig (Beats per Bar)
+                try:
+                    if state_seq["bpb"]:
                         timesig_text = f"{state_seq['bpb']}/4"
+                except:
+                    pass
+
+                # Tempo info
                 if "tempo" in state_seq:
                     tempo = state_seq["tempo"]
                     if tempo:
@@ -1074,7 +1109,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         else:
             self.visible_chains = zynthian_gui_config.visible_mixer_strips
 
-        self.strip_width = self.width / (self.visible_chains + 0.2)
+        self.strip_width = int(self.width / (self.visible_chains + 0.2))
+        self.loop_info_width = int(LOOP_INFO_WIDTH * self.strip_width)
         self.button_height = int(self.height * 0.07)
         self.legend_height = int(self.height * 0.08)
         self.balance_height = int(self.height * 0.03)
@@ -1156,17 +1192,23 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.chain_strips = []
         self.left_canvas.delete("all")
         self.right_canvas.delete("all")
-        self.right_canvas.configure(width=self.strip_width * self.chain_manager.get_pinned_count())
+        self.right_canvas.configure(width= int(self.strip_width * self.chain_manager.get_pinned_count() + self.loop_info_width))
         self.scrollable_strips = len(self.chain_manager.chains) - self.chain_manager.get_pinned_count()
         div = self.chain_manager.get_pinned_pos()
         x0 = 0
         canvas = self.left_canvas
         for idx, chain in enumerate(list(self.chain_manager.chains.values())):
+            # Pinned chains goes to right canvas
             if idx == div:
                 x0 = 0
                 canvas = self.right_canvas
-            # Create the strip object
-            strip = zynthian_gui_mixer_strip(self, canvas, x0, self.strip_width, self.height, chain)
+            # Main strip includes the loop_info area
+            if chain.chain_id == 0:
+                width = self.strip_width + self.loop_info_width
+            else:
+                width = self.strip_width
+            # Create the strip objects
+            strip = zynthian_gui_mixer_strip(self, canvas, x0, width, self.height, chain)
             x0 += self.strip_width
             self.chain_strips.append(strip)
             # Add to optimisation map
@@ -2066,7 +2108,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     followParam = zctrl.value
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", followAction)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", followParam)
-                if followParam < 0: 
+                if followParam < 0:
                     # Set (unset) loop contents to automate NEXT
                     for p in range(phrase + followParam, phrase):
                         if self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][p]["followAction"] == zynseq.FOLLOW_ACTION_NONE:

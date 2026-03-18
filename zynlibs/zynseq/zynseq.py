@@ -462,6 +462,30 @@ class zynseq(zynthian_engine):
                     return None
             i += 1
 
+    def get_phrase_loop_info_all(self, phrase=None):
+        """ Get info for *ALL* nested loops that this phrase is within
+        Args:
+            phrase: Index of phrase to check
+        Returns: List of tuples of phrase loop info (loop_end_phrase, loop_length, repeat_count) or None if not in loop
+        """
+
+        if phrase == None:
+            phrase = self.phrase
+        i = phrase
+        res = []
+        while True:
+            try:
+                info = self.state["scenes"][self.scene]["phrases"][i]
+            except:
+                return res
+            if info["followAction"] == FOLLOW_ACTION_RELATIVE and info["followParam"] < 0:
+                # If current phrase is inside the next loop, return the loop count
+                loop_from = i + info["followParam"]
+                if phrase >= loop_from:
+                    res.append((i, -info["followParam"], info["followRepeat"]))
+            i += 1
+        return res
+
     # -------------------------------------------------------------------
     # Pattern and event management
     # -------------------------------------------------------------------
