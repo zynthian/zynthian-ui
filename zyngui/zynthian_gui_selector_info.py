@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Selector with Extended Info Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -55,61 +55,28 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             'ctrl_order': (0, 1, 2, 3),
             'ctrl_width': 0.25
         }
-        self.icon_canvas = None
-        self.info_canvas = None
+        self.info_text = None
+        self.default_icon = default_icon
+        self.icons = {}
+
         super().__init__(selcap, wide=True, loading_anim=True, tiny_ctrls=tiny_ctrls)
         self.loading_canvas.grid_remove()
 
-        # Canvas for extended info image
-        self.icon_canvas = tkinter.Canvas(self.main_frame,
-            width=1,  # zynthian_gui_config.fw2, #self.width // 4 - 2,
-            height=1,  # zynthian_gui_config.fh2, #self.height // 2 - 1,
+        self.info_text = tkinter.Text(self.main_frame,
+            background=zynthian_gui_config.color_bg,
             bd=0,
             highlightthickness=0,
-            bg=zynthian_gui_config.color_bg)
-        self.icon_canvas.bind('<ButtonRelease-1>', self.cb_info_press)
-        # Position at top of column containing selector
-        self.icon_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=1, sticky="news")
-
-        # Canvas for extended info text
-        self.info_canvas = tkinter.Canvas(
-            self.main_frame,
-            width=1,  # zynthian_gui_config.fw2, #self.width // 4 - 2,
-            height=1,  # zynthian_gui_config.fh2, #self.height // 2 - 1,
-            bd=0,
-            highlightthickness=0,
-            bg=zynthian_gui_config.color_bg)
-        self.info_canvas.bind('<ButtonRelease-1>', self.cb_info_press)
-        # Position at top of column containing selector
-        self.info_canvas.grid(row=1, column=self.layout['list_pos'][1] + 1, rowspan=3, sticky="news")
-
-        # Info layout geometry
-        self.side_width = int(self.layout['ctrl_width'] * self.width)
-
-        # Info icon layout
-        self.icons = {}
-        self.icon_size = (self.side_width, self.side_width)
-        self.icon_image = self.icon_canvas.create_image(self.side_width // 2, 0, anchor="n")
-        self.default_icon = default_icon
-
-        # Info text layout
-        info_fs = min(int(0.8 * zynthian_gui_config.font_size), self.side_width // 16)
-        xpos = int(0.8 * info_fs)
-        ypos = int(-0.3 * info_fs)
-        self.description_label = self.info_canvas.create_text(
-            xpos, ypos,
-            anchor=tkinter.NW,
-            justify=tkinter.LEFT,
-            width=self.side_width - xpos,
-            text="",
-            # font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
-            font=("sans-serif", info_fs),
-            fill=zynthian_gui_config.color_panel_tx)
+            fg=zynthian_gui_config.color_tx,
+            wrap=tkinter.WORD)
+        self.info_text.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.layout['rows'], sticky="news", padx=2, pady=2)
+        image = self.get_icon(default_icon)
+        self.info_text.image_create("end", image=image)
+        self.info_text.insert("end", "\n")
 
     def update_layout(self):
         super().update_layout()
-        if self.icon_canvas:
-            self.icon_canvas.configure(height=int(0.5 * self.height))
+        if self.info_text:
+            self.update_info()
 
     def get_info(self):
         try:
@@ -123,25 +90,36 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             return ["", ""]
 
     def update_info(self):
+        side_width = int(self.layout['ctrl_width'] * self.width)
+        fs = min(int(0.8 * zynthian_gui_config.font_size), side_width // 16)
+        self.info_text.configure(font=("sans-serif", fs))
         info = self.get_info()
         if info:
-            self.info_canvas.itemconfigure(self.description_label, text=info[0])
-            self.icon_canvas.itemconfigure(self.icon_image, image=self.get_icon(info[1]))
+            self.info_text.delete("1.0", "end")
+            self.info_text.image_create("end", image=self.get_icon(info[1]))
+            self.info_text.insert("end", "\n\n")
+            self.info_text.insert("end", info[0])
 
     def get_icon(self, icon_fname):
         if not icon_fname:
             icon_fname = self.default_icon
-        if icon_fname not in self.icons:
-            try:
-                img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
-                icon = ImageTk.PhotoImage(img.resize(self.icon_size))
-                self.icons[icon_fname] = icon
-                return icon
-            except Exception as e:
-                logging.error(f"Can't load info icon {icon_fname} => {e}")
-                return zynthian_gui_config.loading_imgs[0]
-        else:
-            return self.icons[icon_fname]
+        try:
+            if self.icons[icon_fname][zynthian_gui_config.touch_shown]:
+                return self.icons[icon_fname][zynthian_gui_config.touch_shown]
+        except:
+            logging.warning(f"Creating icon {icon_fname}")
+        try:
+            img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
+            side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
+            icon_size = (side_width - 2, side_width - 2)
+            icon = ImageTk.PhotoImage(img.resize(icon_size))
+            if icon_fname not in self.icons:
+                self.icons[icon_fname] = [None, None]
+            self.icons[icon_fname][zynthian_gui_config.touch_shown] = icon
+            return icon
+        except Exception as e:
+            logging.error(f"Can't load info icon {icon_fname} => {e}")
+            return zynthian_gui_config.loading_imgs[0]
 
     def select(self, index=None, set_zctrl=True):
         super().select(index, set_zctrl)

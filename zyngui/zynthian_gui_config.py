@@ -555,9 +555,9 @@ main_screen_column = 1
 
 touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION',
     os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION',
-    os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', None)))
+    os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', "")))
 
-if touch_navigation not in (None, "v5_keypad_left", "v5_keypad_right"):
+if touch_navigation not in ("", "v5_keypad_left", "v5_keypad_right"):
     touch_navigation = "v5_keypad_left"
 
 force_enable_cursor = get_env_int('ZYNTHIAN_UI_ENABLE_CURSOR', 0)
@@ -745,7 +745,7 @@ def toggle_touch():
         if touch_navigation == "v5_keypad_left":
             main_x = panel_width
         screen_width = display_width - panel_width
-        screen_height = display_height // 6 * 5
+        screen_height = 5 * display_height // 6
         touch_shown = True
 
 if "zynthian_main.py" in sys.argv[0]:

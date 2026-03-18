@@ -61,8 +61,6 @@ class zynthian_gui_touchkeypad_v5:
         self.shown = False
         self.button_width = zynthian_gui_config.display_width // 10
         self.button_height = zynthian_gui_config.display_height // 6
-        self.ui_width = zynthian_gui_config.display_width - self.button_width * 2 - 1
-        self.ui_height = zynthian_gui_config.display_height - self.button_height
         self.font_size = zynthian_gui_config.font_size
         self.bg_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, -28)
         self.bg_color_over = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, -22)

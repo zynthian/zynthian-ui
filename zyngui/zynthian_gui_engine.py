@@ -144,7 +144,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
             text="★★★★★",
             # text="✱✱✱✱✱",
             font=(zynthian_gui_config.font_family, star_fs),
-            fill=color_star_off)
+            fill=color_star_off,
+            tags="stars")
         self.quality_stars_label = self.info_canvas.create_text(
             xpos,
             ypos,
@@ -153,7 +154,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
             width=info_width,
             text="",
             font=(zynthian_gui_config.font_family, star_fs),
-            fill=color_star)
+            fill=color_star,
+            tags="stars")
         ypos += int(1.2 * star_fs)
         self.complexity_stars_bg_label = self.info_canvas.create_text(
             xpos,
@@ -163,7 +165,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
             width=info_width,
             text="⚈⚈⚈⚈⚈",
             font=(zynthian_gui_config.font_family, star_fs),
-            fill=color_star_off)
+            fill=color_star_off,
+            tags="stars")
         self.complexity_stars_label = self.info_canvas.create_text(
             xpos,
             ypos,
@@ -172,7 +175,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
             width=info_width,
             text="",
             font=(zynthian_gui_config.font_family, star_fs),
-            fill=color_star)
+            fill=color_star,
+            tags="stars")
         ypos += int(1.6 * star_fs)
 
         self.description_label = self.info_canvas.create_text(
@@ -198,7 +202,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.main_frame.columnconfigure(2, minsize=ctrl_width, weight=self.sidebar_shown)
         if self.info_canvas:
             self.info_canvas.configure(height=int(0.6 * self.height))
-            # self.description_label.configure(height=int(0.35 * self.height))
+            ctrl_width = int(self.layout['ctrl_width'] * self.width)
+            star_fs = int(ctrl_width * 0.16)
+            xpos = int(0.1 * star_fs)
+            info_width = ctrl_width - xpos
+            self.info_canvas.itemconfigure("stars", font=(zynthian_gui_config.font_family, star_fs))
+            self.info_canvas.itemconfigure(self.description_label, width=info_width)
 
     def get_info(self, eng_code=None):
         if not eng_code:
@@ -216,8 +225,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
         complexity_stars = "⚈" * eng_info["COMPLEX"]
         self.info_canvas.itemconfigure(self.complexity_stars_label, text=complexity_stars)
         self.info_canvas.itemconfigure(self.description_label, text=eng_info["DESCR"])
-        # self.description_label.delete("1.0", tkinter.END)
-        # self.description_label.insert("1.0", eng_info["DESCR"])
 
     def show_details(self, eng_code=None):
         eng_info = self.get_info(eng_code)

@@ -539,7 +539,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def touch_navigation_menu(self):
         self.zyngui.screens['option'].config("Touch Navigation",
                                              {"None": "",
-                                              "Touch-widgets": "touch_widgets",
                                               "V5 keypad at left": "v5_keypad_left",
                                               "V5 keypad at right": "v5_keypad_right"},
                                              self.touch_navigation_cb,
