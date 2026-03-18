@@ -85,7 +85,8 @@ engine_categories = {
         "Dynamics",
         "Filter & EQ",
         "Modulation",
-        "Panning & Spatial",
+        "Panning",
+        "Spatial",
         "Pitch",
         "Reverb",
         "Simulator",
@@ -131,8 +132,9 @@ lv2class2engcat = {
     "Equaliser": "Filter & EQ",
     "Modulator": "Modulation",
     "Expander": "Dynamics",
-    "Spatial": "Panning & Spatial",
-    "Panning": "Panning & Spatial",
+    "Spatial": "Spatial",
+    "Panning": "Panning",
+    "Panning & Spatial": "Panning",
     "Limiter": "Dynamics",
     "Pitch Shifter": "Pitch",
     "Reverb": "Reverb",
@@ -266,7 +268,7 @@ def save_engines():
     # Save to file
     try:
         with open(ENGINE_CONFIG_FILE, 'w') as f:
-            json.dump(sengines, f)
+            json.dump(sengines, f, indent=0)
         engines_mtime = os.stat(ENGINE_CONFIG_FILE).st_mtime
         logging.info(
             f"Saved engine config file with timestamp {engines_mtime}")
@@ -482,7 +484,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
         engines = dict(sorted(genengines.items(), key=lambda r: r[1]['TITLE'].casefold()))
         # Write to file
         with open(ENGINE_CONFIG_FILE, 'w') as f:
-            json.dump(engines, f)
+            json.dump(engines, f, indent=0)
         engines_mtime = os.stat(ENGINE_CONFIG_FILE).st_mtime
     except Exception as e:
         logging.error(f"Can't save engines DB => {e}")
@@ -747,7 +749,7 @@ def save_plugin_presets_cache(plugin_name, presets_info):
     fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
     try:
         with open(fpath_cache, 'w') as f:
-            json.dump(presets_info, f)
+            json.dump(presets_info, f, indent=0)
     except Exception as e:
         logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
 
