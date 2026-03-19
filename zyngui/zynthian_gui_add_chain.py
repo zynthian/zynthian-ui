@@ -23,7 +23,6 @@
 #
 # ******************************************************************************
 
-import logging
 from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
 
 
@@ -36,6 +35,7 @@ class zynthian_gui_add_chain(zynthian_gui_selector_grid):
 
         self.columns = 3
         self.pos = 0
+        self.title = "Add Chain..."
         self.reset_config()
 
     def reset_config(self):

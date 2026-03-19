@@ -88,14 +88,16 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
     def build_view(self):
         self._draw_nodes()
+        self.set_select_path()
         return True
 
-    def setup(self, config, cols=None):
+    def setup(self, title, config, cols=None):
         """
         Configure the buttons
 
         :param config: List of dictionaries, each describing a button
         """
+        self.title = title
         self.config = config
         if cols:
             self.columns = cols
@@ -163,7 +165,10 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
         #Scroll the canvas to ensure the selected node is visible.
         # Get node's coords
-        x0, y0, x1, y1 = self.canvas.bbox(node_tag)
+        ncoords = self.canvas.bbox(node_tag)
+        bcoords = self.canvas.bbox("all")
+        if not ncoords or not bcoords:
+            return
         # Get view coords
         vw = self.width
         vh = self.height
@@ -171,19 +176,18 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         vy0 = self.canvas.canvasy(0)
         vx1 = self.canvas.canvasx(vw)
         vy1 = self.canvas.canvasy(vh)
-        b0, b1, b2, b3 = self.canvas.bbox("all")
-        w = b2 - b0
-        h = b3 - b1
+        w = bcoords[2] - bcoords[0]
+        h = bcoords[3] - bcoords[1]
         # Scroll horizontally
-        if x0 < vx0:
-            self.canvas.xview_moveto((x0 - b0) / w)
-        elif x1 > vx1:
-            self.canvas.xview_moveto((x1 - vw) / w)
+        if ncoords[0] < vx0:
+            self.canvas.xview_moveto((ncoords[0] - bcoords[0]) / w)
+        elif ncoords[2] > vx1:
+            self.canvas.xview_moveto((ncoords[2] - vw) / w)
         # Scroll vertically
-        if y0 < vy0:
-            self.canvas.yview_moveto((y0 - b1) / h)
-        elif y1 > vy1:
-            self.canvas.yview_moveto((y1 - vh) / h)
+        if ncoords[1] < vy0:
+            self.canvas.yview_moveto((ncoords[1] - bcoords[1]) / h)
+        elif ncoords[3] > vy1:
+            self.canvas.yview_moveto((ncoords[3] - vh) / h)
 
     def arrow_left(self):
         """
@@ -354,3 +358,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
                 action_fn(*action_params)
             else:
                 action_fn()
+
+    def set_select_path(self):
+        self.select_path.set(self.title)
+
