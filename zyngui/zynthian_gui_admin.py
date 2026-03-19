@@ -284,10 +284,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         if zynthian_gui_config.debug_thread:
             self.list_data.append((self.exit_to_console, 0, "Exit",
                                    ["Stop zynthian UI but do not reboot.", "poweroff.png"]))
-        self.list_data.append((self.reboot, 0, "Reboot",
-                               ["Reboot (restart) zynthian.", "reboot.png"]))
-        self.list_data.append((self.power_off, 0, "Power Off",
-                               ["Turn off zynthian.\n\nPower is still fed to the device but it is effectively off.",
+        self.list_data.append((self.power, 0, "Power Off",
+                               ["Turn off or reboot zynthian.\n\nPower is still fed to the device but it is effectively off.",
                                 "poweroff.png"]))
 
         super().fill_list()
@@ -762,17 +760,20 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.last_state_action()
         self.zyngui.exit(101)
 
-    def reboot(self):
-        self.zyngui.show_confirm("Do you really want to reboot?", self.reboot_confirmed)
+    def power(self):
+        config = [
+            {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen},
+            {"icon": "poweroff.png", "title": "Poweroff", "action": self.power_off_confirmed},
+            {"icon": "reboot.png", "title": "Reboot", "action": self.reboot_confirmed}
+        ]
+        self.zyngui.screens["grid_sel"].setup("Power", config)
+        self.zyngui.show_screen("grid_sel")
 
     def reboot_confirmed(self, params=None):
         logging.info("REBOOT")
         self.zyngui.show_splash("Rebooting")
         self.last_state_action()
         self.zyngui.exit(100)
-
-    def power_off(self):
-        self.zyngui.show_confirm("Do you really want to power off?", self.power_off_confirmed)
 
     def power_off_confirmed(self, params=None):
         logging.info("POWER OFF")

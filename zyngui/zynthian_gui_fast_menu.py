@@ -68,9 +68,9 @@ class zynthian_gui_fast_menu(zynthian_gui_selector_grid):
             "icon": "audio.png",
             "action": self.zyngui.cuia_screen_alsa_mixer
         }, {
-            "title": "Power\n(Reboot)",
+            "title": "Power",
             "icon": "poweroff.png",
-            "action": self.zyngui.cuia_power_off,
-            "bold_action": self.zyngui.cuia_reboot
-        }]
+            "action": self.zyngui.cuia_power
+         }
+    ]
 

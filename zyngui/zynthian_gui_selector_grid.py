@@ -91,16 +91,22 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.set_select_path()
         return True
 
-    def setup(self, title, config, cols=None):
+    def setup(self, title, config, cols=None, select=0):
         """
         Configure the buttons
-
-        :param config: List of dictionaries, each describing a button
+        Args:
+            title: Text to show in topbar
+            config: List of dictionaries, each describing a button
+            cols: Quantity of columns (Optional. Default: 3)
+            select: Button to select (Optional. Default: 0)
         """
+
         self.title = title
         self.config = config
         if cols:
             self.columns = cols
+        self.set_title(title)
+        self.selected_node = select
 
     def get_icon(self, icon_fname=None):
         if not icon_fname:

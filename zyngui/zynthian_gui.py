@@ -1233,17 +1233,17 @@ class zynthian_gui:
     def cuia_power_save(self, params=None):
         self.state_manager.set_power_save_mode(True)
 
-    def cuia_power_off(self, params=None):
+    def cuia_power(self, params=None):
         if params == ['CONFIRM']:
             self.screens['admin'].power_off_confirmed()
         else:
-            self.screens['admin'].power_off()
+            self.screens['admin'].power()
 
     def cuia_reboot(self, params=None):
         if params == ['CONFIRM']:
             self.screens['admin'].reboot_confirmed()
         else:
-            self.screens['admin'].reboot()
+            self.screens['admin'].power()
 
     def cuia_restart_ui(self, params=None):
         self.screens['admin'].restart_gui()
@@ -2165,7 +2165,7 @@ class zynthian_gui:
             return True
 
         elif i == 3:
-            self.cuia_power_off()
+            self.cuia_power()
             return True
 
         # Custom ZynSwitches
