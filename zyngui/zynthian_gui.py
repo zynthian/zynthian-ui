@@ -1804,6 +1804,7 @@ class zynthian_gui:
                 {"icon": None, "title": "Chain Manager", "action": self.cuia_screen_chain_manager},
                 {"icon": "snapshot.png", "title": "Snapshots", "action": self.cuia_screen_snapshot},
                 {"icon": "zs3.png", "title": "ZS3", "action": self.cuia_screen_zs3},
+                {"icon": "metronome.png", "title": "Tempo", "action": self.cuia_show_screen, "action_params": [["tempo"]]},
                 {"icon": "audio_recorder.png", "title": "Audio Player", "action": self.cuia_screen_audio_player},
                 {"icon": "midi_recorder.png", "title": "MIDI Player", "action": self.cuia_screen_midi_recorder},
                 {"icon": "audio.png", "title": "Soundcard", "action": self.cuia_screen_alsa_mixer},
