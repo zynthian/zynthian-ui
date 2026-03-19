@@ -90,7 +90,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self._draw_nodes()
         return True
 
-    def setup(self, config, cols=None):
+    def setup(self, config, cols=None, title=""):
         """
         Configure the buttons
 
@@ -99,6 +99,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.config = config
         if cols:
             self.columns = cols
+        self.set_title(title)
 
     def get_icon(self, icon_fname=None):
         if not icon_fname:

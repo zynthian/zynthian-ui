@@ -251,8 +251,49 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def insert_chain(self, params=None):
         pos = self.zyngui.chain_manager.get_chain_index(self.chain.chain_id)
-        self.zyngui.screens["add_chain"].set_chain_pos(pos)
-        self.zyngui.show_screen("add_chain")
+        config = [{
+                "title": "Instrument",
+                "icon": "midi_instrument.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "MIDI Synth", "midi_thru": False, "audio_thru": False, "pos": pos}]
+            }, {
+                "title": "Audio Input",
+                "icon": "microphone.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "pos": pos}]
+            }, {
+                "title": "Clip Launcher",
+                "icon": "audio.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None, "pos": pos}]
+            }, {
+                "title": "MIDI",
+                "icon": "midi_logo.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "MIDI Tool", "midi_thru": True, "audio_thru": False, "pos": pos}]
+            }, {
+                "title": "MIDI\n+\nAudio",
+                "icon": "midi_audio.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "Audio Effect", "midi_thru": True, "audio_thru": True, "pos": pos}]
+            }, {
+                "title": "Audio Generator",
+                "icon": "audio_generator.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "pos": pos}]
+            }, {
+                "title": "Special",
+                "icon": "special_chain.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "Special", "midi_thru": True, "audio_thru": True, "pos": pos}]
+            }, {
+                "title": "Mixbus",
+                "icon": "effects_loop.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True, "pos": pos}]
+            }]
+        self.zyngui.screens["grid_sel"].setup(config, title="Add Chain")
+        self.zyngui.show_screen("grid_sel")
 
     # FX-Chain management
 
