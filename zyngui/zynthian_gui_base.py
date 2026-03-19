@@ -251,7 +251,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.zyngui.cuia_show_fast_menu()
+        self.zyngui.cuia_fast_menu()
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):
@@ -283,7 +283,7 @@ class zynthian_gui_base(tkinter.Frame):
     # Default status short touch action
     def status_short_touch_action(self):
         if zynthian_gui_config.touch_keypad:
-            zynthian_gui_config.toggle_touch()
+            zynthian_gui_config.toggle_touch_keypad()
             self.on_size()
             return
 

@@ -728,22 +728,23 @@ for i, value in enumerate(LAUNCHER_COLOUR):
 # X11 Related Stuff
 # ------------------------------------------------------------------------------
 
-def toggle_touch(value=None):
+def set_touch_keypad(enabled=True):
     global main_x, screen_width, screen_height, touch_shown
-    if value is not None:
-        touch_shown = not value
-    if touch_shown:
-        main_x = 0
-        screen_width = display_width
-        screen_height = display_height
-        touch_shown = 0
-    else:
+    if enabled:
         panel_width = display_width // 5
         if touch_navigation == "v5_keypad_left":
             main_x = panel_width
         screen_width = display_width - panel_width
         screen_height = 5 * display_height // 6
         touch_shown = 1
+    else:
+        main_x = 0
+        screen_width = display_width
+        screen_height = display_height
+        touch_shown = 0
+
+def toggle_touch_keypad():
+    set_touch_keypad(not touch_shown)
 
 if "zynthian_main.py" in sys.argv[0]:
     import tkinter
@@ -784,16 +785,19 @@ if "zynthian_main.py" in sys.argv[0]:
         if not font_size:
             font_size = int(display_width / 40)
 
-        touch_keypad = None # V5 button overlay
         main_x = 0
         if touch_navigation:
+            set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
             # Create touch keypad frame and show it!
             try:
-                toggle_touch(touch_shown := get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
                 touch_keypad = zynthian_gui_touchkeypad_v5()
             except Exception as e:
                 logging.error(f"Can't start touch keypad => {e}")
+                touch_keypad = None
+        else:
+            touch_shown = 0
+            touch_keypad = None
 
         # Geometric params
         if screen_width >= 800:
