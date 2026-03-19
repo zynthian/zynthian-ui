@@ -1601,7 +1601,7 @@ class zynthian_gui:
             self.screens["grid_sel"].setup(params[0], params[1])
             self.show_screen("grid_sel")
 
-    def cuia_show_fast_menu(self, params=None):
+    def cuia_fast_menu(self, params=None):
         self.show_screen("fast_menu")
 
     def cuia_chain_control(self, params=None):

@@ -36,7 +36,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
     """
     Selector presented as a grid of buttons.
     """
-    def __init__(self):
+    def __init__(self, default_icon="zynthian_logo.png"):
         """
         Initialize the Grid View.
 
@@ -45,6 +45,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         """
         super().__init__()
 
+        self.default_icon = default_icon
         self.columns = 3
 
         # Initial values, recalculated by update_layout
@@ -104,7 +105,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
     def get_icon(self, icon_fname=None):
         if not icon_fname:
-            icon_fname = "zynthian_logo.png"
+            icon_fname = self.default_icon
         if icon_fname not in self.icons:
             try:
                 img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
