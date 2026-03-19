@@ -490,6 +490,7 @@ class zynthian_gui:
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
         self.screens['chain_manager'] = zynthian_gui_chain_manager()
+        self.screens['add_chain'] = zynthian_gui_add_chain()
         self.screens['processor_options'] = zynthian_gui_processor_options()
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
