@@ -66,19 +66,14 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             bd=0,
             highlightthickness=0,
             bg=zynthian_gui_config.color_bg)
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.layout['rows'], sticky="news", padx=2, pady=2)
-        image = self.get_icon(default_icon)
-        self.info_icon = self.info_canvas.create_image(2, 2, 
-            image=image,
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.layout['rows'], sticky="news", padx=(2,2), pady=(2,2))
+        self.info_icon = self.info_canvas.create_image(0, 0, 
             anchor=tkinter.NW
         )
         self.info_text = self.info_canvas.create_text(
-            2, image.height() + 4,
+            0, 0,
             anchor=tkinter.NW,
             justify=tkinter.LEFT,
-            width=image.width(),
-            text="",
-            font=("sans-serif", int(0.8 * zynthian_gui_config.font_size)),
             fill=zynthian_gui_config.color_panel_tx
         )
 
@@ -103,8 +98,9 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         fs = min(int(0.8 * zynthian_gui_config.font_size), side_width // 16)
         info = self.get_info()
         if info:
-            image=self.get_icon(info[1])
+            image = self.get_icon(info[1])
             self.info_canvas.itemconfigure(self.info_icon, image=image)
+            self.info_canvas.coords(self.info_text, 0, image.height() + 2)
             self.info_canvas.itemconfigure(self.info_text, font=("sans-serif", fs), text=info[0], width=image.width())
 
     def get_icon(self, icon_fname):
