@@ -56,8 +56,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
         super().__init__('MIDI file', default_icon="file_midi.png", tiny_ctrls=True)
 
-        self.info_text.grid_forget()
-        self.info_text.grid(row=1, column=self.layout['list_pos'][1] + 1, rowspan=1, sticky="news")
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 
         # Secondary controller
         self.mpl_zctrl = zynthian_controller(self, "midi_play_loop",

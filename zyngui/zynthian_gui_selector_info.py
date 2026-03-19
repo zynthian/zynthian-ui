@@ -59,19 +59,28 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         self.default_icon = default_icon
         self.icons = {}
 
-        super().__init__(selcap, wide=True, loading_anim=True, tiny_ctrls=tiny_ctrls)
-        self.loading_canvas.grid_remove()
+        super().__init__(selcap, wide=True, loading_anim=False, tiny_ctrls=tiny_ctrls)
 
-        self.info_text = tkinter.Text(self.main_frame,
-            background=zynthian_gui_config.color_bg,
+        self.info_canvas = tkinter.Canvas(
+            self.main_frame,
             bd=0,
             highlightthickness=0,
-            fg=zynthian_gui_config.color_tx,
-            wrap=tkinter.WORD)
-        self.info_text.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.layout['rows'], sticky="news", padx=2, pady=2)
+            bg=zynthian_gui_config.color_bg)
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.layout['rows'], sticky="news", padx=2, pady=2)
         image = self.get_icon(default_icon)
-        self.info_text.image_create("end", image=image)
-        self.info_text.insert("end", "\n")
+        self.info_icon = self.info_canvas.create_image(2, 2, 
+            image=image,
+            anchor=tkinter.NW
+        )
+        self.info_text = self.info_canvas.create_text(
+            2, image.height() + 4,
+            anchor=tkinter.NW,
+            justify=tkinter.LEFT,
+            width=image.width(),
+            text="",
+            font=("sans-serif", int(0.8 * zynthian_gui_config.font_size)),
+            fill=zynthian_gui_config.color_panel_tx
+        )
 
     def update_layout(self):
         super().update_layout()
@@ -92,13 +101,11 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
     def update_info(self):
         side_width = int(self.layout['ctrl_width'] * self.width)
         fs = min(int(0.8 * zynthian_gui_config.font_size), side_width // 16)
-        self.info_text.configure(font=("sans-serif", fs))
         info = self.get_info()
         if info:
-            self.info_text.delete("1.0", "end")
-            self.info_text.image_create("end", image=self.get_icon(info[1]))
-            self.info_text.insert("end", "\n\n")
-            self.info_text.insert("end", info[0])
+            image=self.get_icon(info[1])
+            self.info_canvas.itemconfigure(self.info_icon, image=image)
+            self.info_canvas.itemconfigure(self.info_text, font=("sans-serif", fs), text=info[0], width=image.width())
 
     def get_icon(self, icon_fname):
         if not icon_fname:
