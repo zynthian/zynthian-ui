@@ -30,7 +30,6 @@ from time import sleep
 import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 # ------------------------------------------------------------------------------
 # Zynthian Audio-Out Selection GUI Class
