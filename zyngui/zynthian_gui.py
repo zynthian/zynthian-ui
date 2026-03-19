@@ -59,9 +59,9 @@ from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_file_selector import zynthian_gui_file_selector
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
+from zyngui.zynthian_gui_add_chain import zynthian_gui_add_chain
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
 from zyngui.zynthian_gui_chain_manager import zynthian_gui_chain_manager
-from zyngui.zynthian_gui_add_chain import zynthian_gui_add_chain
 from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_engine import zynthian_gui_engine
 from zyngui.zynthian_gui_midi_chan import zynthian_gui_midi_chan
@@ -490,7 +490,6 @@ class zynthian_gui:
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
         self.screens['chain_manager'] = zynthian_gui_chain_manager()
-        self.screens['add_chain'] = zynthian_gui_add_chain()
         self.screens['processor_options'] = zynthian_gui_processor_options()
         self.screens['snapshot'] = zynthian_gui_snapshot()
         self.screens['midi_chan'] = zynthian_gui_midi_chan()
@@ -620,8 +619,6 @@ class zynthian_gui:
 
         # Show initial screen
         self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
-
-        #self.screens['root'] = self.screens['mixer']
 
     def hide_screens(self, exclude=None):
         if not exclude:

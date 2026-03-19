@@ -785,6 +785,9 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             self.state_manager.save_last_state_snapshot()
         else:
             self.state_manager.delete_last_state_snapshot()
-        zynconf.save_config({"ZYNTHIAN_TOUCH_SHOWN": zynthian_gui_config.touch_shown})
+        try:
+            zynconf.save_config({"ZYNTHIAN_TOUCH_SHOWN": zynthian_gui_config.touch_shown})
+        except:
+            pass
 
 # ------------------------------------------------------------------------------
