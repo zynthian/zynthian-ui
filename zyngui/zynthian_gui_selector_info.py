@@ -59,7 +59,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         self.default_icon = default_icon
         self.icons = {}
 
-        super().__init__(selcap, wide=True, loading_anim=False, tiny_ctrls=tiny_ctrls)
+        super().__init__(selcap, wide=True, loading_anim=True, tiny_ctrls=tiny_ctrls)
 
         self.info_canvas = tkinter.Canvas(
             self.main_frame,
