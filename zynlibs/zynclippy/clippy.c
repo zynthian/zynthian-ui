@@ -281,8 +281,10 @@ void reset() {
         for (uint8_t id = 0; id < MAX_CLIPS; ++id) {
             Clip* clip = player->clips[id];
             if (clip) {
+                releaseMutex();
                 loadClip(ch, id + 1, clip->path, clip->nbeats,
                          clip->start, clip->end, clip->quality, clip->tempo);
+                getMutex();
             }
         }
         player->state=STATE_READY;

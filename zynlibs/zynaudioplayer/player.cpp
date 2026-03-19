@@ -266,8 +266,12 @@ void* file_thread_fn(void* param) {
             // Scope to avoid extra memory usage
             const char* loopModes[] = {"None", "Forward", "Backward", "Alternating"};
             SF_CUES cues;
+            uint32_t count = 0;
+            sf_command(pFile, SFC_GET_CUE_COUNT, &count, sizeof(count));
+            if (count > 100)
+                count = 100;
             sf_command(pFile, SFC_GET_CUE, &cues, sizeof(cues));
-            for (uint32_t i = 0; i < cues.cue_count; ++i)
+            for (uint32_t i = 0; i < count; ++i)
                 add_cue_point(pPlayer, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
 
             SF_LOOP_INFO loopInfo;
@@ -619,7 +623,7 @@ uint8_t save(AUDIO_PLAYER* pPlayer, const char* filename) {
     }
 
     // sndfile cue points are a structure of {quantity of points (uint32) + n x SF_CUE_POINT structs}
-    uint32_t count = 0;
+    int32_t count = 0;
     SF_CUES cues;
     for (size_t i = 0; i < pPlayer->cue_points.size(); ++i) {
         int64_t offset = pPlayer->cue_points[i].offset - pPlayer->crop_start;
