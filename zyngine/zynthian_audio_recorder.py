@@ -125,11 +125,11 @@ class zynthian_audio_recorder:
             self.status = False
             zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
 
-            # Should this be implemented using signals?
-            if player is None:
-                self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
-            else:
-                self.state_manager.audio_player.engine.load_latest(player)
+            # Should this be implemented using signals? => YES!!
+            #if player is None:
+            #    self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
+            #else:
+            #    self.state_manager.audio_player.engine.load_latest(player)
 
             self.state_manager.sync = True
             return True
