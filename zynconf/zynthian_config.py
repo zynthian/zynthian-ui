@@ -246,7 +246,7 @@ def save_config(config, updsys=False, fpath=None):
         if res:
             varname = res.group(1)
             if varname in config:
-                value = config[varname].replace("\n", "\\n")
+                value = str(config[varname]).replace("\n", "\\n")
                 value = value.replace("\r", "")
                 os.environ[varname] = value
                 lines[i] = "export %s=\"%s\"\n" % (varname, value)

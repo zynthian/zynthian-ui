@@ -728,23 +728,22 @@ for i, value in enumerate(LAUNCHER_COLOUR):
 # X11 Related Stuff
 # ------------------------------------------------------------------------------
 
-main_x = 0
-touch_shown = False
-
-def toggle_touch():
+def toggle_touch(value=None):
     global main_x, screen_width, screen_height, touch_shown
+    if value is not None:
+        touch_shown = not value
     if touch_shown:
         main_x = 0
         screen_width = display_width
         screen_height = display_height
-        touch_shown = False
+        touch_shown = 0
     else:
         panel_width = display_width // 5
         if touch_navigation == "v5_keypad_left":
             main_x = panel_width
         screen_width = display_width - panel_width
         screen_height = 5 * display_height // 6
-        touch_shown = True
+        touch_shown = 1
 
 if "zynthian_main.py" in sys.argv[0]:
     import tkinter
@@ -786,9 +785,11 @@ if "zynthian_main.py" in sys.argv[0]:
             font_size = int(display_width / 40)
 
         touch_keypad = None # V5 button overlay
+        main_x = 0
         if touch_navigation:
             # Create touch keypad frame and show it!
             try:
+                toggle_touch(touch_shown := get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
                 touch_keypad = zynthian_gui_touchkeypad_v5()
             except Exception as e:
