@@ -50,7 +50,7 @@ class zynthian_gui_add_chain(zynthian_gui_selector_grid):
                 "action": self.zyngui.modify_chain,
                 "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "pos": self.pos}]
             }, {
-                "title": "Audio Clip",
+                "title": "Clip Launcher",
                 "icon": "audio.png",
                 "action": self.zyngui.modify_chain,
                 "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None, "pos": self.pos}]
