@@ -251,11 +251,11 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.topbar_short_touch_action()
+        self.zyngui.cuia_show_navigation_grid()
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):
-        self.topbar_short_touch_action()
+        self.topbar_bold_touch_action()
 
     # Default status touch callback
     def cb_status_press(self, params=None):

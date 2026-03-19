@@ -93,6 +93,7 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
+from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
 
 # TODO This constant should go somewhere else
 ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
@@ -510,6 +511,7 @@ class zynthian_gui:
         self.screens['tempo'] = self.screens['control']
         self.screens['admin'] = zynthian_gui_admin()
         self.screens['mixer'] = zynthian_gui_mixer()
+        self.screens['grid_sel'] = zynthian_gui_selector_grid()
 
         # Create UI Apps Screens
         self.screens['audio_player'] = self.screens['control']
@@ -1794,6 +1796,23 @@ class zynthian_gui:
             self.chain_manager.clean_midi_learn(params[0])
         else:
             self.chain_manager.clean_midi_learn(self.chain_manager.active_chain.chain_id)
+
+    def cuia_show_navigation_grid(self, params=None):
+        if params:
+            config = params
+        else:
+            config = [
+                {"icon": None, "title": "Chain Manager", "action": self.cuia_screen_chain_manager},
+                {"icon": "snapshot.png", "title": "Snapshots", "action": self.cuia_screen_snapshot},
+                {"icon": "zs3.png", "title": "ZS3", "action": self.cuia_screen_zs3},
+                {"icon": "audio_recorder.png", "title": "Audio Player", "action": self.cuia_screen_audio_player},
+                {"icon": "midi_recorder.png", "title": "MIDI Player", "action": self.cuia_screen_midi_recorder},
+                {"icon": "audio.png", "title": "Soundcard", "action": self.cuia_screen_alsa_mixer},
+                {"icon": None, "title": "Admin", "action": self.cuia_screen_admin},
+                {"icon": "poweroff.png", "title": "Power\n(Reboot)", "action": self.cuia_power_off, "bold_action": self.cuia_reboot}
+            ]
+        self.screens["grid_sel"].setup(config)
+        self.show_screen("grid_sel")
 
     # -------------------------------------------------------------------
     # Z2 knob touch

@@ -100,9 +100,9 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         if cols:
             self.columns = cols
 
-    def get_icon(self, icon_fname):
+    def get_icon(self, icon_fname=None):
         if not icon_fname:
-            icon_fname = self.default_icon
+            icon_fname = "zynthian_logo.png"
         if icon_fname not in self.icons:
             try:
                 img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
