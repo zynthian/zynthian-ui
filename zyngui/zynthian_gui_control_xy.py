@@ -31,6 +31,7 @@ from time import monotonic
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_fullscreen_modal import zynthian_gui_fullscreen_modal
 
 # ------------------------------------------------------------------------------
 # Zynthian X-Y Controller GUI Class
@@ -39,13 +40,13 @@ from zyngui import zynthian_gui_config
 # TODO: Derive control_xy from gui base class?
 
 
-class zynthian_gui_control_xy():
+class zynthian_gui_control_xy(zynthian_gui_fullscreen_modal):
 
     def __init__(self):
+        super().__init__()
         self.canvas = None
         self.hline = None
         self.vline = None
-        self.shown = False
         self.zyngui = zynthian_gui_config.zyngui
 
         # Init X vars
@@ -62,14 +63,8 @@ class zynthian_gui_control_xy():
 
         self.last_motion_ts = None
 
-        # Main Frame
-        self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-                                        width=zynthian_gui_config.screen_width,
-                                        height=zynthian_gui_config.screen_height,
-                                        bg=zynthian_gui_config.color_panel_bg)
-
         # Create Canvas
-        self.canvas = tkinter.Canvas(self.main_frame,
+        self.canvas = tkinter.Canvas(self,
                                      width=self.width,
                                      height=self.height,
                                      # bd=0,
@@ -111,17 +106,9 @@ class zynthian_gui_control_xy():
 
     def show(self):
         if not self.shown:
-            if self.zyngui.test_mode:
-                logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-            self.shown = True
-            self.main_frame.grid(row=0, column=zynthian_gui_config.main_screen_column)
+            super().show()
             self.get_controller_values()
             self.refresh()
-
-    def hide(self):
-        if self.shown:
-            self.shown = False
-            self.main_frame.grid_forget()
 
     def get_controller_values(self):
         if self.zyngui.state_manager.zctrl_x.value != self.xvalue:

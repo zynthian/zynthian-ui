@@ -5,7 +5,7 @@
 #
 # Zynthian GUI configuration
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -63,7 +63,7 @@ logging.info("ZYNTHIAN-UI CONFIG ...")
 kit_version = os.environ.get('ZYNTHIAN_KIT_VERSION', "CUSTOM")
 logging.info(f"Kit Version: {kit_version}")
 wiring_layout = os.environ.get('ZYNTHIAN_WIRING_LAYOUT', "TOUCH_ONLY")
-if wiring_layout in ("TOUCH_ONLY", "DUMMIES"):
+if wiring_layout == "DUMMIES":
     wiring_layout = "TOUCH_ONLY"
     logging.info("No Wiring Layout configured. Only touch interface is available.")
 else:
@@ -550,8 +550,6 @@ font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
 # ------------------------------------------------------------------------------
 # Touch Options
 # ------------------------------------------------------------------------------
-
-main_screen_column = 1
 
 touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', "")
 force_enable_cursor = get_env_int('ZYNTHIAN_UI_ENABLE_CURSOR', 0)

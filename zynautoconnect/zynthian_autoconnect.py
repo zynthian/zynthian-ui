@@ -1210,14 +1210,14 @@ def update_hw_audio_ports():
 
 
 def enable_hotplug():
-    zynthian_gui_config.hotplug_audio_enabled = True
+    zynthian_gui_config.hotplug_audio_enabled = 1
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)}, True)
     update_hw_audio_ports()
     audio_autoconnect()
 
 
 def disable_hotplug():
-    zynthian_gui_config.hotplug_audio_enabled = False
+    zynthian_gui_config.hotplug_audio_enabled = 0
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)}, True)
     stop_all_alsa_in_out()
 
