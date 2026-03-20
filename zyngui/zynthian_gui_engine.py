@@ -413,6 +413,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_bg, 'fg': self.lb2_fg})
         self.cat_index = max(0, min(cat_index, len(self.engine_cats) - 1))
         self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_fg, 'fg': self.lb2_bg})
+        self.listbox2.see(cat_index + 1)
+        self.listbox2.see(cat_index - 1)
+        self.listbox2.see(cat_index)
         # Load engines for the category
         self.recall_context_index()
         self.update_list()
