@@ -1061,6 +1061,9 @@ class zynthian_chain_manager:
 
         if chain_id is not None:
             chain = self.chains[chain_id]
+            if processor.type == "MIDI Synth" and chain.synth_slots:
+                self.remove_processor(chain_id, chain.synth_slots[0][0])
+                pass # Cannot have multiple synth engines
             chain.insert_processor(processor, slot)
             # Update when adding new (proc_id = None)
             if send_signal:

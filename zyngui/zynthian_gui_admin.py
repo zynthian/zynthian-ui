@@ -763,20 +763,20 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def power(self):
         self.zyngui.screens["grid_sel"].setup("Power", [
             {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen},
-            {"icon": "poweroff.png", "title": "Poweroff", "action": self.power_off_confirmed},
+            {"icon": "poweroff.png", "title": "Shutdown", "action": self.power_off_confirmed},
             {"icon": "reboot.png", "title": "Reboot", "action": self.reboot_confirmed}
         ])
         self.zyngui.show_screen("grid_sel")
 
     def reboot_confirmed(self, params=None):
         logging.info("REBOOT")
-        self.zyngui.show_splash("Rebooting")
+        self.zyngui.show_splash("Rebooting...")
         self.last_state_action()
         self.zyngui.exit(100)
 
     def power_off_confirmed(self, params=None):
         logging.info("POWER OFF")
-        self.zyngui.show_splash("Powering Off")
+        self.zyngui.show_splash("Shutting down...")
         self.last_state_action()
         self.zyngui.exit(0)
 
