@@ -54,6 +54,7 @@ class zynthian_signal_manager:
     SS_CUIA_MIDI_EVENT = 1
 
     SS_PROCESSOR_CTRL_SCREENS = 0
+    SS_PROCESSOR_BYPASS = 1
 
     #TODO: These are duplicates of definitions within zyngui!!!
     SS_GUI_SHOW_SCREEN = 0

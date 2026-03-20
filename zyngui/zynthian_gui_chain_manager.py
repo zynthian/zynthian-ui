@@ -30,6 +30,7 @@ from tkinter import font
 import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
+from zyngine.zynthian_signal_manager import zynsigman
 
 DRAG_THRESHOLD = 5
 
@@ -89,6 +90,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """
         self.set_title(f"Chain: {self.chain_manager.active_chain.get_name()}")
 
+        zynsigman.register_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
+
         # Bind Mouse Events
         self.canvas.bind("<Button-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_motion)
@@ -117,6 +120,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
     def hide(self):
         if self.shown:
+            zynsigman.unregister(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
             self.end_moving_chain()
             self.end_moving_processor()
             self.last_active_proc = self.zyngui.get_current_processor()
@@ -392,6 +396,14 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.rows = max(self.rows, row)
         self._draw_graph(proc)
 
+    def bypass_cb(self, zctrl):
+        processor = zctrl.processor
+        col = "#808080" if zctrl.value else "#ffffff"
+        for proc, node in self.bypass2node.items():
+            if proc == processor:
+                self.canvas.itemconfigure(node["text_id"], fill=col)
+                break
+
     def _draw_node(self, node, x, y):
         """ Draw a single node on the canvas.
 
@@ -408,7 +420,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         proc = node.get("proc")
         bg_col = "#505050"
         fg_col = "#ffffff"
-        disabled = False
+        try:
+            disabled = proc.controllers_dict['bypass'].value
+            self.bypass2node[proc] = node
+        except:
+            disabled = 0
         title = node.get("title")
         if type(proc) is str:
             match proc:
@@ -438,7 +454,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             fill=bg_col, outline=bg_col, tags="node"
         )
         # Draw node text
-        text_id = self.canvas.create_text(
+        node["text_id"] = self.canvas.create_text(
             x + self.BLOCK_WIDTH / 2, y + self.BLOCK_HEIGHT / 2,
             text=title, fill=fg_col,
             font=self.font,
@@ -446,11 +462,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             justify=tkinter.CENTER
         )
         while True:
-            x0, y0, x1, y1 = self.canvas.bbox(text_id)
+            x0, y0, x1, y1 = self.canvas.bbox(node["text_id"])
             if y1 - y0 < self.BLOCK_HEIGHT:
                 break
             title = title[:-1].strip()
-            self.canvas.itemconfig(text_id, text=f"{title}...")
+            self.canvas.itemconfig(node["text_id"], text=f"{title}...")
         self.node2pos[node["id"]] = node
 
     def _draw_line(self, start_id, end_id):
@@ -470,6 +486,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.node2pos = {} # Dict of nodes, mapped by gui object (background rectangle)
         divider_height = self.rows * (self.BLOCK_HEIGHT + self.V_SPACING)
         chain_offset = 0
+        self.bypass2node = {}
         for chain_idx, chain in enumerate(self.nodes):
             y = self.H_SPACING // 2
             cols_in_chain = 1 # max number of parallel processors
