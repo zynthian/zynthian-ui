@@ -86,6 +86,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
         # ListBox for Categories
         self.lb2_bg = zynthian_gui_config.color_panel_bg
         self.lb2_fg = zynthian_gui_config.color_panel_tx
+        self.listbox2_y0 = None
+        self.listbox2_dragging = False
         self.listbox2 = tkinter.Listbox(
             self.main_frame,
             font=zynthian_gui_config.font_listbox,
@@ -448,24 +450,29 @@ class zynthian_gui_engine(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def cb_listbox2_push(self, event):
-        if self.zyngui.cb_touch(event):
-            return "break"
-        cursel = self.listbox2.nearest(event.y)
-        if cursel != self.cat_index:
-            self.set_cat(cursel)
+        self.listbox2_y0 = event.y
         return "break"
 
     def cb_listbox2_motion(self, event):
-        cursel = self.listbox2.nearest(event.y)
-        if cursel != self.cat_index:
-            self.set_cat(cursel)
+        if self.listbox2_y0 is not None:
+            dy = self.listbox2_y0 - event.y
+            offset_y = int(dy / self.list_entry_height)
+            if offset_y:
+                self.listbox2.yview_scroll(offset_y, tkinter.UNITS)
+                self.listbox2_dragging = True
+                self.listbox2_y0 = event.y
+        return "break"
 
     def cb_listbox2_release(self, event):
+        self.listbox2_y0 = None
         if self.zyngui.cb_touch_release(event):
+            self.listbox2_dragging = False
             return "break"
-        cursel = self.listbox2.nearest(event.y)
-        if cursel != self.cat_index:
-            self.set_cat(cursel)
+        if not self.listbox2_dragging:
+            cursel = self.listbox2.nearest(event.y)
+            if cursel != self.cat_index:
+                self.set_cat(cursel)
+        self.listbox2_dragging = False
 
     def cb_listbox2_wheel(self, event):
         if event.num == 5 or event.delta == -120:
