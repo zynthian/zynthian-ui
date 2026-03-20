@@ -52,7 +52,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def __init__(self, state_manager=None, jackname=None):
         super().__init__(state_manager)
-        self.name = "Clippy"
+        self.name = "Clip Launcher"
         self.nickname = "CL"
         self.type = "Audio Generator"
         self.options["replace"] = False
