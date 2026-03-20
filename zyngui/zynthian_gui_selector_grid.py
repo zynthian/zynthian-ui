@@ -132,22 +132,23 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         x = self.SPACING
         y = self.SPACING
         for idx, node in enumerate(self.config):
-            self.canvas.create_rectangle(x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
-            fill="#666666",
-            outline="#666666",
-            tags=("node", f"node_{idx}"))
-            if "icon" in node:
-                img = self.get_icon(node["icon"])
-                if img:
-                    self.canvas.create_image(x, y + self.BLOCK_HEIGHT // 2, image=img, anchor="w")
-            self.canvas.create_text(
-                x + 2 * self.BLOCK_WIDTH // 3, y + self.BLOCK_HEIGHT // 2,
-                text=node["title"],
-                fill="white",
-                font=self.font,
-                width=self.BLOCK_WIDTH // 2,
-                justify=tkinter.CENTER
-            )
+            if node:
+                self.canvas.create_rectangle(x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
+                fill="#666666",
+                outline="#666666",
+                tags=("node", f"node_{idx}"))
+                if "icon" in node:
+                    img = self.get_icon(node["icon"])
+                    if img:
+                        self.canvas.create_image(x, y + self.BLOCK_HEIGHT // 2, image=img, anchor="w")
+                self.canvas.create_text(
+                    x + 2 * self.BLOCK_WIDTH // 3, y + self.BLOCK_HEIGHT // 2,
+                    text=node["title"],
+                    fill="white",
+                    font=self.font,
+                    width=self.BLOCK_WIDTH // 2,
+                    justify=tkinter.CENTER
+                )
             x += self.BLOCK_WIDTH + self.SPACING
             if x + self.BLOCK_WIDTH + self.SPACING > self.width:
                 x = self.SPACING
@@ -202,10 +203,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         """
 
         idx = self.selected_node - 1
-        if idx < 0:
-            return
-        self.selected_node = idx
-        self._draw_selection()
+        while idx >= 0 and self.config[idx] is None:
+            idx -= 1
+        if idx >= 0:
+            self.selected_node = idx
+            self._draw_selection()
 
     def arrow_right(self):
         """
@@ -213,10 +215,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         """
 
         idx = self.selected_node + 1
-        if idx >= len(self.config):
-            return
-        self.selected_node = idx
-        self._draw_selection()
+        while idx < len(self.config) and self.config[idx] is None:
+            idx += 1
+        if idx < len(self.config):
+            self.selected_node = idx
+            self._draw_selection()
 
     def arrow_up(self):
         """ Handle arrow up action """
@@ -224,10 +227,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         if super().arrow_up():
             return True
         idx = self.selected_node - self.columns
-        if idx < 0:
-            return True
-        self.selected_node = idx
-        self._draw_selection()
+        while idx >= 0 and self.config[idx] is None:
+            idx -= self.columns
+        if idx >= 0:
+            self.selected_node = idx
+            self._draw_selection()
 
     def arrow_down(self):
         """ Handle arrow down action """
@@ -235,10 +239,11 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         if super().arrow_down():
             return
         idx = self.selected_node + self.columns
-        if idx >= len(self.config):
-            return
-        self.selected_node = idx
-        self._draw_selection()
+        while idx < len(self.config) and self.config[idx] is None:
+            idx += self.columns
+        if idx < len(self.config):
+            self.selected_node = idx
+            self._draw_selection()
 
     def select_offset(self, dval):
         idx = self.selected_node + dval

@@ -82,18 +82,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                                ["Create a new chain and insert immediately before the selected chain.", "midi_instrument.png"]))
 
         if self.chain.chain_id == 0:
-            self.list_data.append((self.remove_sequences, 0,
-                                "Remove Sequences",
-                                ["Clean all sequencer data while keeping existing chains.",
-                                    "delete_sequences.png"]))
             self.list_data.append((self.remove_chains, 0,
-                                "Remove Chains",
-                                ["Clean all chains while keeping sequencer data.",
+                                "Remove All...",
+                                ["Remove chains and/or sequences.",
                                 "delete_chains.png"]))
-            self.list_data.append((self.remove_all, 0,
-                                "Remove All",
-                                ["Clean all chains and sequencer data. Start from scratch!",
-                                "delete_all.png"]))
 
         # TODO: Catch signal for Audio Recording status change
         if self.chain.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
@@ -222,27 +214,25 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.zyngui.chain_manager.remove_chain(self.chain.chain_id)
         self.zyngui.show_screen_reset('chain_manager')
 
-    def remove_all(self, t='S'):
-        self.zyngui.show_confirm(
-            "Do you really want to remove ALL chains & sequences?", self.remove_all_confirmed)
+    def remove_chains(self, t='S'):
+        self.zyngui.screens["grid_sel"].setup("Confirm Remove", [
+                {"icon": "delete_all.png", "title": "Remove all chains & sequences", "action": self.remove_all_confirmed},
+                {"icon": "delete_chains.png", "title": "Remove all chains", "action": self.remove_chains_confirmed},
+                {"icon": "delete_sequences.png", "title": "Remove all sequences", "action": self.remove_sequences_confirmed},
+                None, None, None,
+                {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen}
+        ])
+        self.zyngui.show_screen("grid_sel")
 
     def remove_all_confirmed(self, params=None):
         self.index = 0
         self.zyngui.clean_all()
         self.zyngui.show_screen_reset('chain_manager')
 
-    def remove_chains(self, t='S'):
-        self.zyngui.show_confirm(
-            "Do you really want to remove ALL chains?", self.remove_chains_confirmed)
-
     def remove_chains_confirmed(self, params=None):
         self.index = 0
         self.zyngui.clean_chains()
         self.zyngui.show_screen_reset('chain_manager')
-
-    def remove_sequences(self, t='S'):
-        self.zyngui.show_confirm(
-            "Do you really want to remove ALL sequences?", self.remove_sequences_confirmed)
 
     def remove_sequences_confirmed(self, params=None):
         self.index = 0
