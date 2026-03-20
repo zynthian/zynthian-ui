@@ -463,9 +463,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
     def cb_listbox2_release(self, event):
         if self.zyngui.cb_touch_release(event):
             return "break"
-        cursel = self.listbox2.nearest(event.y)
-        if cursel != self.cat_index:
-            self.set_cat(cursel)
 
     def cb_listbox2_wheel(self, event):
         if event.num == 5 or event.delta == -120:
