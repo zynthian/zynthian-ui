@@ -415,9 +415,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_bg, 'fg': self.lb2_fg})
         self.cat_index = max(0, min(cat_index, len(self.engine_cats) - 1))
         self.listbox2.itemconfig(self.cat_index, {'bg': self.lb2_fg, 'fg': self.lb2_bg})
-        self.listbox2.see(cat_index + 1)
-        self.listbox2.see(cat_index - 1)
-        self.listbox2.see(cat_index)
+        self.listbox2.see(self.cat_index)
         # Load engines for the category
         self.recall_context_index()
         self.update_list()
@@ -450,29 +448,24 @@ class zynthian_gui_engine(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def cb_listbox2_push(self, event):
-        self.listbox2_y0 = event.y
+        if self.zyngui.cb_touch(event):
+            return "break"
+        cursel = self.listbox2.nearest(event.y)
+        if cursel != self.cat_index:
+            self.set_cat(cursel)
         return "break"
 
     def cb_listbox2_motion(self, event):
-        if self.listbox2_y0 is not None:
-            dy = self.listbox2_y0 - event.y
-            offset_y = int(dy / self.list_entry_height)
-            if offset_y:
-                self.listbox2.yview_scroll(offset_y, tkinter.UNITS)
-                self.listbox2_dragging = True
-                self.listbox2_y0 = event.y
-        return "break"
+        cursel = self.listbox2.nearest(event.y)
+        if cursel != self.cat_index:
+            self.set_cat(cursel)
 
     def cb_listbox2_release(self, event):
-        self.listbox2_y0 = None
         if self.zyngui.cb_touch_release(event):
-            self.listbox2_dragging = False
             return "break"
-        if not self.listbox2_dragging:
-            cursel = self.listbox2.nearest(event.y)
-            if cursel != self.cat_index:
-                self.set_cat(cursel)
-        self.listbox2_dragging = False
+        cursel = self.listbox2.nearest(event.y)
+        if cursel != self.cat_index:
+            self.set_cat(cursel)
 
     def cb_listbox2_wheel(self, event):
         if event.num == 5 or event.delta == -120:
