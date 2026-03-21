@@ -749,7 +749,9 @@ class zynthian_engine_jalv(zynthian_engine):
                     else:
                         continue
 
-            # logging.debug("Controller {} info =>\n{}!".format(symbol, info))
+            #logging.debug("Controller {} info =>\n{}!".format(symbol, info))
+            #logging.debug(f"Controller {symbol} group => {info['group_symbol']}")
+
             try:
                 display_priority = info['display_priority']
                 if info['group_display_priority'] > 0:

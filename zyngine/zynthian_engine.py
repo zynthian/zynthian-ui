@@ -668,7 +668,7 @@ class zynthian_engine(zynthian_basic_engine):
 
     def get_ctrl_screen_name(self, gname, i):
         if i > 0:
-            gname = "{}#{}".format(gname, i)
+            gname = "{} {}".format(gname, i)
         return gname
 
     def generate_ctrl_screens(self, zctrl_dict):
@@ -686,10 +686,10 @@ class zynthian_engine(zynthian_basic_engine):
                 if zctrl.group_name:
                     zctrl_group[gsymbol] = [zctrl.group_name, {}]
                 else:
-                    zctrl_group[gsymbol] = [zctrl.group_symbol, {}]
+                    zctrl_group[gsymbol] = [gsymbol, {}]
             zctrl_group[gsymbol][1][symbol] = zctrl
         if None in zctrl_group:
-            zctrl_group[None][0] = "Ctrls"
+            zctrl_group[None][0] = "Params"
 
         for gsymbol, gdata in zctrl_group.items():
             ctrl_set = []
@@ -705,7 +705,7 @@ class zynthian_engine(zynthian_basic_engine):
                     # logging.debug("CTRL {}".format(symbol))
                     ctrl_set.append(symbol)
                     if len(ctrl_set) >= 4:
-                        # logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
+                        #logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
                         self._ctrl_screens.append([self.get_ctrl_screen_name(gname, c), ctrl_set])
                         ctrl_set = []
                         c = c + 1

@@ -63,8 +63,8 @@ class zynthian_controller:
         self.symbol = symbol
         self.processor = None
         self.name = self.short_name = symbol
-        self.group_symbol = "ctrls"
-        self.group_name = "Ctrls"
+        self.group_symbol = "params"
+        self.group_name = "Params"
         self.readonly = False
 
         if full:
