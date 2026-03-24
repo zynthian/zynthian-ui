@@ -56,6 +56,19 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 logging.info("ZYNTHIAN-UI CONFIG ...")
 
+if log_level == logging.DEBUG:
+    import inspect
+    def logging_call_stack():
+        fnames = []
+        stack = list(inspect.stack())
+        stack.reverse()
+        for i in range(len(stack) - 1):
+            fnames.append(stack[i][3])
+        logging.debug(f"Call Stack: {' -> '.join(fnames)}\n")
+else:
+    def logging_call_stack():
+        pass
+
 # ------------------------------------------------------------------------------
 # Kit name and Wiring layout
 # ------------------------------------------------------------------------------

@@ -935,6 +935,8 @@ class zynthian_chain_manager:
             except:
                 chain = None
 
+        #zynthian_gui_config.logging_call_stack()
+
         # If no better candidate, set active the first chain (Main)
         if chain is None:
             chain = next(iter(self.chains.values()))
