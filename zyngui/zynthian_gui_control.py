@@ -161,7 +161,10 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not curproc:
             self.processors = []
         else:
-            self.processors = self.chain_manager.get_processors(curproc.chain_id)
+            if curproc and curproc.id < -1:
+                self.processors = [curproc]
+            else:
+                self.processors = self.chain_manager.get_processors(curproc.chain_id)
 
     def fill_list(self):
         self.list_data = []
