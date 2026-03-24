@@ -161,7 +161,8 @@ class zynthian_gui_selector(zynthian_gui_base):
     def update_layout(self):
         super().update_layout()
         ctrl_width = self.width * self.layout['ctrl_width'] * self.sidebar_shown
-        if self.layout['columns'] == 2:
+        #if self.layout['columns'] == 2:
+        if self.wide:
             lb_width = int(self.width - ctrl_width)
             lb_weight = 3
         else:
