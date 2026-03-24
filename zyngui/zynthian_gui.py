@@ -1819,6 +1819,11 @@ class zynthian_gui:
     # V5 knob's switch action defaults
     # -------------------------------------------------------------------
     def cuia_v5_zynpot_switch(self, params):
+        try:
+            if self.get_current_screen_obj().cuia_v5_zynpot_switch(params):
+                return True
+        except:
+            pass
         i = params[0]
         t = params[1].upper()
         if t == "L":

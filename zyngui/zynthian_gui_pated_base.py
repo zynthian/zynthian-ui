@@ -404,8 +404,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             menu_options['_SEQUENCE'] = options
         # Pattern Options
         options = {}
+        # TODO This must be improved!!
         if zynthian_gui_config.touch_navigation:
-            #TODO: Enable CC editor from V5 buttons, e.g. ALT
             if self.get_name() == "pattern editor":
                 options['\u2610 CC editor'] = 'CC editor'
             else:
