@@ -67,15 +67,23 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
         self.fade_polarity = 1
 
+        # Margins
+        self.m_l, self.m_r, self.m_t, self.m_b = 10, 10, 10, 10
+        self.plot_width = self.width - self.m_l - self.m_r
+        self.plot_height = self.height - self.m_b - self.m_t
+
+
     def on_size(self, event):
         if event.width == self.width and event.height == self.height:
             return
         super().on_size(event)
         self.widget_canvas.grid(row=0, column=0, sticky='news')
         self.last_envelope_values = []
-        self.dy = int(0.95 * self.height)
+        self.plot_width = self.width - self.m_l - self.m_r
+        self.plot_height = self.height - self.m_b - self.m_t
+        self.dy = int(0.95 * self.plot_height)
         if self.zctrls:
-            self.dx = self.width // len(self.zctrls)
+            self.dx = self.plot_width // len(self.zctrls)
         self.refresh_gui()
 
     def show(self):
@@ -94,76 +102,89 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
                         self.fade_polarity = -1
                     else:
                         self.fade_polarity = 1
-        self.dx = self.width // len(self.zctrls)
+        self.dx = self.plot_width // len(self.zctrls)
         # self.widget_canvas.itemconfig(self.release_line, state="hidden")
         # self.widget_canvas.itemconfig(self.release_label, state="hidden")
         super().show()
 
     def refresh_gui(self):
         envelope_values = []
-        y_sustain = self.height // 2
-        x_release = self.width
-        y_fade = None
+
+        y_sustain = self.plot_height // 2
+        x_release = self.plot_width
+        rv_fade = None
         for zctrl in self.zctrls:
-            envelope_values.append(zctrl.value / zctrl.value_range)
+            rv = zctrl.value / zctrl.value_range
+            envelope_values.append(rv)
             match zctrl.envelope:
                 case "sustain":
-                    y_sustain = self.height - zctrl.value / zctrl.value_range * self.dy
+                    y_sustain = self.plot_height - rv * self.dy
                 case "release":
-                    x_release = self.width - zctrl.value / zctrl.value_range * self.dx
+                    x_release = self.plot_width - rv * self.dx
                 case "fade":
-                    y_fade = self.height - \
-                        (1 - 0.5 * (self.fade_polarity - 1) + self.fade_polarity * zctrl.value / zctrl.value_range) * \
-                        (self.height - y_sustain) / 2
-        if y_fade is None:
+                    rv_fade = rv
+
+        if rv_fade is None:
             y_fade = y_sustain
+        else:
+            kf = 1.0 - 0.5 * (self.fade_polarity - 1) + self.fade_polarity * rv_fade
+            y_fade = self.plot_height - kf * (self.plot_height - y_sustain) / 2
 
         if envelope_values != self.last_envelope_values or self.drag_zctrl:
-            x = 0
-            y = y0 = self.height
-            coords = [x, y0]
+            y_sustain += self.m_b
+            y_fade += self.m_b
+            x_release += self.m_l
+            x = x0 = self.m_l
+            y = y0 = self.m_b + self.plot_height
+            x1 = x0 + self.plot_width
+            y1 = self.m_b
+            coords = [x0, y0]
             self.envelope_click_ranges = []
 
-            for zctrl in self.zctrls:
+            for i, zctrl in enumerate(self.zctrls):
+                rv = envelope_values[i]
                 match zctrl.envelope:
                     case "release":
-                        x = self.width - zctrl.value / zctrl.value_range * self.dx
-                        drag_window = [x, y, self.width, self.height, x, self.height]
+                        x = x1 - rv * self.dx
+                        drag_window = [x, y,
+                                       x1, y0,
+                                       x, y0]
                         self.envelope_click_ranges.append(x)
-                        if coords[-2] == self.width:
-                            coords[-2] = x  # Fix fade if it exists
+                        if coords[-2] == x1:
+                            coords[-2] = x   # Fix fade if it exists
                         # self.widget_canvas.coords(self.release_line, x, y, x, y0)
                         # self.widget_canvas.itemconfig(self.release_line, state="normal")
                         # self.widget_canvas.coords(self.release_label, x-3, y)
                         # self.widget_canvas.itemconfig(self.release_label, state="normal")
                     case "sustain":
-                        y = y0 - zctrl.value / zctrl.value_range * self.dy
+                        y = y0 - rv * self.dy
                         drag_window = [x, y0, x, y, x_release, y_fade, x_release, y0]
                     case "fade":
-                        y_offset = (y0 - y) / 2
-                        drag_window = [x, y, x, y + y_offset]
-                        y = y_fade
+                        y_offset = y + (y0 - y) / 2
+                        drag_window = [x, y, x, y_offset]
                         self.envelope_click_ranges.append(x + (x_release - x) * 0.75)
                         x = x_release
-                        drag_window += [x, drag_window[-1], x, y]
+                        y = y_fade
+                        drag_window += [x, y_offset, x, y]
                     case _:
                         _x = x
                         drag_window = [x, y]
-                        x += zctrl.value / zctrl.value_range * self.dx
+                        x += rv * self.dx
                         if zctrl.envelope == "attack":
                             y = y0 - self.dy
                         elif zctrl.envelope == "decay":
                             y = y_sustain
-                        drag_window += [x, y, x, self.height, _x, self.height]
+                        drag_window += [x, y, x, y0, _x, y0]
                         self.envelope_click_ranges.append(x)
                 coords.append(x)
                 coords.append(y)
                 if self.drag_zctrl == zctrl:
                     self.widget_canvas.coords(self.drag_polygon, drag_window)
 
-            coords.append(self.width)
+            x = self.m_l + self.plot_width
+            coords.append(x)
             coords.append(y0)
-            self.envelope_click_ranges.append(self.width)
+            self.envelope_click_ranges.append(x)
             self.widget_canvas.coords(self.envelope_polygon, coords)
             self.last_envelope_values = envelope_values
             # Highlight dragged section
@@ -194,17 +215,14 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         dy = (event.y - self.last_click.y) / self.dy
         match self.drag_zctrl.envelope:
             case "release":
-                self.drag_zctrl.set_value(
-                    self.envelope_click_value - self.drag_zctrl.value_range * dx)
+                dval = - self.drag_zctrl.value_range * dx
             case "sustain":
-                self.drag_zctrl.set_value(
-                    self.envelope_click_value - self.drag_zctrl.value_range * dy)
+                dval = - self.drag_zctrl.value_range * dy
             case "fade":
-                self.drag_zctrl.set_value(
-                    self.envelope_click_value - self.fade_polarity * self.drag_zctrl.value_range * dy)
+                dval = - self.fade_polarity * self.drag_zctrl.value_range * dy
             case _:
-                self.drag_zctrl.set_value(
-                    self.envelope_click_value + self.drag_zctrl.value_range * dx)
+                dval =  self.drag_zctrl.value_range * dx
+        self.drag_zctrl.set_value(self.envelope_click_value + dval)
 
     def on_canvas_release(self, event):
         self.drag_zctrl = None
