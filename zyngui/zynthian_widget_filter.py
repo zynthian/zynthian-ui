@@ -76,7 +76,8 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         self.db_range = self.db_max - self.db_min
 
         # Margins
-        self.m_l, self.m_r, self.m_t, self.m_b = 45, 10, 20, 35
+        #self.m_l, self.m_r, self.m_t, self.m_b = 45, 10, 20, 35
+        self.m_l, self.m_r, self.m_t, self.m_b = 10, 10, 10, 10
 
         self.draw_grid()
 
@@ -123,6 +124,7 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
             )
 
         # Single axis labels
+        """
         self.label_items.append(self.widget_canvas.create_text(
             10, 80,
             text="dB",
@@ -137,6 +139,7 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
             fill=self.fg_color,
             font=self.font_small
         ))
+        """
 
 
     def on_size(self, event):
