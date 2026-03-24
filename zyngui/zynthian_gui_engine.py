@@ -57,17 +57,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
             'columns': 3,
             'rows': 4,
             'ctrl_pos': [
-                    (0, 2),
-                    (1, 2),
-                    (2, 2),
-                    (3, 2)
+                (0, 2),
+                (1, 2),
+                (2, 2),
+                (3, 2)
             ],
             'list_pos': (0, 1),
             'list_width': 0.5,
             'list2_pos': (0, 0),
             'list2_width': 0.21,
             'ctrl_orientation': 'horizontal',
-            'ctrl_order': (0, 1, 2, 3),
+            'ctrl_order': zynthian_gui_config.layout['ctrl_order'],
             'ctrl_width': 0.29
         }
         self.proc_type = None
@@ -470,17 +470,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
         elif event.num == 4 or event.delta == 120:
             self.set_cat(self.cat_index - 1)
         return "break"  # Consume event to stop scrolling of listbox
-
-    def cb_listbox_motion(self, event):
-        super().cb_listbox_motion(event)
-        dx = self.listbox_x0 - event.x
-        offset_x = int(self.xswipe_sens * dx / self.width)
-        if offset_x:
-            self.swiping = True
-            self.listbox_x0 = event.x
-            cat_index = self.cat_index + offset_x
-            if 0 <= cat_index < len(self.engine_cats):
-                self.set_cat(cat_index)
 
     def cb_info_press(self, event):
         self.show_details()
