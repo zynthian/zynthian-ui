@@ -6,6 +6,7 @@
 # Zynthian GUI Chain View Class
 #
 # Copyright (C) 2025-2026 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -52,13 +53,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         and initializes mouse drag state variables.
         """
         super().__init__()
-        
+
         # Canvas for drawing the graph
         self.canvas = tkinter.Canvas(self.main_frame,
             bg=zynthian_gui_config.color_panel_bg,
             highlightthickness=0)
         self.canvas.pack(fill=tkinter.BOTH, expand=True)
-        
+
         # Nodes mapping:
         self.nodes = [] # Node graph - [chain_idx, row_idx, col_idx]
         self.selected_node = [0, 0, 0] # [chain_idx, row_idx, col_idx]
@@ -275,7 +276,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         # Handle Click Selection
         # Use canvasx/y to account for scrolling
         x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
-        
+
         # Find clicked node
         node = self.get_node_at(x, y)
         if node is None:
@@ -411,7 +412,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             node: The node object to be drawn.
         """
         # Colors
-        c_midi = "#805050" 
+        c_midi = "#805050"
         c_synth = "#32a893"
         c_audio = "#505080"
         c_special = "#708050"
