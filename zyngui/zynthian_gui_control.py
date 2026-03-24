@@ -161,10 +161,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not curproc:
             self.processors = []
         else:
-            if curproc and curproc.id < 0:
-                self.processors = [curproc]
-            else:
-                self.processors = self.chain_manager.get_processors(curproc.chain_id)
+            self.processors = self.chain_manager.get_processors(curproc.chain_id)
 
     def fill_list(self):
         self.list_data = []
@@ -545,12 +542,20 @@ class zynthian_gui_control(zynthian_gui_selector):
         if t == 'S':
             if self.mode == 'select':
                 self.switch_select(t)
+            elif zynthian_gui_config.touch_navigation and self.midi_learning == MIDI_LEARNING_DISABLED:
+                if self.zgui_controllers[i].zctrl.is_toggle:
+                    self.zgui_controllers[i].zctrl.toggle()
             else:
                 self.toggle_midi_learn(i)
             return True
         elif t == 'B':
-            self.midi_learn_options(i)
+            if zynthian_gui_config.touch_navigation:
+                self.toggle_midi_learn(i)
+            else:
+                self.midi_learn_options(i)
             return True
+        elif t == 'L' and zynthian_gui_config.touch_navigation:
+                self.midi_learn_options(i)
         return False
 
     def switch_select(self, t):
