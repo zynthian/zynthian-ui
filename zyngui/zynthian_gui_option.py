@@ -124,4 +124,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
     def set_select_path(self):
         self.select_path.set(self.title)
 
+    def topbar_short_touch_action(self):
+        self.zyngui.back_screen()
+
 # ------------------------------------------------------------------------------
