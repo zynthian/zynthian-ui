@@ -309,6 +309,11 @@ class DeviceHandler(ModeHandlerBase):
         }
 
         press_length_actions = {
+            BTN_ALT: (
+                lambda is_bold: [
+                    "HELP" if is_bold else "TOGGLE_ALT_MODE"
+                ]
+            ),
             BTN_PLAY: (
                 lambda is_bold: [
                     "AUDIO_FILE_LIST" if is_bold else "TOGGLE_PLAY"
@@ -459,8 +464,6 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("BACK")
             elif note == BTN_INSERT_CHAIN:
                 self.insert_chain()
-            elif note == BTN_ALT:
-                self._state_manager.send_cuia("TOGGLE_ALT_MODE")
             elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                 # Function buttons (F1-F4)
                 if self._current_screen == 'pattern_editor' and self._current_screen_obj.alt_mode:
