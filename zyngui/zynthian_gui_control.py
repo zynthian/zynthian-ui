@@ -23,7 +23,6 @@
 #
 # ******************************************************************************
 
-import inspect
 import logging
 import importlib
 from pathlib import Path
@@ -822,6 +821,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options["\u2610 Chain Controller"] = zctrl
 
                 options["Clear"] = zctrl
+                options["Delete"] = zctrl
 
                 self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
                 self.zyngui.show_screen('option')
@@ -929,6 +929,8 @@ class zynthian_gui_control(zynthian_gui_selector):
         elif option == "Clear":
             param.set_value("")
             self.select()
+        elif option == "Delete":
+            self.zyngui.show_confirm(f"Do you want to permanently delete file {param.value}?", self.do_delete_file, param)
         elif option == "CC Value Range":
             self.zyngui.screens["midi_cc_range"].config(self.zgui_controllers[param].zctrl)
             self.zyngui.show_screen('midi_cc_range')
@@ -994,6 +996,14 @@ class zynthian_gui_control(zynthian_gui_selector):
                 }
                 self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
                 self.zyngui.show_screen('option')
+
+    def do_delete_file(self, zctrl):
+        try:
+            Path(zctrl.value).unlink()
+            zctrl.set_value("")
+            self.select()
+        except Exception as e:
+            logging.warning(e)
 
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])

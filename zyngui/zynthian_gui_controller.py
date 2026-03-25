@@ -76,6 +76,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 		self.pixels_per_div = 1
 		self.touch_accel = 300
+		self.press_id = None
 
 		# Initialise dimensions here but set to correct values in on_size
 		self.title_width = 1
@@ -709,9 +710,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.canvas_motion_y0 = event.y
 		self.canvas_motion_x0 = event.x
 		self.canvas_motion_dx = 0
+		self.press_id = self.after(int(zynthian_gui_config.zynswitch_long_seconds * 1000), self.cb_long_press)
 		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_event} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 	def cb_canvas_release(self, event):
+		if self.press_id:
+			self.after_cancel(self.press_id)
+			self.press_id = None
+		else:
+			return # Long press already handled
 		if self.canvas_push_event and self.enabled and self.zctrl:
 			dts = (event.time - self.canvas_push_event.time) / 1000
 			self.canvas_push_event = None
@@ -725,20 +732,22 @@ class zynthian_gui_controller(tkinter.Canvas):
 						self.zctrl.set_value(self.zctrl.value_max)
 					elif self.zctrl.is_path:
 						self.zctrl.nudge(1)
-					else:
+					elif self.zctrl.ticks:
 						if self.zctrl.value == self.zctrl.value_max:
 							self.zctrl.set_value(self.zctrl.value_min)
 						else:
 							self.zctrl.nudge(1)
 				# else, touch widgets emulates V5 hardware knob-switches
 				elif zynthian_gui_config.touch_navigation:
-					#if dts < zynthian_gui_config.zynswitch_bold_seconds:
-					#	self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
-					if dts < zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
+					if self.zctrl.is_path:
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 					else:
-						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B')) # TODO: This should trigger before release
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 
+	def cb_long_press(self):
+		logging.warning("Long press")
+		self.press_id = None
+		self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 
 	def cb_canvas_motion(self, event):
 		if self.canvas_push_event:
@@ -753,6 +762,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 						self.active_motion_axis = 1
 					elif abs(dx) > self.pixels_per_div:
 						self.active_motion_axis = -1
+					if self.press_id and self.active_motion_axis:
+						self.after_cancel(self.press_id)
+						self.press_id = None
 
 				if self.zctrl:
 					if self.active_motion_axis == 1:

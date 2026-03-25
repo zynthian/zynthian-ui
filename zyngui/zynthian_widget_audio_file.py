@@ -4,7 +4,7 @@
 #
 # Zynthian Widget Class for audio file selectors
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
@@ -41,7 +41,6 @@ from zyngui import zynthian_widget_base
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for audio file selectors
 # ------------------------------------------------------------------------------
-
 
 class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
@@ -168,6 +167,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     def on_size(self, event):
         if event.width == self.width and event.height == self.height:
             return
+        self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
+        self.widget_canvas.itemconfig("waveform", state=tkinter.HIDDEN)
         super().on_size(event)
         self.widget_canvas.configure(width=self.width, height=self.height)
         self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
@@ -175,11 +176,15 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
         self.widget_canvas.itemconfig(self.info_text, width=self.width)
 
-        for chan in range(self.channels):
-            coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
-            if len(coords) > 2:
-                coords[2] = self.width
-                self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
+        if self.channels:
+            y0 = self.waveform_height // self.channels
+            for chan in range(self.channels):
+                coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
+                if len(coords) > 2:
+                    coords[2] = self.width
+                    self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
+                v_offset = chan * y0
+                self.widget_canvas.coords(f"zero_{chan}", 0, v_offset + y0 // 2, self.width, v_offset + y0 // 2)
 
         self.waveform_height = self.height - self.font_info.metrics("linespace")
         self.refresh_waveform = True
@@ -216,7 +221,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     v_offset = chan * y0
                     self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=self.bg_color, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
                     # fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
-                    self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
+                    self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags=("waveform", f"zero_{chan}"), state=tkinter.HIDDEN)
                     self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
                 self.offset = 0
                 self.auto_offset = 0
@@ -235,13 +240,16 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         else:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
+            self.widget_canvas.delete("beat_markers")
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.frames = 0
             self.sf = None
 
     def draw_waveform(self, start, length):
         if self.sf is None:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
+            self.widget_canvas.delete("beat_markers")
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             return
 
@@ -395,7 +403,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     if self.beats > 0 and self.warp:
                         for i in range(1, self.beats):
                             x = x1 + i * (x2 - x1) // self.beats
-                            self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tag="beat_markers")
+                            self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tags="beat_markers")
                 # Playing cursor (implemented for clippy)
                 if self.clip_info:
                     # Playing cursor
