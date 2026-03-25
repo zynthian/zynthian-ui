@@ -716,6 +716,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def cb_canvas_release(self, event):
 		if self.press_id:
 			self.after_cancel(self.press_id)
+			self.press_id = None
 		else:
 			return # Long press already handled
 		if self.canvas_push_event and self.enabled and self.zctrl:
@@ -761,6 +762,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 						self.active_motion_axis = 1
 					elif abs(dx) > self.pixels_per_div:
 						self.active_motion_axis = -1
+					if self.press_id and self.active_motion_axis:
+						self.after_cancel(self.press_id)
+						self.press_id = None
 
 				if self.zctrl:
 					if self.active_motion_axis == 1:
