@@ -540,6 +540,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
         self.alt_mode = not self.alt_mode
         return True
 
+    def cuia_help(self, params=None):
+        self.zyngui.show_help('sooperlooper')
+        return True
+
     def cuia_toggle_record(self, params=None):
         if self.alt_mode:
             state = self.monitors['state']
