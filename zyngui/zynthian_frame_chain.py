@@ -132,6 +132,10 @@ class zynthian_frame_chain(tkinter.Frame):
         zynsigman.unregister(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
         self.end_moving_processor()
 
+    def grid_remove(self):
+        super().grid_remove()
+        #self.hide()
+
     def on_press(self, event):
         """
         Handle mouse button press. Initializes drag state.
@@ -321,11 +325,18 @@ class zynthian_frame_chain(tkinter.Frame):
 
         if self.chain:
             # Add chain option button
-            name = self._get_name(self.chain.get_name(), self.BLOCK_WIDTH)
-            self._add_node(f"{name}", "chain_options")
+            title = "Chain Options"
+            #name = self._get_name(self.chain.get_name(), self.BLOCK_WIDTH)
+            if self.chain.title:
+                title += "\n" + self._get_name(self.chain.title, self.BLOCK_WIDTH)
+            self._add_node(title, "chain_options")
             # Add MIDI input
             if self.chain.is_midi():
-                self._add_node("MIDI Input", "midi_input")
+                if self.chain.midi_chan < 16:
+                    midi_chan = f"#{self.chain.midi_chan + 1:02}"
+                else:
+                    midi_chan = f"#ALL"
+                self._add_node(f"MIDI Input\n{midi_chan}", "midi_input")
                 self._add_node("Key Range & Transpose", "midi_key_range")
             # Add MIDI processors
             for slot_idx, slot in enumerate(self.chain.midi_slots):
@@ -420,15 +431,6 @@ class zynthian_frame_chain(tkinter.Frame):
             self.canvas.itemconfig(node["text_id"], text=f"{title}...")
         self.node2pos[node["id"]] = node
 
-    def _draw_line(self, start_id, end_id):
-        xa, ya, xb, yb = self.canvas.bbox(start_id)
-        x0 = xa + (xb - xa) // 2
-        y0 = ya + (yb - ya) // 2
-        xa, ya, xb, yb = self.canvas.bbox(end_id)
-        x1 = xa + (xb - xa) // 2
-        y1 = ya + (yb - ya) // 2
-        self.canvas.create_line(x0, y0, x1, y1, fill="#AAAAAA", width=2, tags="lines")
-
     def _draw_graph(self, sel_proc=None):
         if self.width == 1:
             return  # Not yet resized
@@ -498,10 +500,9 @@ class zynthian_frame_chain(tkinter.Frame):
         else:
             target_y = None
         if target_y:
-            if self.shown:
-                self.smooth_scroll_to(target_y)
-            elif target_y is not None:
-                self.canvas.yview_moveto(target_y)
+            self.smooth_scroll_to(target_y)
+        #if target_y is not None:
+        #    self.canvas.yview_moveto(target_y)
 
     def smooth_scroll_to(self, target_y=None, steps=30, delay=10):
         start_y = self.canvas.yview()[0]
@@ -535,19 +536,19 @@ class zynthian_frame_chain(tkinter.Frame):
     def select_node(self, row=None, node=None, proc=None):
         if not self.nodes:
             return
-        if node:
-            self.selected_node = self.get_node_pos(node)
+        # Argument priority is from left to right
+        if row is not None:
+            self.selected_node = row
+        elif node:
+            row = self.get_node_pos(node)
         elif proc:
             for row, node in enumerate(self.nodes):
                 if node.get("proc") == proc:
                     break
-        if row:
-            self.selected_node = row
-        elif not self.selected_node:
-            self.selected_node = 0
-        row = self.selected_node
         # Range check
-        if row >= len(self.nodes):
+        if row is None or row < 0:
+            row = 0
+        elif row >= len(self.nodes):
             row = len(self.nodes) - 1
         self.selected_node = row
         if not proc:
@@ -628,8 +629,7 @@ class zynthian_frame_chain(tkinter.Frame):
                 self.arrow_down()
 
     def toggle_menu(self):
-        if self.shown:
-            pass
+        pass
 
     def back_action(self):
         if self.moving_proc:
@@ -659,10 +659,8 @@ class zynthian_frame_chain(tkinter.Frame):
             if t == "S":
                 return True
 
-        if not self.selected_node:
-            self.selected_node = 0
+        if self.selected_node is None:
             self.select_node()
-            return True
 
         node = self.nodes[self.selected_node]
         proc = node.get("proc")

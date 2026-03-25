@@ -32,8 +32,9 @@ from pathlib import Path
 import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_controller import zynthian_gui_controller
+from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_frame_chain import zynthian_frame_chain
 
 # ------------------------------------------------------------------------------
@@ -57,6 +58,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.midi_learning = MIDI_LEARNING_DISABLED
 
         self.chain_frame = None
+        self.chain_shown = False
 
         self.modules = {}
         self.widgets = {}
@@ -94,16 +96,41 @@ class zynthian_gui_control(zynthian_gui_selector):
 
         super().__init__(selcap, wide=wide, loading_anim=False, tiny_ctrls=False)
 
-        # Configure layout
-        for ctrl_pos in self.layout['ctrl_pos']:
-            self.main_frame.columnconfigure(ctrl_pos[1], weight=1, uniform='ctrl_col')
-        self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=2)
-
+        # Create chain frame
         if 'chain_pos' in self.layout:
-            self.main_frame.columnconfigure(self.layout['chain_pos'][1], weight=2)
-            self.chain_frame = zynthian_frame_chain(self.main_frame,
-                                                    width=int(self.layout['chain_width'] * self.width),
-                                                    height=self.height)
+            chwidth = int(self.layout['chain_width'] * self.width)
+            self.chain_frame = zynthian_frame_chain(self.main_frame, width=chwidth, height=self.height)
+
+        self.update_layout()
+
+    def update_layout(self):
+        zynthian_gui_base.update_layout(self)
+        # Reconfigure ctrl columns
+        ctrlheight = self.height // self.layout['rows']
+        ctrlwidth = int((self.width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
+        for pos in self.layout['ctrl_pos']:
+            self.main_frame.rowconfigure(pos[0], minsize=ctrlheight, weight=1)
+            self.main_frame.columnconfigure(pos[1], minsize=ctrlwidth, weight=self.sidebar_shown, uniform='ctrl_col')
+        # Reconfigure chain column
+        if self.chain_frame:
+            _chwidth = int(self.layout['chain_width'] * self.width)
+            chwidth = _chwidth * self.chain_shown
+            self.main_frame.columnconfigure(self.layout['chain_pos'][1], minsize=chwidth, weight= 2 * self.chain_shown)
+            self.chain_frame.configure(width=_chwidth, height=self.height)
+            lbwidth = self.width - chwidth - ctrlwidth
+            lbweight = 2
+        else:
+            if self.wide:
+                lbwidth = self.width - ctrlwidth
+                lbweight = 3
+            else:
+                lbwidth = self.width - 2 * ctrlwidth
+                lbweight = 2
+        self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lbwidth, weight=lbweight)
+
+    def show_chain(self, show):
+        if show:
+            self.chain_shown = True
             self.chain_frame.grid(
                 row=self.layout['chain_pos'][0],
                 column=self.layout['chain_pos'][1],
@@ -111,16 +138,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                 padx=self.padx,
                 pady=self.pady,
                 sticky="news")
-
-    def update_layout(self):
-        super().update_layout()
-        minheight = self.height // self.layout['rows']
-        minwidth = int((self.width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
-        for pos in self.layout['ctrl_pos']:
-            self.main_frame.rowconfigure(pos[0], minsize=minheight, weight=1)
-            self.main_frame.columnconfigure(pos[1], minsize=minwidth, weight=self.sidebar_shown)
-        if self.chain_frame:
-            self.chain_frame.configure(width=int(self.layout['chain_width'] * self.width), height=self.height)
+        else:
+            self.chain_shown = False
+            self.chain_frame.grid_remove()
 
     def build_view(self):
         #curproc = self.zyngui.get_current_processor()
@@ -147,6 +167,15 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.chain_frame:
             self.chain_frame.hide()
         super().hide()
+
+    def show_sidebar(self, show):
+        self.sidebar_shown = show
+        for zctrl in self.zgui_controllers:
+            if self.sidebar_shown:
+                zctrl.grid()
+            else:
+                zctrl.grid_remove()
+        self.update_layout()
 
     def cb_set_active_chain(self, active_chain_id):
         """Handle MIDI_PC signal
@@ -187,15 +216,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.curproc.midi_chan is not None and self.curproc.midi_chan == chan:
             # Refresh control screen after changing preset with program change
             self.zyngui.chain_control()
-
-    def show_sidebar(self, show):
-        self.sidebar_shown = show
-        for zctrl in self.zgui_controllers:
-            if self.sidebar_shown:
-                zctrl.grid()
-            else:
-                zctrl.grid_remove()
-        self.update_layout()
 
     def backbutton_short_touch_action(self):
         if not self.back_action():
@@ -484,6 +504,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
+        self.show_chain(True)
         if self.current_widget and self.current_widget.hide_on_select_mode():
             self.hide_widgets()
         self.set_selector_screen()
@@ -495,6 +516,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def set_mode_control(self):
         self.mode = 'control'
+        self.show_chain(False)
         if self.zselector:
             self.zselector.hide()
         self.set_controller_screen()
@@ -505,21 +527,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zgui_controllers[i].enable()
         self.set_select_path()
         self.select()
-
-    def previous_page(self, wrap=False):
-        i = self.index - 1
-        if i < 0:
-            i = 0
-        self.select(i)
-
-    def next_page(self, wrap=False):
-        i = self.index + 1
-        if i >= len(self.list_data):
-            if wrap:
-                i = 0
-            else:
-                i = len(self.list_data) - 1
-        self.select(i)
 
     def back_action(self):
         if self.mode == 'select':
@@ -608,10 +615,8 @@ class zynthian_gui_control(zynthian_gui_selector):
     def switch_select(self, t):
         if t == 'S':
             if self.mode == 'control':
-                logging.debug("MODE SELECT!!")
                 self.set_mode_select()
             elif self.mode == 'select':
-                logging.debug("MODE CONTROL!!")
                 self.set_mode_control()
         elif t == 'B':
             self.show_menu()
@@ -682,7 +687,10 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def show_menu(self):
-        zynthian_gui_config.zyngui.show_screen('chain_manager')
+        if self.mode == "control":
+            self.set_mode_select()
+        else:
+            zynthian_gui_config.zyngui.show_screen('chain_manager')
 
     def toggle_menu(self):
         if self.shown:

@@ -50,26 +50,27 @@ class zynthian_gui_engine(zynthian_gui_selector):
         "Special": "Special"
     }
 
+    # Custom layout for GUI engine
+    layout = {
+        'name': 'gui_engine',
+        'columns': 3,
+        'rows': 4,
+        'ctrl_pos': [
+            (0, 2),
+            (1, 2),
+            (2, 2),
+            (3, 2)
+        ],
+        'list_pos': (0, 1),
+        'list_width': 0.5,
+        'list2_pos': (0, 0),
+        'list2_width': 0.21,
+        'ctrl_orientation': 'horizontal',
+        'ctrl_order': zynthian_gui_config.layout['ctrl_order'],
+        'ctrl_width': 0.29
+    }
+
     def __init__(self):
-        # Custom layout for GUI engine
-        self.layout = {
-            'name': 'gui_engine',
-            'columns': 3,
-            'rows': 4,
-            'ctrl_pos': [
-                (0, 2),
-                (1, 2),
-                (2, 2),
-                (3, 2)
-            ],
-            'list_pos': (0, 1),
-            'list_width': 0.5,
-            'list2_pos': (0, 0),
-            'list2_width': 0.21,
-            'ctrl_orientation': 'horizontal',
-            'ctrl_order': zynthian_gui_config.layout['ctrl_order'],
-            'ctrl_width': 0.29
-        }
         self.proc_type = None
         self.zsel2 = None
         self.cat_index = 0
@@ -77,11 +78,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.context_index = {}
         self.show_all = False
         self.info_canvas = None
-        super().__init__('Engine', True, False)
-
-        self.chain_manager = self.zyngui.chain_manager
         self.engine_info_dirty = False
         self.xswipe_sens = 10
+
+        super().__init__('Engine', True, False)
 
         # ListBox for Categories
         self.lb2_bg = zynthian_gui_config.color_panel_bg
