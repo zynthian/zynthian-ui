@@ -235,13 +235,16 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         else:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
+            self.widget_canvas.delete("beat_markers")
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.frames = 0
             self.sf = None
 
     def draw_waveform(self, start, length):
         if self.sf is None:
             self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
             self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
+            self.widget_canvas.delete("beat_markers")
             self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             return
 
@@ -395,7 +398,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     if self.beats > 0 and self.warp:
                         for i in range(1, self.beats):
                             x = x1 + i * (x2 - x1) // self.beats
-                            self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tag="beat_markers")
+                            self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=(4, 4), tags="beat_markers")
                 # Playing cursor (implemented for clippy)
                 if self.clip_info:
                     # Playing cursor

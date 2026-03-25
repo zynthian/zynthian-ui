@@ -728,14 +728,17 @@ class zynthian_gui_controller(tkinter.Canvas):
 					else:
 						if self.zctrl.value == self.zctrl.value_max:
 							self.zctrl.set_value(self.zctrl.value_min)
-						else:
-							self.zctrl.nudge(1)
+						#else:
+						#	self.zctrl.nudge(1)
 				# else, touch widgets emulates V5 hardware knob-switches
 				elif zynthian_gui_config.touch_navigation:
 					#if dts < zynthian_gui_config.zynswitch_bold_seconds:
 					#	self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 					if dts < zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
+						if self.zctrl.is_path:
+							self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
+						else:
+							self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 					else:
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B')) # TODO: This should trigger before release
 
