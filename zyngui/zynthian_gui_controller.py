@@ -742,7 +742,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 
 	def cb_long_press(self):
-		logging.info("Long press")
+		#logging.debug("Long press")
 		self.press_id = None
 		# Long-push => touch widgets emulates V5 hardware knob-switches
 		self.zyngui.cuia_v5_zynpot_switch((self.index, 'L'))

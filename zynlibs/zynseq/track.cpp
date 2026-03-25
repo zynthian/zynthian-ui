@@ -134,12 +134,12 @@ bool get_skip_from_freq(uint8_t freq, uint32_t nCount) {
     else {
         // if skip == 1 => skip each n counts
         if (skip) {
-            if (nCount % n == 0) return true;
+            if (nCount % n == n - 1) return true;
             else return false;
         }
         // if skip == 0 => play each n counts
         else {
-            if (nCount % n != 0) return true;
+            if (nCount % n != n - 1) return true;
             else return false;
         }
     }
