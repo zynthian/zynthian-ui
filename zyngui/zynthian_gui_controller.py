@@ -719,12 +719,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 			self.press_id = None
 		else:
 			return # Long press already handled
-		if self.canvas_push_event and self.enabled and self.zctrl:
-			dts = (event.time - self.canvas_push_event.time) / 1000
-			self.canvas_push_event = None
-			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
-			if self.active_motion_axis == 0:
-				# If short-push => toggle/trigger the zcontrol when it has sense
+		if self.active_motion_axis == 0:
+			if self.canvas_push_event and self.enabled and self.zctrl:
+				dts = (event.time - self.canvas_push_event.time) / 1000
+				self.canvas_push_event = None
+				#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
+				# Short-push => toggle/trigger the zcontrol when it has sense
 				if dts < zynthian_gui_config.zynswitch_bold_seconds:
 					if self.zctrl.is_toggle:
 						self.zctrl.toggle()
@@ -737,17 +737,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 							self.zctrl.set_value(self.zctrl.value_min)
 						else:
 							self.zctrl.nudge(1)
-				# else, touch widgets emulates V5 hardware knob-switches
-				elif zynthian_gui_config.touch_navigation:
-					if self.zctrl.is_path:
-						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
-					else:
-						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
+				# Bold-push => touch widgets emulates V5 hardware knob-switches
+				elif dts < zynthian_gui_config.zynswitch_long_seconds:
+					self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 
 	def cb_long_press(self):
-		logging.warning("Long press")
+		logging.info("Long press")
 		self.press_id = None
-		self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
+		# Long-push => touch widgets emulates V5 hardware knob-switches
+		self.zyngui.cuia_v5_zynpot_switch((self.index, 'L'))
 
 	def cb_canvas_motion(self, event):
 		if self.canvas_push_event:
