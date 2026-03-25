@@ -58,8 +58,8 @@ class zynthian_gui_help:
         # Main Frame
 
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
-                                    width=zynthian_gui_config.screen_width,
-                                    height=zynthian_gui_config.screen_height,
+                                    width=zynthian_gui_config.display_width,
+                                    height=zynthian_gui_config.display_height,
                                     vertical_scrollbar=False,
                                     messages_enabled=False)
         self.main_frame.grid_propagate(False)

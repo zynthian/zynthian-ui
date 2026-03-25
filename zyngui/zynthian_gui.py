@@ -915,9 +915,12 @@ class zynthian_gui:
     def show_help(self, topic=None):
         if not topic:
             topic = self.current_screen
+        if topic == "control":
+            proc = self.get_current_processor()
+            if Path(f"./help/{proc.name.lower()}.html").exists():
+                topic = proc.name.lower()
         if self.screens['help'].load_file(f"./help/{topic}.html"):
             pass
-            #self.show_screen("help")
         elif topic != "help":
             logging.warning(f"No help for '{topic}'")
 
