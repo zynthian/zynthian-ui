@@ -725,11 +725,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 						self.zctrl.set_value(self.zctrl.value_max)
 					elif self.zctrl.is_path:
 						self.zctrl.nudge(1)
-					else:
+					elif self.zctrl.ticks:
 						if self.zctrl.value == self.zctrl.value_max:
 							self.zctrl.set_value(self.zctrl.value_min)
-						#else:
-						#	self.zctrl.nudge(1)
+						else:
+							self.zctrl.nudge(1)
 				# else, touch widgets emulates V5 hardware knob-switches
 				elif zynthian_gui_config.touch_navigation:
 					#if dts < zynthian_gui_config.zynswitch_bold_seconds:
