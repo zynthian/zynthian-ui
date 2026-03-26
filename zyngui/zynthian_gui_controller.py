@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Controller Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -27,6 +27,7 @@ import os
 import math
 import tkinter
 import logging
+import re
 from tkinter import font as tkFont
 
 # Zynthian specific modules
@@ -80,6 +81,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 		# Initialise dimensions here but set to correct values in on_size
 		self.title_width = 1
+		self.title_height = 1
+		self.value_width = 1
+		self.value_height = 1
 
 		self.index = index
 		self.enabled = True
@@ -173,7 +177,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.on_size_graph(event)
 		self.set_title(self.title)
 		if self.zctrl:
-			self.calculate_value_font_size()
+			#self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.set_drag_scale()
 			self.plot_value_func()
@@ -210,12 +214,13 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if radius > 4:
 			radius -= 4
 		arc_width = radius // 4
+		self.value_height = self.value_width = (radius - arc_width - 1) * 2
 
 		# x0, y0 center of arc
 		if self.vertical:
 			x0 = ww // 2
 			y0 = hh - radius + arc_width - 4
-			self.title_width = ww - 4
+			self.title_width = self.title_height = ww - 4
 			self.coords(self.label_title, 4, 2)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 		else:
@@ -223,12 +228,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y0 = hh // 2
 			if self.selector_counter:
 				y0 -= radius // 3 + 2
-			self.title_width = int(ww - radius * 1.8)
+			self.title_width = self.title_height = int(ww - radius * 2)
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
 		self.coords(self.value_text, x0, y0)
-		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=radius*2)
+		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=self.value_width)
 		if not self.selector_counter:
 			# x1,y1 top left of arc, x2,y2 bottom right of arc
 			x1 = x0 - radius
@@ -251,11 +256,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 		x2 = ww - 4
 		y2 = y1 + hrect
 
-		self.title_width = x2
+		self.value_width = self.title_width = x2
+		self.value_height = self.title_height = hh // 3
 		self.coords(self.label_title, 2, 2)
 		self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
-		vty = y1 + self.value_font_size + 4
+		vty = y1 + hrect // 2
 		vtx = ww // 2
 		self.coords(self.value_text, vtx, vty)
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=ww - 8)
@@ -276,10 +282,14 @@ class zynthian_gui_controller(tkinter.Canvas):
 		y2 = y1 - int(htri)
 
 		self.title_width = x2
+		self.title_height = hh // 3
 		self.coords(self.label_title, 2, 2)
 		self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
-		vty = hh // 2 - htri // 4 + self.value_font_size + 4
+		self.value_width = ww - 4
+		self.value_height = hh // 3
+
+		vty = 2 * hh // 3
 		vtx = ww // 2
 		self.coords(self.value_text, vtx, vty)
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=ww - 8)
@@ -295,13 +305,14 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 		if self.zctrl:
-			self.calculate_value_font_size()
+			#self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.plot_value()
 			self.set_drag_scale()
 			self.pickup = True
 			# TODO: calculate_value_font_size, calculate_plot_values, set_drag_scale always called together - optimse to single function?
 			self.itemconfig('gui', state=tkinter.NORMAL)
+			self.set_title(self.title)
 			if self.selector_counter or self.zctrl.is_path:
 				self.itemconfig(self.graph, state=tkinter.HIDDEN)
 		else:
@@ -460,7 +471,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			x2 = 4 + int((ww - 8) * self.value_plot)
 			y2 = y1 - int(htri * self.value_plot)
 			self.coords(self.graph, (x1, y1, x2, y1, x2, y2))
-		self.itemconfig(self.value_text, text=self.value_print)
+		self.set_text(self.value_text, self.value_print, self.value_width, self.value_height, False)
 
 	def plot_value_arc(self):
 		if not self.selector_counter and not self.zctrl.is_path:
@@ -477,7 +488,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				elif self.zctrl.value_range and self.zctrl.value_min <= 0 <= self.zctrl.value_max:
 					deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
 			self.itemconfig(self.graph, start=deg0, extent=degd)
-		self.itemconfig(self.value_text, text=self.value_print)
+		self.set_text(self.value_text, self.value_print, self.value_width, self.value_height, False)
 
 	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
 		if self.hidden:
@@ -530,37 +541,43 @@ class zynthian_gui_controller(tkinter.Canvas):
 			return True
 		return False
 
+	def set_text(self, obj_id, title, max_width, max_height, camel=True):
+		if camel:
+			title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
+    	    	' ',
+        		str(title).strip())
+		else:
+			title = title.strip()
+		max_fs = int(1.0*zynthian_gui_config.font_size)
+		min_fs = 8
+		fs = max_fs
+
+		if self.graph_type == self.GUI_CTRL_ARC:
+			# Find any words that are individually too wide to fit
+			for word in title.split():
+				while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > max_width and fs > min_fs:
+					fs -= 1
+
+		# Reduce text font size until it fits vertically
+		while fs >= min_fs:
+			self.itemconfigure(obj_id,
+				text=title,
+				font=(zynthian_gui_config.font_family, fs)
+			)
+			bbox = self.bbox(obj_id)
+			if bbox is None:
+				break
+			text_height = bbox[3] - bbox[1]
+			if text_height <= max_height:
+				break
+			fs -= 1
+		return
+
 	def set_title(self, title):
 		if self.hidden:
 			return
-		self.title = str(title)
-		# Calculate the font size ...
-		max_fs = int(1.0*zynthian_gui_config.font_size)
-		words = self.title.split()
-		n_words = len(words)
-		rfont = tkFont.Font(family=zynthian_gui_config.font_family, size=max_fs)
-		if n_words == 0:
-			maxlen = 1
-		elif n_words == 1:
-			maxlen = rfont.measure(self.title)
-		elif n_words == 2:
-			maxlen = max([rfont.measure(w) for w in words])
-		elif n_words == 3:
-			maxlen = max([rfont.measure(w) for w in [words[0]+' '+words[1], words[1]+' '+words[2]]])
-			max_fs = max_fs - 1
-		elif n_words >= 4:
-			maxlen = max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
-			max_fs = max_fs-1
-		else:
-			maxlen = 1
-		fs = int(self.title_width * max_fs / maxlen)
-		fs = min(max_fs, max(int(0.8*zynthian_gui_config.font_size), fs))
-		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
-
-		# Set title label
-		self.itemconfigure(self.label_title,
-			text=self.title,
-			font=(zynthian_gui_config.font_family, fs))
+		self.title = title
+		self.set_text(self.label_title, title, self.title_width, self.title_height)
 
 	def calculate_value_font_size(self):
 		if self.zctrl.is_path:
@@ -619,11 +636,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.format_print = None
 		self.zctrl = zctrl
 		if zctrl is None:
-			self.set_title("")
+			#self.set_title("")
 			self.erase_midi_bind()
 			return
 
-		self.set_title(zctrl.short_name)
+		self.title = zctrl.short_name
+		#self.set_title(zctrl.short_name)
 		self.set_midi_bind()
 
 		# List of values => Selector
@@ -635,7 +653,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		else:
 			# Path
 			if zctrl.is_path:
-				self.format_print = "PATH:\n{}"
+				self.format_print = "{}"
 			# Integer
 			elif zctrl.is_integer:
 				# If few values => use fixed step=1 (no adaptative step size!)
