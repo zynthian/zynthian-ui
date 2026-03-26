@@ -463,8 +463,8 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zyngui.get_current_processor().set_current_screen_index(self.screen_info[4])
                 self.zcontrollers = self.zyngui.get_current_processor().get_ctrl_screen(self.screen_title)
                 # Show the widget for the current processor (NOT for chain controllers pages!)
+                self.get_screen_type()
                 if self.mode == 'control':
-                    self.get_screen_type()
                     self.show_widget(self.zyngui.get_current_processor())
         else:
             self.zcontrollers = []
@@ -514,6 +514,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_control(self):
         self.mode = 'control'
         self.show_chain(False)
+        self.show_widget(self.zyngui.get_current_processor())
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
                             fg=zynthian_gui_config.color_ctrl_tx)
