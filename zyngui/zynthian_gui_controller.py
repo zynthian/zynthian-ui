@@ -81,6 +81,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 		# Initialise dimensions here but set to correct values in on_size
 		self.title_width = 1
+		self.value_width = 1
 
 		self.index = index
 		self.enabled = True
@@ -174,7 +175,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.on_size_graph(event)
 		self.set_title(self.title)
 		if self.zctrl:
-			self.calculate_value_font_size()
+			#self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.set_drag_scale()
 			self.plot_value_func()
@@ -211,6 +212,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if radius > 4:
 			radius -= 4
 		arc_width = radius // 4
+		self.value_width = (radius - arc_width - 1) * 2
 
 		# x0, y0 center of arc
 		if self.vertical:
@@ -224,12 +226,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y0 = hh // 2
 			if self.selector_counter:
 				y0 -= radius // 3 + 2
-			self.title_width = int(ww - radius * 2.1)
+			self.title_width = int(ww - radius * 2)
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
 		self.coords(self.value_text, x0, y0)
-		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=radius*2)
+		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=self.value_width)
 		if not self.selector_counter:
 			# x1,y1 top left of arc, x2,y2 bottom right of arc
 			x1 = x0 - radius
@@ -296,7 +298,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 		if self.zctrl:
-			self.calculate_value_font_size()
+			#self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.plot_value()
 			self.set_drag_scale()
@@ -478,7 +480,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 				elif self.zctrl.value_range and self.zctrl.value_min <= 0 <= self.zctrl.value_max:
 					deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
 			self.itemconfig(self.graph, start=deg0, extent=degd)
-		self.itemconfig(self.value_text, text=self.value_print)
+		self.set_text(self.value_text, self.value_print, self.value_width, self.value_width, False)
+		#self.itemconfig(self.value_text, text=self.value_print)
 
 	def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
 		if self.hidden:
@@ -531,30 +534,31 @@ class zynthian_gui_controller(tkinter.Canvas):
 			return True
 		return False
 
-	def set_title(self, title):
-		if self.hidden:
-			return
-		self.title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
-        	' ',
-        	str(title))
-		# Calculate the font size ...
+	def set_text(self, obj_id, title, width, height, camel=True):
+		if camel:
+			title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
+    	    	' ',
+        		str(title).strip())
+		else:
+			title = title.strip()
 		max_fs = int(1.0*zynthian_gui_config.font_size)
 		min_fs = 8
 		fs = max_fs
-		max_height = self.winfo_height() #TODO: May differ for different layout
+		max_height = height
 
 		# Find any words that are individually too wide to fit
-		for word in self.title.split():
-			while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > self.title_width and fs >= min_fs:
+		for word in title.split():
+			while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > width and fs >= min_fs:
 				fs -= 1
+
 		# Reduce text font size until it fits vertically
 		while fs >= min_fs:
-			self.itemconfigure(self.label_title,
-				text=self.title,
+			self.itemconfigure(obj_id,
+				text=title,
 				font=(zynthian_gui_config.font_family, fs),
-				width=self.title_width
+				width=width
 			)
-			bbox = self.bbox(self.label_title)
+			bbox = self.bbox(obj_id)
 			if bbox is None:
 				break
 			text_height = bbox[3] - bbox[1]
@@ -562,6 +566,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 				break
 			fs -= 1
 		return
+
+	def set_title(self, title):
+		if self.hidden:
+			return
+		self.title = title
+		self.set_text(self.label_title, title, self.title_width, self.winfo_height())
 
 	def calculate_value_font_size(self):
 		if self.zctrl.is_path:
