@@ -821,7 +821,6 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options["\u2610 Chain Controller"] = zctrl
 
                 options["Clear"] = zctrl
-                options["Delete"] = zctrl
 
                 self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
                 self.zyngui.show_screen('option')

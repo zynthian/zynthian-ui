@@ -555,7 +555,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.graph_type == self.GUI_CTRL_ARC:
 			# Find any words that are individually too wide to fit
 			for word in title.split():
-				while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > max_width and fs >= min_fs:
+				while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > max_width and fs > min_fs:
 					fs -= 1
 
 		# Reduce text font size until it fits vertically
@@ -653,7 +653,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		else:
 			# Path
 			if zctrl.is_path:
-				self.format_print = "PATH:\n{}"
+				self.format_print = "{}"
 			# Integer
 			elif zctrl.is_integer:
 				# If few values => use fixed step=1 (no adaptative step size!)
