@@ -606,7 +606,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if t == 'S':
                 self.toggle_midi_learn(i)
                 return True
-            elif t == 'B':
+            elif t == 'B' or t == 'L':
                 self.midi_learn_options(i)
                 return True
         return False
@@ -841,7 +841,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                     options["X-Y touchpad"] = None
                     # Only show X-Y if both zctrl are valid
                     if self.zyngui.state_manager.zctrl_x and self.zyngui.state_manager.zctrl_y:
-                        options["Control"] = True
+                        options["Show touchpad"] = True
                     if self.zyngui.state_manager.zctrl_x:
                         xinfo = f" => {self.zyngui.state_manager.zctrl_x.name}"
                     else:
@@ -924,7 +924,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.processors[0].chain:
                 self.processors[0].chain.toggle_zctrl(param)
                 self.update_list()
-        elif option == "Control":
+        elif option == "Show touchpad":
             self.show_xy()
         elif option == "Clear":
             param.set_value("")
