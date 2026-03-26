@@ -424,8 +424,6 @@ class zynthian_gui_touchscreen_calibration(zynthian_gui_fullscreen_modal):
 
     # Build display
     def build_view(self):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         self.device_id = None
         self.ctm = [1, 0, 0, 0, 1, 0, 0, 0, 1]
         self.canvas.unbind('<Button-1>')

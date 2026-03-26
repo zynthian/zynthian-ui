@@ -100,6 +100,13 @@ class zynthian_gui_control(zynthian_gui_selector):
             chwidth = int(self.layout['chain_width'] * self.width)
             self.chain_frame = zynthian_frame_chain(self.main_frame, width=chwidth, height=self.height)
 
+        # Create zgui controllers
+        for i in range(4):
+            pos = self.layout['ctrl_pos'][i]
+            zgui_ctrl = zynthian_gui_controller(i, self.main_frame)
+            zgui_ctrl.grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
+            self.zgui_controllers.append(zgui_ctrl)
+
         self.update_layout()
 
     def update_layout(self):
@@ -130,6 +137,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def show_chain(self, show):
         if show:
             self.chain_shown = True
+            self.update_layout()
             self.chain_frame.grid(
                 row=self.layout['chain_pos'][0],
                 column=self.layout['chain_pos'][1],
@@ -139,6 +147,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 sticky="news")
         else:
             self.chain_shown = False
+            self.update_layout()
             self.chain_frame.grid_remove()
 
     def build_view(self):
@@ -472,22 +481,16 @@ class zynthian_gui_control(zynthian_gui_selector):
                 try:
                     # logging.debug(f"CONTROLLER ARRAY {i} => {ctrl.symbol} ({ctrl.short_name})")
                     self.set_zcontroller(i, ctrl)
+                    continue
                 except Exception as e:
                     logging.exception("Controller %s (%d) => %s" %(ctrl.short_name, i, e))
-                    self.zgui_controllers[i].hide()
-            else:
-                self.set_zcontroller(i, None)
-            pos = self.layout['ctrl_pos'][i]
-            self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
-
-        self.update_layout()
+                    #self.zgui_controllers[i].hide()
+            self.set_zcontroller(i, None)
 
     def set_zcontroller(self, i, ctrl):
         if i < len(self.zgui_controllers):
             self.zgui_controllers[i].config(ctrl)
             self.zgui_controllers[i].show()
-        else:
-            self.zgui_controllers.append(zynthian_gui_controller(i, self.main_frame, ctrl))
 
     def get_zcontroller(self, i):
         if i < len(self.zgui_controllers):
@@ -495,37 +498,27 @@ class zynthian_gui_control(zynthian_gui_selector):
         else:
             return None
 
-    def set_selector_screen(self):
-        for i in range(0, len(self.zgui_controllers)):
-            self.zgui_controllers[i].enable(False)
-        self.set_selector()
-
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
         self.show_chain(True)
         if self.current_widget and self.current_widget.hide_on_select_mode():
             self.hide_widgets()
-        self.set_selector_screen()
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
                             fg=zynthian_gui_config.color_ctrl_tx_off)
-        self.select(self.index)
-        self.set_select_path()
+        self.set_selector()
+        for i in range(0, len(self.zgui_controllers)):
+            self.zgui_controllers[i].enable(False)
 
     def set_mode_control(self):
         self.mode = 'control'
         self.show_chain(False)
-        if self.zselector:
-            self.zselector.hide()
-        self.set_controller_screen()
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
                             fg=zynthian_gui_config.color_ctrl_tx)
         for i in range(0, len(self.zgui_controllers)):
-            self.zgui_controllers[i].enable()
-        self.set_select_path()
-        self.select()
+            self.zgui_controllers[i].enable(True)
 
     def back_action(self):
         if self.mode == 'select':
@@ -618,7 +611,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             elif self.mode == 'select':
                 self.set_mode_control()
         elif t == 'B':
-            self.show_menu()
+            zynthian_gui_config.zyngui.show_screen('chain_manager')
+            # TODO Access chain options?
         return True
 
     def select(self, index=None, set_zctrl=True):
@@ -626,7 +620,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         #if self.mode == 'select':
         self.set_controller_screen()
         self.set_select_path()
-        #self.set_selector_screen()
 
     def zynpot_abs(self, i, val):
         if self.mode == 'control':

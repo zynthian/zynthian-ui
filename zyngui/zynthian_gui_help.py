@@ -105,8 +105,6 @@ class zynthian_gui_help:
                 self.close_btn.place_forget()
 
     def show(self):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         if not self.shown:
             self.shown = True
             self.main_frame.grid_propagate(False)

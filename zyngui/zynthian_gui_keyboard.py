@@ -285,9 +285,6 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
     #  text: Text to display (Default: empty)
     #  max_len: Maximum quantity of characters in text (Default: no limit)
     def show(self, function, text="", max_len=None):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-
         self.keypress_queue = []
         self.function = function
         self.text = text

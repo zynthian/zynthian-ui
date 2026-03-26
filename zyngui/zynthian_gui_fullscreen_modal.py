@@ -66,8 +66,6 @@ class zynthian_gui_fullscreen_modal(tkinter.Frame):
             self.place_forget()
 
     def show(self):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         if not self.shown:
             self.place(x=0, y=0)
             self.tkraise()

@@ -139,7 +139,6 @@ class zynthian_gui:
         self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
         self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
-        self.test_mode = False
         self.alt_mode = False
         self.ignore_next_touch_release = False
 
@@ -1221,10 +1220,6 @@ class zynthian_gui:
     # System actions CUIA
     def cuia_nop(self, params):
         pass
-
-    def cuia_test_mode(self, params):
-        self.test_mode = params
-        logging.warning('TEST_MODE: {}'.format(params))
 
     def cuia_toggle_alt_mode(self, params=None):
         self.set_global_alt_mode(not self.alt_mode)

@@ -31,12 +31,12 @@ from threading import Timer
 from tkinter import font as tkFont
 
 # Zynthian specific modules
+from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
-from zyngine import zynthian_controller
 
 # ------------------------------------------------------------------------------
-# Zynthian Base GUI Class: Status Bar + Basic layout & events
+# Zynthian Base GUI Class: Basic layout & events + Status Bar (optional!)
 # ------------------------------------------------------------------------------
 
 
@@ -44,275 +44,158 @@ class zynthian_gui_base(tkinter.Frame):
 
     ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
 
-    def __init__(self):
-        tkinter.Frame.__init__(self,
-                               zynthian_gui_config.top,
-                               width=zynthian_gui_config.screen_width,
-                               height=zynthian_gui_config.screen_height)
+    def __init__(self, parent=zynthian_gui_config.root_frame, topbar=None):
+        tkinter.Frame.__init__(self, parent)
         self.grid_propagate(False)
-        self.rowconfigure(1, weight=1)
-        self.columnconfigure(0, weight=1)
+        self.parent = parent
         self.shown = False
+        self.sidebar_shown = True
+        self.title = ""
+
         self.zyngui = zynthian_gui_config.zyngui
         self.state_manager = self.zyngui.state_manager
         self.chain_manager = self.zyngui.chain_manager
 
-        self.topbar_allowed = True
-        self.topbar_height = zynthian_gui_config.topbar_height
-        self.sidebar_shown = True
+        # Setup topbar, autodetecting from parent object
+        if topbar is not None:
+            self.topbar_allowed = topbar
+        else:
+            if self.parent == zynthian_gui_config.root_frame:
+                self.topbar_allowed = True
+            else:
+                self.topbar_allowed = False
 
         # Geometry vars
-        self.width = zynthian_gui_config.screen_width
-        # TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
-        self.height = zynthian_gui_config.screen_height - self.topbar_height
+        if self.topbar_allowed:
+            self.topbar_width = zynthian_gui_config.screen_width
+            self.topbar_height = zynthian_gui_config.topbar_height
+            self.main_row = 1
+        else:
+            self.topbar_width = 0
+            self.topbar_height = 0
+            self.main_row= 0
 
-        # Status Area Parameters
-        self.status_l = int(self.width * 0.25)
-        self.status_h = self.topbar_height
-        self.status_rh = max(2, int(self.status_h / 4))
-        self.status_fs = int(0.36 * self.status_h)
-        self.status_lpad = self.status_fs
+        if self.parent == zynthian_gui_config.root_frame:
+            self.width = zynthian_gui_config.screen_width
+            self.height = zynthian_gui_config.screen_height - self.topbar_height
+        else:
+            self.width = 1
+            self.height = 1
 
-        # Title Area parameters
-        self.title_canvas_width = self.width - self.status_l - self.status_lpad - 2
-        self.select_path_font = tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-                                            size=zynthian_gui_config.font_topbar[1])
 
-        self.select_path_width = 0
-        self.select_path_offset = 0
-        self.select_path_dir = 2
-
-        self.status_error = None
-        self.status_recplay = None
-        self.status_midi = None
-        self.status_midi_clock = None
-
-        # Topbar's frame
-        self.tb_frame = tkinter.Frame(self,
-                                      width=self.width,
-                                      height=self.topbar_height,
-                                      bg=zynthian_gui_config.color_bg)
-        self.tb_frame.grid_propagate(False)
-        self.tb_frame.grid(row=0, sticky="ew")
-        col = 0
-
-        # Title
-        self.title = ""
-        # font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
-        self.title_fg = zynthian_gui_config.color_panel_tx
-        self.title_bg = zynthian_gui_config.color_header_bg
-        self.title_canvas = tkinter.Canvas(self.tb_frame,
-                                           height=self.topbar_height,
-                                           bd=0,
-                                           highlightthickness=0,
-                                           bg=self.title_bg)
-        self.tb_frame.grid_columnconfigure(col, weight=1)
-        self.title_canvas.grid(row=0, column=col, sticky='ew')
-        self.title_canvas.grid_propagate(False)
-        # Setup Topbar's Callback
-        self.title_canvas.bind("<Button-1>", self.cb_topbar_press)
-        self.title_canvas.bind("<ButtonRelease-1>", self.cb_topbar_release)
-        self.path_canvas = self.title_canvas
-        self.topbar_timer = None
-        self.title_timer = None
-        self.status_timer = None
-        self.set_title_ts = 0
-        col += 1
-
-        # Topbar's Select Path
-        self.select_path = tkinter.StringVar()
-        self.select_path.trace(tkinter.W, self.cb_select_path)
-        self.label_select_path = tkinter.Label(self.title_canvas,
-                                               font=zynthian_gui_config.font_topbar,
-                                               textvariable=self.select_path,
-                                               bg=zynthian_gui_config.color_header_bg,
-                                               fg=zynthian_gui_config.color_header_tx)
-        self.label_select_path.place(x=0, rely=0.5, anchor='w')
-        # Setup Topbar's Callback
-        self.label_select_path.bind('<Button-1>', self.cb_topbar_press)
-        self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
-
-        # Canvas for displaying status
-        self.status_canvas = tkinter.Canvas(self.tb_frame,
-                                            width=self.status_l + 2,
-                                            height=self.status_h,
-                                            bd=0,
-                                            highlightthickness=0,
-                                            relief='flat',
-                                            bg=zynthian_gui_config.color_bg)
-        self.status_canvas.grid(row=0, column=col, sticky="ens", padx=(self.status_lpad, 0))
-        # Set Status Callaback
-        self.status_canvas.bind('<Button-1>', self.cb_status_press)
-        self.status_canvas.bind('<ButtonRelease-1>', self.cb_status_release)
-
-        # Topbar parameter editor
-        self.param_editor_zctrl = None
-        self.param_editor_assert_cb = None
+        # Configure columns
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(self.main_row, weight=1)
 
         # Main Frame
         self.main_frame = tkinter.Frame(self, bg=zynthian_gui_config.color_bg)
-        self.main_frame.propagate(False)
-        self.main_frame.grid(row=1, sticky='news')
+        self.main_frame.grid_propagate(False)
+        self.main_frame.grid(row=self.main_row, sticky='news')
 
-        self.main_mute = 0
-        self.init_status()
-        self.init_dpmeter()
+        # Parameter editor
+        self.param_editor_zctrl = None
+        self.param_editor_assert_cb = None
 
-        # Update Title
-        self.set_select_path()
-        self.cb_scroll_select_path()
+        if self.topbar_allowed:
+            self.main_mute = 0
+
+            # Status Area Parameters
+            self.status_l = int(self.topbar_width * 0.25)
+            self.status_h = self.topbar_height
+            self.status_rh = max(2, int(self.status_h / 4))
+            self.status_fs = int(0.36 * self.status_h)
+            self.status_lpad = self.status_fs
+
+            # Title Area parameters
+            self.title_canvas_width = self.topbar_width - self.status_l - self.status_lpad - 2
+            self.select_path_width = 0
+            self.select_path_offset = 0
+            self.select_path_dir = 2
+            self.select_path_font = tkFont.Font(family=zynthian_gui_config.font_topbar[0],
+                                                size=zynthian_gui_config.font_topbar[1])
+
+            # Topbar's frame
+            self.tb_frame = tkinter.Frame(self,
+                                        width=self.topbar_width,
+                                        height=self.topbar_height,
+                                        bg=zynthian_gui_config.color_bg)
+            self.tb_frame.grid_propagate(False)
+            self.tb_frame.grid(row=0, sticky="ew")
+            col = 0
+
+            # Title
+            # font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=int(self.height * 0.05)),
+            self.title_fg = zynthian_gui_config.color_panel_tx
+            self.title_bg = zynthian_gui_config.color_header_bg
+            self.title_canvas = tkinter.Canvas(self.tb_frame,
+                                            height=self.topbar_height,
+                                            bd=0,
+                                            highlightthickness=0,
+                                            bg=self.title_bg)
+            self.tb_frame.grid_columnconfigure(col, weight=1)
+            self.title_canvas.grid(row=0, column=col, sticky='ew')
+            self.title_canvas.grid_propagate(False)
+            # Setup Topbar's Callback
+            self.title_canvas.bind("<Button-1>", self.cb_topbar_press)
+            self.title_canvas.bind("<ButtonRelease-1>", self.cb_topbar_release)
+            self.path_canvas = self.title_canvas
+            self.topbar_timer = None
+            self.title_timer = None
+            self.status_timer = None
+            self.set_title_ts = 0
+            col += 1
+
+            # Topbar's Select Path
+            self.select_path = tkinter.StringVar()
+            self.select_path.trace(tkinter.W, self.cb_select_path)
+            self.label_select_path = tkinter.Label(self.title_canvas,
+                                                font=zynthian_gui_config.font_topbar,
+                                                textvariable=self.select_path,
+                                                bg=zynthian_gui_config.color_header_bg,
+                                                fg=zynthian_gui_config.color_header_tx)
+            self.label_select_path.place(x=0, rely=0.5, anchor='w')
+            # Setup Topbar's Callback
+            self.label_select_path.bind('<Button-1>', self.cb_topbar_press)
+            self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
+
+            # Canvas for displaying status
+            self.status_canvas = tkinter.Canvas(self.tb_frame,
+                                                width=self.status_l + 2,
+                                                height=self.status_h,
+                                                bd=0,
+                                                highlightthickness=0,
+                                                relief='flat',
+                                                bg=zynthian_gui_config.color_bg)
+            self.status_canvas.grid(row=0, column=col, sticky="ens", padx=(self.status_lpad, 0))
+            # Set Status Callaback
+            self.status_canvas.bind('<Button-1>', self.cb_status_press)
+            self.status_canvas.bind('<ButtonRelease-1>', self.cb_status_release)
+
+            # Init status area
+            self.init_status()
+            self.init_dpmeter()
+
+            # Update Title
+            self.set_select_path()
+            self.cb_scroll_select_path()
 
         self.bind("<Configure>", self.on_size)
 
-        # TODO: Consolidate set_title and set_select_path, etc.
-
-    # Function to update title
-    # title: Title to display in topbar
-    # fg: Title foreground colour [Default: Do not change]
-    # bg: Title background colour [Default: Do not change]
-    # timeout: If set, title is shown for this period (seconds) then reverts to previous title
-
-    def set_title(self, title, fg=None, bg=None, timeout=None):
-        # Limit title update rate (30fps)
-        ts = time.monotonic()
-        if ts -self.set_title_ts < 0.0333:
-            return
-        self.set_title_ts = ts
-
-        if self.title_timer:
-            self.title_timer.cancel()
-            self.title_timer = None
-        elif timeout:
-            self.title = self.select_path.get()
-
-        if timeout:
-            self.title_timer = Timer(timeout, self.on_title_timeout)
-            self.title_timer.start()
-        else:
-            self.title = title
-            if fg:
-                self.title_fg = fg
-            if bg:
-                self.title_bg = bg
-        self.select_path.set(title)
-        # self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
-        if fg:
-            self.label_select_path.config(fg=fg)
-        else:
-            self.label_select_path.config(fg=self.title_fg)
-        if bg:
-            self.title_canvas.configure(bg=bg)
-            self.label_select_path.config(bg=bg)
-        else:
-            self.title_canvas.configure(bg=self.title_bg)
-            self.label_select_path.config(bg=self.title_bg)
+    # -------------------------------------------------------------------------
+    # Initialization & Layout managing methods
+    # -------------------------------------------------------------------------
 
     # Function called when frame resized
     def on_size(self, event=None):
         self.update_layout()
-        self.configure(width=zynthian_gui_config.screen_width, height=zynthian_gui_config.screen_height)
-        self.place(x=zynthian_gui_config.main_x, y=0)
-        # self.width = self.main_frame.winfo_width()
-        # self.height = self.main_frame.winfo_height()
 
-    # Function to revert title after toast
-    def on_title_timeout(self):
-        if self.title_timer:
-            self.title_timer.cancel()
-            self.title_timer = None
-        self.set_title(self.title)
-
-    # Default topbar touch callback
-    def cb_topbar_press(self, params=None):
-        self.topbar_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_topbar_long)
-        self.topbar_timer.start()
-        self.topbar_press_time = time.monotonic()
-
-    # Default topbar release callback
-    def cb_topbar_release(self, params=None):
-        if self.topbar_timer:
-            self.topbar_timer.cancel()
-            self.topbar_timer = None
-            if time.monotonic() - self.topbar_press_time > zynthian_gui_config.zynswitch_bold_seconds:
-                self.topbar_bold_touch_action()
-            else:
-                self.topbar_short_touch_action()
-
-    # Default topbar long press callback
-    def cb_topbar_long(self, params=None):
-        if self.topbar_timer:
-            self.topbar_timer.cancel()
-            self.topbar_timer = None
-            self.topbar_long_touch_action()
-
-    # Default topbar short touch action
-    def topbar_short_touch_action(self):
-        self.zyngui.callable_ui_action('show_screen', ('root',))
-
-    # Default topbar bold touch action
-    def topbar_bold_touch_action(self):
-        self.zyngui.cuia_fast_menu()
-
-    # Default topbar long touch action
-    def topbar_long_touch_action(self):
-        self.topbar_bold_touch_action()
-
-    # Default status touch callback
-    def cb_status_press(self, params=None):
-        self.status_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_status_long)
-        self.status_timer.start()
-        self.status_press_time = time.monotonic()
-
-    # Default status release callback
-    def cb_status_release(self, params=None):
-        if self.status_timer:
-            self.status_timer.cancel()
-            self.status_timer = None
-            if time.monotonic() - self.status_press_time > zynthian_gui_config.zynswitch_bold_seconds:
-                self.status_bold_touch_action()
-            else:
-                self.status_short_touch_action()
-
-    # Default status long press callback
-    def cb_status_long(self, params=None):
-        if self.status_timer:
-            self.status_timer.cancel()
-            self.status_timer = None
-            self.status_long_touch_action()
-
-    # Default status short touch action
-    def status_short_touch_action(self):
-        if zynthian_gui_config.touch_keypad:
-            zynthian_gui_config.toggle_touch_keypad()
-            self.on_size()
-            return
-
-    # Default status bold touch action
-    def status_bold_touch_action(self):
-        self.status_short_touch_action()
-
-    # Default status long touch action
-    def status_long_touch_action(self):
-        # self.zyngui.callable_ui_action('screen_snapshot')
-        self.zyngui.callable_ui_action('all_sounds_off')
-
-    def arrow_up(self, nudge=1):
-        """ Function to handle CUIA ARROW_UP
-        """
-        if self.param_editor_zctrl:
-            self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
-            return True
-
-    def arrow_down(self, nudge=-1):
-        """ Function to handle CUIA ARROW_DOWN
-        """
-        if self.param_editor_zctrl:
-            self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
-            return True
-
-    # ---------------------------------
-    # Layout managing methods
-    # ---------------------------------
+    # Function to update display, e.g. after geometry changes
+    # Override if required
+    def update_layout(self):
+        #self.width = self.main_frame.winfo_width()
+        #self.height = self.main_frame.winfo_height()
+        logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
+        # TODO Resize topbar elements
 
     # Draw screen ready to display (like double buffer) - Override in subclass
     def build_view(self):
@@ -321,12 +204,9 @@ class zynthian_gui_base(tkinter.Frame):
     # Show the view
     def show(self):
         if not self.shown:
-            if self.zyngui.test_mode:
-                logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
+            self.parent.grid_main(self)
             self.shown = True
             self.refresh_status()
-            self.place(x=zynthian_gui_config.main_x, y=0)
-            self.propagate(False)
         self.main_frame.focus()
 
     # Hide the view
@@ -334,8 +214,8 @@ class zynthian_gui_base(tkinter.Frame):
         if self.shown:
             if self.param_editor_zctrl:
                 self.disable_param_editor()
+            self.grid_remove()
             self.shown = False
-            self.place_forget()
 
     # Show topbar (if allowed)
     # show: True to show, False to hide
@@ -449,8 +329,12 @@ class zynthian_gui_base(tkinter.Frame):
         self.dpm_a = zynthian_gui_dpm(self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
         self.dpm_b = zynthian_gui_dpm(self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 
+    # -------------------------------------------------------------------------
+    # Refresh & Update methods
+    # -------------------------------------------------------------------------
+
     def refresh_status(self):
-        if self.shown:
+        if self.shown and self.topbar_allowed:
             mute = self.state_manager.zynmixer_bus.get_mute(0)
             if mute != self.main_mute:
                 self.main_mute = mute
@@ -581,9 +465,76 @@ class zynthian_gui_base(tkinter.Frame):
     def refresh_loading(self):
         pass
 
+    # TODO: Consolidate set_title and set_select_path, etc.
+
+    # Function to update title
+    # title: Title to display in topbar
+    # fg: Title foreground colour [Default: Do not change]
+    # bg: Title background colour [Default: Do not change]
+    # timeout: If set, title is shown for this period (seconds) then reverts to previous title
+
+    def set_title(self, title, fg=None, bg=None, timeout=None):
+        # Limit title update rate (30fps)
+        ts = time.monotonic()
+        if ts -self.set_title_ts < 0.0333:
+            return
+        self.set_title_ts = ts
+
+        if self.title_timer:
+            self.title_timer.cancel()
+            self.title_timer = None
+        elif timeout:
+            self.title = self.select_path.get()
+
+        if timeout:
+            self.title_timer = Timer(timeout, self.on_title_timeout)
+            self.title_timer.start()
+        else:
+            self.title = title
+            if fg:
+                self.title_fg = fg
+            if bg:
+                self.title_bg = bg
+        self.select_path.set(title)
+        # self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
+        if fg:
+            self.label_select_path.config(fg=fg)
+        else:
+            self.label_select_path.config(fg=self.title_fg)
+        if bg:
+            self.title_canvas.configure(bg=bg)
+            self.label_select_path.config(bg=bg)
+        else:
+            self.title_canvas.configure(bg=self.title_bg)
+            self.label_select_path.config(bg=self.title_bg)
+
+    # Function to revert title after toast
+    def on_title_timeout(self):
+        if self.title_timer:
+            self.title_timer.cancel()
+            self.title_timer = None
+        self.set_title(self.title)
+
+    def set_select_path(self):
+        pass
+
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!) & CUIA
     # --------------------------------------------------------------------------
+
+    def arrow_up(self, nudge=1):
+        """ Function to handle CUIA ARROW_UP
+        """
+        if self.param_editor_zctrl:
+            self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
+            return True
+
+    def arrow_down(self, nudge=-1):
+        """ Function to handle CUIA ARROW_DOWN
+        """
+        if self.param_editor_zctrl:
+            self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
+            return True
 
     def zynpot_cb(self, i, dval):
         if self.param_editor_zctrl:
@@ -629,61 +580,8 @@ class zynthian_gui_base(tkinter.Frame):
         return False
 
     # --------------------------------------------------------------------------
-    # MIDI learning
+    # Param editor
     # --------------------------------------------------------------------------
-
-    def enter_midi_learn(self):
-        pass
-
-    def exit_midi_learn(self):
-        pass
-
-    # --------------------------------------------------------------------------
-    # Mouse/Touch Callbacks
-    # --------------------------------------------------------------------------
-
-    def cb_select_path(self, *args):
-        self.select_path_width = self.select_path_font.measure(self.select_path.get())
-        self.select_path_offset = 0
-        self.select_path_dir = 2
-        self.label_select_path.place(x=0, rely=0.5, anchor='w')
-
-    def cb_scroll_select_path(self):
-        if self.shown:
-            if self.dscroll_select_path():
-                zynthian_gui_config.top.after(1000, self.cb_scroll_select_path)
-                return
-        zynthian_gui_config.top.after(50, self.cb_scroll_select_path)
-
-    def dscroll_select_path(self):
-        if self.shown:
-            if self.select_path_width > self.title_canvas_width:
-                # Scroll label
-                self.select_path_offset += self.select_path_dir
-                self.label_select_path.place(x=-self.select_path_offset, rely=0.5, anchor='w')
-
-                # Change direction ...
-                if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
-                    self.select_path_dir = -2
-                    return True
-                elif self.select_path_offset <= 0:
-                    self.select_path_dir = 2
-                    return True
-
-            elif self.select_path_offset != 0:
-                self.select_path_offset = 0
-                self.select_path_dir = 2
-                self.label_select_path.place(x=0, rely=0.5, anchor='w')
-        return False
-
-    def set_select_path(self):
-        pass
-
-    # Function to update display, e.g. after geometry changes
-    # Override if required
-    def update_layout(self):
-        self.height = zynthian_gui_config.screen_height - self.topbar_height
-        self.width = zynthian_gui_config.screen_width
 
     # Function to enable the top-bar parameter editor
     #  engine: Object to recieve send_controller_value callback
@@ -730,5 +628,127 @@ class zynthian_gui_base(tkinter.Frame):
                 self.select_path.set(f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}")
             else:
                 self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+
+    # --------------------------------------------------------------------------
+    # MIDI learning
+    # --------------------------------------------------------------------------
+
+    def enter_midi_learn(self):
+        pass
+
+    def exit_midi_learn(self):
+        pass
+
+    # --------------------------------------------------------------------------
+    # Mouse/Touch Callbacks
+    # --------------------------------------------------------------------------
+
+    # Default topbar touch callback
+    def cb_topbar_press(self, params=None):
+        self.topbar_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_topbar_long)
+        self.topbar_timer.start()
+        self.topbar_press_time = time.monotonic()
+
+    # Default topbar release callback
+    def cb_topbar_release(self, params=None):
+        if self.topbar_timer:
+            self.topbar_timer.cancel()
+            self.topbar_timer = None
+            if time.monotonic() - self.topbar_press_time > zynthian_gui_config.zynswitch_bold_seconds:
+                self.topbar_bold_touch_action()
+            else:
+                self.topbar_short_touch_action()
+
+    # Default topbar long press callback
+    def cb_topbar_long(self, params=None):
+        if self.topbar_timer:
+            self.topbar_timer.cancel()
+            self.topbar_timer = None
+            self.topbar_long_touch_action()
+
+    # Default topbar short touch action
+    def topbar_short_touch_action(self):
+        self.zyngui.callable_ui_action('show_screen', ('root',))
+
+    # Default topbar bold touch action
+    def topbar_bold_touch_action(self):
+        self.zyngui.cuia_fast_menu()
+
+    # Default topbar long touch action
+    def topbar_long_touch_action(self):
+        self.topbar_bold_touch_action()
+
+    # Default status touch callback
+    def cb_status_press(self, params=None):
+        self.status_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_status_long)
+        self.status_timer.start()
+        self.status_press_time = time.monotonic()
+
+    # Default status release callback
+    def cb_status_release(self, params=None):
+        if self.status_timer:
+            self.status_timer.cancel()
+            self.status_timer = None
+            if time.monotonic() - self.status_press_time > zynthian_gui_config.zynswitch_bold_seconds:
+                self.status_bold_touch_action()
+            else:
+                self.status_short_touch_action()
+
+    # Default status long press callback
+    def cb_status_long(self, params=None):
+        if self.status_timer:
+            self.status_timer.cancel()
+            self.status_timer = None
+            self.status_long_touch_action()
+
+    # Default status short touch action
+    def status_short_touch_action(self):
+        if zynthian_gui_config.touch_keypad:
+            zynthian_gui_config.toggle_touch_keypad()
+            self.on_size()
+            return
+
+    # Default status bold touch action
+    def status_bold_touch_action(self):
+        self.status_short_touch_action()
+
+    # Default status long touch action
+    def status_long_touch_action(self):
+        # self.zyngui.callable_ui_action('screen_snapshot')
+        self.zyngui.callable_ui_action('all_sounds_off')
+
+    def cb_select_path(self, *args):
+        self.select_path_width = self.select_path_font.measure(self.select_path.get())
+        self.select_path_offset = 0
+        self.select_path_dir = 2
+        self.label_select_path.place(x=0, rely=0.5, anchor='w')
+
+    def cb_scroll_select_path(self):
+        if self.shown:
+            if self.dscroll_select_path():
+                zynthian_gui_config.top.after(1000, self.cb_scroll_select_path)
+                return
+        zynthian_gui_config.top.after(50, self.cb_scroll_select_path)
+
+    def dscroll_select_path(self):
+        if self.shown:
+            if self.select_path_width > self.title_canvas_width:
+                # Scroll label
+                self.select_path_offset += self.select_path_dir
+                self.label_select_path.place(x=-self.select_path_offset, rely=0.5, anchor='w')
+
+                # Change direction ...
+                if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
+                    self.select_path_dir = -2
+                    return True
+                elif self.select_path_offset <= 0:
+                    self.select_path_dir = 2
+                    return True
+
+            elif self.select_path_offset != 0:
+                self.select_path_offset = 0
+                self.select_path_dir = 2
+                self.label_select_path.place(x=0, rely=0.5, anchor='w')
+        return False
 
 # ------------------------------------------------------------------------------

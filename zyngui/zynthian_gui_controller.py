@@ -52,7 +52,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	#  hidden: True to disable GUI display (only use zynpot/zctrl interface)
 	#  selcounter: True to configure as a counter - no value graph and value is 1-based (otherwise zero-based)
 	#  graph: Type of graph to plot [GUI_CTRL_NONE, GUI_CTRL_ARC, GUI_CTRL_TRIANGLE, GUI_CTRL_RECTANGLE] Default: GUI_CTRL_ARC
-	def __init__(self, index, parent, zctrl, hidden=False, selcounter=False, graph_type=zynthian_gui_config.ctrl_graph, orientation=None):
+	def __init__(self, index, parent, zctrl=None, hidden=False, selcounter=False, graph_type=zynthian_gui_config.ctrl_graph, orientation=None):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.pickup = False

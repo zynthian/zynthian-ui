@@ -333,9 +333,9 @@ class zynthian_frame_chain(tkinter.Frame):
             # Add MIDI input
             if self.chain.is_midi():
                 if self.chain.midi_chan < 16:
-                    midi_chan = f"#{self.chain.midi_chan + 1:02}"
+                    midi_chan = f"CH#{self.chain.midi_chan + 1:02}"
                 else:
-                    midi_chan = f"#ALL"
+                    midi_chan = f"CH#ALL"
                 self._add_node(f"MIDI Input\n{midi_chan}", "midi_input")
                 self._add_node("Key Range & Transpose", "midi_key_range")
             # Add MIDI processors

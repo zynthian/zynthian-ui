@@ -741,27 +741,45 @@ for i, value in enumerate(LAUNCHER_COLOUR):
 # X11 Related Stuff
 # ------------------------------------------------------------------------------
 
-def set_touch_keypad(enabled=True):
-    global main_x, screen_width, screen_height, touch_shown
-    if enabled:
-        panel_width = display_width // 5
-        if touch_navigation == "v5_keypad_left":
-            main_x = panel_width
-        screen_width = display_width - panel_width
-        screen_height = 5 * display_height // 6
-        touch_shown = 1
-    else:
-        main_x = 0
-        screen_width = display_width
-        screen_height = display_height
-        touch_shown = 0
-
-def toggle_touch_keypad():
-    set_touch_keypad(not touch_shown)
-
 if "zynthian_main.py" in sys.argv[0]:
     import tkinter
     from PIL import Image, ImageTk
+
+    def set_touch_keypad(enabled=True):
+        global main_x, screen_width, screen_height, touch_shown
+        if enabled:
+            panel_width = display_width // 5
+            if touch_navigation == "v5_keypad_left":
+                main_x = panel_width
+            screen_width = display_width - panel_width
+            screen_height = 5 * display_height // 6
+            touch_shown = 1
+        else:
+            main_x = 0
+            screen_width = display_width
+            screen_height = display_height
+            touch_shown = 0
+
+        # Resize and reposition root frame
+        root_frame.configure(width=screen_width, height=screen_height)
+        root_frame.place(x=main_x, y=0)
+
+    def toggle_touch_keypad():
+        set_touch_keypad(not touch_shown)
+
+    #---------------------------------------------------------------------------
+    # Root Frame Management
+    #---------------------------------------------------------------------------
+
+    ########################################
+    #    LT    #       TOP      #    RT    #
+    ########################################
+    #          #                #          #
+    #   LEFT   #      MAIN      #   RIGHT  #
+    #          #                #          #
+    ########################################
+    #    LB    #     BOTTOM     #    RB    #
+    #########################################
 
     try:
         # ------------------------------------------------------------------------------
@@ -789,37 +807,6 @@ if "zynthian_main.py" in sys.argv[0]:
                 logging.warning("Can't get screen height. Using default 240!")
                 display_height = 240
 
-        # Screen dimensions within which to display main UI (excluding V5 buttons)
-        screen_width = display_width
-        screen_height = display_height
-
-        # Global font size
-        font_size = get_env_int('ZYNTHIAN_UI_FONT_SIZE', 16)
-        if not font_size:
-            font_size = int(display_width / 40)
-
-        main_x = 0
-        if touch_navigation:
-            set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
-            # Create touch keypad frame and show it!
-            try:
-                from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
-                touch_keypad = zynthian_gui_touchkeypad_v5()
-            except Exception as e:
-                logging.error(f"Can't start touch keypad => {e}")
-                touch_keypad = None
-        else:
-            touch_shown = 0
-            touch_keypad = None
-
-        # Geometric params
-        if screen_width >= 800:
-            topbar_height = screen_height // 12
-            topbar_fs = int(1.5*font_size)
-        else:
-            topbar_height = screen_height // 10
-            topbar_fs = int(1.1*font_size)
-
         # Adjust Root Window Geometry
         top.geometry(str(display_width)+'x'+str(display_height))
         top.maxsize(display_width, display_height)
@@ -835,11 +822,73 @@ if "zynthian_main.py" in sys.argv[0]:
         # Global Variables
         # ------------------------------------------------------------------------------
 
-        # Fonts
+        # Root frame position
+        main_x = 0
+        main_y = 0
+
+        # Screen dimensions within which to display main UI (excluding V5 buttons)
+        screen_width = display_width
+        screen_height = display_height
+
+        # Global font size
+        font_size = get_env_int('ZYNTHIAN_UI_FONT_SIZE', 16)
+        if not font_size:
+            font_size = int(display_width / 40)
+
+        # Topbar variables
+        if screen_width >= 800:
+            topbar_height = screen_height // 12
+            topbar_fs = int(1.5*font_size)
+        else:
+            topbar_height = screen_height // 10
+            topbar_fs = int(1.1*font_size)
+
+        # Global fonts
         font_listbox = (font_family, int(1.0*font_size))
         font_topbar = (font_family, topbar_fs)
 
+        # ------------------------------------------------------------------------------
+        # Setup Root Frame for the GUI
+        # ------------------------------------------------------------------------------
+
+        root_frame = tkinter.Frame(top,
+                                  width=screen_width,
+                                  height=screen_height,
+                                  bg="#000000")
+
+        # Configure columns
+        root_frame.grid_propagate(False)
+        root_frame.columnconfigure(1, weight=2)
+        root_frame.rowconfigure(1, weight=2)
+        root_frame.place(x=main_x, y=main_y)
+
+        # Attach static methods to root frame
+        # => Grid a GUI frame in the root grid MAIN area
+        root_frame.grid_main = lambda frame: frame.grid(row=1, column=1, sticky='NSWE')
+        # => Grid a GUI frame in the root grid RIGHT area
+        root_frame.grid_right = lambda frame: frame.grid(row=1, column=2, sticky='NSWE')
+
+        # ------------------------------------------------------------------------------
+        # Setup touch keypad
+        # ------------------------------------------------------------------------------
+
+        if touch_navigation:
+            set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
+            # Create touch keypad frame and show it!
+            try:
+                from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
+                touch_keypad = zynthian_gui_touchkeypad_v5()
+            except Exception as e:
+                logging.error(f"Can't start touch keypad => {e}")
+                touch_keypad = None
+        else:
+            touch_shown = 0
+            touch_keypad = None
+
+        # ------------------------------------------------------------------------------
         # Loading Logo Animation
+        # ------------------------------------------------------------------------------
+
         loading_imgs = []
         pil_frame = Image.open("./img/zynthian_gui_loading.gif")
         fw, fh = pil_frame.size

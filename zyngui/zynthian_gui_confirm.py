@@ -44,7 +44,7 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         self.callback = None
         self.callback_params = None
         self.zyngui = zynthian_gui_config.zyngui
-        
+
         # Main Frame
         super().__init__()
 
@@ -89,8 +89,6 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         self.no_text_label.grid(row=1, sticky="w")
 
     def show(self, text, callback=None, cb_params=None):
-        if self.zyngui.test_mode:
-            logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
         self.text.set(text)
         self.label_text.config(wraplength=zynthian_gui_config.screen_width-zynthian_gui_config.font_size*2,)
         self.callback = callback
