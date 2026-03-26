@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Controller Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -27,6 +27,7 @@ import os
 import math
 import tkinter
 import logging
+import re
 from tkinter import font as tkFont
 
 # Zynthian specific modules
@@ -223,7 +224,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y0 = hh // 2
 			if self.selector_counter:
 				y0 -= radius // 3 + 2
-			self.title_width = int(ww - radius * 1.8)
+			self.title_width = int(ww - radius * 2.1)
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
@@ -533,34 +534,34 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def set_title(self, title):
 		if self.hidden:
 			return
-		self.title = str(title)
+		self.title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
+        	' ',
+        	str(title))
 		# Calculate the font size ...
 		max_fs = int(1.0*zynthian_gui_config.font_size)
-		words = self.title.split()
-		n_words = len(words)
-		rfont = tkFont.Font(family=zynthian_gui_config.font_family, size=max_fs)
-		if n_words == 0:
-			maxlen = 1
-		elif n_words == 1:
-			maxlen = rfont.measure(self.title)
-		elif n_words == 2:
-			maxlen = max([rfont.measure(w) for w in words])
-		elif n_words == 3:
-			maxlen = max([rfont.measure(w) for w in [words[0]+' '+words[1], words[1]+' '+words[2]]])
-			max_fs = max_fs - 1
-		elif n_words >= 4:
-			maxlen = max([rfont.measure(w) for w in [words[0]+' '+words[1], words[2]+' '+words[3]]])
-			max_fs = max_fs-1
-		else:
-			maxlen = 1
-		fs = int(self.title_width * max_fs / maxlen)
-		fs = min(max_fs, max(int(0.8*zynthian_gui_config.font_size), fs))
-		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
+		min_fs = 8
+		fs = max_fs
+		max_height = self.winfo_height() #TODO: May differ for different layout
 
-		# Set title label
-		self.itemconfigure(self.label_title,
-			text=self.title,
-			font=(zynthian_gui_config.font_family, fs))
+		# Find any words that are individually too wide to fit
+		for word in self.title.split():
+			while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > self.title_width and fs >= min_fs:
+				fs -= 1
+		# Reduce text font size until it fits vertically
+		while fs >= min_fs:
+			self.itemconfigure(self.label_title,
+				text=self.title,
+				font=(zynthian_gui_config.font_family, fs),
+				width=self.title_width
+			)
+			bbox = self.bbox(self.label_title)
+			if bbox is None:
+				break
+			text_height = bbox[3] - bbox[1]
+			if text_height <= max_height:
+				break
+			fs -= 1
+		return
 
 	def calculate_value_font_size(self):
 		if self.zctrl.is_path:
