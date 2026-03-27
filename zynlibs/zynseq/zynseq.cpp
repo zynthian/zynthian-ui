@@ -454,12 +454,14 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             bSync = true;
             bBeat = true;
             jack_transport_start(g_pJackClient);
+            g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nTickTime, new SEQ_EVENT({nTickTime, 0, MIDI_MESSAGE{MIDI_START, 0, 0}})));
         } else if (g_nTransportState == STOPPING) {
             if (g_nBeat == 1) {
                 g_nTransportState = STOPPED;
                 jack_transport_stop(g_pJackClient);
                 jack_transport_locate(g_pJackClient, 0);
                 g_seqMan.resetFollowRepeat();
+                g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nTickTime, new SEQ_EVENT({nTickTime, 0, MIDI_MESSAGE{MIDI_STOP, 0, 0}})));
             }
         }
 
