@@ -220,7 +220,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.vertical:
 			x0 = ww // 2
 			y0 = hh - radius + arc_width - 4
-			self.title_width = self.title_height = ww - 4
+			self.title_width = ww - 4
+			self.title_height = hh - y0
 			self.coords(self.label_title, 4, 2)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 		else:
