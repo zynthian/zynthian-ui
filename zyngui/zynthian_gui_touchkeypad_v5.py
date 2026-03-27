@@ -61,7 +61,6 @@ class zynthian_gui_touchkeypad_v5:
         self.shown = False
         self.button_width = zynthian_gui_config.display_width // 10
         self.button_height = zynthian_gui_config.display_height // 6
-        self.font_size = zynthian_gui_config.font_size
         self.bg_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, -28)
         self.bg_color_over = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, -22)
         self.border_color = zynthian_gui_config.color_bg
@@ -79,9 +78,9 @@ class zynthian_gui_touchkeypad_v5:
             # default label, alt label, rectangle id, text id, image id, image, tk image, led state
             ["OPT\nADMIN", None] + [None] * 8,             #0 OPT
             ["MIX\nLEVEL", None] + [None] * 8,             #1 MIX
-            ["CTRL\nPRESET", None] + [None] * 8,           #2 CTRL
+            ["CTRL\nPRSET", None] + [None] * 8,           #2 CTRL
             ["ZS3\nSHOT", None] + [None] * 8,              #3 ZS3
-            ["ALT", None] + [None] * 8,                    #4 ALT
+            ["ALT\nHELP", None] + [None] * 8,                    #4 ALT
             ["_icons/metronome.svg", None] + [None] * 8,   #5 METRO
             ["PAD\nSTEP", None] + [None] * 8,              #6 PAD
             ["F1", "F5"] + [None] * 8,                     #7 F1
@@ -155,7 +154,7 @@ class zynthian_gui_touchkeypad_v5:
         )
         if label.startswith('_'):
             # button contains an icon/image instead of a label
-            img_width = int(1.8 * self.font_size)
+            img_width = int(0.6 * self.button_width)
             img_name = label[1:]
             if img_name.endswith('.svg'):
                 # convert SVG icon into PNG of appropriate size
@@ -185,30 +184,36 @@ class zynthian_gui_touchkeypad_v5:
                     tags=tag
                 )
         else:
-            # button has a simple text label: either standard text
+            # Button has a simple text label: either standard text
             # or an icon included in the "forkawesome" font (unicode char >= \uf000)
             if label[0] >= '\uf000':
                 font_family = "forkawesome"
+                font_size = int(1.5 * zynthian_gui_config.font_size)
             else:
                 font_family = zynthian_gui_config.font_family
-
-            label = label.replace("/", "\n")
-
-            font_size = self.font_size
+                if len(label) <= 3:
+                    font_size = int(1.3 * zynthian_gui_config.font_size)
+                else:
+                    font_size = int(0.9 * zynthian_gui_config.font_size)
             font = tkfont.Font(family=font_family, size=font_size)
-            text = ""
+
+            #label = label.replace("/", "\n")
+            longer_line = ""
             width = 0
+            # Find longer line ...
             for line in label.split("\n"):
                 w = font.measure(line)
                 if (w > width):
                     width = w
-                    text = line
-            # reduce font until text width fits
-            while font.measure(text) > self.button_width - 2:
+                    longer_line = line
+            # Reduce font until text fits the button ...
+            max_width = int(0.8 * self.button_width)
+            while width > max_width:
                 font_size -= 1
-                if font_size <= 1:
+                if font_size < 5:       # Fontsize smaller than 5 pixels is too small!!
                     break
                 font = tkfont.Font(family=font_family, size=font_size)
+                width = font.measure(longer_line)
 
             config[TXT_ID] =  self.canvas.create_text(
                 x+self.button_width//2, y+self.button_height//2,
@@ -244,7 +249,7 @@ class zynthian_gui_touchkeypad_v5:
         Args:
             button: Index of the button
             color : Color requested by the wsled system
-            mode : A wanna-be abstraction (string name) of the mode/state - currently 
+            mode : A wanna-be abstraction (string name) of the mode/state - currently
             just derived from the requested color by the `wsleds_v5touch` "fake NeoPixel" emulator
         """
 
@@ -266,7 +271,7 @@ class zynthian_gui_touchkeypad_v5:
             config[TKIMG] = tkimage
             self.canvas.itemconfig(config[IMG_ID], image=tkimage)
         else:
-            # plain text labels may just change the color and possibly also its label if a special label 
+            # plain text labels may just change the color and possibly also its label if a special label
             # is associated with the requested mode (<=color) in the button definition
             if mode == "alt" and config[ALT_LABEL]:
                 label = config[ALT_LABEL]
