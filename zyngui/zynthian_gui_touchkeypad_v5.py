@@ -54,10 +54,16 @@ LED_STATE   = 9
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_touchkeypad_v5:
+class zynthian_gui_touchkeypad_v5(tkinter.Canvas):
 
     def __init__(self):
 
+        super().__init__(zynthian_gui_config.top,
+                width=zynthian_gui_config.display_width,
+                height=zynthian_gui_config.display_height,
+                bg=zynthian_gui_config.color_bg,
+                bd=0,
+                highlightthickness=0)
         self.shown = False
         self.button_width = zynthian_gui_config.display_width // 10
         self.button_height = zynthian_gui_config.display_height // 6
@@ -66,13 +72,7 @@ class zynthian_gui_touchkeypad_v5:
         self.border_color = zynthian_gui_config.color_bg
         self.text_color = zynthian_gui_config.color_header_tx
 
-        self.canvas = tkinter.Canvas(zynthian_gui_config.top,
-                width=zynthian_gui_config.display_width,
-                height=zynthian_gui_config.display_height,
-                bg=zynthian_gui_config.color_bg,
-                bd=0,
-                highlightthickness=0)
-        self.canvas.place(x=0, y=0)
+        self.place(x=0, y=0)
 
         self.buttons = [
             # default label, alt label, rectangle id, text id, image id, image, tk image, led state
@@ -144,7 +144,7 @@ class zynthian_gui_touchkeypad_v5:
             x = self.x_offset + self.button_width * column
         y = self.button_height * row
         tag = f"v5_button_{button}"
-        config[RECT_ID] = self.canvas.create_rectangle(
+        config[RECT_ID] = self.create_rectangle(
             x, y,
             x+self.button_width, y+self.button_height,
             outline=zynthian_gui_config.color_bg,
@@ -178,7 +178,7 @@ class zynthian_gui_touchkeypad_v5:
                 # store the original image for the purpose of later changes of color (useful for image icons)
                 config[IMG] = image
                 config[TKIMG] = ImageTk.PhotoImage(image)
-                config[IMG_ID] = self.canvas.create_image(
+                config[IMG_ID] = self.create_image(
                     x+self.button_width//2, y+self.button_height//2,
                     image=config[TKIMG],
                     tags=tag
@@ -215,7 +215,7 @@ class zynthian_gui_touchkeypad_v5:
                 font = tkfont.Font(family=font_family, size=font_size)
                 width = font.measure(longer_line)
 
-            config[TXT_ID] =  self.canvas.create_text(
+            config[TXT_ID] =  self.create_text(
                 x+self.button_width//2, y+self.button_height//2,
                 text=label,
                 font=font,
@@ -223,8 +223,8 @@ class zynthian_gui_touchkeypad_v5:
                 fill=self.text_color,
                 tags=tag
             )
-        self.canvas.tag_bind(tag, "<Button-1>", lambda e,i=button:self.cb_button_push(i))
-        self.canvas.tag_bind(tag, "<ButtonRelease-1>", lambda e,i=button:self.cb_button_release(i))
+        self.tag_bind(tag, "<Button-1>", lambda e,i=button:self.cb_button_push(i))
+        self.tag_bind(tag, "<ButtonRelease-1>", lambda e,i=button:self.cb_button_release(i))
 
     def cb_button_push(self, button):
         """ Handle button press
@@ -232,7 +232,7 @@ class zynthian_gui_touchkeypad_v5:
             button: Index of button
         """
 
-        self.canvas.move(f"v5_button_{button}", 2, 2)
+        self.move(f"v5_button_{button}", 2, 2)
         zynthian_gui_config.zyngui.cuia_queue.put_nowait(f"zynswitch {button + 4},P")
 
     def cb_button_release(self, button):
@@ -241,7 +241,7 @@ class zynthian_gui_touchkeypad_v5:
             button: Index of button
         """
 
-        self.canvas.move(f"v5_button_{button}", -2, -2)
+        self.move(f"v5_button_{button}", -2, -2)
         zynthian_gui_config.zyngui.cuia_queue.put_nowait(f"zynswitch {button + 4},R")
 
     def set_button_color(self, button, color, mode):
@@ -269,7 +269,7 @@ class zynthian_gui_touchkeypad_v5:
             composed = Image.composite(bgimage, fgimage, mask)
             tkimage = ImageTk.PhotoImage(composed)
             config[TKIMG] = tkimage
-            self.canvas.itemconfig(config[IMG_ID], image=tkimage)
+            self.itemconfig(config[IMG_ID], image=tkimage)
         else:
             # plain text labels may just change the color and possibly also its label if a special label
             # is associated with the requested mode (<=color) in the button definition
@@ -277,7 +277,7 @@ class zynthian_gui_touchkeypad_v5:
                 label = config[ALT_LABEL]
             else:
                 label = config[LABEL]
-            self.canvas.itemconfig(config[TXT_ID], text=label, fill=color)
+            self.itemconfig(config[TXT_ID], text=label, fill=color)
 
     def apply_user_config(self):
         for i, config in enumerate(self.buttons):

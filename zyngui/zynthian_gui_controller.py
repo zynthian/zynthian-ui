@@ -105,8 +105,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                         tags='gui')
                     self.graph_pickup = self.create_arc(0, 0, 1, 1,
                         style=tkinter.ARC,
-                        outline=zynthian_gui_config.color_ctrl_tx_off,
-                        tags='gui')
+                        outline=zynthian_gui_config.color_ctrl_tx_off)
                     self.plot_value_func = self.plot_value_arc
                     self.on_size_graph = self.on_size_arc
                 case self.GUI_CTRL_RECTANGLE:
@@ -114,7 +113,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                         (0, 0, 0, 0),
                         fill=zynthian_gui_config.color_ctrl_bg_off,
                         width=0,
-                        tags='gui')
+                        state=tkinter.HIDDEN)
                     self.graph = self.create_rectangle(
                         (0, 0, 0, 0),
                         fill=self.color_graph,
@@ -126,7 +125,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                     self.graph_pickup = self.create_polygon(
                         (0, 0, 0, 0),
                         fill=zynthian_gui_config.color_ctrl_bg_off,
-                        tags='gui')
+                        state=tkinter.HIDDEN)
                     self.graph = self.create_polygon(
                         (0, 0, 0, 0),
                         fill=self.color_graph,
@@ -177,7 +176,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         self.on_size_graph(event)
         self.set_title(self.title)
         if self.zctrl:
-            #self.calculate_value_font_size()
+            self.calculate_value_font_size()
             self.calculate_plot_values()
             self.set_drag_scale()
             self.plot_value_func()
@@ -306,7 +305,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         if self.hidden:
             return
         if self.zctrl:
-            #self.calculate_value_font_size()
+            self.calculate_value_font_size()
             self.calculate_plot_values()
             self.plot_value()
             self.set_drag_scale()
@@ -489,7 +488,8 @@ class zynthian_gui_controller(tkinter.Canvas):
                 elif self.zctrl.value_range and self.zctrl.value_min <= 0 <= self.zctrl.value_max:
                     deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
             self.itemconfig(self.graph, start=deg0, extent=degd)
-        self.set_text(self.value_text, self.value_print, self.value_width, self.value_height, False)
+        self.itemconfig(self.value_text, text=self.value_print, font=(zynthian_gui_config.font_family, self.value_font_size))
+        #self.set_text(self.value_text, self.value_print, self.value_width, self.value_height, False)
 
     def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
         if self.hidden:
@@ -582,53 +582,21 @@ class zynthian_gui_controller(tkinter.Canvas):
 
     def calculate_value_font_size(self):
         if self.zctrl.is_path:
-            font_scale = 0.6
+            text = "0000000"
         elif self.zctrl.labels:
-            maxlen = len(max(self.zctrl.labels, key=len))
-            if maxlen > 3:
-                rfont = tkFont.Font(family=zynthian_gui_config.font_family, size=zynthian_gui_config.font_size)
-                maxlen = max([rfont.measure(w) for w in self.zctrl.labels])
-            #print("LONGEST VALUE: %d" % maxlen)
-            if maxlen > 100:
-                font_scale = 0.7
-            elif maxlen > 85:
-                font_scale = 0.8
-            elif maxlen > 70:
-                font_scale = 0.9
-            elif maxlen > 55:
-                font_scale = 1.0
-            elif maxlen > 40:
-                font_scale = 1.1
-            elif maxlen > 30:
-                font_scale = 1.2
-            elif maxlen > 20:
-                font_scale = 1.25
-            else:
-                font_scale = 1.3
+            text = "0" * len(max(self.zctrl.labels, key=len))
+        elif self.format_print:
+            text = self.format_print.format(0)
         else:
-            if self.format_print:
-                maxlen = 5
-            else:
-                maxlen = max(len(str(self.zctrl.value_min)), len(str(self.zctrl.value_max)))
-            if maxlen > 5:
-                font_scale = 0.8
-            elif maxlen > 4:
-                font_scale = 0.9
-            elif maxlen > 3:
-                font_scale = 1.1
-            else:
-                if self.zctrl.value_min >= 0 and self.zctrl.value_max < 200:
-                    font_scale = 1.3
-                else:
-                    font_scale = 1.2
-        # If tiny controllers => reduce value font size
-        if self.winfo_height() // zynthian_gui_config.font_size < 6:
-            font_scale *= 0.9
-        # Calculate value font size
-        self.value_font_size = int(font_scale * zynthian_gui_config.font_size)
-        # Update font config in text object
-        if self.value_text:
-            self.itemconfig(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size))
+            text = "0" * max(len(str(self.zctrl.value_max)), len(str(self.zctrl.value_min)))
+        self.value_font_size = max_fs = zynthian_gui_config.font_size
+        min_fs = 8
+        while self.value_font_size > min_fs:
+            font = tkFont.Font(family=zynthian_gui_config.font_family, size=self.value_font_size)
+            if font.measure(text) < self.value_width:
+                break
+            self.value_font_size -= 1
+        return
 
     def config(self, zctrl):
         #logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
