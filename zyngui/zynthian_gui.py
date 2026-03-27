@@ -2688,10 +2688,13 @@ class zynthian_gui:
     # ------------------------------------------------------------------
 
     def exit(self, code=0):
+        self.exit_code = code
+        zynthian_gui_config.top.after(1, self.do_exit)
+
+    def do_exit(self):
         # Log exit message
         logging.info("STOPPING ZYNTHIAN-UI...")
 
-        self.exit_code = code
         self.exit_flag = True
         self.exit_wait_count = 0
 
