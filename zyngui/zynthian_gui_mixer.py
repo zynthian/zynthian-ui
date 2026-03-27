@@ -580,8 +580,9 @@ class zynthian_gui_mixer_strip():
             tags = ("legend", f"legend_strip_{id}", "legend_strip_bus")
         else:
             tags = ("legend", f"legend_strip_{id}")
-        self.legend_strip_bg = self.canvas.create_rectangle(x, self.gui_mixer.legend_y, x + self.width, self.gui_mixer.legend_y + self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=tags)
+        self.legend_strip_bg = self.canvas.create_rectangle(x, self.gui_mixer.legend_y, x + self.width, self.gui_mixer.legend_y + self.legend_height - 2, width=0, fill=self.gui_mixer.legend_bg_color, tags=tags)
         self.legend_strip_txt = self.canvas.create_text(self.centre_x, self.gui_mixer.legend_y + self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}",), font=self.gui_mixer.font)
+        self.legend_strip_midi_bg = self.canvas.create_rectangle(x, self.gui_mixer.legend_y + self.legend_height - 2, x + self.width, self.gui_mixer.legend_y + self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=tags)
 
         # MIDI pedal indicators
         self.pedals = []
@@ -1592,6 +1593,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if self.highlighted_strip.chain.is_audio():
             self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.fader_overlay, fill=self.fader_color_hl)
         self.highlight_launcher()
+
+        # Highlight the active MIDI chain
+        try:
+            active_midi_index = self.chain_manager.get_chain_index(self.chain_manager.active_midi_chain.chain_id)
+            active_midi_strip = self.chain_strips[active_midi_index]
+            active_midi_strip.canvas.itemconfig(active_midi_strip.legend_strip_midi_bg, fill=self.legend_bg_color_hl)
+        except:
+            pass
 
         # Scroll to ensure chain is visible
         if active_index >= self.chain_manager.get_pinned_pos():

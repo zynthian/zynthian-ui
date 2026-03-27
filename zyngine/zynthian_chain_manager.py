@@ -120,6 +120,7 @@ class zynthian_chain_manager:
         self.zyngines = {}  # Map of instantiated engines, indexed by engine code
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain = None  # Active chain object => This should NEVER be None!!!
+        self.active_midi_chain = None # Chain currently receiving active MIDI input
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
         # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
@@ -350,6 +351,8 @@ class zynthian_chain_manager:
 
         for chain_id in chains_to_remove:
             chain = self.chains[chain_id]
+            if chain == self.active_midi_chain:
+                self.active_midi_chain = None
             if isinstance(chain.midi_chan, int):
                 if chain.midi_chan < MAX_NUM_MIDI_CHANS:
                     lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
@@ -510,9 +513,7 @@ class zynthian_chain_manager:
         Returns: Chain object or None on failure
         """
 
-        if self.active_chain.chain_id in self.chains:
-            return self.chains[self.active_chain.chain_id]
-        return None
+        return self.active_chain
 
     def get_active_chain_index(self):
         """Get the active chain object or None if no active chain
@@ -943,6 +944,8 @@ class zynthian_chain_manager:
 
         if self.active_chain != chain:
             self.active_chain = chain
+            if chain and chain.midi_chan is not None and chain.midi_chan < 16:
+                self.active_midi_chain = chain
             self.state_manager.zynseq.chan = chain.midi_chan
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
             # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
