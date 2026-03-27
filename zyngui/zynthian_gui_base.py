@@ -44,10 +44,13 @@ class zynthian_gui_base(tkinter.Frame):
 
     ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
 
-    def __init__(self, parent=zynthian_gui_config.root_frame, topbar=None):
-        tkinter.Frame.__init__(self, parent)
+    def __init__(self, parent=None, topbar=None):
+        if parent:
+            self.parent = parent
+        else:
+            self.parent = zynthian_gui_config.root_frame
+        tkinter.Frame.__init__(self, self.parent)
         self.grid_propagate(False)
-        self.parent = parent
         self.shown = False
         self.sidebar_shown = True
         self.title = ""
@@ -192,8 +195,13 @@ class zynthian_gui_base(tkinter.Frame):
     # Function to update display, e.g. after geometry changes
     # Override if required
     def update_layout(self):
-        #self.width = self.main_frame.winfo_width()
-        #self.height = self.main_frame.winfo_height()
+        if self.parent == zynthian_gui_config.root_frame:
+            self.width = zynthian_gui_config.screen_width
+            self.height = zynthian_gui_config.screen_height - self.topbar_height
+        else:
+            pass
+            #self.width = self.winfo_width()
+            #self.height = self.winfo_height() - self.topbar_height
         logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
         # TODO Resize topbar elements
 
@@ -672,7 +680,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.zyngui.cuia_fast_menu()
+        self.zyngui.cuia_main_menu()
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):

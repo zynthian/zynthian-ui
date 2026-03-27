@@ -3,7 +3,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian GUI Fast Menu Grid Class
+# Zynthian GUI Main Menu Grid Class
 #
 # Copyright (C) 2025 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -26,7 +26,7 @@
 from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
 
 
-class zynthian_gui_fast_menu(zynthian_gui_selector_grid):
+class zynthian_gui_main_menu(zynthian_gui_selector_grid):
     """
     Fast menu presented as a grid of buttons.
     """
@@ -34,7 +34,7 @@ class zynthian_gui_fast_menu(zynthian_gui_selector_grid):
         super().__init__()
 
         self.columns = 3
-        self.title = "Fast Menu"
+        self.title = "Main Menu"
         self.config = [{
             "title": "Chain\nManager",
             "icon": None,

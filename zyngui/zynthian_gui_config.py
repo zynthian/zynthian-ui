@@ -35,7 +35,7 @@ def get_env_int(env_var, default_val=0):
     try:
         return int(os.environ.get(env_var, str(default_val)))
     except:
-        logging.warning(f"Failed to retrieve environmental variable {env_var}")
+        #logging.warning(f"Failed to retrieve environmental variable {env_var}")
         return default_val
 
 # ------------------------------------------------------------------------------
@@ -759,10 +759,10 @@ if "zynthian_main.py" in sys.argv[0]:
             screen_width = display_width
             screen_height = display_height
             touch_shown = 0
-
         # Resize and reposition root frame
         root_frame.configure(width=screen_width, height=screen_height)
-        root_frame.place(x=main_x, y=0)
+        root_frame.place(x=main_x, y=main_y)
+        root_frame.lift()
 
     def toggle_touch_keypad():
         set_touch_keypad(not touch_shown)
@@ -858,8 +858,8 @@ if "zynthian_main.py" in sys.argv[0]:
 
         # Configure columns
         root_frame.grid_propagate(False)
-        root_frame.columnconfigure(1, weight=2)
-        root_frame.rowconfigure(1, weight=2)
+        root_frame.columnconfigure(1, weight=1)
+        root_frame.rowconfigure(1, weight=1)
         root_frame.place(x=main_x, y=main_y)
 
         # Attach static methods to root frame
@@ -873,13 +873,14 @@ if "zynthian_main.py" in sys.argv[0]:
         # ------------------------------------------------------------------------------
 
         if touch_navigation:
-            set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
             # Create touch keypad frame and show it!
             try:
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
                 touch_keypad = zynthian_gui_touchkeypad_v5()
+                set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
             except Exception as e:
                 logging.error(f"Can't start touch keypad => {e}")
+                touch_shown = 0
                 touch_keypad = None
         else:
             touch_shown = 0

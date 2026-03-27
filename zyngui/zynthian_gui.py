@@ -92,7 +92,7 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
-from zyngui.zynthian_gui_fast_menu import zynthian_gui_fast_menu
+from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
 from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
 
 # TODO This constant should go somewhere else
@@ -510,7 +510,7 @@ class zynthian_gui:
         self.screens['tempo'] = self.screens['control']
         self.screens['admin'] = zynthian_gui_admin()
         self.screens['mixer'] = zynthian_gui_mixer()
-        self.screens['fast_menu'] = zynthian_gui_fast_menu()
+        self.screens['main_menu'] = zynthian_gui_main_menu()
         self.screens['grid_sel'] = zynthian_gui_selector_grid()
 
         # Create UI Apps Screens
@@ -1598,8 +1598,8 @@ class zynthian_gui:
             self.screens["grid_sel"].setup(params[0], params[1])
             self.show_screen("grid_sel")
 
-    def cuia_fast_menu(self, params=None):
-        self.show_screen("fast_menu")
+    def cuia_main_menu(self, params=None):
+        self.show_screen("main_menu")
 
     def cuia_chain_control(self, params=None):
         try:
