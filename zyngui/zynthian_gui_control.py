@@ -135,6 +135,8 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lbwidth, weight=lbweight)
 
     def show_chain(self, show):
+        if not self.chain_frame:
+            return
         if show:
             self.chain_shown = True
             self.update_layout()
