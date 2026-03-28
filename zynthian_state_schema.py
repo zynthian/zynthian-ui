@@ -28,7 +28,7 @@ ZynthianState = {
         "MASTER_BANK_CHANGE_UP": "",
         "SYS_ENABLED": "1",
         "MASTER_PROGRAM_CHANGE_DOWN": "",
-        "SINGLE_ACTIVE_CHANNEL": "0",
+        "SINGLE_ACTIVE_CHANNEL": "0", # Does not seem to be used
         "RTPMIDI_ENABLED": "0",
         "TOUCHOSC_ENABLED": "0",
         "PORTS": "DISABLED_IN=\\nENABLED_OUT=ttymidi:MIDI_out,QmidiNet:in_1\\nENABLED_FB=",

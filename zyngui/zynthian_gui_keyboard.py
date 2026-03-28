@@ -298,8 +298,7 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
             self.highlight(self.selected_button)
             self.setup_zynpots()
             self.refresh_keys()
-            self.place(x=0, y=0)
-            self.shown = True
+            super().show()
 
     # Function to register encoders
     def setup_zynpots(self):

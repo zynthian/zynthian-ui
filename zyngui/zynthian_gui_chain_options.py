@@ -216,12 +216,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def remove_chains(self, t='S'):
         self.zyngui.screens["grid_sel"].setup("Confirm Remove", [
-                {"icon": "delete_all.png", "title": "Remove all chains & sequences", "action": self.remove_all_confirmed},
                 {"icon": "delete_chains.png", "title": "Remove all chains", "action": self.remove_chains_confirmed},
                 {"icon": "delete_sequences.png", "title": "Remove all sequences", "action": self.remove_sequences_confirmed},
+                {"icon": "delete_all.png", "title": "Remove all chains & sequences", "action": self.remove_all_confirmed},
                 None, None, None,
                 {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen}
         ])
+        self.zyngui.screens["grid_sel"].selected_node = 2
         self.zyngui.show_screen("grid_sel")
 
     def remove_all_confirmed(self, params=None):
