@@ -67,8 +67,7 @@ ZynSensorActionType = [
 ]
 
 NoteCuiaDefault = {
-    "0": "POWER_OFF",
-    "2": "REBOOT",
+    "0": "POWER",
     "4": "RESTART_UI",
     "5": "RELOAD_MIDI_CONFIG",
     "7": "RELOAD_KEY_BINDING",

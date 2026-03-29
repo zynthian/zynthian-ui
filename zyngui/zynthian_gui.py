@@ -82,7 +82,7 @@ from zyngui.zynthian_gui_zs3 import zynthian_gui_zs3
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
+#from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_pated_notes import zynthian_gui_pated_notes
 from zyngui.zynthian_gui_pated_cc import zynthian_gui_pated_cc
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
@@ -1564,13 +1564,8 @@ class zynthian_gui:
         success = False
         if self.current_screen == "launcher":
             success = self.screens['launcher'].edit_clip()
-        elif self.current_screen == "arranger":
-            success = self.screens[self.current_screen].show_pattern_editor()
         if not success:
             self.show_screen("pattern_editor")
-
-    def cuia_screen_arranger(self, params=None):
-        self.show_screen("arranger")
 
     def cuia_screen_calibrate(self, params=None):
         self.calibrate_touchscreen()
@@ -2007,7 +2002,7 @@ class zynthian_gui:
             if self.current_screen == "midi_config" and self.screen_history[-2] != "admin":
                 return True
             if self.current_screen in ("option", "confirm", "keyboard"):
-                parent_views = ("arranger", "pattern_editor", "preset",
+                parent_views = ("pattern_editor", "preset",
                                 "bank", "chain_manager", "chain_options", "processor_options")
                 if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
                     return True

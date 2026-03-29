@@ -846,7 +846,7 @@ class DeviceHandler(ModeHandlerBase):
 
         elif press_type == CONST.PT_LONG:
             cuia = {
-                self.CC_PAD_OPT_ADMIN:   "POWER_OFF",
+                self.CC_PAD_OPT_ADMIN:   "POWER",
                 self.CC_PAD_CTRL_PRESET: "PRESET_FAV",
             }.get(btn)
 

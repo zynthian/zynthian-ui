@@ -90,8 +90,6 @@ uint8_t g_nPlayingSequences         = 0;            // Bitwise flga of playing/s
 
 char g_sName[256];                                  // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest                = 0xFF;         // MIDI note number that creates rest in pattern
-uint16_t g_nVerticalZoom            = 16;           // Quantity of rows to show in pattern and arranger view
-uint16_t g_nHorizontalZoom          = 16;           // Quantity of beats to show in arranger view
 
 // Patter copy/paste buffer
 Pattern* g_pPatternBuffer           = NULL;         // Pointer to pattern copy/paste buffer
@@ -905,7 +903,7 @@ const char* convertToJson(const char* filename) {
             fileRead8(pFile); // padding
             fileRead16u(pFile); // No longer use vertical zoom
             fileRead16u(pFile); // No longer use horizontal zoom
-            // printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
+            // printf("Version:%u Tempo:%0.2lf Zoom\n", nVersion, g_dTempo);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
             if (nVersion > 8) {
                 if (checkBlock(pFile, nBlockSize, 32))
@@ -1532,11 +1530,11 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 return nullptr;
             }
             // Loaded from file but not used!
-            // g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom
+            // g_nBeatsPerBar
             fileRead16u(pFile);
             fileRead16u(pFile);
             fileRead16u(pFile);
-            // printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
+            // printf("Version:%u Beats per bar:%u\n", nVersion, g_nBeatsPerBar);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
             if (nVersion > 8) {
                 if (checkBlock(pFile, nBlockSize, 28))
@@ -1685,16 +1683,6 @@ int16_t getPatternZoom() {
         return g_pPattern->getZoom();
     return 0;
 }
-
-// ** This is not user by Pattern editor anymore. Is this used by arranger? **
-
-uint16_t getVerticalZoom() { return g_nVerticalZoom; }
-
-void setVerticalZoom(uint16_t zoom) { g_nVerticalZoom = zoom; }
-
-uint16_t getHorizontalZoom() { return g_nHorizontalZoom; }
-
-void setHorizontalZoom(uint16_t zoom) { g_nHorizontalZoom = zoom; }
 
 // ** Direct MIDI interface **
 

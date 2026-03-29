@@ -160,27 +160,10 @@ void setPatternZoom(int16_t zoom);
 /** Set pattern zoom */
 int16_t getPatternZoom();
 
-// ** This is not user by Pattern editor anymore. Is this used by arranger?  - YES! But should be factored out**
-
-/** @brief  Get vertical zoom
-    @retval uint16_t Vertical zoom
-*/
-uint16_t getVerticalZoom();
-
-/** @brief  Set vertical zoom
-    @param  zoom Vertical zoom
-*/
-void setVerticalZoom(uint16_t zoom);
-
 /** @brief  Get horizontal zoom
     @retval uint16_t Horizontal zoom
 */
 uint16_t getHorizontalZoom();
-
-/** @brief  Set horizontal zoom
-    @param  uint16_t Horizontal zoom
-*/
-void setHorizontalZoom(uint16_t zoom);
 
 // ** Direct MIDI interface **
 

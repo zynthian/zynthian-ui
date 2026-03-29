@@ -412,7 +412,7 @@ class DeviceHandler(ModeHandlerBase):
     def _handle_timed_button(self, btn, press_type):
         if press_type == CONST.PT_LONG:
             cuia = {
-                BTN_OPT_ADMIN:   "POWER_OFF",
+                BTN_OPT_ADMIN:   "POWER",
                 BTN_CTRL_PRESET: "PRESET_FAV",
                 BTN_PAD_STEP:    "SCREEN_ARRANGER",
             }.get(btn)

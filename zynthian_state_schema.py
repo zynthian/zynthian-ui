@@ -26,7 +26,7 @@ ZynthianState = {
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
     "midi_profile_state": {  # MIDI Profile TODO: Document midi profile
         "MASTER_BANK_CHANGE_UP": "",
-        "SYS_ENABLED": "1",
+        "SYS_ENABLED": "1", # Does not seem to be used
         "MASTER_PROGRAM_CHANGE_DOWN": "",
         "SINGLE_ACTIVE_CHANNEL": "0", # Does not seem to be used
         "RTPMIDI_ENABLED": "0",
@@ -45,8 +45,8 @@ ZynthianState = {
         "AUBIONOTES_ENABLED": "0",
         "FINE_TUNING": "440",
         "MASTER_PROGRAM_CHANGE_TYPE": "Custom",
-        "PLAY_LOOP": "0",
-        "FILTER_OUTPUT": "0",
+        "PLAY_LOOP": "0", # Does not seem to be used
+        "FILTER_OUTPUT": "0",  # Does not seem to be used
         "port_names": {  # Dictionary of MIDI port friendly names indexed by port uid
             "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",  # Friendly name mapped by uid
         } # ... More ports

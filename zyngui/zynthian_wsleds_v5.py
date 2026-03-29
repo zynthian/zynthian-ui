@@ -85,10 +85,10 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         else:
             self.wsleds[3] = self.wscolor_default
 
-        # Zynseq: Launcher /Pattern Editor / Arranger
+        # Zynseq: Launcher /Pattern Editor
         if curscreen == "launcher":
             self.wsleds[5] = self.wscolor_active
-        elif curscreen in ("pattern_editor", "pated_cc", "arranger"):
+        elif curscreen in ("pattern_editor", "pated_cc"):
             self.wsleds[5] = self.wscolor_active2
         else:
             self.wsleds[5] = self.wscolor_default

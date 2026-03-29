@@ -188,8 +188,7 @@ default_map = {
     "Digit9": "PROGRAM_CHANGE 9",
 
     "shift+Home": "RESTART_UI",
-    "ctrl+Home": "REBOOT",
-    "ctrl+End": "POWER_OFF",
+    "ctrl+End": "POWER",
     "ctrl+Insert": "RELOAD_MIDI_CONFIG"
 }
 
