@@ -58,6 +58,7 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
 
     def __init__(self, state_manager=None, jackname=None):
         super().__init__(state_manager)
+
         self.name = "Sfizz"
         self.nickname = "SF"
         if jackname:
@@ -78,6 +79,8 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
             self.num_voices = 32
             self.preload_size = 32768  # 8192, 16384, 32768, 65536
 
+        self.default_ctrl_screens[0][1].append('voices')
+        self.default_ctrls.append(['voices', None, self.num_voices, 64])
 
         self.command = f"sfizz_jack --client_name '{self.jackname}' --preload_size {self.preload_size} --num_voices {self.num_voices}"
         self.command_prompt = "> "
@@ -175,6 +178,12 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
                 return False
         except:
             return False
+
+    def send_controller_value(self, zctrl):
+        if zctrl.symbol == "voices":
+            self.proc_cmd(f"set_voices {zctrl.value}")
+        else:
+            super().send_controller_value(zctrl)
 
     # ---------------------------------------------------------------------------
     # API methods
