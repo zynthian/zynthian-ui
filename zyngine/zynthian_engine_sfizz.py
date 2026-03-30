@@ -214,7 +214,7 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
             bank_name = bank_name[4:]
         else:
             bank_type = "sfz"
-        os.mkdir(zynthian_engine.my_data_dir +
+        os.mkdir(zynthian_engine_sfizz.my_data_dir +
                  "/soundfonts/{}/{}".format(bank_type, bank_name))
 
     @classmethod
