@@ -795,7 +795,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if engine_name:
                 question_str = f"Do you want to clean MIDI-learn for ALL controls in {engine_name}"
                 if curproc.midi_chan is not None and 0 <= curproc.midi_chan < 16:
-                    question_str += f"on MIDI channel {curproc.midi_chan + 1}"
+                    question_str += f" on MIDI channel {curproc.midi_chan + 1}"
                 self.zyngui.show_confirm(question_str + "?", self.midi_unlearn)
             else:
                 logging.error("Can't get processor name.")

@@ -1788,7 +1788,7 @@ class zynthian_chain_manager:
     def clean_midi_learn(self, obj):
         """Clean MIDI learn from controls
 
-        obj : Object to clean [chain_id, processor, zctrl] (Default: active chain)
+        obj : Object to clean [chain_id | processor | zctrl] (Default: active chain)
         """
 
         if obj == None:
@@ -1803,7 +1803,7 @@ class zynthian_chain_manager:
             for symbol in obj.controllers_dict:
                 self.remove_midi_learn(obj, symbol)
 
-        elif isinstance(obj, str):
+        elif isinstance(obj, int):
             for proc in self.get_processors(obj):
                 for symbol in proc.controllers_dict:
                     self.remove_midi_learn(proc, symbol)

@@ -1446,6 +1446,7 @@ class zynthian_state_manager:
                 chain.rebuild_graph()
 
                 # Current (right) chain MIDI-learn state
+                self.chain_manager.clean_midi_learn(chain_id)
                 if "midi_learn" in chain_state:
                     for low_key, cfg in chain_state["midi_learn"].items():
                         low_key = int(low_key)
