@@ -234,10 +234,10 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x1 = l * 0.6 # Under (green) start green-yellow gradient
-        x2 = l * 0.75 # Start const yellow
-        x3 = l * 0.85 # Start yellow-red gradient
-        x4 = l * 0.99 # Over (red) start const red
+        x1 = l * 0.73 # Under (green) start green-yellow gradient
+        x2 = l * 0.80 # Start const yellow
+        x3 = l * 0.90 # Start yellow-red gradient
+        x4 = l * 0.97 # Over (red) start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))
