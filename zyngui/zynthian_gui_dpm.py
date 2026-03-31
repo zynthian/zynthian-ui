@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Digital Audio Peak Meters
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -25,10 +25,14 @@
 # ******************************************************************************
 
 from tkinter import NORMAL, HIDDEN
+from PIL import Image, ImageDraw, ImageTk
+
 from zyngui.zynthian_gui_config import color_panel_bg
 
 
 class zynthian_gui_dpm():
+
+    bg_images = {} # Dict of background images, indexed by (length, width)
 
     def __init__(self, parent, x0, y0, width, height, vertical=True, tags=()):
         """Initialise digital peak meter
@@ -84,9 +88,10 @@ class zynthian_gui_dpm():
         # ---------------------------------------------
         # Create canvas items
         # ---------------------------------------------
-        self.bg_over = parent.create_rectangle(*coords['bg_over'], width=0, fill=self.over_color, tags=tags)
-        self.bg_high = parent.create_rectangle(*coords['bg_high'], width=0, fill=self.high_color, tags=tags)
-        self.bg_low = parent.create_rectangle(*coords['bg_low'], width=0, fill=self.low_color, tags=tags)
+        self.bg_image = parent.create_image(*coords['bg_image'], anchor="nw", image=self.get_bg(width, height), tags=tags)
+        #self.bg_over = parent.create_rectangle(*coords['bg_over'], width=0, fill=self.over_color, tags=tags)
+        #self.bg_high = parent.create_rectangle(*coords['bg_high'], width=0, fill=self.high_color, tags=tags)
+        #self.bg_low = parent.create_rectangle(*coords['bg_low'], width=0, fill=self.low_color, tags=tags)
         self.overlay = parent.create_rectangle(*coords['overlay'], width=0, fill=self.bg_color, tags=tags)
         self.hold = parent.create_rectangle(*coords['hold'], width=0, fill=self.low_color, tags=tags, state=HIDDEN)
         self.zero_line = parent.create_line(*coords['line'], fill=self.line_color, tags=tags)
@@ -106,6 +111,7 @@ class zynthian_gui_dpm():
             self.y_zero = int(y0 + height * self.zerodB / self.lowdB)
 
             coords = {
+                'bg_image': (x0, y0),
                 'bg_over': (x0, y0, x1, self.y_over),
                 'bg_high': (x0, self.y_over, x1, self.y_high),
                 'bg_low': (x0, self.y_high, x1, self.y_low),
@@ -121,6 +127,7 @@ class zynthian_gui_dpm():
             self.x_zero = int(x1 - width * self.zerodB / self.lowdB)
 
             coords = {
+                'bg_image': (x0, y0),
                 'bg_over': (self.x_over, y0, x1, y1),
                 'bg_high': (self.x_high, y0, self.x_over, y1),
                 'bg_low': (self.x_low, y0, self.x_high, y1),
@@ -152,9 +159,11 @@ class zynthian_gui_dpm():
 
         coords = self._compute_bounds()
 
-        self.parent.coords(self.bg_over, *coords['bg_over'])
-        self.parent.coords(self.bg_high, *coords['bg_high'])
-        self.parent.coords(self.bg_low, *coords['bg_low'])
+        self.parent.itemconfig(self.bg_image, image=self.get_bg(width, height))
+        self.parent.coords(self.bg_image, *coords['bg_image'])
+        #self.parent.coords(self.bg_over, *coords['bg_over'])
+        #self.parent.coords(self.bg_high, *coords['bg_high'])
+        #self.parent.coords(self.bg_low, *coords['bg_low'])
         self.parent.coords(self.overlay, *coords['overlay'])
         self.parent.coords(self.hold, *coords['hold'])
         self.parent.coords(self.zero_line, *coords['line'])
@@ -214,3 +223,60 @@ class zynthian_gui_dpm():
                         self.hold, state=NORMAL, fill=self.low_hold_color)
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
+
+    def get_bg(self, width, height):
+        """ Get the tri-colour background image
+        Args:
+            width: Width in pixels
+            height: Height in pixels
+        Returns: Background image
+        """
+
+        if (width, height) in self.bg_images:
+            return self.bg_images[(width, height)]
+        if width > height:
+            w = height
+            l = width
+            vertical = False
+        else:
+            w = width
+            l = height
+            vertical = True
+        x0 = l * 0.7
+        x1 = l * 0.8
+        x2 = l * 0.85
+        x3 = l * 0.95
+
+        # Create background image
+        img = Image.new("RGB", (width, height), (0, 0, 0))
+        pixels = img.load()
+
+        bg_c1 = (0, 255, 0) # Green
+        #bg_c2 = (255, 165, 0) # Orange
+        bg_c2 = (255, 255, 0) # Yellow
+        bg_c3 = (255, 0, 0) # Red
+
+        def lerp(c1, c2, t):
+            return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+
+        for x in range(l):
+            if x < x0:
+                color = bg_c1
+            elif x <= x1:
+                t = (x - x0) / (x1 - x0)
+                color = lerp(bg_c1, bg_c2, t)
+            elif x < x2:
+                color = bg_c2
+            elif x < x3:
+                t = (x - x2) / (x3 - x2)
+                color = lerp(bg_c2, bg_c3, t)
+            else:
+                color = bg_c3
+            for y in range(w):
+                if vertical:
+                    pixels[y, l - x - 1] = (*color, 255)
+                else:
+                    pixels[x, y] = (*color, 255)
+
+        self.bg_images[(width, height)] = ImageTk.PhotoImage(img)
+        return self.bg_images[(width, height)]
