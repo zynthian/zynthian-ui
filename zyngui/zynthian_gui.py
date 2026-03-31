@@ -1550,7 +1550,7 @@ class zynthian_gui:
         self.show_screen("audio_player")
 
     def cuia_screen_alsa_mixer(self, params=None):
-        self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
+        self.show_screen("alsa_mixer")
 
     def cuia_screen_launcher(self, params=None):
         if self.current_screen == "mixer" and self.screens["mixer"].launcher_mode:
