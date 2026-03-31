@@ -243,7 +243,7 @@ class zynthian_gui_dpm():
         img = Image.new("RGB", (width, height), (0, 0, 0))
         pixels = img.load()
 
-        bg_c1 = (0, 200, 0) # Dark green
+        bg_c1 = (0, 150, 0) # Dark green
         bg_c2 = (0, 255, 0) # Green
         bg_c3 = (255, 255, 0) # Yellow
         bg_c4 = (255, 0, 0) # Red
