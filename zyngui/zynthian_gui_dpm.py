@@ -78,7 +78,7 @@ class zynthian_gui_dpm():
         self.bg_color = color_panel_bg
 
         self.hold_thickness = 1
-        self.mono = False
+        self.mono = 0
 
         # ---------------------------------------------
         # Compute bounds for initial position
@@ -89,9 +89,7 @@ class zynthian_gui_dpm():
         # Create canvas items
         # ---------------------------------------------
         self.bg_image = parent.create_image(*coords['bg_image'], anchor="nw", image=self.get_bg(width, height), tags=tags)
-        #self.bg_over = parent.create_rectangle(*coords['bg_over'], width=0, fill=self.over_color, tags=tags)
-        #self.bg_high = parent.create_rectangle(*coords['bg_high'], width=0, fill=self.high_color, tags=tags)
-        #self.bg_low = parent.create_rectangle(*coords['bg_low'], width=0, fill=self.low_color, tags=tags)
+        self.bg_mono = parent.create_rectangle(*coords['overlay'], width=0, fill=self.mono_color, state=HIDDEN)
         self.overlay = parent.create_rectangle(*coords['overlay'], width=0, fill=self.bg_color, tags=tags)
         self.hold = parent.create_rectangle(*coords['hold'], width=0, fill=self.low_color, tags=tags, state=HIDDEN)
         self.zero_line = parent.create_line(*coords['line'], fill=self.line_color, tags=tags)
@@ -112,9 +110,6 @@ class zynthian_gui_dpm():
 
             coords = {
                 'bg_image': (x0, y0),
-                'bg_over': (x0, y0, x1, self.y_over),
-                'bg_high': (x0, self.y_over, x1, self.y_high),
-                'bg_low': (x0, self.y_high, x1, self.y_low),
                 'overlay': (x0, y0, x1, y1),
                 'hold': (x0, self.y_low, x1, self.y_low),
                 'line': (x0, self.y_zero, x1, self.y_zero)
@@ -128,9 +123,6 @@ class zynthian_gui_dpm():
 
             coords = {
                 'bg_image': (x0, y0),
-                'bg_over': (self.x_over, y0, x1, y1),
-                'bg_high': (self.x_high, y0, self.x_over, y1),
-                'bg_low': (self.x_low, y0, self.x_high, y1),
                 'overlay': (x0, y0, x1, y1),
                 'hold': (self.x_low, y0, self.x_low, y1),
                 'line': (self.x_zero, y0, self.x_zero, y1)
@@ -161,9 +153,7 @@ class zynthian_gui_dpm():
 
         self.parent.itemconfig(self.bg_image, image=self.get_bg(width, height))
         self.parent.coords(self.bg_image, *coords['bg_image'])
-        #self.parent.coords(self.bg_over, *coords['bg_over'])
-        #self.parent.coords(self.bg_high, *coords['bg_high'])
-        #self.parent.coords(self.bg_low, *coords['bg_low'])
+        self.parent.coords(self.bg_mono, *coords['overlay'])
         self.parent.coords(self.overlay, *coords['overlay'])
         self.parent.coords(self.hold, *coords['hold'])
         self.parent.coords(self.zero_line, *coords['line'])
@@ -175,9 +165,11 @@ class zynthian_gui_dpm():
         if mono != self.mono:
             self.mono = mono
             if mono:
-                self.parent.itemconfig(self.bg_low, fill=self.mono_color)
+                self.parent.itemconfig(self.bg_image, state=HIDDEN)
+                self.parent.itemconfig(self.bg_mono, state=NORMAL)
             else:
-                self.parent.itemconfig(self.bg_low, fill=self.low_color)
+                self.parent.itemconfig(self.bg_image, state=NORMAL)
+                self.parent.itemconfig(self.bg_mono, state=HIDDEN)
 
         if self.vertical:
             y1 = int(self.y0 + self.height * max(dpm, self.lowdB) / self.lowdB)
@@ -242,36 +234,42 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x0 = l * 0.7
-        x1 = l * 0.8
-        x2 = l * 0.85
-        x3 = l * 0.95
+        x1 = l * 0.6 # Under (green) start green-yellow gradient
+        x2 = l * 0.75 # Start const yellow
+        x3 = l * 0.85 # Start yellow-red gradient
+        x4 = l * 0.99 # Over (red) start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))
         pixels = img.load()
 
-        bg_c1 = (0, 255, 0) # Green
-        #bg_c2 = (255, 165, 0) # Orange
-        bg_c2 = (255, 255, 0) # Yellow
-        bg_c3 = (255, 0, 0) # Red
+        bg_c1 = (0, 200, 0) # Dark green
+        bg_c2 = (0, 255, 0) # Green
+        bg_c3 = (255, 255, 0) # Yellow
+        bg_c4 = (255, 0, 0) # Red
 
         def lerp(c1, c2, t):
             return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
 
         for x in range(l):
-            if x < x0:
-                color = bg_c1
-            elif x <= x1:
-                t = (x - x0) / (x1 - x0)
+            if x <= x1:
+                # Gradient dark to light green
+                t = x / x1
                 color = lerp(bg_c1, bg_c2, t)
             elif x < x2:
-                color = bg_c2
-            elif x < x3:
-                t = (x - x2) / (x3 - x2)
+                # Gradient green to yellow
+                t = (x - x1) / (x2 - x1)
                 color = lerp(bg_c2, bg_c3, t)
-            else:
+            elif x < x3:
+                # Constant yellow
                 color = bg_c3
+            elif x < x4:
+                # Gradient yellow to red
+                t = (x - x3) / (x4 - x3)
+                color = lerp(bg_c3, bg_c4, t)
+            else:
+                # Constant red
+                color = bg_c4
             for y in range(w):
                 if vertical:
                     pixels[y, l - x - 1] = (*color, 255)
