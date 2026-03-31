@@ -590,7 +590,13 @@ class zynthian_gui_controller(tkinter.Canvas):
         elif self.zctrl.labels:
             text = "0" * len(max(self.zctrl.labels, key=len))
         elif self.format_print:
-            text = self.format_print.format(0)
+            svmax = self.format_print.format(self.zctrl.value_max)
+            svmin = self.format_print.format(self.zctrl.value_min)
+            if len(svmax) >= len(svmin):
+                text = svmax
+            else:
+                text = svmin
+            text = re.sub(r'[1-9]', '0', text)
         else:
             text = "0" * max(len(str(self.zctrl.value_max)), len(str(self.zctrl.value_min)))
         self.value_font_size = max_fs = zynthian_gui_config.font_size
