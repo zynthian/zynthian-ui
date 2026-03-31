@@ -574,7 +574,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 zctrl_warp = zctrl.processor.controllers_dict[f"warp {note}"]
                 self.monitors_dict["beats"] = zctrl.value
                 if zctrl_warp.value == 0:
-                    self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, whole_beats * self.zynseq.PPQN)
+                    self.libseq.setSequenceLength(self.zynseq.scene, phrase, proc.midi_chan, zctrl.value * self.zynseq.PPQN)
                     self.libseq.updateSequenceInfo()
                 else:
                     self.start_reload_timer(zctrl.processor, phrase)
@@ -603,7 +603,7 @@ class zynthian_engine_clippy(zynthian_engine):
             crop_end_options =  {"value_max": 999999999}
             crop_start_zctrl.set_options(crop_start_options)
             crop_end_zctrl.set_options(crop_end_options)
-            zoom_option = {
+            zoom_options = {
                 "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
                 "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
             }
