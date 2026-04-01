@@ -1541,9 +1541,10 @@ class zynthian_state_manager:
                 except:
                     pass
 
-        if zs3_id != 'zs3-0':
+        if zs3_id == 'zs3-0':
+            self.last_zs3_id = None
+        else:
             self.last_zs3_id = zs3_id
-            #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
         self.zynseq.select_phrase(active_phrase, True)
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
 
@@ -1718,7 +1719,9 @@ class zynthian_state_manager:
         except:
             pass
 
-        if zs3_id != 'zs3-0':
+        if zs3_id == 'zs3-0':
+            self.last_zs3_id = None
+        else:
             self.last_zs3_id = zs3_id
             # Jofemodo: this has not sense from my POV
             #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
@@ -1807,12 +1810,12 @@ class zynthian_state_manager:
             logging.warning(f"Can't find ZS3 with index {index}")
 
     def save_zs3_by_index(self, index):
-        zs3_id = get_zs3_id_by_index(index)
+        zs3_id = self.get_zs3_id_by_index(index)
         if zs3_id:
             return self.save_zs3(zs3_id)
 
     def load_zs3_by_index(self, index):
-        zs3_id = get_zs3_id_by_index(index)
+        zs3_id = self.get_zs3_id_by_index(index)
         if zs3_id:
             return self.load_zs3(zs3_id)
 
