@@ -987,9 +987,21 @@ def midi_autoconnect():
         except:
             pass  # Don't care about already connected ports
 
-    # Autoload new drivers
+    # Reapply existing config (e.g. device connected after startup or autoload new drivers
+    midi_capture_state = {}
     for i in new_idev:
-        state_manager.ctrldev_manager.load_driver(i)
+        try:
+            uid = devices_in[i].aliases[0]
+            state = state_manager.zs3['zs3-0']['midi_capture'][uid]
+            try:
+                state = state_manager.zs3[state_manager.last_zs3_id]['midi_capture'][uid]
+            except:
+                pass # Only load last state if it exists, else use zs3-0
+            midi_capture_state[uid] = state
+        except:
+            state_manager.ctrldev_manager.load_driver(i)
+    if midi_capture_state:
+        state_manager.set_midi_capture_state(midi_capture_state)
 
     # Release Mutex Lock
     release_lock()

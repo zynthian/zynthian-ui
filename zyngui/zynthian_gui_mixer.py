@@ -31,7 +31,7 @@ import logging
 from math import log10
 from time import monotonic
 from threading import Timer
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 from os.path import basename, splitext
 
 # Zynthian specific modules
@@ -478,6 +478,8 @@ class zynthian_gui_launcher_pad():
 
 class zynthian_gui_mixer_strip():
 
+    bg_images = {} # Dict of background images, indexed by (width, length)
+
     def __init__(self, parent, canvas, x, width, height, chain):
         logging.getLogger('PIL').setLevel(logging.WARNING)
         """ Initialise mixer strip object
@@ -524,12 +526,16 @@ class zynthian_gui_mixer_strip():
             self.dpm_width = int(self.width / 13)  # Width of each DPM
         else:
             self.dpm_width = 0
+        self.dpm_scale_width = int(self.dpm_width * 0.7)
         self.dpm_length = self.gui_mixer.fader_height
         self.dpm_y0 = self.fader_y
-        self.dpm_a_x0 = x + self.width - self.dpm_width * 2 - 2
-        self.dpm_b_x0 = x + self.width - self.dpm_width - 1
 
-        self.fader_width = self.width - self.dpm_width * 2 - 2
+        self.fader_width = self.width - self.dpm_width * 2 - self.dpm_scale_width
+        if self.chain.chain_id == 0:
+            self.fader_width -= parent.loop_info_width
+        self.dpm_b_x0 = x + self.width - self.dpm_width
+        self.dpm_scale_x0 = self.dpm_b_x0 - self.dpm_scale_width
+        self.dpm_a_x0 = self.dpm_scale_x0 - self.dpm_width
 
         self.fader_press_event = None
         self.launchers = [] # List of launcher button objects, indexed by phrase
@@ -557,7 +563,7 @@ class zynthian_gui_mixer_strip():
             self.balance_bg = self.canvas.create_rectangle(self.x + 1, self.balance_y, self.x + self.width - 1, self.fader_y, fill=self.gui_mixer.balance_bg_color, width=0, tags=(f"balance_{id}",))
             self.balance_fg = self.canvas.create_rectangle(self.centre_x - 1, self.balance_y, self.centre_x + 1, self.fader_y, fill=self.gui_mixer.balance_fg_color, width=0, tags=(f"balance_{id}",))
             # Fader
-            self.fader_overlay = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_color, width=0, tags=("fader", "fader_overlay", f"fader_{id}"))
+            self.fader_overlay = self.canvas.create_rectangle(x, self.fader_y, x + self.fader_width, self.legend_y, fill=self.gui_mixer.fader_color, width=0, tags=("fader", "fader_overlay", f"fader_{id}"))
             self.fader_horizontal = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal",), state=tkinter.HIDDEN)
 
             # DPM
@@ -565,7 +571,10 @@ class zynthian_gui_mixer_strip():
                 dpm_tags = ("dpm")
             else:
                 dpm_tags = ("dpm_0")
-            self.dpm_bg = self.canvas.create_rectangle(self.dpm_a_x0, self.dpm_y0, self.x + self.width + self.dpm_width, self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
+            self.dpm_bg = self.canvas.create_rectangle(self.dpm_scale_x0, self.dpm_y0, x + self.width , self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
+            self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_width, self.dpm_length))
+            if self.chain.chain_id == 0:
+                self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", parent.loop_info_width, self.dpm_length))
             self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags)
             self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags)
 
@@ -638,16 +647,68 @@ class zynthian_gui_mixer_strip():
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, 0, self.x + self.width, self.balance_y)
                 self.dpm_a.move(self.dpm_a_x0, 0, self.dpm_width, self.balance_y)
                 self.dpm_b.move(self.dpm_b_x0, 0, self.dpm_width, self.balance_y)
+                self.canvas.itemconfig(self.dpm_scale, state=tkinter.HIDDEN)
+                if self.chain.chain_id == 0:
+                    self.canvas.itemconfig(self.dpm_labels, state=tkinter.HIDDEN)
                 #self.canvas.coords(self.solo, self.x, self.solo_y, self.dpm_a_x0, self.mute_y)
                 #self.canvas.coords(self.mute, self.x, self.mute_y, self.dpm_a_x0, self.balance_y)
             else:
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
                 self.dpm_a.move(self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
                 self.dpm_b.move(self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+                self.canvas.itemconfig(self.dpm_scale, state=tkinter.NORMAL)
+                if self.chain.chain_id == 0:
+                    self.canvas.itemconfig(self.dpm_labels, state=tkinter.NORMAL)
                 #self.canvas.coords(self.solo, self.x, self.solo_y, self.x + self.width, self.mute_y)
                 #self.canvas.coords(self.mute, self.x, self.mute_y, self.x + self.width, self.balance_y)
         except:
             pass # meters not yet created?
+
+    def get_bg_img(self, id, width, height):
+        """ Get the tri-colour background image
+        Args:
+            id: An id for the type of image, e.g. fader
+            width: Width in pixels
+            height: Height in pixels
+        Returns: Background image
+        """
+
+        key = (id, width, height)
+        if key in self.bg_images:
+            return self.bg_images[key]
+
+        c = self.gui_mixer.fader_bg_color
+        #c = "#222222"
+        r,g,b = tuple(int(c[i:i+2], 16) for i in (1, 3, 5))
+        img = Image.new("RGB", (width, height), (r, g, b))
+        pixels = img.load()
+
+        def db_to_norm(db):
+            db = max(-50, min(0, db))
+            return (db + 50) / 50
+
+        c_low = (0, 200, 0)
+        c_zero = (200, 200, 200)
+        c_mid = (200, 200, 0)
+        c_high = (240, 0, 0)
+        font = ImageFont.truetype("DejaVuSans.ttf", int(width * 0.6))
+        for db in (-40, -30, -20, -16, -13, -10, -7, -4, -1):
+            y = min(height - 1, height - int(db_to_norm(db) * height))
+            c = c_zero if db == -10 else c_high if db >=-3 else c_mid if db >= -10 else c_low
+            if id == "dpm":
+                if db != -10:
+                    for x in range(width):
+                        pixels[x, y] = c
+            elif id == "dpm_lbl":
+                fill = f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
+                draw = ImageDraw.Draw(img)
+                if db == -10:
+                    draw.text((width, y), "0", fill=fill, font=font, anchor="rm")
+                else:
+                    draw.text((width, y), f"{db+10:+}", fill=fill, font=font, anchor="rm")
+
+        self.bg_images[key] = ImageTk.PhotoImage(img)
+        return self.bg_images[key]
 
     def draw_dpm(self):
         """ Function to draw the DPM level meter for a mixer strip

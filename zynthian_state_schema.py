@@ -112,7 +112,7 @@ ZynthianState = {
                     "zmip_system": True, # True to enable MIDI system messages
                     "zmip_system_rt": True, # True to enable MIDI realtime system messages
                     "disable_ctrldev": False,  # True to disable loading of controller device driver
-                    "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controoler device driver
+                    "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
                     "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 24-bit encoded (zmop, MIDI chan, CC)
