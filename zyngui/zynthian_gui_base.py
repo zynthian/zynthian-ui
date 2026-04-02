@@ -199,9 +199,8 @@ class zynthian_gui_base(tkinter.Frame):
             self.width = zynthian_gui_config.screen_width
             self.height = zynthian_gui_config.screen_height - self.topbar_height
         else:
-            pass
-            #self.width = self.winfo_width()
-            #self.height = self.winfo_height() - self.topbar_height
+            self.width = self.winfo_width()
+            self.height = self.winfo_height() - self.topbar_height
         logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
         # TODO Resize topbar elements
 

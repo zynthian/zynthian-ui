@@ -480,7 +480,7 @@ class zynthian_frame_chain(tkinter.Frame):
             node_id = self.nodes[self.selected_node]["id"]
             self.canvas.itemconfig(node_id, outline=color, width=2)
         except:
-            pass
+            return
 
         #Scroll the canvas to ensure the selected node is visible.
         self.canvas.update_idletasks() # Ensure all redrawing has completed

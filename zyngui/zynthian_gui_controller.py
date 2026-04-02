@@ -28,6 +28,7 @@ import re
 import math
 import tkinter
 import logging
+import textwrap
 from tkinter import font as tkFont
 
 # Zynthian specific modules
@@ -581,9 +582,6 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(obj_id, text=title, font=font)
             return
 
-        fs = int(1.0 * zynthian_gui_config.font_size)
-        font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
-
         if camel:
             title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
                 ' ',
@@ -592,24 +590,28 @@ class zynthian_gui_controller(tkinter.Canvas):
             title = title.strip()
         min_fs = 8
 
+        fs = int(0.9 * zynthian_gui_config.font_size)
+        font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
+
         if self.graph_type == self.GUI_CTRL_ARC:
             # Find any words that are individually too wide to fit
-            for word in title.split():
+            words = textwrap.wrap(title, 10, break_long_words=False)
+            for word in words:
                 while font.measure(word) > max_width and fs > min_fs:
                     fs -= 1
                     font.config(size=fs)
 
         # Reduce text font size until it fits vertically
-        while fs >= min_fs:
-            font.config(size=fs)
+        while True:
             self.itemconfigure(obj_id, text=title, font=font)
             bbox = self.bbox(obj_id)
-            if bbox is None:
+            if bbox is None or bbox[3] - bbox[1] <= max_height:
                 break
-            text_height = bbox[3] - bbox[1]
-            if text_height <= max_height:
+            if fs >= min_fs:
+                fs -= 1
+                font.config(size=fs)
+            else:
                 break
-            fs -= 1
 
         save_cached_font_size(title, fskey, fs)
         return
