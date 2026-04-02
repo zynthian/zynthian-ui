@@ -34,7 +34,7 @@ class zynthian_gui_dpm():
 
     bg_images = {} # Dict of background images, indexed by (width, length)
 
-    def __init__(self, parent, x0, y0, width, height, vertical=True, tags=()):
+    def __init__(self, parent, x0, y0, width, height, vertical=True, tags=(), main=False):
         """Initialise digital peak meter
 
         parent : Frame object within which to draw meter
@@ -44,12 +44,13 @@ class zynthian_gui_dpm():
         height : height of widget
         vertical : True for vertical orientation else horizontal orientation
         tags : Optional list of tags for external control of GUI
-        fill: Optional background colour (default: None / transparent)
+        main: True if main chain (0) [Default: False]
         """
 
         self.parent = parent
         self.vertical = vertical
         self.tags = tags
+        self.main = main
 
         # initial geometry
         self.x0 = x0
@@ -79,6 +80,7 @@ class zynthian_gui_dpm():
 
         self.hold_thickness = 1
         self.mono = 0
+        self.over_id = None
 
         # ---------------------------------------------
         # Compute bounds for initial position
@@ -93,6 +95,8 @@ class zynthian_gui_dpm():
         self.overlay = parent.create_rectangle(*coords['overlay'], width=0, fill=self.bg_color, tags=tags)
         self.hold = parent.create_rectangle(*coords['hold'], width=0, fill=self.low_color, tags=tags, state=HIDDEN)
         self.zero_line = parent.create_line(*coords['line'], fill=self.line_color, tags=tags)
+        if self.main:
+            self.over_indicator = parent.create_rectangle(*coords['over'], width=0, fill="#FF0000", state=HIDDEN)
 
     # --------------------------------------------------
     # Helper to compute bounds
@@ -116,7 +120,8 @@ class zynthian_gui_dpm():
                 'bg_image': (x0, y0),
                 'overlay': (x0, y0, x1, y1),
                 'hold': (x0, self.y_low, x1, self.y_low),
-                'line': (x0, self.y_zero, x1, self.y_zero)
+                'line': (x0, self.y_zero, x1, self.y_zero),
+                'over': (x0, y0, x1, y0 + int(height * 0.02))
             }
 
         else:
@@ -129,7 +134,8 @@ class zynthian_gui_dpm():
                 'bg_image': (x0, y0),
                 'overlay': (x0, y0, x1, y1),
                 'hold': (self.x_low, y0, self.x_low, y1),
-                'line': (self.x_zero, y0, self.x_zero, y1)
+                'line': (self.x_zero, y0, self.x_zero, y1),
+                'over': (x1 - int(width * 0.05), y0, x1, y1)
             }
 
         return coords
@@ -161,6 +167,8 @@ class zynthian_gui_dpm():
         self.parent.coords(self.overlay, *coords['overlay'])
         self.parent.coords(self.hold, *coords['hold'])
         self.parent.coords(self.zero_line, *coords['line'])
+        if self.main:
+            self.parent.coords(self.over_indicator, *coords['over'])
 
     def set_enable(self, enable):
         self.enabled = enable
@@ -220,6 +228,12 @@ class zynthian_gui_dpm():
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
+        if self.main and dpm >= 0.0:
+            self.parent.itemconfig(self.over_indicator, state=NORMAL)
+            if self.over_id is not None:
+                self.parent.after_cancel(self.over_id)
+            self.over_id = self.parent.after(4000, lambda: self.parent.itemconfig(self.over_indicator, state=HIDDEN))
+
     def get_bg(self, width, height):
         """ Get the tri-colour background image
         Args:
@@ -250,7 +264,7 @@ class zynthian_gui_dpm():
         bg_c1 = (0, 150, 0) # Dark green
         bg_c2 = (0, 255, 0) # Green
         bg_c3 = (255, 255, 0) # Yellow
-        bg_c4 = (255, 0, 0) # Red
+        bg_c4 = (200, 0, 0) # Red
 
         def lerp(c1, c2, t):
             return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
