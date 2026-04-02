@@ -197,7 +197,7 @@ class zynthian_gui_dpm():
             elif y1 < self.y_low:
                 if self.mono:
                     self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill=self.mono)
+                        self.hold, state=NORMAL, fill=self.mono_color)
                 else:
                     self.parent.itemconfig(
                         self.hold, state=NORMAL, fill=self.low_hold_color)

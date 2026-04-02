@@ -814,17 +814,21 @@ def midi_autoconnect():
                 # ... from last MIDI processor (MIDI2MIDI)
                 if chain.midi_slots:
                     for processor in chain.midi_slots[-1]:
-                        src_ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
-                        if src_ports:
-                            for dst in dests:
-                                required_routes[dst].add(src_ports[0].name)
-                # ... from last audio processor, if it's an audio2MIDI processor
-                if chain.audio_slots:
-                    for processor in chain.audio_slots[-1]:
-                        src_ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
-                        if src_ports:
-                            for dst in dests:
-                                required_routes[dst].add(src_ports[0].name)
+                        proc_jack_name = processor.get_jackname(True)
+                        if proc_jack_name:
+                            src_ports = jclient.get_ports(proc_jack_name, is_midi=True, is_output=True)
+                            if src_ports:
+                                for dst in dests:
+                                    required_routes[dst].add(src_ports[0].name)
+                # ... from an audio2MIDI processor
+                for slot in chain.audio_slots:
+                    for processor in slot:
+                        proc_jack_name = processor.get_jackname(True)
+                        if proc_jack_name:
+                            src_ports = jclient.get_ports(proc_jack_name, is_midi=True, is_output=True)
+                            if src_ports:
+                                for dst in dests:
+                                    required_routes[dst].add(src_ports[0].name)
 
             # Add MIDI router outputs => Connects zmop to chain's input
             src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
