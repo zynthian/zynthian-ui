@@ -5,7 +5,7 @@
 #
 # Zynthian GUI MIDI config Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -291,6 +291,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     append_service("touchosc2midi", "TouchOSC",
                                    "Interface with Hexler TouchOSC modular control surface.")
 
+        a2m_ports = zynautoconnect.get_a2m_ports()
+        if self.input and self.chain and a2m_ports:
+            self.list_data.append((None, None, "> Audio to MIDI"))
+            for name, title in a2m_ports:
+                if name in self.chain.midi_in:
+                    self.list_data.append(("audio2midi", name, f"\u2612 {title}"))
+                else:
+                    self.list_data.append(("audio2midi", name, f"\u2610 {title}"))
+
         if not self.input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.chains):
@@ -349,22 +358,25 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
             elif self.chain:
-                idev = self.list_data[i][1]
-                if self.input:
-                    if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
-                        return
-                    lib_zyncore.zmop_set_route_from(
-                        self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
+                if action == "audio2midi":
+                    self.chain.toggle_midi_in(self.list_data[i][1])
                 else:
-                    try:
-                        if idev is not None:
-                            dev_id = zynautoconnect.get_midi_out_dev(
-                                idev).aliases[0]
-                            self.chain.toggle_midi_out(dev_id)
-                        elif isinstance(action, int):
-                            self.chain.toggle_midi_out(action)
-                    except Exception as e:
-                        logging.error(e)
+                    idev = self.list_data[i][1]
+                    if self.input:
+                        if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
+                            return
+                        lib_zyncore.zmop_set_route_from(
+                            self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
+                    else:
+                        try:
+                            if idev is not None:
+                                dev_id = zynautoconnect.get_midi_out_dev(
+                                    idev).aliases[0]
+                                self.chain.toggle_midi_out(dev_id)
+                            elif isinstance(action, int):
+                                self.chain.toggle_midi_out(action)
+                        except Exception as e:
+                            logging.error(e)
                 self.update_list()
 
         # Change mode

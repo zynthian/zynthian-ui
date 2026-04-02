@@ -190,6 +190,20 @@ def set_port_friendly_name(port, friendly_name=None):
 def get_ports(name, is_input=None):
     return jclient.get_ports(name, is_input=is_input)
 
+def get_a2m_ports():
+    """ Returns list of audio to midi (port name, title)"""
+
+    ports = []
+    for processor in chain_manager.get_processors(type="Audio Effect"):
+        jackname = processor.get_jackname()
+        if jackname:
+            proc_ports = jclient.get_ports(jackname, is_midi=True, is_output=True)
+            if proc_ports:
+                title = processor.chain.title
+                if not title:
+                    title = f"Chain {chain_manager.get_chain_index(processor.chain.chain_id) + 1}"
+                ports.append((proc_ports[0].name, f"{title} {processor.name}"))
+    return ports
 
 def dev_in_2_dev_out(zmip):
     """Get index of output devices from its input device index
@@ -831,7 +845,9 @@ def midi_autoconnect():
                                     required_routes[dst].add(src_ports[0].name)
 
             # Add MIDI router outputs => Connects zmop to chain's input
-            src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
+            src_ports = []
+            for port_name in chain.midi_in:
+                src_ports += jclient.get_ports(port_name, is_midi=True, is_output=True)
             if src_ports:
                 # Connect to first slot, excluding clippy
                 procs = chain.get_processors(type="MIDI Tool", slot=0)
@@ -842,9 +858,9 @@ def midi_autoconnect():
                         continue
                     dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
                     if dst_ports:
-                        src = src_ports[0]
-                        dst = dst_ports[0]
-                        required_routes[dst.name].add(src.name)
+                        for src in src_ports:
+                            dst = dst_ports[0]
+                            required_routes[dst.name].add(src.name)
 
     # Add zynseq to MIDI input devices
     idev = state_manager.get_zmip_step_index()
