@@ -1541,9 +1541,10 @@ class zynthian_state_manager:
                 except:
                     pass
 
-        if zs3_id != 'zs3-0':
+        if zs3_id == 'zs3-0':
+            self.last_zs3_id = None
+        else:
             self.last_zs3_id = zs3_id
-            #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
         self.zynseq.select_phrase(active_phrase, True)
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
 
@@ -1718,7 +1719,9 @@ class zynthian_state_manager:
         except:
             pass
 
-        if zs3_id != 'zs3-0':
+        if zs3_id == 'zs3-0':
+            self.last_zs3_id = None
+        else:
             self.last_zs3_id = zs3_id
             # Jofemodo: this has not sense from my POV
             #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
@@ -1807,12 +1810,12 @@ class zynthian_state_manager:
             logging.warning(f"Can't find ZS3 with index {index}")
 
     def save_zs3_by_index(self, index):
-        zs3_id = get_zs3_id_by_index(index)
+        zs3_id = self.get_zs3_id_by_index(index)
         if zs3_id:
             return self.save_zs3(zs3_id)
 
     def load_zs3_by_index(self, index):
-        zs3_id = get_zs3_id_by_index(index)
+        zs3_id = self.get_zs3_id_by_index(index)
         if zs3_id:
             return self.load_zs3(zs3_id)
 
@@ -1953,6 +1956,15 @@ class zynthian_state_manager:
                     for zctrl in zctrls:
                         mcstate[uid]["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
 
+        mcstate["zynmidi"] = {"midi_learn": {}}
+        # Add global / absolute MIDI mapping
+        for key, zctrls in self.chain_manager.absolute_midi_cc_binding.items():
+            if 0xff0000 == key & 0xff0000:
+                key_low = key & 0xff7f
+                mcstate["zynmidi"]["midi_learn"][key_low] = []
+                for zctrl in zctrls:
+                    mcstate["zynmidi"]["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
+
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None):
@@ -1964,47 +1976,50 @@ class zynthian_state_manager:
             ctrldev_state_drivers = {}
             for uid, state in mcstate.items():
                 #logging.debug(f"MCSTATE {uid} => {state}")
-                izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
-                if izmip is None:
-                    continue
-                try:
-                    lib_zyncore.zmip_set_flag_active_chain(izmip, bool(state["zmip_input_mode"]))
-                except:
-                    pass
-                """
-                try:
-                    lib_zyncore.zmip_set_flag_system(izmip, bool(state["zmip_system"]))
-                except:
-                    pass
-                try:
-                    lib_zyncore.zmip_set_flag_system_rt(izmip, bool(state["zmip_system_rt"]))
-                except:
-                    pass
-                """
-                try:
-                    self.aubio_in = state["audio_in"]
-                except:
-                    pass
-                zynautoconnect.update_midi_in_dev_mode(izmip)
-                try:
-                    # TODO: Use ctrldev_driver=None to disable driver
-                    if state["disable_ctrldev"]:
-                        self.ctrldev_manager.unload_driver(izmip, True)
-                    else:
-                        self.ctrldev_manager.load_driver(izmip, state["ctrldev_driver"])
-                except:
-                    pass
-                try:
-                    ctrldev_state_drivers[uid] = state["ctrldev_state"]
-                except:
-                    pass
-                # Route chain zmops
-                try:
-                    routed_chains = state["routed_chains"]
-                    for ch in range(0, 16):
-                        lib_zyncore.zmop_set_route_from(ch, izmip, ch in routed_chains)
-                except:
-                    pass
+                if uid != "zynmidi":
+                    izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
+                    if izmip is None:
+                        continue
+                    try:
+                        lib_zyncore.zmip_set_flag_active_chain(izmip, bool(state["zmip_input_mode"]))
+                    except:
+                        pass
+                    """
+                    try:
+                        lib_zyncore.zmip_set_flag_system(izmip, bool(state["zmip_system"]))
+                    except:
+                        pass
+                    try:
+                        lib_zyncore.zmip_set_flag_system_rt(izmip, bool(state["zmip_system_rt"]))
+                    except:
+                        pass
+                    """
+                    try:
+                        self.aubio_in = state["audio_in"]
+                    except:
+                        pass
+                    zynautoconnect.update_midi_in_dev_mode(izmip)
+                    try:
+                        # TODO: Use ctrldev_driver=None to disable driver
+                        if state["disable_ctrldev"]:
+                            self.ctrldev_manager.unload_driver(izmip, True)
+                        else:
+                            self.ctrldev_manager.load_driver(izmip, state["ctrldev_driver"])
+                    except:
+                        pass
+                    try:
+                        ctrldev_state_drivers[uid] = state["ctrldev_state"]
+                    except:
+                        pass
+                    # Route chain zmops
+                    try:
+                        routed_chains = state["routed_chains"]
+                        for ch in range(0, 16):
+                            lib_zyncore.zmop_set_route_from(ch, izmip, ch in routed_chains)
+                    except:
+                        pass
+                else:
+                    izmip = 0xff
 
                 # Absolute MIDI-learn state
                 try:
@@ -2030,7 +2045,6 @@ class zynthian_state_manager:
                             chan = (key_low >> 8) & 0xff
                             cc = key_low & 0x7f
                             self.chain_manager.add_midi_learn(chan, cc, zctrl, izmip)
-
             self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
 
         else:

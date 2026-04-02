@@ -444,6 +444,19 @@ class zynthian_chain:
         self.rebuild_audio_graph()
         zynautoconnect.request_audio_connect(True)
 
+    def toggle_midi_in(self, input):
+        """ Toggle chain midi input port
+        Args:
+            input: Capture port
+        """
+
+        if input in self.midi_in:
+            self.midi_in.remove(input)
+        else:
+            self.midi_in.append(input)
+        self.rebuild_midi_graph()
+        zynautoconnect.request_midi_connect(True)
+
     def get_midi_out(self):
         return self.midi_out
 

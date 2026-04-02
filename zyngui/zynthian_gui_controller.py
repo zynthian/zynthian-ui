@@ -24,15 +24,36 @@
 # ******************************************************************************
 
 import os
+import re
 import math
 import tkinter
 import logging
-import re
+import textwrap
 from tkinter import font as tkFont
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
+
+# ------------------------------------------------------------------------------
+# Font size cache
+# ------------------------------------------------------------------------------
+
+cache_font_size = {}
+
+def get_cached_font_size(text, width):
+    try:
+        #logging.debug(f"CACHED FONT SIZE [{width}][{text}] => {cache_font_size[width][text]}")
+        return cache_font_size[width][text]
+    except:
+        return None
+
+def save_cached_font_size(text, width, fs):
+    if width not in cache_font_size:
+        cache_font_size[width] = {}
+    cache_font_size[width][text] = fs
+    #logging.debug(f"SAVE CACHED FONT SIZE [{width}][{text}] => {fs}")
+
 
 # ------------------------------------------------------------------------------
 # Controller GUI Class
@@ -63,7 +84,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         self.graph_type = graph_type
         self.value_plot = 0  # Normalised position of plot start point
         self.value_print = None
-        self.value_font_size = zynthian_gui_config.font_size
+        self.value_font = tkFont.Font(family=zynthian_gui_config.font_family, size=zynthian_gui_config.font_size)
         if orientation:
             self.vertical = (orientation == 'vertical' and not selcounter)
         else:
@@ -144,7 +165,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.value_text = self.create_text(0, 0, width=1,
                 justify=tkinter.CENTER,
                 fill=zynthian_gui_config.color_ctrl_tx,
-                font=(zynthian_gui_config.font_family,self.value_font_size),
+                font=self.value_font.copy(),
                 text=self.value_print,
                 tags='gui')
 
@@ -176,7 +197,8 @@ class zynthian_gui_controller(tkinter.Canvas):
         self.on_size_graph(event)
         self.set_title(self.title)
         if self.zctrl:
-            self.calculate_value_font_size()
+            if not self.zctrl.labels and not self.zctrl.is_path:
+                self.calculate_value_font_size()
             self.calculate_plot_values()
             self.set_drag_scale()
             self.plot_value_func()
@@ -213,7 +235,9 @@ class zynthian_gui_controller(tkinter.Canvas):
         if radius > 4:
             radius -= 4
         arc_width = radius // 4
-        self.value_height = self.value_width = (radius - arc_width - 1) * 2
+        self.value_width = 2 * (radius - arc_width - 1)  # Use all the arc interior area
+        self.value_height = self.value_width
+        #self.value_height = radius - arc_width          # Use only the middle area
 
         # x0, y0 center of arc
         if self.vertical:
@@ -233,7 +257,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 
         self.coords(self.value_text, x0, y0)
-        self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=self.value_width)
+        self.itemconfigure(self.value_text, font=self.value_font.copy(), width=self.value_width)
         if not self.selector_counter:
             # x1,y1 top left of arc, x2,y2 bottom right of arc
             x1 = x0 - radius
@@ -266,7 +290,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         vty = y1 + hrect // 2
         vtx = ww // 2
         self.coords(self.value_text, vtx, vty)
-        self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=ww - 8)
+        self.itemconfigure(self.value_text, font=self.value_font.copy(), width=ww - 8)
         if not self.selector_counter:
             self.coords(self.graph, (x1, y1, x2, y2))
             self.coords(self.graph_pickup, (x1, y1, x2, y2))
@@ -295,7 +319,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         vty = 2 * hh // 3
         vtx = ww // 2
         self.coords(self.value_text, vtx, vty)
-        self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=ww - 8)
+        self.itemconfigure(self.value_text, font=self.value_font.copy(), width=ww - 8)
 
         if not self.selector_counter:
             self.coords(self.graph, (x1, y1, x2, y1, x2, y2))
@@ -309,12 +333,14 @@ class zynthian_gui_controller(tkinter.Canvas):
         if self.hidden:
             return
         if self.zctrl:
-            self.calculate_value_font_size()
+            if not self.zctrl.labels and not self.zctrl.is_path:
+                self.calculate_value_font_size()
             self.calculate_plot_values()
             self.plot_value()
             self.set_drag_scale()
             self.pickup = True
             # TODO: calculate_value_font_size, calculate_plot_values, set_drag_scale always called together - optimse to single function?
+            # => Note "calculate_plot_values()" is called from zynthian_gui_control
             self.itemconfig('gui', state=tkinter.NORMAL)
             self.set_title(self.title)
             if self.selector_counter or self.zctrl.is_path:
@@ -441,6 +467,8 @@ class zynthian_gui_controller(tkinter.Canvas):
                     self.set_color_readonly()
                 else:
                     self.restore_color_graph()
+                if self.zctrl.labels or self.zctrl.is_path:
+                    self.calculate_value_font_size(self.value_print)
                 self.plot_value_func()
             self.refresh_plot_value = False
 
@@ -463,7 +491,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                     x1 = 4 + (8 - ww) * self.zctrl.value_min / self.zctrl.value_range
                     x2 = x1 + x2 - 4
             self.coords(self.graph, (x1, y1, x2, y2))
-        self.itemconfig(self.value_text, text=self.value_print)
+        self.itemconfig(self.value_text, text=self.value_print, font=self.value_font.copy())
 
     def plot_value_triangle(self):
         if not self.selector_counter and not self.zctrl.is_path:
@@ -492,7 +520,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                 elif self.zctrl.value_range and self.zctrl.value_min <= 0 <= self.zctrl.value_max:
                     deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
             self.itemconfig(self.graph, start=deg0, extent=degd)
-        self.itemconfig(self.value_text, text=self.value_print, font=(zynthian_gui_config.font_family, self.value_font_size))
+        self.itemconfig(self.value_text, text=self.value_print, font=self.value_font.copy())
         #self.set_text(self.value_text, self.value_print, self.value_width, self.value_height, False)
 
     def plot_midi_bind(self, midi_cc, color=zynthian_gui_config.color_ctrl_tx):
@@ -547,35 +575,45 @@ class zynthian_gui_controller(tkinter.Canvas):
         return False
 
     def set_text(self, obj_id, title, max_width, max_height, camel=True):
+        fskey = f"{max_width}x{max_height}x{camel}"
+        fs = get_cached_font_size(title, fskey)
+        if fs:
+            font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
+            self.itemconfigure(obj_id, text=title, font=font)
+            return
+
         if camel:
             title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
                 ' ',
                 str(title).strip())
         else:
             title = title.strip()
-        max_fs = int(1.0*zynthian_gui_config.font_size)
         min_fs = 8
-        fs = max_fs
+
+        fs = int(0.9 * zynthian_gui_config.font_size)
+        font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
 
         if self.graph_type == self.GUI_CTRL_ARC:
             # Find any words that are individually too wide to fit
-            for word in title.split():
-                while tkFont.Font(family=zynthian_gui_config.font_family, size=fs).measure(word) > max_width and fs > min_fs:
+            words = textwrap.wrap(title, 10, break_long_words=False)
+            for word in words:
+                while font.measure(word) > max_width and fs > min_fs:
                     fs -= 1
+                    font.config(size=fs)
 
         # Reduce text font size until it fits vertically
-        while fs >= min_fs:
-            self.itemconfigure(obj_id,
-                text=title,
-                font=(zynthian_gui_config.font_family, fs)
-            )
+        while True:
+            self.itemconfigure(obj_id, text=title, font=font)
             bbox = self.bbox(obj_id)
-            if bbox is None:
+            if bbox is None or bbox[3] - bbox[1] <= max_height:
                 break
-            text_height = bbox[3] - bbox[1]
-            if text_height <= max_height:
+            if fs >= min_fs:
+                fs -= 1
+                font.config(size=fs)
+            else:
                 break
-            fs -= 1
+
+        save_cached_font_size(title, fskey, fs)
         return
 
     def set_title(self, title):
@@ -584,22 +622,63 @@ class zynthian_gui_controller(tkinter.Canvas):
         self.title = title
         self.set_text(self.label_title, title, self.title_width, self.title_height)
 
-    def calculate_value_font_size(self):
-        if self.zctrl.is_path:
-            text = "0000000"
-        elif self.zctrl.labels:
-            text = "0" * len(max(self.zctrl.labels, key=len))
-        elif self.format_print:
-            text = self.format_print.format(0)
-        else:
-            text = "0" * max(len(str(self.zctrl.value_max)), len(str(self.zctrl.value_min)))
-        self.value_font_size = max_fs = zynthian_gui_config.font_size
+    def calculate_value_font_size(self, val_text=None):
+        if self.value_width < 20:
+            return
+        if val_text is None:
+            if self.zctrl.is_path:
+                val_text = "0000000"
+            elif self.zctrl.labels:
+                val_text = "0" * len(max(self.zctrl.labels, key=len))
+            elif self.format_print:
+                svmax = self.format_print.format(self.zctrl.value_max)
+                svmin = self.format_print.format(self.zctrl.value_min)
+                if len(svmax) >= len(svmin):
+                    val_text = svmax
+                else:
+                    val_text = svmin
+                val_text = re.sub(r'[1-9]', '0', val_text)
+            else:
+                # logarithmic value =>
+                if self.zctrl.value_max > 1000:
+                    val_text = "00000"
+                else:
+                    val_text = "000.0"
+
+        fs = get_cached_font_size(val_text, self.value_width)
+        if fs:
+            self.value_font.config(size=fs)
+            return
+
         min_fs = 8
-        while self.value_font_size > min_fs:
-            font = tkFont.Font(family=zynthian_gui_config.font_family, size=self.value_font_size)
-            if font.measure(text) < self.value_width:
-                break
-            self.value_font_size -= 1
+        max_fs = int(1.1 * zynthian_gui_config.font_size)
+        # Optimization: Start from an estimated size and decide if increase or reduce size
+        #fs = (max_fs - min_fs) // 2
+        fs = min(max(self.value_width // len(val_text), min_fs), max_fs)
+        #logging.debug(f"INITIAL ESTIMATED FONT SIZE FOR '{val_text}'=> {fs}")
+        self.value_font.config(size=fs)
+        vw = self.value_font.measure(val_text)
+        if vw > self.value_width:
+            # Reduce font size until it fits
+            while fs > min_fs:
+                fs -= 1
+                self.value_font.config(size=fs)
+                vw = self.value_font.measure(val_text)
+                if vw <= self.value_width:
+                    break
+        elif vw < self.value_width:
+            # Increase font size until it fits
+            while fs < max_fs:
+                fs += 1
+                self.value_font.config(size=fs)
+                vw = self.value_font.measure(val_text)
+                if vw > self.value_width:
+                    fs -= 1
+                    self.value_font.config(size=fs)
+                    break
+                elif vw == self.value_width:
+                    break
+        save_cached_font_size(val_text, self.value_width, fs)
         return
 
     def config(self, zctrl):

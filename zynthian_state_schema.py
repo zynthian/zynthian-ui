@@ -107,15 +107,15 @@ ZynthianState = {
                 },
             }, # ... Other chains
             "midi_capture": {  # Dictionary of midi input configuration mapped by port input uid
-                "'ttymidi:MIDI_in'": {
+                "ttymidi:MIDI_in": {
                     "zmip_input_mode": True, # True if active chain mode enabled (stage mode), False for multitimbral
                     "zmip_system": True, # True to enable MIDI system messages
                     "zmip_system_rt": True, # True to enable MIDI realtime system messages
                     "disable_ctrldev": False,  # True to disable loading of controller device driver
-                    "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controoler device driver
+                    "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
-                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 16-bit encoded (MIDI chan, CC)
+                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 24-bit encoded (zmop, MIDI chan, CC)
                         "11": [  # List of control bindings to this CC
                             [
                                 1, # Processor id
@@ -124,6 +124,10 @@ ZynthianState = {
                         ], # ... Other controllers
                     } # ... Other bindings
                 }, # ... Other devices
+                "zynmidi": { # Internal / GUI MIDI config
+                    "midi_learn": { # Same as physical MIDI input midi_learn
+                    }
+                }
             },
             "global": {  # Dictionary of global params settable by zs3 indexed by param name
                 "midi_transpose": 0,  # Semitones to globally transpose
