@@ -210,7 +210,7 @@ class zynthian_gui_touchkeypad_v5(tkinter.Canvas):
             max_width = int(0.8 * self.button_width)
             while width > max_width:
                 font_size -= 1
-                if font_size < 5:       # Fontsize smaller than 5 pixels is too small!!
+                if font_size < 8:       # Fontsize smaller than 8 pixels is too small!!
                     break
                 font = tkfont.Font(family=font_family, size=font_size)
                 width = font.measure(longer_line)
