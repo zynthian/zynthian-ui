@@ -25,14 +25,14 @@
 # ******************************************************************************
 
 from tkinter import NORMAL, HIDDEN
-from PIL import Image, ImageDraw, ImageTk
+from PIL import Image, ImageTk
 
 from zyngui.zynthian_gui_config import color_panel_bg
 
 
 class zynthian_gui_dpm():
 
-    bg_images = {} # Dict of background images, indexed by (length, width)
+    bg_images = {} # Dict of background images, indexed by (width, length)
 
     def __init__(self, parent, x0, y0, width, height, vertical=True, tags=()):
         """Initialise digital peak meter
@@ -75,7 +75,7 @@ class zynthian_gui_dpm():
         self.mono_color = "#DDDDDD"
         self.mono_hold_color = "#FFFFFF"
         self.line_color = "#999999"
-        self.bg_color = color_panel_bg
+        self.bg_color = "#222222" #color_panel_bg
 
         self.hold_thickness = 1
         self.mono = 0
@@ -102,11 +102,15 @@ class zynthian_gui_dpm():
         x0, y0, x1, y1 = self.x0, self.y0, self.x1, self.y1
         width, height = self.width, self.height
 
+        def db_to_norm(db):
+            db = max(-50, min(0, db))
+            return (db + 50) / 50
+
         if self.vertical:
-            self.y_over = int(y0 + height * self.overdB / self.lowdB)
-            self.y_high = int(y0 + height * self.highdB / self.lowdB)
+            self.y_over = int(y1 - height * db_to_norm(self.overdB))
+            self.y_high = int(y1 - height * db_to_norm(self.highdB))
             self.y_low = y1
-            self.y_zero = int(y0 + height * self.zerodB / self.lowdB)
+            self.y_zero = int(y1 - height * db_to_norm(self.zerodB))
 
             coords = {
                 'bg_image': (x0, y0),
@@ -116,10 +120,10 @@ class zynthian_gui_dpm():
             }
 
         else:
-            self.x_over = int(x1 - width * self.overdB / self.lowdB)
-            self.x_high = int(x1 - width * self.highdB / self.lowdB)
+            self.x_over = int(x0 + width * db_to_norm(self.overdB))
+            self.x_high = int(x0 + width * db_to_norm(self.highdB))
             self.x_low = x0
-            self.x_zero = int(x1 - width * self.zerodB / self.lowdB)
+            self.x_zero = int(x0 + width * db_to_norm(self.zerodB))
 
             coords = {
                 'bg_image': (x0, y0),
@@ -179,16 +183,16 @@ class zynthian_gui_dpm():
             self.parent.coords(
                 self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
             if y1 <= self.y_over:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill="#FF0000")
+                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
             elif y1 <= self.y_high:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill="#FFFF00")
+                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
             elif y1 < self.y_low:
                 if self.mono:
                     self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill="#FFFFFF")
+                        self.hold, state=NORMAL, fill=self.mono)
                 else:
                     self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill="#00FF00")
+                        self.hold, state=NORMAL, fill=self.low_hold_color)
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
