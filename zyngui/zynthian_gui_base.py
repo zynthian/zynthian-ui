@@ -333,8 +333,8 @@ class zynthian_gui_base(tkinter.Frame):
     def init_dpmeter(self):
         width = int(self.status_l - 2 * self.status_rh - 1)
         height = int(self.status_h / 4 - 2)
-        self.dpm_a = zynthian_gui_dpm(self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
-        self.dpm_b = zynthian_gui_dpm(self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
+        self.dpm_a = zynthian_gui_dpm(self.status_canvas, 0, 0, width, height, False, ("status_dpm"), True)
+        self.dpm_b = zynthian_gui_dpm(self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"), True)
 
     # -------------------------------------------------------------------------
     # Refresh & Update methods

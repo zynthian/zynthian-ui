@@ -501,6 +501,7 @@ class zynthian_gui_mixer_strip():
         self.x = x
         self.width = width
         self.height = height
+        self.over_id = None
 
         self.chain = chain
         if self.chain.chain_id == 0:
@@ -575,8 +576,8 @@ class zynthian_gui_mixer_strip():
             self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_width, self.dpm_length))
             if self.chain.chain_id == 0:
                 self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", parent.loop_info_width, self.dpm_length))
-            self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags)
-            self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags)
+            self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
+            self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
 
         # Chain title
         self.fader_text = self.canvas.create_text(x, self.legend_y - 2, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
@@ -705,7 +706,7 @@ class zynthian_gui_mixer_strip():
                 if db == -10:
                     draw.text((width, y), "0", fill=fill, font=font, anchor="rm")
                 else:
-                    draw.text((width, y), f"{db+10:+}", fill=fill, font=font, anchor="rm")
+                    draw.text((width - 1, y), f"{db+10:+}", fill=fill, font=font, anchor="rm")
 
         self.bg_images[key] = ImageTk.PhotoImage(img)
         return self.bg_images[key]
@@ -717,6 +718,12 @@ class zynthian_gui_mixer_strip():
         dpm = self.chain.zynmixer_proc.zynmixer.dpm[self.chain.zynmixer_proc.mixer_chan]
         self.dpm_a.refresh(dpm.a, dpm.a_hold, dpm.mono)
         self.dpm_b.refresh(dpm.b, dpm.b_hold, dpm.mono)
+        if self.chain.chain_id == 0 and (dpm.a_hold >= 0 or dpm.b_hold >= 0):
+            self.canvas.itemconfig(self.mute_text, fill="#FF0000")
+            if self.over_id is not None:
+                self.canvas.after_cancel(self.over_id)
+            self.over_id = self.canvas.after(4000, lambda: self.canvas.itemconfig(self.mute_text, fill=self.gui_mixer.button_txcol))
+
 
     def draw_balance(self):
         """
@@ -1199,7 +1206,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.balance_fg_color = "#00EE00"
         self.high_color = "#CCCCCC"  # yellow
         self.rec_color = "#CC0000"  # red
-        self.mute_color = zynthian_gui_config.color_on  # "#3090F0"
+        self.mute_color = "#CC0000"
         self.solo_color = "#D0D000"
         self.mono_color = "#B0B0B0"
         font_size = min(int(0.5 * self.legend_height), int(0.25 * self.width))
