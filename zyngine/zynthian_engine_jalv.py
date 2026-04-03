@@ -40,12 +40,14 @@ from zyncoder.zyncore import lib_zyncore
 import zyngine.zynthian_lv2 as zynthian_lv2
 from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_controller import zynthian_controller
-from zyngine.ctrlinfo import *
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.ctrlinfo import *
 
 # ------------------------------------------------------------------------------
 # Jalv Engine Class => Engine for LV2 plugins
 # ------------------------------------------------------------------------------
+
+camel_split_re = re.compile(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])')
 
 
 class zynthian_engine_jalv(zynthian_engine):
@@ -761,7 +763,11 @@ class zynthian_engine_jalv(zynthian_engine):
                     labels = []
                     values = []
                     for p in info['scale_points']:
-                        labels.append(p['label'])
+                        label = p['label']
+                        # Add separation spaces to CamelCase long labels
+                        if len(label) > 9:
+                            label = camel_split_re.sub(' ', label)
+                        labels.append(label)
                         values.append(p['value'])
                     zctrls[symbol] = zynthian_controller(self, symbol, {
                         'name': info['name'],

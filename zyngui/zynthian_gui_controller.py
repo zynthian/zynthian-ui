@@ -39,6 +39,7 @@ from zyngui import zynthian_gui_config
 # Font size cache
 # ------------------------------------------------------------------------------
 
+MIN_FS = 8
 cache_font_size = {}
 
 def get_cached_font_size(text, width):
@@ -54,6 +55,7 @@ def save_cached_font_size(text, width, fs):
     cache_font_size[width][text] = fs
     #logging.debug(f"SAVE CACHED FONT SIZE [{width}][{text}] => {fs}")
 
+camel_split_re = re.compile(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])')
 
 # ------------------------------------------------------------------------------
 # Controller GUI Class
@@ -582,22 +584,18 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(obj_id, text=title, font=font)
             return
 
+        title = str(title).strip()
         if camel:
-            title = re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])',
-                ' ',
-                str(title).strip())
-        else:
-            title = title.strip()
-        min_fs = 8
+            title = camel_split_re.sub(' ', title)
 
-        fs = int(0.9 * zynthian_gui_config.font_size)
+        fs = int(1.0 * zynthian_gui_config.font_size)
         font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
 
         if self.graph_type == self.GUI_CTRL_ARC:
             # Find any words that are individually too wide to fit
             words = textwrap.wrap(title, 10, break_long_words=False)
             for word in words:
-                while font.measure(word) > max_width and fs > min_fs:
+                while font.measure(word) > max_width and fs > MIN_FS:
                     fs -= 1
                     font.config(size=fs)
 
@@ -607,7 +605,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             bbox = self.bbox(obj_id)
             if bbox is None or bbox[3] - bbox[1] <= max_height:
                 break
-            if fs >= min_fs:
+            if fs >= MIN_FS:
                 fs -= 1
                 font.config(size=fs)
             else:
@@ -650,17 +648,20 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.value_font.config(size=fs)
             return
 
-        min_fs = 8
+        # Split long labels and take longest word
+        if self.zctrl.labels and len(val_text) > 10:
+            val_text = max(val_text.split(), key=len)
+
         max_fs = int(1.1 * zynthian_gui_config.font_size)
         # Optimization: Start from an estimated size and decide if increase or reduce size
-        #fs = (max_fs - min_fs) // 2
-        fs = min(max(self.value_width // len(val_text), min_fs), max_fs)
+        #fs = (max_fs - MIN_FS) // 2
+        fs = min(max(self.value_width // len(val_text), MIN_FS), max_fs)
         #logging.debug(f"INITIAL ESTIMATED FONT SIZE FOR '{val_text}'=> {fs}")
         self.value_font.config(size=fs)
         vw = self.value_font.measure(val_text)
         if vw > self.value_width:
             # Reduce font size until it fits
-            while fs > min_fs:
+            while fs > MIN_FS:
                 fs -= 1
                 self.value_font.config(size=fs)
                 vw = self.value_font.measure(val_text)
