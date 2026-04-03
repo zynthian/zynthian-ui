@@ -233,7 +233,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             continue;
 
         // Only process connected inputs and mixbuses
-        if (strip->inRouted) {
+        if (strip->inRouted || chan == 0) {
             // Calculate current (last set) balance
             if (strip->balance > 0.0)
                 curLevelA = strip->level * (1 - strip->balance);

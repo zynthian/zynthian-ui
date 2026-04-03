@@ -100,8 +100,7 @@ class ZynMixer():
         self.lib_zynmixer.getSend.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getSend.restype = ctypes.c_float
 
-        self.lib_zynmixer.setNormalise.argtypes = [
-            ctypes.c_uint8]
+        self.lib_zynmixer.setNormalise.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getNormalise.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getNormalise.restype = ctypes.c_uint8
 
