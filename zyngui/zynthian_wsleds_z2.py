@@ -101,7 +101,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             self.wsleds[8] = self.wscolor_default
 
         # Control / Preset / Bank Screens:
-        if curscreen in ("control", "audio_player"):
+        if curscreen in ("chain", "control", "audio_player"):
             self.wsleds[9] = self.wscolor_active
         elif curscreen in ("preset", "bank"):
             if self.zyngui.get_current_processor().get_show_fav_presets():
