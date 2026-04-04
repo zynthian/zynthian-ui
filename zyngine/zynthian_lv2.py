@@ -5,7 +5,7 @@
 #
 # zynthian LV2
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -34,6 +34,7 @@ import string
 import hashlib
 import logging
 import urllib.parse
+import shutil
 from enum import Enum
 from random import randrange
 
@@ -207,6 +208,7 @@ def init_lilv():
     world.ns.doap = lilv.Namespace(world, "http://usefulinc.com/ns/doap#")
     world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
 
+
 # ------------------------------------------------------------------------------
 # Engines management
 # ------------------------------------------------------------------------------
@@ -225,6 +227,7 @@ def get_engines():
 
 def load_engines():
     global engines, engines_mtime
+    init_lilv()
     engines = {}
 
     if os.path.exists(ENGINE_CONFIG_FILE):
@@ -337,8 +340,70 @@ def get_engine_description(key):
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."]
     return description[randrange(4)]
 
+def add_engine(uri, enable):
+    global engines
 
-def generate_engines_config_file(refresh=True, reset_rankings=None):
+    try:
+        init_lilv()
+        plugin = world.get_all_plugins()[uri]
+        engine_name = str(plugin.get_name())
+    except Exception as e:
+        logging.warning(f"Can't get basic info for plugin => {e}")
+        return False
+
+    key = f"JV/{engine_name}"
+    if key in engines:
+        return False
+
+    # Get plugin description
+    engine_description = get_plugin_description(plugin)
+    if not engine_description:
+        engine_description = engine_name
+    hash = hashlib.new('sha1')
+    hash.update(key.encode())
+
+    engines[key] = {
+        'ID': hash.hexdigest()[:10],
+        'NAME': engine_name,
+        'TITLE': engine_name,
+        'TYPE': get_plugin_type(plugin).value,
+        'CAT': get_plugin_cat(plugin),
+        'ENABLED': enable,
+        'INDEX': 9999,
+        'URL': uri,
+        'UI': get_plugin_ui(plugin),
+        'DESCR': engine_description,
+        "QUALITY": 0,
+        "COMPLEX": 0,
+        "EDIT": 0
+    }
+    engines = dict(sorted(engines.items(), key=lambda r: r[1]['TITLE'].casefold()))
+    save_engines()
+    get_engines_by_type()
+
+def remove_engine(id):
+    global engines
+
+    try:
+        uri = engines[id]["URL"]
+        plugin = world.get_all_plugins().get_by_uri(uri)
+        bundle_uri=plugin.get_bundle_uri()
+        path = urllib.parse.unquote(urllib.parse.urlparse(str(bundle_uri)).path)
+        logging.warning(f"Deleting LV2 plugin {str(plugin.get_name())} ({path})")
+        shutil.rmtree(path)
+        engines.pop(id)
+        save_engines()
+        get_engines_by_type()
+    except:
+        pass
+
+def generate_engines_config_file(refresh=True, reset_rankings=None, uri=None):
+    """ Generate the engines config cache file
+    Args:
+        refresh: True to reinitiate lilv
+        reset_rankings: Reset the engine rankings [1: Set to 0, 2: Set to random value]
+        uri: URI of jalv engine to add to existing configuration
+    """
     global engines, engines_mtime
     genengines = {}
 
@@ -1064,8 +1129,6 @@ def get_plugin_ports(plugin_url):
 # ------------------------------------------------------------------------------
 
 
-# Init Lilv
-init_lilv()
 # Load engine info from cache
 load_engines()
 
