@@ -577,6 +577,8 @@ class zynthian_gui_controller(tkinter.Canvas):
         return False
 
     def set_text(self, obj_id, title, max_width, max_height, camel=True):
+        if max_width < 10:
+            return
         fskey = f"{max_width}x{max_height}x{camel}"
         fs = get_cached_font_size(title, fskey)
         if fs:
@@ -621,7 +623,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         self.set_text(self.label_title, title, self.title_width, self.title_height)
 
     def calculate_value_font_size(self, val_text=None):
-        if self.value_width < 20:
+        if self.value_width < 10:
             return
         if val_text is None:
             if self.zctrl.is_path:
@@ -629,19 +631,15 @@ class zynthian_gui_controller(tkinter.Canvas):
             elif self.zctrl.labels:
                 val_text = "0" * len(max(self.zctrl.labels, key=len))
             elif self.format_print:
-                svmax = self.format_print.format(self.zctrl.value_max)
-                svmin = self.format_print.format(self.zctrl.value_min)
-                if len(svmax) >= len(svmin):
-                    val_text = svmax
-                else:
-                    val_text = svmin
+                val_text = max([self.format_print.format(self.zctrl.value_min), self.format_print.format(self.zctrl.value_max)], key=len)
                 val_text = re.sub(r'[1-9]', '0', val_text)
-            else:
-                # logarithmic value =>
+            elif self.zctrl.is_logarithmic:
                 if self.zctrl.value_max > 1000:
                     val_text = "00000"
                 else:
                     val_text = "000.0"
+            else:
+                val_text =max([str(self.zctrl.value_min), str(self.zctrl.value_max)], key=len)
 
         fs = get_cached_font_size(val_text, self.value_width)
         if fs:
@@ -652,7 +650,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         if self.zctrl.labels and len(val_text) > 10:
             val_text = max(val_text.split(), key=len)
 
-        max_fs = int(1.1 * zynthian_gui_config.font_size)
+        max_fs = int(1.15 * zynthian_gui_config.font_size)
         # Optimization: Start from an estimated size and decide if increase or reduce size
         #fs = (max_fs - MIN_FS) // 2
         fs = min(max(self.value_width // len(val_text), MIN_FS), max_fs)
