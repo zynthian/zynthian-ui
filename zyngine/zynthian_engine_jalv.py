@@ -335,7 +335,6 @@ class zynthian_engine_jalv(zynthian_engine):
             logging.info("Starting Engine {}".format(self.name))
             try:
                 logging.debug("Command: {}".format(self.command))
-                self.proc_exit = False
                 # Turns out that environment's PWD is not set automatically
                 # when cwd is specified for pexpect.spawn(), so do it here.
                 if self.command_cwd:
@@ -361,7 +360,6 @@ class zynthian_engine_jalv(zynthian_engine):
                     self.proc.stdin.writelines(["\n"])
                 except Exception as e:
                     logging.error(f"Exception while ending jalv => {e}")
-                self.proc_exit = True
                 self.proc.terminate()
                 try:
                     self.proc.wait(timeout=5)
@@ -378,7 +376,6 @@ class zynthian_engine_jalv(zynthian_engine):
             #logging.debug(f"Executed jalv command '{cmd}'")
         except BrokenPipeError:
             logging.error(f"Broken pipe when executing jalv command '{cmd}'. Restarting engine ...")
-            self.proc_exit = True
             self.proc.kill()
             self.proc = None
             self.start()
@@ -394,7 +391,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
     def proc_get_output(self):
         res = ""
-        while not self.proc_exit:
+        while self.proc.poll() is None:
             line = self.proc.stdout.readline().strip()
             if line == self.command_prompt:
                 break
@@ -406,7 +403,7 @@ class zynthian_engine_jalv(zynthian_engine):
         return self.proc.stdout.readline()
 
     def proc_poll_thread_task(self):
-        while self.proc and not self.proc_exit:
+        while self.proc and self.proc.poll() is None:
             line = self.proc.stdout.readline().strip()
             if line:
                 self.proc_poll_parse_line(line)

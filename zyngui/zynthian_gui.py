@@ -553,7 +553,8 @@ class zynthian_gui:
             self.start_debug_thread()
 
         # Initial loading screen. We need "current_screen" from here ...
-        self.show_loading("Starting User Interface")
+        #self.show_loading("Starting User Interface")
+        self.current_screen = "loading"
 
         # Start processing signals, threads & polling
         self.register_signals()
@@ -697,6 +698,8 @@ class zynthian_gui:
         elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
             self.screen_history = [screen]
 
+        self.screen_lock.release()
+
         if self.current_screen != screen:
             #logging.debug(f"SHOW_SCREEN {screen}")
             if not dummy_show:
@@ -706,7 +709,6 @@ class zynthian_gui:
                 self.hide_screens(exclude=screen)
             zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
 
-        self.screen_lock.release()
 
     def show_modal(self, screen=None):
         self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_ADD)
@@ -797,31 +799,31 @@ class zynthian_gui:
         self.screen_lock.acquire()
         self.screens['confirm'].show(text, callback, cb_params)
         self.current_screen = 'confirm'
-        self.hide_screens(exclude='confirm')
         self.screen_lock.release()
+        self.hide_screens(exclude='confirm')
 
     def show_keyboard(self, callback, text="", max_chars=None):
         self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_QWERTY)
         self.screen_lock.acquire()
         self.screens['keyboard'].show(callback, text, max_chars)
         self.current_screen = 'keyboard'
-        self.hide_screens(exclude='keyboard')
         self.screen_lock.release()
+        self.hide_screens(exclude='keyboard')
 
     def show_numpad(self, callback, text="", max_chars=None):
         self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_NUMPAD)
         self.screen_lock.acquire()
         self.screens['keyboard'].show(callback, text, max_chars)
         self.current_screen = 'keyboard'
-        self.hide_screens(exclude='keyboard')
         self.screen_lock.release()
+        self.hide_screens(exclude='keyboard')
 
     def show_info(self, text, tms=None):
         self.screen_lock.acquire()
         self.screens['info'].show(text)
         self.current_screen = 'info'
-        self.hide_screens(exclude='info')
         self.screen_lock.release()
+        self.hide_screens(exclude='info')
         if tms:
             zynthian_gui_config.top.after(tms, self.hide_info)
 
@@ -841,59 +843,16 @@ class zynthian_gui:
         self.screen_lock.acquire()
         self.screens['splash'].show(text)
         self.current_screen = 'splash'
-        self.hide_screens(exclude='splash')
         self.screen_lock.release()
+        self.hide_screens(exclude='splash')
 
     def show_loading(self, title="", details=""):
         self.screens['loading'].set_title(title)
         self.screens['loading'].set_details(details)
-        self.screen_lock.acquire()
         self.screens['loading'].show()
-        self.current_screen = 'loading'
-        self.hide_screens(exclude='loading')
-        self.screen_lock.release()
 
-    def show_loading_error(self, title="", details=""):
-        self.screens['loading'].set_error(title)
-        self.screens['loading'].set_details(details)
-        self.screen_lock.acquire()
-        self.screens['loading'].show()
-        self.current_screen = 'loading'
-        self.hide_screens(exclude='loading')
-        self.screen_lock.release()
-
-    def show_loading_warning(self, title="", details=""):
-        self.screens['loading'].set_warning(title)
-        self.screens['loading'].set_details(details)
-        self.screen_lock.acquire()
-        self.screens['loading'].show()
-        self.current_screen = 'loading'
-        self.hide_screens(exclude='loading')
-        self.screen_lock.release()
-
-    def show_loading_success(self, title="", details=""):
-        self.screens['loading'].set_warning(title)
-        self.screens['loading'].set_details(details)
-        self.screen_lock.acquire()
-        self.screens['loading'].show()
-        self.current_screen = 'loading'
-        self.hide_screens(exclude='loading')
-        self.screen_lock.release()
-
-    def set_loading_title(self, title):
-        self.screens['loading'].set_title(title)
-
-    def set_loading_error(self, title):
-        self.screens['loading'].set_error(title)
-
-    def set_loading_warning(self, title):
-        self.screens['loading'].set_waning(title)
-
-    def set_loading_success(self, title):
-        self.screens['loading'].set_success(title)
-
-    def set_loading_details(self, details):
-        self.screens['loading'].set_details(details)
+    def hide_loading(self):
+        self.screens['loading'].hide()
 
     def calibrate_touchscreen(self):
         self.show_screen('touchscreen_calibration')
@@ -949,8 +908,10 @@ class zynthian_gui:
                             self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
-                            self.close_screen("loading")
+                            self.hide_loading()
                             self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
+                        else:
+                            self.show_info(f"Failed to replace {old_processor.name} with {self.modify_chain_status['engine']}", 2500)
                 else:
                     # Adding processor to existing chain
                     if "slot" in self.modify_chain_status:
@@ -961,7 +922,7 @@ class zynthian_gui:
                                                                  self.modify_chain_status["engine"], slot)
                     if processor:
                         zynautoconnect.autoconnect()
-                        self.close_screen("loading")
+                        self.hide_loading()
                         self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                     else:
                         self.show_screen_reset("root")
@@ -995,9 +956,15 @@ class zynthian_gui:
                     )
                     if chain_id is None:
                         self.show_screen_reset("root")
-                        self.show_info("Failed to create chain", 1500)
+                        self.show_info("Failed to create chain", 2500)
                         return
                     processor = self.chain_manager.add_processor(chain_id, self.modify_chain_status["engine"])
+                    if self.modify_chain_status["engine"].startswith("JV/") and processor is None:
+                        logging.error(f"Error loading {self.modify_chain_status['engine']}")
+                        self.chain_manager.remove_chain(chain_id, fast_refresh=False)
+                        self.show_screen_reset("root")
+                        self.show_info(f"Failed to create chain - error loading {self.modify_chain_status['engine']}", 2500)
+                        return
                     if self.chain_manager.chains[chain_id].synth_slots or self.modify_chain_status["audio_thru"]:
                         if self.modify_chain_status["mixbus"]:
                             am_proc = self.chain_manager.add_processor(chain_id, "MR")
@@ -1008,7 +975,7 @@ class zynthian_gui:
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
                     if processor and processor.eng_code != "CL":
-                        self.close_screen("loading")
+                        self.hide_loading()
                         self.screen_history = []
                         self.chain_control(chain_id, processor, force_bank_preset=True)
                     else:
@@ -2457,7 +2424,7 @@ class zynthian_gui:
                 busy_message = self.state_manager.get_busy_message()
                 busy_details = self.state_manager.get_busy_details()
                 # Show loading screen if busy and busy message
-                if self.current_screen != "loading":
+                if not self.screens["loading"].shown:
                     if busy_message:
                         self.show_loading(busy_message, busy_details)
                 else:
@@ -2478,8 +2445,8 @@ class zynthian_gui:
                         self.screens['loading'].set_details(busy_details)
             else:
                 busy_timeout = 0
-                if self.current_screen == "loading":
-                    self.close_screen("loading")
+                if self.screens["loading"].shown:
+                    self.hide_loading()
 
             try:
                 if self.current_screen:
