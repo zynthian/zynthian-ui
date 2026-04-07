@@ -25,6 +25,8 @@
 
 import tkinter
 import logging
+from PIL import Image as Image, ImageTk
+
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
@@ -45,7 +47,7 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         """ Layout:
         ____________________________
         | Title                    |
-        | Info                     |
+        | Info or artwork          |
         |                          |
         |                          |
         | Bitrate                  |
@@ -62,6 +64,10 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
             0, 0,
             anchor="nw",
             fill=zynthian_gui_config.color_tx_off
+        )
+        self.img_art = self.widget_canvas.create_image(
+            0, 0,
+            anchor="sw"
         )
         self.lbl_bitrate = self.widget_canvas.create_text(
             0, 0,
@@ -80,6 +86,7 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         )
         self.refresh_count = 0
         self.info_page = 0
+        self.art_path = ""
 
     def show(self):
         self.refresh_count = 0
@@ -99,10 +106,12 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         x = int(0.04 * self.height)
         self.widget_canvas.coords(self.lbl_title, x, int(0.02*self.height))
         self.widget_canvas.coords(self.lbl_info, x, int(0.15*self.height))
+        self.widget_canvas.coords(self.img_art, x, int(0.92*self.height))
         self.widget_canvas.coords(self.lbl_bitrate, x, int(0.92*self.height))
         self.widget_canvas.coords(self.lbl_channels, int(0.98*self.width), int(0.98*self.height))
         self.widget_canvas.coords(self.lbl_codec, x, int(0.98*self.height))
 
+        self.art_path = ""
         self.title_width = self.widget_canvas.bbox(self.lbl_title)[3-1]
 
     def refresh_gui(self):
@@ -132,3 +141,18 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
                 self.lbl_codec, text=self.monitors["codec"])
             self.widget_canvas.itemconfigure(
                 self.lbl_bitrate, text=self.monitors["bitrate"])
+            if self.art_path != self.monitors["artwork"]:
+                self.art_path = self.monitors["artwork"]
+                if self.art_path:
+                    try:
+                        img = Image.open(self.art_path)
+                        img_height = int(self.height * 0.5)
+                        img = img.resize((img_height, img_height), Image.Resampling.LANCZOS)
+                        self.image = ImageTk.PhotoImage(img)
+                        self.widget_canvas.itemconfig(self.img_art, image=self.image)
+                    except Exception as e:
+                        self.widget_canvas.itemconfig(self.img_art, image="")
+                        self.image = None
+                else:
+                    self.widget_canvas.itemconfig(self.img_art, image="")
+                    self.image = None
