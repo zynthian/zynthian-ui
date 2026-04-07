@@ -5,7 +5,7 @@
 #
 # Zynthian Widget Class for "Zynthian Internet Radio"
 #
-# Copyright (C) 2024-2025 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2024-2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -42,49 +42,40 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
                                             bg=zynthian_gui_config.color_bg)
         self.widget_canvas.grid(sticky='news')
 
+        """ Layout:
+        ____________________________
+        | Title                    |
+        | Info                     |
+        |                          |
+        |                          |
+        | Bitrate                  |
+        | CODEC           Channels |
+        |--------------------------|
+        """
+
         self.lbl_title = self.widget_canvas.create_text(
-            20, 20,
+            0, 0,
             anchor="nw",
-            font=(
-                zynthian_gui_config.font_family,
-                int(1.4 * zynthian_gui_config.font_size)
-            ),
             fill=zynthian_gui_config.color_tx_off
         )
         self.lbl_info = self.widget_canvas.create_text(
-            20, 60,
+            0, 0,
             anchor="nw",
-            font=(
-                zynthian_gui_config.font_family,
-                zynthian_gui_config.font_size
-            ),
             fill=zynthian_gui_config.color_tx_off
         )
         self.lbl_bitrate = self.widget_canvas.create_text(
-            20, 300,
+            0, 0,
             anchor="sw",
-            font=(
-                zynthian_gui_config.font_family,
-                zynthian_gui_config.font_size
-            ),
             fill=zynthian_gui_config.color_tx_off,
         )
         self.lbl_channels = self.widget_canvas.create_text(
-            20, 340,
-            anchor="sw",
-            font=(
-                zynthian_gui_config.font_family,
-                int(0.7 * zynthian_gui_config.font_size)
-            ),
+            0, 0,
+            anchor="se",
             fill=zynthian_gui_config.color_tx_off,
         )
         self.lbl_codec = self.widget_canvas.create_text(
-            20, 360,
+            0, 0,
             anchor="sw",
-            font=(
-                zynthian_gui_config.font_family,
-                int(0.7 * zynthian_gui_config.font_size)
-            ),
             fill=zynthian_gui_config.color_tx_off,
         )
         self.refresh_count = 0
@@ -99,16 +90,20 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         if event.width == self.width and event.height == self.height:
             return
         super().on_size(event)
-        self.widget_canvas.itemconfigure(self.lbl_title, width=self.width - 30)
-        self.widget_canvas.itemconfigure(self.lbl_info, width=self.width - 30)
-        self.widget_canvas.itemconfigure(self.lbl_channels, width=self.width - 30)
-        self.widget_canvas.itemconfigure(self.lbl_codec, width=self.width - 30)
-        self.widget_canvas.itemconfigure(
-            self.lbl_bitrate, width=self.width - 30)
-        if self.height >= 400:
-            self.widget_canvas.coords(self.lbl_bitrate, 20, self.height - 60)
-            self.widget_canvas.coords(self.lbl_channels, 20, self.height - 30)
-            self.widget_canvas.coords(self.lbl_codec, 20, self.height - 10)
+        self.widget_canvas.itemconfigure(self.lbl_title, font=(zynthian_gui_config.font_family, int(0.055*self.height)))
+        self.widget_canvas.itemconfigure(self.lbl_info, width=0.9*self.width, font=(zynthian_gui_config.font_family, int(0.04*self.height)))
+        self.widget_canvas.itemconfigure(self.lbl_bitrate, width=0.9*self.width, font=(zynthian_gui_config.font_family, int(0.04*self.height)))
+        self.widget_canvas.itemconfigure(self.lbl_channels, width=0.9*self.width, font=(zynthian_gui_config.font_family, int(0.03*self.height)))
+        self.widget_canvas.itemconfigure(self.lbl_codec, width=0.9*self.width, font=(zynthian_gui_config.font_family, int(0.03*self.height)))
+
+        x = int(0.04 * self.height)
+        self.widget_canvas.coords(self.lbl_title, x, int(0.02*self.height))
+        self.widget_canvas.coords(self.lbl_info, x, int(0.15*self.height))
+        self.widget_canvas.coords(self.lbl_bitrate, x, int(0.92*self.height))
+        self.widget_canvas.coords(self.lbl_channels, int(0.98*self.width), int(0.98*self.height))
+        self.widget_canvas.coords(self.lbl_codec, x, int(0.98*self.height))
+
+        self.title_width = self.widget_canvas.bbox(self.lbl_title)[3-1]
 
     def refresh_gui(self):
         self.refresh_count += 1

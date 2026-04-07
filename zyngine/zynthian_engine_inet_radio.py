@@ -27,7 +27,7 @@ import json
 import socket
 import logging
 from os import listdir
-from os.path import basename
+from os.path import basename, exists
 from time import sleep, monotonic
 from threading import Thread, Timer
 from subprocess import Popen, STDOUT, PIPE
@@ -771,6 +771,10 @@ class zynthian_engine_inet_radio(zynthian_engine):
         for file in listdir(f"{self.my_data_dir}/capture"):
             if file[-4:].lower() in (".m3u", ".pls"):
                 self.presets["Playlists"].append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4]])
+        
+        if exists("/dev/sr0"):
+            self.presets["Devices"] = [["cdda:///dev/sr0", 1, "CD"]]
+            self.banks.append(["Devices", None, "Devices", None])
 
         return self.banks
 
