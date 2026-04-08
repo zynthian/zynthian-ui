@@ -337,15 +337,21 @@ class DeviceHandler(ModeHandlerBase):
         self._btn_actions = cyclable_actions | press_length_actions
         self._btn_states = {k: -1 for k in cyclable_actions}
 
+    def widget_alt_state(self):
+        widget_obj = getattr(self._current_screen_obj, "current_widget", None)
+        return getattr(widget_obj, "alt_mode", None)
+
+    def local_alt_state(self):
+        return getattr(self._current_screen_obj, "alt_mode", None)
+
     def is_global_alt_active(self):
         return getattr(zynthian_gui_config.zyngui, "alt_mode", False)
 
     def is_alt_active(self):
-        widget_obj = getattr(self._current_screen_obj, "current_widget", None)
-        widget_alt = getattr(widget_obj, "alt_mode", None)
+        widget_alt = self.widget_alt_state()
         if widget_alt is not None:
             return widget_alt
-        screen_alt = getattr(self._current_screen_obj, "alt_mode", None)
+        screen_alt = self.local_alt_state()
         if screen_alt is not None:
             return screen_alt
         return self.is_global_alt_active()
@@ -387,11 +393,18 @@ class DeviceHandler(ModeHandlerBase):
 
 
         screenref = self._current_screen_obj
-        # Lit up alt-related buttons
-        if getattr(screenref, 'alt_mode', None) is not None:
-            alt_color = self._colors.COLOR_LOCAL_ALT_ON if screenref.alt_mode else self._colors.COLOR_ALT_OFF
-            fn_color = self._colors.COLOR_LOCAL_ALT_ON if screenref.alt_mode else self._colors.COLOR_FN
-            if screenref.alt_mode and self._current_screen == 'pattern_editor':
+
+        widget_alt_mode = self.widget_alt_state()
+        local_alt_mode = self.local_alt_state()
+        if widget_alt_mode is not None:
+            alt_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_ALT_OFF
+            fn_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_FN
+            for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
+                self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+        elif local_alt_mode is not None:
+            alt_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_ALT_OFF
+            fn_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_FN
+            if local_alt_mode and self._current_screen == 'pattern_editor':
                 for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
                     if (screenref.clipboard[i] is not None):
                         if (screenref.clipboard[i][2] == screenref.pattern):
@@ -404,18 +417,10 @@ class DeviceHandler(ModeHandlerBase):
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
         else:
-            widget_obj = getattr(screenref, "current_widget", None)
-            widget_alt_mode = getattr(widget_obj, 'alt_mode', None)
-            if widget_alt_mode is not None:
-                alt_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_ALT_OFF
-                fn_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_FN
-                for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                    self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
-            else:
-                alt_color = self._colors.COLOR_ALT_ON if self.is_global_alt_active() else self._colors.COLOR_ALT_OFF
-                fn_color = self._colors.COLOR_ALT_ON if self.is_global_alt_active() else self._colors.COLOR_FN
-                for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                    self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
+            alt_color = self._colors.COLOR_ALT_ON if self.is_global_alt_active() else self._colors.COLOR_ALT_OFF
+            fn_color = self._colors.COLOR_ALT_ON if self.is_global_alt_active() else self._colors.COLOR_FN
+            for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
+                self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
 
         self._leds.led_on(BTN_ALT, alt_color, LED_BRIGHT_100)
 
