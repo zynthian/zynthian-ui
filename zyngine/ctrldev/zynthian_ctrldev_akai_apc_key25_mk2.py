@@ -305,6 +305,7 @@ class DeviceHandler(ModeHandlerBase):
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
             BTN_RECORD:         ("TOGGLE_RECORD",),
+            BTN_INSERT_CHAIN:   (self.insert_chain,)
         }
 
         press_length_actions = {
@@ -461,8 +462,6 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
             elif note == BTN_BACK_NO:
                 self._state_manager.send_cuia("BACK")
-            elif note == BTN_INSERT_CHAIN:
-                self.insert_chain()
             elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                 # Function buttons (F1-F4)
                 if self._current_screen == 'pattern_editor' and self._current_screen_obj.alt_mode:
@@ -542,13 +541,13 @@ class DeviceHandler(ModeHandlerBase):
 
     def _handle_timed_button(self, btn, press_type):
         if press_type == CONST.PT_LONG:
-            cuia = {
+            cmd = {
                 BTN_OPT_ADMIN:   "POWER",
                 BTN_CTRL_PRESET: "PRESET_FAV",
 #                BTN_PAD_STEP:    "SCREEN_ARRANGER",
             }.get(btn)
-            if cuia:
-                self._state_manager.send_cuia(cuia)
+            if cmd:
+                self._state_manager.send_cuia(cmd)
             return True
 
         actions = self._btn_actions.get(btn)
@@ -556,26 +555,29 @@ class DeviceHandler(ModeHandlerBase):
             return
         if callable(actions):
             actions = actions(press_type == CONST.PT_BOLD)
-            cuia = actions[0]
+            cmd = actions[0]
         else:
             idx = -1
             if press_type == CONST.PT_SHORT:
                 idx = self._btn_states[btn]
                 idx = (idx + 1) % len(actions)
-                cuia = actions[idx]
+                cmd = actions[idx]
             elif press_type == CONST.PT_BOLD:
                 # In buttons with 2 functions, the default on bold press is the second
                 idx = 1 if len(actions) > 1 else 0
-                cuia = actions[idx]
+                cmd = actions[idx]
+
+        if callable(cmd):
+            return cmd()
 
         # Split params, if given
         params = []
-        if ":" in cuia:
-            cuia, params = cuia.split(":")
+        if ":" in cmd:
+            cmd, params = cmd.split(":")
             params = params.split(",")
             params[0] = int(params[0])
 
-        self._state_manager.send_cuia(cuia, params)
+        self._state_manager.send_cuia(cmd, params)
         return True
 
 
