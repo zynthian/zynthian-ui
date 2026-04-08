@@ -385,13 +385,13 @@ class DeviceHandler(ModeHandlerBase):
         for btn in [BTN_KNOB_1, BTN_KNOB_2, BTN_KNOB_3, BTN_KNOB_4]:
             self._leds.led_on(btn, self._colors.COLOR_GREEN, LED_BRIGHT_100)
 
+
+        screenref = self._current_screen_obj
         # Lit up alt-related buttons
-        if self._current_screen == 'pattern_editor':
-            screenref = self._current_screen_obj
-            is_pated_alt_active = screenref.alt_mode
-            alt_color = self._colors.COLOR_ALT_ON if is_pated_alt_active else self._colors.COLOR_ALT_OFF
-            fn_color = self._colors.COLOR_LOCAL_ALT_ON if is_pated_alt_active else self._colors.COLOR_FN
-            if is_pated_alt_active:
+        if getattr(screenref, 'alt_mode', None) is not None:
+            alt_color = self._colors.COLOR_LOCAL_ALT_ON if screenref.alt_mode else self._colors.COLOR_ALT_OFF
+            fn_color = self._colors.COLOR_LOCAL_ALT_ON if screenref.alt_mode else self._colors.COLOR_FN
+            if screenref.alt_mode and self._current_screen == 'pattern_editor':
                 for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
                     if (screenref.clipboard[i] is not None):
                         if (screenref.clipboard[i][2] == screenref.pattern):
@@ -404,7 +404,7 @@ class DeviceHandler(ModeHandlerBase):
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
         else:
-            widget_obj = getattr(self._current_screen_obj, "current_widget", None)
+            widget_obj = getattr(screenref, "current_widget", None)
             widget_alt_mode = getattr(widget_obj, 'alt_mode', None)
             if widget_alt_mode is not None:
                 alt_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_ALT_OFF
