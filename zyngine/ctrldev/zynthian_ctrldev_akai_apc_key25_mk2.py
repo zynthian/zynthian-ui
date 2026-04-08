@@ -405,6 +405,8 @@ class DeviceHandler(ModeHandlerBase):
             alt_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_ALT_OFF
             fn_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_FN
             if local_alt_mode and self._current_screen == 'pattern_editor':
+                # The functions of f1-f4 change with the local alt mode of pattern editor:
+                fn_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_FN
                 for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
                     if (screenref.clipboard[i] is not None):
                         if (screenref.clipboard[i][2] == screenref.pattern):
@@ -414,6 +416,8 @@ class DeviceHandler(ModeHandlerBase):
                     else:
                         self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
             else:
+                # The functions of f1-f4 do not change with the local alt mode of mixer/launchpad - so keep it purple:
+                fn_color = self._colors.COLOR_ALT_ON if local_alt_mode else self._colors.COLOR_FN
                 for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                     self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
         else:
