@@ -312,8 +312,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             # Restore vertical position
             self.listbox.yview_moveto(self.scroll_y)
             # Show next/previous item when scrolling but ensure selected item is in view
-            #self.listbox.see(index + 1)
-            #self.listbox.see(index - 1)
+            self.listbox.see(index + 1)
+            self.listbox.see(index - 1)
             self.listbox.see(index)
             self.scroll_y = self.listbox.yview()[0]  # Save vertical position
             if self.listbox.bbox(index):
