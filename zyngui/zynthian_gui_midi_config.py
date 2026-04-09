@@ -40,7 +40,6 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 
-
 # ------------------------------------------------------------------------------
 # Mini class to allow use of audio_in gui
 # ------------------------------------------------------------------------------
@@ -71,24 +70,18 @@ ZMIP_ICON_MIDI_CLOCK = "⏱"  # \u23F1
 #ZMIP_ICON_MIDI_SYS_RT = "⌛"  # \u231B
 ZMIP_ICON_CTRLDEV_DRIVER = "⌨"  # \u2328
 
-SERVICE_ICONS = {
-    "aubionotes": "midi_audio.png"
-}
-
-
 class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
-    def __init__(self):
+    def __init__(self, parent=None, topbar=None):
         self.chain = None      # Chain object
-        self.input = True      # True to process MIDI inputs, False for MIDI outputs
+        self.midi_input = True      # True to process MIDI inputs, False for MIDI outputs
         self.thread = None
-        super().__init__('Menu')
+        super().__init__('Menu', parent=parent, topbar=topbar)
 
     def build_view(self):
         # Enable background scan for MIDI devices
         self.midi_scan = True
-        self.thread = Thread(
-            target=self.process_dynamic_ports, name="MIDI port scan")
+        self.thread = Thread(target=self.process_dynamic_ports, name="MIDI port scan")
         self.thread.start()
         return super().build_view()
 
@@ -121,7 +114,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             mode_str = ""
             if idev is None:
                 return mode_str
-            if self.input:
+            if self.midi_input:
                 port = zynautoconnect.devices_in[idev]
                 if zynautoconnect.get_midi_in_dev_mode(idev):
                     mode_str += ZMIP_ICON_MODE_ACTIVE
@@ -143,7 +136,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
         def append_port(idev):
             """Add a port to list"""
-            if self.input:
+            if self.midi_input:
                 port = zynautoconnect.devices_in[idev]
                 mode = get_mode_str(idev)
                 input_mode_info = f"\n\n{ZMIP_ICON_MODE_ACTIVE} Active mode\n"
@@ -182,11 +175,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     self.list_data.append((port.aliases[0], idev, f"\u2610 {name}",
                                            [f"Chain's MIDI output disconnected from '{port.aliases[1]}'.\nBold select to show more options.", "midi_output.png"]))
 
-        def append_service(service, name, help_info=""):
-            if service in SERVICE_ICONS:
-                icon = SERVICE_ICONS[service]
-            else:
-                icon = "midi_logo.png"
+        def append_service(service, name, help_info="", icon="midi_logo.png"):
             try:
                 idev = net_devices[name]
             except:
@@ -209,7 +198,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         ble_devices = []    # BLE MIDI ports
         aubio_devices = []  # Aubio MIDI ports
         net_devices = {}    # Network MIDI ports, indexed by jack port name
-        if self.input:
+        if self.midi_input:
             devs = zynautoconnect.devices_in
         else:
             devs = zynautoconnect.devices_out
@@ -229,13 +218,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 else:
                     int_devices.append(i)
 
-        if self.chain and self.input:
+        if self.chain and self.midi_input:
             midi_chan = self.chain.midi_chan + 1
             if midi_chan > 16:
                 midi_chan = "ALL"
             self.list_data.append(("MIDI Channel", None, f"MIDI Channel ({midi_chan})",
-                                   [f"Select the MIDI channel this chain recieves.", "midi_settings.png"]))
-            self.list_data.append(("MIDI CC", None, f"MIDI CC",
+                                   [f"Select the MIDI channel this chain receives.", "midi_settings.png"]))
+            self.list_data.append(("Note Range & Tranpose", None, "Note Range & Tranpose",
+                                   [f"Configure note range and transpose.", "note_range.png"]))
+            self.list_data.append(("MIDI CC", None, "MIDI CC",
                                    [f"Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
 
         self.list_data.append((None, None, "Internal Devices"))
@@ -244,14 +235,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         for i in int_devices:
             append_port(i)
 
-        if self.input:
+        if self.midi_input:
             if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
                 if self.chain:
                     for i in aubio_devices:
                         append_port(i)
                 else:
                     append_service("aubionotes", "Aubionotes (Audio \u2794 MIDI)",
-                                   "Aubionotes. Converts audio input to MIDI note on/off commands.")
+                                   "Aubionotes. Converts audio input to MIDI note on/off commands.", "midi_audio.png")
 
         # Remove "Internal Devices" title if section is empty
         if len(self.list_data) == nint:
@@ -265,7 +256,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         if self.chain is None or ble_devices:
             self.list_data.append((None, None, "Bluetooth Devices"))
             if self.chain is None:
-                append_service("bluetooth", "BLE MIDI", "Bluetooth MIDI.")
+                append_service("bluetooth", "BLE MIDI", "Bluetooth MIDI.", "midi_bluetooth.png")
             for x in sorted(ble_devices, key=natural_keys):
                 append_port(x[1])
 
@@ -277,30 +268,30 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             else:
                 if os.path.isfile("/usr/local/bin/jacknetumpd"):
                     append_service("jacknetumpd", "NetUMP",
-                                   "NetUMP. Provides MIDI over an IP connection using NetUMP protocol (MIDI 2.0).")
+                                   "NetUMP. Provides MIDI over an IP connection using NetUMP protocol (MIDI 2.0).", "midi_network.png")
 
                 if os.path.isfile("/usr/local/bin/jackrtpmidid"):
                     append_service("jackrtpmidid", "RTP MIDI",
-                                   "RTP-MIDI. Provides MIDI over an IP connection using RTP-MIDI protocol (AppleMIDI).")
+                                   "RTP-MIDI. Provides MIDI over an IP connection using RTP-MIDI protocol (AppleMIDI).", "midi_network.png")
 
                 if os.path.isfile("/usr/local/bin/qmidinet"):
                     append_service("qmidinet", "QmidiNet",
-                                   "QmidiNet. Provides MIDI over an IP connection using UDP/IP multicast (ipMIDI).")
+                                   "QmidiNet. Provides MIDI over an IP connection using UDP/IP multicast (ipMIDI).", "midi_network.png")
 
                 if os.path.isfile("/zynthian/venv/bin/touchosc2midi"):
                     append_service("touchosc2midi", "TouchOSC",
-                                   "Interface with Hexler TouchOSC modular control surface.")
+                                   "Interface with Hexler TouchOSC modular control surface.", "network.png", "midi_network.png")
 
         a2m_ports = zynautoconnect.get_a2m_ports()
-        if self.input and self.chain and a2m_ports:
+        if self.midi_input and self.chain and a2m_ports:
             self.list_data.append((None, None, "> Audio to MIDI"))
             for name, title in a2m_ports:
                 if name in self.chain.midi_in:
-                    self.list_data.append(("audio2midi", name, f"\u2612 {title}"))
+                    self.list_data.append(("audio2midi", name, f"\u2612 {title}", ["Audio to MIDI processor", "midi_audio.png"]))
                 else:
-                    self.list_data.append(("audio2midi", name, f"\u2610 {title}"))
+                    self.list_data.append(("audio2midi", name, f"\u2610 {title}", ["Audio to MIDI processor", "midi_audio.png"]))
 
-        if not self.input and self.chain:
+        if not self.midi_input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.chains):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
@@ -331,6 +322,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.zyngui.screens['midi_cc'].set_chain(self.chain)
                 self.zyngui.show_screen('midi_cc')
                 return
+            elif action == "Note Range & Tranpose":
+                self.zyngui.screens['midi_key_range'].config(self.chain)
+                self.zyngui.show_screen('midi_key_range')
             wait = 2  # Delay after starting service to allow jack ports to update
             if action == "stop_jacknetumpd":
                 self.zyngui.state_manager.stop_netump(wait=wait)
@@ -362,7 +356,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     self.chain.toggle_midi_in(self.list_data[i][1])
                 else:
                     idev = self.list_data[i][1]
-                    if self.input:
+                    if self.midi_input:
                         if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                             return
                         lib_zyncore.zmop_set_route_from(
@@ -389,7 +383,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             if idev is None:
                 return
             options = {}
-            if self.input:
+            if self.midi_input:
                 screen_title = "MIDI Input Device"
                 port = zynautoconnect.devices_in[idev]
 
@@ -524,7 +518,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     self.zyngui.screens['audio_in'].set_chain(ain)
                     self.zyngui.show_screen('audio_in')
                     return
-                elif self.input:
+                elif self.midi_input:
                     idev = self.list_data[self.index][1]
                     match params:
                         case "MODE_ACTI":
@@ -588,13 +582,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
     def process_dynamic_ports(self):
         """Process dynamically added/removed MIDI devices"""
 
-        if self.input:
+        if self.midi_input:
             last_fingerprint = zynautoconnect.get_hw_src_ports()
         else:
             last_fingerprint = zynautoconnect.get_hw_dst_ports()
 
         while self.midi_scan:
-            if self.input:
+            if self.midi_input:
                 fingerprint = zynautoconnect.get_hw_src_ports()
             else:
                 fingerprint = zynautoconnect.get_hw_dst_ports()
@@ -610,7 +604,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         name : New friendly name
         """
 
-        if self.input:
+        if self.midi_input:
             port = zynautoconnect.devices_in[self.list_data[self.index][1]]
         else:
             port = zynautoconnect.devices_out[self.list_data[self.index][1]]
@@ -620,12 +614,12 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
     def set_select_path(self):
         if self.chain:
-            if self.input:
-                self.select_path.set(f"Capture MIDI from...")
+            if self.midi_input:
+                self.select_path.set(f"{self.chain.get_name()}/Capture MIDI from...")
             else:
-                self.select_path.set(f"Send MIDI to ...")
+                self.select_path.set(f"{self.chain.get_name()}/Send MIDI to ...")
         else:
-            if self.input:
+            if self.midi_input:
                 self.select_path.set(f"MIDI Input Devices")
             else:
                 self.select_path.set(f"MIDI Output Devices")

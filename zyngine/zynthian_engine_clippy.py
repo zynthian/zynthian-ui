@@ -64,7 +64,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self._ctrl_screens = []
 
         self.selected_proc = None
-        self.selected_phrase = None
+        self.selected_phrase = 0
 
         self.reload_timers = {}
         self.tempo_timer = None
@@ -334,8 +334,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Refresh UI
                 if phrase == self.selected_phrase:
                     self.set_phrase(processor, phrase)
-                else:
-                    processor.preset_name = path.split("/")[-1] # Used for display purpose only
+                #else:
+                    # Used for display purpose only
+                    #processor.preset_name = path.split("/")[-1]
 
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
@@ -614,13 +615,12 @@ class zynthian_engine_clippy(zynthian_engine):
         note = 1
         while True:
             try:
-                processor.controllers_dict[f"file {note}"]
+                file_zctrl = processor.controllers_dict[f"file {note}"]
             except:
                 break
             phrase = note - 1
             self.set_file(processor, phrase, autoreset=False)
             note += 1
-
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -685,6 +685,21 @@ class zynthian_engine_clippy(zynthian_engine):
 
     #def set_preset(self, processor, preset, preload=False):
     #    return False
+
+    # ---------------------------------------------------------------------------
+    # Name & path methods
+    # ---------------------------------------------------------------------------
+
+    def get_name(self, processor=None):
+        name = self.name
+        if not processor:
+            processor = self.selected_proc
+        if processor:
+            name += f" {processor.midi_chan - 15}"
+        return name
+
+    def get_path(self, processor=None):
+        return self.get_name(processor) + f"/{self.selected_phrase + 1}"
 
     # ---------------------------------------------------------------------------
     # API methods

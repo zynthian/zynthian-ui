@@ -41,8 +41,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
     black_keys_pattern = (1, 0, 1, 1, 0, 1, 1)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None, topbar=None):
+        super().__init__(parent=parent, topbar=topbar)
 
         self.chain = None
         self.zmop_index = None
@@ -51,6 +51,9 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         self.note_high = 127
         self.octave_trans = 0
         self.halftone_trans = 0
+
+        self.piano_keys = []
+        self.midi_key0 = 21  # A1
 
         # [0:Disabled, -1:Awaiting first key, 1-127:Awaiting second key]
         self.learn_mode = 0
@@ -68,29 +71,29 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
                                      bd=0,
                                      highlightthickness=0)
 
-        self.piano_canvas_height = self.height // 4
         self.main_frame.rowconfigure(2, weight=1)
         if zynthian_gui_config.layout['columns'] == 3:
-            self.spacer.grid(row=0, column=1, padx=(2, 2), sticky='news')
+            self.spacer.grid(row=0, column=1, padx=(2, 2), sticky='NEWS')
             self.zctrl_pos = [0, 2, 1, 3]
             self.main_frame.columnconfigure(1, weight=1)
         else:
-            self.spacer.grid(row=0, column=0, rowspan=2,padx=(0, 2), sticky='news')
+            self.spacer.grid(row=0, column=0, rowspan=2,padx=(0, 2), sticky='NEWS')
             self.zctrl_pos = [0, 1, 3, 2]
             self.main_frame.columnconfigure(0, weight=1)
 
         self.note_info_frame = tkinter.Frame(self.main_frame,
                                              bg=zynthian_gui_config.color_panel_bg)
         self.note_info_frame.columnconfigure(1, weight=1)
-        self.note_info_frame.grid(row=2, columnspan=3, sticky="nsew", pady=(2, 2))
+        self.note_info_frame.grid(row=2, columnspan=3, sticky="NEWS", pady=(2, 2))
 
         # Piano canvas
+        self.piano_canvas_height = self.height // 4
         self.piano_canvas = tkinter.Canvas(self.main_frame,
                                            height=self.piano_canvas_height,
                                            bd=0,
                                            highlightthickness=0,
                                            bg="#000099")
-        self.piano_canvas.grid(row=3, columnspan=3, sticky="ew")
+        self.piano_canvas.grid(row=3, columnspan=3, sticky="EW")
 
         # Setup Piano's Callback
         self.piano_canvas.bind("<Button-1>", self.cb_piano_press)
@@ -102,23 +105,39 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
     def config(self, chain):
         self.chain = chain
-        if self.chain.zmop_index is not None:
-            self.zmop_index = self.chain.zmop_index
+        self.zmop_index = self.chain.zmop_index
+        if self.zmop_index is not None:
             self.note_low = lib_zyncore.zmop_get_note_low(self.zmop_index)
             self.note_high = lib_zyncore.zmop_get_note_high(self.zmop_index)
             self.octave_trans = lib_zyncore.zmop_get_transpose_octave(self.zmop_index)
             self.halftone_trans = lib_zyncore.zmop_get_transpose_semitone(self.zmop_index)
-        else:
-            self.zmop_index = None
         self.set_select_path()
+
+    def update_layout(self):
+        super().update_layout()
+        self.piano_canvas_height = self.height // 4
+        self.piano_canvas.configure(height=self.piano_canvas_height)
+        self.plot_piano()
+
+    def build_view(self):
+        self.set_zctrls()
+        self.update_piano()
+        self.replot = True
+        return True
+
+    def hide(self):
+        if self.shown:
+            super().hide()
+            self.zyngui.cuia_disable_midi_learn()
 
     def plot_piano(self):
         self.piano_canvas.delete("all")
+        if self.width < 2:
+            return
         n_wkeys = 52
         key_width = int(self.width / n_wkeys)
         black_height = int(0.65 * self.piano_canvas_height)
 
-        self.midi_key0 = 21  # A1
         self.piano_keys = []
 
         i = 0
@@ -178,10 +197,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
                 j += 1
                 midi_note += 1
             i += 1
-
-    def on_size(self, event=None):
-        super().on_size()
-        self.plot_piano()
 
     @staticmethod
     def get_midi_note_name(num):
@@ -273,27 +288,16 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
             self.octave_zgui_ctrl.grid(row=0, column=2, pady=(0, 1))
             self.halftone_zgui_ctrl.grid(row=1, column=2, pady=(1, 0))
 
-    def plot_zctrls(self):
+    def plot_zctrls(self, force=False):
         if self.replot:
             for zgui_ctrl in self.zgui_ctrls:
-                if zgui_ctrl.zctrl.is_dirty:
+                if zgui_ctrl.zctrl.is_dirty or force:
                     zgui_ctrl.calculate_plot_values()
                     zgui_ctrl.plot_value()
                     zgui_ctrl.zctrl.is_dirty = False
             self.update_piano()
             self.update_text()
             self.replot = False
-
-    def build_view(self):
-        self.set_zctrls()
-        self.update_piano()
-        self.replot = True
-        return True
-
-    def hide(self):
-        if self.shown:
-            super().hide()
-            self.zyngui.cuia_disable_midi_learn()
 
     def zynpot_cb(self, i, dval):
         if i < len(self.zgui_ctrls):
@@ -379,8 +383,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
     def set_select_path(self):
         try:
-            self.select_path.set("{} > Note Range & Transpose...".format(
-                self.zyngui.screens['processor_options'].processor.get_basepath()))
+            self.select_path.set(f"{self.chain.get_title()} > Note Range & Transpose...")
         except:
             self.select_path.set("Note Range & Transpose...")
 

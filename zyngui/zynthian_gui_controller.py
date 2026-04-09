@@ -579,6 +579,11 @@ class zynthian_gui_controller(tkinter.Canvas):
     def set_text(self, obj_id, title, max_width, max_height, camel=True):
         if max_width < 10:
             return
+
+        title = str(title).strip().replace("_", " ")
+        if camel:
+            title = camel_split_re.sub(' ', title)
+
         fskey = f"{max_width}x{max_height}x{camel}"
         fs = get_cached_font_size(title, fskey)
         if fs:
@@ -586,9 +591,6 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(obj_id, text=title, font=font)
             return
 
-        title = str(title).strip()
-        if camel:
-            title = camel_split_re.sub(' ', title)
 
         fs = int(1.0 * zynthian_gui_config.font_size)
         font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
@@ -648,7 +650,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 
         # Split long labels and take longest word
         if self.zctrl.labels and len(val_text) > 10:
-            val_text = max(val_text.split(), key=len)
+            words = textwrap.wrap(val_text, 10, break_long_words=False)
+            if len(words) > 1:
+                val_text = max(words, key=len) + "..."
 
         max_fs = int(1.15 * zynthian_gui_config.font_size)
         # Optimization: Start from an estimated size and decide if increase or reduce size

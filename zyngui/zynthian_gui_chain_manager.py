@@ -158,6 +158,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             proc = node["proc"]
         if proc == "chain_options":
             if node["chain_id"] == 0:
+                self.zyngui.screens["chain_options"].set_chain(0)
                 self.zyngui.show_screen(proc)
             else:
                 self.start_moving_chain()
@@ -358,8 +359,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if chain.is_midi():
                 self._add_node(chain_idx, row, "MIDI Input", chain_id, "midi_input")
                 row += 1
-                self._add_node(chain_idx, row, "Key Range & Transpose", chain_id, "midi_key_range")
-                row += 1
+                #self._add_node(chain_idx, row, "Key Range & Transpose", chain_id, "midi_key_range")
+                #row += 1
             # Add MIDI processors
             for slot_idx, slot in enumerate(chain.midi_slots):
                 for proc_idx, processor in enumerate(slot):
@@ -375,9 +376,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                     if self.nodes[chain_idx][row]:
                         row += 1
             elif chain.is_midi():
-                if not chain.midi_slots:
-                    self._add_node(chain_idx, row, "+", chain_id, "add_midi_proc")
-                    row += 1
+                #if not chain.midi_slots:
+                #    self._add_node(chain_idx, row, "+", chain_id, "add_midi_proc")
+                #    row += 1
                 self._add_node(chain_idx, row, "MIDI Output", chain_id, "midi_output")
                 row += 1
             # Add audio input
@@ -962,12 +963,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if type(proc) == str:
                 match proc:
                     case "chain_options":
+                        self.zyngui.screens["chain_options"].set_chain(self.chain_manager.active_chain)
                         pass
                     case "midi_key_range":
-                        self.zyngui.screens['midi_key_range'].config(self.chain_manager.active_chain)
+                        self.zyngui.screens['midi_key_range'].config()
                     case "midi_input":
                         self.zyngui.screens['midi_config'].set_chain(self.chain_manager.active_chain)
-                        self.zyngui.screens['midi_config'].input = True
+                        self.zyngui.screens['midi_config'].midi_input = True
                         proc = 'midi_config'
                     case "add_midi_proc":
                         self.zyngui.modify_chain({
@@ -980,7 +982,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                         return True
                     case "midi_output":
                         self.zyngui.screens['midi_config'].set_chain(self.chain_manager.active_chain)
-                        self.zyngui.screens['midi_config'].input = False
+                        self.zyngui.screens['midi_config'].midi_input = False
                         proc = 'midi_config'
                     case "audio_in":
                         pass
@@ -1011,6 +1013,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         i = params[0]
         t = params[1].upper()
         if t == 'B' and i == 2:
+            self.zyngui.screens["chain_options"].set_chain(self.chain_manager.active_chain)
             self.zyngui.show_screen("chain_options")
             return True
         return self.switch(i, t)

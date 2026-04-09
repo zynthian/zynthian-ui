@@ -1625,9 +1625,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             # Launcher Options
             self.phrase_menu()
         else:
-            # Current processor selected
-            self.zyngui.screens['chain_manager'].select_node(proc=self.chain_manager.active_chain.current_processor)
-            self.zyngui.show_screen('chain_manager')
+            self.zyngui.chain_control()
+            self.zyngui.screens['chain_control'].select_subscreen("chain_options", show_chain=True)
 
     # --------------------------------------------------------------------------
     # Selection and scrolling
@@ -2238,6 +2237,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             return True
         elif self.param_editor_zctrl:
             self.disable_param_editor()
+            return True
+        else:
+            self.toggle_launcher_mode()
             return True
 
     def switch(self, swi, t):

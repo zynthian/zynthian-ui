@@ -44,8 +44,8 @@ class zynthian_gui_selector(zynthian_gui_base):
     swipe_roll_scale = [1, 0, 1, 1, 2, 2, 2, 4,
                         4, 4, 4, 4]  # 1, 0, 1, 0, 1, 0, 1, 0,
 
-    def __init__(self, selcap='Select', wide=False, loading_anim=True, tiny_ctrls=True):
-        super().__init__()
+    def __init__(self, selcap='Select', wide=False, loading_anim=True, tiny_ctrls=True, parent=None, topbar=None):
+        super().__init__(parent, topbar)
 
         # If the children class has not defined a custom GUI layout, use the default from config
         if not hasattr(self, 'layout'):
@@ -89,7 +89,7 @@ class zynthian_gui_selector(zynthian_gui_base):
                 self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
             elif self.layout['rows'] == 4:
                 self.main_frame.rowconfigure(0, weight=0)
-                self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
+                self.main_frame.rowconfigure(1, weight=0)
                 self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
                 self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
         else:
@@ -137,7 +137,7 @@ class zynthian_gui_selector(zynthian_gui_base):
                 highlightthickness=0,
                 bg=zynthian_gui_config.color_bg)
             # Position at top of column containing selector
-            self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+            self.grid_loading_canvas()
             self.loading_push_ts = None
             self.loading_canvas.bind("<Button-1>", self.cb_loading_push)
             self.loading_canvas.bind("<ButtonRelease-1>", self.cb_loading_release)
@@ -158,9 +158,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 
         self.show_sidebar(True)
 
+    def grid_loading_canvas(self):
+        self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+
     def update_layout(self):
         super().update_layout()
-        ctrl_width = self.width * self.layout['ctrl_width'] * self.sidebar_shown
+        ctrl_width = zynthian_gui_config.screen_width * self.layout['ctrl_width'] * self.sidebar_shown
         #if self.layout['columns'] == 2:
         if self.wide:
             lb_width = int(self.width - ctrl_width)
@@ -250,11 +253,11 @@ class zynthian_gui_selector(zynthian_gui_base):
         if not self.zselector_hidden:
             self.zselector.grid(row=self.layout['ctrl_pos'][3][0], column=self.layout['ctrl_pos'][3][1], sticky="news")
 
-    def plot_zctrls(self):
+    def plot_zctrls(self, force=False):
         self.swipe_update()
         if self.zselector_hidden:
             return
-        if self.zselector.zctrl.is_dirty:
+        if self.zselector.zctrl.is_dirty or force:
             self.zselector.calculate_plot_values()
             self.zselector.plot_value()
             self.zselector.zctrl.is_dirty = False
@@ -309,8 +312,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             # Restore vertical position
             self.listbox.yview_moveto(self.scroll_y)
             # Show next/previous item when scrolling but ensure selected item is in view
-            self.listbox.see(index + 1)
-            self.listbox.see(index - 1)
+            #self.listbox.see(index + 1)
+            #self.listbox.see(index - 1)
             self.listbox.see(index)
             self.scroll_y = self.listbox.yview()[0]  # Save vertical position
             if self.listbox.bbox(index):

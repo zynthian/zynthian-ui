@@ -864,9 +864,9 @@ if "zynthian_main.py" in sys.argv[0]:
 
         # Attach static methods to root frame
         # => Grid a GUI frame in the root grid MAIN area
-        root_frame.grid_main = lambda frame: frame.grid(row=1, column=1, sticky='NSWE')
+        root_frame.grid_main = lambda frame: frame.grid(row=1, column=1, sticky='NEWS')
         # => Grid a GUI frame in the root grid RIGHT area
-        root_frame.grid_right = lambda frame: frame.grid(row=1, column=2, sticky='NSWE')
+        root_frame.grid_right = lambda frame: frame.grid(row=1, column=2, sticky='NEWS')
 
         # ------------------------------------------------------------------------------
         # Setup touch keypad

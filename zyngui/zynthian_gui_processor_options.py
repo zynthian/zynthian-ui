@@ -38,9 +38,9 @@ import zynautoconnect
 
 class zynthian_gui_processor_options(zynthian_gui_selector):
 
-    def __init__(self):
+    def __init__(self, parent=None, topbar=None):
         self.reset()
-        super().__init__('Option', True)
+        super().__init__('Option', wide=True, parent=parent, topbar=topbar)
 
     def reset(self):
         self.index = 0

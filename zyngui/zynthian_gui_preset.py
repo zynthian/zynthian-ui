@@ -42,7 +42,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         self.preload_timer_id = None
         self.preload_timer_ms = 300
         self.processor = None
-        super().__init__('Preset', default_icon="preset.png")
+        zynthian_gui_selector_info.__init__(self, 'Preset', default_icon="preset.png")
 
     def fill_list(self):
         if not self.processor:
@@ -99,14 +99,14 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if t == 'S':
             # Allow animation
             self.info_canvas.grid_remove()
-            self.loading_canvas.grid(rowspan=1)
+            self.grid_loading_canvas()
             self.zyngui.state_manager.start_busy("set preset")
             # Set preset
             result = self.zyngui.get_current_processor().set_preset(i)
             self.zyngui.state_manager.end_busy("set preset")
             # Stop animation and restore icon canvas
             self.loading_canvas.grid_remove()
-            self.info_canvas.grid()
+            self.grid_info_canvas()
             # If result is None (still browsing) => refresh preset list
             if result is None:
                 self.set_select_path()
@@ -114,7 +114,10 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             # If success or already loaded => open control screen
             else:
                 self.zyngui.purge_screen_history("bank")
-                self.zyngui.replace_screen("control")
+                if self.processor.id > -2:
+                    self.zyngui.replace_screen("chain_control")
+                else:
+                    self.zyngui.replace_screen("control")
 
     def show_preset_options(self):
         options = {}

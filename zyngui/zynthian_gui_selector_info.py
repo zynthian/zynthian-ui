@@ -38,7 +38,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 class zynthian_gui_selector_info(zynthian_gui_selector):
 
-    def __init__(self, selcap='Select', default_icon="zynthian_logo.png", tiny_ctrls=True):
+    def __init__(self, selcap='Select', default_icon="zynthian_logo.png", tiny_ctrls=True, parent=None, topbar=None):
         # Custom layout for GUI selector info
         self.layout = {
             'name': 'gui_selector_info',
@@ -59,23 +59,24 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         self.default_icon = default_icon
         self.icons = {}
 
-        super().__init__(selcap, wide=True, loading_anim=True, tiny_ctrls=tiny_ctrls)
+        super().__init__(selcap, wide=True, loading_anim=True, tiny_ctrls=tiny_ctrls, parent=parent, topbar=topbar)
 
         self.info_canvas = tkinter.Canvas(
             self.main_frame,
             bd=0,
             highlightthickness=0,
             bg=zynthian_gui_config.color_bg)
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.layout['rows'], sticky="news", padx=(2,2), pady=(2,2))
-        self.info_icon = self.info_canvas.create_image(0, 0, 
-            anchor=tkinter.NW
-        )
+        self.grid_info_canvas()
+        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
         self.info_text = self.info_canvas.create_text(
             0, 0,
             anchor=tkinter.NW,
             justify=tkinter.LEFT,
             fill=zynthian_gui_config.color_panel_tx
         )
+
+    def grid_info_canvas(self):
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news", padx=(2,2), pady=(2,2))
 
     def update_layout(self):
         super().update_layout()
@@ -94,7 +95,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             return ["", ""]
 
     def update_info(self):
-        side_width = int(self.layout['ctrl_width'] * self.width)
+        side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
         fs = min(int(0.8 * zynthian_gui_config.font_size), side_width // 16)
         info = self.get_info()
         if info:

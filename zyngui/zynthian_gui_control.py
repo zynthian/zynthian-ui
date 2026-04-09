@@ -34,7 +34,6 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zyngui.zynthian_frame_chain import zynthian_frame_chain
 
 # ------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
@@ -47,7 +46,7 @@ MIDI_LEARNING_GLOBAL = 2
 
 class zynthian_gui_control(zynthian_gui_selector):
 
-    def __init__(self, selcap='Controllers'):
+    def __init__(self, parent=None, topbar=None):
         self.mode = "control"
 
         self.processors = []
@@ -55,9 +54,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.zcontrollers = []
         self.zgui_controllers = []
         self.midi_learning = MIDI_LEARNING_DISABLED
-
-        self.chain_frame = None
-        self.chain_shown = False
 
         self.modules = {}
         self.widgets = {}
@@ -69,36 +65,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.screen_type = None
         self.screen_title = None
 
-        # Custom layout for GUI control => Add chain colums at left
-        if zynthian_gui_config.layout['columns'] == 2:
-            wide = False
-            self.layout = {
-                'name': 'gui_control',
-                'columns': 3,
-                'rows': 4,
-                'ctrl_pos': [
-                    (0, 2),
-                    (1, 2),
-                    (2, 2),
-                    (3, 2)
-                ],
-                'list_pos': (0, 1),
-                'list_width': 0.50,
-                'chain_pos': (0, 0),
-                'chain_width': 0.25,
-                'ctrl_orientation': "horizontal",
-                'ctrl_order': zynthian_gui_config.layout['ctrl_order'],
-                'ctrl_width': 0.25
-            }
-        else:
-            wide = False
-
-        super().__init__(selcap, wide=wide, loading_anim=False, tiny_ctrls=False)
-
-        # Create chain frame
-        if 'chain_pos' in self.layout:
-            chwidth = int(self.layout['chain_width'] * self.width)
-            self.chain_frame = zynthian_frame_chain(self.main_frame, width=chwidth, height=self.height)
+        super().__init__(selcap="Control Page", loading_anim=False, tiny_ctrls=False, parent=parent, topbar=topbar)
 
         # Create zgui controllers
         for i in range(4):
@@ -113,69 +80,45 @@ class zynthian_gui_control(zynthian_gui_selector):
         zynthian_gui_base.update_layout(self)
         # Reconfigure ctrl columns
         ctrlheight = self.height // self.layout['rows']
-        ctrlwidth = int((self.width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
+        #ctrlwidth = int((self.width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
+        ctrlwidth = int((zynthian_gui_config.screen_width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
+        cols = set()
+        rows = set()
         for pos in self.layout['ctrl_pos']:
-            self.main_frame.rowconfigure(pos[0], minsize=ctrlheight, weight=1)
-            self.main_frame.columnconfigure(pos[1], minsize=ctrlwidth, weight=self.sidebar_shown, uniform='ctrl_col')
-        # Reconfigure chain column
-        if self.chain_frame:
-            _chwidth = int(self.layout['chain_width'] * self.width)
-            chwidth = _chwidth * self.chain_shown
-            self.main_frame.columnconfigure(self.layout['chain_pos'][1], minsize=chwidth, weight= 2 * self.chain_shown)
-            self.chain_frame.configure(width=_chwidth, height=self.height)
-            lbwidth = self.width - chwidth - ctrlwidth
+            rows.add(pos[0])
+            cols.add(pos[1])
+        for row in rows:
+            self.main_frame.rowconfigure(row, minsize=ctrlheight, weight=1)
+        for col in cols:
+            self.main_frame.columnconfigure(col, minsize=ctrlwidth, weight=self.sidebar_shown, uniform='ctrl_col')
+        # Reconfigure Listbox
+        if self.wide:
+            lbwidth = self.width - ctrlwidth
+            lbweight = 3
+        else:
+            lbwidth = self.width - 2 * ctrlwidth
             lbweight = 2
-        else:
-            if self.wide:
-                lbwidth = self.width - ctrlwidth
-                lbweight = 3
-            else:
-                lbwidth = self.width - 2 * ctrlwidth
-                lbweight = 2
         self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lbwidth, weight=lbweight)
-
-    def show_chain(self, show):
-        if not self.chain_frame:
-            return
-        if show:
-            self.chain_shown = True
-            self.update_layout()
-            self.chain_frame.grid(
-                row=self.layout['chain_pos'][0],
-                column=self.layout['chain_pos'][1],
-                rowspan=self.layout['rows'],
-                padx=self.padx,
-                pady=self.pady,
-                sticky="news")
-        else:
-            self.chain_shown = False
-            self.update_layout()
-            self.chain_frame.grid_remove()
 
     def build_view(self):
         #curproc = self.zyngui.get_current_processor()
         super().build_view()
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
             zynsigman.register_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_CTRL_SCREENS, self.cb_ctrl_screens)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
-        #self.set_mode_control()
-        if self.chain_frame:
-            self.chain_frame.build_view()
+        #if self.mode == "select":
+        #    self.set_mode_control()
         return True
 
     def hide(self):
         if self.shown:
             self.exit_midi_learn()
             zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
-            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
             zynsigman.unregister(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_CTRL_SCREENS, self.cb_ctrl_screens)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
-        if self.chain_frame:
-            self.chain_frame.hide()
         super().hide()
 
     def show_sidebar(self, show):
@@ -187,49 +130,27 @@ class zynthian_gui_control(zynthian_gui_selector):
                 zctrl.grid_remove()
         self.update_layout()
 
-    def cb_set_active_chain(self, active_chain_id):
-        """Handle MIDI_PC signal
-
-        active_chain_id : active chain id
-        """
-
-        # Refresh control screen after changing active chain
-        self.zyngui.chain_control()
+    def refresh(self):
+        self.update_list()
+        self.exit_midi_learn()
+        # TODO anything else??
 
     def cb_load_zs3(self, zs3_id):
-        """Handle LOAD_ZS3 signal
-
-        zs3_id : ID of loaded zs3
-        """
-
-        # Refresh control screen after loading ZS3
-        self.zyngui.chain_control()
+        # Refresh control list and screen after loading ZS3
+        self.refresh()
 
     def cb_ctrl_screens(self, proc):
-        """Handle PROCESSOR_CTRL_SCREENS signal
-
-        proc : processor object
-        """
-
         # Refresh control screens
         curproc = self.zyngui.get_current_processor()
         if curproc and proc and proc == curproc:
-            self.zyngui.chain_control()
+            self.refresh()
 
     def cb_midi_pc(self, izmip, chan, num):
-        """Handle MIDI_PC signal
-
-        """
-
         curproc = self.zyngui.get_current_processor()
         if not zynthian_gui_config.midi_prog_change_zs3 and self.curproc and \
             self.curproc.midi_chan is not None and self.curproc.midi_chan == chan:
             # Refresh control screen after changing preset with program change
-            self.zyngui.chain_control()
-
-    def backbutton_short_touch_action(self):
-        if not self.back_action():
-            self.zyngui.back_screen()
+            self.refresh()
 
     def configure_processors(self, curproc=None):
         if not curproc:
@@ -240,13 +161,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             # Special processors: ALSA Mixer ,Global Audio Player, Tempo Screen
             if curproc and curproc.id < -1:
                 self.processors = [curproc]
-                if self.chain_frame:
-                    self.chain_frame.set_chain_id(-1)
             else:
                 self.processors = self.chain_manager.get_processors(curproc.chain_id)
-                if self.chain_frame:
-                    self.chain_frame.set_chain_id(curproc.chain_id)
-
 
     def fill_list(self):
         self.list_data = []
@@ -263,7 +179,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.processors[0].chain:
                 chain_zctrls = self.processors[0].chain.zctrls
                 if chain_zctrls:
-                    self.list_data.append((None, None, "> CHAIN"))
+                    self.list_data.append((None, None, "> CHAIN", None))
                     j = 0
                     i += 1
                     page_zctrls = []
@@ -282,7 +198,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 j = 0
                 screen_list = processor.get_ctrl_screens()
                 procname = processor.engine.name.split('/')[-1]
-                self.list_data.append((None, None, f"> {procname}"))
+                self.list_data.append((None, None, f"> {procname}", processor))
                 i += 1
                 if processor == curproc:
                     self.index = i + curproc.get_current_screen_index()
@@ -381,7 +297,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if widget_name not in self.widgets:
                 try:
                     module_class = getattr(module, module_name)
-                    self.widgets[widget_name] = module_class(self.main_frame)
+                    self.widgets[widget_name] = module_class(self)
                 except Exception as e:
                     logging.error(f"Can't create custom widget instance '{widget_name}' => {e}")
                     self.hide_widgets()
@@ -475,7 +391,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.hide_widgets()
 
         # Setup GUI Controllers
-        logging.debug(f"SET CONTROLLER SCREEN {self.screen_title}")
+        logging.debug(self.screen_title)
         # Configure zgui_controllers
         for i in range(4):
             if i < len(self.zcontrollers):
@@ -503,7 +419,6 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
-        self.show_chain(True)
         if self.current_widget and self.current_widget.hide_on_select_mode():
             self.hide_widgets()
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
@@ -515,7 +430,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def set_mode_control(self):
         self.mode = 'control'
-        self.show_chain(False)
         self.show_widget(self.zyngui.get_current_processor())
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
@@ -523,28 +437,16 @@ class zynthian_gui_control(zynthian_gui_selector):
         for i in range(0, len(self.zgui_controllers)):
             self.zgui_controllers[i].enable(True)
 
-    def back_action(self):
-        if self.mode == 'select':
-            self.set_mode_control()
-            return True
-        # If in MIDI-learn mode, back to instrument control
-        elif self.midi_learning:
-            self.exit_midi_learn()
-            return True
-        else:
-            return False
+    def select_processor(self, proc):
+        if proc in self.processors:
+            for i, row in enumerate(self.list_data):
+                if row[1] and row[3] == proc:
+                    self.select(i + proc.current_screen_index)
+                    return
 
-    def arrow_right(self):
-        self.exit_midi_learn()
-        self.chain_manager.next_chain()
-
-    def arrow_left(self):
-        self.exit_midi_learn()
-        self.chain_manager.previous_chain()
-
-    def rotate_chain(self):
-        self.exit_midi_learn()
-        self.chain_manager.rotate_chain()
+    # --------------------------------------------------------------------------
+    # Zynpot & zynswitch callbacks
+    # --------------------------------------------------------------------------
 
     # Function to handle *all* switch presses.
     #  swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -555,13 +457,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.midi_learn_options(swi)
             return True
 
-        if self.current_widget:
-            try:
-                if self.current_widget.switch(swi, t):
-                    return True
-            except:
-                pass
-
         if swi == 0:
             if t == 'S':
                 self.rotate_chain()
@@ -570,35 +465,17 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zyngui.cuia_bank_preset()
                 return True
 
-        elif swi == 1:
-            if t == 'S':
-                if self.back_action():
+        if self.current_widget:
+            try:
+                if self.current_widget.switch(swi, t):
                     return True
-            elif t == 'B':
-                self.back_action()
-                return False
-
-        elif swi == 2:
-            if t == 'S':
-                if self.mode == 'control':
-                    return False
-            elif t == 'B':
-                if self.midi_learning and self.zyngui.state_manager.midi_learn_zctrl:
-                    self.midi_unlearn_action()
-                    return True
+            except:
+                pass
 
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
-        if self.mode == 'select':
-            if i == 2:
-                if self.chain_frame:
-                    self.chain_frame.switch_select(t)
-                return True
-            elif i == 3:
-                self.switch_select(t)
-                return True
-        else:
+        if self.mode == 'control':
             if t == 'S':
                 self.toggle_midi_learn(i)
                 return True
@@ -624,6 +501,14 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.set_controller_screen()
         self.set_select_path()
 
+    def back_action(self):
+        # If in MIDI-learn mode, back to instrument control
+        if self.midi_learning:
+            self.exit_midi_learn()
+            return True
+        else:
+            return False
+
     def zynpot_abs(self, i, val):
         if self.mode == 'control':
             self.zgui_controllers[i].zynpot_abs(val)
@@ -641,13 +526,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.midi_learn(i, self.midi_learning)
                 return True
         elif self.mode == 'select':
-            if i == 2:
-                if dval > 0:
-                    self.chain_frame.arrow_down()
-                elif dval < 0:
-                    self.chain_frame.arrow_up()
-            else:
-                return super().zynpot_cb(i, dval)
+            return super().zynpot_cb(i, dval)
 
     def get_zgui_controller(self, zctrl):
         for zgui_controller in self.zgui_controllers:
@@ -678,20 +557,23 @@ class zynthian_gui_control(zynthian_gui_selector):
             widget.update()
 
     # --------------------------------------------------------------------------
-    # Options Menu
+    # CUIA => Pass CUIA to widget
     # --------------------------------------------------------------------------
 
-    def show_menu(self):
-        if self.mode == "control":
-            self.set_mode_select()
-        else:
-            zynthian_gui_config.zyngui.show_screen('chain_manager')
-
-    def toggle_menu(self):
-        if self.shown:
-            self.show_menu()
-        elif self.zyngui.get_current_screen().endswith("_options"):
-            self.zyngui.close_screen()
+    def callable_ui_action(self, cuia, params=None):
+        if self.current_widget:
+            logging.debug("CUIA '{}' => {}".format(cuia, params))
+            # Try widget-defined specific cuia function
+            cuia_func_name = "cuia_" + cuia.lower()
+            cuia_func = getattr(self.current_widget, cuia_func_name, None)
+            if callable(cuia_func) and cuia_func(params):
+                return True
+            else:
+                # Else call default CUIA function (defined in this class)
+                cuia_func = getattr(self, cuia_func_name, None)
+                if callable(cuia_func):
+                    return cuia_func(params)
+        return False
 
     # --------------------------------------------------------------------------
     # MIDI learn management
@@ -779,7 +661,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             # Handle MIDI learn for assignable CC
             # TODO Detect CC relative mode, etc.
             self.midi_learn_bind(izmip, chan, num)
-            self.zyngui.show_current_screen()
+            #self.zyngui.show_current_screen()
 
     def midi_unlearn(self, param=None):
         if param:
@@ -1004,7 +886,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.zyngui.show_screen("control_xy")
 
     # -------------------------------------------------------------------------
-    # GUI Callback function
+    # Touch & Mouse callbacks
     # --------------------------------------------------------------------------
 
     def cb_listbox_click(self, t):
@@ -1017,6 +899,10 @@ class zynthian_gui_control(zynthian_gui_selector):
     def cb_listbox_wheel(self, event):
         # Override with default listbox behaviour to allow scrolling of listbox without selection (expected UX)
         return
+
+    # -------------------------------------------------------------------------
+    # GUI Callback function
+    # --------------------------------------------------------------------------
 
     def set_select_path(self):
         processor = self.zyngui.get_current_processor()

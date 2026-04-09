@@ -382,7 +382,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
             return True
         return False
 
-    def set_selector(self, zs_hidden=False):
+    def set_selector(self, zs_hidden=True):
         super().set_selector(zs_hidden)
         self.zselector.zctrl.engine = self
         if self.zsel2:

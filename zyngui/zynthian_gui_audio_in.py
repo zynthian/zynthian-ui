@@ -37,8 +37,8 @@ from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
-    def __init__(self):
-        super().__init__('Audio In')
+    def __init__(self, parent=None, topbar=None):
+        super().__init__('Audio In', parent=parent, topbar=topbar)
 
     def build_view(self):
         self.check_ports = 0
@@ -69,7 +69,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
                     [f"Audio input {i + 1} is connected to this chain.", "audio_input.png"]))
             else:
                 self.list_data.append(
-                    (i + 1, scp.name, f"\u2610 Audio input {i + 1}{suffix}", 
+                    (i + 1, scp.name, f"\u2610 Audio input {i + 1}{suffix}",
                     [f"Audio input {i + 1} is disconnected from this chain.", "audio_input.png"]))
 
         super().fill_list()
@@ -105,6 +105,10 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
                 self.zyngui.show_screen("alsa_mixer", params=ctrl_list)
 
     def set_select_path(self):
-        self.select_path.set("Capture Audio from ...")
+        title = "Capture Audio from ..."
+        try:
+            self.select_path.set(f"{self.zyngui.chain_manager.active_chain.get_name()}/{title}")
+        except:
+            self.select_path.set(title)
 
 # ------------------------------------------------------------------------------

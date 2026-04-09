@@ -37,9 +37,9 @@ from zyngui import zynthian_gui_config
 class zynthian_widget_base(tkinter.Frame):
 
     def __init__(self, parent):
-        super().__init__(parent, bg=zynthian_gui_config.color_bg)
+        super().__init__(parent.main_frame, bg=zynthian_gui_config.color_bg)
         self.zyngui = zynthian_gui_config.zyngui
-        self.zyngui_control = self.zyngui.screens['control']
+        self.zyngui_control = parent
         self.width = 1
         self.height = 1
         self.wide = self.zyngui_control.wide

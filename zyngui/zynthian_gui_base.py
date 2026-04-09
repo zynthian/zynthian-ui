@@ -47,9 +47,12 @@ class zynthian_gui_base(tkinter.Frame):
     def __init__(self, parent=None, topbar=None):
         if parent:
             self.parent = parent
+            self.parent_frame = parent.main_frame
         else:
-            self.parent = zynthian_gui_config.root_frame
-        tkinter.Frame.__init__(self, self.parent)
+            self.parent = None
+            self.parent_frame = zynthian_gui_config.root_frame
+
+        tkinter.Frame.__init__(self, self.parent_frame)
         self.grid_propagate(False)
         self.shown = False
         self.sidebar_shown = True
@@ -63,10 +66,10 @@ class zynthian_gui_base(tkinter.Frame):
         if topbar is not None:
             self.topbar_allowed = topbar
         else:
-            if self.parent == zynthian_gui_config.root_frame:
-                self.topbar_allowed = True
-            else:
+            if self.parent:
                 self.topbar_allowed = False
+            else:
+                self.topbar_allowed = True
 
         # Geometry vars
         if self.topbar_allowed:
@@ -78,13 +81,16 @@ class zynthian_gui_base(tkinter.Frame):
             self.topbar_height = 0
             self.main_row= 0
 
-        if self.parent == zynthian_gui_config.root_frame:
-            self.width = zynthian_gui_config.screen_width
-            self.height = zynthian_gui_config.screen_height - self.topbar_height
-        else:
+        if self.parent:
             self.width = 1
             self.height = 1
-
+            # Use parent's Breadcrumb
+            self.select_path = self.parent.select_path
+        else:
+            self.width = zynthian_gui_config.screen_width
+            self.height = zynthian_gui_config.screen_height - self.topbar_height
+            # Breadcrumb path
+            self.select_path = tkinter.StringVar()
 
         # Configure columns
         self.columnconfigure(0, weight=1)
@@ -93,7 +99,7 @@ class zynthian_gui_base(tkinter.Frame):
         # Main Frame
         self.main_frame = tkinter.Frame(self, bg=zynthian_gui_config.color_bg)
         self.main_frame.grid_propagate(False)
-        self.main_frame.grid(row=self.main_row, sticky='news')
+        self.main_frame.grid(row=self.main_row, sticky='NEWS')
 
         # Parameter editor
         self.param_editor_zctrl = None
@@ -149,7 +155,6 @@ class zynthian_gui_base(tkinter.Frame):
             col += 1
 
             # Topbar's Select Path
-            self.select_path = tkinter.StringVar()
             self.select_path.trace(tkinter.W, self.cb_select_path)
             self.label_select_path = tkinter.Label(self.title_canvas,
                                                 font=zynthian_gui_config.font_topbar,
@@ -195,13 +200,13 @@ class zynthian_gui_base(tkinter.Frame):
     # Function to update display, e.g. after geometry changes
     # Override if required
     def update_layout(self):
-        if self.parent == zynthian_gui_config.root_frame:
-            self.width = zynthian_gui_config.screen_width
-            self.height = zynthian_gui_config.screen_height - self.topbar_height
-        else:
+        if self.parent:
             self.width = self.winfo_width()
             self.height = self.winfo_height() - self.topbar_height
-        logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
+        else:
+            self.width = zynthian_gui_config.screen_width
+            self.height = zynthian_gui_config.screen_height - self.topbar_height
+        #logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
         # TODO Resize topbar elements
 
     # Draw screen ready to display (like double buffer) - Override in subclass
@@ -211,7 +216,7 @@ class zynthian_gui_base(tkinter.Frame):
     # Show the view
     def show(self):
         if not self.shown:
-            self.parent.grid_main(self)
+            self.parent_frame.grid_main(self)
             self.shown = True
             self.refresh_status()
         self.main_frame.focus()
@@ -230,7 +235,7 @@ class zynthian_gui_base(tkinter.Frame):
         if self.topbar_allowed:
             if show:
                 self.topbar_height = zynthian_gui_config.topbar_height
-                self.tb_frame.grid(row=0, sticky="ew")
+                self.tb_frame.grid(row=0, sticky="EW")
             else:
                 self.topbar_height = 0
                 self.tb_frame.grid_remove()
