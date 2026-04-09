@@ -421,9 +421,9 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.mode = 'select'
         if self.current_widget and self.current_widget.hide_on_select_mode():
             self.hide_widgets()
-        self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
-                            selectforeground=zynthian_gui_config.color_ctrl_tx,
-                            fg=zynthian_gui_config.color_ctrl_tx_off)
+        #self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
+        #                    selectforeground=zynthian_gui_config.color_ctrl_tx,
+        #                    fg=zynthian_gui_config.color_ctrl_tx_off)
         self.set_selector()
         for i in range(0, len(self.zgui_controllers)):
             self.zgui_controllers[i].enable(False)
@@ -431,9 +431,9 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_control(self):
         self.mode = 'control'
         self.show_widget(self.zyngui.get_current_processor())
-        self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
-                            selectforeground=zynthian_gui_config.color_ctrl_tx,
-                            fg=zynthian_gui_config.color_ctrl_tx)
+        #self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
+        #                    selectforeground=zynthian_gui_config.color_ctrl_tx,
+        #                    fg=zynthian_gui_config.color_ctrl_tx)
         for i in range(0, len(self.zgui_controllers)):
             self.zgui_controllers[i].enable(True)
 
