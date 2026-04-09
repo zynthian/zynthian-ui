@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for internet radio streamer
 #
-# Copyright (C) 2022-2025 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -27,10 +27,12 @@ import json
 import socket
 import logging
 from os import listdir
-from os.path import basename
+from os.path import basename, exists
 from time import sleep, monotonic
 from threading import Thread, Timer
 from subprocess import Popen, STDOUT, PIPE
+import pyudev
+from urllib.parse import urlparse, unquote
 
 import zynautoconnect
 from zyngine.zynthian_engine import zynthian_engine
@@ -552,9 +554,11 @@ class zynthian_engine_inet_radio(zynthian_engine):
             'codec': "",
             'bitrate': "",
             'url': "",
+            "artwork": "",
             'reset': False
         }
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_inet_radio.py"
+        self.last_info = 0
 
         self.command = ["vlc",
                         "--intf", "telnet",
@@ -578,6 +582,10 @@ class zynthian_engine_inet_radio(zynthian_engine):
         self._ctrl_screens = [
             ['main', ['volume', 'stream', 'prev/next', 'pause']]
         ]
+
+        udev_context = pyudev.Context()
+        self.udev_monitor = pyudev.Monitor.from_netlink(udev_context)
+        self.udev_monitor.filter_by(subsystem="block")
 
         self.start()
 
@@ -644,17 +652,26 @@ class zynthian_engine_inet_radio(zynthian_engine):
 
     def proc_poll_thread_task(self):
         last_status = 0
-        last_info = 0
         line = ""
+        cd = 0
         while self.running and self.proc.poll() is None:
             now = monotonic()
+
+            # Check for CD change
+            if self.preset and self.preset[2] == "CD":
+                device = self.udev_monitor.poll(timeout=0.5)
+                if device and device.device_node == "/dev/sr0":
+                    cd += 1 # Change preset signature to force reload of preset
+                    self.set_preset(self.processors[0], ["cdda:///dev/sr0", 2, "CD", cd])
+                    self.last_info = 0
+
             if self.preset_i == self.pending_preset_i:
-                if now > last_info + 5:
+                if now > self.last_info + 5:
                     self.proc_cmd("info")
-                    last_info = now
+                    self.last_info = now
                 if now > last_status + 1:
                     self.proc_cmd("status")
-                    last_status = now
+                    self.last_status = now
             buffer = bytes()
             while True:
                 try:
@@ -715,6 +732,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
             self.monitors_dict["info"] = f"{line[8:].strip()}\n\n"
         elif line.startswith("| artist:"):
             self.monitors_dict["info"] += f"{line[9:].strip()}\n"
+        elif line.startswith("| artwork_url:"):
+            self.monitors_dict["artwork"] = unquote(urlparse(line[14:].strip()).path)
         else:
             for key in ("title", "Name", "Genre", "Website", "Bitrate", "Channels", "Sample rate", "Codec"):
                 if line.startswith(f"| {key}:"):
@@ -771,6 +790,10 @@ class zynthian_engine_inet_radio(zynthian_engine):
         for file in listdir(f"{self.my_data_dir}/capture"):
             if file[-4:].lower() in (".m3u", ".pls"):
                 self.presets["Playlists"].append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4]])
+        
+        if exists("/dev/sr0"):
+            self.presets["Devices"] = [["cdda:///dev/sr0", 2, "CD"]]
+            self.banks.append(["Devices", None, "Devices", None])
 
         return self.banks
 
@@ -803,8 +826,11 @@ class zynthian_engine_inet_radio(zynthian_engine):
         else:
             self._ctrl_screens = [['main', ['volume', 'stream', 'prev/next']]]
         processor.refresh_controllers()
+        if preset[2] == "CD":
+            processor.controllers_dict["stream"].set_value("stopped")
         self.reset_monitors()
         self.delayed_connect_outputs()
+        self.last_info = 0
         return True
 
     def delayed_connect_outputs(self):
@@ -835,7 +861,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
                     elif value < 0:
                         self.proc_cmd(f"prev")
                     self.reset_monitors(True)
-                    self.proc_cmd("info")
+                    self.last_info = 0
                     sleep(0.2)
                     zynautoconnect.request_audio_connect(True)
                     self.delayed_connect_outputs()

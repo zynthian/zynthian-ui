@@ -5,7 +5,7 @@
 #
 # zynthian LV2
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -34,6 +34,11 @@ import string
 import hashlib
 import logging
 import urllib.parse
+import shutil
+import subprocess
+import platform
+from rdflib import Graph, Namespace, RDF
+
 from enum import Enum
 from random import randrange
 
@@ -180,6 +185,7 @@ rpi5_plugins = [
 ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+LV2_DIR = "/zynthian/zynthian-plugins/lv2"
 
 engines = None
 engines_by_type = None
@@ -207,6 +213,7 @@ def init_lilv():
     world.ns.doap = lilv.Namespace(world, "http://usefulinc.com/ns/doap#")
     world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
 
+
 # ------------------------------------------------------------------------------
 # Engines management
 # ------------------------------------------------------------------------------
@@ -225,6 +232,7 @@ def get_engines():
 
 def load_engines():
     global engines, engines_mtime
+    init_lilv()
     engines = {}
 
     if os.path.exists(ENGINE_CONFIG_FILE):
@@ -337,8 +345,133 @@ def get_engine_description(key):
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."]
     return description[randrange(4)]
 
+def get_info_from_ttl(bundle_path):
+    """ Get a dictionary of info about each plugin from ttl files in a bundle 
+    Args:
+        path: Path to .lv2 directory
+    Returns: Dictionary of info, indexed by plugin uri
+    """
+
+    info = {}
+    g = Graph()
+    for fname in os.listdir(bundle_path):
+        if fname.endswith(".ttl"):
+            g.parse(os.path.join(bundle_path, fname), format="turtle")
+    for plugin in g.subjects(RDF.type, Namespace("http://lv2plug.in/ns/lv2core#").Plugin):
+        uri = str(plugin)
+        info[uri] = {
+            "name": str(g.value(plugin, Namespace("http://usefulinc.com/ns/doap#").name)),
+            "description": str(g.value(plugin, Namespace("http://usefulinc.com/ns/doap#").description)),
+            "minorVersion": str(g.value(plugin, Namespace("http://lv2plug.in/ns/lv2core#").minorVersion)),
+            "microVersion": str(g.value(plugin, Namespace("http://lv2plug.in/ns/lv2core#").microVersion)),
+            "comment": str(g.value(plugin, Namespace("http://www.w3.org/2000/01/rdf-schema").comment)),
+        }
+    return info
+
+def add_engine(path, enable=True, force=False):
+    """ Add a LV2 plugin from a .lv2 path
+    Args:
+        path: Path to .lv2 to install, e.g. /tmp/myplugin.lv2
+        enable: True to enable plugin after install [Default: True]
+        force: True to force install if existing plugin exists [Default: False]
+    Returns: None on success, else error message
+    """
+    global engines
+
+    # Find all lv2 plugins
+    for root, dirs, files in os.walk(path):
+        for d in dirs:
+            if d.endswith(".lv2"):
+                src = os.path.join(root, d)
+                dst = os.path.join(LV2_DIR, d)
+                # Validate plugin
+                for file in os.listdir(src):
+                    if file.endswith(".so"):
+                        result = subprocess.run(["file", f"{src}/{file}"], capture_output=True, text=True)
+                        if platform.machine() not in result.stdout.strip():
+                            return f"LV2 plugin is for a different platform (expecting {platform.machine()})"
+                        if platform.machine() not in result.stdout.strip():
+                            return f"LV2 plugin is for a different operating system (expecting {platform.system()})"
+                        break
+                for uri, info in get_info_from_ttl(src).items():
+                    if not force and f"JV/{info['name']}" in engines:
+                        existing_version = new_version = ""
+                        try:
+                            plugin = world.get_all_plugins()[uri]
+                            existing_minor_ver = str(plugin.get_value(world.ns.lv2.minorVersion)[0])
+                            existing_micro_ver = str(plugin.get_value(world.ns.lv2.microVersion)[0])
+                            if existing_micro_ver and existing_minor_ver:
+                                existing_version = f" v{existing_minor_ver}.{existing_micro_ver}"
+                            if info["microVersion"] and info["minorVersion"]:
+                                new_version = f" v{info['minorVersion']}.{info['microVersion']}"
+                        except:
+                            pass
+                        return f"Failed to install {info['name']}{new_version} - {existing_version} already installed."
+                try:
+                    shutil.copytree(src, dst, dirs_exist_ok=force)
+                except:
+                    return "Plugin already installed."
+
+                try:
+                    init_lilv()
+                    plugin = world.get_all_plugins()[uri]
+                    engine_name = str(plugin.get_name())
+                except Exception as e:
+                    return f"Failed to install {path}: {e}"
+
+                key = f"JV/{engine_name}"
+                if key in engines:
+                    # Don't replace existing cache info
+                    return None
+
+                # Get plugin description
+                engine_description = get_plugin_description(plugin)
+                if not engine_description:
+                    engine_description = engine_name
+                hash = hashlib.new('sha1')
+                hash.update(key.encode())
+
+                engines[key] = {
+                    'ID': hash.hexdigest()[:10],
+                    'NAME': engine_name,
+                    'TITLE': engine_name,
+                    'TYPE': get_plugin_type(plugin).value,
+                    'CAT': get_plugin_cat(plugin),
+                    'ENABLED': enable,
+                    'INDEX': 9999,
+                    'URL': uri,
+                    'UI': get_plugin_ui(plugin),
+                    'DESCR': engine_description,
+                    "QUALITY": 0,
+                    "COMPLEX": 0,
+                    "EDIT": 0
+                }
+                engines = dict(sorted(engines.items(), key=lambda r: r[1]['TITLE'].casefold()))
+                save_engines()
+                get_engines_by_type()
+
+def remove_engine(id):
+    global engines
+
+    try:
+        uri = engines[id]["URL"]
+        plugin = world.get_all_plugins().get_by_uri(uri)
+        bundle_uri=plugin.get_bundle_uri()
+        path = urllib.parse.unquote(urllib.parse.urlparse(str(bundle_uri)).path)
+        logging.warning(f"Deleting LV2 plugin {str(plugin.get_name())} ({path})")
+        shutil.rmtree(path)
+        engines.pop(id)
+        save_engines()
+        get_engines_by_type()
+    except:
+        pass
 
 def generate_engines_config_file(refresh=True, reset_rankings=None):
+    """ Generate the engines config cache file
+    Args:
+        refresh: True to reinitiate lilv
+        reset_rankings: Reset the engine rankings [1: Set to 0, 2: Set to random value]
+    """
     global engines, engines_mtime
     genengines = {}
 
@@ -1064,8 +1197,6 @@ def get_plugin_ports(plugin_url):
 # ------------------------------------------------------------------------------
 
 
-# Init Lilv
-init_lilv()
 # Load engine info from cache
 load_engines()
 
