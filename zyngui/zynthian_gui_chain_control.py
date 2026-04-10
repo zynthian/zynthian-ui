@@ -212,13 +212,17 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def switch(self, swi, t='S'):
         if self.subscreen.switch(swi, t):
             return True
-        if swi == 0:
-            if t == 'S':
-                self.chain_manager.rotate_chain()
-                return True
-            elif t == "B":
-                self.zyngui.cuia_bank_preset()
-                return True
+
+        if swi == 0 and t == 'S':
+            self.chain_manager.rotate_chain()
+            return True
+
+        if self.chain_shown and swi == 2:
+            self.chain_canvas.switch_select(t)
+            return True
+
+        return False
+
 
     def switch_select(self, t):
         if t == 'S':
@@ -253,8 +257,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 self.chain_canvas.arrow_up()
             return True
         if self.subscreen.zynpot_cb(i, dval):
-            if i == 3 and self.subscreen_name == "control":
-               self.chain_canvas.select_current_processor()
+            if self.chain_canvas:
+                if self.subscreen_name == "control" and i == 3:
+                    self.chain_canvas.select_current_processor()
             return True
 
     def plot_zctrls(self, force=False):

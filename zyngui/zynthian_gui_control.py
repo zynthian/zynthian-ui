@@ -457,20 +457,14 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.midi_learn_options(swi)
             return True
 
-        if swi == 0:
-            if t == 'S':
-                self.rotate_chain()
-                return True
-            elif t == "B":
-                self.zyngui.cuia_bank_preset()
-                return True
-
         if self.current_widget:
             try:
                 if self.current_widget.switch(swi, t):
                     return True
             except:
+                # TODO Fix this to catch exceptions from widget!!
                 pass
+        return False
 
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
@@ -491,8 +485,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             elif self.mode == 'select':
                 self.set_mode_control()
         elif t == 'B':
-            zynthian_gui_config.zyngui.show_screen('chain_manager')
-            # TODO Access chain options?
+            self.zyngui.cuia_bank_preset()
         return True
 
     def select(self, index=None, set_zctrl=True):
