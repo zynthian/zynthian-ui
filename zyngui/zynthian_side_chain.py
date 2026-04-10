@@ -529,8 +529,11 @@ class zynthian_side_chain(tkinter.Canvas):
         self.start_yview = self.yview()[0]
         self.clicked_node = self.get_node_at(x, y)
         if self.clicked_node:
-            self.select_node(node=self.clicked_node)
-            self.long_press_id = self.after(800, self.on_long_press)
+            if self.clicked_node == self.nodes[self.selected_node]:
+                self.switch_select(t="S")
+            else:
+                self.select_node(node=self.clicked_node, action=True)
+                self.long_press_id = self.after(800, self.on_long_press)
 
     def on_long_press(self):
         """ Handle press and hold"""
@@ -642,7 +645,7 @@ class zynthian_side_chain(tkinter.Canvas):
         if node is None:
             return
         #self.select_node(node["pos"])
-        self.switch_select(t=press_type)
+        #self.switch_select(t=press_type)
 
     def on_wheel(self, event):
         """
