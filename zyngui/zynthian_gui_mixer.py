@@ -1612,7 +1612,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def topbar_short_touch_action(self):
         self.toggle_launcher_mode()
 
-    def toggle_menu(self):
+    def XXXtoggle_menu(self):
         if self.shown:
             # Chain options selected
             self.zyngui.screens['chain_manager'].select_chain_options_node()
@@ -2250,44 +2250,57 @@ class zynthian_gui_mixer(zynthian_gui_base):
         returns True if action fully handled or False if parent action should be triggered
         """
 
-        if swi == 0:
-            if t == "S":
-                if self.highlighted_strip is not None:
-                    self.highlighted_strip.toggle_solo()
-                return True
-        elif swi == 1:
-            if t == "S":
-                if self.highlighted_strip is not None and not self.back_action():
-                    self.highlighted_strip.toggle_mute()
-                return True
-            elif t == "B":
-                self.toggle_launcher_mode()
-                return True
-        elif swi == 2:
-            if t == "S":
-                if self.launcher_mode:
-                    self.zyngui.show_screen("tempo")
-                else:
-                    self.zyngui.screens["chain_options"].insert_chain()
-                return True
-        elif swi == 3:
-            return self.switch_select(t)
+        match swi:
+            case 0:
+                if t == "S":
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_solo()
+                    return True
+                elif t == "B":
+                    self.zyngui.show_screen("main_menu")
+                    return True
+            case 1:
+                if t == "B":
+                    #self.zyngui.screens['chain_manager'].select_chain_options_node()
+                    self.zyngui.show_screen("chain_manager")
+                    return True
+            case 2:
+                if t == "S":
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_mute()
+                    return True
+                elif t == "B":
+                    if self.launcher_mode:
+                        self.zyngui.show_screen("tempo")
+                    else:
+                        self.zyngui.screens["chain_options"].insert_chain()
+                    return True
+            case 3:
+                return self.switch_select(t)
 
         return False
 
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
-        if t == 'S':
-            if i == 2:
-                self.zyngui.screens["chain_options"].insert_chain()
-            else:
-                self.zyngui.zynswitch_short(i)
-            return True
-        # Bold knob#2 => chain options
-        elif t == 'B' and i == 2:
-            self.zyngui.show_screen("chain_options")
-            return True
+        match i:
+            case 0:
+                if t == 'S':
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_solo()
+                    return True
+            case 1:
+                if t == 'S':
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_mute()
+                    return True
+            case 2:
+                if t == 'S':
+                    self.zyngui.screens["chain_options"].insert_chain()
+                    return True
+            case 3:
+                self.switch_select(t)
+                return True
         return False
 
     def setup_zynpots(self):
