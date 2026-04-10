@@ -280,7 +280,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
                 if os.path.isfile("/zynthian/venv/bin/touchosc2midi"):
                     append_service("touchosc2midi", "TouchOSC",
-                                   "Interface with Hexler TouchOSC modular control surface.", "network.png", "midi_network.png")
+                                   "Interface with Hexler TouchOSC modular control surface.", "midi_network.png")
 
         a2m_ports = zynautoconnect.get_a2m_ports()
         if self.midi_input and self.chain and a2m_ports:
