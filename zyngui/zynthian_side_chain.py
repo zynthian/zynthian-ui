@@ -178,10 +178,8 @@ class zynthian_side_chain(tkinter.Canvas):
             "slot": slot,       # Processor slot
             "idx": idx,         # Index of (parallel) processor within slot
             "row": row,         # Position of node within graph
-            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special",
-                                    "midi_output", "audio_out", "add_midi_proc", "add_audio_proc"),
-            "is_src": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "Audio Generator",
-                                    "midi_input", "audio_in", "add_midi_proc", "add_audio_proc")
+            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "midi_output", "audio_out"),
+            "is_src": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "Audio Generator", "midi_input", "audio_in")
         })
 
     def _get_name(self, text, max_width):
@@ -236,8 +234,6 @@ class zynthian_side_chain(tkinter.Canvas):
             for slot_idx, slot in enumerate(self.chain.midi_slots):
                 for proc_idx, processor in enumerate(slot):
                     self._add_node(processor.get_name(), processor, slot_idx, proc_idx)
-            #self._add_node("+", "add_midi_proc")
-            # Add MIDI output
             if self.chain.synth_slots:
                 # Add synth
                 for slot_idx, slot in enumerate(self.chain.synth_slots):
@@ -252,7 +248,6 @@ class zynthian_side_chain(tkinter.Canvas):
             for slot_idx, slot in enumerate(self.chain.audio_slots):
                 for proc_idx, processor in enumerate(slot):
                     self._add_node(processor.get_name(), processor, slot_idx, proc_idx)
-            #self._add_node("+", "add_audio_proc")
             # Add audio output
             if self.chain.is_audio():
                 self._add_node("Audio Output", "audio_out")
@@ -284,9 +279,9 @@ class zynthian_side_chain(tkinter.Canvas):
         title = node.get("title")
         if type(proc) is str:
             match proc:
-                case "midi_input" | "midi_output" | "add_midi_proc":
+                case "midi_input" | "midi_output":
                     bg_col = c_midi
-                case "audio_in" | "audio_out" | "add_audio_proc":
+                case "audio_in" | "audio_out":
                     bg_col = c_audio
         else:
             match proc.type:

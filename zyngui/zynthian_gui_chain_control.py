@@ -56,13 +56,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.chain = None
         self.chain_id = None
         self.chain_shown = False
-        # Create chain frame, only in 2 columns layouts
-        if zynthian_gui_config.layout['columns'] == 2:
-            self.chain_width = 0.20
-            self.chain_canvas = zynthian_side_chain(self)
-        else:
-            self.chain_width = 0.0
-            self.chain_canvas = None
+        self.chain_width = 0.20
+        self.chain_canvas = zynthian_side_chain(self)
 
         self.subscreens = {}
         self.subscreens['control'] = zynthian_gui_control(parent=self)
@@ -81,14 +76,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def update_layout(self):
         super().update_layout()
         # Reconfigure side chain canvas
-        if self.chain_canvas:
-            _chwidth = int(self.chain_width * self.width)
-            chwidth = _chwidth * self.chain_shown
-            self.chain_canvas.configure(width=_chwidth, height=self.height)
-            #self.chain_canvas.update_layout()
-        else:
-            self.chain_shown = False
-            chwidth = 0
+        _chwidth = int(self.chain_width * self.width)
+        chwidth = _chwidth * self.chain_shown
+        self.chain_canvas.configure(width=_chwidth, height=self.height)
         # Reconfigure subscreen
         self.subscreen_width = self.width - chwidth
         self.subscreen.configure(width=self.subscreen_width, height=self.height)
@@ -97,8 +87,6 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.main_frame.columnconfigure(1, minsize=self.subscreen_width, weight=1)
 
     def show_chain(self, show):
-        if not self.chain_canvas:
-            return
         if show:
             self.chain_shown = True
             self.update_layout()
@@ -116,10 +104,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
 
     def build_view(self):
         super().build_view()
-
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
-
         self.set_chain()
         self.subscreen.show()
         return True
@@ -127,9 +113,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def hide(self):
         if self.shown:
             zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
-
-        if self.chain_canvas:
-            self.chain_canvas.hide()
+        self.chain_canvas.hide()
         self.subscreen.hide()
         super().hide()
 
@@ -141,12 +125,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.chain = self.chain_manager.chains[self.chain_id]
         self.zyngui.current_processor = self.chain.current_processor
 
-        if self.chain_canvas:
-            self.chain_canvas.set_chain(self.chain_id)
-            self.chain_canvas.build_view()
-        else:
-            self.config_subscreen()
-            self.subscreen.build_view()
+        self.chain_canvas.set_chain(self.chain_id)
+        self.chain_canvas.build_view()
 
     def cb_set_active_chain(self, active_chain_id):
         self.set_chain(active_chain_id)
@@ -257,9 +237,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 self.chain_canvas.arrow_up()
             return True
         if self.subscreen.zynpot_cb(i, dval):
-            if self.chain_canvas:
-                if self.subscreen_name == "control" and i == 3:
-                    self.chain_canvas.select_current_processor()
+            if self.subscreen_name == "control" and i == 3:
+                self.chain_canvas.select_current_processor()
             return True
 
     def plot_zctrls(self, force=False):
@@ -293,8 +272,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         t = params[1].upper()
         if self.chain_shown:
             if i == 2:
-                if self.chain_canvas:
-                    self.chain_canvas.switch_select(t)
+                self.chain_canvas.switch_select(t)
                 return True
             elif i == 3:
                 self.switch_select(t)
