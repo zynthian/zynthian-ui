@@ -271,7 +271,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(self.graph_pickup, width=arc_width)
 
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 8))
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
         self.coords(self.midi_bind, x0, hh - 2)
 
     # Handle resize of rectangle graph
@@ -297,7 +297,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.coords(self.graph, (x1, y1, x2, y2))
             self.coords(self.graph_pickup, (x1, y1, x2, y2))
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 8))
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
         self.coords(self.midi_bind, ww // 2, hh - 2)
 
     # Handle resize of triangle graph
@@ -327,7 +327,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.coords(self.graph, (x1, y1, x2, y1, x2, y2))
             self.coords(self.graph_pickup, (x1, y1, x2, y1, x2, y2))
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 8))
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
         self.coords(self.midi_bind, ww // 2, hh - 2)
 
     def show(self):
