@@ -69,7 +69,7 @@ class zynthian_side_chain(tkinter.Canvas):
         self.nodes = []                 # Node list
         self.node2pos = {}              # Dict of nodes, mapped by gui object (background rectangle)
         self.bypass2node = {}           # Dict of bypassed processor => nodes
-        self.selected_node = None       # Selected node index
+        self.selected_index = None      # Selected node index
         self.moving_proc = None         # The processor object being moved
         self.rows = 0                   # Quantity of rows
 
@@ -77,6 +77,8 @@ class zynthian_side_chain(tkinter.Canvas):
         self.press_event = None
         self.dragging = False
         self.long_press_id = None
+        self.clicked_node = None
+        self.released_node = None
 
         # Bind Events
         self.bind("<Button-1>", self.on_press)
@@ -98,13 +100,13 @@ class zynthian_side_chain(tkinter.Canvas):
 
         # Save current selection across node graph rebuild => proc string
         try:
-            proc = self.nodes[self.selected_node]["proc"]
+            proc = self.nodes[self.selected_index]["proc"]
             if type(proc) != str:
                 proc = None
         except:
             proc = None
 
-        self.selected_node = None
+        self.selected_index = None
         self.build_graph()
 
         # Select initial node, trying to restore saved selection
@@ -377,14 +379,14 @@ class zynthian_side_chain(tkinter.Canvas):
         Draw selection cursor.
         """
         self.itemconfig("node", outline="")
-        if not self.selected_node:
-            self.selected_node = 0
+        if self.selected_index is None:
+            self.selected_index = 0
         if self.moving_proc:
             color = "yellow"
         else:
             color = "white"
         try:
-            node_id = self.nodes[self.selected_node]["id"]
+            node_id = self.nodes[self.selected_index]["id"]
             self.itemconfig(node_id, outline=color, width=2)
         except:
             return
@@ -432,16 +434,6 @@ class zynthian_side_chain(tkinter.Canvas):
     # Node management
     # --------------------------------------------------------------------------
 
-    def _get_node(self, row):
-        try:
-            return self.nodes[row]
-        except:
-            pass
-        return None
-
-    def select_chain_options_node(self):
-        self.selected_node = 0
-
     def get_node_pos(self, node):
         try:
             return self.nodes.index(node)
@@ -464,8 +456,8 @@ class zynthian_side_chain(tkinter.Canvas):
             row = self.get_node_pos(node)
         elif proc:
             row = self.get_proc_pos(proc)
-        elif self.selected_node is not None:
-            row = self.selected_node
+        elif self.selected_index is not None:
+            row = self.selected_index
 
         try:
             proc = self.nodes[row]["proc"]
@@ -479,7 +471,7 @@ class zynthian_side_chain(tkinter.Canvas):
         elif row >= len(self.nodes):
             row = len(self.nodes) - 1
 
-        self.selected_node = row
+        self.selected_index = row
         if type(proc) != str:
             self.zyngui.set_current_processor(proc)
 
@@ -513,6 +505,14 @@ class zynthian_side_chain(tkinter.Canvas):
     # Touch & Mouse event callbacks
     # --------------------------------------------------------------------------
 
+    def get_node_at(self, x, y):
+        for obj_id in self.find_overlapping(x, y, x, y):
+            try:
+                return self.node2pos[obj_id]
+            except:
+                pass
+        return None
+
     def on_press(self, event):
         """
         Handle mouse button press. Initializes drag state.
@@ -529,11 +529,8 @@ class zynthian_side_chain(tkinter.Canvas):
         self.start_yview = self.yview()[0]
         self.clicked_node = self.get_node_at(x, y)
         if self.clicked_node:
-            if self.clicked_node == self.nodes[self.selected_node]:
-                self.switch_select(t="S")
-            else:
-                self.select_node(node=self.clicked_node, action=True)
-                self.long_press_id = self.after(800, self.on_long_press)
+            self.select_node(node=self.clicked_node, action=True)
+            self.long_press_id = self.after(zynthian_gui_config.zynswitch_bold_us // 1000, self.on_long_press)
 
     def on_long_press(self):
         """ Handle press and hold"""
@@ -541,22 +538,12 @@ class zynthian_side_chain(tkinter.Canvas):
         if not self.long_press_id:
             return
         self.long_press_id = None
-        node = self._get_node(self.selected_node)
-
-        if "proc" in node:
-            proc = node["proc"]
-        if proc == "chain_options":
-            self.zyngui.show_screen(proc)
-        elif type(proc) != str:
-            self.start_moving_processor(node["proc"])
-
-    def get_node_at(self, x, y):
-        for obj_id in self.find_overlapping(x, y, x, y):
-            try:
-                return self.node2pos[obj_id]
-            except:
-                pass
-        return None
+        try:
+            node_proc = self.nodes[self.selected_index]["proc"]
+        except:
+            return
+        if type(node_proc) != str:
+            self.start_moving_processor(node_proc)
 
     def on_motion(self, event):
         """
@@ -620,32 +607,41 @@ class zynthian_side_chain(tkinter.Canvas):
         Args:
             event: Mouse event
         """
+
         if self.long_press_id:
             self.after_cancel(self.long_press_id)
             self.long_press_id = None
         else:
             return
-        press_type = "S"
-        if self.press_event:
-            if event.time > self.press_event.time + 400:
-                self.press_time = None
-                press_type = "B"
-        self.clicked_node = None
+
         # If dragging, stop.
         if self.dragging:
             self.dragging = False
             return
 
-        # Handle Click Selection
-        # Use canvasx/y to account for scrolling
-        x, y = self.canvasx(event.x), self.canvasy(event.y)
+        if not self.press_event:
+            return
 
-        # Find clicked node
+        # Handle release event
+        x, y = self.canvasx(event.x), self.canvasy(event.y)
+        # Find reseased node
         node = self.get_node_at(x, y)
         if node is None:
             return
-        #self.select_node(node["pos"])
-        #self.switch_select(t=press_type)
+
+        # If released node == clicked node =>
+        if self.clicked_node and node == self.clicked_node:
+            # Bold press
+            if event.time > self.press_event.time + zynthian_gui_config.zynswitch_bold_us // 1000:
+                self.switch_select(t="B")
+                self.released_node = node
+            # Short press
+            else:
+                # Second click release => select action!
+                if self.released_node == node:
+                    self.switch_select(t="S")
+                else:
+                    self.released_node = node
 
     def on_wheel(self, event):
         """
@@ -673,19 +669,13 @@ class zynthian_side_chain(tkinter.Canvas):
     def node_action(self, node_proc=None, force=False):
         if node_proc is None:
             try:
-                node_proc = self.nodes[self.selected_node]["proc"]
+                node_proc = self.nodes[self.selected_index]["proc"]
             except:
                 logging.warning("Can´t perform node action. Not node selected!")
                 return
         if type(node_proc) == str:
-            match node_proc:
-                case "add_midi_proc":
-                    return
-                case "add_audio_proc":
-                    return
-                case _:
-                    ssname = node_proc
-                    node_proc = None
+            ssname = node_proc
+            node_proc = None
         else:
             ssname = "control"
         self.chain_control.show_subscreen(ssname, node_proc, force=force)
@@ -703,16 +693,10 @@ class zynthian_side_chain(tkinter.Canvas):
             if t == "S":
                 return True
 
-        if self.selected_node is None:
+        if self.selected_index is None:
             self.select_node()
-
-        proc = self.nodes[self.selected_node].get("proc")
+        proc = self.nodes[self.selected_index].get("proc")
         if type(proc) == str:
-            match proc:
-                case "add_midi_proc":
-                    self.zyngui.modify_chain({"type": "MIDI Tool", "chain_id": self.chain.chain_id})
-                case "add_audio_proc":
-                    self.zyngui.modify_chain({"type": "Audio Effect", "chain_id": self.chain.chain_id})
             return True
         else:
             if t == "S":
@@ -735,7 +719,7 @@ class zynthian_side_chain(tkinter.Canvas):
             self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, False)
             self.build_graph(proc)
         else:
-            row = self.selected_node + 1
+            row = self.selected_index + 1
             if row < len(self.nodes):
                 self.select_node(row, action=True)
         return True
@@ -751,7 +735,7 @@ class zynthian_side_chain(tkinter.Canvas):
             self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, True)
             self.build_graph(proc)
         else:
-            row = self.selected_node - 1
+            row = self.selected_index - 1
             if row >= 0:
                 self.select_node(row, action=True)
         return True
