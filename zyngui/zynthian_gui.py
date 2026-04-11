@@ -2152,11 +2152,11 @@ class zynthian_gui:
 
         # Standard 4 ZynSwitches
         if i == 0:
-            self.cuia_screen_admin()
+            self.cuia_help()
             return True
 
         elif i == 1:
-            self.cuia_all_sounds_off()
+            self.cuia_power()
             return True
 
         elif i == 2:
@@ -2164,7 +2164,7 @@ class zynthian_gui:
             return True
 
         elif i == 3:
-            self.cuia_power()
+            self.cuia_all_sounds_off()
             return True
 
         # Custom ZynSwitches

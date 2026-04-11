@@ -2320,6 +2320,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if super().zynpot_cb(i, dval):
             return
 
+        # Launcher's vertical cursor move (across phrases)
+        elif self.launcher_mode and i == zynthian_gui_config.layout["ctrl_order"][2]:
+            if dval < 0:
+                self.arrow_up(-dval)
+            else:
+                self.arrow_down(-dval)
+            return
+
         # Knob#1 adjusts selected chain's level
         elif i == 0:
             if self.highlighted_strip is not None:
@@ -2332,17 +2340,11 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         # Knob#3 adjusts main mixbus level
         elif i == 2:
-            if self.launcher_mode:
-                if dval < 0:
-                    self.arrow_up(-dval)
-                else:
-                    self.arrow_down(-dval)
-            else:
-                self.chain_strips[-1].nudge_volume(dval)
+            self.chain_strips[-1].nudge_volume(dval)
 
         # Knob#4 moves chain selection
         elif i == 3:
-            if self.moving_phrase:
+            if self.launcher_mode and self.moving_phrase:
                 if dval < 0:
                     self.arrow_up(-dval)
                 elif dval > 0:
