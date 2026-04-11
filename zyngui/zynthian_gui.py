@@ -1739,7 +1739,10 @@ class zynthian_gui:
 
     def cuia_disable_midi_learn(self, params=None):
         self.state_manager.set_midi_learn(False)
-        self.get_midi_learn_screen_obj().exit_midi_learn()
+        try:
+            self.get_midi_learn_screen_obj().exit_midi_learn()
+        except:
+            pass
 
     def cuia_toggle_midi_learn(self, params=None):
         try:
