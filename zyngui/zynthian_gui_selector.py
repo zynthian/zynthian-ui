@@ -83,15 +83,10 @@ class zynthian_gui_selector(zynthian_gui_base):
             selectmode=tkinter.SINGLE)
 
         # Configure layout
-        if tiny_ctrls:
-            if self.layout['rows'] == 2:
-                self.main_frame.rowconfigure(0, weight=0)
-                self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
-            elif self.layout['rows'] == 4:
-                self.main_frame.rowconfigure(0, weight=0)
-                self.main_frame.rowconfigure(1, weight=0)
-                self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
-                self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
+        self.tiny_ctrls = tiny_ctrls
+        if self.tiny_ctrls:
+            for i in range(self.layout['rows']):
+                self.main_frame.rowconfigure(i, weight=1)
         else:
             for i in range(self.layout['rows']):
                 self.main_frame.rowconfigure(i, weight=1, uniform='ctrl_row')
@@ -174,7 +169,9 @@ class zynthian_gui_selector(zynthian_gui_base):
         ctrl_width = int(ctrl_width)
         self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lb_width, weight=lb_weight)
         self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=ctrl_width, weight=self.sidebar_shown)
-
+        if self.tiny_ctrls:
+            ctrl_height = self.height // (2 * self.layout['rows'])
+            self.main_frame.rowconfigure(3, minsize=ctrl_height)
         if self.loading_canvas:
             self.loading_canvas.configure(height=int(0.5 * self.height))
 

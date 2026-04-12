@@ -76,7 +76,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         )
 
     def grid_info_canvas(self):
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news", padx=(2,2), pady=(2,2))
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=3, sticky="news", padx=(2,2), pady=(2,2))
 
     def update_layout(self):
         super().update_layout()
