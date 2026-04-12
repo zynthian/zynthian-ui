@@ -236,7 +236,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     # Function to get name of this view
     def get_name(self):
-        return "pattern editor base"
+        return "pated base"
 
     # Function to set up behaviour of encoders
     def setup_zynpots(self):
@@ -404,12 +404,11 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             menu_options['_SEQUENCE'] = options
         # Pattern Options
         options = {}
-        # TODO This must be improved!!
-        if zynthian_gui_config.touch_navigation:
-            if self.get_name() == "pattern editor":
-                options['\u2610 CC editor'] = 'CC editor'
+        if zynthian_gui_config.touch_navigation or zynthian_gui_config.layout["name"] == "V4":
+            if self.get_name() == "pated note":
+                options['Edit CC'] = 'Toggle Editor'
             else:
-                options['\u2612 CC editor'] = 'CC editor'
+                options['Edit Notes'] = 'Toggle Editor'
         options[f"Length ({self.get_pattern_length()})"] = 'Length'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         qn = self.zynseq.libseq.getQuantizeNotes()
@@ -487,7 +486,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                                                         'value_default': 1, 'value': self.zoom})
             case 'Tempo':
                 self.zyngui.show_screen('tempo')
-            case 'CC editor':
+            case 'Toggle Editor':
                 self.zyngui.toggle_pated()
             case 'Length':
                 labels = []

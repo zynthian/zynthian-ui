@@ -57,7 +57,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     # Function to get name of this view
     def get_name(self):
-        return "pattern cc editor"
+        return "pated cc"
 
     def get_title(self):
         title = f"{super().get_title()}: CC{self.cc_num}"

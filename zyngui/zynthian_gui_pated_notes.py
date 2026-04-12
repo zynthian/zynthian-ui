@@ -203,7 +203,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
     # Function to get name of this view
     def get_name(self):
-        return "pattern editor"
+        return "pated note"
 
     def get_title(self):
         title = super().get_title()
