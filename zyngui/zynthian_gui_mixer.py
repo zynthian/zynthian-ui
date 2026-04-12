@@ -1141,6 +1141,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.right_canvas.bind("<Button-4>", self.on_wheel)
         self.right_canvas.bind("<Button-5>", self.on_wheel)
 
+        self.pated = None
+        self.clipboard = None
+        self.wsleds_i_clipboard = None
+
         self.update_layout()
 
     def cb_rename_chain(self, chain_id, title):
@@ -1383,6 +1387,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
+
+        # Setup pattern editor and clipboard functionality
+        self.pated = self.zyngui.screens["pattern_editor"]
+        self.clipboard = self.pated.clipboard
+        self.wsleds_i_clipboard = self.pated.wsleds_i_clipboard
+        self.switch_i_clipboard = self.pated.switch_i_clipboard
 
         return True
 
@@ -2111,9 +2121,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         logging.warning(dy)
 
     def edit_pattern(self):
-        pated = self.zyngui.screens['pattern_editor']
-        pated.refresh_sequence_info()
-        pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
+        self.pated.refresh_sequence_info()
+        self.pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
         #pated.enable_sequence()
         self.zyngui.show_screen("pattern_editor")
         return True
@@ -2197,6 +2206,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
     # Physical UI Control Management: Pots & switches
     # --------------------------------------------------------------------------
 
+    def get_selected_pattern(self):
+        if self.zynseq.phrase < self.zynseq.phrases and self.highlighted_strip\
+           and self.highlighted_strip.chain.chain_id > 0\
+           and type(self.highlighted_strip.chain.midi_chan) is int\
+           and self.highlighted_strip.chain.midi_chan < 16:
+            return self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0)
+        return None
+
     def switch_select(self, type='S'):
         """ Function to handle SELECT button press
         type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
@@ -2277,6 +2294,24 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     return True
             case 3:
                 return self.switch_select(t)
+
+        # ALT mode => Use F1-F4 as copy/paste buttons
+        if self.launcher_mode and self.alt_mode\
+           and self.switch_i_clipboard and swi in self.switch_i_clipboard:
+            # Currently only pattern clips! => TODO Extend to audio clips!
+            pattern = self.get_selected_pattern()
+            logging.debug
+            if pattern :
+                index = self.switch_i_clipboard.index(swi)
+                if t == "S":
+                    self.pated.paste_pattern(index, pattern)
+                    self.zynseq.refresh_state()
+                    self.refresh_launchers()
+                    return True
+                elif t == "B":
+                    src_info = [self.zynseq.phrase, self.highlighted_strip.chan, pattern]
+                    self.pated.copy_pattern(index, src_info)
+                    return True
 
         return False
 
@@ -2455,5 +2490,19 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         # CTRL button
         wsl.set_led(leds[15], wsl.wscolor_active2)
+
+        # Copy/paste buttons => Only available for pattern clips
+        if self.launcher_mode and self.wsleds_i_clipboard:
+            pattern = self.get_selected_pattern()
+            if pattern:
+                for i, wsli in enumerate(self.wsleds_i_clipboard):
+                    if self.clipboard[i] is not None:
+                        if self.clipboard[i][2] == pattern:
+                            wsl.blink(leds[wsli], wsl.wscolor_red)
+                        else:
+                            wsl.blink(leds[wsli], wsl.wscolor_active2)
+                    else:
+                        wsl.set_led(leds[wsli], wsl.wscolor_active2)
+
 
 # --------------------------------------------------------------------------

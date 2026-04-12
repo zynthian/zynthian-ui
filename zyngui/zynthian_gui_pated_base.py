@@ -80,6 +80,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
 
+    clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste, shared by all pated instances.
+
     # Function to initialise class
     def __init__(self):
         super().__init__()
@@ -97,7 +99,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.title = "Pattern 0"
         self.alt_mode = False
         self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
-        self.clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste.
         self.phrase = 0  # Phrase where pattern is used
         self.pattern = 0  # Pattern to edit
         self.sequence = 0  # Sequence used for pattern editor sequence player
@@ -798,14 +799,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.zynseq.libseq.sendMidiCommand(0xB0 | self.channel, 123, 0)  # All notes off
 
     # Function to copy current pattern to clipboard
-    def copy_pattern(self, i=0):
+    def copy_pattern(self, i=0, src_info=None):
+        if src_info is None or len(src_info) != 3:
+            src_info = [self.phrase, self.sequence, self.pattern]
         try:
-            self.clipboard[i] = (self.phrase, self.sequence, self.pattern)
+            self.clipboard[i] = (src_info[0], src_info[1], src_info[2])
         except:
             logging.error(f"Wrong clipboard index => {i}")
 
     # Function to paste pattern from clipboard
-    def paste_pattern(self, i=0):
+    def paste_pattern(self, i=0, dst_pattern=None):
         try:
             paste = self.clipboard[i]
         except:
@@ -815,27 +818,33 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         if paste is None or paste[2] == self.pattern:
             return
         # Overwriting an empty pattern doesn't need confirmation
-        if self.zynseq.libseq.getLastStep() == -1:
-            self.do_paste_pattern(i)
+        #if self.zynseq.libseq.getLastStep() == -1:
+        if self.zynseq.libseq.isPatternEmpty(dst_pattern):
+            self.do_paste_pattern([i, dst_pattern])
         # Overwriting a busy pattern does need confirmation!
         else:
             name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[0], paste[1])
             self.zyngui.show_confirm(f"Overwrite this pattern with content from {name}?",
-                                     self.do_paste_pattern, i)
+                                     self.do_paste_pattern, [i, dst_pattern])
 
     # Function to actually copy pattern
-    def do_paste_pattern(self, i=0):
+    def do_paste_pattern(self, params):
+        i = params[0]
+        dst_pattern = params[1]
         try:
             paste = self.clipboard[i]
         except:
             logging.error(f"Wrong clipboard index => {i}")
             return
+        if dst_pattern is None:
+            dst_pattern = self.pattern
         # Don't paste from None or over itself
-        if paste is None or paste[2] == self.pattern:
+        if paste is None or paste[2] == dst_pattern:
             return
         # Paste from clipboard to current pattern
-        self.zynseq.libseq.copyPattern(paste[2], self.pattern)
-        self.load_pattern(self.pattern)
+        self.zynseq.libseq.copyPattern(paste[2], dst_pattern)
+        if self.shown:
+            self.load_pattern(dst_pattern)
 
     # Function to export pattern to SMF
     def export_smf(self, fname):
