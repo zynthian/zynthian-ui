@@ -281,10 +281,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         color_bg = zynthian_gui_config.color_panel_tx
         if mode == EDIT_MODE_SINGLE:
             #self.set_title("Note Parameters", color_fg, color_bg)
-            pass
+            self.set_edit_title()
         elif mode == EDIT_MODE_MULTI:
             #self.set_title("Note Parameters ALL", color_fg, color_bg)
-            pass
+            self.set_edit_title()
         elif self.edit_mode == EDIT_MODE_ZOOM:
             self.set_title("Grid zoom", color_fg, color_bg)
         elif self.edit_mode == EDIT_MODE_HISTORY:
