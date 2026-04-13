@@ -1995,43 +1995,60 @@ class zynthian_gui:
                 self.callable_ui_action_params(cuia)
                 return True
 
-    def is_current_screen_menu(self):
-        if self.current_screen in ("chain_manager", "engine", "chain_manager", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
-                                   "audio_out", "midi_prog") or self.current_screen.endswith("_options"):
-            return True
-        if len(self.screen_history) > 1:
-            if self.current_screen == "midi_config" and self.screen_history[-2] != "admin":
-                return True
-            if self.current_screen in ("option", "confirm", "keyboard"):
-                parent_views = ("pattern_editor", "preset",
-                                "bank", "chain_manager", "chain_options", "processor_options")
-                if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
-                    return True
-                elif self.screen_history[-2] == "midi_config" and len(self.screen_history) > 2 and self.screen_history[-3] != "admin":
-                    return True
-        return False
+    # Get the current workflow name by analyzing screen history
+    def get_current_workflow(self):
+        # [workflow base screen list, workflow allowed subscreens]
+        workflows = {
+            "menu": [["main_menu", "grid_sel"], []],
+            "add_chain": [["add_chain"], ["engine", "midi_chan"]],
+            "chain_manager": [["chain_manager"], ["chain_options", "midi_chan", "midi_cc", "midi_key_range", "midi_config", "processor_options", "audio_in", "audio_out"]],
+            "admin": [["admin"], ["wifi", "bluetooth", "brightness_config", "touchscreen_calibration", "cv_config"]],
+            "bank_preset": [["bank", "preset"], []],
+            "chain_control": [["chain_control"], ["processor_options", "file_selector", "midi_cc_range", "midi_cc_single"]],
+            "audio_player": [["audio_player"], ["midi_cc_range", "midi_cc_single"]],
+            "alsa_mixer": [["alsa_mixer"], ["midi_cc_range", "midi_cc_single"]],
+            "tempo": [["tempo"], ["midi_cc_range", "midi_cc_single"]],
+            "pated": [["pattern_editor", "pated_cc"], ["midi_prog"]],
+            "snapshot": [["snapshot"], []],
+            "zs3": [["zs3"], []]
+        }
 
-    def is_current_screen_admin(self):
-        if self.current_screen in ("admin", "info", "wifi", "bluetooth", "brightness_config", "touchscreen_calibration", "cv_config"):
-            return True
-        if len(self.screen_history) > 1:
-            if self.current_screen == "midi_config" and self.screen_history[-2] == "admin":
-                return True
-            if self.current_screen in ("option", "confirm", "keyboard"):
-                if self.screen_history[-1] == "admin" or self.screen_history[-2] == "admin":
-                    return True
-                elif self.screen_history[-2] == "midi_config" and len(self.screen_history) > 2 and self.screen_history[-3] == "admin":
-                    return True
-        return False
+        sh = self.screen_history + [self.current_screen]
+
+        # Look for a wokflow base screen in the screen history, including current screen
+        def get_wf():
+            i = len(sh) - 1
+            while i >= 0:
+                for wf, wfcfg in workflows.items():
+                    if sh[i] in wfcfg[0]:
+                        return [i, wf, wfcfg]
+                i -= 1
+            return None
+
+        # Confirm next screens in history are allowed screens for this workflow
+        wf_info = get_wf()
+        if wf_info:
+            i, wf, wfcfg = wf_info
+            subscreens = ["option", "confirm", "keyboard"] + wfcfg[1]
+            i += 1
+            while (i < len(sh)):
+                if sh[i] not in subscreens:
+                    return None
+                i += 1
+
+            return wf
+        return None
 
     def check_current_screen_switch(self, action_config):
         # BIG ÑAPA!!
         if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ("bank", "preset", "audio_player"):
             return True
-        # if self.is_current_screen_menu():
+        # if self.is_current_workflow_menu():
         if action_config['S']:
             short_action = action_config['S'].lower()
             if short_action.endswith(self.current_screen):
+                return True
+            if short_action == "menu" and self.current_screen == "main_menu":
                 return True
         return False
 
