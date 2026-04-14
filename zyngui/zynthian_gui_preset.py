@@ -42,7 +42,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         self.preload_timer_id = None
         self.preload_timer_ms = 300
         self.processor = None
-        zynthian_gui_selector_info.__init__(self, 'Preset', default_icon="preset.png")
+        zynthian_gui_selector_info.__init__(self, 'Preset', default_icon="preset.png", zsel_hidden=False)
 
     def fill_list(self):
         if not self.processor:
@@ -251,9 +251,6 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
                 self.click_listbox()
         except:
             pass
-
-    def set_selector(self, zs_hidden=False):
-        super().set_selector(zs_hidden)
 
     def select_listbox(self, index, see=True):
         super().select_listbox(index, see=True)

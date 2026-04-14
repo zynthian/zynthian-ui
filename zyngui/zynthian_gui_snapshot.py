@@ -227,6 +227,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
                 else:
                     self.show_options(i, self.list_data[i][2] == "Last State")
 
+    def show_menu(self):
+        if self.shown:
+            self.switch_select(t='B')
+
     def new_bank(self, title):
         self.load_bank_list()
         full_title = f"{max(map(lambda item: int(item[2].split('-')[0]) if item[2].split('-')[0].isdigit() else 0, self.list_data)) + 1:03d}"

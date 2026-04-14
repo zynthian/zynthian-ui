@@ -1626,17 +1626,16 @@ class zynthian_gui:
 
         if chain_id is not None:
             self.screens['chain_options'].setup(chain_id)
-            self.show_screen('chain_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+            self.show_screen('chain_options')
 
     cuia_layer_options = cuia_chain_options
 
     def cuia_menu(self, params=None):
-        if self.current_screen != "alsa_mixer":
-            toggle_menu_func = getattr(self.screens[self.current_screen], "toggle_menu", None)
-            if callable(toggle_menu_func):
-                toggle_menu_func()
-                return
-        self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+        show_menu_func = getattr(self.screens[self.current_screen], "show_menu", None)
+        if callable(show_menu_func):
+            show_menu_func()
+            return
+        self.show_screen("chain_manager")
 
     def cuia_bank_preset(self, params=None):
         if self.is_shown_alsa_mixer():
@@ -2048,7 +2047,7 @@ class zynthian_gui:
             short_action = action_config['S'].lower()
             if short_action.endswith(self.current_screen):
                 return True
-            if short_action == "menu" and self.current_screen == "main_menu":
+            if short_action == "menu" and self.current_screen in ("main_menu", "chain_manager"):
                 return True
         return False
 
@@ -2197,7 +2196,8 @@ class zynthian_gui:
 
         # Default actions for the 4 standard ZynSwitches
         if i == 0:
-            return False
+            self.show_screen('chain_manager')
+            return True
 
         elif i == 1:
             try:

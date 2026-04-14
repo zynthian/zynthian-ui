@@ -1622,14 +1622,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def topbar_short_touch_action(self):
         self.toggle_launcher_mode()
 
-    def XXXtoggle_menu(self):
-        if self.shown:
-            # Chain options selected
-            self.zyngui.screens['chain_manager'].select_chain_options_node()
-            self.zyngui.toggle_screen("chain_manager")
-        elif self.zyngui.get_current_screen() == "option":
-            self.zyngui.close_screen()
-
     def item_menu(self):
         if self.launcher_mode and self.zynseq.phrase < self.zynseq.phrases:
             # Launcher Options
@@ -2274,12 +2266,11 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         self.highlighted_strip.toggle_solo()
                     return True
                 elif t == "B":
-                    self.zyngui.show_screen("main_menu")
+                    self.zyngui.show_screen("chain_manager")
                     return True
             case 1:
                 if t == "B":
-                    #self.zyngui.screens['chain_manager'].select_chain_options_node()
-                    self.zyngui.show_screen("chain_manager")
+                    self.zyngui.show_screen("main_menu")
                     return True
             case 2:
                 if t == "S":

@@ -892,10 +892,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             else:
                 self.arrow_down()
 
-    def toggle_menu(self):
-        if self.shown:
-            self.zyngui.show_screen("admin")
-
     def zynpot_cb(self, i, dval):
         if super().zynpot_cb(i, dval):
             return True
@@ -1000,11 +996,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
 
         returns True if action fully handled or False if parent action should be triggered
         """
-
-        if swi == 2:
-            if t == "S":
-                self.zyngui.screens["chain_options"].insert_chain()
-                return True
+        if swi == 1 and t == 'B':
+            self.zyngui.show_screen('main_menu')
+            return True
+        elif swi == 2 and t == "S":
+            self.zyngui.screens["chain_options"].insert_chain()
+            return True
         elif swi == 3:
             return self.on_select(t)
         return False

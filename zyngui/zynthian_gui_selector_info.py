@@ -38,7 +38,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 class zynthian_gui_selector_info(zynthian_gui_selector):
 
-    def __init__(self, selcap='Select', default_icon="zynthian_logo.png", tiny_ctrls=True, parent=None, topbar=None):
+    def __init__(self, selcap='Select', default_icon="zynthian_logo.png", tiny_ctrls=True, zsel_hidden=True, parent=None, topbar=None):
         # Custom layout for GUI selector info
         self.layout = {
             'name': 'gui_selector_info',
@@ -55,6 +55,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             'ctrl_order': (0, 1, 2, 3),
             'ctrl_width': 0.25
         }
+        self.zsel_hidden = zsel_hidden
         self.info_text = None
         self.default_icon = default_icon
         self.icons = {}
@@ -76,7 +77,11 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         )
 
     def grid_info_canvas(self):
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=3, sticky="news", padx=(2,2), pady=(2,2))
+        if self.zsel_hidden:
+            rowspan = 4
+        else:
+            rowspan = 3
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=rowspan, sticky="news", padx=(2,2), pady=(2,2))
 
     def update_layout(self):
         super().update_layout()
@@ -124,6 +129,11 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         except Exception as e:
             logging.error(f"Can't load info icon {icon_fname} => {e}")
             return zynthian_gui_config.loading_imgs[0]
+
+    def set_selector(self, zs_hidden=None):
+        if zs_hidden is None:
+            zs_hidden = self.zsel_hidden
+        super().set_selector(zs_hidden)
 
     def select(self, index=None, set_zctrl=True):
         super().select(index, set_zctrl)

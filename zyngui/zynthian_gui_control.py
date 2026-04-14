@@ -448,6 +448,11 @@ class zynthian_gui_control(zynthian_gui_selector):
     # Zynpot & zynswitch callbacks
     # --------------------------------------------------------------------------
 
+    def show_menu(self):
+        #curproc = self.zyngui.get_current_processor()
+        self.zyngui.show_screen("processor_options")
+        return True
+
     # Function to handle *all* switch presses.
     #  swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
     #  t: Press type ["S"=Short, "B"=Bold, "L"=Long]

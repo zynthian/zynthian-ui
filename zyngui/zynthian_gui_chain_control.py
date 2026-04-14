@@ -196,13 +196,14 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         if swi == 0 and t == 'S':
             self.chain_manager.rotate_chain()
             return True
-
-        if self.chain_shown and swi == 2:
+        elif swi == 1 and t == 'B':
+            self.zyngui.show_screen('main_menu')
+            return True
+        elif self.chain_shown and swi == 2:
             self.chain_canvas.switch_select(t)
             return True
 
         return False
-
 
     def switch_select(self, t):
         if t == 'S':
@@ -310,14 +311,11 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     # --------------------------------------------------------------------------
 
     def show_menu(self):
-        if not self.chain_shown:
-            self.show_chain(True)
-            try:
-                self.subscreen.set_mode_select()
-            except:
-                pass
-        else:
-            zynthian_gui_config.zyngui.show_screen('chain_manager')
+        show_menu_func = getattr(self.subscreen, "show_menu", None)
+        if callable(show_menu_func):
+            if show_menu_func():
+                return
+        zynthian_gui_config.zyngui.show_screen('chain_manager')
 
     def toggle_menu(self):
         if self.shown:

@@ -68,8 +68,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             if self.processor.type == "MIDI Tool" or self.processor.type == "Audio Effect":
                 self.list_data.append((self.processor_remove, None, "Remove"))
 
-        if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
-            self.list_data.append((self.preset_list, None, "Presets"))
+        #if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
+        #    self.list_data.append((self.preset_list, None, "Presets"))
 
         if self.processor.type == "MIDI Synth":
             self.list_data.append((self.randomize, None, "Randomize parameters"))
@@ -77,7 +77,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
                 self.list_data.append((self.undo_randomize, None, "Undo Randomize"))
 
         self.list_data.append((self.midi_clean, None, "Clean MIDI-learn"))
-        self.list_data.append((self.control_view, None, "Control View"))
+        #self.list_data.append((self.control_view, None, "Control View"))
         # Processor info
         self.list_data.append((self.show_details, None, "Info"))
 
