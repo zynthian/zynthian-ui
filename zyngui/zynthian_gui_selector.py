@@ -171,7 +171,7 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=ctrl_width, weight=self.sidebar_shown)
         if self.tiny_ctrls:
             ctrl_height = self.height // (2 * self.layout['rows'])
-            self.main_frame.rowconfigure(3, minsize=ctrl_height)
+            self.main_frame.rowconfigure(self.layout['rows'] - 1, minsize=ctrl_height)
         if self.loading_canvas:
             self.loading_canvas.configure(height=int(0.5 * self.height))
 
