@@ -1,0 +1,104 @@
+
+body {
+	background: #000000;
+	color: #ffffff;
+	font-size: 150%;
+	margin-bottom: 2em;
+}
+
+h1 {
+	padding-top: 1em;
+	color: #ffffff;
+	font-size: 180%;
+}
+
+ul {
+	margin-left: 0.3em;
+	padding-left: 0px;
+}
+
+li {
+	margin-left: 0px;
+	padding-left: 0.5em;
+}
+
+img.full {
+	width: 100%;
+}
+
+div.clear {
+	clear: both;
+}
+
+div.left_container {
+	clear: left;
+	width: 65%;
+}
+
+div.full_container {
+	clear: both;
+	width: 100%;
+}
+
+div.right_float_container {
+	clear: right;
+	float: right;
+	width: 30%;
+}
+
+div.knobs_action_container_left {
+	clear: left;
+	float: left;
+	width: 49%;
+}
+
+div.knobs_action_container_right {
+	clear: right;
+	float: right;
+	width: 49%;
+}
+
+div.knob_action {
+	margin-bottom: 6px;
+	padding-bottom: 4px;
+	font-size: 100%;
+	background: #404040;
+}
+
+div.knobs_action_container_left div.knob_action {
+	padding-left: 4px;
+	text-align: left;
+}
+
+div.knobs_action_container_right div.knob_action {
+	padding-right: 4px;
+	text-align: right;
+}
+
+div.knob_action img {
+	height: 46px;
+	margin-bottom: 1px;
+	margin-top: 1px;
+	vertical-align: middle;
+}
+
+div.knobs_action_container_left div.knob_action img {
+	margin-right: 6px;
+}
+
+div.knobs_action_container_right div.knob_action img {
+	margin-left: 6px;
+}
+
+div.knob_action_1 {
+	border-left: 10px solid #C0D030;
+}
+div.knob_action_2 {
+	border-left: 10px solid #D030C0;
+}
+div.knob_action_3 {
+	border-right: 10px solid #30A0D0;
+}
+div.knob_action_4 {
+	border-right: 10px solid #40D030;
+}

@@ -932,12 +932,18 @@ class zynthian_gui:
     def show_help(self, topic=None):
         if not topic:
             topic = self.current_screen
-        if topic == "control":
+        fpath = None
+        if topic == "chain_control":
             proc = self.get_current_processor()
-            if Path(f"./help/{proc.name.lower()}.html").exists():
-                topic = proc.name.lower()
-        if self.screens['help'].load_file(f"./help/{topic}.html"):
-            pass
+            fpath = f"./help/widgets/{proc.name.lower()}.html"
+            if not Path(fpath).exists():
+                fpath = None
+        if not fpath:
+            fpath = f"./help/{zynthian_gui_config.layout['name']}/{topic}.html"
+            if not Path(fpath).exists():
+                fpath = None
+        if fpath:
+            self.screens['help'].load_file(fpath)
         elif topic != "help":
             logging.warning(f"No help for '{topic}'")
 

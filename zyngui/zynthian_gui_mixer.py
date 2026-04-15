@@ -1860,6 +1860,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.left_canvas.itemconfig("launcher_show", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("launcher_show", state=tkinter.NORMAL)
             self.highlight_launcher()
+            if self.shown:
+                self.zyngui.current_screen = "launcher"
         else:
             self.left_canvas.itemconfig("fader", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("fader", state=tkinter.NORMAL)
@@ -1867,6 +1869,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.right_canvas.itemconfig("fader_horizontal", state=tkinter.HIDDEN)
             self.left_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
             self.right_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
+            if self.shown:
+                self.zyngui.current_screen = "mixer"
         zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
 
     def toggle_launcher_mode(self):

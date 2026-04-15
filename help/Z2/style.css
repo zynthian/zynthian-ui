@@ -1,8 +1,8 @@
-
 body {
 	background: #000000;
- 	color: #ffffff;
+	color: #ffffff;
 	font-size: 150%;
+	margin-bottom: 2em;
 }
 
 h1 {
@@ -27,12 +27,23 @@ div.clear {
 	clear: both;
 }
 
-div.right_container {
+div.left_container {
+	clear: left;
 	width: 65%;
 }
 
-div.knobs_action_container,
-div.left_float_container {
+div.full_container {
+	clear: both;
+	width: 100%;
+}
+
+div.right_float_container {
+	clear: right;
+	float: right;
+	width: 30%;
+}
+
+div.knobs_action_container {
 	clear: both;
 	float: right;
 	width: 30%;
