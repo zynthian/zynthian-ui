@@ -39,17 +39,18 @@
 #define FX_FADE_OUT 2
 
 typedef struct {
-    uint8_t state;    // Clip state
-    uint32_t frames;  // Quantity of frames in loaded clip
-    uint8_t channels; // Quantity of channels in clip
-    float gain;       // Gain factor
-    uint16_t nbeats;  // Number of beats
-    uint32_t start;   // Start frame in sample file
-    uint32_t end;     // End frame in sample file
-    uint8_t quality;  // Re-sample quality
-    float tempo;      // Tempo to play (used to calculate timestretch ratio). 0 to no timestretch.
-    char path[256];   // Loaded file path and filename
-    float *data[2];   // Processed sample data for each channel (L,R)
+    uint8_t state;          // Clip state
+    uint32_t frames;        // Quantity of frames in loaded clip
+    uint8_t channels;       // Quantity of channels in clip
+    float gain;             // Gain factor
+    uint16_t nbeats;        // Number of beats
+    uint32_t start;         // Start frame in sample file
+    uint32_t end;           // End frame in sample file
+    uint8_t quality;        // Re-sample quality
+    float tempo;            // Tempo to play (used to calculate timestretch ratio). 0 to no timestretch.
+    uint8_t tempo_lock;     // Ignore global tempo changes
+    char path[256];         // Loaded file path and filename
+    float *data[2];         // Processed sample data for each channel (L,R)
 } Clip;
 
 typedef struct {
@@ -282,8 +283,8 @@ void reset() {
             Clip* clip = player->clips[id];
             if (clip) {
                 releaseMutex();
-                loadClip(ch, id + 1, clip->path, clip->nbeats,
-                         clip->start, clip->end, clip->quality, clip->tempo);
+                loadClip(ch, id + 1, clip->path, clip->nbeats, clip->start,
+                         clip->end, clip->quality, clip->tempo, clip->tempo_lock);
                 getMutex();
             }
         }
@@ -307,7 +308,7 @@ void changeTempo(float tempo) {
             ids[ch] = 0;
         }
     }
-    // Reload clips, recalculating timestretch with new tempo
+    // Reload all clips, recalculating timestretch with new tempo
     for (uint8_t i = 0; i < MAX_CLIPS; i++) {
         for (uint8_t ch = 0; ch < 16; ch++) {
             Player* player = players[ch];
@@ -315,13 +316,43 @@ void changeTempo(float tempo) {
                 continue;
             uint8_t id = (ids[ch] + i) % MAX_CLIPS;
             Clip* clip = player->clips[id];
-            // Don't process clips with tempo=0 (no timestretch)
-            if (clip && clip->tempo > 0 && tempo != clip->tempo) {
-                loadClip(ch, id + 1, clip->path, clip->nbeats,
-                         clip->start, clip->end, clip->quality, tempo);
+            // Don't process clips with tempo=0 (no timestretch) or locked tempo.
+            if (clip && !clip->tempo_lock && clip->tempo > 0 && tempo != clip->tempo) {
+                loadClip(ch, id + 1, clip->path, clip->nbeats, clip->start, clip->end, clip->quality, tempo, clip->tempo_lock);
             }
         }
     }
+}
+
+void idlePlayers() {
+    for (uint8_t ch = 0; ch < 16; ch++) {
+        Player* player = players[ch];
+        if (!player || !player->current_clip || player->state != STATE_PLAYING) continue;
+        if (!player->current_clip->tempo_lock && player->current_clip->tempo > 0) {
+            getMutex();
+            player->state = STATE_IDLE;
+            releaseMutex();
+        }
+    }
+}
+
+void changeClipTempo(uint8_t channel, uint8_t id, float tempo) {
+    if (channel > 16 || id >= MAX_CLIPS) return;
+    Player* player = players[channel];
+    if (!player) return;
+    Clip* clip = player->clips[id];
+    if (clip && tempo != clip->tempo) {
+        // Reload clip, recalculating timestretch with new tempo
+        loadClip(channel, id + 1, clip->path, clip->nbeats, clip->start, clip->end, clip->quality, tempo, clip->tempo_lock);
+    }
+}
+
+void setClipTempoLock(uint8_t channel, uint8_t id, uint8_t tempo_lock) {
+    if (channel > 16 || id >= MAX_CLIPS) return;
+    Player* player = players[channel];
+    if (!player) return;
+    Clip* clip = player->clips[id];
+    if (clip) clip->tempo_lock = tempo_lock;
 }
 
 static int onBufferSize(jack_nframes_t frames, __attribute__((unused)) void* arg) {
@@ -452,7 +483,7 @@ uint8_t idlePlayerClip(uint8_t channel, uint8_t clip) {
     Player* player = players[channel];
     if(player == NULL)
         return ERROR_CREATE;
-    if (player->current_clip == player->clips[clip] && player->state == STATE_PLAYING) {
+    if (player->current_clip_id == clip && player->state == STATE_PLAYING) {
         getMutex();
         player->state = STATE_IDLE;
         releaseMutex();
@@ -543,7 +574,8 @@ uint32_t getClipFrames(uint8_t channel, uint8_t clip) {
 }
 
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,
-                 uint32_t start, uint32_t end, uint8_t quality, float tempo) {
+                 uint32_t start, uint32_t end, uint8_t quality, float tempo,
+                 uint8_t tempo_lock) {
 
     if (channel >= 16) {
         fprintf(stderr,"loadClip(): Channel/note out of range.\n");
@@ -823,10 +855,11 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
     clip->end = end;
     clip->quality = quality;
     clip->tempo = tempo;
+    clip->tempo_lock = tempo_lock;
     clip->state = STATE_READY;
 
     // Re-sync if playing
-    uint8_t curclip = (player->current_clip == player->clips[id]);
+    uint8_t curclip = (id == player->current_clip_id);
     unloadClip(channel, note);
     player->clips[id] = clip;
     if (curclip) {
@@ -853,12 +886,10 @@ uint8_t unloadClip(uint8_t channel, uint8_t note) {
     Clip* clip = player->clips[id];
     if(clip == NULL)
         return ERROR_RANGE;
-    if (player->current_clip == player->clips[id]) {
+    if (player->current_clip_id == id) {
         getMutex();
         player->current_clip = NULL;
         player->current_clip_id = -1;
-        if (player->state == STATE_PLAYING)
-            clip->state = STATE_IDLE;
         releaseMutex();
     }
     player->clips[id] = NULL;

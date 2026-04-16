@@ -236,7 +236,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
         processor: Clippy processor
         phrase: Phrase index
-        reset: True to reset crop parameters
+        autoreset: True to allow resetting crop parameters when loading a new file
         """
 
         note = phrase + 1
@@ -258,6 +258,9 @@ class zynthian_engine_clippy(zynthian_engine):
             tempo = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo")
             if not tempo:
                 tempo = self.zynseq.libseq.getTempo()
+                tempo_lock = False
+            else:
+                tempo_lock = True
 
             # Try to determine sample tempo from filename
             filename = os.path.basename(path)
@@ -317,7 +320,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] {tempo}BPM => {path}")
                 # Setup clippy note
                 new_note = self.libclippy.loadClip(clip_channel, note, bytes(path, "utf-8"), whole_beats,
-                                                   crop_start, crop_end, quality, ctypes.c_float(tempo))
+                                                   crop_start, crop_end, quality, ctypes.c_float(tempo), tempo_lock)
                 if new_note == 0:
                     logging.warning(f"Can't load/process sample file!")
                 elif note != new_note:
@@ -382,15 +385,8 @@ class zynthian_engine_clippy(zynthian_engine):
             self.tempo_timer.cancel()
         self.tempo_timer = Timer(0.5, self.tempo_timer_cb)
         self.tempo_timer.start()
-        # Silence (Idle) all playing samples:
-        for processor in self.processors:
-            for phrase in range(self.zynseq.phrases):
-                symbol = f"warp {phrase + 1}"
-                try:
-                    if processor.controllers_dict.get(symbol).value:
-                        self.libclippy.idlePlayerClip(processor.midi_chan - 16, phrase)
-                except:
-                    continue
+        # Silence (IDLE) players that need to rewarp:
+        self.libclippy.idlePlayers()
 
     def tempo_timer_cb(self):
         if self.tempo_timer:
@@ -398,6 +394,14 @@ class zynthian_engine_clippy(zynthian_engine):
         tempo = self.zynseq.libseq.getTempo()
         self.libclippy.changeTempo(ctypes.c_float(tempo))
         self.tempo_timer = None
+
+    def rewarp_phrase(self, phrase):
+        for proc in self.processors:
+            try:
+                if proc.controllers_dict[f"warp {phrase + 1}"].get_value():
+                    self.set_file(proc, phrase)
+            except:
+                continue
 
     # ---------------------------------------------------------------
     # Controller management
