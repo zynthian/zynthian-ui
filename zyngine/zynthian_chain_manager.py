@@ -1359,6 +1359,8 @@ class zynthian_chain_manager:
 
             self.zyngines[eng_key] = zyngine
             self.zyngine_counter += 1
+            # Force Jack Tempo to update
+            self.state_manager.zynseq.libseq.updateJackPosition()
 
         # Set extended configuration (optional)
         if eng_config:
