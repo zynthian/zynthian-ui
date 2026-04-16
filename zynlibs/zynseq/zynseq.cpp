@@ -146,6 +146,7 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
 
 // Handle timebase change
 void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPeriod, jack_position_t* pPosition, int bUpdate, void* pArgs) {
+    if (bUpdate) return;
     pPosition->bar = g_nBar;
     pPosition->beat = g_nBeat;
     pPosition->tick = g_nTick;
@@ -154,6 +155,20 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     pPosition->beats_per_bar = g_nBeatsPerBar;
     pPosition->ticks_per_beat = PPQN_INTERNAL;
     pPosition->valid = JackPositionBBT;
+}
+
+void updateJackPosition() {
+    jack_position_t position;
+    jack_position_t *pPosition = &position;
+    pPosition->bar = g_nBar;
+    pPosition->beat = g_nBeat;
+    pPosition->tick = g_nTick;
+    pPosition->bar_start_tick = g_nBarStartTick;
+    pPosition->beats_per_minute = g_dTempo;
+    pPosition->beats_per_bar = g_nBeatsPerBar;
+    pPosition->ticks_per_beat = PPQN_INTERNAL;
+    pPosition->valid = JackPositionBBT;
+    jack_transport_reposition(g_pJackClient, pPosition);
 }
 
 /*  Process jack period
@@ -2969,6 +2984,7 @@ void setTempo(double tempo) {
         g_dTempo = tempo;
         updateClockTiming();
         g_seqMan.setTempo(tempo);
+        updateJackPosition();
         //DPRINTF("Tempo set to: %f FramesPerClock: %u\n", g_dTempo, g_dFramesPerTick);
     }
 }

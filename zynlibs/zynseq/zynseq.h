@@ -1295,7 +1295,7 @@ uint8_t getSequenceFollowRepeat(uint8_t scene, uint8_t phrase, uint8_t sequence)
 
 /** @brief  Get phrase schedule
     @param  scene Index of scene
-    @retval 
+    @retval
 */
 
 /** @brief  Update all sequence lengths and empty status
@@ -1336,6 +1336,10 @@ void transportStop(uint8_t id);
     @param  id Id of client requesting change
 */
 void transportToggle(uint8_t id);
+
+/** @brief  Force Jack's position update
+*/
+void updateJackPosition();
 
 /** @brief  Set transport tempo
     @param  tempo Beats per minute
