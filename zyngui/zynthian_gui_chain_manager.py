@@ -706,8 +706,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def tts(self, immediate=True):
         node = self._get_node(self.selected_node)
         chain_id = node.get("chain_id")
-        chain = self.chain_manager.chains[chain_id]
-        self.state_manager.tts(f"Chain {chain.get_title()} {node.get('title')}", replace=immediate, interrupt=immediate)
+        if chain_id:
+            chain = self.chain_manager.chains[chain_id]
+            idx = self.chain_manager.get_chain_index(chain.chain_id) + 1
+            self.state_manager.tts(f"Chain {idx}: {node.get('title')}", replace=immediate, interrupt=immediate)
+        else:
+            self.state_manager.tts(f"Main chain: {node.get('title')}", replace=immediate, interrupt=immediate)
 
     def move_processor(self, chain_idx, chain_offset):
         if self.moving_proc.eng_code in ["MI", "MR"]:
