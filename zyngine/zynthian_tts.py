@@ -28,21 +28,21 @@ import subprocess
 from collections import deque
 import logging
 
+import zynconf
+from zyngui import zynthian_gui_config
+
 class zynthian_tts:
     def __init__(self):
-        self.engine = "flite"
-        self.speed = 1.0
-        self.gender = "m"
-        self.lang_code = "en"
-        self.soundcard = "1"
+        self.engine = zynthian_gui_config.tts_engine
+        self.gender = zynthian_gui_config.tts_gender
+        self.speed = zynthian_gui_config.tts_speed
+        self.soundcard = zynthian_gui_config.tts_soundcard
         self._queue = deque()
         self._cond = threading.Condition()
         self._stop_event = None
         self._process = None
         self._current_text = None
         self._lock = threading.Lock()
-        
-        self.update_languages()
 
     def start(self):
         if self._stop_event:
@@ -67,7 +67,8 @@ class zynthian_tts:
             card: Soundcard
         """
 
-        self.soundcard = card
+        zynthian_gui_config.tts_soundcard = self.soundcard = card
+        zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": card}, True)
 
     def set_engine(self, engine: str):
         """ Set the TTS engine to use for consequent speech
@@ -79,6 +80,8 @@ class zynthian_tts:
             self.engine = "espeak-ng"
         elif engine.startswith("f"):
             self.engine = "flite"
+        zynthian_gui_config.tts_engine = self.engine
+        zynconf.save_config({"ZYNTHIAN_TTS_ENGINE": self.engine}, True)
 
     def set_speed(self, speed: float):
         """ Set the speech speed
@@ -87,7 +90,8 @@ class zynthian_tts:
         """
 
         speed = max(min(2.0, speed), 0.1)
-        self.speed = speed
+        zynthian_gui_config.tts_speed = self.speed = speed
+        zynconf.save_config({"ZYNTHIAN_TTS_SPEED": str(zynthian_gui_config.tts_speed)}, True)
 
     def set_gender(self, gender: str):
         """ Set the gender of the voice
@@ -99,65 +103,11 @@ class zynthian_tts:
             self.gender = "m"
         elif gender.startswith("f"):
             self.gender = "f"
-
-    def update_languages(self):
-        """ Update the local cache of available and installed languages
-        """
-
-        import argostranslate.package
-        # Stop warnings being logged for translation operations
-        root_logger = logging.getLogger()
-        root_logger.handlers.clear()
-        logging.getLogger("utils.info").setLevel(logging.ERROR)
-        logging.getLogger("utils").setLevel(logging.ERROR)
-        logging.getLogger("argostranslate").setLevel(logging.ERROR)
-
-        argostranslate.package.update_package_index()
-        self.language_packages = {} # (package, installed), indexed by lang_code
-        for package in argostranslate.package.get_available_packages():
-            if package.from_code == "en":
-                self.language_packages[package.to_code] = [package, False]
-        for lang in argostranslate.package.get_installed_packages():
-            self.language_packages[lang.to_code][1] = True
-
-    def get_available_languages(self):
-        """ Get a list of available translation languages
-        Returns: Dict of language names, indexed by language code
-        """
-
-        result = {"en": "English"}
-        for package, installed in self.language_packages.values():
-            result[package.to_code] = package.to_name
-        return result
-
-    def set_language(self, lang_code: str):
-        """ Set the language to translate to
-        Args:
-            lang-code: Language code
-        """
-
-        if lang_code == "en":
-            self.lang_code = lang_code
-            return
-        try:
-            import argostranslate.translate as at
-            self.argos = at
-
-            package, installed = self.language_packages[lang_code]
-            if not installed:
-                package.install()
-                self.language_packages[lang_code][1] = True
-            self.lang_code = lang_code
-            # Do first translation to prime translator
-            self.translate("test")
-        except:
-            pass
+        zynthian_gui_config.tts_gender = self.gender == "f"
+        zynconf.save_config({"ZYNTHIAN_TTS_GENDER": str(zynthian_gui_config.tts_gender)}, True)
 
     def translate(self, text):
-        text = text.replace("\u2612", "Checked ").replace("\u2610", "Unchecked ")
-        if self.lang_code == "en":
-            return text
-        return self.argos.translate(text, "en", self.lang_code)
+        return text.replace("\u2612", "Checked ").replace("\u2610", "Unchecked ")
 
     def append(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
         """ Append text to queue
@@ -207,7 +157,7 @@ class zynthian_tts:
         if self.engine == "espeak-ng":
             return [
                 "espeak-ng",
-                "-v", f"{self.lang_code}+{self.gender}1",
+                "-v", f"en+{self.gender}1",
                 "-s", str(int(self.speed * 200)),
                 text
             ]
@@ -233,13 +183,12 @@ class zynthian_tts:
             try:
                 with self._lock:
                     self._current_text = text
-                    self._process = subprocess.Popen(cmd, env={**dict(**{}), "ALSA_CARD": self.soundcard})
+                    self._process = subprocess.Popen(cmd, env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
                 print(f"TTS error: {e}")
             finally:
                 self._current_text = None
-        print("worker ended")
 
 
 """ Example usage

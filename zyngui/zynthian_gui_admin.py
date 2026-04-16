@@ -406,30 +406,27 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         if zynthian_gui_config.tts_enabled:
             options[f"\u2612 Enable Narration feedback"] = 0
             if zynthian_gui_config.tts_gender:
-                options[f"\u2612 Female"] = 1
+                options[f"Gender: Female"] = 1
             else:
-                options[f"\u2610 Female"] = 1
+                options[f"Gender: Male"] = 1
             if zynthian_gui_config.tts_speed < 1.0:
                 options[f"Speed: Slow"] = 2
             elif zynthian_gui_config.tts_speed == 1.0:
                 options[f"Speed: Medium"] = 2
             else:
                 options[f"Speed: Fast"] = 2
-            options[f"Engine: {zynthian_gui_config.tts_engine}"] = 3
+            if zynthian_gui_config.tts_engine == "flite":
+                options[f"Voice: Natural"] = 3
+            else:
+                options[f"Voice: Robotic"] = 3
             idx = 4
             options["Soundcard"] = None
-            for device in zynautoconnect.get_alsa_hotplug_audio_devices():
-                if zynthian_gui_config.tts_soundcard == device:
-                    options[f"\u2612 {device}"] = idx
+            for soundcard in zynautoconnect.get_alsa_hotplug_audio_devices():
+                if zynthian_gui_config.tts_soundcard == soundcard:
+                    options[f"\u2612 {soundcard}"] = idx
                 else:
-                    options[f"\u2610 {device}"] = idx
+                    options[f"\u2610 {soundcard}"] = idx
                 idx += 1
-            options["Language"] = None
-            for code, name in self.state_manager._tts.get_available_languages().items():
-                if code == zynthian_gui_config.tts_lang:
-                    options[f"\u2612 {name}"] = code
-                else:
-                    options[f"\u2610 {name}"] = code
         else:
             options[f"\u2610 Enable Narration feedback"] = 0
         return options
@@ -452,44 +449,25 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
             case 1:
                 if zynthian_gui_config.tts_gender:
-                    zynthian_gui_config.tts_gender = False
                     self.state_manager._tts.set_gender("male")
                 else:
-                    zynthian_gui_config.tts_gender = True
                     self.state_manager._tts.set_gender("female")
-                zynconf.save_config({"ZYNTHIAN_TTS_GENDER": str(zynthian_gui_config.tts_gender)}, True)
             case 2:
                 if zynthian_gui_config.tts_speed < 1.0:
-                    zynthian_gui_config.tts_speed = 1.0
+                    self.state_manager._tts.set_speed(1.0)
                 elif zynthian_gui_config.tts_speed == 1.0:
-                    zynthian_gui_config.tts_speed = 1.5
+                    self.state_manager._tts.set_speed(1.5)
                 else:
-                    zynthian_gui_config.tts_speed = 0.8
-                self.state_manager._tts.set_speed(zynthian_gui_config.tts_speed)
-                zynconf.save_config({"ZYNTHIAN_TTS_SPEED": str(zynthian_gui_config.tts_speed)}, True)
+                    self.state_manager._tts.set_speed(0.8)
             case 3:
                 if zynthian_gui_config.tts_engine == "flite":
-                    zynthian_gui_config.tts_engine = "espeak-ng"
+                    self.state_manager._tts.set_engine("espeak-ng")
                 else:
-                    zynthian_gui_config.tts_engine = "flite"
-                self.state_manager._tts.set_engine(zynthian_gui_config.tts_engine)
-                zynconf.save_config({"ZYNTHIAN_TTS_ENGINE": zynthian_gui_config.tts_engine}, True)
+                    self.state_manager._tts.set_engine("flite")
             case _:
-                devices = zynautoconnect.get_alsa_hotplug_audio_devices()
-                if type(value) is int:
-                    soundcard = devices[value - 5]
-                    zynthian_gui_config.tts_soundcard = soundcard
-                    self.state_manager._tts.set_soundcard(soundcard)
-                    zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": zynthian_gui_config.tts_soundcard}, True)
-                else:
-                    langs = self.state_manager._tts.get_available_languages()
-                    name = langs[value]
-                    zynthian_gui_config.tts_lang = value
-                    self.state_manager.start_busy("load_lang_model", f"Loading {name} language model")
-                    self.state_manager._tts.set_language(value)
-                    self.state_manager.end_busy("load_lang_model")
-                    zynconf.save_config({"ZYNTHIAN_TTS_LANG": str(zynthian_gui_config.tts_lang)}, True)
-                    idx = 5 + len(devices) + list(langs).index(value) + 1
+                soundcards = zynautoconnect.get_alsa_hotplug_audio_devices()
+                soundcard = soundcards[value - 5]
+                self.state_manager._tts.set_soundcard(soundcard)
         self.zyngui.screens['option'].config("Narration (TTS) Options", self.get_tts_options, self.tts_cb, False, index=idx)
         self.zyngui.show_screen('option')
 
