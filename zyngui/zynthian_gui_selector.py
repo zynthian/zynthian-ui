@@ -182,9 +182,8 @@ class zynthian_gui_selector(zynthian_gui_base):
         return True
 
     def show(self):
-        if not self.shown:
-            super().show()
-            self.state_manager.tts(self.list_data[self.index][2], replace=False)
+        super().show()
+        self.state_manager.tts(self.list_data[self.index][2], replace=False)
 
     def show_sidebar(self, show):
         self.sidebar_shown = show

@@ -954,7 +954,11 @@ class zynthian_chain_manager:
                     lib_zyncore.set_active_chain(chain.zmop_index)
                 except Exception as e:
                     logging.error(e)
-            self.state_manager.tts(f"Chain {chain.get_title()}")
+            if chain.chain_id:
+                idx = list(self.chains).index(chain.chain_id) + 1
+                self.state_manager.tts(f"Chain {idx}")
+            else:
+                self.state_manager.tts(f"Main chain")
 
         return self.active_chain.chain_id
 

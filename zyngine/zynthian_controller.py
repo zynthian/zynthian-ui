@@ -562,6 +562,8 @@ class zynthian_controller:
         if i is not None:
             return self.labels[i]
         else:
+            if type(val) is float:
+                return f"{val:.3f}"
             return val
 
     def get_label2value(self, label):

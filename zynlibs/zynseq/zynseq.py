@@ -436,6 +436,8 @@ class zynseq(zynthian_engine):
             return False
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
+        self.state_manager.tts(f"Phrase {phrase}")
+
 
     def get_phrase_loop_info(self, phrase=None):
         """ Get info for loop that this phrase is within

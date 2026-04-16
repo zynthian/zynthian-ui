@@ -109,7 +109,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
     def show(self):
         if not self.shown:
             super().show()
-            self.tts()
+            self.tts(False)
 
     def update_layout(self):
         super().update_layout()
@@ -700,16 +700,14 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         chain = self.chain_manager.chains[chain_id]
         self.set_title(f"Chain: {chain.get_name()}")
 
-        if self.selected_node[0] == prev_node[0]:
-            self.state_manager.tts(node.get('title'))
-        else:
-            self.state_manager.tts(f"Chain {chain.get_title()} {node.get('title')}")
+        immediate = self.selected_node[0] == prev_node[0]
+        self.state_manager.tts(node.get('title'), replace=immediate, interrupt=immediate)
 
-    def tts(self):
+    def tts(self, immediate=True):
         node = self._get_node(self.selected_node)
         chain_id = node.get("chain_id")
         chain = self.chain_manager.chains[chain_id]
-        self.state_manager.tts(f"Chain {chain.get_title()} {node.get('title')}")
+        self.state_manager.tts(f"Chain {chain.get_title()} {node.get('title')}", replace=immediate, interrupt=immediate)
 
     def move_processor(self, chain_idx, chain_offset):
         if self.moving_proc.eng_code in ["MI", "MR"]:

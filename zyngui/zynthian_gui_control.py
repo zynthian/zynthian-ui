@@ -410,7 +410,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zgui_controllers[i].config(ctrl)
             self.zgui_controllers[i].show()
             if ctrl:
-                self.state_manager.tts(f"{ctrl.name} {ctrl.value}", replace=False, interrupt=False)
+                self.state_manager.tts(f"Control {i+1}: {ctrl.name}: {ctrl.get_value2label()}", replace=False, interrupt=False)
 
     def get_zcontroller(self, i):
         if i < len(self.zgui_controllers):
@@ -524,6 +524,10 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.zgui_controllers[i].zynpot_cb(dval):
                 if self.midi_learning:
                     self.midi_learn(i, self.midi_learning)
+                    self.state_manager.tts(f"Bound MIDI to control {i}")
+                else:
+                    zctrl = self.zgui_controllers[i].zctrl
+                    self.state_manager.tts(f"{zctrl.name}: {zctrl.get_value2label()}")
                 return True
         elif self.mode == 'select':
             return super().zynpot_cb(i, dval)

@@ -107,6 +107,8 @@ class zynthian_tts:
         zynconf.save_config({"ZYNTHIAN_TTS_GENDER": str(zynthian_gui_config.tts_gender)}, True)
 
     def translate(self, text):
+        if text.startswith("-"):
+            text = f" {text}"
         return text.replace("\u2612", "Checked ").replace("\u2610", "Unchecked ")
 
     def append(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):

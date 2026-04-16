@@ -1348,7 +1348,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 title += f": {zs3_name}"
 
         super().set_title(title, fg, bg, timeout)
-        self.state_manager.tts(title)
 
     def build_view(self):
         """ Function to handle showing display"""
@@ -1509,13 +1508,16 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if symbol == "level":
             #value = strip.zctrls["level"].value
             if value > 0:
-                level_db = 20 * log10(value)
-                self.set_title(f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
+                level_db = f"{20 * log10(value):.2f}dB"
             else:
-                self.set_title(f"Volume: -∞dB ({strip.chain.get_description(1)})", None, None, 1)
+                level_db = "-∞"
+            self.set_title(f"Volume: {level_db} ({strip.chain.get_description(1)})", None, None, 1)
+            self.state_manager.tts(f"Fader: {level_db}")
         elif symbol == "balance":
+            bal = f"{int(value * 100):+}%"
             #strip.gui_mixer.set_title(f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
-            strip.gui_mixer.set_title(f"Balance: {int(value * 100):+}% ({strip.chain.get_name()})", None, None, 1)
+            strip.gui_mixer.set_title(f"Balance: {bal} ({strip.chain.get_name()})", None, None, 1)
+            self.state_manager.tts(f"Balance: {bal}")
 
     def update_control_rec(self, state):
         """ Function to handle audio recorder status
