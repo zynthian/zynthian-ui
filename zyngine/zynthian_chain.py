@@ -486,7 +486,7 @@ class zynthian_chain:
     def is_synth(self):
         """Returns True if chain contains synth processor"""
 
-        return self.zmop_index and len(self.synth_slots) != 0
+        return self.zmop_index is not None and len(self.synth_slots) != 0
 
     def is_generator(self):
         """Returns True if chain is a generator => """
