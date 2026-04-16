@@ -1212,6 +1212,9 @@ class zynthian_gui:
     def cuia_nop(self, params):
         pass
 
+    def cuia_tts_stop(self, params=None):
+        self.state_manager._tts.stop()
+
     def cuia_toggle_alt_mode(self, params=None):
         self.set_global_alt_mode(not self.alt_mode)
 

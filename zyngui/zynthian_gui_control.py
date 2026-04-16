@@ -409,6 +409,8 @@ class zynthian_gui_control(zynthian_gui_selector):
         if i < len(self.zgui_controllers):
             self.zgui_controllers[i].config(ctrl)
             self.zgui_controllers[i].show()
+            if ctrl:
+                self.state_manager.tts(f"{ctrl.name} {ctrl.value}", replace=False, interrupt=False)
 
     def get_zcontroller(self, i):
         if i < len(self.zgui_controllers):

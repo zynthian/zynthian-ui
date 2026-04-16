@@ -52,6 +52,7 @@ from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_legacy_snapshot import zynthian_legacy_snapshot, SNAPSHOT_SCHEMA_VERSION
 from zyngine import zynthian_midi_filter
+from zyngine.zynthian_tts import zynthian_tts
 
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
@@ -147,6 +148,7 @@ class zynthian_state_manager:
         self.zctrl_y = None
 
         self.cuia_queue = SimpleQueue()  # Queue for CUIA calls
+        self._tts = zynthian_tts() # TTS for accessibility, etc.
 
         self.get_throttled_file = None
         self.hwmon_thermal_file = None
@@ -251,6 +253,9 @@ class zynthian_state_manager:
 
         zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
+        if zynthian_gui_config.tts_enabled:
+            self._tts.start()
+
         self.end_busy("start state")
 
     def stop(self):
@@ -287,6 +292,8 @@ class zynthian_state_manager:
         if self.get_throttled_file:
             self.get_throttled_file.close()
             self.get_throttled_file = None
+
+        self._tts.shutdown()
 
         self.end_busy("stop state")
 
@@ -352,6 +359,9 @@ class zynthian_state_manager:
     def mute(self, mute=True, wait=0.01):
         self.main_mixbus_proc.controllers_dict["mute"].set_value(mute)
         sleep(wait)
+
+    def tts(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
+        self._tts.append(text, replace, urgent, interrupt)
 
     # -------------------------------------------------------------------------
     # Internal parameters and core limits

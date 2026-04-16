@@ -57,6 +57,7 @@ class zynthian_gui_base(tkinter.Frame):
         self.shown = False
         self.sidebar_shown = True
         self.title = ""
+        self.title_tts = self.__class__.__name__[13:].replace("_", " ")
 
         self.zyngui = zynthian_gui_config.zyngui
         self.state_manager = self.zyngui.state_manager
@@ -219,6 +220,8 @@ class zynthian_gui_base(tkinter.Frame):
             self.parent_frame.grid_main(self)
             self.shown = True
             self.refresh_status()
+            if self.title_tts:
+                self.state_manager.tts(f"View: {self.title_tts}", replace="True", interrupt=True)
         self.main_frame.focus()
 
     # Hide the view

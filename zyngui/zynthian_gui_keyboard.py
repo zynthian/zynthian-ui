@@ -273,6 +273,10 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
         box = self.key_canvas.bbox(self.buttons[key][0])
         if box:
             self.key_canvas.coords(self.highlight_box, box[0]+1, box[1]+1, box[2], box[3])
+            try:
+                self.zyngui.state_manager.tts(self.key_canvas.itemcget(self.buttons[key][1], "text"))
+            except Exception as e:
+                logging.warning(e)
 
     # Function to hide dialog
     def hide(self):

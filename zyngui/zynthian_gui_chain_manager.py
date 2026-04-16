@@ -106,6 +106,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.build_graph()
         return True
 
+    def show(self):
+        super().show()
+        self.tts()
+
     def update_layout(self):
         super().update_layout()
         self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
@@ -658,6 +662,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         return [0, 0, 0]
 
     def select_node(self, node_pos=None, node=None, proc=None):
+        prev_node = self.selected_node
         if not self.nodes:
             return
         if node:
@@ -693,6 +698,17 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self._draw_selection()
         chain = self.chain_manager.chains[chain_id]
         self.set_title(f"Chain: {chain.get_name()}")
+
+        if self.selected_node[0] == prev_node[0]:
+            self.state_manager.tts(node.get('title'))
+        else:
+            self.state_manager.tts(f"Chain {chain.get_title()} {node.get('title')}")
+
+    def tts(self):
+        node = self._get_node(self.selected_node)
+        chain_id = node.get("chain_id")
+        chain = self.chain_manager.chains[chain_id]
+        self.state_manager.tts(f"Chain {chain.get_title()} {node.get('title')}")
 
     def move_processor(self, chain_idx, chain_offset):
         if self.moving_proc.eng_code in ["MI", "MR"]:

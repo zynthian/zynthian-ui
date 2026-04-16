@@ -604,6 +604,18 @@ hotplug_audio_enabled = get_env_int('ZYNTHIAN_HOTPLUG_AUDIO', 0)
 disabled_audio_in = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN', "").split(',')
 disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'headphones,b1,b2').split(',')
 
+
+# ------------------------------------------------------------------------------
+# Text To Speech Options
+# ------------------------------------------------------------------------------
+
+tts_enabled = get_env_int('ZYNTHIAN_TTS_ENABLED', 1)
+tts_gender = get_env_int('ZYNTHIAN_TTS_GENDER', 0)
+tts_speed = float(os.environ.get('ZYNTHIAN_TTS_SPEED', "1.0"))
+tts_lang = os.environ.get('ZYNTHIAN_TTS_LANG', "en")
+tts_soundcard = os.environ.get('ZYNTHIAN_TTS_SOUNDCARD', "1")
+tts_engine = os.environ.get('ZYNTHIAN_TTS_ENGINE', "flite")
+
 # ------------------------------------------------------------------------------
 # Networking Options
 # ------------------------------------------------------------------------------

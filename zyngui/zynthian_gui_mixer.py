@@ -1146,6 +1146,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.wsleds_i_clipboard = None
 
         self.update_layout()
+        self.title_tts = "Mixer"
 
     def cb_rename_chain(self, chain_id, title):
         for strip in self.chain_strips:
@@ -1347,6 +1348,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 title += f": {zs3_name}"
 
         super().set_title(title, fg, bg, timeout)
+        self.state_manager.tts(title)
 
     def build_view(self):
         """ Function to handle showing display"""
@@ -1862,6 +1864,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.highlight_launcher()
             if self.shown:
                 self.zyngui.current_screen = "launcher"
+            self.title_tts = "Launcher"
         else:
             self.left_canvas.itemconfig("fader", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("fader", state=tkinter.NORMAL)
@@ -1871,7 +1874,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.right_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
             if self.shown:
                 self.zyngui.current_screen = "mixer"
+            self.title_tts = "Mixer"
         zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
+        if self.shown:
+            self.state_manager.tts(f"View: {self.title_tts}")
 
     def toggle_launcher_mode(self):
         self.set_launcher_mode(not self.launcher_mode)
