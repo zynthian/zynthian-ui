@@ -93,8 +93,9 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         return True
 
     def show(self):
-        super().show()
-        self.state_manager.tts(self.config[self.selected_node]["title"], replace=False)
+        if not self.shown:
+            super().show()
+            self.state_manager.tts(self.config[self.selected_node]["title"], replace=False)
 
     def setup(self, title, config, cols=None, select=0):
         """

@@ -182,11 +182,9 @@ class zynthian_gui_selector(zynthian_gui_base):
         return True
 
     def show(self):
-        super().show()
-        try:
+        if not self.shown:
+            super().show()
             self.state_manager.tts(self.list_data[self.index][2], replace=False)
-        except:
-            pass
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -308,10 +306,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             tts = ""
         index = self.skip_separators(index)
         self._select_listbox(index, see=see)
-        try:
+        if self.shown:
             self.state_manager.tts(self.list_data[index][2] + tts)
-        except:
-            pass
 
     def _select_listbox(self, index, see=True):
         # Set selection

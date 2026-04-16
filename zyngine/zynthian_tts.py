@@ -33,10 +33,10 @@ from zyngui import zynthian_gui_config
 
 class zynthian_tts:
     def __init__(self):
-        self.engine = zynthian_gui_config.tts_engine
-        self.gender = zynthian_gui_config.tts_gender
-        self.speed = zynthian_gui_config.tts_speed
-        self.soundcard = zynthian_gui_config.tts_soundcard
+        self.set_engine(zynthian_gui_config.tts_engine)
+        self.set_gender(zynthian_gui_config.tts_gender)
+        self.set_speed(zynthian_gui_config.tts_speed)
+        self.set_soundcard(zynthian_gui_config.tts_soundcard)
         self._queue = deque()
         self._cond = threading.Condition()
         self._stop_event = None
@@ -99,11 +99,11 @@ class zynthian_tts:
             gender: Voice gender ["m(ale)" | "f(emale)"]
         """
 
-        if gender.startswith("m"):
-            self.gender = "m"
-        elif gender.startswith("f"):
+        if gender.lower().startswith("f"):
             self.gender = "f"
-        zynthian_gui_config.tts_gender = self.gender == "f"
+        else:
+            self.gender = "m"
+        zynthian_gui_config.tts_gender = self.gender
         zynconf.save_config({"ZYNTHIAN_TTS_GENDER": str(zynthian_gui_config.tts_gender)}, True)
 
     def translate(self, text):

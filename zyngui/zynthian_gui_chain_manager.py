@@ -107,8 +107,9 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         return True
 
     def show(self):
-        super().show()
-        self.tts()
+        if not self.shown:
+            super().show()
+            self.tts()
 
     def update_layout(self):
         super().update_layout()

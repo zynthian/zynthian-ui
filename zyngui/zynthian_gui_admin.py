@@ -405,10 +405,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         options = {}
         if zynthian_gui_config.tts_enabled:
             options[f"\u2612 Enable Narration feedback"] = 0
-            if zynthian_gui_config.tts_gender:
-                options[f"Gender: Female"] = 1
-            else:
+            if zynthian_gui_config.tts_gender == "m":
                 options[f"Gender: Male"] = 1
+            else:
+                options[f"Gender: Female"] = 1
             if zynthian_gui_config.tts_speed < 1.0:
                 options[f"Speed: Slow"] = 2
             elif zynthian_gui_config.tts_speed == 1.0:
@@ -448,10 +448,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                     self.state_manager._tts.start()
                 zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
             case 1:
-                if zynthian_gui_config.tts_gender:
-                    self.state_manager._tts.set_gender("male")
+                if zynthian_gui_config.tts_gender.lower().startswith("f"):
+                    self.state_manager._tts.set_gender("m")
                 else:
-                    self.state_manager._tts.set_gender("female")
+                    self.state_manager._tts.set_gender("f")
             case 2:
                 if zynthian_gui_config.tts_speed < 1.0:
                     self.state_manager._tts.set_speed(1.0)

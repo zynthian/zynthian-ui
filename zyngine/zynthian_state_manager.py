@@ -361,7 +361,10 @@ class zynthian_state_manager:
         sleep(wait)
 
     def tts(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
-        self._tts.append(text, replace, urgent, interrupt)
+        try:
+            self._tts.append(text, replace, urgent, interrupt)
+        except Exception as e:
+            logging.warning(f"TTS Error: {e}")
 
     # -------------------------------------------------------------------------
     # Internal parameters and core limits
