@@ -38,10 +38,28 @@ enum MIDI_COMMANDS {
 
 // ***Function declarations***
 
-/** @brief Change tempo (timestretch) of loaded clips
+/** @brief Change tempo (timestretch) of all loaded clips with tempo_lock flag set to False
     @param  tempo New tempo to recalculate timestretch
 */
 void changeTempo(float tempo);
+
+/** @brief Change clip tempo (timestretch)
+    @param  channel MIDI channel
+    @param  id Clip index
+    @param  tempo New tempo to recalculate timestretch
+*/
+void changeClipTempo(uint8_t channel, uint8_t id, float tempo);
+
+/** @brief Set IDLE_STATE in players that need to rewarp
+*/
+void idlePlayers();
+
+/** @brief Set clip's tempo_lock flag
+    @param  channel MIDI channel
+    @param  id Clip index
+    @param  tempo_lock When set, ignore global tempo changes => changeTempo()
+*/
+void changeClipTempoLock(uint8_t channel, uint8_t id, uint8_t tempo_lock);
 
 /** @brief  Get the next available clip
     @param  channel MIDI channel
@@ -57,11 +75,13 @@ uint8_t getFreeClip(uint8_t channel);
     @param  start Start frame
     @param  end End frame
     @param  quality Re-sample quality
-    @param  ratio Time stretch ratio (1.0 for no stretch)
+    @param  tempo Tempo in BPM to calculate timestratch (0 = no timestretch)
+    @param  tempo_lock When set, ignore global tempo changes => changeTempo()
     @retval uint8_t Clip ID (MIDI note) or 0 on error
 */
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,
-                 uint32_t start, uint32_t end, uint8_t quality, float tempo);
+                 uint32_t start, uint32_t end, uint8_t quality, float tempo,
+                 uint8_t tempo_lock);
 
 /** @brief  Unload a file from a player
     @param  channel MIDI channel
