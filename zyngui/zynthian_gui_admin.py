@@ -419,14 +419,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 options[f"Voice: Natural"] = 3
             else:
                 options[f"Voice: Robotic"] = 3
-            idx = 4
             options["Soundcard"] = None
-            for soundcard in zynautoconnect.get_alsa_hotplug_audio_devices():
-                if zynthian_gui_config.tts_soundcard == soundcard:
-                    options[f"\u2612 {soundcard}"] = idx
-                else:
-                    options[f"\u2610 {soundcard}"] = idx
-                idx += 1
+            soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
+            if soundcards:
+                for soundcard in soundcards:
+                    if zynthian_gui_config.hotplug_audio_enabled and soundcard not in zynthian_gui_config.disabled_audio_in:
+                        continue
+                    if zynthian_gui_config.tts_soundcard == soundcard:
+                        options[f"\u2612 {soundcard}"] = soundcard
+                    else:
+                        options[f"\u2610 {soundcard}"] = soundcard
+            else:
+                options["No soundcards - check hotplug USB"] = "hotplug"
         else:
             options[f"\u2610 Enable Narration feedback"] = 0
         return options
@@ -439,6 +443,9 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def tts_cb(self, option, value):
         idx = value
         match value:
+            case "hotplug":
+                self.hotplug_audio_menu()
+                return
             case 0:
                 if zynthian_gui_config.tts_enabled:
                     zynthian_gui_config.tts_enabled = False
@@ -465,9 +472,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 else:
                     self.state_manager._tts.set_engine("flite")
             case _:
-                soundcards = zynautoconnect.get_alsa_hotplug_audio_devices()
-                soundcard = soundcards[value - 5]
-                self.state_manager._tts.set_soundcard(soundcard)
+                self.state_manager._tts.set_soundcard(value)
+                idx = None
         self.zyngui.screens['option'].config("Narration (TTS) Options", self.get_tts_options, self.tts_cb, False, index=idx)
         self.zyngui.show_screen('option')
 
@@ -517,17 +523,21 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         if zynthian_gui_config.hotplug_audio_enabled:
             options[f"\u2612 Hotplug Audio"] = "disable_hotplug"
             options["Input Devices"] = None
-            for device in zynautoconnect.get_alsa_hotplug_audio_devices(False):
+            for device in zynautoconnect.get_alsa_audio_devices(False, "hotplug"):
                 if device in zynthian_gui_config.disabled_audio_in:
                     options[f"\u2610 {device} in"] = "enable_input"
                 else:
                     options[f"\u2612 {device} in"] = "disable_input"
             options["Output Devices"] = None
-            for device in zynautoconnect.get_alsa_hotplug_audio_devices(True):
-                if device in zynthian_gui_config.disabled_audio_out:
-                    options[f"\u2610 {device} out"] = "enable_output"
-                else:
-                    options[f"\u2612 {device} out"] = "disable_output"
+            devices = zynautoconnect.get_alsa_audio_devices(True, "hotplug")
+            if devices:
+                for device in devices:
+                    if device in zynthian_gui_config.disabled_audio_out:
+                        options[f"\u2610 {device} out"] = "enable_output"
+                    else:
+                        options[f"\u2612 {device} out"] = "disable_output"
+            else:
+                options["No soundcards - check Narration"] = "tts"
         else:
             options[f"\u2610 Hotplug Audio"] = "enable_hotplug"
         return options
@@ -557,6 +567,9 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             case "disable_output":
                 self.zyngui.state_manager.start_busy("hotplug", f"Disabling {option[2:]}")
                 zynautoconnect.enable_audio_output_device(option[2:-4], False)
+            case "tts":
+                self.tts()
+                return
         self.zyngui.screens['option'].config("Hotplug Audio", self.get_hotplug_menu_options(), self.hotplug_audio_cb, False)
         self.zyngui.show_screen('option')
         self.zyngui.state_manager.end_busy("hotplug")
