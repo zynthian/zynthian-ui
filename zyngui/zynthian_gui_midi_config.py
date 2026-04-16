@@ -224,7 +224,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 midi_chan = "ALL"
             self.list_data.append(("MIDI Channel", None, f"MIDI Channel ({midi_chan})",
                                    [f"Select the MIDI channel this chain receives.", "midi_settings.png"]))
-            self.list_data.append(("Note Range & Tranpose", None, "Note Range & Tranpose",
+            self.list_data.append(("Note Range & Transpose", None, "Note Range & Transpose",
                                    [f"Configure note range and transpose.", "note_range.png"]))
             self.list_data.append(("MIDI CC", None, "MIDI CC",
                                    [f"Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
@@ -320,7 +320,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.zyngui.screens['midi_cc'].set_chain(self.chain)
                 self.zyngui.show_screen('midi_cc')
                 return
-            elif action == "Note Range & Tranpose":
+            elif action == "Note Range & Transpose":
                 self.zyngui.screens['midi_key_range'].config(self.chain)
                 self.zyngui.show_screen('midi_key_range')
             wait = 2  # Delay after starting service to allow jack ports to update
