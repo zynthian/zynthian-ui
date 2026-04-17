@@ -48,41 +48,39 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         # Main Frame
         super().__init__()
 
+        self.text_fs = int(1.5 * zynthian_gui_config.font_size)
+        self.button_fs = 2 * zynthian_gui_config.font_size
+
         self.text = tkinter.StringVar()
         self.label_text = tkinter.Label(self,
-                                        font=(zynthian_gui_config.font_family,
-                                              zynthian_gui_config.font_size, "normal"),
+                                        font=(zynthian_gui_config.font_family, self.text_fs, "normal"),
                                         textvariable=self.text,
                                         justify=tkinter.LEFT,
-                                        padx=zynthian_gui_config.font_size,
-                                        pady=zynthian_gui_config.font_size,
+                                        padx=self.text_fs,
+                                        pady=self.text_fs,
                                         bg=zynthian_gui_config.color_bg,
                                         fg=zynthian_gui_config.color_tx)
         self.label_text.grid(sticky="nsew")
 
         self.yes_text_label = tkinter.Label(self,
-                                            font=(
-                                                zynthian_gui_config.font_family,
-                                                zynthian_gui_config.font_size*2, "normal"),
+                                            font=(zynthian_gui_config.font_family, self.button_fs, "normal"),
                                             text="Yes",
                                             width=3,
                                             justify=tkinter.RIGHT,
-                                            padx=zynthian_gui_config.font_size,
-                                            pady=zynthian_gui_config.font_size,
+                                            padx=self.button_fs,
+                                            pady=self.button_fs,
                                             bg=zynthian_gui_config.color_ctrl_bg_off,
                                             fg=zynthian_gui_config.color_tx)
         self.yes_text_label.bind("<ButtonRelease-1>", self.cb_yes_push)
         self.yes_text_label.grid(row=1, sticky="e")
 
         self.no_text_label = tkinter.Label(self,
-                                           font=(
-                                               zynthian_gui_config.font_family,
-                                               zynthian_gui_config.font_size*2, "normal"),
+                                           font=(zynthian_gui_config.font_family, self.button_fs, "normal"),
                                            text="No",
                                            width=3,
                                            justify=tkinter.LEFT,
-                                           padx=zynthian_gui_config.font_size,
-                                           pady=zynthian_gui_config.font_size,
+                                           padx=self.button_fs,
+                                           pady=self.button_fs,
                                            bg=zynthian_gui_config.color_ctrl_bg_off,
                                            fg=zynthian_gui_config.color_tx)
         self.no_text_label.bind("<ButtonRelease-1>", self.cb_no_push)
@@ -90,7 +88,8 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
 
     def show(self, text, callback=None, cb_params=None):
         self.text.set(text)
-        self.label_text.config(wraplength=zynthian_gui_config.screen_width-zynthian_gui_config.font_size*2,)
+        wl = zynthian_gui_config.screen_width - 2 * self.text_fs
+        self.label_text.config(wraplength=wl)
         self.callback = callback
         self.callback_params = cb_params
         if not self.shown:
