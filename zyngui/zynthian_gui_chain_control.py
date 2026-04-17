@@ -311,11 +311,17 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     # --------------------------------------------------------------------------
 
     def show_menu(self):
-        show_menu_func = getattr(self.subscreen, "show_menu", None)
-        if callable(show_menu_func):
-            if show_menu_func():
-                return
-        zynthian_gui_config.zyngui.show_screen('chain_manager')
+        if self.chain_shown:
+            show_menu_func = getattr(self.subscreen, "show_menu", None)
+            if callable(show_menu_func):
+                if show_menu_func():
+                    return
+            zynthian_gui_config.zyngui.show_screen('chain_manager')
+        else:
+            self.show_chain(True)
+            if self.subscreen_name == "control":
+                self.subscreen.set_mode_control()
+            return
 
     def toggle_menu(self):
         if self.shown:
