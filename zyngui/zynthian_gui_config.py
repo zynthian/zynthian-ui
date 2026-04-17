@@ -578,7 +578,16 @@ if touch_navigation:
     if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
-        os.environ["ZYNTHIAN_WIRING_SWITCHES"] = ",".join(36 * ["-1"])
+        # Modify zynswitches wiring configuration to work with V5 keypad
+        zynswitches_pins = os.environ.get('ZYNTHIAN_WIRING_SWITCHES', "").split(",")
+        if len(zynswitches_pins) >= 4:
+            if gui_layout == "Z2":
+                zynswitches_pins = 24 * ["-1"] + zynswitches_pins[0:8]
+            else:
+                zynswitches_pins = zynswitches_pins[0:4] + 24 * ["-1"] + zynswitches_pins[4:8]
+        else:
+            zynswitches_pins = 32 * ["-1"]
+        os.environ["ZYNTHIAN_WIRING_SWITCHES"] = ",".join(zynswitches_pins)
 
 # ------------------------------------------------------------------------------
 # UI Options
