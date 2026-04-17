@@ -1292,7 +1292,7 @@ def get_alsa_audio_devices(playback, filter):
             if playback:
                 if filter == "hotplug" and zynthian_gui_config.tts_enabled and device == zynthian_gui_config.tts_soundcard:
                     continue
-                elif filter == "tts" and zynthian_gui_config.hotplug_audio_enabled and device not in zynthian_gui_config.disabled_audio_in:
+                elif filter == "tts" and zynthian_gui_config.hotplug_audio_enabled and device not in zynthian_gui_config.disabled_audio_out:
                     continue
             devices.append(device)
     return devices

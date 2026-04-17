@@ -82,6 +82,7 @@ class zynthian_state_manager:
     SS_LOAD_ZS3 = 4
     SS_SAVE_ZS3 = 5
     SS_ALL_NOTES_OFF = 6
+    SS_BUSY = 7
 
     # Subsignals from other modules. Just to simplify access.
     # From S_AUDIO_PLAYER
@@ -148,7 +149,7 @@ class zynthian_state_manager:
         self.zctrl_y = None
 
         self.cuia_queue = SimpleQueue()  # Queue for CUIA calls
-        self._tts = zynthian_tts() # TTS for accessibility, etc.
+        self._tts = zynthian_tts(self) # TTS for accessibility, etc.
 
         self.get_throttled_file = None
         self.hwmon_thermal_file = None
@@ -412,6 +413,8 @@ class zynthian_state_manager:
         clid : Client id
         """
 
+        if not self.busy:
+            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_BUSY, state=True)
         self.busy.add(clid)
         if message:
             self.busy_message = message
@@ -435,6 +438,7 @@ class zynthian_state_manager:
             self.busy_warning = None
             self.busy_success = None
             self.busy_details = None
+            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_BUSY, state=False)
 
         # logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
 
@@ -445,6 +449,7 @@ class zynthian_state_manager:
         self.busy_warning = None
         self.busy_success = None
         self.busy_details = None
+        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_BUSY, state=False)
 
     def is_busy(self, client=None):
         """Check if clients are busy

@@ -421,6 +421,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.update_list()
         # Update header breadcrumb
         self.set_select_path()
+        self.state_manager.tts(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
 
     def zynpot_cb(self, i, dval):
         if not self.shown:

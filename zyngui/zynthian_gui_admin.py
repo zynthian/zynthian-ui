@@ -422,13 +422,13 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             options["Soundcard"] = None
             soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
             if soundcards:
+                idx = 5
                 for soundcard in soundcards:
-                    if zynthian_gui_config.hotplug_audio_enabled and soundcard not in zynthian_gui_config.disabled_audio_in:
-                        continue
                     if zynthian_gui_config.tts_soundcard == soundcard:
-                        options[f"\u2612 {soundcard}"] = soundcard
+                        options[f"\u2612 {soundcard}"] = f"{idx}|{soundcard}"
                     else:
-                        options[f"\u2610 {soundcard}"] = soundcard
+                        options[f"\u2610 {soundcard}"] = f"{idx}|{soundcard}"
+                    idx += 1
             else:
                 options["No soundcards - check hotplug USB"] = "hotplug"
         else:
@@ -472,8 +472,9 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 else:
                     self.state_manager._tts.set_engine("flite")
             case _:
-                self.state_manager._tts.set_soundcard(value)
-                idx = None
+                idx, soundcard = value.split('|')
+                self.state_manager._tts.set_soundcard(soundcard)
+                idx = int(idx)
         self.zyngui.screens['option'].config("Narration (TTS) Options", self.get_tts_options, self.tts_cb, False, index=idx)
         self.zyngui.show_screen('option')
 

@@ -30,13 +30,18 @@ import logging
 
 import zynconf
 from zyngui import zynthian_gui_config
+import zynautoconnect
+from zyngine.zynthian_signal_manager import zynsigman
 
 class zynthian_tts:
-    def __init__(self):
+    def __init__(self, state_manager):
+        self.state_manager = state_manager
         self.set_engine(zynthian_gui_config.tts_engine)
         self.set_gender(zynthian_gui_config.tts_gender)
         self.set_speed(zynthian_gui_config.tts_speed)
         self.set_soundcard(zynthian_gui_config.tts_soundcard)
+        self.busy = False
+        self.busy_timer = None
         self._queue = deque()
         self._cond = threading.Condition()
         self._stop_event = None
@@ -51,15 +56,40 @@ class zynthian_tts:
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._stop_event = threading.Event()
         self._thread.start()
+        soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
+        if self.soundcard not in soundcards:
+            if soundcards:
+                self.soundcard = soundcards[0]
+            else:
+                self.soundcard = ""
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
 
     def shutdown(self):
         """Stop thread completely"""
+        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
         self._stop_event.set()
         self.stop()
         with self._cond:
             self._cond.notify_all()
         self._thread.join()
         self._stop_event = None
+
+    def cb_busy(self, state):
+        if state:
+            if not self.busy_timer:
+                self.busy_timer = threading.Timer(1.0, self.cb_busy_timer)
+                self.busy_timer.start()
+        else:
+            if self.busy_timer:
+                self.busy_timer.cancel()
+                self.busy_timer = None
+            else:
+                self.beep(0.4, 600)
+            self.busy = False
+
+    def cb_busy_timer(self):
+        self.busy_timer = None
+        self.busy = True
 
     def set_soundcard(self, card):
         """ Set the ALSA soundcard to use
@@ -69,6 +99,7 @@ class zynthian_tts:
 
         zynthian_gui_config.tts_soundcard = self.soundcard = card
         zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": card}, True)
+        zynautoconnect.enable_audio_output_device(card, False)
 
     def set_engine(self, engine: str):
         """ Set the TTS engine to use for consequent speech
@@ -109,7 +140,13 @@ class zynthian_tts:
     def translate(self, text):
         if text.startswith("-"):
             text = f" {text}"
-        return text.replace("\u2612", "Checked ").replace("\u2610", "Unchecked ")
+        for a, b in (
+            ("\u2612", "Checked "),
+            ("\u2610", "Unchecked "),
+            (" & ", " and ")
+        ):
+            text = text.replace(a, b)
+        return text
 
     def append(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
         """ Append text to queue
@@ -171,11 +208,36 @@ class zynthian_tts:
                 f"{text} " # Add space to ensure single words are not interpreted as filenames
             ]
 
+    def beep(self, dur=0.1, freq=440):
+        """ Sound a beep
+        Args:
+            freq: Tone frequency
+            dur: Tone duration (s)
+        """
+
+        subprocess.Popen(
+            [
+                "play",
+                "-n",
+                "synth", str(dur),
+                "sine", str(freq),
+                "gain", "-12"
+            ],
+            env={"ALSA_CARD": self.soundcard},
+            stderr=subprocess.DEVNULL
+        )
+
     def _worker(self):
+        count = 0
         while self._stop_event and not self._stop_event.is_set():
             with self._cond:
                 while not self._queue and not self._stop_event.is_set():
                     self._cond.wait(timeout=0.1)
+                    if self.busy:
+                        count += 1
+                        if count > 20:
+                            count = 0
+                            self.beep()
                 if self._stop_event.is_set():
                     break
                 text = self._queue.popleft()
@@ -191,20 +253,3 @@ class zynthian_tts:
                 print(f"TTS error: {e}")
             finally:
                 self._current_text = None
-
-
-""" Example usage
-from zyngine.zynthian_tts import zynthian_tts
-tts = zynthian_tts()
-tts.start()
-with open("/root/sonobus/LICENSE", "r") as f:
-    txt = f.read()
-
-for line in txt.split('\n'):
-    tts.append(line)
-
-tts.set_speed(0.8)
-tts.append("I have stopped this nonsense", replace=True, urgent=False, interrupt=False)
-tts.set_engine("espeak-ng")
-
-"""
