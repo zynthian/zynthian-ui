@@ -54,6 +54,7 @@ class zynthian_gui_help:
         self.touch_push_ts = 0
         self.touch_last_release_ts = 0
         self.hide_close_timer = None
+        self.fpath = None
 
         # Main Frame
 
@@ -89,9 +90,11 @@ class zynthian_gui_help:
         if os.path.isfile(fpath):
             try:
                 self.main_frame.load_file("file:///" + self.ui_dir + "/" + fpath, force=True, insecure=True)
+                self.fpath = fpath
                 return True
             except Exception as e:
                 logging.error(f"Can't load HTML file => {e}")
+        self.fpath = None
         return False
 
     def build_view(self):
@@ -109,6 +112,7 @@ class zynthian_gui_help:
             self.shown = True
             self.main_frame.grid_propagate(False)
             self.main_frame.place(x=0, y=0)
+            self.zyngui.state_manager.tts(f"View: Help", replace="True", interrupt=True)
 
     def hide_close_button(self):
         if zynthian_gui_config.touch_navigation:
@@ -193,5 +197,28 @@ class zynthian_gui_help:
 
     def plot_zctrls(self):
         self.swipe_update()
+
+
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        from bs4 import BeautifulSoup
+
+        self.zyngui.state_manager.tts(f"View: Help.")
+
+        try:
+            with open(self.fpath) as f:
+                html = f.read()
+            soup = BeautifulSoup(html, "html.parser")
+            for div in soup.select("div.knobs_action_container"):
+                div.decompose()  # removes the whole section
+            text = soup.get_text(separator=" ", strip=True)
+            for line in text.split("\n"):
+                self.zyngui.state_manager.tts(line, False, False, False)
+        except:
+            pass
+
 
 # -------------------------------------------------------------------------------

@@ -79,6 +79,9 @@ class zynthian_tts:
             self._stop_event = None
         threading.Timer(0.2, do_shutdown).start()
 
+    def is_running(self):
+        return self._stop_event is not None
+
     def cb_busy(self, state):
         if state:
             if not self.busy_timer:
