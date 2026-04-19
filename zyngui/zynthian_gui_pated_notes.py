@@ -200,6 +200,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.drag_duration = False  # True indicates drag will adjust duration
 
         super().__init__()
+        self.title_tts = "Pattern editor: Notes"
 
     # Function to get name of this view
     def get_name(self):
@@ -1260,6 +1261,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
         self.grid_canvas.tag_raise(self.rect_selected_cell)
+        self.state_manager.tts(f"Step: {step+1}. Note: {note}.")
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block
