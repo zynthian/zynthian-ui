@@ -447,13 +447,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 self.hotplug_audio_menu()
                 return
             case 0:
-                if zynthian_gui_config.tts_enabled:
-                    zynthian_gui_config.tts_enabled = False
-                    self.state_manager._tts.shutdown()
-                else:
-                    zynthian_gui_config.tts_enabled = True
-                    self.state_manager._tts.start()
-                zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
+                self.zyngui.cuia_tts_toggle_enable()
             case 1:
                 if zynthian_gui_config.tts_gender.lower().startswith("f"):
                     self.state_manager._tts.set_gender("m")

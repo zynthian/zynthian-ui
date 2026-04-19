@@ -409,8 +409,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         if i < len(self.zgui_controllers):
             self.zgui_controllers[i].config(ctrl)
             self.zgui_controllers[i].show()
-            if ctrl:
-                self.state_manager.tts(f"Control {i+1}: {ctrl.name}: {ctrl.get_value2label()}", replace=False, interrupt=False)
 
     def get_zcontroller(self, i):
         if i < len(self.zgui_controllers):
@@ -922,5 +920,15 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.select_path.set(processor.get_presetpath())
         else:
             self.select_path.set(self.chain_manager.get_active_chain().get_title())
+
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        self.state_manager.tts(f"View: {self.title_tts}")
+        for i, zgui_ctrl in enumerate(self.zgui_controllers):
+            if zgui_ctrl and zgui_ctrl.zctrl:
+                self.state_manager.tts(f"Control {i+1}: {zgui_ctrl.zctrl.name}: {zgui_ctrl.zctrl.get_value2label()}", False, False, False)
 
 # ------------------------------------------------------------------------------

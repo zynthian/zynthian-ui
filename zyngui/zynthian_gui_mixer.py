@@ -2502,5 +2502,32 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     else:
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
 
+    def tts_info(self, params=None):
+        self.state_manager.tts(f"View: {self.title_tts}", replace="True", interrupt=True)
+        chain = self.chain_manager.active_chain
+        if chain:
+            if chain.chain_id:
+                idx = self.chain_manager.get_chain_index(chain.chain_id) + 1
+                self.state_manager.tts(f"Chain {idx}.", False, False, False)
+            else:
+                self.state_manager.tts(f"Main chain.", False, False, False)
+            if self.launcher_mode:
+                self.state_manager.tts(f"Phrase: {self.zynseq.phrase + 1}.", False, False, False)
+            self.state_manager.tts(f"Title: {chain.get_title()}.", False, False, False)
+            if chain.is_midi():
+                if chain.midi_chan < 16:
+                    self.state_manager.tts(f"MIDI channel: {chain.midi_chan + 1}", False, False, False)
+                else:
+                    self.state_manager.tts(f"MIDI channel: ALL", False, False, False)
+            if chain.is_synth():
+                self.state_manager.tts("Synth chain.", False, False, False)
+            elif chain.is_generator():
+                self.state_manager.tts("Generator chain.", False, False, False)
+            elif chain.is_special():
+                self.state_manager.tts("Special chain.", False, False, False)
+            elif chain.is_mixbus():
+                self.state_manager.tts("Mixbus chain.", False, False, False)
+            elif chain.is_audio():
+                self.state_manager.tts("Audio chain.", False, False, False)
 
 # --------------------------------------------------------------------------

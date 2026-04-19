@@ -48,6 +48,7 @@ class zynthian_tts:
         self._process = None
         self._current_text = None
         self._lock = threading.Lock()
+        self.playing = False
 
     def start(self):
         if self._stop_event:
@@ -62,17 +63,21 @@ class zynthian_tts:
                 self.soundcard = soundcards[0]
             else:
                 self.soundcard = ""
+        self.append("Narration enabled")
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
 
     def shutdown(self):
         """Stop thread completely"""
         zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
-        self._stop_event.set()
         self.stop()
-        with self._cond:
-            self._cond.notify_all()
-        self._thread.join()
-        self._stop_event = None
+        self.append("Narration disabled")
+        def do_shutdown():
+            self._stop_event.set()
+            with self._cond:
+                self._cond.notify_all()
+            self._thread.join()
+            self._stop_event = None
+        threading.Timer(0.2, do_shutdown).start()
 
     def cb_busy(self, state):
         if state:
@@ -191,6 +196,7 @@ class zynthian_tts:
         with self._lock:
             if self._process and self._process.poll() is None:
                 self._process.terminate()
+        self.playing = False
 
     def _build_command(self, text: str):
         if self.engine == "espeak-ng":
@@ -233,6 +239,7 @@ class zynthian_tts:
             with self._cond:
                 while not self._queue and not self._stop_event.is_set():
                     self._cond.wait(timeout=0.1)
+                    self.playing = False
                     if self.busy:
                         count += 1
                         if count > 20:
@@ -240,6 +247,7 @@ class zynthian_tts:
                             self.beep()
                 if self._stop_event.is_set():
                     break
+                self.playing = True
                 text = self._queue.popleft()
 
             cmd = self._build_command(text)

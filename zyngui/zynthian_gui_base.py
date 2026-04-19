@@ -533,6 +533,11 @@ class zynthian_gui_base(tkinter.Frame):
     def set_select_path(self):
         pass
 
+    def tts_info(self):
+        """ Narrate view status - override to provide more context"""
+
+        self.state_manager.tts(f"View: {self.title_tts}", replace="True", interrupt=True)
+
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!) & CUIA
     # --------------------------------------------------------------------------

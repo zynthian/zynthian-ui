@@ -121,9 +121,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 8)
         shown = self.shown
         self.shown = False
-        logging.warning("disable shown")
         self._draw_graph()
-        logging.warning("enable shown")
         self.shown = shown
 
     def hide(self):
@@ -1035,3 +1033,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.zyngui.show_screen("chain_options")
             return True
         return self.switch(i, t)
+
+    def tts_info(self):
+        super().tts_info()
+        self.tts(False)

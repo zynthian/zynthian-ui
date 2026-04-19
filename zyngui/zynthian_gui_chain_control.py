@@ -329,4 +329,12 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         elif self.zyngui.get_current_screen().endswith("_options"):
             self.zyngui.close_screen()
 
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        if self.subscreen:
+            self.subscreen.tts_info()
+
 # ------------------------------------------------------------------------------

@@ -1212,39 +1212,6 @@ class zynthian_gui:
     def cuia_nop(self, params):
         pass
 
-    def cuia_tts_stop(self, params=None):
-        self.state_manager._tts.stop()
-
-    def cuia_tts_chain_info(self, params=None):
-        if params:
-            chain = params
-        else:
-            chain = self.chain_manager.active_chain
-        if chain is None:
-            self.state_manager.tts("No chain selected")
-        else:
-            if chain.chain_id:
-                idx = self.chain_manager.get_chain_index(chain.chain_id) + 1
-                self.state_manager.tts(f"Chain {idx}.")
-            else:
-                self.state_manager.tts(f"Main chain.")
-            self.state_manager.tts(f"Title: {chain.get_title()}.", False, False, False)
-            if chain.is_midi():
-                if chain.midi_chan < 16:
-                    self.state_manager.tts(f"MIDI channel: {chain.midi_chan + 1}", False, False, False)
-                else:
-                    self.state_manager.tts(f"MIDI channel: ALL", False, False, False)
-            if chain.is_synth():
-                self.state_manager.tts("Synth chain.", False, False, False)
-            elif chain.is_generator():
-                self.state_manager.tts("Generator chain.", False, False, False)
-            elif chain.is_special():
-                self.state_manager.tts("Special chain.", False, False, False)
-            elif chain.is_mixbus():
-                self.state_manager.tts("Mixbus chain.", False, False, False)
-            elif chain.is_audio():
-                self.state_manager.tts("Audio chain.", False, False, False)
-
     def cuia_toggle_alt_mode(self, params=None):
         self.set_global_alt_mode(not self.alt_mode)
 
@@ -1292,6 +1259,29 @@ class zynthian_gui:
 
     def cuia_workflow_capture_text(self, params=None):
         self.write_capture_log(f"TEXT: {params[0]}")
+
+    # Narration TTS actions
+    def cuia_tts_stop(self, params=None):
+        self.state_manager._tts.stop()
+
+    def cuia_tts_toggle_enable(self, params=None):
+        if zynthian_gui_config.tts_enabled:
+            zynthian_gui_config.tts_enabled = False
+            self.state_manager._tts.shutdown()
+        else:
+            zynthian_gui_config.tts_enabled = True
+            self.state_manager._tts.start()
+        zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
+
+    def cuia_tts_toggle_playback(self, params=None):
+        if self.state_manager._tts.playing:
+            self.state_manager._tts.stop()
+        else:
+            screen = self.screens[self.current_screen]
+            try:
+                screen.tts_info()
+            except:
+                self.state_manager.tts(f"View: {self.current_screen}", replace="True", interrupt=True)
 
     # Panic Actions
 

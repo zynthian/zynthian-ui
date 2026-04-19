@@ -183,7 +183,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def show(self):
         super().show()
-        self.state_manager.tts(self.list_data[self.index][2], replace=False)
+        self.state_manager.tts(self.list_data[self.index][2], False, False, False)
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -517,4 +517,13 @@ class zynthian_gui_selector(zynthian_gui_base):
             elif dts >= zynthian_gui_config.zynswitch_long_seconds:
                 self.zyngui.zynswitch_defered('L', 2)
             """
+
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        super().tts_info()
+        self.state_manager.tts(self.list_data[self.index][2])
+
 # ------------------------------------------------------------------------------
