@@ -107,6 +107,7 @@ STUT_FREQ_OPTIONS = (
 )
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+NOTE_PORNOUNCE = ["C", "C sharp", "D", "D sharp", "E", "F", "F sharp", "G", "G sharp", "A", "A sharp", "B"]
 SCALES = {
     "major": [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23],
     "minor": [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22]
@@ -1207,6 +1208,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             step = self.n_steps - 1
         else:
             step = int(step)
+        step_changed = step != self.selected_cell[0]
+        note_changed = note != self.selected_cell[1]
         # Skip hidden (overlapping) cells
         for previous in range(step - 1, -1, -1):
             prev_duration = ceil(self.zynseq.libseq.getNoteDuration(previous, note))
@@ -1261,7 +1264,19 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
         self.grid_canvas.tag_raise(self.rect_selected_cell)
-        self.state_manager.tts(f"Step: {step+1}. Note: {note}.")
+        if step_changed:
+            tts_step = f"Step {step + 1}"
+        else:
+            tts_step = ""
+        if note_changed:
+            try:
+                tts_name = f"{NOTE_PORNOUNCE[note%12]} {note//12-1}"
+                tts_name = self.keymap[row]["name"]
+            except:
+                pass
+        else:
+            tts_name = ""
+        self.state_manager.tts(f"{tts_step} {tts_name}")
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block
