@@ -645,9 +645,11 @@ class zynthian_gui_base(tkinter.Frame):
     def update_param_editor(self):
         if self.param_editor_zctrl:
             if self.param_editor_zctrl.labels:
-                self.select_path.set(f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}")
+                text = f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}"
             else:
-                self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+                text = self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value)
+            self.select_path.set(text)
+            self.state_manager.tts(text)
 
     # --------------------------------------------------------------------------
     # MIDI learning

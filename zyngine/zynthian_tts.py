@@ -26,6 +26,10 @@
 import threading
 import subprocess
 from collections import deque
+import os
+import re
+import json
+from time import sleep
 import logging
 
 import zynconf
@@ -33,24 +37,38 @@ from zyngui import zynthian_gui_config
 import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
+TTS_CONFIG_PATH = f"{os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')}/tts"
+TTS_FLITE_LEX_PATH = f"{TTS_CONFIG_PATH}/lexicon"
+TTS_FLITE_VOICES_PATH = f"{TTS_CONFIG_PATH}/voices"
+TTS_DICT = {
+    "\u2610": "un-checked",
+    "\u2612": "checked",
+}
+
 class zynthian_tts:
     def __init__(self, state_manager):
         self.state_manager = state_manager
-        self.set_engine(zynthian_gui_config.tts_engine)
-        self.set_gender(zynthian_gui_config.tts_gender)
+        with open(f"{TTS_FLITE_VOICES_PATH}/voices.json") as f:
+            txt = f.read()
+        self.voices = json.loads(txt)
+
         self.set_speed(zynthian_gui_config.tts_speed)
         self.set_soundcard(zynthian_gui_config.tts_soundcard)
+        self.set_voice(zynthian_gui_config.tts_voice)
         self.busy = False
         self.busy_timer = None
         self._queue = deque()
-        self._cond = threading.Condition()
+        self._cond = threading.Condition() # Queue locking mutex
         self._stop_event = None
         self._process = None
         self._current_text = None
-        self._lock = threading.Lock()
+        self._lock = threading.Lock() # Process locking mutex
         self.playing = False
+        self.translate_pattern = re.compile("|".join(map(re.escape, TTS_DICT)))
 
-    def start(self):
+    def enable(self):
+        """ Enable TTS and start background thread """
+
         if self._stop_event:
             return
         self.clear_queue()
@@ -66,21 +84,26 @@ class zynthian_tts:
         self.append("Narration enabled")
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
 
-    def shutdown(self):
-        """Stop thread completely"""
+    def disable(self):
+        """ Disable TTS and stop background thread"""
+
         zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
         self.stop()
         self.append("Narration disabled")
-        def do_shutdown():
-            self._stop_event.set()
-            with self._cond:
-                self._cond.notify_all()
+
+        def do_disable():
+            if self._stop_event:
+                self._stop_event.set()
             self._thread.join()
             self._stop_event = None
-        threading.Timer(0.2, do_shutdown).start()
+
+        threading.Timer(0.2, do_disable).start()
 
     def is_running(self):
         return self._stop_event is not None
+
+    def get_voice_name(self):
+        return self.voices[self.voice]
 
     def cb_busy(self, state):
         if state:
@@ -109,18 +132,19 @@ class zynthian_tts:
         zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": card}, True)
         zynautoconnect.enable_audio_output_device(card, False)
 
-    def set_engine(self, engine: str):
-        """ Set the TTS engine to use for consequent speech
+    def set_voice(self, voice):
+        """ Set the voice
         Args:
-            engine: "Engine name ["e(speak-ng)" | "f(lite)"]
+            voice: Name of voice or espeak-m or espeak-f for espeak male/female
+                   May be integer index of voice
         """
 
-        if engine.startswith("e"):
-            self.engine = "espeak-ng"
-        elif engine.startswith("f"):
-            self.engine = "flite"
-        zynthian_gui_config.tts_engine = self.engine
-        zynconf.save_config({"ZYNTHIAN_TTS_ENGINE": self.engine}, True)
+        if isinstance(voice, int):
+            self.voice = list(self.voices)[voice]
+        else:
+            self.voice = voice
+        zynthian_gui_config.tts_voice = self.voice
+        zynconf.save_config({"ZYNTHIAN_TTS_VOICE": self.voice}, True)
 
     def set_speed(self, speed: float):
         """ Set the speech speed
@@ -132,28 +156,16 @@ class zynthian_tts:
         zynthian_gui_config.tts_speed = self.speed = speed
         zynconf.save_config({"ZYNTHIAN_TTS_SPEED": str(zynthian_gui_config.tts_speed)}, True)
 
-    def set_gender(self, gender: str):
-        """ Set the gender of the voice
-        Args:
-            gender: Voice gender ["m(ale)" | "f(emale)"]
-        """
-
-        if gender.lower().startswith("f"):
-            self.gender = "f"
-        else:
-            self.gender = "m"
-        zynthian_gui_config.tts_gender = self.gender
-        zynconf.save_config({"ZYNTHIAN_TTS_GENDER": str(zynthian_gui_config.tts_gender)}, True)
-
     def translate(self, text):
-        if text.startswith("-"):
-            text = f" {text}"
-        for a, b in (
-            ("\u2612", "Checked "),
-            ("\u2610", "Unchecked "),
-            (" & ", " and ")
-        ):
-            text = text.replace(a, b)
+        def normalize_number(m):
+            # Enforce numeric handling with trailing decimal zeros removed
+            num = float(m.group(1))
+            num = str(int(num)) if num.is_integer() else str(num)
+            return f"{num} "
+
+        text = self.translate_pattern.sub(lambda m : TTS_DICT[m.group(0)], text) # tech dictionary
+        text = re.sub(r"(-?\d+\.\d+)", normalize_number, text)
+
         return text
 
     def append(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
@@ -179,7 +191,6 @@ class zynthian_tts:
                     self._queue.appendleft(text)
                 else:
                     self._queue.append(text)
-                self._cond.notify()
             if interrupt:
                 self.stop(False)
 
@@ -199,22 +210,30 @@ class zynthian_tts:
         with self._lock:
             if self._process and self._process.poll() is None:
                 self._process.terminate()
-        self.playing = False
+            self.playing = False
 
     def _build_command(self, text: str):
-        if self.engine == "espeak-ng":
+        if self.voice == "espeak-m":
             return [
                 "espeak-ng",
-                "-v", f"en+{self.gender}1",
+                "-v", f"en+m1",
+                "-s", str(int(self.speed * 200)),
+                text
+            ]
+        if self.voice == "espeak-f":
+            return [
+                "espeak-ng",
+                "-v", f"en+f1",
                 "-s", str(int(self.speed * 200)),
                 text
             ]
         else:  # flite
             return [
                 "flite",
-                "-voice", "awb" if self.gender=="m" else "slt",
+                "-voice", f"{TTS_FLITE_VOICES_PATH}/{self.voice}",
                 "--setf", f"duration_stretch={1.0 / self.speed}",
-                f"{text} " # Add space to ensure single words are not interpreted as filenames
+                "-add_lex", TTS_FLITE_LEX_PATH,
+                "-t", f"{text}"
             ]
 
     def beep(self, dur=0.1, freq=440):
@@ -242,7 +261,8 @@ class zynthian_tts:
             with self._cond:
                 while not self._queue and not self._stop_event.is_set():
                     self._cond.wait(timeout=0.1)
-                    self.playing = False
+                    with self._lock:
+                        self.playing = False
                     if self.busy:
                         count += 1
                         if count > 20:
@@ -250,7 +270,13 @@ class zynthian_tts:
                             self.beep()
                 if self._stop_event.is_set():
                     break
-                self.playing = True
+
+            while not self.playing:
+                with self._lock:
+                    self.playing = True
+                sleep(0.4) # Debounce to avoid rapid message interruption
+
+            with self._cond:
                 text = self._queue.popleft()
 
             cmd = self._build_command(text)

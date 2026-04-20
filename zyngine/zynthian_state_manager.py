@@ -255,7 +255,7 @@ class zynthian_state_manager:
         zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
         if zynthian_gui_config.tts_enabled:
-            self._tts.start()
+            self._tts.enable()
 
         self.end_busy("start state")
 
@@ -294,7 +294,7 @@ class zynthian_state_manager:
             self.get_throttled_file.close()
             self.get_throttled_file = None
 
-        self._tts.shutdown()
+        self._tts.disable()
 
         self.end_busy("stop state")
 
