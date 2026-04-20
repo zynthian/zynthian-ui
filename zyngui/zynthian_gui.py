@@ -930,19 +930,17 @@ class zynthian_gui:
         self.show_screen('midi_config')
 
     def show_help(self, topic=None):
+        fpath = None
         if not topic:
             topic = self.current_screen
-        fpath = None
-        if topic == "chain_control":
-            proc = self.get_current_processor()
-            fpath = f"./help/widgets/{proc.name.lower()}.html"
-            if not Path(fpath).exists():
-                fpath = None
+            try:
+                curscreen_obj = self.get_current_screen_obj()
+                fpath = curscreen_obj.get_help_fpath()
+            except:
+                pass
         if not fpath:
             fpath = f"./help/{zynthian_gui_config.layout['name']}/{topic}.html"
-            if not Path(fpath).exists():
-                fpath = None
-        if fpath:
+        if Path(fpath).exists():
             self.screens['help'].load_file(fpath)
         elif topic != "help":
             logging.warning(f"No help for '{topic}'")
