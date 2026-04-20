@@ -546,7 +546,8 @@ class zynthian_gui_controller(tkinter.Canvas):
                 #self.erase_midi_bind()
                 self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
             elif preselection is not None or self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
-                if self.zyngui.screens["control"].get_midi_learn() > 1:
+                # TODO THIS IS SUPER UGLY!!!!
+                if self.zyngui.screens["chain_control"].subscreens["control"].get_midi_learn() > 1:
                     self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
                 else:
                     self.plot_midi_bind("??#??", zynthian_gui_config.color_hl)
