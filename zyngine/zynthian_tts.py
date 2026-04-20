@@ -23,6 +23,7 @@
 #
 # ****************************************************************************
 
+import logging
 import threading
 import subprocess
 from collections import deque
@@ -30,7 +31,7 @@ import os
 import re
 import json
 from time import sleep
-import logging
+import alsaaudio
 
 import zynconf
 from zyngui import zynthian_gui_config
@@ -81,8 +82,20 @@ class zynthian_tts:
                 self.soundcard = soundcards[0]
             else:
                 self.soundcard = ""
+        self.set_volume()
         self.append("Narration enabled")
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
+
+        #TODO: Get V4/V5 wiring
+        self.wiring = [
+            os.environ.get("ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_SHORT"),
+            os.environ.get("ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_BOLD"),
+            os.environ.get("ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_LONG")
+        ]
+        zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_SHORT": "TTS_TOGGLE_PLAYBACK"}, False)
+        zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_BOLD": "TTS_TOGGLE_ENABLE"}, False)
+        zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_LONG": "TTS_TOGGLE_ENABLE"}, False)
+        self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
 
     def disable(self):
         """ Disable TTS and stop background thread"""
@@ -98,6 +111,12 @@ class zynthian_tts:
             self._stop_event = None
 
         threading.Timer(0.2, do_disable).start()
+        try:
+            zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_SHORT": self.wiring[0]}, False)
+            zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_BOLD": self.wiring[1]}, False)
+            zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_LONG": self.wiring[2]}, False)
+        except:
+            pass
 
     def is_running(self):
         return self._stop_event is not None
@@ -290,3 +309,27 @@ class zynthian_tts:
                 print(f"TTS error: {e}")
             finally:
                 self._current_text = None
+
+    def set_volume(self, volume=None):
+        """ Attempt to set the volume of the soundcard
+        Args:
+            volume: Volume [0..100] or None to get from config
+        Returns: True on success
+        Note: Uses best guess at volume control name
+        """
+
+        if volume is None:
+            volume = zynthian_gui_config.tts_volume
+        try:
+            idx = alsaaudio.cards().index(self.soundcard)
+            mixers = alsaaudio.mixers(cardindex=idx)
+            for name in ["Master", "PCM", "Speaker", "Headphone"]:
+                if name in mixers:
+                    mixer = alsaaudio.Mixer(control=name, cardindex=idx)
+                    mixer.setvolume(min(max(volume, 0), 100))
+                    zynthian_gui_config.tts_volume = volume
+                    zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": volume}, False)
+                    return True
+        except:
+            pass
+        return False

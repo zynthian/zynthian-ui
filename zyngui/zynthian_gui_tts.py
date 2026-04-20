@@ -52,8 +52,8 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
                                    ["Select the Voice", None]))
             self.list_data.append((self.set_speed, 0, f"Speed: {zynthian_gui_config.tts_speed:.1f}",
                                    ["Adjust speed of narration", None]))
+            self.list_data.append((self.set_volume, 0, f"Volume: {zynthian_gui_config.tts_volume}%"))
             self.list_data.append((None, 0, "Soundcard"))
-                                   
             soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
             if soundcards:
                 for soundcard in soundcards:
@@ -96,6 +96,12 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
             'nudge_factor': 0.2,
             'value': zynthian_gui_config.tts_speed})
 
+    def set_volume(self):
+        self.enable_param_editor(self, "Volume", {
+            'value_min': 0,
+            'value_max': 100,
+            'value': zynthian_gui_config.tts_volume})
+
     def set_soundcard(self):
         soundcard = self.list_data[self.index][1]
         self.tts.set_soundcard(soundcard)
@@ -115,4 +121,7 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
                 self.update_list()
             case "Speed":
                 self.tts.set_speed(zctrl.value)
+                self.update_list()
+            case "Volume":
+                self.tts.set_volume(zctrl.value)
                 self.update_list()
