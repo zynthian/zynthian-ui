@@ -103,6 +103,7 @@ from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+from zyngui.zynthian_gui_tts import zynthian_gui_tts
 
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
@@ -544,6 +545,7 @@ class zynthian_gui:
         self.screens['brightness_config'] = zynthian_gui_brightness_config()
         self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
         self.screens['control_test'] = zynthian_gui_control_test()
+        self.screens['tts'] = zynthian_gui_tts()
 
         # Root screen
         self.screens['root'] = self.screens['mixer']
@@ -1265,10 +1267,10 @@ class zynthian_gui:
     def cuia_tts_toggle_enable(self, params=None):
         if zynthian_gui_config.tts_enabled:
             zynthian_gui_config.tts_enabled = False
-            self.state_manager._tts.shutdown()
+            self.state_manager._tts.disable()
         else:
             zynthian_gui_config.tts_enabled = True
-            self.state_manager._tts.start()
+            self.state_manager._tts.enable()
         zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
 
     def cuia_tts_toggle_playback(self, params=None):
