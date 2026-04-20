@@ -4,59 +4,67 @@
  </head>
 
  <body>
- <div class="knobs_action_container">
+ <div class="knobs_action_container_left">
   <div class="knob_action knob_action_1">
-   <div>ctrl1 value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>ctrl1 midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>ctrl1 options<img src="icons/white_icon_action_bold_push.png"></div>
+   <div><img src="icons/white_icon_action_knob_rotate.png">ctrl1 value</div>
+   <div><img src="icons/white_icon_action_short_push.png">next chain</div>
+   <div><img src="icons/white_icon_action_bold_push.png">chain manager</div>
   </div>
   <div class="knob_action knob_action_2">
-   <div>ctrl2 value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>ctrl2 midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>ctrl2 options<img src="icons/white_icon_action_bold_push.png"></div>
+   <div><img src="icons/white_icon_action_knob_rotate.png">ctrl2 value</div>
+   <div><img src="icons/white_icon_action_short_push.png">back</div>
+   <div><img src="icons/white_icon_action_bold_push.png">main menu</div>
   </div>
+</div>
+<div class="knobs_action_container_right">
   <div class="knob_action knob_action_3">
    <div>ctrl3 value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>ctrl3 midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>ctrl3 options<img src="icons/white_icon_action_bold_push.png"></div>
+   <div>midi learn<img src="icons/white_icon_action_short_push.png"></div>
+   <div>ZS3 screen<img src="icons/white_icon_action_bold_push.png"></div>
   </div>
   <div class="knob_action knob_action_4">
    <div>ctrl4 value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>ctrl4 midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>ctrl4 options<img src="icons/white_icon_action_bold_push.png"></div>
+   <div>select/control mode<img src="icons/white_icon_action_short_push.png"></div>
+   <div>presets screen<img src="icons/white_icon_action_bold_push.png"></div>
   </div>
  </div>
 
  <div class="left_container">
   <h1>Control Mode</h1>
-  <p>The processor control screen allows to modify the parameters of chain processors.
-  <p>Processor parameters are grouped in pages of 4 parameters. You can move across the
-  list of pages by using the UP / DOWN buttons. The list contains the control pages
-  for all processors in the chain. To move faster across the pages, enter <b>select mode</b>
-  by short pushing SELECT or OPT buttons.</p>
+  <p>When in control mode you can:</p>
+  <ul>
+   <li>Modify the value of processor parameters by <b>rotating the knobs</b>.</li>
+   <li>Enter MIDI learn mode by <b>short-pushing knob#3</b>.</li>
+  </ul>
+  <p>Processor parameters are grouped in pages of 4. You can move across the list
+  using the S3 / S4 buttons. The list contains the control pages for all processors
+  in the chain. To move across the pages, enter <b>select mode</b> with <b>short+SELECT</b>
+  or <b>short+OPT</b>.</p>
+
   <h2>MIDI Learn</h2>
   <p>You can bind any parameter to knobs, faders and CC-pads from your MIDI controllers.
   There are 2 different MIDI learn modes:</p>
-  <p><b>Chain Learn:</b> Binding is relative to the selected chain. You can bind the same knob
-   to one or several parameters in the same or different chains. Only the selected chain
-   will react to the knob rotation.</p>
   <ul>
-   <li><b>short-push</b> the knob associated to the parameter you want to learn. A little green
-   "??#??" will be displayed.</li>
-   <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
-   little green text now shows then MIDI channel and CC number </li>
-  </ul>
-  <p><b>Global Learn:</b> The bind is global. You can bind the same knob
+   <li><b>Chain Learn (short+knob#3):</b> Binding is relative to the selected chain. You can
+   bind the same knob to one or several parameters in the same or different chains. Only the
+   selected chain will react to the knob rotation. Displayed in green</li>
+   <li><b>Global Learn (short+knob#3 twice):</b> The bind is global. You can bind the same knob
    to one or several parameters in the same or different chains. All of them will react, not
-   matter the selected chain.</p>
-  <ul>
-   <li><b>short-push twice</b> the knob associated to the parameter you want to learn. A little yellow
-   "??#??" will be displayed.</li>
-   <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
-   little yellow text now shows then MIDI channel and CC number </li>
+   matter the selected chain. Displayed in yellow.</li>
   </ul>
-  <h2>Controller Options</h2>
-  <p><b>Bold-push on any knob</b> to access the controller options for the associated parameter:</p>
+  The MIDI learn procedure is:
+  <ul>
+   <li><b>short+knob#3</b> once to enter chain MIDI learn or twice to enter global MIDI learn.</li>
+   <li><b>rotate knob</b> associated to the parameter you want to learn. "??#??" will be displayed in
+   green or yellow depending of the MIDI learn mode.</li>
+   <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
+   little green/yellow text now shows then MIDI channel and CC number </li>
+  </ul>
+  <p>While in MIDI learn mode, you can access the <b>parameter control options</b> by <b>bold-pushing the knobs</b>.</p>
+  <p>You can cancel MIDI learn at any moment by <b>pushing back</b>.</p>
+
+  <h2>Parameter control options</h2>
+  <p>While in MIDI learn mode, <b>bold-push any knob</b> to access the controller options for the associated parameter:</p>
   <ul>
    <li><b>Chain Controller:</b> When checked, the parameter is added to the chain controller pages,
    at the beginning of the page list. This feature acts as a kind of "favorite parameters" for the chain.</li>
@@ -70,58 +78,6 @@
    <li><b>Unlearn:</b> Unlearn the parameter.</li>
    <li><b>Unlearn all controls:</b> Unlearn all parameters in the engine.</li>
   </ul>
- </div>
-
-  <div class="knobs_action_container">
-  <div class="knob_action knob_action_1">
-   <div>---<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>---<img src="icons/white_icon_action_short_push.png"></div>
-   <div>---<img src="icons/white_icon_action_bold_push.png"></div>
-  </div>
-  <div class="knob_action knob_action_2">
-   <div>---<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>---<img src="icons/white_icon_action_short_push.png"></div>
-   <div>---<img src="icons/white_icon_action_bold_push.png"></div>
-  </div>
-  <div class="knob_action knob_action_3">
-   <div>select chain blocks<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>chain block options<img src="icons/white_icon_action_short_push.png"></div>
-   <div>---<img src="icons/white_icon_action_bold_push.png"></div>
-  </div>
-  <div class="knob_action knob_action_4">
-   <div>browse right list<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>right list select<img src="icons/white_icon_action_short_push.png"></div>
-   <div>right list options<img src="icons/white_icon_action_bold_push.png"></div>
-  </div>
- </div>
-
- <div class="left_container">
-  <h1>Select Mode</h1>
-  <p>When in <b>select mode</b>:</p>
-  <ul>
-   <li>you can fast-navigate parameters pages (list at right) by <b>rotating knob#4</b></li>
-   <li>the chain-blocks panel is shown (at left) and you can navigate chain blocks by <b>rotating knob#3</b></li>
-  </ul>
-  <p>The available blocks at left depend of the chain type and processors:</p>
-  <ul>
-   <li>Chain Options</li>
-   <li>MIDI Input</li>
-   <li>Audio Input</li>
-   <li>MIDI Processors</li>
-   <li>Synth Processor</li>
-   <li>Audio Processors</li>
-   <li>MIDI Output</li>
-   <li>Audio Output</li>
-  </ul>
-  <p><b>Processor Blocks</b></p>
-  <p>When a processor is selected, the page list is repositioned to show the processor pages.
-  You can access the processor options with <b>short+knob#3</b> or <b>short+OPT</b>.</p>
-  <p><b>Non-Procesor Blocks</b></p>
-  <p>When a non-processor is selected, like chain options, MIDI Input, Audio Input, etc. you will see
-  the configuration panel for this block. You can navigate the options by <b>rotating knob#4</b> and
-  select/check an option with <b>short+knob#4</b>. Alternately you can use UP/DOWN and SELECT buttons.
-  If the option has suboptions, you can access the suboptions menu with <b>bold+knob#4</b>, <b>bold+SELECT</b>
-  or <b>short+OPT</b>.</p>
  </div>
 
  <div class="clear"></div>

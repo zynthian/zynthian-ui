@@ -337,7 +337,11 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         else:
             fpath = None
         if not fpath or not Path(fpath).exists():
-            fpath = f"./help/{zynthian_gui_config.layout['name']}/chain_control_{self.subscreen_name}.html"
+            if self.subscreen_name == "control" and self.chain_shown:
+                page_name = "select"
+            else:
+                page_name = self.subscreen_name
+            fpath = f"./help/{zynthian_gui_config.layout['name']}/chain_control_{page_name}.html"
         return fpath
 
 
