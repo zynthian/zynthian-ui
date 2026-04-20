@@ -129,7 +129,7 @@ class zynthian_tts:
         """
 
         zynthian_gui_config.tts_soundcard = self.soundcard = card
-        zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": card}, True)
+        zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": card}, False)
         zynautoconnect.enable_audio_output_device(card, False)
 
     def set_voice(self, voice):
@@ -144,7 +144,7 @@ class zynthian_tts:
         else:
             self.voice = voice
         zynthian_gui_config.tts_voice = self.voice
-        zynconf.save_config({"ZYNTHIAN_TTS_VOICE": self.voice}, True)
+        zynconf.save_config({"ZYNTHIAN_TTS_VOICE": self.voice}, False)
 
     def set_speed(self, speed: float):
         """ Set the speech speed
@@ -154,7 +154,7 @@ class zynthian_tts:
 
         speed = max(min(2.0, speed), 0.1)
         zynthian_gui_config.tts_speed = self.speed = speed
-        zynconf.save_config({"ZYNTHIAN_TTS_SPEED": str(zynthian_gui_config.tts_speed)}, True)
+        zynconf.save_config({"ZYNTHIAN_TTS_SPEED": str(zynthian_gui_config.tts_speed)}, False)
 
     def translate(self, text):
         def normalize_number(m):
