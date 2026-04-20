@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import logging
+from pathlib import Path
 
 # Zynthian specific modules
 import zynautoconnect
@@ -318,9 +319,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                     return
             zynthian_gui_config.zyngui.show_screen('chain_manager')
         else:
-            self.show_chain(True)
             if self.subscreen_name == "control":
                 self.subscreen.set_mode_control()
+            self.show_chain(True)
             return
 
     def toggle_menu(self):
@@ -328,5 +329,16 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.show_menu()
         elif self.zyngui.get_current_screen().endswith("_options"):
             self.zyngui.close_screen()
+
+    def get_help_fpath(self):
+        if self.subscreen_name == "control":
+            proc = self.zyngui.get_current_processor()
+            fpath = f"./help/widgets/{proc.name.lower()}.html"
+        else:
+            fpath = None
+        if not fpath or not Path(fpath).exists():
+            fpath = f"./help/{zynthian_gui_config.layout['name']}/chain_control_{self.subscreen_name}.html"
+        return fpath
+
 
 # ------------------------------------------------------------------------------
