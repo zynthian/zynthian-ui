@@ -305,8 +305,9 @@ class zynthian_gui_selector(zynthian_gui_base):
             tts = ""
         index = self.skip_separators(index)
         self._select_listbox(index, see=see)
-        if self.shown:
+        if self.shown and zynthian_gui_config.tts_enabled:
             self.state_manager.tts(self.list_data[index][2] + tts)
+            self.state_manager.tts(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
     def _select_listbox(self, index, see=True):
         # Set selection

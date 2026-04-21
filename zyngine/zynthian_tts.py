@@ -96,8 +96,11 @@ class zynthian_tts:
                     zynconf.save_config({key: "TTS_TOGGLE_PLAYBACK"}, False)
                     self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
 
-    def disable(self):
-        """ Disable TTS and stop background thread"""
+    def disable(self, save=True):
+        """ Disable TTS and stop background thread
+        Args:
+            save: True to save disabled state
+        """
 
         zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
         self.stop()
@@ -110,10 +113,11 @@ class zynthian_tts:
             self._stop_event = None
 
         threading.Timer(0.2, do_disable).start()
-        try:
-            zynconf.save_config(self.wiring_short, False)
-        except:
-            pass
+        if save:
+            try:
+                zynconf.save_config(self.wiring_short, False)
+            except:
+                pass
 
     def get_voice_name(self):
         return self.voices[self.voice]

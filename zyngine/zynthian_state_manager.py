@@ -294,7 +294,7 @@ class zynthian_state_manager:
             self.get_throttled_file.close()
             self.get_throttled_file = None
 
-        self._tts.disable()
+        self._tts.disable(False)
 
         self.end_busy("stop state")
 

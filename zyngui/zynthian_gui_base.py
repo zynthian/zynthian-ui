@@ -221,7 +221,7 @@ class zynthian_gui_base(tkinter.Frame):
             self.shown = True
             self.refresh_status()
             if self.tts_title:
-                self.state_manager.tts(f"View: {self.tts_title}", replace="True", interrupt=True)
+                self.state_manager.tts(f"View: {self.tts_title}", replace=True, interrupt=True)
         self.main_frame.focus()
 
     # Hide the view
@@ -536,7 +536,7 @@ class zynthian_gui_base(tkinter.Frame):
     def tts_info(self):
         """ Narrate view status - override to provide more context"""
 
-        self.state_manager.tts(f"View: {self.tts_title}", replace="True", interrupt=True)
+        self.state_manager.tts(f"View: {self.tts_title}", replace=True, interrupt=True)
 
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!) & CUIA

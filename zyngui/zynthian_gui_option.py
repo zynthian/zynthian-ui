@@ -49,6 +49,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
 
     def config(self, title, options, cb_select, close_on_select=True, click_type=False, index=None):
         reset_index = False
+        self.tts_title = title
         if title != self.title:
             self.title = title
             reset_index = True

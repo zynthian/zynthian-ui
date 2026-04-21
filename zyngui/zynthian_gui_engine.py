@@ -489,4 +489,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
             path = path + "/" + self.engine_cats[self.cat_index]
         self.select_path.set(path)
 
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        self.state_manager.tts(f"View: Engine")
+        self.state_manager.tts(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
+        self.state_manager.tts(f"Engine: {self.list_data[self.index][2]}", False, False, False)
+        self.state_manager.tts(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
+
 # ------------------------------------------------------------------------------

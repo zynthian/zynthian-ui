@@ -419,6 +419,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
+        self.state_manager.tts("Select mode enabled")
         if self.current_widget and self.current_widget.hide_on_select_mode():
             self.hide_widgets()
         #self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
@@ -430,6 +431,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def set_mode_control(self):
         self.mode = 'control'
+        self.state_manager.tts("Control mode enabled")
         self.show_widget(self.zyngui.get_current_processor())
         #self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
         #                    selectforeground=zynthian_gui_config.color_ctrl_tx,
@@ -522,7 +524,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.zgui_controllers[i].zynpot_cb(dval):
                 if self.midi_learning:
                     self.midi_learn(i, self.midi_learning)
-                    self.state_manager.tts(f"Bound MIDI to control {i}")
+                    self.state_manager.tts(f"Control {i} MIDI learning")
                 elif zynthian_gui_config.tts_enabled:
                     zctrl = self.zgui_controllers[i].zctrl
                     self.state_manager.tts(f"{zctrl.name}: {zctrl.get_value2label()}")
@@ -586,6 +588,10 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.midi_learning = mlmode
             self.refresh_midi_bind(preselect)
             self.set_select_path()
+            if mlmode == MIDI_LEARNING_CHAIN:
+                self.state_manager.tts("Chain MIDI learn enabled")
+            else:
+                self.state_manager.tts("Global MIDI learn enabled")
 
     def exit_midi_learn(self):
         if self.midi_learning != MIDI_LEARNING_DISABLED:
@@ -593,6 +599,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zyngui.state_manager.disable_learn_cc()
             self.refresh_midi_bind()
             self.set_select_path()
+            self.state_manager.tts("MIDI learn disabled", False, False, False)
 
     def toggle_midi_learn(self, i=None):
         if self.mode != 'control':
@@ -927,6 +934,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def tts_info(self):
         self.state_manager.tts(f"View: {self.tts_title}")
+        self.state_manager.tts(f"Page: {self.list_data[self.index][2]}", False, False, False)
         for i, zgui_ctrl in enumerate(self.zgui_controllers):
             if zgui_ctrl and zgui_ctrl.zctrl:
                 self.state_manager.tts(f"Control {i+1}: {zgui_ctrl.zctrl.name}: {zgui_ctrl.zctrl.get_value2label()}", False, False, False)
