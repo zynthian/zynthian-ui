@@ -37,9 +37,10 @@ from zyngui import zynthian_gui_config
 import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
-TTS_CONFIG_PATH = f"{os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')}/tts"
-TTS_FLITE_LEX_PATH = f"{TTS_CONFIG_PATH}/lexicon"
-TTS_FLITE_VOICES_PATH = f"{TTS_CONFIG_PATH}/voices"
+TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')}/tts"
+TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_DATA_DIR', '/zynthian/config')}/tts"
+TTS_FLITE_LEX_PATH = f"{TTS_DATA_PATH}/lexicon"
+TTS_FLITE_VOICES_PATH = f"{TTS_DATA_PATH}/voices"
 TTS_DICT = {
     "\u2610": "un-checked",
     "\u2612": "checked",
