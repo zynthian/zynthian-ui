@@ -523,7 +523,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if self.midi_learning:
                     self.midi_learn(i, self.midi_learning)
                     self.state_manager.tts(f"Bound MIDI to control {i}")
-                else:
+                elif zynthian_gui_config.tts_enabled:
                     zctrl = self.zgui_controllers[i].zctrl
                     self.state_manager.tts(f"{zctrl.name}: {zctrl.get_value2label()}")
                 return True

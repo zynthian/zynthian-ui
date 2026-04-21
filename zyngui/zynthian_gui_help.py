@@ -123,6 +123,12 @@ class zynthian_gui_help:
     def zynpot_cb(self, i, dval):
         if i == 3:
             self.main_frame.yview_scroll(dval, "units")
+        elif i == 2:
+            if self.zyngui.state_manager._tts.playing or self.zyngui.state_manager._tts.paused:
+                if dval > 0:
+                    self.zyngui.state_manager._tts.next()
+                else:
+                    self.zyngui.state_manager._tts.prev()
         return True
 
     def refresh_loading(self):
