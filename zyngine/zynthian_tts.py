@@ -4,8 +4,8 @@
 #
 # zynthian text to speech class
 #
-# Copyright (C) 2026 Fernando Moyano <jofemodo@zynthian.org>
-#                    Brian Walton <riban@zynthian.org>
+# Copyright (C) 2026 Brian Walton <riban@zynthian.org>
+#                    Fernando Moyano <jofemodo@zynthian.org>
 #
 # ****************************************************************************
 #
@@ -56,6 +56,7 @@ class zynthian_tts:
         self.set_speed(zynthian_gui_config.tts_speed)
         self.set_soundcard(zynthian_gui_config.tts_soundcard)
         self.set_voice(zynthian_gui_config.tts_voice)
+
         self.busy = False
         self.busy_timer = None
         self._queue = deque()
@@ -86,16 +87,14 @@ class zynthian_tts:
         self.append("Narration enabled")
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
 
-        #TODO: Get V4/V5 wiring
-        self.wiring = [
-            os.environ.get("ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_SHORT"),
-            os.environ.get("ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_BOLD"),
-            os.environ.get("ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_LONG")
-        ]
-        zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_SHORT": "TTS_TOGGLE_PLAYBACK"}, False)
-        zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_BOLD": "TTS_TOGGLE_ENABLE"}, False)
-        zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_LONG": "TTS_TOGGLE_ENABLE"}, False)
-        self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
+        # Auto configure Narrator button
+        for key, value in os.environ.items():
+            if value == "TTS_TOGGLE_ENABLE":
+                if key.startswith("ZYNTHIAN_WIRING_CUSTOM_SWITCH_") and key.endswith("__UI_LONG"):
+                    key = key.replace("__UI_LONG", "__UI_SHORT")
+                    self.wiring_short = {key: os.environ.get(key)}
+                    zynconf.save_config({key: "TTS_TOGGLE_PLAYBACK"}, False)
+                    self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
 
     def disable(self):
         """ Disable TTS and stop background thread"""
@@ -112,9 +111,7 @@ class zynthian_tts:
 
         threading.Timer(0.2, do_disable).start()
         try:
-            zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_SHORT": self.wiring[0]}, False)
-            zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_BOLD": self.wiring[1]}, False)
-            zynconf.save_config({"ZYNTHIAN_WIRING_CUSTOM_SWITCH_20__UI_LONG": self.wiring[2]}, False)
+            zynconf.save_config(self.wiring_short, False)
         except:
             pass
 

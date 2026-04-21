@@ -5,7 +5,8 @@
 #
 # Zynthian GUI TTS Class
 #
-# Copyright (C) 2026 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2026 Brian Walton <riban@zynthian.org>
+#                    Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -45,7 +46,7 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
 
         self.list_data = []
 
-        if self.tts.is_running():
+        if zynthian_gui_config.tts_enabled:
             self.list_data.append((self.toggle_tts, 0, f"\u2612 Enable Narration feedback",
                                    ["Toggle narration enable", None]))
             self.list_data.append((self.set_voice, 0, f"Voice: {self.tts.get_voice_name().split(':')[0]}",
@@ -73,13 +74,9 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
     def select_action(self, i, t='S'):
         if self.list_data[i][0]:
             self.list_data[i][0]()
-        self.update_list()
 
     def toggle_tts(self):
-        if self.tts.is_running():
-            self.tts.disable()
-        else:
-            self.tts.enable()
+        self.zyngui.cuia_tts_toggle_enable()
 
     def set_voice(self):
         voices = self.tts.voices

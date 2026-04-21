@@ -1272,6 +1272,8 @@ class zynthian_gui:
             zynthian_gui_config.tts_enabled = True
             self.state_manager._tts.enable()
         zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
+        if self.screens["tts"].shown:
+            self.screens["tts"].update_list()
 
     def cuia_tts_toggle_playback(self, params=None):
         if self.state_manager._tts.playing:

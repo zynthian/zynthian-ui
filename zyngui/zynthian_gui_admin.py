@@ -285,7 +285,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         if zynthian_gui_config.debug_thread:
             self.list_data.append((self.exit_to_console, 0, "Exit",
                                    ["Stop zynthian UI but do not reboot.", "poweroff.png"]))
-        self.list_data.append((self.power, 0, "Power Off",
+        self.list_data.append((self.power, 0, "Power",
                                ["Turn off or reboot zynthian.\n\nPower is still fed to the device but it is effectively off.",
                                 "poweroff.png"]))
 
