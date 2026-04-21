@@ -54,7 +54,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
-        self.title_tts = "Pattern editor: CC"
+        self.tts_title = "Pattern editor: CC"
 
     # Function to get name of this view
     def get_name(self):

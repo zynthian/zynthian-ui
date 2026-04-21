@@ -1264,6 +1264,15 @@ class zynthian_gui:
     def cuia_tts_stop(self, params=None):
         self.state_manager._tts.stop()
 
+    def cuia_tts_pause(self, params=None):
+        self.state_manager._tts.pause(True)
+
+    def cuia_tts_resume(self, params=None):
+        self.state_manager._tts.pause(False)
+
+    def cuia_tts_toggle_pause(self, params=None):
+        self.state_manager._tts.pause()
+
     def cuia_tts_toggle_enable(self, params=None):
         if zynthian_gui_config.tts_enabled:
             zynthian_gui_config.tts_enabled = False

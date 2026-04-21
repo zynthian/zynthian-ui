@@ -201,7 +201,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.drag_duration = False  # True indicates drag will adjust duration
 
         super().__init__()
-        self.title_tts = "Pattern editor: Notes"
+        self.tts_title = "Pattern editor: Notes"
 
     # Function to get name of this view
     def get_name(self):

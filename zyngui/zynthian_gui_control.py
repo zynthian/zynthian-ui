@@ -926,7 +926,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        self.state_manager.tts(f"View: {self.title_tts}")
+        self.state_manager.tts(f"View: {self.tts_title}")
         for i, zgui_ctrl in enumerate(self.zgui_controllers):
             if zgui_ctrl and zgui_ctrl.zctrl:
                 self.state_manager.tts(f"Control {i+1}: {zgui_ctrl.zctrl.name}: {zgui_ctrl.zctrl.get_value2label()}", False, False, False)

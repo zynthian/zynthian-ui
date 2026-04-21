@@ -55,6 +55,7 @@ class zynthian_gui_help:
         self.touch_last_release_ts = 0
         self.hide_close_timer = None
         self.fpath = None
+        self.tts_title = ""
 
         # Main Frame
 
@@ -91,6 +92,7 @@ class zynthian_gui_help:
             try:
                 self.main_frame.load_file("file:///" + self.ui_dir + "/" + fpath, force=True, insecure=True)
                 self.fpath = fpath
+                self.tts_title = f"{self.fpath.split('/')[-1][:-5]} help"
                 return True
             except Exception as e:
                 logging.error(f"Can't load HTML file => {e}")
@@ -112,7 +114,7 @@ class zynthian_gui_help:
             self.shown = True
             self.main_frame.grid_propagate(False)
             self.main_frame.place(x=0, y=0)
-            self.zyngui.state_manager.tts(f"View: Help", replace="True", interrupt=True)
+            self.zyngui.state_manager.tts(f"View: {self.tts_title}", replace="True", interrupt=True)
 
     def hide_close_button(self):
         if zynthian_gui_config.touch_navigation:
@@ -134,6 +136,14 @@ class zynthian_gui_help:
 
     def arrow_down(self):
         self.main_frame.yview_scroll(4, "units")
+
+    def arrow_left(self):
+        if self.zyngui.state_manager._tts.playing or self.zyngui.state_manager._tts.paused:
+            self.zyngui.state_manager._tts.prev()
+
+    def arrow_right(self):
+        if self.zyngui.state_manager._tts.playing or self.zyngui.state_manager._tts.paused:
+            self.zyngui.state_manager._tts.next()
 
     # --------------------------------------------------------------------------
     # Keyboard & Mouse/Touch Callbacks
@@ -206,8 +216,7 @@ class zynthian_gui_help:
     def tts_info(self):
         from bs4 import BeautifulSoup
 
-        self.zyngui.state_manager.tts(f"View: Help.")
-
+        self.zyngui.state_manager.tts(f"View: {self.tts_title}")
         try:
             with open(self.fpath) as f:
                 html = f.read()
@@ -215,7 +224,7 @@ class zynthian_gui_help:
             for div in soup.select("div.knobs_action_container"):
                 div.decompose()  # removes the whole section
             text = soup.get_text(separator=" ", strip=True)
-            for line in text.split("\n"):
+            for line in text.split(". "):
                 self.zyngui.state_manager.tts(line, False, False, False)
         except:
             pass

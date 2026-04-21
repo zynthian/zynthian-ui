@@ -26,7 +26,6 @@
 import logging
 import threading
 import subprocess
-from collections import deque
 import os
 import re
 import json
@@ -57,13 +56,14 @@ class zynthian_tts:
         self.set_soundcard(zynthian_gui_config.tts_soundcard)
         self.set_voice(zynthian_gui_config.tts_voice)
 
+        self.line = 0 # The current index of queue being played (since last clear)
+        self.paused = False
         self.busy = False
         self.busy_timer = None
-        self._queue = deque()
+        self._queue = []
         self._cond = threading.Condition() # Queue locking mutex
         self._stop_event = None
         self._process = None
-        self._current_text = None
         self._lock = threading.Lock() # Process locking mutex
         self.playing = False
         self.translate_pattern = re.compile("|".join(map(re.escape, TTS_DICT)))
@@ -198,13 +198,13 @@ class zynthian_tts:
         text = text.strip()
         if text:
             text = self.translate(text)
+            if replace:
+                self.clear_queue()
             with self._cond:
-                if replace:
-                    self._queue.clear()
                 if urgent:
-                    if interrupt and not replace:
-                        self._queue.appendleft(self._current_text)
-                    self._queue.appendleft(text)
+                    if self.line:
+                        self.line -= 1
+                    self._queue.insert(self.line, text)
                 else:
                     self._queue.append(text)
             if interrupt:
@@ -214,6 +214,8 @@ class zynthian_tts:
         """ Remove all pending items """
         with self._cond:
             self._queue.clear()
+            self.paused = False
+            self.line = 0
 
     def stop(self, clear=True):
         """ Stop playback immediately
@@ -227,6 +229,34 @@ class zynthian_tts:
             if self._process and self._process.poll() is None:
                 self._process.terminate()
             self.playing = False
+
+    def pause(self, pause=None):
+        """ Set or toggle playback pause
+        Args:
+            pause: True to pause. False to resume. None to toggle.
+        """
+
+        if pause is None:
+            pause = not self.paused
+        if pause:
+            if not self.playing:
+                return
+            self.stop(False)
+            self.line = max(0, self.line - 1)
+        self.paused = pause
+
+    def next(self):
+        with self._lock:
+            if self._process and self._process.poll() is None:
+                self._process.terminate()
+            else:
+                self.line = min(len(self._queue), self.line + 1)
+
+    def prev(self):
+        with self._lock:
+            if self._process and self._process.poll() is None:
+                self._process.terminate()
+        self.line = max(0, self.line - 2)
 
     def _build_command(self, text: str):
         if self.voice == "espeak-m":
@@ -275,7 +305,7 @@ class zynthian_tts:
         count = 0
         while self._stop_event and not self._stop_event.is_set():
             with self._cond:
-                while not self._queue and not self._stop_event.is_set():
+                while self.paused or self.line >= len(self._queue) and not self._stop_event.is_set():
                     self._cond.wait(timeout=0.1)
                     with self._lock:
                         self.playing = False
@@ -293,19 +323,23 @@ class zynthian_tts:
                 sleep(0.4) # Debounce to avoid rapid message interruption
 
             with self._cond:
-                text = self._queue.popleft()
+                try:
+                    text = self._queue[self.line]
+                    self.line += 1
+                except:
+                    text = ""
+                    self.playing = False
 
             cmd = self._build_command(text)
 
             try:
                 with self._lock:
-                    self._current_text = text
                     self._process = subprocess.Popen(cmd, env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
                 print(f"TTS error: {e}")
             finally:
-                self._current_text = None
+                pass
 
     def set_volume(self, volume=None):
         """ Attempt to set the volume of the soundcard

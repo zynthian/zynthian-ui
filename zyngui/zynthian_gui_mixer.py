@@ -1146,7 +1146,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.wsleds_i_clipboard = None
 
         self.update_layout()
-        self.title_tts = "Mixer"
+        self.tts_title = "Mixer"
 
     def cb_rename_chain(self, chain_id, title):
         for strip in self.chain_strips:
@@ -1866,7 +1866,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.highlight_launcher()
             if self.shown:
                 self.zyngui.current_screen = "launcher"
-            self.title_tts = "Launcher"
+            self.tts_title = "Launcher"
         else:
             self.left_canvas.itemconfig("fader", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("fader", state=tkinter.NORMAL)
@@ -1876,10 +1876,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.right_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
             if self.shown:
                 self.zyngui.current_screen = "mixer"
-            self.title_tts = "Mixer"
+            self.tts_title = "Mixer"
         zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
         if self.shown:
-            self.state_manager.tts(f"View: {self.title_tts}")
+            self.state_manager.tts(f"View: {self.tts_title}")
 
     def toggle_launcher_mode(self):
         self.set_launcher_mode(not self.launcher_mode)
@@ -2503,7 +2503,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
 
     def tts_info(self, params=None):
-        self.state_manager.tts(f"View: {self.title_tts}", replace="True", interrupt=True)
+        self.state_manager.tts(f"View: {self.tts_title}", replace="True", interrupt=True)
         chain = self.chain_manager.active_chain
         if chain:
             if chain.chain_id:
