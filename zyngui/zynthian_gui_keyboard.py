@@ -274,7 +274,7 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
         box = self.key_canvas.bbox(self.buttons[key][0])
         if box:
             self.key_canvas.coords(self.highlight_box, box[0]+1, box[1]+1, box[2], box[3])
-            if self.zyngui.state_manager._tts.is_running():
+            if zynthian_gui_config.tts_enabled:
                 try:
                     match key:
                         case self.btn_alt:
