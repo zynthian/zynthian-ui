@@ -53,10 +53,8 @@ class zynthian_gui_help:
         self.touch_swiping = False
         self.touch_push_ts = 0
         self.touch_last_release_ts = 0
-        self.hide_close_timer = None
 
         # Main Frame
-
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
                                     width=zynthian_gui_config.display_width,
                                     height=zynthian_gui_config.display_height,
@@ -72,15 +70,6 @@ class zynthian_gui_help:
         self.main_frame.bind("<Button-4>", self.cb_scroll_wheel)
         self.main_frame.bind("<Button-5>", self.cb_scroll_wheel)
         self.main_frame.bind("<B1-Motion>", self.cb_touch_motion)
-
-        if zynthian_gui_config.touch_navigation:
-            self.close_btn = tkinter.Label(
-                text="↩️",
-                bg=zynthian_gui_config.color_bg,
-                fg=zynthian_gui_config.color_tx,
-                font=(zynthian_gui_config.font_family, zynthian_gui_config.display_width // 20)
-            )
-            self.close_btn.bind("<Button-1>", lambda e: self.zyngui.cuia_back())
 
     def done_loading(self):
         self.zyngui.show_screen("help")
@@ -101,18 +90,13 @@ class zynthian_gui_help:
         if self.shown:
             self.shown = False
             self.main_frame.place_forget()
-            if zynthian_gui_config.touch_navigation:
-                self.close_btn.place_forget()
 
     def show(self):
         if not self.shown:
             self.shown = True
             self.main_frame.grid_propagate(False)
             self.main_frame.place(x=0, y=0)
-
-    def hide_close_button(self):
-        if zynthian_gui_config.touch_navigation:
-            self.close_btn.place_forget()
+            self.main_frame.tkraise()
 
     def zynpot_cb(self, i, dval):
         if i == 3:
@@ -136,10 +120,6 @@ class zynthian_gui_help:
     # --------------------------------------------------------------------------
 
     def cb_touch_push(self, event):
-        if zynthian_gui_config.touch_navigation:
-            # Show close button
-            self.close_btn.place(relx=1.0, rely=0.0, anchor="ne")
-
         if self.zyngui.cb_touch(event):
             return "break"
         self.touch_push_ts = event.time  # Timestamp of initial touch
@@ -163,18 +143,18 @@ class zynthian_gui_help:
             self.touch_push_ts = event.time
 
     def cb_touch_release(self, event):
-        if zynthian_gui_config.touch_navigation:
-            # Hide close button after 1s
-            if self.hide_close_timer is not None:
-                zynthian_gui_config.top.after_cancel(self.hide_close_timer)
-            self.hide_close_timer = zynthian_gui_config.top.after(1000, self.hide_close_button)
-
         if self.zyngui.cb_touch_release(event):
             return "break"
+
         dts = (event.time - self.touch_push_ts)/1000
         self.touch_last_release_ts = event.time
         if self.touch_swiping:
             self.touch_swipe_nudge(dts)
+        else:
+            # X-Swipe to close
+            dx = self.touch_x0 - event.x
+            if abs(dx) > 50:
+                self.zyngui.cuia_back()
 
     def cb_scroll_wheel(self, event):
         dval = 1 if event.num else -1
