@@ -107,12 +107,17 @@ class zynthian_gui_help:
         if i == 3:
             self.main_frame.yview_scroll(dval, "units")
         elif i == 2:
-            if self.zyngui.state_manager._tts.playing or self.zyngui.state_manager._tts.paused:
+            if self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
                 if dval > 0:
-                    self.zyngui.state_manager._tts.next()
+                    self.zyngui.tts._tts.next()
                 else:
-                    self.zyngui.state_manager._tts.prev()
+                    self.zyngui.tts._tts.prev()
         return True
+
+    def switch(self, i, t):
+        if i == 2 and t =='S':
+            self.zyngui.cuia_tts_toggle_pause()
+            return True
 
     def refresh_loading(self):
         pass
