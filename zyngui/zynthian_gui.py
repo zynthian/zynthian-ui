@@ -158,11 +158,8 @@ class zynthian_gui:
         self.screen_history = []
         self.current_screen = None
         self.screen_timer_id = None
-
+        self.screen_lock = Lock()           # Lock object to avoid concurrence problems when showing/closing screens
         self.current_processor = None
-
-        # Lock object to avoid concurrence problems when showing/closing screens
-        self.screen_lock = Lock()
 
         self.state_manager = zynthian_state_manager()
         self.chain_manager = self.state_manager.chain_manager
@@ -1274,13 +1271,7 @@ class zynthian_gui:
         self.state_manager._tts.pause()
 
     def cuia_tts_toggle_enable(self, params=None):
-        if zynthian_gui_config.tts_enabled:
-            zynthian_gui_config.tts_enabled = False
-            self.state_manager._tts.disable()
-        else:
-            zynthian_gui_config.tts_enabled = True
-            self.state_manager._tts.enable()
-        zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, True)
+        self.state_manager.tts_enable(not zynthian_gui_config.tts_enabled)
         if self.screens["tts"].shown:
             self.screens["tts"].update_list()
 

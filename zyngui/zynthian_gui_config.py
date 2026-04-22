@@ -618,8 +618,9 @@ disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'head
 # Text To Speech Options
 # ------------------------------------------------------------------------------
 
-tts_enabled = get_env_int('ZYNTHIAN_TTS_ENABLED', 1)
-tts_voice = os.environ.get('ZYNTHIAN_TTS_VOICE', "espeak-m")
+tts_enabled = get_env_int('ZYNTHIAN_TTS_ENABLED', 0)
+tts_voice = os.environ.get('ZYNTHIAN_TTS_engine', "flite")
+tts_voice = os.environ.get('ZYNTHIAN_TTS_VOICE', "cmu_us_slt.flitevox")
 tts_speed = float(os.environ.get('ZYNTHIAN_TTS_SPEED', "1.0"))
 tts_soundcard = os.environ.get('ZYNTHIAN_TTS_SOUNDCARD', "")
 tts_volume = get_env_int('ZYNTHIAN_TTS_VOLUME', 80)
