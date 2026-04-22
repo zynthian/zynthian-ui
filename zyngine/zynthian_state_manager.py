@@ -1876,25 +1876,6 @@ class zynthian_state_manager:
         lib_zyncore.ui_send_all_notes_off_chan(chan)
 
     # ------------------------------------------------------------------
-    # TTS Narration
-    # ------------------------------------------------------------------
-
-    def tts(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
-        if zynthian_gui_config.tts_enabled:
-            try:
-                self._tts.append(text, replace, urgent, interrupt)
-            except Exception as e:
-                logging.warning(f"TTS Error: {e}")
-
-    def tts_enable(self, enable=True):
-        zynthian_gui_config.tts_enabled = bool(enable)
-        if zynthian_gui_config.tts_enabled:
-            self._tts.enable()
-        else:
-            self._tts.disable()
-        zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": zynthian_gui_config.tts_enabled}, True)
-
-    # ------------------------------------------------------------------
     # MPE initialization
     # ------------------------------------------------------------------
 

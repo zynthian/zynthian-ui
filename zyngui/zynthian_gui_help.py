@@ -52,13 +52,10 @@ class zynthian_gui_help:
         self.touch_motion_last_dy = 0
         self.touch_swiping = False
         self.touch_push_ts = 0
-        self.touch_last_release_ts = 0
-        self.hide_close_timer = None
         self.fpath = None
         self.tts_title = ""
 
         # Main Frame
-
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
                                     width=zynthian_gui_config.display_width,
                                     height=zynthian_gui_config.display_height,
@@ -74,15 +71,6 @@ class zynthian_gui_help:
         self.main_frame.bind("<Button-4>", self.cb_scroll_wheel)
         self.main_frame.bind("<Button-5>", self.cb_scroll_wheel)
         self.main_frame.bind("<B1-Motion>", self.cb_touch_motion)
-
-        if zynthian_gui_config.touch_navigation:
-            self.close_btn = tkinter.Label(
-                text="↩️",
-                bg=zynthian_gui_config.color_bg,
-                fg=zynthian_gui_config.color_tx,
-                font=(zynthian_gui_config.font_family, zynthian_gui_config.display_width // 20)
-            )
-            self.close_btn.bind("<Button-1>", lambda e: self.zyngui.cuia_back())
 
     def done_loading(self):
         self.zyngui.show_screen("help")
@@ -106,8 +94,6 @@ class zynthian_gui_help:
         if self.shown:
             self.shown = False
             self.main_frame.place_forget()
-            if zynthian_gui_config.touch_navigation:
-                self.close_btn.place_forget()
 
     def show(self):
         if not self.shown:
@@ -116,10 +102,6 @@ class zynthian_gui_help:
             self.main_frame.place(x=0, y=0)
             if self.zyngui.tts:
                 self.zyngui.tts.announce(f"View: {self.tts_title}", replace="True", interrupt=True)
-
-    def hide_close_button(self):
-        if zynthian_gui_config.touch_navigation:
-            self.close_btn.place_forget()
 
     def zynpot_cb(self, i, dval):
         if i == 3:
@@ -145,22 +127,18 @@ class zynthian_gui_help:
         self.main_frame.yview_scroll(4, "units")
 
     def arrow_left(self):
-        if self.zyngui.state_manager._tts.playing or self.zyngui.state_manager._tts.paused:
-            self.zyngui.state_manager._tts.prev()
+        if self.zyngui.tts and self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
+            self.zyngui.tts._tts.prev()
 
     def arrow_right(self):
-        if self.zyngui.state_manager._tts.playing or self.zyngui.state_manager._tts.paused:
-            self.zyngui.state_manager._tts.next()
+        if self.zyngui.tts and self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
+            self.zyngui.tts._tts.next()
 
     # --------------------------------------------------------------------------
     # Keyboard & Mouse/Touch Callbacks
     # --------------------------------------------------------------------------
 
     def cb_touch_push(self, event):
-        if zynthian_gui_config.touch_navigation:
-            # Show close button
-            self.close_btn.place(relx=1.0, rely=0.0, anchor="ne")
-
         if self.zyngui.cb_touch(event):
             return "break"
         self.touch_push_ts = event.time  # Timestamp of initial touch
@@ -184,18 +162,17 @@ class zynthian_gui_help:
             self.touch_push_ts = event.time
 
     def cb_touch_release(self, event):
-        if zynthian_gui_config.touch_navigation:
-            # Hide close button after 1s
-            if self.hide_close_timer is not None:
-                zynthian_gui_config.top.after_cancel(self.hide_close_timer)
-            self.hide_close_timer = zynthian_gui_config.top.after(1000, self.hide_close_button)
-
         if self.zyngui.cb_touch_release(event):
             return "break"
+
         dts = (event.time - self.touch_push_ts)/1000
-        self.touch_last_release_ts = event.time
         if self.touch_swiping:
             self.touch_swipe_nudge(dts)
+        else:
+            # X-Swipe to close
+            dx = self.touch_x0 - event.x
+            if abs(dx) > 50:
+                self.zyngui.cuia_back()
 
     def cb_scroll_wheel(self, event):
         dval = 1 if event.num else -1

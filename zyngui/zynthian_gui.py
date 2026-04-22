@@ -1268,23 +1268,22 @@ class zynthian_gui:
     def cuia_tts_stop(self, params=None):
         """ Stop current TTS announcement. Clear queue. """
         if self.tts:
-            self.tts.stop()
-        self.tts = None
+            self.tts._tts.stop()
 
     def cuia_tts_pause(self, params=None):
         """ Pause current TTS announcement. Do not clear queue. """
         if self.tts:
-            self.tts.pause(True)
+            self.tts._tts.pause(True)
 
     def cuia_tts_resume(self, params=None):
         """ Resume paused TTS queue. """
         if self.tts:
-            self.tts.pause(False)
+            self.tts._tts.pause(False)
 
     def cuia_tts_toggle_pause(self, params=None):
         """ Toggle TTS pause """
         if self.tts:
-            self.tts.pause()
+            self.tts._tts.pause()
 
     def cuia_tts_toggle_enable(self, params=None):
         """ Toggle the TTS enabled state """
