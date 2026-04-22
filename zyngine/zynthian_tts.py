@@ -31,6 +31,8 @@ import re
 import json
 from time import sleep
 import alsaaudio
+import math
+import struct
 
 import zynconf
 from zyngui import zynthian_gui_config
@@ -44,8 +46,10 @@ TTS_DICT = {
     "\u2610": "un-checked",
     "\u2612": "checked",
 }
+SINE_TABLE_SIZE = 1024
 
 class zynthian_tts:
+
     def __init__(self, state_manager):
         self.state_manager = state_manager
         with open(f"{TTS_FLITE_VOICES_PATH}/voices.json") as f:
@@ -53,7 +57,6 @@ class zynthian_tts:
         self.voices = json.loads(txt)
 
         self.set_speed(zynthian_gui_config.tts_speed)
-        self.set_soundcard(zynthian_gui_config.tts_soundcard)
         self.set_voice(zynthian_gui_config.tts_voice)
 
         self.line = 0 # The current index of queue being played (since last clear)
@@ -73,16 +76,16 @@ class zynthian_tts:
 
         if self._stop_event:
             return
+        if not self.set_soundcard(zynthian_gui_config.tts_soundcard):
+            return
+
+        # Create sine wave data
+        self.sine_table = [int(32767 * math.sin(2 * math.pi * i / SINE_TABLE_SIZE)) for i in range(SINE_TABLE_SIZE)]
+
         self.clear_queue()
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._stop_event = threading.Event()
         self._thread.start()
-        soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
-        if self.soundcard not in soundcards:
-            if soundcards:
-                self.soundcard = soundcards[0]
-            else:
-                self.soundcard = ""
         self.set_volume()
         self.append("Narration enabled")
         zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
@@ -104,20 +107,20 @@ class zynthian_tts:
 
         zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
         self.stop()
-        self.append("Narration disabled")
 
-        def do_disable():
-            if self._stop_event:
-                self._stop_event.set()
-            self._thread.join()
-            self._stop_event = None
-
-        threading.Timer(0.2, do_disable).start()
         if save:
             try:
                 zynconf.save_config(self.wiring_short, False)
             except:
                 pass
+            self.announce_disable = True
+        else:
+            self.announce_disable = False
+        if self._stop_event:
+            self._stop_event.set()
+        self._thread.join()
+        self._stop_event = None
+        self.sine_table = None
 
     def get_voice_name(self):
         return self.voices[self.voice]
@@ -143,11 +146,21 @@ class zynthian_tts:
         """ Set the ALSA soundcard to use
         Args:
             card: Soundcard
+        Returns: Name of soundcard or None on failure
         """
 
-        zynthian_gui_config.tts_soundcard = self.soundcard = card
-        zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": card}, False)
-        zynautoconnect.enable_audio_output_device(card, False)
+        soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
+        if card not in soundcards:
+            if soundcards:
+                self.soundcard = soundcards[0]
+            else:
+                self.soundcard = None
+
+        if self.soundcard:
+            zynthian_gui_config.tts_soundcard = self.soundcard
+            zynconf.save_config({"ZYNTHIAN_TTS_SOUNDCARD": self.soundcard}, False)
+            zynautoconnect.enable_audio_output_device(self.soundcard, False)
+        return self.soundcard
 
     def set_voice(self, voice):
         """ Set the voice
@@ -283,24 +296,46 @@ class zynthian_tts:
                 "-t", f"{text}"
             ]
 
-    def beep(self, dur=0.1, freq=440):
+    def beep(self, duration=0.2, freq=440):
         """ Sound a beep
         Args:
-            freq: Tone frequency
-            dur: Tone duration (s)
+            duration: Tone duration [Default: 0.1s]
+            freq: Tone frequency [Default: 440 Hz]
         """
 
-        subprocess.Popen(
-            [
-                "play",
-                "-n",
-                "synth", str(dur),
-                "sine", str(freq),
-                "gain", "-12"
-            ],
-            env={"ALSA_CARD": self.soundcard},
-            stderr=subprocess.DEVNULL
-        )
+        try:
+            # Try to open soundcard with low resource parameters
+            pcm = alsaaudio.PCM(
+                alsaaudio.PCM_PLAYBACK,
+                device=f"hw:{self.soundcard}",
+                periodsize=1024,
+                rate=32000,
+                channels=1,
+                format=alsaaudio.PCM_FORMAT_S16_LE
+            )
+            # Get actual parameters because some soundcards do not support all configurations
+            info = pcm.info()
+            amplitude = 0.5
+            num_samples = int(info["rate"] * duration)
+            step = freq * SINE_TABLE_SIZE / info["rate"]
+            channels = info["channels"]
+            fmt = "<" + "h" * channels
+            # Create the output waveform
+            index = 0.0
+            samples = bytearray()
+            for _ in range(num_samples):
+                value = [int(amplitude * self.sine_table[int(index) % SINE_TABLE_SIZE])] * channels
+                samples += struct.pack(fmt, *value)
+                index += step
+            # Add tail of waveform - wrong freq but inperceptible and gives zero crossing
+            while index < len(self.sine_table):
+                value = int(amplitude * self.sine_table[int(index) % SINE_TABLE_SIZE])
+                samples += struct.pack(fmt, *value)
+                index += 1
+            # Send waveform to soundcard
+            pcm.write(samples)
+        except Exception as e:
+            logging.error(f"TTS failed to send tone to soundcard - {e}")
 
     def _worker(self):
         count = 0
@@ -331,16 +366,22 @@ class zynthian_tts:
                     text = ""
                     self.playing = False
 
-            cmd = self._build_command(text)
-
             try:
                 with self._lock:
-                    self._process = subprocess.Popen(cmd, env={"ALSA_CARD": self.soundcard})
+                    self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
                 print(f"TTS error: {e}")
             finally:
                 pass
+
+        if self.announce_disable:
+            try:
+                with self._lock:
+                    self._process = subprocess.Popen(self._build_command("Narration disabled"), env={"ALSA_CARD": self.soundcard})
+                self._process.wait()
+            except Exception as e:
+                print(f"TTS error: {e}")
 
     def set_volume(self, volume=None):
         """ Attempt to set the volume of the soundcard
