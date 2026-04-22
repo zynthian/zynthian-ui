@@ -95,7 +95,6 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
     def show(self):
         if not self.shown:
             super().show()
-            self.state_manager.tts(f"View: {self.title}")
             self.state_manager.tts(self.config[self.selected_node]["title"], False, False, False)
 
     def setup(self, title, config, cols=None, select=0):
@@ -108,7 +107,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             select: Button to select (Optional. Default: 0)
         """
 
-        self.title = title
+        self.title = self.tts_title = title
         self.config = config
         if cols:
             self.columns = cols
