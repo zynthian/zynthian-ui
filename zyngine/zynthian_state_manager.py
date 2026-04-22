@@ -48,14 +48,15 @@ from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 from zynlibs.zynmixer import zynmixer
 
 from zyngine.zynthian_chain_manager import *
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_legacy_snapshot import zynthian_legacy_snapshot, SNAPSHOT_SCHEMA_VERSION
-from zyngine import zynthian_midi_filter
 from zyngine.zynthian_tts import zynthian_tts
+from zyngine import zynthian_midi_filter
 
 from zyngui import zynthian_gui_config
-from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
