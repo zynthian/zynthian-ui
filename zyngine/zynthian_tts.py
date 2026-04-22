@@ -296,11 +296,12 @@ class zynthian_tts:
                 "-t", f"{text}"
             ]
 
-    def beep(self, duration=0.2, freq=440):
+    def beep(self, duration=0.2, frequency=440, amplitude=0.5):
         """ Sound a beep
         Args:
-            duration: Tone duration [Default: 0.1s]
-            freq: Tone frequency [Default: 440 Hz]
+            duration: Tone duration [Default: 0.2s]
+            frequency: Tone frequency [Default: 440 Hz]
+            amplitude: Normalised amplitude [Default: 0.5]
         """
 
         try:
@@ -315,9 +316,8 @@ class zynthian_tts:
             )
             # Get actual parameters because some soundcards do not support all configurations
             info = pcm.info()
-            amplitude = 0.5
             num_samples = int(info["rate"] * duration)
-            step = freq * SINE_TABLE_SIZE / info["rate"]
+            step = frequency * SINE_TABLE_SIZE / info["rate"]
             channels = info["channels"]
             fmt = "<" + "h" * channels
             # Create the output waveform
@@ -327,7 +327,7 @@ class zynthian_tts:
                 value = [int(amplitude * self.sine_table[int(index) % SINE_TABLE_SIZE])] * channels
                 samples += struct.pack(fmt, *value)
                 index += step
-            # Add tail of waveform - wrong freq but inperceptible and gives zero crossing
+            # Add tail of waveform - wrong frequency but inperceptible and gives zero crossing
             while index < len(self.sine_table):
                 value = int(amplitude * self.sine_table[int(index) % SINE_TABLE_SIZE])
                 samples += struct.pack(fmt, *value)
