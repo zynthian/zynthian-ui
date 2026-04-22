@@ -30,7 +30,6 @@ import logging
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 from zyngine.zynthian_signal_manager import zynsigman
-from zynlibs.zynseq.zynseq import SS_SEQ_TEMPO
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for "Tempo"
@@ -71,11 +70,11 @@ class zynthian_widget_tempo(zynthian_widget_base.zynthian_widget_base):
             self.set_tempo(self.zyngui.state_manager.zynseq.get_tempo())
         except:
             pass
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, self.set_tempo)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.set_tempo)
 
     def hide(self):
         super().hide()
-        zynsigman.unregister(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, self.set_tempo)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.set_tempo)
 
     def set_tempo(self, tempo):
         self.widget_canvas.itemconfigure(self.bpm_text, text=f"{tempo:.1f} BPM")

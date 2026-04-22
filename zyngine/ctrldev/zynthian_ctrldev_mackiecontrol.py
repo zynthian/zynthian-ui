@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Mackie Control Protocol"
 #
-# Copyright (C) 2024 Christopher Matthews <chris@matthewsnet.de>
+# Copyright (C) 2024-2026 Christopher Matthews <chris@matthewsnet.de>
 #
 # ******************************************************************************
 #
@@ -361,10 +361,10 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 		self.sleep_off()  # Added this to perhaps stop losing the other registered signals
 		# Register signals
 		zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self._on_gui_show_screen)
-		zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
-		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, self.state_manager.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
-		zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
-		zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
+		zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
+		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
+		zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
+		zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
 		super().init()
 		self.init_fader_touch()
 		self.update_all_lcd_text("Zynthian CTRLDEV driver for Mackie Control", "Enjoy and play the waves")
@@ -372,10 +372,10 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 	def end(self):
 		super().end()
 		zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self._on_gui_show_screen)
-		zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
-		zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.state_manager.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
-		zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
-		zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
+		zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
+		zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
+		zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
+		zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
 
 	def refresh_audio_transport(self, **kwargs):
 		if self.shift:

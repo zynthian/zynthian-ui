@@ -5,8 +5,8 @@
 #
 # Zynthian Control Device Driver for "Fostex MixTab"
 #
-# Copyright (C) 2025 Fernando Moyano <jofemodo@zynthian.org>
-#                    Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2025-2026 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 #
@@ -30,7 +30,6 @@ from threading import Timer
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
-from zynlibs.zynseq import zynseq
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
@@ -80,17 +79,17 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
         # Send the current mixer state to the mixtab allowing "enable" mode to be used
         super().init()
         # Register for processor tree changes
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.refresh)
 
     def end(self):
         # Unregister from processor tree changes
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.refresh)
         super().end()
 
     def set_param(self, cc, val, midi_chan):

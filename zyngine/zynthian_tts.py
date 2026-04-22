@@ -39,23 +39,20 @@ from zyngui import zynthian_gui_config
 import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
-TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_DATA_DIR', '/zynthian/config')}/tts"
+TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_DATA_DIR', '/zynthian/zynthian-data')}/tts"
 TTS_FLITE_LEX_PATH = f"{TTS_DATA_PATH}/lexicon"
 TTS_FLITE_VOICES_PATH = f"{TTS_DATA_PATH}/voices"
 TTS_DICT = {
     "\u2610": "un-checked",
     "\u2612": "checked",
 }
-SINE_TABLE_SIZE = 1024
+SINE_WAVETABLE_SIZE = 1024
 
 class zynthian_tts:
+    SINE_WAVETABLE = [int(32767 * math.sin(2 * math.pi * i / SINE_WAVETABLE_SIZE)) for i in range(SINE_WAVETABLE_SIZE)]
 
-    def __init__(self, state_manager):
-        self.state_manager = state_manager
-        with open(f"{TTS_FLITE_VOICES_PATH}/voices.json") as f:
-            txt = f.read()
-        self.voices = json.loads(txt)
-
+    def __init__(self):
+        self.set_soundcard(zynthian_gui_config.tts_soundcard)
         self.set_speed(zynthian_gui_config.tts_speed)
         self.set_voice(zynthian_gui_config.tts_voice)
 
@@ -63,6 +60,7 @@ class zynthian_tts:
         self.paused = False
         self.busy = False
         self.busy_timer = None
+        self.announce_disable = True
         self._queue = []
         self._cond = threading.Condition() # Queue locking mutex
         self._stop_event = None
@@ -71,59 +69,24 @@ class zynthian_tts:
         self.playing = False
         self.translate_pattern = re.compile("|".join(map(re.escape, TTS_DICT)))
 
-    def enable(self):
-        """ Enable TTS and start background thread """
-
-        if self._stop_event:
-            return
-        if not self.set_soundcard(zynthian_gui_config.tts_soundcard):
-            return
-
-        # Create sine wave data
-        self.sine_table = [int(32767 * math.sin(2 * math.pi * i / SINE_TABLE_SIZE)) for i in range(SINE_TABLE_SIZE)]
-
         self.clear_queue()
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._stop_event = threading.Event()
         self._thread.start()
         self.set_volume()
-        self.append("Narration enabled")
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
+        self.append("Narrator enabled")
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.cb_busy)
 
-        # Auto configure Narrator button
-        for key, value in os.environ.items():
-            if value == "TTS_TOGGLE_ENABLE":
-                if key.startswith("ZYNTHIAN_WIRING_CUSTOM_SWITCH_") and key.endswith("__UI_LONG"):
-                    key = key.replace("__UI_LONG", "__UI_SHORT")
-                    self.wiring_short = {key: os.environ.get(key)}
-                    zynconf.save_config({key: "TTS_TOGGLE_PLAYBACK"}, False)
-                    self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
+    def close(self):
+        """ Stop background services and cleanup """
 
-    def disable(self, save=True):
-        """ Disable TTS and stop background thread
-        Args:
-            save: True to save disabled state
-        """
-
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_BUSY, self.cb_busy)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.cb_busy)
         self.stop()
 
-        if save:
-            try:
-                zynconf.save_config(self.wiring_short, False)
-            except:
-                pass
-            self.announce_disable = True
-        else:
-            self.announce_disable = False
         if self._stop_event:
             self._stop_event.set()
         self._thread.join()
         self._stop_event = None
-        self.sine_table = None
-
-    def get_voice_name(self):
-        return self.voices[self.voice]
 
     def cb_busy(self, state):
         if state:
@@ -150,7 +113,9 @@ class zynthian_tts:
         """
 
         soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
-        if card not in soundcards:
+        if card in soundcards:
+            self.soundcard = card
+        else:
             if soundcards:
                 self.soundcard = soundcards[0]
             else:
@@ -170,7 +135,7 @@ class zynthian_tts:
         """
 
         if isinstance(voice, int):
-            self.voice = list(self.voices)[voice]
+            self.voice = list(self.get_voices())[voice]
         else:
             self.voice = voice
         zynthian_gui_config.tts_voice = self.voice
@@ -317,19 +282,19 @@ class zynthian_tts:
             # Get actual parameters because some soundcards do not support all configurations
             info = pcm.info()
             num_samples = int(info["rate"] * duration)
-            step = frequency * SINE_TABLE_SIZE / info["rate"]
+            step = frequency * SINE_WAVETABLE_SIZE / info["rate"]
             channels = info["channels"]
             fmt = "<" + "h" * channels
             # Create the output waveform
             index = 0.0
             samples = bytearray()
             for _ in range(num_samples):
-                value = [int(amplitude * self.sine_table[int(index) % SINE_TABLE_SIZE])] * channels
+                value = [int(amplitude * self.SINE_WAVETABLE[int(index) % SINE_WAVETABLE_SIZE])] * channels
                 samples += struct.pack(fmt, *value)
                 index += step
             # Add tail of waveform - wrong frequency but inperceptible and gives zero crossing
-            while index < len(self.sine_table):
-                value = int(amplitude * self.sine_table[int(index) % SINE_TABLE_SIZE])
+            while index < len(self.SINE_WAVETABLE):
+                value = int(amplitude * self.SINE_WAVETABLE[int(index) % SINE_WAVETABLE_SIZE])
                 samples += struct.pack(fmt, *value)
                 index += 1
             # Send waveform to soundcard
@@ -378,7 +343,7 @@ class zynthian_tts:
         if self.announce_disable:
             try:
                 with self._lock:
-                    self._process = subprocess.Popen(self._build_command("Narration disabled"), env={"ALSA_CARD": self.soundcard})
+                    self._process = subprocess.Popen(self._build_command("Narrator disabled"), env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
                 print(f"TTS error: {e}")
@@ -406,3 +371,16 @@ class zynthian_tts:
         except:
             pass
         return False
+
+    # ------------------------------------------------
+    # Class methods
+    # ------------------------------------------------
+
+    @classmethod
+    def get_voices(cls):
+        try:
+            with open(f"{TTS_FLITE_VOICES_PATH}/voices.json") as f:
+                txt = f.read()
+            return json.loads(txt)
+        except:
+            return {}

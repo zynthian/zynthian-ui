@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for audio player
 #
-# Copyright (C) 2021-2024 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -32,7 +32,6 @@ from subprocess import check_output, STDOUT
 import zynconf
 from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 from zynlibs.zynaudioplayer import *
 
@@ -42,9 +41,6 @@ from zynlibs.zynaudioplayer import *
 
 
 class zynthian_engine_audioplayer(zynthian_engine):
-
-    # Subsignals are defined inside each module. Here we define audio_recorder subsignals:
-    SS_AUDIO_PLAYER_STATE = 1
 
     # ---------------------------------------------------------------------------
     # Config variables
@@ -91,14 +87,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
     def start(self):
         if zynaudioplayer.init():
             self.jackname = zynaudioplayer.get_jack_client_name()
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
         else:
             raise Exception("Can't start zynaudioplayer!")
 
     def stop(self):
         try:
             zynaudioplayer.stop()
-            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
         except Exception as e:
             logging.error("Failed to close audio player: %s", e)
 
@@ -483,7 +479,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                             ctrl_dict['transport'].set_value("stopped", False)
                             processor.status = ""
                         zynsigman.send(
-                            zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
+                            zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
                     elif id == 2:
                         ctrl_dict['position'].set_value(value, False)
                     elif id == 3:

@@ -220,8 +220,8 @@ class zynthian_gui_base(tkinter.Frame):
             self.parent_frame.grid_main(self)
             self.shown = True
             self.refresh_status()
-            if self.tts_title:
-                self.state_manager.tts(f"View: {self.tts_title}", replace=True, interrupt=True)
+            if self.tts_title and self.zyngui.tts:
+                self.zyngui.tts.announce(f"View: {self.tts_title}", replace=True, interrupt=True)
         self.main_frame.focus()
 
     # Hide the view
@@ -535,8 +535,8 @@ class zynthian_gui_base(tkinter.Frame):
 
     def tts_info(self):
         """ Narrate view status - override to provide more context"""
-
-        self.state_manager.tts(f"View: {self.tts_title}", replace=True, interrupt=True)
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"View: {self.tts_title}", replace=True, interrupt=True)
 
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!) & CUIA
@@ -649,7 +649,7 @@ class zynthian_gui_base(tkinter.Frame):
             else:
                 text = self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value)
             self.select_path.set(text)
-            self.state_manager.tts(text)
+            self.zyngui.tts.announce(text)
 
     # --------------------------------------------------------------------------
     # MIDI learning

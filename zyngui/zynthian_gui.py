@@ -28,7 +28,6 @@ import liblo
 import ffmpeg
 import logging
 import traceback
-import importlib
 from time import sleep
 from queue import Empty
 from pathlib import Path
@@ -103,7 +102,7 @@ from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
-from zyngui.zynthian_gui_tts import zynthian_gui_tts
+from zyngui.zynthian_gui_tts import zynthian_gui_tts, zynthian_gui_tts_screen
 
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
@@ -131,15 +130,6 @@ class DebugLock():
         self.lock.release()
 
 class zynthian_gui:
-    # Subsignals are defined inside each module. Here we define GUI subsignals:
-
-    SS_GUI_SHOW_SCREEN = 0
-    SS_GUI_SHOW_SIDEBAR = 1
-    SS_GUI_CONTROL_MODE = 2
-    SS_GUI_SHOW_FILE_SELECTOR = 3
-    SS_GUI_TOGGLE_ALT_MODE = 4
-    SS_GUI_SHOW_MESSAGE = 5
-    SS_GUI_LAUNCHER_MODE = 6
 
     # Screen Modes
     SCREEN_HMODE_NONE = 0
@@ -216,6 +206,12 @@ class zynthian_gui:
         self.osc_heartbeat_timeout = 120  # Heartbeat timeout period
 
         self.prog_change = [0] * 16 # Track last program change for each MIDI channel
+
+        # Restore narrator TTS
+        if zynthian_gui_config.tts_enabled:
+            self.tts = zynthian_gui_tts(self.state_manager)
+        else:
+            self.tts = None
 
     # ---------------------------------------------------------------------------
     # Capture Log
@@ -542,7 +538,7 @@ class zynthian_gui:
         self.screens['brightness_config'] = zynthian_gui_brightness_config()
         self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
         self.screens['control_test'] = zynthian_gui_control_test()
-        self.screens['tts'] = zynthian_gui_tts()
+        self.screens['tts'] = zynthian_gui_tts_screen()
 
         # Root screen
         self.screens['root'] = self.screens['mixer']
@@ -1257,33 +1253,64 @@ class zynthian_gui:
     def cuia_workflow_capture_text(self, params=None):
         self.write_capture_log(f"TEXT: {params[0]}")
 
-    # Narration TTS actions
+    # Narrator TTS actions
+    def cuia_tts_announce(self, params=["", True, False, True]):
+        """ Announce a TTS message 
+        Params:
+            text: Text to append
+            replace: True to clear queue and replace with this text
+            urgent: True to play next. False to append to end of queue.
+            interrupt: True to interrupt currently playing message. False to finish current announcement.
+        """
+        if self.tts:
+            self.tts.announce(*params)
+
     def cuia_tts_stop(self, params=None):
-        self.state_manager._tts.stop()
+        """ Stop current TTS announcement. Clear queue. """
+        if self.tts:
+            self.tts.stop()
+        self.tts = None
 
     def cuia_tts_pause(self, params=None):
-        self.state_manager._tts.pause(True)
+        """ Pause current TTS announcement. Do not clear queue. """
+        if self.tts:
+            self.tts.pause(True)
 
     def cuia_tts_resume(self, params=None):
-        self.state_manager._tts.pause(False)
+        """ Resume paused TTS queue. """
+        if self.tts:
+            self.tts.pause(False)
 
     def cuia_tts_toggle_pause(self, params=None):
-        self.state_manager._tts.pause()
+        """ Toggle TTS pause """
+        if self.tts:
+            self.tts.pause()
 
     def cuia_tts_toggle_enable(self, params=None):
-        self.state_manager.tts_enable(not zynthian_gui_config.tts_enabled)
+        """ Toggle the TTS enabled state """
+
+        if self.tts:
+            zynthian_gui_config.tts_enabled = 0
+            self.tts.close()
+            self.tts=None
+        else:
+            zynthian_gui_config.tts_enabled = 1
+            self.tts = zynthian_gui_tts(self.state_manager)
+        zynconf.save_config({"ZYNTHIAN_TTS_ENABLED": str(zynthian_gui_config.tts_enabled)}, False)
         if self.screens["tts"].shown:
             self.screens["tts"].update_list()
 
     def cuia_tts_toggle_playback(self, params=None):
-        if self.state_manager._tts.playing:
-            self.state_manager._tts.stop()
-        else:
-            screen = self.screens[self.current_screen]
-            try:
-                screen.tts_info()
-            except:
-                self.state_manager.tts(f"View: {self.current_screen}", replace="True", interrupt=True)
+        """ Stop TTS if playing, else announce context info """
+        if self.tts:
+            if self.tts._tts.playing:
+                self.tts._tts.stop()
+            else:
+                screen = self.screens[self.current_screen]
+                try:
+                    screen.tts_info()
+                except:
+                    self.tts.announce(f"View: {self.current_screen}", replace="True", interrupt=True)
 
     # Panic Actions
 
@@ -2313,14 +2340,14 @@ class zynthian_gui:
         zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, self.cb_show_message)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
 
     def unregister_signals(self):
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, self.cb_show_message)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
 
     def cb_midi_note_on(self, izmip, chan, note, vel):
         """Handle MIDI_NOTE_ON signal

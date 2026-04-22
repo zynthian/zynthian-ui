@@ -28,7 +28,6 @@ import logging
 import tkinter
 from tkinter import font
 
-import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_signal_manager import zynsigman
 

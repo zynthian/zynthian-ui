@@ -183,7 +183,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def show(self):
         super().show()
-        self.state_manager.tts(self.list_data[self.index][2], False, False, False)
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -305,9 +306,9 @@ class zynthian_gui_selector(zynthian_gui_base):
             tts = ""
         index = self.skip_separators(index)
         self._select_listbox(index, see=see)
-        if self.shown and zynthian_gui_config.tts_enabled:
-            self.state_manager.tts(self.list_data[index][2] + tts)
-            self.state_manager.tts(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
+        if self.shown and self.zyngui.tts:
+            self.zyngui.tts.announce(self.list_data[index][2] + tts)
+            self.zyngui.tts.announce(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
     def _select_listbox(self, index, see=True):
         # Set selection
@@ -525,6 +526,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def tts_info(self):
         super().tts_info()
-        self.state_manager.tts(self.list_data[self.index][2])
+        self.zyngui.tts.announce(self.list_data[self.index][2])
 
 # ------------------------------------------------------------------------------

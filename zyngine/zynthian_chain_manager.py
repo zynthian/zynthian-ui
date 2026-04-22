@@ -4,7 +4,7 @@
 #
 # zynthian chain manager
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -87,16 +87,6 @@ engine2class = {
 
 
 class zynthian_chain_manager:
-
-    # Subsignals are defined inside each module. Here we define chain_manager subsignals:
-    SS_SET_ACTIVE_CHAIN = 1
-    SS_MOVE_CHAIN = 2
-    SS_ADD_CHAIN = 3
-    SS_REMOVE_CHAIN = 4
-    SS_REMOVE_ALL_CHAINS = 5
-    SS_RENAME_CHAIN = 6
-    SS_ADD_PROCESSOR = 7
-    SS_REMOVE_PROCESSOR = 8
 
     engine_info = None
     single_processor_engines = ["BF", "MD", "PT", "AE", "SL", "IR"]
@@ -285,7 +275,7 @@ class zynthian_chain_manager:
 
         self.set_active_chain_by_id(chain_id)
         if fast_refresh:
-            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_CHAIN)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN)
         else:
             self.rebuild_optimisation_cache()
         self.state_manager.end_busy("add_chain")
@@ -409,7 +399,7 @@ class zynthian_chain_manager:
                     chain.title = f"Effect Return {i}"
                     i += 1
         if fast_refresh:
-            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_CHAIN)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN)
 
         self.state_manager.end_busy("remove_chain")
         return True
@@ -426,7 +416,7 @@ class zynthian_chain_manager:
         for chain_id in list(self.chains.keys()):
             success &= self.remove_chain(chain_id, stop_engines, fast_refresh=False)
         self._pinned_chains = 1
-        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_ALL_CHAINS)
+        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS)
         return success
 
     def set_chain_title(self, chain_id, title):
@@ -437,7 +427,7 @@ class zynthian_chain_manager:
             chain.set_title(title)
             if chain.chain_id and chain.zynmixer_proc and chain.zynmixer_proc.eng_code == "MR":
                 self.refresh_mixbus_sends()
-            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_RENAME_CHAIN, chain_id=chain_id, title=title)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_RENAME_CHAIN, chain_id=chain_id, title=title)
         except:
             pass
 
@@ -502,7 +492,7 @@ class zynthian_chain_manager:
                     send += 1
         self.refresh_mixbus_sends()
         self.rebuild_optimisation_cache()
-        zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
+        zynsigman.send(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN)
         return pos
 
     # --- Chain getter functions ---
@@ -947,25 +937,13 @@ class zynthian_chain_manager:
             if chain and chain.midi_chan is not None and chain.midi_chan < 16:
                 self.active_midi_chain = chain
             self.state_manager.zynseq.chan = chain.midi_chan
-            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
             # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
             if isinstance(chain.zmop_index, int):
                 try:
                     lib_zyncore.set_active_chain(chain.zmop_index)
                 except Exception as e:
                     logging.error(e)
-            if zynthian_gui_config.tts_enabled:
-                mute = ""
-                if chain.zynmixer_proc:
-                    if chain.zynmixer_proc.controllers_dict["mute"].value:
-                        mute = "Mute"
-                    elif chain.zynmixer_proc.controllers_dict["solo"].value:
-                        mute = "Solo"
-                if chain.chain_id:
-                    idx = list(self.chains).index(chain.chain_id) + 1
-                    self.state_manager.tts(f"Chain {idx}: {mute}")
-                else:
-                    self.state_manager.tts(f"Main chain:{mute}")
 
         return self.active_chain.chain_id
 
@@ -1110,7 +1088,7 @@ class zynthian_chain_manager:
         chain.rebuild_graph()
         # Signal processor creation, except when creating from state (loading snapshot)
         if send_signal:
-            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_ADD_PROCESSOR)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_PROCESSOR)
         self.state_manager.end_busy("add_processor")
         # Success!! => Return processor
         return processor
@@ -1204,7 +1182,7 @@ class zynthian_chain_manager:
             # Update chain routing (may have effected lots of chains)
             for chain in self.chains.values():
                 chain.rebuild_graph()
-            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_REMOVE_PROCESSOR)
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_PROCESSOR)
 
         self.state_manager.end_busy("remove_processor")
         return success

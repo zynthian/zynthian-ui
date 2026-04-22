@@ -5,7 +5,7 @@
 #
 # Zynthian GUI ZS3 screen
 #
-# Copyright (C) 2018-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2018-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -62,9 +62,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     def build_view(self):
         if super().build_view():
             zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_SAVE_ZS3, self.cb_save_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             return True
         else:
             return False
@@ -73,9 +73,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         if self.shown:
             self.disable_midi_learn()
             zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_SAVE_ZS3, self.cb_save_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             super().hide()
 
     def fill_list(self):

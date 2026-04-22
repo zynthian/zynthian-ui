@@ -27,7 +27,6 @@ import logging
 from pathlib import Path
 
 # Zynthian specific modules
-import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
 from zyngui import zynthian_gui_config
@@ -36,7 +35,6 @@ from zyngui.zynthian_side_chain import zynthian_side_chain
 
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
-#from zyngui.zynthian_gui_processor_options import zynthian_gui_processor_options
 from zyngui.zynthian_gui_midi_config import zynthian_gui_midi_config
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
@@ -106,14 +104,14 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def build_view(self):
         super().build_view()
         if not self.shown:
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
         self.set_chain()
         self.subscreen.show()
         return True
 
     def hide(self):
         if self.shown:
-            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
         self.chain_canvas.hide()
         self.subscreen.hide()
         super().hide()

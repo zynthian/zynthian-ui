@@ -29,7 +29,6 @@ import tkinter
 import logging
 #import traceback
 from math import log10
-from time import monotonic
 from threading import Timer
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from os.path import basename, splitext
@@ -38,13 +37,10 @@ from os.path import basename, splitext
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import *
-from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
-from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
 logging.getLogger('PIL').setLevel(logging.WARNING)
 
@@ -1373,21 +1369,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         if not self.shown:
             self.set_tempo()
-            zynsigman.register(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.register(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.load_zs3_cb)
-            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
-            zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.load_zs3_cb)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_RENAME_CHAIN, self.cb_rename_chain)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
+            zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.set_tempo)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, self.set_bpb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh_launchers)
 
         # Setup pattern editor and clipboard functionality
         self.pated = self.zyngui.screens["pattern_editor"]
@@ -1404,21 +1400,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
             if not self.zyngui.osc_clients:
                 self.zyngui.state_manager.zynmixer_chan.enable_dpm(False)
                 self.zyngui.state_manager.zynmixer_bus.enable_dpm(False)
-            zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.load_zs3_cb)
-            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
-            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
-            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
-            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.load_zs3_cb)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_RENAME_CHAIN, self.cb_rename_chain)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
+            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.set_tempo)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, self.set_bpb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh_launchers)
             super().hide()
 
     def set_tempo(self, tempo=None):
@@ -1512,12 +1508,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
             else:
                 level_db = "-∞"
             self.set_title(f"Volume: {level_db} ({strip.chain.get_description(1)})", None, None, 1)
-            self.state_manager.tts(f"Fader: {level_db}")
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"Fader: {level_db}")
         elif symbol == "balance":
             bal = f"{int(value * 100):+}%"
             #strip.gui_mixer.set_title(f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
             strip.gui_mixer.set_title(f"Balance: {bal} ({strip.chain.get_name()})", None, None, 1)
-            self.state_manager.tts(f"Balance: {bal}")
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"Balance: {bal}")
 
     def update_control_rec(self, state):
         """ Function to handle audio recorder status
@@ -1878,8 +1876,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 self.zyngui.current_screen = "mixer"
             self.tts_title = "Mixer"
         zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
-        if self.shown:
-            self.state_manager.tts(f"View: {self.tts_title}")
+        if self.shown and self.zyngui.tts:
+            self.zyngui.tts.announce(f"View: {self.tts_title}")
 
     def toggle_launcher_mode(self):
         self.set_launcher_mode(not self.launcher_mode)
@@ -2503,31 +2501,31 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
 
     def tts_info(self, params=None):
-        self.state_manager.tts(f"View: {self.tts_title}", replace="True", interrupt=True)
+        self.zyngui.tts.announce(f"View: {self.tts_title}", replace="True", interrupt=True)
         chain = self.chain_manager.active_chain
         if chain:
             if chain.chain_id:
                 idx = self.chain_manager.get_chain_index(chain.chain_id) + 1
-                self.state_manager.tts(f"Chain {idx}.", False, False, False)
+                self.zyngui.tts.announce(f"Chain {idx}.", False, False, False)
             else:
-                self.state_manager.tts(f"Main chain.", False, False, False)
+                self.zyngui.tts.announce(f"Main chain.", False, False, False)
             if self.launcher_mode:
-                self.state_manager.tts(f"Phrase: {self.zynseq.phrase + 1}.", False, False, False)
-            self.state_manager.tts(f"Title: {chain.get_title()}.", False, False, False)
+                self.zyngui.tts.announce(f"Phrase: {self.zynseq.phrase + 1}.", False, False, False)
+            self.zyngui.tts.announce(f"Title: {chain.get_title()}.", False, False, False)
             if chain.is_midi():
                 if chain.midi_chan < 16:
-                    self.state_manager.tts(f"MIDI channel: {chain.midi_chan + 1}", False, False, False)
+                    self.zyngui.tts.announce(f"MIDI channel: {chain.midi_chan + 1}", False, False, False)
                 else:
-                    self.state_manager.tts(f"MIDI channel: ALL", False, False, False)
+                    self.zyngui.tts.announce(f"MIDI channel: ALL", False, False, False)
             if chain.is_synth():
-                self.state_manager.tts("Synth chain.", False, False, False)
+                self.zyngui.tts.announce("Synth chain.", False, False, False)
             elif chain.is_generator():
-                self.state_manager.tts("Generator chain.", False, False, False)
+                self.zyngui.tts.announce("Generator chain.", False, False, False)
             elif chain.is_special():
-                self.state_manager.tts("Special chain.", False, False, False)
+                self.zyngui.tts.announce("Special chain.", False, False, False)
             elif chain.is_mixbus():
-                self.state_manager.tts("Mixbus chain.", False, False, False)
+                self.zyngui.tts.announce("Mixbus chain.", False, False, False)
             elif chain.is_audio():
-                self.state_manager.tts("Audio chain.", False, False, False)
+                self.zyngui.tts.announce("Audio chain.", False, False, False)
 
 # --------------------------------------------------------------------------

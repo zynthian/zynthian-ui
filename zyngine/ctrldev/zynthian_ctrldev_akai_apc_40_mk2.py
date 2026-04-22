@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Akai APC 40 mk2"
 #
-# Copyright (C) 2025 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2025-2026 Brian Walton <riban@zynthian.org>
 # API: https://cdn.inmusicbrands.com/akai/attachments/apc40II/APC40Mk2_Communications_Protocol_v1.2.pdf
 #
 # ******************************************************************************
@@ -34,8 +34,6 @@ from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
-from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
 BOLD_PRESS_TIME = 0.4
 
@@ -202,16 +200,16 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         self.on_active_chain()
         self.set_enc_mode()
         super().init()
-        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
-        zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
+        zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.on_metronome)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
 
     def end(self):
         super().end()
-        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
-        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.on_metronome)
+        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.on_audio_rec)
+        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.on_metronome)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
 
     def light_off(self):

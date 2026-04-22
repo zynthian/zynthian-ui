@@ -4,7 +4,7 @@
 #
 # zynthian state manager
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -53,7 +53,6 @@ from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_legacy_snapshot import zynthian_legacy_snapshot, SNAPSHOT_SCHEMA_VERSION
-from zyngine.zynthian_tts import zynthian_tts
 from zyngine import zynthian_midi_filter
 
 from zyngui import zynthian_gui_config
@@ -75,22 +74,6 @@ AUDIO_PLAYER_ID = -3
 TEMPO_ID = -4
 
 class zynthian_state_manager:
-
-    # Subsignals are defined inside each module. Here we define state manager subsignals:
-    SS_LOAD_SNAPSHOT = 1
-    SS_MIDI_PLAYER_STATE = 2
-    SS_MIDI_RECORDER_STATE = 3
-    SS_LOAD_ZS3 = 4
-    SS_SAVE_ZS3 = 5
-    SS_ALL_NOTES_OFF = 6
-    SS_BUSY = 7
-
-    # Subsignals from other modules. Just to simplify access.
-    # From S_AUDIO_PLAYER
-    SS_AUDIO_PLAYER_STATE = 1
-    # From S_AUDIO_RECORDER
-    SS_AUDIO_RECORDER_STATE = 1
-    SS_AUDIO_RECORDER_ARM = 2
 
     def __init__(self):
         """ Create an instance of a state manager
@@ -150,7 +133,6 @@ class zynthian_state_manager:
         self.zctrl_y = None
 
         self.cuia_queue = SimpleQueue()  # Queue for CUIA calls
-        self._tts = zynthian_tts(self) # TTS for accessibility, etc.
 
         self.get_throttled_file = None
         self.hwmon_thermal_file = None
@@ -253,10 +235,7 @@ class zynthian_state_manager:
         self.fast_thread.daemon = True  # thread dies with the program
         self.fast_thread.start()
 
-        zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
-
-        if zynthian_gui_config.tts_enabled:
-            self._tts.enable()
+        zynsigman.register(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
         self.end_busy("start state")
 
@@ -265,7 +244,7 @@ class zynthian_state_manager:
 
         self.start_busy("stop state")
 
-        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
         self.exit_flag = True
         if self.fast_thread and self.fast_thread.is_alive():
@@ -294,8 +273,6 @@ class zynthian_state_manager:
         if self.get_throttled_file:
             self.get_throttled_file.close()
             self.get_throttled_file = None
-
-        self._tts.disable(False)
 
         self.end_busy("stop state")
 
@@ -409,7 +386,7 @@ class zynthian_state_manager:
         """
 
         if not self.busy:
-            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_BUSY, state=True)
+            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=True)
         self.busy.add(clid)
         if message:
             self.busy_message = message
@@ -433,7 +410,7 @@ class zynthian_state_manager:
             self.busy_warning = None
             self.busy_success = None
             self.busy_details = None
-            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_BUSY, state=False)
+            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=False)
 
         # logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
 
@@ -444,7 +421,7 @@ class zynthian_state_manager:
         self.busy_warning = None
         self.busy_success = None
         self.busy_details = None
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_BUSY, state=False)
+        zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=False)
 
     def is_busy(self, client=None):
         """Check if clients are busy
@@ -639,14 +616,14 @@ class zynthian_state_manager:
                     self.status_midi_player = status_midi_player
                     if status_midi_player == 0:
                         self.zynseq.transport_stop("zynsmf")
-                    zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=status_midi_player)
+                    zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, state=status_midi_player)
 
                 # MIDI Recorder
                 # TODO: Add callback from MIDI recorder to avoid polling (and regular access to c-lib)
                 status_midi_recorder = libsmf.isRecording()
                 if self.status_midi_recorder != status_midi_recorder:
                     self.status_midi_recorder = status_midi_recorder
-                    zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_RECORDER_STATE, state=status_midi_recorder)
+                    zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, state=status_midi_recorder)
 
                 # Sequencer Status => It must be improved using callbacks
                 self.zynseq.update_state()
@@ -1260,7 +1237,7 @@ class zynthian_state_manager:
         self.mute(mute, 0)
 
         # Signal snapshot loading
-        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_LOAD_SNAPSHOT)
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT)
 
         self.end_busy("load snapshot")
         return state
@@ -1559,7 +1536,7 @@ class zynthian_state_manager:
         else:
             self.last_zs3_id = zs3_id
         self.zynseq.select_phrase(active_phrase, True)
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
+        zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, zs3_id=zs3_id)
 
         if autoconnect:
             zynautoconnect.request_midi_connect(True)
@@ -1738,7 +1715,7 @@ class zynthian_state_manager:
             self.last_zs3_id = zs3_id
             # Jofemodo: this has not sense from my POV
             #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_SAVE_ZS3, zs3_id=zs3_id)
+        zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, zs3_id=zs3_id)
 
     def delete_zs3(self, zs3_id):
         """Remove a ZS3
@@ -1879,7 +1856,7 @@ class zynthian_state_manager:
             lib_zyncore.zynaptik_all_gates_off()
         except:
             pass
-        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_ALL_NOTES_OFF, chan=None)
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, zynsigman.SS_ALL_NOTES_OFF, chan=None)
 
     def raw_all_notes_off(self):
         logging.info("Raw All Notes Off!")
@@ -1892,7 +1869,7 @@ class zynthian_state_manager:
     def all_notes_off_chan(self, chan):
         logging.info(f"All Notes Off for channel {chan}!")
         lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
-        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_ALL_NOTES_OFF, chan=chan)
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, zynsigman.SS_ALL_NOTES_OFF, chan=chan)
 
     def raw_all_notes_off_chan(self, chan):
         logging.info(f"Raw All Notes Off for channel {chan}!")
@@ -2278,7 +2255,7 @@ class zynthian_state_manager:
         if not libsmf.isRecording():
             libsmf.unload(self.smf_recorder)
             libsmf.startRecording()
-            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_RECORDER_STATE, state=True)
+            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, state=True)
             return True
         else:
             return False
@@ -2295,7 +2272,7 @@ class zynthian_state_manager:
                 self.last_midi_file = fpath
                 result = True
 
-            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_RECORDER_STATE, state=False)
+            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, state=False)
 
         return result
 
@@ -2336,7 +2313,7 @@ class zynthian_state_manager:
             self.zynseq.transport_start("zynsmf")
             if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
                 self.status_midi_player = True
-                zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=True)
+                zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, state=True)
                 self.status_midi_player = False
             self.last_midi_file = fpath
         except Exception as e:
@@ -2349,7 +2326,7 @@ class zynthian_state_manager:
             libsmf.stopPlayback()
             self.zynseq.transport_stop("zynsmf")
             self.status_midi_player = False
-            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=False)
+            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, state=False)
         return self.status_midi_player
 
     def toggle_midi_playback(self, fname=None):

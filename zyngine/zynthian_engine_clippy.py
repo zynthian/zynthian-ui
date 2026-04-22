@@ -89,12 +89,12 @@ class zynthian_engine_clippy(zynthian_engine):
         self.libclippy.getClipPath.restype = ctypes.c_char_p
         self.jackname = self.libclippy.getJackname().decode("utf-8")
         self.zynseq.clippy = self
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.start_tempo_timer)
 
     def stop(self):
         logging.info("Stopping Engine " + self.name)
         self.zynseq.clippy = None
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.start_tempo_timer)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.start_tempo_timer)
         self.libclippy.end()
 
     # ---------------------------------------------------------------------------

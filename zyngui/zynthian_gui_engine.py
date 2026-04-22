@@ -421,7 +421,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.update_list()
         # Update header breadcrumb
         self.set_select_path()
-        self.state_manager.tts(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
 
     def zynpot_cb(self, i, dval):
         if not self.shown:
@@ -494,9 +495,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        self.state_manager.tts(f"View: Engine")
-        self.state_manager.tts(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
-        self.state_manager.tts(f"Engine: {self.list_data[self.index][2]}", False, False, False)
-        self.state_manager.tts(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
+        self.zyngui.tts.announce(f"View: Engine")
+        self.zyngui.tts.announce(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
+        self.zyngui.tts.announce(f"Engine: {self.list_data[self.index][2]}", False, False, False)
+        self.zyngui.tts.announce(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
 # ------------------------------------------------------------------------------

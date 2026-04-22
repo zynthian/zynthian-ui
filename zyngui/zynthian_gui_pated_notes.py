@@ -1276,7 +1276,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 pass
         else:
             tts_name = ""
-        self.state_manager.tts(f"{tts_step} {tts_name}")
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"{tts_step} {tts_name}")
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block

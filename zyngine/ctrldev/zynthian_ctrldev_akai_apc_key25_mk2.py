@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Akai APC Key 25 mk2"
 #
-# Copyright (C) 2023-2025 Oscar Aceña <oscaracena@gmail.com>
+# Copyright (C) 2023-2026 Oscar Aceña <oscaracena@gmail.com>
 #
 # ******************************************************************************
 #
@@ -36,7 +36,6 @@ from threading import Thread, RLock, Event
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
 from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
@@ -2618,20 +2617,20 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 self._on_gui_show_screen),
 
             (zynsigman.S_AUDIO_PLAYER,
-                zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE,
+                zynsigman.SS_AUDIO_PLAYER_STATE,
                 lambda handle, state:
                     self._on_media_change_state(state, f"audio-{handle}", "player")),
 
             (zynsigman.S_AUDIO_RECORDER,
-                state_manager.audio_recorder.SS_AUDIO_RECORDER_STATE,
+                state_manager.zynsigman.SS_AUDIO_RECORDER_STATE,
                 partial(self._on_media_change_state, media="audio", kind="recorder")),
 
             (zynsigman.S_STATE_MAN,
-                state_manager.SS_MIDI_PLAYER_STATE,
+                zynsigman.SS_MIDI_PLAYER_STATE,
                 partial(self._on_media_change_state, media="midi", kind="player")),
 
             (zynsigman.S_STATE_MAN,
-                state_manager.SS_MIDI_RECORDER_STATE,
+                zynsigman.SS_MIDI_RECORDER_STATE,
                 partial(self._on_media_change_state, media="midi", kind="recorder")),
         ]
 

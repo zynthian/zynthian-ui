@@ -6,7 +6,7 @@
 # Zynthian Control Device Driver for WORLDE Mini
 # A mode enforcer implemented as a python jack client.
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #

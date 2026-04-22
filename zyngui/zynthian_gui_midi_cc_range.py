@@ -104,12 +104,12 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
     def build_view(self):
         self.replot = True
         if not self.shown:
-            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
         return True
 
     def hide(self):
         if self.shown:
-            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
         super().hide()
 
     def config(self, zctrl):

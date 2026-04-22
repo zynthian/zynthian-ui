@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Jalv Plugin Host
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #

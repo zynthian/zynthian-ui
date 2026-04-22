@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynseq library
 #
-# Copyright (C) 2021-2025 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
 #
 # ********************************************************************
 #
@@ -106,15 +106,6 @@ SEQ_MAX_COLUMNS = 8
 
 LAUNCHER_COLS = 33          # Quantity of launcher columns (16 MIDI channels 16 Clippy + phrase launchers)
 PHRASE_CHANNEL = 32
-
-# Subsignals are defined inside each module. Here we define zynseq subsignals:
-SS_SEQ_PLAY_STATE = 1
-SS_SEQ_STATE = 2 # Change in overal state (model)
-SS_SEQ_PROGRESS = 3
-SS_SEQ_SELECT_PHRASE = 4
-SS_SEQ_TEMPO = 5
-SS_SEQ_TIMESIG = 6
-SS_SEQ_METRO = 7
 
 PATTERN_PARAMS = [
     "step", # Step within pattern
@@ -435,9 +426,8 @@ class zynseq(zynthian_engine):
         if not force and phrase == self.phrase:
             return False
         self.phrase = phrase
-        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_SELECT_PHRASE, phrase=phrase)
-        self.state_manager.tts(f"Phrase {phrase + 1}")
-
+        zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, phrase=phrase)
+        
     def get_phrase_loop_info(self, phrase=None):
         """ Get info for loop that this phrase is within
         Args:
@@ -635,13 +625,13 @@ class zynseq(zynthian_engine):
         if zctrl == self.zctrl_tempo:
             self.libseq.setTempo(zctrl.value)
             #self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TEMPO, tempo=zctrl.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, tempo=zctrl.value)
         elif zctrl == self.zctrl_metro_mode:
             self.libseq.setMetronomeMode(zctrl.value)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, mode=zctrl.value, volume=self.zctrl_metro_volume.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, mode=zctrl.value, volume=self.zctrl_metro_volume.value)
         elif zctrl == self.zctrl_metro_volume:
             self.libseq.setMetronomeVolume(zctrl.value / 100.0)
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_METRO, mode=self.zctrl_metro_mode.value, volume=zctrl.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, mode=self.zctrl_metro_mode.value, volume=zctrl.value)
         elif zctrl == self.zctrl_ppqn:
             self.libseq.setExtClockPPQN(zctrl.value)
 
@@ -682,7 +672,7 @@ class zynseq(zynthian_engine):
             bpb = self.libseq.getBpb()
             if bpb != self.bpb:
                 self.bpb = bpb
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, bpb=bpb)
+                zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, bpb=bpb)
             # Iterate state changes
             for i in range(count):
                 if self.pause_update:
@@ -701,7 +691,7 @@ class zynseq(zynthian_engine):
                     continue
                 info["state"] = state
                 info["mode"] = mode
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan)
+                zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, phrase=phrase, chan=chan)
 
     def update_progress(self):
         self.progress = self.libseq.getProgress()
@@ -728,11 +718,11 @@ class zynseq(zynthian_engine):
         try:
             if self.state["bpb"] != self.bpb:
                 self.bpb = self.state["bpb"]
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_TIMESIG, bpb=self.bpb)
+                zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, bpb=self.bpb)
         except:
             logging.warning("Failed to set bpb")
         if send:
-            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_STATE)
+            zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE)
 
     def set_state(self, state):
         result = self.libseq.setState(bytes(dumps(state), "utf-8"))

@@ -4,7 +4,7 @@
 #
 # zynthian processor
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 # Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -31,12 +31,9 @@ import traceback
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import *
 
 class zynthian_processor:
-
-    SS_PROCESSOR_CTRL_SCREENS = 0
 
     # ---------------------------------------------------------------------------
     # Data dirs

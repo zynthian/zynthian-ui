@@ -25,34 +25,132 @@
 # ******************************************************************************
 
 import logging
+import os
 
 # Zynthian specific modules
 import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+from zyngine.zynthian_tts import zynthian_tts
+from zyngine import zynsigman
+import zynconf
 
 # -------------------------------------------------------------------------------
 # Zynthian TTS GUI Class
+# Integrates zynthian_gui with TTS
 # -------------------------------------------------------------------------------
 
-class zynthian_gui_tts(zynthian_gui_selector_info):
+class zynthian_gui_tts():
+    def __init__(self, state_manager):
+        self.state_manager = state_manager
+        self.chain_manager = state_manager.chain_manager
+        self._tts = zynthian_tts()
+
+        # Auto configure Narrator button
+        for key, value in os.environ.items():
+            if value == "TTS_TOGGLE_ENABLE":
+                if key.startswith("ZYNTHIAN_WIRING_CUSTOM_SWITCH_") and key.endswith("__UI_LONG"):
+                    key = key.replace("__UI_LONG", "__UI_SHORT")
+                    self.wiring_short = {key: os.environ.get(key)}
+                    zynconf.save_config({key: "TTS_TOGGLE_PLAYBACK"}, False)
+                    self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
+
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
+        zynsigman.register_queued(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
+
+    def close(self):
+        """ Destructor - clean-up """
+
+        try:
+            zynconf.save_config(self.wiring_short, False)
+        except:
+            pass
+
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
+        zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
+        self._tts.close()
+        self._tts = None
+
+    def announce(self, text: str, replace: bool=True, urgent: bool=False, interrupt=True):
+        """ Announce a TTS message
+        Args:
+            text: Text to announce
+            replace: True to clear queue and replace with this text
+            urgent: True to play next. False to append to end of queue.
+            interrupt: True to interrupt currently playing message. False to finish current announcement.
+        """
+
+        try:
+            self._tts.append(text, replace, urgent, interrupt)
+        except Exception as e:
+            logging.warning(f"TTS Error: {e}")
+
+    def get_voice_name(self):
+        """ Get the voice 
+            Returns: voice
+        """
+
+        voices = zynthian_tts.get_voices()
+        try:
+            return voices[self._tts.voice]
+        except:
+            logging.error("Failed to get TTS voice")
+        return ""
+        
+
+    # ----------------------------------
+    # Signal event handlers
+    # ----------------------------------
+    
+    def seq_select_phrase_cb(self, phrase):
+        self._tts.append(f"Phrase {phrase + 1}")
+
+    def active_chain_cb(self, active_chain_id):
+        chain = self.chain_manager.get_chain(active_chain_id)
+        if not chain:
+            return
+        mute = ""
+        if chain.zynmixer_proc:
+            if chain.zynmixer_proc.controllers_dict["mute"].value:
+                mute = "Mute"
+            elif chain.zynmixer_proc.controllers_dict["solo"].value:
+                mute = "Solo"
+        if chain.chain_id:
+            idx = self.chain_manager.get_chain_index(active_chain_id) + 1
+            self._tts.append(f"Chain {idx}: {mute}")
+        else:
+            self._tts.append(f"Main chain:{mute}")
+
+    def zynmixer_set_value_cb(self, mixbus, chan, symbol, value):
+        pass
+        #TODO "Should we handle zynmixer value changes for TTS here?"
+
+
+# -------------------------------------------------------
+# TTS Screen Class
+# Provides TTS configuration view
+# -------------------------------------------------------
+
+class zynthian_gui_tts_screen(zynthian_gui_selector_info):
 
     def __init__(self):
         super().__init__('Action')
-        self.title = "Narration options"
-        self.tts = self.zyngui.state_manager._tts
+        self.title = self.tts_title = "Narrator options"
+        self.voices = zynthian_tts.get_voices()
 
     def fill_list(self):
 
         self.list_data = []
 
-        if zynthian_gui_config.tts_enabled:
-            self.list_data.append((self.toggle_tts, 0, f"\u2612 Enable Narration feedback",
-                                   ["Toggle narration enable", None]))
-            self.list_data.append((self.set_voice, 0, f"Voice: {self.tts.get_voice_name().split(':')[0]}",
-                                   ["Select the Voice", None]))
+        if self.zyngui.tts:
+            self.list_data.append((self.toggle_tts, 0, f"\u2612 Enable narrator feedback",
+                                   ["Toggle narrator enable", None]))
+            self.list_data.append((self.set_voice, 0, f"Voice: {self.zyngui.tts.get_voice_name().split(':')[0]}",
+                                   ["Select the voice", None]))
             self.list_data.append((self.set_speed, 0, f"Speed: {zynthian_gui_config.tts_speed:.1f}",
-                                   ["Adjust speed of narration", None]))
+                                   ["Adjust narrator speed", None]))
             self.list_data.append((self.set_volume, 0, f"Volume: {zynthian_gui_config.tts_volume}%"))
             self.list_data.append((None, 0, "Soundcard"))
             soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
@@ -67,8 +165,8 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
             else:
                 self.list_data.append((self.hotplug, 0, "No soundcards - check hotplug USB"))
         else:
-            self.list_data.append((self.toggle_tts, 1, f"\u2610 Enable Narration feedback",
-                ["Toggle narration enable", None]))
+            self.list_data.append((self.toggle_tts, 1, f"\u2610 Enable narrator feedback",
+                ["Toggle narrator enable", None]))
         super().fill_list()
 
     def select_action(self, i, t='S'):
@@ -79,11 +177,14 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
         self.zyngui.cuia_tts_toggle_enable()
 
     def set_voice(self):
-        voices = self.tts.voices
-        voice = self.tts.get_voice_name()
+        self.voices = zynthian_tts.get_voices()
+        try:
+            voice = self.voices[self.zyngui.tts._tts.voice]
+        except:
+            voice = self.voices[0]
         self.enable_param_editor(self, "Voice", {
-            'labels': list(voices.values()),
-            'values': list(voices.keys()),
+            'labels': list(self.voices.values()),
+            'values': list(self.voices.keys()),
             'value': voice})
 
     def set_speed(self):
@@ -101,7 +202,7 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
 
     def set_soundcard(self):
         soundcard = self.list_data[self.index][1]
-        self.tts.set_soundcard(soundcard)
+        self.zyngui.tts._tts.set_soundcard(soundcard)
         self.update_list()
 
     def hotplug(self):
@@ -114,11 +215,11 @@ class zynthian_gui_tts(zynthian_gui_selector_info):
     def send_controller_value(self, zctrl):
         match zctrl.symbol:
             case "Voice":
-                self.tts.set_voice(zctrl.value)
+                self.zyngui.tts._tts.set_voice(zctrl.value)
                 self.update_list()
             case "Speed":
-                self.tts.set_speed(zctrl.value)
+                self.zyngui.tts._tts.set_speed(zctrl.value)
                 self.update_list()
             case "Volume":
-                self.tts.set_volume(zctrl.value)
+                self.zyngui.tts._tts.set_volume(zctrl.value)
                 self.update_list()

@@ -95,7 +95,8 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
     def show(self):
         if not self.shown:
             super().show()
-            self.state_manager.tts(self.config[self.selected_node]["title"], False, False, False)
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(self.config[self.selected_node]["title"], False, False, False)
 
     def setup(self, title, config, cols=None, select=0):
         """
@@ -175,8 +176,8 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.canvas.itemconfig("node", outline="")
         node_tag = f"node_{self.selected_node}"
         self.canvas.itemconfig(node_tag, outline="yellow", width=2)
-        if self.shown:
-            self.state_manager.tts(self.config[self.selected_node]["title"])
+        if self.shown and self.zyngui.tts:
+            self.zyngui.tts.announce(self.config[self.selected_node]["title"])
 
         #Scroll the canvas to ensure the selected node is visible.
         # Get node's coords

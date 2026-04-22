@@ -4,7 +4,7 @@
 #
 # zynthian controller
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -30,7 +30,6 @@ from threading import Timer
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ----------------------------------------------------------------------------

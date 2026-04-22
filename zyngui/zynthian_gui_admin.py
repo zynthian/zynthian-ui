@@ -174,7 +174,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((None, 0, "> AUDIO"))
 
         self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
-        self.list_data.append((self.tts, 0, "Narration (accessibility)", ["Show the user interface narration accessible options", None]))
+        self.list_data.append((self.show_tts, 0, "Narrator (accessibility)", ["Show the user interface narrator accessible options", None]))
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
                 self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",
@@ -401,7 +401,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         logging.info("Audio Levels")
         self.zyngui.show_screen("alsa_mixer")
 
-    def tts(self, t='S'):
+    def show_tts(self, t='S'):
         logging.info("Text To Speech")
         self.zyngui.show_screen("tts")
 
@@ -465,7 +465,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                     else:
                         options[f"\u2612 {device} out"] = "disable_output"
             else:
-                options["No soundcards - check Narration"] = "tts"
+                options["No soundcards - check Narrator"] = "tts"
         else:
             options[f"\u2610 Hotplug Audio"] = "enable_hotplug"
         return options
@@ -496,7 +496,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 self.zyngui.state_manager.start_busy("hotplug", f"Disabling {option[2:]}")
                 zynautoconnect.enable_audio_output_device(option[2:-4], False)
             case "tts":
-                self.tts()
+                self.show_tts()
                 return
         self.zyngui.screens['option'].config("Hotplug Audio", self.get_hotplug_menu_options(), self.hotplug_audio_cb, False)
         self.zyngui.show_screen('option')
@@ -801,5 +801,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             zynconf.save_config({"ZYNTHIAN_TOUCH_SHOWN": zynthian_gui_config.touch_shown})
         except:
             pass
+        if self.zyngui.tts:
+            self.zyngui.tts._tts.announce_disable = True
 
 # ------------------------------------------------------------------------------

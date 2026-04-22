@@ -114,7 +114,8 @@ class zynthian_gui_help:
             self.shown = True
             self.main_frame.grid_propagate(False)
             self.main_frame.place(x=0, y=0)
-            self.zyngui.state_manager.tts(f"View: {self.tts_title}", replace="True", interrupt=True)
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"View: {self.tts_title}", replace="True", interrupt=True)
 
     def hide_close_button(self):
         if zynthian_gui_config.touch_navigation:
@@ -222,7 +223,7 @@ class zynthian_gui_help:
     def tts_info(self):
         from bs4 import BeautifulSoup
 
-        self.zyngui.state_manager.tts(f"View: {self.tts_title}")
+        self.zyngui.tts.announce(f"View: {self.tts_title}")
         try:
             with open(self.fpath) as f:
                 html = f.read()
@@ -231,7 +232,7 @@ class zynthian_gui_help:
                 div.decompose()  # removes the whole section
             text = soup.get_text(separator=" ", strip=True)
             for line in text.split(". "):
-                self.zyngui.state_manager.tts(line, False, False, False)
+                self.zyngui.tts.announce(line, False, False, False)
         except:
             pass
 

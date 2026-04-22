@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynmixer library
 #
-# Copyright (C) 2019-2024 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2019-2026 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #
@@ -29,7 +29,6 @@ import logging
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
-from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 
 # -------------------------------------------------------------------------------
 # zynmixer channel strip engine
@@ -51,7 +50,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         self.name = "Mixer"
         self.nickname = "MI"
         self.MAX_NUM_CHANNELS = 0
-        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, state_manager.audio_recorder.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
 
     def start(self):
         pass
