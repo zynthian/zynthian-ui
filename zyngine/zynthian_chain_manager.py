@@ -954,11 +954,18 @@ class zynthian_chain_manager:
                     lib_zyncore.set_active_chain(chain.zmop_index)
                 except Exception as e:
                     logging.error(e)
-            if chain.chain_id:
-                idx = list(self.chains).index(chain.chain_id) + 1
-                self.state_manager.tts(f"Chain {idx}")
-            else:
-                self.state_manager.tts(f"Main chain")
+            if zynthian_gui_config.tts_enabled:
+                mute = ""
+                if chain.zynmixer_proc:
+                    if chain.zynmixer_proc.controllers_dict["mute"].value:
+                        mute = "Mute"
+                    elif chain.zynmixer_proc.controllers_dict["solo"].value:
+                        mute = "Solo"
+                if chain.chain_id:
+                    idx = list(self.chains).index(chain.chain_id) + 1
+                    self.state_manager.tts(f"Chain {idx}: {mute}")
+                else:
+                    self.state_manager.tts(f"Main chain:{mute}")
 
         return self.active_chain.chain_id
 
