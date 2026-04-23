@@ -108,7 +108,7 @@ class zynthian_gui_help:
             self.main_frame.yview_scroll(dval, "units")
             return True
         elif i == 2:
-            if self.zyngui.tts and self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
+            if self.zyngui.tts:
                 if dval > 0:
                     self.zyngui.tts._tts.next()
                 else:
@@ -136,11 +136,11 @@ class zynthian_gui_help:
         self.main_frame.yview_scroll(4, "units")
 
     def arrow_left(self):
-        if self.zyngui.tts and self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
+        if self.zyngui.tts:
             self.zyngui.tts._tts.prev()
 
     def arrow_right(self):
-        if self.zyngui.tts and self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
+        if self.zyngui.tts:
             self.zyngui.tts._tts.next()
 
     # --------------------------------------------------------------------------
@@ -218,7 +218,7 @@ class zynthian_gui_help:
 
             # Parse knob info
             if soup.find("div", class_="knobs_action_container"):
-                press_actions = ["Rotate", "Short press", "Bold press"]
+                press_actions = ["Rotate", "Press", "Bold press"]
                 for knob_idx in range(1, 5):
                     knob_action_div = soup.find("div", class_=f"knob_action_{knob_idx}")
                     if not knob_action_div:
@@ -232,9 +232,10 @@ class zynthian_gui_help:
                             knob_text += f"{press_actions[i]}: {action.get_text()}. "
                     knob_action_div.replace_with(knob_text)
             
-            for tag in soup.find_all("h1"):
-                tag.string = tag.get_text() + ". "
-            text = soup.get_text(separator=" ", strip=True)
+            # Ensure brief pause after each header and paragraph
+            for tag in soup.find_all(["p", "h1", "h2", "h3"]):
+                 tag.insert_after(". ")
+            text = soup.get_text(separator=" ", strip=True).replace("\n", "")
             for line in text.split(". "):
                 self.zyngui.tts.announce(line, False, False, False)
         except:
