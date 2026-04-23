@@ -215,8 +215,23 @@ class zynthian_gui_help:
                 html = f.read()
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(html, "html.parser")
-            for div in soup.select("div.knobs_action_container"):
-                div.decompose()  # removes the whole section
+
+            # Parse knob info
+            if soup.find("div", class_="knobs_action_container"):
+                press_actions = ["Rotate", "Short press", "Bold press"]
+                for knob_idx in range(1, 5):
+                    knob_action_div = soup.find("div", class_=f"knob_action_{knob_idx}")
+                    if not knob_action_div:
+                        continue
+                    knob_text = f"Knob {knob_idx}. "
+                    for i, action in enumerate(knob_action_div.find_all("div")):
+                        if i > 2:
+                            break
+                        action_text = action.get_text()
+                        if action_text and action_text != "---":
+                            knob_text += f"{press_actions[i]}: {action.get_text()}. "
+                    knob_action_div.replace_with(knob_text)
+            
             for tag in soup.find_all("h1"):
                 tag.string = tag.get_text() + ". "
             text = soup.get_text(separator=" ", strip=True)
