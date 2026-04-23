@@ -267,7 +267,7 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
 
         self.text_canvas.itemconfig(self.text_label, text=self.text)
         self.highlight(key)
-        if self.zyngui:
+        if self.zyngui.tts:
             self.zyngui.tts.announce(self.text, False, False, False)
 
     # Function to highlight key
@@ -288,7 +288,8 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
                             text = "space"
                         case _:
                             text = self.key_canvas.itemcget(self.buttons[key][1], "text")
-                    self.zyngui.tts.announce(text)
+                    if self.zyngui.tts:
+                        self.zyngui.tts.announce(text)
                 except Exception as e:
                     logging.warning(e)
 
