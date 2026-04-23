@@ -575,12 +575,12 @@ uint32_t getClipFrames(uint8_t channel, uint8_t clip) {
 
 float getClipTempo(uint8_t channel, uint8_t clip) {
     if (channel >= 16 || clip >= MAX_CLIPS)
-        return NULL;
+        return 0;
     Player* player = players[channel];
     if (!player)
-        return NULL;
+        return 0;
     if (player->clips[clip] == NULL)
-        return NULL;
+        return 0;
     return player->clips[clip]->tempo;
 }
 
