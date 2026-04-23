@@ -318,7 +318,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             zynthian_gui_config.zyngui.show_screen('chain_manager')
         else:
             if self.subscreen_name == "control":
-                self.subscreen.set_mode_control()
+                self.subscreen.set_mode_select()
             self.show_chain(True)
             return
 
