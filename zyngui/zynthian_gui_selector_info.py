@@ -148,4 +148,15 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
     def cb_info_press(self, event):
         self.zyngui.cuia_help()
 
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        super().tts_info()
+        try:
+            self.zyngui.tts.announce(self.list_data[self.index][3][0].replace("\n", " . "),  False, False, False)
+        except:
+            pass
+
 # ------------------------------------------------------------------------------
