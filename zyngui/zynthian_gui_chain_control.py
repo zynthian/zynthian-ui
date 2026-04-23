@@ -335,7 +335,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         else:
             fpath = None
         if not fpath or not Path(fpath).exists():
-            if self.subscreen_name == "control":
+            if self.subscreen_name in ("control", "chain_options"):
                 if self.chain_shown:
                     page_name = "chain_control-select_mode"
                 else:

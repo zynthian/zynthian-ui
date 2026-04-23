@@ -29,7 +29,7 @@ div.clear {
 
 div.left_container {
 	clear: left;
-	width: 65%;
+	width: 60%;
 }
 
 div.full_container {
@@ -40,13 +40,13 @@ div.full_container {
 div.right_float_container {
 	clear: right;
 	float: right;
-	width: 30%;
+	width: 35%;
 }
 
 div.knobs_action_container {
 	clear: both;
 	float: right;
-	width: 30%;
+	width: 35%;
 }
 div.knob_action {
 	margin-bottom: 2px;
