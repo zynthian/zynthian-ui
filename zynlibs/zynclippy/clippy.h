@@ -149,6 +149,19 @@ const char * getClipPath(uint8_t channel, uint8_t clip);
 */
 uint32_t getClipFrames(uint8_t channel, uint8_t clip);
 
+/** @brief  Return the tempo (BPM) of loaded clip
+    @param  channel MIDI channel
+    @param  clip Index of clip
+    @retval float Tempo in BPM
+*/
+float getClipTempo(uint8_t channel, uint8_t clip);
+
+/** @brief  Return number of beats of loaded clip
+    @param  channel MIDI channel
+    @param  clip Index of clip
+    @retval uint16_t Number of beats
+*/
+uint16_t getClipBeats(uint8_t channel, uint8_t clip);
 
 /** @brief  Set clip gain
     @param  channel MIDI channel
