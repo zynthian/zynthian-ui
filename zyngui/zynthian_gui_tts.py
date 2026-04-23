@@ -94,7 +94,7 @@ class zynthian_gui_tts():
             logging.warning(f"TTS Error: {e}")
 
     def get_voice_name(self):
-        """ Get the voice 
+        """ Get the voice
             Returns: voice
         """
 
@@ -104,12 +104,12 @@ class zynthian_gui_tts():
         except:
             logging.error("Failed to get TTS voice")
         return ""
-        
+
 
     # ----------------------------------
     # Signal event handlers
     # ----------------------------------
-    
+
     def seq_select_phrase_cb(self, phrase):
         self._tts.append(f"Phrase {phrase + 1}")
 

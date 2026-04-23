@@ -525,6 +525,8 @@ class zynthian_gui_selector(zynthian_gui_base):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
+        if not self.zyngui.tts:
+            return
         super().tts_info()
         self.zyngui.tts.announce(self.list_data[self.index][2])
 

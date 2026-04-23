@@ -495,6 +495,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
+        if not self.zyngui.tts:
+            return
         self.zyngui.tts.announce(f"View: Engine")
         self.zyngui.tts.announce(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
         self.zyngui.tts.announce(f"Engine: {self.list_data[self.index][2]}", False, False, False)

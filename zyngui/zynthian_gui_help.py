@@ -106,13 +106,14 @@ class zynthian_gui_help:
     def zynpot_cb(self, i, dval):
         if i == 3:
             self.main_frame.yview_scroll(dval, "units")
+            return True
         elif i == 2:
-            if self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
+            if self.zyngui.tts and self.zyngui.tts._tts.playing or self.zyngui.tts._tts.paused:
                 if dval > 0:
                     self.zyngui.tts._tts.next()
                 else:
                     self.zyngui.tts._tts.prev()
-        return True
+            return True
 
     def switch(self, i, t):
         if i == 2 and t =='S':
@@ -203,12 +204,13 @@ class zynthian_gui_help:
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        from bs4 import BeautifulSoup
-
+        if not self.zyngui.tts:
+            return
         self.zyngui.tts.announce(f"View: {self.tts_title}")
         try:
             with open(self.fpath) as f:
                 html = f.read()
+            from bs4 import BeautifulSoup
             soup = BeautifulSoup(html, "html.parser")
             for div in soup.select("div.knobs_action_container"):
                 div.decompose()  # removes the whole section
@@ -217,6 +219,5 @@ class zynthian_gui_help:
                 self.zyngui.tts.announce(line, False, False, False)
         except:
             pass
-
 
 # -------------------------------------------------------------------------------

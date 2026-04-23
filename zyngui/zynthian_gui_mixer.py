@@ -2501,6 +2501,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
 
     def tts_info(self, params=None):
+        if not self.zyngui.tts:
+            return
         self.zyngui.tts.announce(f"View: {self.tts_title}", replace="True", interrupt=True)
         chain = self.chain_manager.active_chain
         if chain:

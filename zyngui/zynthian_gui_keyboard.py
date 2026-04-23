@@ -267,7 +267,8 @@ class zynthian_gui_keyboard(zynthian_gui_fullscreen_modal):
 
         self.text_canvas.itemconfig(self.text_label, text=self.text)
         self.highlight(key)
-        self.zyngui.tts.announce(self.text, False, False, False)
+        if self.zyngui:
+            self.zyngui.tts.announce(self.text, False, False, False)
 
     # Function to highlight key
     def highlight(self, key):

@@ -535,7 +535,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     def tts_info(self):
         """ Narrate view status - override to provide more context"""
-        if self.zyngui.tts:
+        if self.tts_title and self.zyngui.tts:
             self.zyngui.tts.announce(f"View: {self.tts_title}", replace=True, interrupt=True)
 
     # --------------------------------------------------------------------------
@@ -649,7 +649,8 @@ class zynthian_gui_base(tkinter.Frame):
             else:
                 text = self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value)
             self.select_path.set(text)
-            self.zyngui.tts.announce(text)
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(text)
 
     # --------------------------------------------------------------------------
     # MIDI learning
