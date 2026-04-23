@@ -80,7 +80,7 @@ class zynthian_gui_help:
             try:
                 self.main_frame.load_file("file:///" + self.ui_dir + "/" + fpath, force=True, insecure=True)
                 self.fpath = fpath
-                self.tts_title = f"{self.fpath.split('/')[-1][:-5]} help"
+                self.tts_title = self.fpath.split('/')[-1][:-5].replace("_", " ").replace("-",", ")
                 return True
             except Exception as e:
                 logging.error(f"Can't load HTML file => {e}")
@@ -209,7 +209,7 @@ class zynthian_gui_help:
     def tts_info(self):
         if not self.zyngui.tts:
             return
-        self.zyngui.tts.announce(f"View: {self.tts_title}")
+        self.zyngui.tts.announce(f"Help for {self.tts_title}")
         try:
             with open(self.fpath) as f:
                 html = f.read()
