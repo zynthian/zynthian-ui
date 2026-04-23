@@ -217,6 +217,8 @@ class zynthian_gui_help:
             soup = BeautifulSoup(html, "html.parser")
             for div in soup.select("div.knobs_action_container"):
                 div.decompose()  # removes the whole section
+            for tag in soup.find_all("h1"):
+                tag.string = tag.get_text() + ". "
             text = soup.get_text(separator=" ", strip=True)
             for line in text.split(". "):
                 self.zyngui.tts.announce(line, False, False, False)
