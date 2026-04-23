@@ -1255,7 +1255,7 @@ class zynthian_gui:
 
     # Narrator TTS actions
     def cuia_tts_announce(self, params=["", True, False, True]):
-        """ Announce a TTS message 
+        """ Announce a TTS message
         Params:
             text: Text to append
             replace: True to clear queue and replace with this text
@@ -1291,7 +1291,7 @@ class zynthian_gui:
         if self.tts:
             zynthian_gui_config.tts_enabled = 0
             self.tts.close()
-            self.tts=None
+            self.tts = None
         else:
             zynthian_gui_config.tts_enabled = 1
             self.tts = zynthian_gui_tts(self.state_manager)
