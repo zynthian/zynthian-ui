@@ -526,7 +526,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.zgui_controllers[i].zynpot_cb(dval):
                 if self.midi_learning:
                     self.midi_learn(i, self.midi_learning)
-                    if self.zyngui.tts
+                    if self.zyngui.tts:
                         self.zyngui.tts.announce(f"Control {i} MIDI learning")
                 elif self.zyngui.tts:
                     zctrl = self.zgui_controllers[i].zctrl
@@ -938,8 +938,6 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        if not self.zyngui.tts:
-            return
         self.zyngui.tts.announce(f"View: {self.tts_title}")
         self.zyngui.tts.announce(f"Page: {self.list_data[self.index][2]}", False, False, False)
         for i, zgui_ctrl in enumerate(self.zgui_controllers):
