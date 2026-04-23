@@ -58,6 +58,7 @@ class zynthian_gui_tts():
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
         zynsigman.register_queued(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.busy_cb)
 
     def close(self):
         """ Destructor - clean-up """
@@ -70,6 +71,7 @@ class zynthian_gui_tts():
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
         zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.busy_cb)
         self._tts.close()
         self._tts = None
 
@@ -127,6 +129,8 @@ class zynthian_gui_tts():
         pass
         #TODO "Should we handle zynmixer value changes for TTS here?"
 
+    def busy_cb(self, state):
+        self._tts.set_busy(state)
 
 # -------------------------------------------------------
 # TTS Screen Class

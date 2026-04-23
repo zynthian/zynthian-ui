@@ -37,7 +37,6 @@ import struct
 import zynconf
 from zyngui import zynthian_gui_config
 import zynautoconnect
-from zyngine.zynthian_signal_manager import zynsigman
 
 TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_DATA_DIR', '/zynthian/zynthian-data')}/tts"
 TTS_FLITE_LEX_PATH = f"{TTS_DATA_PATH}/lexicon"
@@ -75,12 +74,10 @@ class zynthian_tts:
         self._thread.start()
         self.set_volume()
         self.append("Narrator enabled")
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.cb_busy)
 
     def close(self):
         """ Stop background services and cleanup """
 
-        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.cb_busy)
         self.stop()
 
         if self._stop_event:
@@ -88,7 +85,12 @@ class zynthian_tts:
         self._thread.join()
         self._stop_event = None
 
-    def cb_busy(self, state):
+    def set_busy(self, state):
+        """ Set the busy state which periodically pulses a tone
+        Args:
+            state: True to set busy, else clears busy state.
+        """
+
         if state:
             if not self.busy_timer:
                 self.busy_timer = threading.Timer(1.0, self.cb_busy_timer)
