@@ -1350,7 +1350,7 @@ class zynthian_gui:
         self.state_manager.audio_recorder.stop_recording()
 
     def cuia_toggle_audio_record(self, params=None):
-        if self.current_processor.eng_code == "AP":
+        if self.current_processor and self.current_processor.eng_code == "AP":
             self.state_manager.audio_recorder.toggle_recording(self.current_processor)
         else:
             self.state_manager.audio_recorder.toggle_recording()

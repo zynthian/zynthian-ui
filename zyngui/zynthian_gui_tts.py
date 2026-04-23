@@ -59,6 +59,8 @@ class zynthian_gui_tts():
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
         zynsigman.register_queued(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
         zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.busy_cb)
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_rec_cb)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.midi_rec_cb)
 
     def close(self):
         """ Destructor - clean-up """
@@ -72,6 +74,8 @@ class zynthian_gui_tts():
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
         zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
         zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.busy_cb)
+        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_rec_cb)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.midi_rec_cb)
         self._tts.close()
         self._tts = None
 
@@ -128,6 +132,12 @@ class zynthian_gui_tts():
     def zynmixer_set_value_cb(self, mixbus, chan, symbol, value):
         pass
         #TODO "Should we handle zynmixer value changes for TTS here?"
+
+    def audio_rec_cb(self, state):
+        self.announce(f"Audio recorder {'started' if state else 'stopped'}")
+
+    def midi_rec_cb(self, state):
+        self.announce(f"MIDI recorder {'started' if state else 'stopped'}")
 
     def busy_cb(self, state):
         self._tts.set_busy(state)
