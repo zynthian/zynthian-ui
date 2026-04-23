@@ -46,14 +46,15 @@ class zynthian_gui_tts():
         self.chain_manager = state_manager.chain_manager
         self._tts = zynthian_tts()
 
-        # Auto configure Narrator button
-        for key, value in os.environ.items():
-            if value == "TTS_TOGGLE_ENABLE":
-                if key.startswith("ZYNTHIAN_WIRING_CUSTOM_SWITCH_") and key.endswith("__UI_LONG"):
-                    key = key.replace("__UI_LONG", "__UI_SHORT")
-                    self.wiring_short = {key: os.environ.get(key)}
-                    zynconf.save_config({key: "TTS_TOGGLE_PLAYBACK"}, False)
-                    self.state_manager.send_cuia("RELOAD_WIRING_LAYOUT")
+        # Auto configure Narrator button (temporary)
+        self.tts_zynswitch_index = -1
+        for i, cuias in enumerate(zynthian_gui_config.custom_switch_ui_actions):
+            if cuias["L"] == "TTS_TOGGLE_ENABLE":
+                self.tts_zynswitch_index = i
+                break
+        if self.tts_zynswitch_index >= 0:
+            self.original_wiring_short = zynthian_gui_config.custom_switch_ui_actions[self.tts_zynswitch_index]["S"]
+            zynthian_gui_config.custom_switch_ui_actions[self.tts_zynswitch_index]["S"] = "TTS_TOGGLE_PLAYBACK"
 
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
@@ -65,10 +66,9 @@ class zynthian_gui_tts():
     def close(self):
         """ Destructor - clean-up """
 
-        try:
-            zynconf.save_config(self.wiring_short, False)
-        except:
-            pass
+        # Restore original wiring
+        if self.tts_zynswitch_index >= 0:
+            zynthian_gui_config.custom_switch_ui_actions[self.tts_zynswitch_index]["S"] = self.original_wiring_short
 
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
