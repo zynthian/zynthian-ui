@@ -938,6 +938,8 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
+        if not self.zyngui.tts:
+            return
         self.zyngui.tts.announce(f"View: {self.tts_title}")
         self.zyngui.tts.announce(f"Page: {self.list_data[self.index][2]}", False, False, False)
         for i, zgui_ctrl in enumerate(self.zgui_controllers):
