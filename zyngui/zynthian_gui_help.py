@@ -101,7 +101,7 @@ class zynthian_gui_help:
             self.main_frame.grid_propagate(False)
             self.main_frame.place(x=0, y=0)
             if self.zyngui.tts:
-                self.zyngui.tts.announce(f"View: {self.tts_title}", replace="True", interrupt=True)
+                self.tts_info()
 
     def zynpot_cb(self, i, dval):
         if i == 3:
@@ -114,6 +114,9 @@ class zynthian_gui_help:
                 else:
                     self.zyngui.tts._tts.prev()
             return True
+
+    def cuia_v5_zynpot_switch(self, params):
+        return self.switch(*params)
 
     def switch(self, i, t):
         if i == 2 and t =='S':
