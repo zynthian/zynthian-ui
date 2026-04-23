@@ -573,6 +573,28 @@ uint32_t getClipFrames(uint8_t channel, uint8_t clip) {
     return player->clips[clip]->frames;
 }
 
+float getClipTempo(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return NULL;
+    Player* player = players[channel];
+    if (!player)
+        return NULL;
+    if (player->clips[clip] == NULL)
+        return NULL;
+    return player->clips[clip]->tempo;
+}
+
+uint16_t getClipBeats(uint8_t channel, uint8_t clip) {
+    if (channel >= 16 || clip >= MAX_CLIPS)
+        return 0;
+    Player* player = players[channel];
+    if (!player)
+        return 0;
+    if (player->clips[clip] == NULL)
+        return 0;
+    return player->clips[clip]->nbeats;
+}
+
 uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeats,
                  uint32_t start, uint32_t end, uint8_t quality, float tempo,
                  uint8_t tempo_lock) {

@@ -28,6 +28,7 @@ import re
 import ctypes
 import logging
 from threading import Timer
+from collections import deque
 
 from zynlibs.zynseq import zynseq
 from zyngine.zynthian_engine import zynthian_engine
@@ -68,6 +69,9 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.reload_timers = {}
         self.tempo_timer = None
+        self.tempo_deque = deque()
+        self.tempo_sum = 0
+        self.last_tempo_change = self.zynseq.libseq.getTempo()
 
         self.samplerate = zynautoconnect.get_jackd_samplerate()
 
@@ -381,6 +385,24 @@ class zynthian_engine_clippy(zynthian_engine):
         self.reload_timers.pop((processor, phrase), None)
 
     def start_tempo_timer(self, tempo=None):
+        # When synced to external clock => add some hysteresis to avoid spurious rewarping: +-3%
+        if zynautoconnect.get_ext_clock_zmip() >= 0:
+            # Calculate tempo average
+            self.tempo_deque.append(tempo)
+            self.tempo_sum += tempo
+            if len(self.tempo_deque) > 10:
+                self.tempo_sum -= self.tempo_deque.popleft()
+            else:
+                return
+            tempo_avg = self.tempo_sum / len(self.tempo_deque)
+            tempo_delta = abs(self.last_tempo_change - tempo_avg) / self.last_tempo_change
+            #logging.debug(f"TEMPO AVG = {tempo_avg}, TEMPO DELTA = {tempo_delta}")
+            if tempo_delta < 0.03:
+                return
+            self.last_tempo_change = tempo_avg
+        else:
+            self.last_tempo_change = tempo
+
         if self.tempo_timer:
             self.tempo_timer.cancel()
         self.tempo_timer = Timer(0.5, self.tempo_timer_cb)
@@ -391,8 +413,7 @@ class zynthian_engine_clippy(zynthian_engine):
     def tempo_timer_cb(self):
         if self.tempo_timer:
             self.tempo_timer.cancel()
-        tempo = self.zynseq.libseq.getTempo()
-        self.libclippy.changeTempo(ctypes.c_float(tempo))
+        self.libclippy.changeTempo(ctypes.c_float(self.last_tempo_change))
         self.tempo_timer = None
 
     def rewarp_phrase(self, phrase):
@@ -402,6 +423,16 @@ class zynthian_engine_clippy(zynthian_engine):
                     self.set_file(proc, phrase)
             except:
                 continue
+
+    def tempo_average():
+
+        d = deque(itertools.islice(it, n-1))
+        d.appendleft(0)
+        s = sum(d)
+        for elem in it:
+            s += elem - d.popleft()
+            d.append(elem)
+            yield s / n
 
     # ---------------------------------------------------------------
     # Controller management
@@ -625,6 +656,7 @@ class zynthian_engine_clippy(zynthian_engine):
             phrase = note - 1
             self.set_file(processor, phrase, autoreset=False)
             note += 1
+        self.last_tempo_change = self.zynseq.libseq.getTempo()
 
     # ---------------------------------------------------------------------------
     # Processor Management
