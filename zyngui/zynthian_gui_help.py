@@ -229,12 +229,12 @@ class zynthian_gui_help:
             self.tts_knobs = []
             knob_action_container = soup.find("div", class_="knobs_action_container")
             if knob_action_container:
-                press_actions = ["Adjusts", "Press:", "Bold press:"]
+                press_actions = ["Rotate to ", "Press to", "Bold press to"]
                 for knob_idx in range(1, 5):
                     knob_action_div = soup.find("div", class_=f"knob_action_{knob_idx}")
                     if not knob_action_div:
                         continue
-                    knob_text = f"Knob {knob_idx} "
+                    knob_text = f"Knob {knob_idx}. "
                     for i, action in enumerate(knob_action_div.find_all("div")):
                         if i > 2:
                             break
@@ -243,7 +243,7 @@ class zynthian_gui_help:
                             knob_text += f"{press_actions[i]} {action.get_text()}. "
                     self.tts_knobs.append(knob_text)
                 knob_action_container.decompose()
-            
+
             # Ensure brief pause after each header and paragraph
             for tag in soup.find_all(["p", "h1", "h2", "h3"]):
                  tag.insert_after(". ")
