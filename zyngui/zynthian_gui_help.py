@@ -54,6 +54,7 @@ class zynthian_gui_help:
         self.touch_push_ts = 0
         self.fpath = None
         self.tts_title = ""
+        self.tts_knobs = []
 
         # Main Frame
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
@@ -119,9 +120,14 @@ class zynthian_gui_help:
         return self.switch(*params)
 
     def switch(self, i, t):
-        if i == 2 and t =='S':
-            self.zyngui.cuia_tts_toggle_pause()
-            return True
+        if self.zyngui.tts:
+            if i == 2:
+                if t =='S':
+                    self.zyngui.cuia_tts_toggle_pause()
+                    return True
+                elif t == 'B':
+                    self.tts_controller_info()
+                    return True
 
     def refresh_loading(self):
         pass
@@ -217,20 +223,23 @@ class zynthian_gui_help:
             soup = BeautifulSoup(html, "html.parser")
 
             # Parse knob info
-            if soup.find("div", class_="knobs_action_container"):
-                press_actions = ["Rotate", "Press", "Bold press"]
+            self.tts_knobs = []
+            knob_action_container = soup.find("div", class_="knobs_action_container")
+            if knob_action_container:
+                press_actions = ["Adjusts", "Press:", "Bold press:"]
                 for knob_idx in range(1, 5):
                     knob_action_div = soup.find("div", class_=f"knob_action_{knob_idx}")
                     if not knob_action_div:
                         continue
-                    knob_text = f"Knob {knob_idx}. "
+                    knob_text = f"Knob {knob_idx} "
                     for i, action in enumerate(knob_action_div.find_all("div")):
                         if i > 2:
                             break
                         action_text = action.get_text()
                         if action_text and action_text != "---":
-                            knob_text += f"{press_actions[i]}: {action.get_text()}. "
-                    knob_action_div.replace_with(knob_text)
+                            knob_text += f"{press_actions[i]} {action.get_text()}. "
+                    self.tts_knobs.append(knob_text)
+                knob_action_container.decompose()
             
             # Ensure brief pause after each header and paragraph
             for tag in soup.find_all(["p", "h1", "h2", "h3"]):
@@ -241,4 +250,8 @@ class zynthian_gui_help:
         except:
             pass
 
+    def tts_controller_info(self):
+        self.zyngui.tts.announce("Knob actions.")
+        for tts in self.tts_knobs:
+            self.zyngui.tts.announce(tts, False, False, False)
 # -------------------------------------------------------------------------------
