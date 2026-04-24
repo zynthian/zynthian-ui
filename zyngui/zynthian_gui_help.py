@@ -28,6 +28,7 @@ from tkinterweb import HtmlFrame
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from bs4 import BeautifulSoup
 
 # ------------------------------------------------------------------------------
 # Zynthian help view GUI Class
@@ -54,6 +55,8 @@ class zynthian_gui_help:
         self.fpath = None
         self.tts_title = ""
         self.tts_knobs = []
+        self.link = None
+        self.links = []
 
         # Main Frame
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
@@ -78,9 +81,16 @@ class zynthian_gui_help:
     def load_file(self, fpath):
         if os.path.isfile(fpath):
             try:
+                with open(fpath) as f:
+                    html = f.read()
+                self.soup = BeautifulSoup(html, "html.parser")
+                self.links = [a.get("href") for a in self.soup.find_all("a") if a.get("href")]
+
                 self.main_frame.load_file("file:///" + self.ui_dir + "/" + fpath, force=True, insecure=True)
-                self.fpath = fpath
                 self.tts_title = self.fpath.split('/')[-1][:-5].replace("_", " ").replace("-",", ")
+
+                self.fpath = fpath
+
                 return True
             except Exception as e:
                 logging.error(f"Can't load HTML file => {e}")
@@ -220,18 +230,13 @@ class zynthian_gui_help:
             return
         self.zyngui.tts.announce(f"Help page.")
         try:
-            with open(self.fpath) as f:
-                html = f.read()
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, "html.parser")
-
             # Parse knob info
             self.tts_knobs = []
-            knob_action_container = soup.find("div", class_="knobs_action_container")
+            knob_action_container = self.soup.find("div", class_="knobs_action_container")
             if knob_action_container:
                 press_actions = ["Rotate to ", "Press to", "Bold press to"]
                 for knob_idx in range(1, 5):
-                    knob_action_div = soup.find("div", class_=f"knob_action_{knob_idx}")
+                    knob_action_div = self.soup.find("div", class_=f"knob_action_{knob_idx}")
                     if not knob_action_div:
                         continue
                     knob_text = f"Knob {knob_idx}. "
@@ -245,9 +250,9 @@ class zynthian_gui_help:
                 knob_action_container.decompose()
 
             # Ensure brief pause after each header and paragraph
-            for tag in soup.find_all(["p", "h1", "h2", "h3"]):
+            for tag in self.soup.find_all(["p", "h1", "h2", "h3"]):
                  tag.insert_after(". ")
-            text = soup.get_text(separator=" ", strip=True).replace("\n", "")
+            text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
             for line in text.split(". "):
                 self.zyngui.tts.announce(line, False, False, False)
         except:

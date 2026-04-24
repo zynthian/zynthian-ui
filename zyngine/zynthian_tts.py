@@ -42,8 +42,8 @@ TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_DATA_DIR', '/zynthian/zynthian-data'
 TTS_FLITE_LEX_PATH = f"{TTS_DATA_PATH}/lexicon"
 TTS_FLITE_VOICES_PATH = f"{TTS_DATA_PATH}/voices"
 TTS_DICT = {
-    "\u2610": "un-checked",
-    "\u2612": "checked",
+    "\u2610": "un-checked: ",
+    "\u2612": "checked: ",
 }
 SINE_WAVETABLE_SIZE = 1024
 
@@ -60,6 +60,7 @@ class zynthian_tts:
         self.busy = False
         self.busy_timer = None
         self.announce_disable = True
+        self.pending_beep = None
         self._queue = []
         self._cond = threading.Condition() # Queue locking mutex
         self._stop_event = None
@@ -92,6 +93,7 @@ class zynthian_tts:
         """
 
         if state:
+            self.stop()
             if not self.busy_timer:
                 self.busy_timer = threading.Timer(1.0, self.cb_busy_timer)
                 self.busy_timer.start()
@@ -174,7 +176,7 @@ class zynthian_tts:
             interrupt: True to stop current phrase and speak this phrase immediately
         """
 
-        if not self._stop_event:
+        if not self._stop_event or self.busy:
             return
         text = text.strip()
         if text:
@@ -271,7 +273,12 @@ class zynthian_tts:
             amplitude: Normalised amplitude [Default: 0.5]
         """
 
+        with self._cond:
+            self.pending_beep = (duration, frequency, amplitude)
+
+    def _do_beep(self, cfg):
         try:
+            duration, frequency, amplitude = cfg
             # Try to open soundcard with low resource parameters
             pcm = alsaaudio.PCM(
                 alsaaudio.PCM_PLAYBACK,
@@ -289,20 +296,23 @@ class zynthian_tts:
             fmt = "<" + "h" * channels
             # Create the output waveform
             index = 0.0
+            offset = 0
             samples = bytearray()
             for _ in range(num_samples):
-                value = [int(amplitude * self.SINE_WAVETABLE[int(index) % SINE_WAVETABLE_SIZE])] * channels
+                offset = int(index) % SINE_WAVETABLE_SIZE
+                value = [int(amplitude * self.SINE_WAVETABLE[offset])] * channels
                 samples += struct.pack(fmt, *value)
                 index += step
             # Add tail of waveform - wrong frequency but inperceptible and gives zero crossing
-            while index < len(self.SINE_WAVETABLE):
-                value = int(amplitude * self.SINE_WAVETABLE[int(index) % SINE_WAVETABLE_SIZE])
+            while offset < len(self.SINE_WAVETABLE):
+                value = [int(amplitude * self.SINE_WAVETABLE[offset])] * channels
                 samples += struct.pack(fmt, *value)
-                index += 1
+                offset += 1
             # Send waveform to soundcard
             pcm.write(samples)
         except Exception as e:
             logging.error(f"TTS failed to send tone to soundcard - {e}")
+        self.pending_beep = None
 
     def _worker(self):
         count = 0
@@ -316,7 +326,7 @@ class zynthian_tts:
                         count += 1
                         if count > 20:
                             count = 0
-                            self.beep()
+                            self._do_beep((0.2, 440, 0.5))
                 if self._stop_event.is_set():
                     break
 
@@ -326,6 +336,8 @@ class zynthian_tts:
                 sleep(0.4) # Debounce to avoid rapid message interruption
 
             with self._cond:
+                if self.pending_beep:
+                    self._do_beep(self.pending_beep)
                 try:
                     text = self._queue[self.line]
                     self.line += 1
