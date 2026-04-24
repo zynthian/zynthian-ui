@@ -1026,14 +1026,15 @@ class zynthian_gui:
                     self.chain_manager.rebuild_optimisation_cache()
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
-                    if processor and processor.eng_code != "CL":
-                        self.close_screen("loading")
-                        self.screen_history = []
-                        self.chain_control(chain_id, processor, force_bank_preset=True)
+                    self.close_screen("loading")
+                    self.screen_history = []
+                    if processor:
+                        if processor.eng_code == "CL":
+                            self.show_screen("launcher")
+                        else:
+                            self.chain_control(chain_id, processor, force_bank_preset=True)
                     else:
                         # Created empty chain
-                        # self.chain_manager.set_active_chain_by_id(chain_id)
-                        #self.show_screen_reset("chain_manager")
                         self.chain_control(chain_id)
                 else:
                     # Select MIDI channel

@@ -1057,12 +1057,8 @@ class zynthian_chain_manager:
         if chain_id is not None:
             chain = self.chains[chain_id]
             if processor.type == "MIDI Synth" and chain.synth_slots:
-                self.remove_processor(chain_id, chain.synth_slots[0][0])
-                pass # Cannot have multiple synth engines
+                self.remove_processor(chain_id, chain.synth_slots[0][0])   # Cannot have multiple synth engines
             chain.insert_processor(processor, slot)
-            # Update when adding new (proc_id = None)
-            if send_signal:
-                chain.current_processor = processor
 
         engine = self.start_engine(processor, eng_code, eng_config)
         if not engine:
@@ -1080,6 +1076,13 @@ class zynthian_chain_manager:
             chain.zynmixer_proc = processor
             # Add FX sends to existing chains
             self.refresh_mixbus_sends()
+            # Set current processor if adding new (proc_id = None)
+            # and the MI/MR processor is the only one in the chain
+            if send_signal and not chain.current_processor:
+                chain.current_processor = processor
+        # Set current processor if adding new (proc_id = None)
+        elif send_signal:
+            chain.current_processor = processor
 
         # Update group chains
         for src_chain in self.chains.values():

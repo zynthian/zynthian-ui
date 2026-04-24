@@ -78,11 +78,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.move_chain, None, "Move chain",
                                ["Reposition the chain in the mixer view.", "move_left_right.png"]))
 
-        if synth_proc_count > 0 or midi_proc_count > 0:
+        if self.chain.is_midi():
             self.list_data.append((self.midifx_add, None, "Add MIDI-FX processor",
                                     ["Add a MIDI-FX processor to this chain.", "midi_processor.png"]))
 
-        if synth_proc_count > 0 or audio_proc_count > 0:
+        if self.chain.is_audio():
             self.list_data.append((self.audiofx_add, None, "Add Audio-FX processor",
                                     ["Add an audio-FX processor to this chain.", "audio_processor.png"]))
 

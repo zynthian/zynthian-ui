@@ -106,7 +106,10 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
         self.set_chain()
-        self.subscreen.show()
+        if not self.chain.current_processor:
+            self.select_subscreen("chain_options", show_chain=True)
+        else:
+            self.select_subscreen("control", proc=self.chain.current_processor, show_chain=False)
         return True
 
     def hide(self):
@@ -142,13 +145,13 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 case "midi_input":
                     self.subscreen_key = "midi_config"
                     self.subscreen = self.subscreens[self.subscreen_key]
-                    self.subscreen.set_chain(self.chain)
                     self.subscreen.midi_input = True
+                    self.subscreen.set_chain(self.chain)
                 case "midi_output":
                     self.subscreen_key = "midi_config"
                     self.subscreen = self.subscreens[self.subscreen_key]
-                    self.subscreen.set_chain(self.chain)
                     self.subscreen.midi_input = False
+                    self.subscreen.set_chain(self.chain)
                 case _:
                     self.subscreen_key = self.subscreen_name
                     self.subscreen = self.subscreens[self.subscreen_key]
@@ -158,27 +161,27 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.subscreen = self.subscreens[self.subscreen_key]
 
     def show_subscreen(self, ssname, proc=None, force=False):
-        # Avoid ugly flickering by hiding the old screen after displaying the new one
-        if ssname != self.subscreen_name:
-            old_screen = self.subscreen
-        else:
-            old_screen = None
-        if old_screen or force:
+        old_subscreen_key = self.subscreen_key
+        if ssname != self.subscreen_name or force:
             self.config_subscreen(ssname)
             self.subscreen.configure(width=self.subscreen_width, height=self.height)
             self.subscreen.build_view()
             self.subscreen.show()
-            if old_screen:
-                old_screen.hide()
-        elif self.subscreen_name == "control" and proc:
+            # Avoid ugly flickering by hiding the old screen after displaying the new one
+            if old_subscreen_key != self.subscreen_key:
+                self.subscreens[old_subscreen_key].hide()
+        elif self.subscreen_key == "control" and proc:
             self.subscreen.select_processor(proc)
+        if self.subscreen_key != "control" and not self.chain_shown:
+            self.show_chain(True)
 
     def select_subscreen(self, ssname, proc=None, show_chain=True):
         if ssname == "control":
             self.chain_canvas.select_node(proc=proc, action=True)
         else:
             self.chain_canvas.select_node(proc=ssname, action=True)
-        self.show_chain(show_chain)
+        if show_chain != self.chain_shown:
+            self.show_chain(show_chain)
 
     # --------------------------------------------------------------------------
     # Zynpot & zynswitch callbacks
