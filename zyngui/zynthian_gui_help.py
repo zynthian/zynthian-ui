@@ -25,7 +25,6 @@
 import os
 import logging
 from tkinterweb import HtmlFrame
-import tkinter
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -128,6 +127,11 @@ class zynthian_gui_help:
                 elif t == 'B':
                     self.tts_controller_info()
                     return True
+        if i == 0 and t =='S':
+            self.fpath ="./help/general/user guide.html"
+            self.zyngui.show_help()
+            self.tts_info()
+            return True
 
     def refresh_loading(self):
         pass
@@ -207,7 +211,6 @@ class zynthian_gui_help:
     def plot_zctrls(self):
         self.swipe_update()
 
-
     # --------------------------------------------------------------------------
     # Narrator TTS
     # --------------------------------------------------------------------------
@@ -215,7 +218,7 @@ class zynthian_gui_help:
     def tts_info(self):
         if not self.zyngui.tts:
             return
-        self.zyngui.tts.announce(f"Help for {self.tts_title}")
+        self.zyngui.tts.announce(f"Help page.")
         try:
             with open(self.fpath) as f:
                 html = f.read()

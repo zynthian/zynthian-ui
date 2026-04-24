@@ -924,9 +924,10 @@ class zynthian_gui:
         self.screens['midi_config'].midi_input = False
         self.show_screen('midi_config')
 
-    def show_help(self, topic=None):
-        fpath = None
-        if not topic:
+    def show_help(self, topic=None, fpath=None):
+        if self.current_screen == "help":
+            fpath = self.get_current_screen_obj().fpath
+        if not topic and not fpath:
             topic = self.current_screen
             try:
                 curscreen_obj = self.get_current_screen_obj()
