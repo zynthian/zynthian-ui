@@ -66,6 +66,7 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.listbox_motion_last_dy = 0
         self.swiping = False
         self.last_release_ts = 0
+        self.last_tts = ""
 
         # ListBox
         self.lb_bg = zynthian_gui_config.color_panel_bg
@@ -307,7 +308,11 @@ class zynthian_gui_selector(zynthian_gui_base):
         index = self.skip_separators(index)
         self._select_listbox(index, see=see)
         if self.shown and self.zyngui.tts:
-            self.zyngui.tts.announce(self.list_data[index][2] + tts)
+            tts_text = self.list_data[index][2] + tts
+            if self.last_tts == tts_text:
+                return
+            self.last_tts = tts_text
+            self.zyngui.tts.announce(tts_text)
             self.zyngui.tts.announce(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
     def _select_listbox(self, index, see=True):
@@ -404,6 +409,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             self.select(index)
         else:
             self.select(self.get_cursel())
+        if self.zyngui.tts:
+            self.zyngui.tts._tts.beep(0.12, 900)
         self.select_action(self.index, t)
 
     # Function to handle select switch press
@@ -528,9 +535,7 @@ class zynthian_gui_selector(zynthian_gui_base):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        if not self.zyngui.tts:
-            return
         super().tts_info()
-        self.zyngui.tts.announce(self.list_data[self.index][2])
+        self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
 
 # ------------------------------------------------------------------------------

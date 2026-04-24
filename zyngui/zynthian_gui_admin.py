@@ -702,7 +702,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         for k, v in res.items():
             self.zyngui.add_info(" {} => {}\n".format(k, v[0]), v[1])
 
-        self.zyngui.hide_info_timer(5000)
+        if self.zyngui.tts:
+            timeout = 12000
+        else:
+            timeout = 5000
+        self.zyngui.hide_info_timer(timeout)
         self.zyngui.state_manager.end_busy("gui_admin")
 
     # ------------------------------------------------------------------------------
