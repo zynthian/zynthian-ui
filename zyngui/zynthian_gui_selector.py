@@ -183,7 +183,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def show(self):
         super().show()
-        if self.zyngui.tts:
+        if self.zyngui.tts and len(self.list_data) > 0:
             self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
 
     def show_sidebar(self, show):
@@ -417,6 +417,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def select_action(self, index, t='S'):
         pass
+
+    def cuia_v5_zynpot_switch(self, params):
+        return False
 
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!)

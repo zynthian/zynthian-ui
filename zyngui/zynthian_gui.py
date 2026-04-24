@@ -1071,7 +1071,7 @@ class zynthian_gui:
                     self.current_processor = processors[0]
                     break
 
-        if self.current_processor.id < -1:
+        if self.current_processor and self.current_processor.id < -1:
             screen_name = "control"
         else:
             screen_name = "chain_control"
