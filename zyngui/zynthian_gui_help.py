@@ -60,6 +60,7 @@ class zynthian_gui_help:
         self.links = []
         self.link_timer = None
         self.path = self.ui_dir + "/help"
+        self.history = []
 
         # Main Frame
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
@@ -173,6 +174,7 @@ class zynthian_gui_help:
             self.path = os.path.dirname(fpath)
             self.loading_overlay.place(relwidth=1, relheight=1) # Avoid showing until fully rendered
             self.main_frame.load_html(html, base_url=f"file://{self.path}/")
+            self.history.append(fpath)
             return True
         except Exception as e:
             logging.error(f"Can't load HTML file => {e}")
@@ -185,6 +187,7 @@ class zynthian_gui_help:
         if self.shown:
             self.shown = False
             self.main_frame.place_forget()
+            self.history = []
 
     def show(self):
         if not self.shown:
@@ -227,15 +230,14 @@ class zynthian_gui_help:
         return self.switch(*params)
 
     def switch(self, i, t):
-        if self.zyngui.tts:
-            if i == 2:
+        if self.zyngui.tts and i == 2:
                 if t =='S':
                     self.zyngui.cuia_tts_toggle_pause()
                     return True
                 elif t == 'B':
                     self.tts_controller_info()
                     return True
-        if i == 0 and t =='S':
+        elif i == 0 and t =='S':
             if self.link is None:
                 fpath = "index:"
             else:
@@ -245,6 +247,17 @@ class zynthian_gui_help:
 
             self.zyngui.show_help(fpath=fpath)
             return True
+        elif i == 1 and t == 'B':
+            self.zyngui.close_screen()
+            return True
+
+    def back_action(self):
+        try:
+            self.history.pop()
+            self.zyngui.show_help(self.history.pop())
+            return True
+        except:
+            pass
 
     def refresh_loading(self):
         pass
