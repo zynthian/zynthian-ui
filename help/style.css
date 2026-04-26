@@ -1,0 +1,37 @@
+body {
+	background: #000000;
+	color: #ffffff;
+	font-size: 150%;
+	margin-bottom: 2em;
+}
+
+a {
+	color: #0000ff;
+}
+
+title {
+	color: #ffffff;
+	font-size: 180%;
+}
+
+h1 {
+	color: #ffffff;
+	font-size: 180%;
+}
+
+ul {
+	margin-left: 0.3em;
+	padding-left: 0px;
+}
+li {
+	margin-left: 0px;
+	padding-left: 0.5em;
+}
+
+img.full {
+	width: 100%;
+}
+
+div.clear {
+	clear: both;
+}

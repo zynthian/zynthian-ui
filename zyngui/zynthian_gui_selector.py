@@ -409,8 +409,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             self.select(index)
         else:
             self.select(self.get_cursel())
-        if self.zyngui.tts:
-            self.zyngui.tts._tts.beep(0.12, 900)
+        #if self.zyngui.tts:
+        #    self.zyngui.tts._tts.beep(0.12, 900)
         self.select_action(self.index, t)
 
     # Function to handle select switch press

@@ -56,10 +56,10 @@ class zynthian_gui_tts():
             self.original_wiring_short = zynthian_gui_config.custom_switch_ui_actions[self.tts_zynswitch_index]["S"]
             zynthian_gui_config.custom_switch_ui_actions[self.tts_zynswitch_index]["S"] = "TTS_TOGGLE_PLAYBACK"
 
+        zynsigman.register(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.busy_cb)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.active_chain_cb)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.seq_select_phrase_cb)
         zynsigman.register_queued(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.zynmixer_set_value_cb)
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, self.busy_cb)
         zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_rec_cb)
         zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.midi_rec_cb)
 
