@@ -6,7 +6,26 @@ body {
 }
 
 a {
-	color: #0000ff;
+	color: #8080ff;
+	text-decoration: none;
+}
+
+header.global_header {
+	margin-top: 0.2em;
+	margin-bottom: 0.2em;
+	padding: 0.5em;
+	padding-bottom: 0.2em;
+	background: #C0C0C0;
+}
+
+header.global_header a {
+	font-size: 120%;
+	font-weight: bold;
+	color: #0000C0;
+}
+
+ul.index li a {
+	font-size: 110%;
 }
 
 title {
@@ -17,6 +36,15 @@ title {
 h1 {
 	color: #ffffff;
 	font-size: 180%;
+	margin-top: 0.8em;
+	margin-bottom: 0.3em;
+}
+
+h2 {
+	color: #ffffff;
+	font-size: 150%;
+	margin-top: 0.8em;
+	margin-bottom: 0.3em;
 }
 
 ul {

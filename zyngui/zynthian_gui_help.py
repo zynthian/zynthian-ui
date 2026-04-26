@@ -118,26 +118,28 @@ class zynthian_gui_help:
 
         # Build index HTML
         html_output = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Index</title>
-            <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
-        </head>
-        <body>
-            <h1>Index of zynthian help</h1>
-        """
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <title>Index</title>
+  <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
+ </head>
+ <body>
+  <h1>INDEX</h1>
+   <ul class="index">
+"""
 
         for title, filename in get_data(files):
-            html_output += f'<a href="{filename}">{title}</a><br>\n'
-        html_output += "<br><h2>Control GUI Widgets</h2>"
+            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
+        html_output += "<h2>Control GUI Widgets</h2>"
         for title, filename in get_data(widgets):
-            html_output += f'<a href="{filename}">{title}</a><br>\n'
+            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
         html_output += """
-        </body>
-        </html>
-        """
+   </ul>
+  </body>
+</html>
+"""
         return html_output
 
     def load_file(self, fpath):
@@ -148,6 +150,7 @@ class zynthian_gui_help:
                 with open(fpath) as f:
                     html = f.read()
             self.soup = BeautifulSoup(html, "html.parser")
+
             if fpath != "index:":
                 with open(f"{self.ui_dir}/help/header.html") as f:
                     header_html = f.read()
