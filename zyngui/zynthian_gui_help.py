@@ -96,21 +96,21 @@ class zynthian_gui_help:
             self.tts_info()
 
     def create_index(self):
-        files = [Path(f"{self.ui_dir}/help/core").glob("*.html")]
-        files.append(Path(f"{self.ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
+        files = list(Path(f"{self.ui_dir}/help/core").glob("*.html")) + \
+                list(Path(f"{self.ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
         items = []
-        for g in files:
-            for file in g:
-                with open(file, "r", encoding="utf-8") as f:
-                    soup = BeautifulSoup(f, "html.parser")
-                    # Try <title> first
-                    title_tag = soup.find("title")
-                    title = title_tag.get_text(strip=True) if title_tag else None
-                    # Fallback to <h1>
-                    if not title:
-                        h1 = soup.find("h1")
-                        title = h1.get_text(strip=True) if h1 else file.stem
-                    items.append((title, file._str))
+        files.sort(key=lambda f: f.name)
+        for file in files:
+            with open(file, "r", encoding="utf-8") as f:
+                soup = BeautifulSoup(f, "html.parser")
+                # Try <title> first
+                title_tag = soup.find("title")
+                title = title_tag.get_text(strip=True) if title_tag else None
+                # Fallback to <h1>
+                if not title:
+                    h1 = soup.find("h1")
+                    title = h1.get_text(strip=True) if h1 else file.stem
+                items.append((title, file._str))
 
         # Build index HTML
         html_output = f"""
@@ -222,7 +222,6 @@ class zynthian_gui_help:
                     return True
         if i == 0 and t =='S':
             if self.link is None:
-                self.create_index()
                 fpath = "index:"
             else:
                 fpath = self.links[self.link][0]
