@@ -96,21 +96,25 @@ class zynthian_gui_help:
             self.tts_info()
 
     def create_index(self):
+        def get_data(files):
+            items = []
+            for file in files:
+                with open(file, "r", encoding="utf-8") as f:
+                    soup = BeautifulSoup(f, "html.parser")
+                    # Try <title> first
+                    title_tag = soup.find("title")
+                    title = title_tag.get_text(strip=True) if title_tag else None
+                    # Fallback to <h1>
+                    if not title:
+                        h1 = soup.find("h1")
+                        title = h1.get_text(strip=True) if h1 else file.stem
+                    items.append((title, file._str))
+            return items
+
         files = list(Path(f"{self.ui_dir}/help/core").glob("*.html")) + \
                 list(Path(f"{self.ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
-        items = []
         files.sort(key=lambda f: f.name)
-        for file in files:
-            with open(file, "r", encoding="utf-8") as f:
-                soup = BeautifulSoup(f, "html.parser")
-                # Try <title> first
-                title_tag = soup.find("title")
-                title = title_tag.get_text(strip=True) if title_tag else None
-                # Fallback to <h1>
-                if not title:
-                    h1 = soup.find("h1")
-                    title = h1.get_text(strip=True) if h1 else file.stem
-                items.append((title, file._str))
+        widgets = list(Path(f"{self.ui_dir}/help/widgets").glob("*.html"))
 
         # Build index HTML
         html_output = f"""
@@ -125,7 +129,10 @@ class zynthian_gui_help:
             <h1>Index of zynthian help</h1>
         """
 
-        for title, filename in items:
+        for title, filename in get_data(files):
+            html_output += f'<a href="{filename}">{title}</a><br>\n'
+        html_output += "<br><h2>Control GUI Widgets</h2>"
+        for title, filename in get_data(widgets):
             html_output += f'<a href="{filename}">{title}</a><br>\n'
         html_output += """
         </body>
