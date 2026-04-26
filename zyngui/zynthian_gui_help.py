@@ -132,7 +132,11 @@ class zynthian_gui_help:
 
         for title, filename in get_data(files):
             html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
-        html_output += "<h2>Control GUI Widgets</h2>"
+        html_output += """
+  </ul>
+  <h2>Control GUI Widgets</h2>
+  <ul class="index">
+"""
         for title, filename in get_data(widgets):
             html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
         html_output += """
