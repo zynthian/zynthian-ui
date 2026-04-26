@@ -92,7 +92,7 @@ class zynthian_gui_help:
     def done_loading(self):
         self.loading_overlay.place_forget()
         self.link_text.place_forget()
-        self.zyngui.show_screen("help")
+        self.zyngui.show_screen("help", self.zyngui.SCREEN_HMODE_NONE)
         if self.zyngui.tts:
             self.tts_info()
 
