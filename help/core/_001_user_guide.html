@@ -8,13 +8,13 @@
  <body>
    <h1>User Guide</h1>
    <p>
-   This guide describes the core principles of using zynthian. It is essential that you understand these core principles to be able to use zynthian. Each view has its own help page that describes in more detail the workflow of the page.
+   This guide describes the core principles of using zynthian. It is essential that you understand these core principles. Each view has its own help page that describes in more detail the workflow of the page.
    </p>
    <h2>Knob Actions</h2>
    <p>
-   There five supported knob actions. These are:<br>
+   There are five knob actions:<br>
    <ul>
-   <li>Rotate: Rotating a knob adjusts a value this may be a listbox selection, parameter value, etc. Knob acceleration allows for finer adjustment at slow rotation and coarser adjustment at faster rotation.</li>
+   <li>Rotate: Rotating a knob adjusts a value. This may be a listbox selection, parameter value, etc. Knob acceleration allows for finer adjustment at slow rotation and coarser adjustment at faster rotation.</li>
    <li>Press and rotate: Rotating a knob whilst it is pressed may increase the resolution, allowing for fine adjustment.</li>
    <li>Short Press: Pressing and releasing a knob within 1 second triggers the <i>short push action</i>.<li>
    <li>Bold Press: Pressing and releasing a knob within 1.5 seconds triggers the <i>bold push action</i>.<li>
@@ -26,10 +26,10 @@
    The fundamental building block of zynthian's sound architecture is the processor. A processor generates or manipulates audio or MIDI signals. Zynthian includes over 1000 processors to choose from.
    </p>
    <p>
-   Processors are grouped together and interconnected within chains. Chains are a key concept in Zynthian. The first thing you will do after powering-on your zynthian for first time, once you stop celebrating your success, is creating a chain and adding some processors. It does little without any chains!
+   Processors are grouped together and interconnected within chains. Chains are a key concept in Zynthian. The first thing you will do after powering-on your zynthian for first time, once you stop celebrating your success, is to create a chain and add some processors. It does little without any chains!
    </p>
    <p>
-   Processors may be positioned within the chain in series or in parallel with other processors. The quantity of series or parallel processors is only limited by available processing power and there is no limit to the quantity of chains that may be added. Audio signals from chains by default feed a stereo mixer with typical mixer strip controls: fader, balance, mute, solo, phase reverse, etc. Audio processors may be positioned pre-fader or post-fader. (Note that zynthian treats most audio as stereo.)
+   Processors may be positioned within the chain in series or in parallel with other processors. The quantity of series or parallel processors is only limited by available computing power and there is no limit to the quantity of chains that may be added. Audio signals from chains by default feed a stereo mixer with typical mixer strip controls: fader, balance, mute, solo, phase reverse, etc. Audio processors may be positioned pre-fader or post-fader. (Note that zynthian treats most audio as stereo.)
    </p>
    <p>
    The audio and MIDI signals are routed between physical inputs, chain inputs, chain outputs, physical outputs and processor sidechain inputs. This provides a lot of flexibility whilst maintaining a simple, chain-based approach to signal routing.
