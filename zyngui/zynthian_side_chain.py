@@ -177,8 +177,8 @@ class zynthian_side_chain(tkinter.Canvas):
             "slot": slot,       # Processor slot
             "idx": idx,         # Index of (parallel) processor within slot
             "row": row,         # Position of node within graph
-            "is_dst": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "midi_output", "audio_out"),
-            "is_src": proc_type in ("MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "Audio Generator", "midi_input", "audio_in")
+            "is_dst": proc_type in ("chain_controllers", "MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "midi_output", "audio_out"),
+            "is_src": proc_type in ("chain_controllers", "MIDI Synth", "Audio Effect", "MIDI Tool", "Special", "Audio Generator", "midi_input", "audio_in")
         })
 
     def _get_name(self, text, max_width):
@@ -229,6 +229,9 @@ class zynthian_side_chain(tkinter.Canvas):
                 else:
                     midi_chan = f"CH#ALL"
                 self._add_node(f"MIDI Input\n{midi_chan}", "midi_input")
+            # Add Chain Controllers block
+            if self.chain.zctrls:
+                self._add_node(f"Chain\nControllers", "chain_controllers")
             # Add MIDI processors
             for slot_idx, slot in enumerate(self.chain.midi_slots):
                 for proc_idx, processor in enumerate(slot):
@@ -278,7 +281,7 @@ class zynthian_side_chain(tkinter.Canvas):
         title = node.get("title")
         if type(proc) is str:
             match proc:
-                case "midi_input" | "midi_output":
+                case "midi_input" | "midi_output" | "chain_controllers":
                     bg_col = c_midi
                 case "audio_in" | "audio_out":
                     bg_col = c_audio
@@ -475,6 +478,12 @@ class zynthian_side_chain(tkinter.Canvas):
 
     def select_current_processor(self, action=False):
         self.select_node(proc=self.chain.current_processor, action=action)
+
+    def select_processor(self, proc, action=False):
+        if not proc and self.chain.zctrls:
+            self.select_node(proc="chain_controllers", action=action)
+        elif proc:
+            self.select_node(proc=proc, action=action)
 
     def start_moving_processor(self, processor=None):
         """

@@ -442,11 +442,24 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zgui_controllers[i].enable(True)
 
     def select_processor(self, proc):
-        if proc in self.processors:
+        if not self.processors:
+            return
+        # Chain controllers
+        if not proc and self.processors[0].chain.zctrls:
+            self.select(1)
+        # Processor controllers
+        elif proc in self.processors:
             for i, row in enumerate(self.list_data):
-                if row[1] and row[3] == proc:
+                if row[1] and row[1] > 0 and row[3] == proc:
                     self.select(i + proc.current_screen_index)
                     return
+
+    def get_selected_processor(self):
+        row = self.list_data[self.index]
+        if row[1] and row[1] > 0:
+            return row[3]
+        else:
+            return None
 
     # --------------------------------------------------------------------------
     # Zynpot & zynswitch callbacks

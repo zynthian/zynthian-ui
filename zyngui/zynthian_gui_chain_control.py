@@ -152,6 +152,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                     self.subscreen = self.subscreens[self.subscreen_key]
                     self.subscreen.midi_input = False
                     self.subscreen.set_chain(self.chain)
+                case "chain_controllers":
+                    self.subscreen_key = "control"
+                    self.subscreen = self.subscreens[self.subscreen_key]
                 case _:
                     self.subscreen_key = self.subscreen_name
                     self.subscreen = self.subscreens[self.subscreen_key]
@@ -170,9 +173,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             # Avoid ugly flickering by hiding the old screen after displaying the new one
             if old_subscreen_key != self.subscreen_key:
                 self.subscreens[old_subscreen_key].hide()
-        elif self.subscreen_key == "control" and proc:
+        if self.subscreen_key == "control":
             self.subscreen.select_processor(proc)
-        if self.subscreen_key != "control" and not self.chain_shown:
+        elif not self.chain_shown:
             self.show_chain(True)
 
     def select_subscreen(self, ssname, proc=None, show_chain=True):
@@ -210,7 +213,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def switch_select(self, t):
         if t == 'S':
             self.subscreen.switch_select(t)
-            if self.subscreen_name == "control":
+            if self.subscreen_key == "control":
                 if self.subscreen.mode == "select":
                     self.show_chain(True)
                 else:
@@ -224,7 +227,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             return True
         if self.chain_shown:
             self.show_chain(False)
-            self.chain_canvas.select_current_processor(action=True)
+            proc = self.subscreens["control"].get_selected_processor()
+            self.chain_canvas.select_processor(proc=proc, action=True)
             self.subscreen.set_mode_control()
             return True
         return False
@@ -240,8 +244,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 self.chain_canvas.arrow_up()
             return True
         if self.subscreen.zynpot_cb(i, dval):
-            if self.subscreen_name == "control" and i == 3:
-                self.chain_canvas.select_current_processor()
+            if self.subscreen_key == "control" and i == 3:
+                proc=self.subscreen.get_selected_processor()
+                self.chain_canvas.select_processor(proc=proc)
             return True
 
     def plot_zctrls(self, force=False):
@@ -284,14 +289,16 @@ class zynthian_gui_chain_control(zynthian_gui_base):
 
     def cuia_arrow_up(self, params=None):
         self.subscreen.arrow_up()
-        if self.subscreen_name == "control":
-            self.chain_canvas.select_current_processor()
+        if self.subscreen_key == "control":
+            proc=self.subscreen.get_selected_processor()
+            self.chain_canvas.select_processor(proc=proc)
         return True
 
     def cuia_arrow_down(self, params=None):
         self.subscreen.arrow_down()
-        if self.subscreen_name == "control":
-            self.chain_canvas.select_current_processor()
+        if self.subscreen_key == "control":
+            proc=self.subscreen.get_selected_processor()
+            self.chain_canvas.select_processor(proc=proc)
         return True
 
     def cuia_arrow_right(self, params=None):
@@ -320,7 +327,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                     return
             zynthian_gui_config.zyngui.show_screen('chain_manager')
         else:
-            if self.subscreen_name == "control":
+            if self.subscreen_key == "control":
                 self.subscreen.set_mode_select()
             self.show_chain(True)
             return
@@ -332,13 +339,13 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.zyngui.close_screen()
 
     def get_help_fpath(self):
-        if self.subscreen_name == "control":
+        if self.subscreen_key == "control":
             proc = self.zyngui.get_current_processor()
             fpath = f"./help/widgets/{proc.name.lower()}.html"
         else:
             fpath = None
         if not fpath or not Path(fpath).exists():
-            if self.subscreen_name in ("control", "chain_options"):
+            if self.subscreen_key in ("control", "chain_options"):
                 if self.chain_shown:
                     page_name = "chain_control-select_mode"
                 else:
