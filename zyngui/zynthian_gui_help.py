@@ -24,11 +24,13 @@
 
 import os
 import logging
+import tkinter
 from tkinterweb import HtmlFrame
+from bs4 import BeautifulSoup
+from pathlib import Path
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
-from bs4 import BeautifulSoup
 
 # ------------------------------------------------------------------------------
 # Zynthian help view GUI Class
@@ -38,6 +40,7 @@ from bs4 import BeautifulSoup
 class zynthian_gui_help:
 
     ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
+
 
     # Scale for touch swipe action after-roll
     touch_swipe_roll_scale = [1, 0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4]  # 1, 0, 1, 0, 1, 0, 1, 0,
@@ -52,11 +55,11 @@ class zynthian_gui_help:
         self.touch_motion_last_dy = 0
         self.touch_swiping = False
         self.touch_push_ts = 0
-        self.fpath = None
-        self.tts_title = ""
         self.tts_knobs = []
         self.link = None
         self.links = []
+        self.link_timer = None
+        self.path = self.ui_dir + "/help"
 
         # Main Frame
         self.main_frame = HtmlFrame(zynthian_gui_config.top,
@@ -65,36 +68,100 @@ class zynthian_gui_help:
                                     vertical_scrollbar=False,
                                     messages_enabled=False)
         self.main_frame.grid_propagate(False)
+        self.link_text = tkinter.Label(self.main_frame,
+                                    font=zynthian_gui_config.font_topbar,
+                                    bg=zynthian_gui_config.color_ctrl_bg_off,
+                                    fg=zynthian_gui_config.color_ctrl_tx_off)
+        self.loading_overlay = tkinter.Label(self.main_frame,
+                                    font=zynthian_gui_config.font_topbar,
+                                    bg=zynthian_gui_config.color_panel_bd,
+                                    fg=zynthian_gui_config.color_ctrl_tx_off
+                                    )
         # Patch HtmlFrame widget
         self.main_frame.event_generate = self.main_frame.html.event_generate
         # Bind events
         self.main_frame.on_done_loading(self.done_loading)
+        self.main_frame.on_link_click(self.link_cb)
         self.main_frame.bind("<Button-1>", self.cb_touch_push)
-        self.main_frame.bind("<ButtonRelease-1>", self.cb_touch_release)
+        self.main_frame.bind("<ButtonRelease-1>", self.cb_touch_release, add="+")
         self.main_frame.bind("<Button-4>", self.cb_scroll_wheel)
         self.main_frame.bind("<Button-5>", self.cb_scroll_wheel)
         self.main_frame.bind("<B1-Motion>", self.cb_touch_motion)
 
     def done_loading(self):
+        self.loading_overlay.place_forget()
+        self.link_text.place_forget()
         self.zyngui.show_screen("help")
+        if self.zyngui.tts:
+            self.tts_info()
+
+    def create_index(self):
+        files = [Path(f"{self.ui_dir}/help/core").glob("*.html")]
+        files.append(Path(f"{self.ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
+        items = []
+        for g in files:
+            for file in g:
+                with open(file, "r", encoding="utf-8") as f:
+                    soup = BeautifulSoup(f, "html.parser")
+                    # Try <title> first
+                    title_tag = soup.find("title")
+                    title = title_tag.get_text(strip=True) if title_tag else None
+                    # Fallback to <h1>
+                    if not title:
+                        h1 = soup.find("h1")
+                        title = h1.get_text(strip=True) if h1 else file.stem
+                    items.append((title, file._str))
+
+        # Build index HTML
+        html_output = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Index</title>
+            <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
+        </head>
+        <body>
+            <h1>Index of zynthian help</h1>
+        """
+
+        for title, filename in items:
+            html_output += f'<a href="{filename}">{title}</a><br>\n'
+        html_output += """
+        </body>
+        </html>
+        """
+        return html_output
 
     def load_file(self, fpath):
-        if os.path.isfile(fpath):
-            try:
+        try:
+            if fpath == "index:":
+                html = self.create_index()
+            else:
                 with open(fpath) as f:
                     html = f.read()
-                self.soup = BeautifulSoup(html, "html.parser")
-                self.links = [a.get("href") for a in self.soup.find_all("a") if a.get("href")]
+            self.soup = BeautifulSoup(html, "html.parser")
+            if fpath != "index:":
+                with open(f"{self.ui_dir}/help/header.html") as f:
+                    header_html = f.read()
+                self.soup.body.insert(0, BeautifulSoup(header_html, "html.parser"))
+                html = str(self.soup)
 
-                self.main_frame.load_file("file:///" + self.ui_dir + "/" + fpath, force=True, insecure=True)
-                self.tts_title = self.fpath.split('/')[-1][:-5].replace("_", " ").replace("-",", ")
+            # Extract hyperlinks
+            self.link = None
+            self.links = []
+            for link in self.soup.find_all("a"):
+                href = link.get("href")
+                text = link.get_text(strip=True)
+                self.links.append((href, text))
+                link.insert_before("Link: ")
 
-                self.fpath = fpath
-
-                return True
-            except Exception as e:
-                logging.error(f"Can't load HTML file => {e}")
-        self.fpath = None
+            self.path = os.path.dirname(fpath)
+            self.loading_overlay.place(relwidth=1, relheight=1) # Avoid showing until fully rendered
+            self.main_frame.load_html(html, base_url=f"file://{self.path}/")
+            return True
+        except Exception as e:
+            logging.error(f"Can't load HTML file => {e}")
         return False
 
     def build_view(self):
@@ -110,8 +177,9 @@ class zynthian_gui_help:
             self.shown = True
             self.main_frame.grid_propagate(False)
             self.main_frame.place(x=0, y=0)
-            if self.zyngui.tts:
-                self.tts_info()
+
+    def link_cb(self, url):
+        self.zyngui.show_help(fpath=url)
 
     def zynpot_cb(self, i, dval):
         if i == 3:
@@ -123,6 +191,21 @@ class zynthian_gui_help:
                     self.zyngui.tts._tts.next()
                 else:
                     self.zyngui.tts._tts.prev()
+            return True
+        elif i == 0:
+            if self.links:
+                if self.link is None:
+                    self.link = 0
+                else:
+                    self.link = min(max(0, self.link + dval), len(self.links) - 1)
+                if self.link_timer is not None:
+                    self.main_frame.after_cancel(self.link_timer)
+                text = self.links[self.link][1]
+                self.link_text.config(text=f"Link: {text}")
+                self.link_text.place(relx=1.0, rely=0.0, anchor="ne")
+                self.link_timer = self.main_frame.after(2000, self.link_text.place_forget)
+                if self.zyngui.tts:
+                    self.zyngui.tts.announce(f"Link: {text}")
             return True
 
     def cuia_v5_zynpot_switch(self, params):
@@ -138,9 +221,15 @@ class zynthian_gui_help:
                     self.tts_controller_info()
                     return True
         if i == 0 and t =='S':
-            self.fpath ="./help/general/user guide.html"
-            self.zyngui.show_help()
-            self.tts_info()
+            if self.link is None:
+                self.create_index()
+                fpath = "index:"
+            else:
+                fpath = self.links[self.link][0]
+                if len(fpath.split(":")) == 1:
+                    fpath = f"{self.path}/{fpath}"
+
+            self.zyngui.show_help(fpath=fpath)
             return True
 
     def refresh_loading(self):
@@ -202,6 +291,8 @@ class zynthian_gui_help:
             dx = self.touch_x0 - event.x
             if abs(dx) > 50:
                 self.zyngui.cuia_back()
+            else:
+                return None
 
     def cb_scroll_wheel(self, event):
         dval = 1 if event.num else -1
@@ -250,7 +341,7 @@ class zynthian_gui_help:
                 knob_action_container.decompose()
 
             # Ensure brief pause after each header and paragraph
-            for tag in self.soup.find_all(["p", "h1", "h2", "h3"]):
+            for tag in self.soup.find_all(["p", "br", "h1", "h2", "h3"]):
                  tag.insert_after(". ")
             text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
             for line in text.split(". "):
