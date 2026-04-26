@@ -154,7 +154,7 @@ class zynthian_gui_help:
                 href = link.get("href")
                 text = link.get_text(strip=True)
                 self.links.append((href, text))
-                link.insert_before("Link: ")
+                #link.insert_before("Link: ")
 
             self.path = os.path.dirname(fpath)
             self.loading_overlay.place(relwidth=1, relheight=1) # Avoid showing until fully rendered
@@ -201,11 +201,12 @@ class zynthian_gui_help:
                 if self.link_timer is not None:
                     self.main_frame.after_cancel(self.link_timer)
                 text = self.links[self.link][1]
-                self.link_text.config(text=f"Link: {text}")
-                self.link_text.place(relx=1.0, rely=0.0, anchor="ne")
+                lbl_text = f"Link: {text}"
+                self.link_text.config(text=lbl_text)
+                self.link_text.place(relx=0.0, rely=1.0, anchor="sw")
                 self.link_timer = self.main_frame.after(2000, self.link_text.place_forget)
                 if self.zyngui.tts:
-                    self.zyngui.tts.announce(f"Link: {text}")
+                    self.zyngui.tts.announce(lbl_text)
             return True
 
     def cuia_v5_zynpot_switch(self, params):
@@ -324,7 +325,7 @@ class zynthian_gui_help:
             self.tts_knobs = []
             knob_action_container = self.soup.find("div", class_="knobs_action_container")
             if knob_action_container:
-                press_actions = ["Rotate to ", "Press to", "Bold press to"]
+                encoder_actions = ["Rotate:", "Press:", "Bold press:"]
                 for knob_idx in range(1, 5):
                     knob_action_div = self.soup.find("div", class_=f"knob_action_{knob_idx}")
                     if not knob_action_div:
@@ -335,7 +336,7 @@ class zynthian_gui_help:
                             break
                         action_text = action.get_text()
                         if action_text and action_text != "---":
-                            knob_text += f"{press_actions[i]} {action.get_text()}. "
+                            knob_text += f"{encoder_actions[i]} {action.get_text()}. "
                     self.tts_knobs.append(knob_text)
                 knob_action_container.decompose()
 

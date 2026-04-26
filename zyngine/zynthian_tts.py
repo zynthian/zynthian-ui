@@ -44,6 +44,8 @@ TTS_FLITE_VOICES_PATH = f"{TTS_DATA_PATH}/voices"
 TTS_DICT = {
     "\u2610": "un-checked: ",
     "\u2612": "checked: ",
+    "ctrl": "control",
+    "param": "parameter"
 }
 SINE_WAVETABLE_SIZE = 1024
 
