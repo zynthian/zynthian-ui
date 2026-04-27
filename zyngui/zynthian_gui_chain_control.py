@@ -359,7 +359,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 page_name = self.subscreen_name
                 if not self.subscreen_name.startswith("chain_"):
                     page_name = "chain_" + page_name
-            fpath = f"./help/{zynthian_gui_config.layout['name']}/{page_name}.html"
+            fpath = f"{page_name}.html"
         return fpath
 
     # --------------------------------------------------------------------------

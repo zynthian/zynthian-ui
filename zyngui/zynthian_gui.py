@@ -927,7 +927,7 @@ class zynthian_gui:
     def show_help(self, fpath=None):
         """ Show HTML help
         Args:
-            fpath: Full path to the html document, topic:<view> for specific view or None for auto detection
+            fpath: Full path to the html document, filename for specific view or None for auto detection
         """
 
         if fpath == "index:":
@@ -941,21 +941,21 @@ class zynthian_gui:
                 curscreen_obj = self.get_current_screen_obj()
                 fpath = curscreen_obj.get_help_fpath()
             except:
-                topic = self.current_screen
-                fpath = f"{html_root}/{zynthian_gui_config.layout['name']}/{topic}.html"
+                fpath = f"{self.current_screen}.html"
+        for b in ("/", "./"):
+            if fpath.startswith(b):
+                fpath = f"{html_root}/{fpath[len(b):]}"
+        p = Path(fpath).resolve()
+        if not p.exists():
+            for dir in [zynthian_gui_config.layout['name'], "core", "widgets"]:
+                fpath = f"{html_root}/{dir}/{p.name}"
+                if Path(fpath).exists():
+                    break
 
+        if Path(fpath).exists():
+            self.screens['help'].load_file(fpath)
         else:
-            if fpath.startswith("topic:"):
-                topic = fpath[6:]
-                fpath = f"{html_root}/{zynthian_gui_config.layout['name']}/{topic}.html"
-            elif fpath.startswith("file:///"):
-                fpath = fpath[7:]
-                topic = Path(fpath).name.split(".")[0]
-
-        fpath = Path(fpath).resolve()
-        if fpath.exists():
-            self.screens['help'].load_file(fpath._str)
-        else:
+            topic = fpath.split(".")[0]
             logging.warning(f"No help for '{topic}'")
 
     # TODO: Rename - this is called for various chain manipulation purposes

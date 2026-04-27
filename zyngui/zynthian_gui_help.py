@@ -150,6 +150,7 @@ class zynthian_gui_help:
         try:
             if fpath == "index:":
                 html = self.create_index()
+                self.history = []
             else:
                 with open(fpath) as f:
                     html = f.read()
@@ -195,9 +196,12 @@ class zynthian_gui_help:
             self.main_frame.place(x=0, y=0)
 
     def link_cb(self, url):
-        self.zyngui.show_help(fpath=url)
+        self.zyngui.show_help(url)
 
     def select_link(self, idx):
+        if len(self.links) == 1:
+            self.zyngui.show_help(self.links[0][0])
+            return
         if self.links and idx is not None:
             self.link = max(min(idx, len(self.links) - 1), 0)
             text = self.links[self.link][1]
@@ -242,7 +246,7 @@ class zynthian_gui_help:
             if self.link is None:
                 self.select_link(0)
             else:
-                self.zyngui.show_help(fpath=self.links[self.link][0])
+                self.zyngui.show_help(self.links[self.link][0])
             return True
         elif i == 1 and t == 'B':
             self.zyngui.close_screen()
