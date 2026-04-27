@@ -54,20 +54,20 @@
    </p>
    <h2>MIDI Input</h2>
    <p>
-    Chains receive MIDI data from a set of MIDI inputs. These MIDI inputs could be external MIDI devices connected to MIDI DIN-5, USB MIDI, network MIDI or internal sources like the built-in sequencer and they can be configured for each chain separately. Each MIDI input can work in 2 different modes:
+    Chains receive MIDI data from a set of MIDI inputs. These could be external MIDI devices connected to MIDI DIN-5, USB MIDI, network MIDI or internal sources like the built-in sequencer. They can be enabled for each chain separately. Each MIDI input can work in 2 different modes:
     </p>
     <p>
     <h3>Active mode</h3>
-    When a MIDI input is configured in active mode, the active chain (the highlighted or selected chain) receives all MIDI input from it and all MIDI events are translated to the active chain's MIDI channel. This is the default mode for all MIDI inputs. When using active mode you don't need to worry about the MIDI channel your keyboard or controller is using. You change which instruments are played by changing the active chain in your zynthian (see below).
+    When a MIDI input is configured in active mode, the active chain receives all MIDI input from it and all MIDI events are translated to the active chain's MIDI channel. This is the default mode for all MIDI inputs. When using active mode you don't need to worry about the MIDI channel your keyboard or controller is using. You change which instruments are played by changing the active chain in your zynthian (see <a href="topic:mixer">mixer view</a> for details).
     </p>
     <p>
-    Active mode's behavior can be modified by the Active MIDI channel global flag (see <a href="topic:admin menu">admin menu</a> for details):
+    Active mode's behavior can be modified by the Active MIDI channel global flag. This may be enabled in the admin menu and has the following behaviour:
     </p>
     <ul>
     <li>Active MIDI channel Disabled: Only the active chain receives data from the MIDI input in active mode. This is the default setting.</li>
-    <li>Active MIDI channel Enabled: All chains with the same MIDI channel as the active chain receive data from the MIDI input in active mode. This is very useful for layering sounds without any extra routing. You simply create several synth chains with the same MIDI channel and they will play in unison. You can also create keyboard splits by adjusting note range and transpose for each chain.</li>
+    <li>Active MIDI channel Enabled: All chains with the same MIDI channel as the active chain receive data from the MIDI input in active mode. This is very useful for layering sounds without any extra routing. You simply create several synth chains with the same MIDI channel and they will play in unison. You can also create keyboard splits by adjusting note range and transpose for each chain (see <a href="topic:key_range">key range view for details</a>).</li>
     </ul>
     <h3>Multitimbral mode</h3>
-    When a MIDI input is configured in multitimbral mode, only those chains matching the input's MIDI channel will receive data from this MIDI input. No MIDI channel translation is performed. Multitimbral mode allows receiving and managing each MIDI channel individually. Each MIDI input selects the chains it drives using the MIDI channel. If you are using an external sequencer or a MIDI controller that can sequence multiple tracks, you may want to use multitimbral mode.
+    When a MIDI input is configured in multitimbral mode, only those chains matching the input's MIDI channel will receive data from this input. No MIDI channel translation is performed. Multitimbral mode allows receiving and managing each MIDI channel individually. Each MIDI input selects the chains it drives using the MIDI channel. If you are using an external sequencer or a MIDI controller that sends on multiple MIDI channels, you may want to use multitimbral mode.
  </body>
 </html>
