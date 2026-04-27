@@ -370,6 +370,8 @@ class zynthian_gui_help:
             # Ensure brief pause after each header and paragraph
             for tag in self.soup.find_all(["p", "br", "h1", "h2", "h3"]):
                  tag.insert_after(". ")
+            for tag in self.soup.find_all(class_="no_tts"):
+                tag.decompose()
             text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
             for line in text.split(". "):
                 self.zyngui.tts.announce(line, False, False, False)
