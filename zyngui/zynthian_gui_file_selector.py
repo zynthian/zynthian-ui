@@ -49,6 +49,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         "aiff": [["IRs", "Samples", "Audio"], "file_audio.png"],
         "ogg": [["Samples", "Audio", "Capture"], "file_audio.png"],
         "mp3": [["Samples", "Audio"], "file_audio.png"],
+        "mid": [["Midi"], "file_midi.png"],
         "scl": [["Tuning"], "file.png"]
     }
 
@@ -63,7 +64,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         self.preload = False
         self.preload_timer_id = None
         self.preload_timer_ms = 200
-        super().__init__('File', default_icon="folder.png")
+        super().__init__('File', default_icon="folder.png", zsel_hidden=False)
 
     @classmethod
     def get_root_dirnames(cls, fexts):
@@ -209,9 +210,6 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
             if os.path.isfile(path):
                 self.sel_path = path
                 self.cb_func(path)
-
-    def set_selector(self, zs_hidden=False):
-        super().set_selector(zs_hidden)
 
     def set_select_path(self):
         if self.dirpath:
