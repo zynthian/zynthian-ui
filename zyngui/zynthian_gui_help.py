@@ -260,7 +260,7 @@ class zynthian_gui_help:
             self.link = None
             self.link_text.place_forget()
             if self.zyngui.tts:
-                self.zyngui.tts.announce("Closed link selection.")
+                self.zyngui.tts.announce("Link selection closed.")
             return True
 
     def refresh_loading(self):
