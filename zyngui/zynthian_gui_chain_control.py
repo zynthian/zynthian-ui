@@ -101,15 +101,20 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def refresh_chain(self):
         self.chain_canvas.build_graph()
 
-    def build_view(self):
-        super().build_view()
-        if not self.shown:
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+    def reset(self):
         self.set_chain()
         if not self.chain.current_processor:
             self.select_subscreen("chain_options", show_chain=True)
         else:
             self.select_subscreen("control", proc=self.chain.current_processor, show_chain=False)
+            self.subscreen.set_mode_control()
+
+    def build_view(self):
+        super().build_view()
+        if not self.shown:
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        if not self.subscreen.shown:
+            self.subscreen.show()
         return True
 
     def hide(self):
