@@ -32,7 +32,7 @@
    Processors may be positioned within the chain in series or in parallel. The quantity of chains or processors in each chain is only limited by available computing power. Audio signals from chains by default feed a stereo mixer with typical mixer strip controls: fader, balance, mute, solo, phase reverse, etc. Audio processors may be positioned pre-fader or post-fader. (Note that zynthian treats most audio as stereo.)
    </p>
    <p>
-   The audio and MIDI signals are routed between physical inputs, chain inputs, chain outputs, physical outputs and processor sidechain inputs. This provides a lot of flexibility whilst maintaining a simple, chain-based approach to signal routing (see <a href="topic:chain manager">Chain Manager help</a> for details).
+   The audio and MIDI signals are routed between physical inputs, chain inputs, chain outputs, physical outputs and processor sidechain inputs. This provides a lot of flexibility whilst maintaining a simple, chain-based approach to signal routing (see <a href="chain manager.html">Chain Manager help</a> for details).
    </p>
    <img src="../img/Chains_processors.png" class="full"/>
     <h1>Types of processor</h1>
@@ -50,7 +50,7 @@
     Each type of processor is categorised to ease user selection, e.g. Synths have categories: Synth, Sampler, Piano, Organ, Acoustic & Percussion.
     </p>
    </p>
-    Each processor has parameters that may be controlled with zynthian knobs or mapped to MIDI CC messages (see <a href="topic:control view">control view help</a> for details). Processors may have presets that may be arranged in banks (see <a href="preset view">preset vew help</a> for details).
+    Each processor has parameters that may be controlled with zynthian knobs or mapped to MIDI CC messages (see <a href="chain_control-control_mode.html">control view help</a> for details). Processors may have presets that may be arranged in banks (see <a href="preset view.html">preset vew help</a> for details).
    </p>
    <h2>MIDI Input</h2>
    <p>
@@ -58,14 +58,14 @@
     </p>
     <p>
     <h3>Active mode</h3>
-    When a MIDI input is configured in active mode, the active chain receives all MIDI input from it and all MIDI events are translated to the active chain's MIDI channel. This is the default mode for all MIDI inputs. When using active mode you don't need to worry about the MIDI channel your keyboard or controller is using. You change which instruments are played by changing the active chain in your zynthian (see <a href="topic:mixer">mixer view</a> for details).
+    When a MIDI input is configured in active mode, the active chain receives all MIDI input from it and all MIDI events are translated to the active chain's MIDI channel. This is the default mode for all MIDI inputs. When using active mode you don't need to worry about the MIDI channel your keyboard or controller is using. You change which instruments are played by changing the active chain in your zynthian (see <a href="mixer.html">mixer view</a> for details).
     </p>
     <p>
     Active mode's behavior can be modified by the Active MIDI channel global flag. This may be enabled in the admin menu and has the following behaviour:
     </p>
     <ul>
     <li>Active MIDI channel Disabled: Only the active chain receives data from the MIDI input in active mode. This is the default setting.</li>
-    <li>Active MIDI channel Enabled: All chains with the same MIDI channel as the active chain receive data from the MIDI input in active mode. This is very useful for layering sounds without any extra routing. You simply create several synth chains with the same MIDI channel and they will play in unison. You can also create keyboard splits by adjusting note range and transpose for each chain (see <a href="topic:key_range">key range view for details</a>).</li>
+    <li>Active MIDI channel Enabled: All chains with the same MIDI channel as the active chain receive data from the MIDI input in active mode. This is very useful for layering sounds without any extra routing. You simply create several synth chains with the same MIDI channel and they will play in unison. You can also create keyboard splits by adjusting note range and transpose for each chain (see <a href="key_range.html">key range view for details</a>).</li>
     </ul>
     <h3>Multitimbral mode</h3>
     When a MIDI input is configured in multitimbral mode, only those chains matching the input's MIDI channel will receive data from this input. No MIDI channel translation is performed. Multitimbral mode allows receiving and managing each MIDI channel individually. Each MIDI input selects the chains it drives using the MIDI channel. If you are using an external sequencer or a MIDI controller that sends on multiple MIDI channels, you may want to use multitimbral mode.

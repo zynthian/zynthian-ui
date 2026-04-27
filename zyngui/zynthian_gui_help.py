@@ -150,6 +150,7 @@ class zynthian_gui_help:
         try:
             if fpath == "index:":
                 html = self.create_index()
+                self.history = []
             else:
                 with open(fpath) as f:
                     html = f.read()
