@@ -123,7 +123,6 @@ class zynthian_gui_help:
 <html>
  <head>
   <meta charset="utf-8">
-  <title>Index</title>
   <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
  </head>
  <body>
@@ -198,9 +197,27 @@ class zynthian_gui_help:
     def link_cb(self, url):
         self.zyngui.show_help(fpath=url)
 
+    def select_link(self, idx):
+        if self.links and idx is not None:
+            self.link = max(min(idx, len(self.links) - 1), 0)
+            text = self.links[self.link][1]
+            lbl_text = f"Link: {text}"
+        else:
+            self.link = None
+            lbl_text = "No links on page"
+        self.link_text.config(text=lbl_text)
+        self.link_text.place(relx=0.0, rely=1.0, anchor="sw")
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(lbl_text)
+        if self.link is None:
+           self.link_timer = self.main_frame.after(2000, self.link_text.place_forget)
+
     def zynpot_cb(self, i, dval):
         if i == 3:
-            self.main_frame.yview_scroll(dval, "units")
+            if self.link is None:
+                self.main_frame.yview_scroll(dval, "units")
+            else:
+                self.select_link(self.link + dval)
             return True
         elif i == 2:
             if self.zyngui.tts:
@@ -208,22 +225,6 @@ class zynthian_gui_help:
                     self.zyngui.tts._tts.next()
                 else:
                     self.zyngui.tts._tts.prev()
-            return True
-        elif i == 0:
-            if self.links:
-                if self.link is None:
-                    self.link = 0
-                else:
-                    self.link = min(max(0, self.link + dval), len(self.links) - 1)
-                if self.link_timer is not None:
-                    self.main_frame.after_cancel(self.link_timer)
-                text = self.links[self.link][1]
-                lbl_text = f"Link: {text}"
-                self.link_text.config(text=lbl_text)
-                self.link_text.place(relx=0.0, rely=1.0, anchor="sw")
-                self.link_timer = self.main_frame.after(2000, self.link_text.place_forget)
-                if self.zyngui.tts:
-                    self.zyngui.tts.announce(lbl_text)
             return True
 
     def cuia_v5_zynpot_switch(self, params):
@@ -237,27 +238,30 @@ class zynthian_gui_help:
                 elif t == 'B':
                     self.tts_controller_info()
                     return True
-        elif i == 0 and t =='S':
+        elif i == 3 and t == 'S':
             if self.link is None:
-                fpath = "index:"
+                self.select_link(0)
             else:
-                fpath = self.links[self.link][0]
-                if len(fpath.split(":")) == 1:
-                    fpath = f"{self.path}/{fpath}"
-
-            self.zyngui.show_help(fpath=fpath)
+                self.zyngui.show_help(fpath=self.links[self.link][0])
             return True
         elif i == 1 and t == 'B':
             self.zyngui.close_screen()
             return True
 
     def back_action(self):
-        try:
-            self.history.pop()
-            self.zyngui.show_help(self.history.pop())
+        if self.link is None:
+            try:
+                self.history.pop()
+                self.zyngui.show_help(self.history.pop())
+                return True
+            except:
+                pass
+        else:
+            self.link = None
+            self.link_text.place_forget()
+            if self.zyngui.tts:
+                self.zyngui.tts.announce("Link selection closed.")
             return True
-        except:
-            pass
 
     def refresh_loading(self):
         pass
@@ -344,39 +348,43 @@ class zynthian_gui_help:
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        if not self.zyngui.tts:
-            return
         self.zyngui.tts.announce(f"Help page.")
         try:
             # Parse knob info
-            self.tts_knobs = []
-            knob_action_container = self.soup.find("div", class_="knobs_action_container")
-            if knob_action_container:
-                encoder_actions = ["Rotate:", "Press:", "Bold press:"]
-                for knob_idx in range(1, 5):
-                    knob_action_div = self.soup.find("div", class_=f"knob_action_{knob_idx}")
-                    if not knob_action_div:
-                        continue
-                    knob_text = f"Knob {knob_idx}. "
-                    for i, action in enumerate(knob_action_div.find_all("div")):
-                        if i > 2:
-                            break
-                        action_text = action.get_text()
-                        if action_text and action_text != "---":
-                            knob_text += f"{encoder_actions[i]} {action.get_text()}. "
-                    self.tts_knobs.append(knob_text)
-                knob_action_container.decompose()
+            if not self.soup.head.find("div", class_="tts_parsed"):
+                self.tts_knobs = []
+                knob_action_container = self.soup.find("div", class_="knobs_action_container")
+                if knob_action_container:
+                    encoder_actions = ["Rotate:", "Press:", "Bold press:"]
+                    for knob_idx in range(1, 5):
+                        knob_action_div = self.soup.find("div", class_=f"knob_action_{knob_idx}")
+                        if not knob_action_div:
+                            continue
+                        knob_text = f"Knob {knob_idx}. "
+                        for i, action in enumerate(knob_action_div.find_all("div")):
+                            if i > 2:
+                                break
+                            action_text = action.get_text()
+                            if action_text and action_text != "---":
+                                knob_text += f"{encoder_actions[i]} {action.get_text()}. "
+                        self.tts_knobs.append(knob_text)
+                    knob_action_container.decompose()
 
-            # Ensure brief pause after each header and paragraph
-            for tag in self.soup.find_all(["p", "br", "h1", "h2", "h3"]):
-                 tag.insert_after(". ")
-            for tag in self.soup.find_all(class_="no_tts"):
-                tag.decompose()
+                # Ensure brief pause after each header and paragraph
+                for tag in self.soup.find_all(["p", "br", "h1", "h2", "h3", "li"]):
+                    tag.insert_after(". ")
+                for tag in self.soup.find_all(class_="no_tts"):
+                    tag.decompose()
+                for tag in self.soup.find_all("ul"):
+                        tag.insert_before("List. ")
+                        tag.insert_after("End of list. ")
+                parsed_tag = self.soup.new_tag("div", **{"class": "tts_parsed"})
+                self.soup.head.append(parsed_tag)
             text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
             for line in text.split(". "):
                 self.zyngui.tts.announce(line, False, False, False)
-        except:
-            pass
+        except Exception as e:
+            logging.warning(e)
 
     def tts_controller_info(self):
         self.zyngui.tts.announce("Knob actions.")
