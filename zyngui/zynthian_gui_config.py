@@ -575,7 +575,8 @@ if wiring_layout == "TOUCH_ONLY" and not touch_navigation:
 # Configure switch actions for touch only configuration so it works with touch-keypad
 if touch_navigation:
     logging.debug(f"TOUCH NAVIGATION = {touch_navigation}")
-    if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
+    wiring_layout_custom_profile = os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "")
+    if not wiring_layout_custom_profile.lower().startswith("v5"):
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
         # Modify zynswitches wiring configuration to work with V5 keypad
