@@ -95,8 +95,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
                         if os.path.isfile(fpath):
                             self.options[fbase] = fpath
                 except Exception as err:
-                    logging.warning(
-                        "Can't get file list for {}/{}: {}".format(dpath, fpat, err))
+                    logging.warning("Can't get file list for {}/{}: {}".format(dpath, fpat, err))
 
     def fill_list(self):
         i = 0

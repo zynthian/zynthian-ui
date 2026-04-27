@@ -70,6 +70,165 @@ QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step",
 # List of available MIDI channels
 INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
 
+# List of GM instruments
+GM_INSTRUMENTS = {
+    # Piano
+    0: "Acoustic Grand Piano",
+    1: "Bright Acoustic Piano",
+    2: "Electric Grand Piano",
+    3: "Honky-tonk Piano",
+    4: "Electric Piano 1",
+    5: "Electric Piano 2",
+    6: "Harpsichord",
+    7: "Clavinet",
+    # Chromatic Percussion:
+    9: "Celesta",
+    10: "Glockenspiel",
+    11: "Music Box",
+    12: "Vibraphone",
+    13: "Marimba",
+    14: "Xylophone",
+    15: "Tubular Bells",
+    16: "Dulcimer",
+    # Organ:
+    17: "Drawbar Organ",
+    18: "Percussive Organ",
+    19: "Rock Organ",
+    20: "Church Organ",
+    21: "Reed Organ",
+    22: "Accordion",
+    23: "Harmonica",
+    24: "Tango Accordion",
+    # Guitar:
+    25: "Acoustic Guitar (nylon)",
+    26: "Acoustic Guitar (steel)",
+    27: "Electric Guitar (jazz)",
+    28: "Electric Guitar (clean)",
+    29: "Electric Guitar (muted)",
+    30: "Overdriven Guitar",
+    31: "Distortion Guitar",
+    32: "Guitar harmonics",
+    # Bass:
+    33: "Acoustic Bass",
+    34: "Electric Bass (finger)",
+    35: "Electric Bass (pick)",
+    36: "Fretless Bass",
+    37: "Slap Bass 1",
+    38: "Slap Bass 2",
+    39: "Synth Bass 1",
+    40: "Synth Bass 2",
+    # Strings:
+    41: "Violin",
+    42: "Viola",
+    43: "Cello",
+    44: "Contrabass",
+    45: "Tremolo Strings",
+    46: "Pizzicato Strings",
+    47: "Orchestral Harp",
+    48: "Timpani",
+    49: "String Ensemble 1",
+    50: "String Ensemble 2",
+    51: "Synth Strings 1",
+    52: "Synth Strings 2",
+    53: "Choir Aahs",
+    54: "Voice Oohs",
+    55: "Synth Voice",
+    56: "Orchestra Hit",
+    # Brass:
+    57: "Trumpet",
+    58: "Trombone",
+    59: "Tuba",
+    60: "Muted Trumpet",
+    61: "French Horn",
+    62: "Brass Section",
+    63: "Synth Brass 1",
+    64: "Synth Brass 2",
+    # Reed:
+    65: "Soprano Sax",
+    66: "Alto Sax",
+    67: "Tenor Sax",
+    68: "Baritone Sax",
+    69: "Oboe",
+    70: "English Horn",
+    71: "Bassoon",
+    72: "Clarinet",
+    # Pipe:
+    73: "Piccolo",
+    74: "Flute",
+    75: "Recorder",
+    76: "Pan Flute",
+    77: "Blown Bottle",
+    78: "Shakuhachi",
+    79: "Whistle",
+    80: "Ocarina",
+    # Synth Lead:
+    81: "Lead 1 (square)",
+    82: "Lead 2 (sawtooth)",
+    83: "Lead 3 (calliope)",
+    84: "Lead 4 (chiff)",
+    85: "Lead 5 (charang)",
+    86: "Lead 6 (voice)",
+    87: "Lead 7 (fifths)",
+    88: "Lead 8 (bass + lead)",
+    # Synth Pad:
+    89: "Pad 1 (new age)",
+    90: "Pad 2 (warm)",
+    91: "Pad 3 (polysynth)",
+    92: "Pad 4 (choir)",
+    93: "Pad 5 (bowed)",
+    94: "Pad 6 (metallic)",
+    95: "Pad 7 (halo)",
+    96: "Pad 8 (sweep)",
+    # Synth Effects:
+    97: "FX 1 (rain)",
+    98: "FX 2 (soundtrack)",
+    99: "FX 3 (crystal)",
+    100: "FX 4 (atmosphere)",
+    101: "FX 5 (brightness)",
+    102: "FX 6 (goblins)",
+    103: "FX 7 (echoes)",
+    104: "FX 8 (sci-fi)",
+    # Ethnic:
+    105: "Sitar",
+    106: "Banjo",
+    107: "Shamisen",
+    108: "Koto",
+    109: "Kalimba",
+    110: "Bag pipe",
+    111: "Fiddle",
+    112: "Shanai",
+    # Percussive:
+    113: "Tinkle Bell",
+    114: "Agogo",
+    115: "Steel Drums",
+    116: "Woodblock",
+    117: "Taiko Drum",
+    118: "Melodic Tom",
+    119: "Synth Drum",
+    # Sound effects:
+    120: "Reverse Cymbal",
+    121: "Guitar Fret Noise",
+    122: "Breath Noise",
+    123: "Seashore",
+    124: "Bird Tweet",
+    125: "Telephone Ring",
+    126: "Helicopter",
+    127: "Applause",
+    128: "Gunshot"
+}
+
+GM2_DRUMKITS = {
+    0: "Standard Kit",
+    8: "Room Kit",
+    16: "Power Kit",
+    24: "Electronic Kit",
+    25: "TR-808 Kit",
+    32: "Jazz Kit",
+    40: "Brush Kit",
+    48: "Orchestra Kit",
+    56: "Sound FX Kit"
+}
+
 # ------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern Editor Base GUI Class
 # ------------------------------------------------------------------------------
@@ -437,6 +596,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                     options[f"Paste {name} from clipboard#{i+1}"] = ('Paste pattern', i)
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
+        options['Import from SMF'] = 'Import from SMF'
         options['Export to SMF'] = 'Export to SMF'
         options['Clear pattern ALL'] = 'Clear pattern ALL'
         menu_options['EDIT'] = options
@@ -531,6 +691,9 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 self.zyngui.show_screen('option')
             case 'Save pattern':
                 self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
+            case 'Import from SMF':
+                self.zyngui.screens["file_selector"].config(self.analyze_smf, fexts=["mid"])
+                self.zyngui.show_screen("file_selector")
             case 'Export to SMF':
                 self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
             case 'Clear pattern ALL':
@@ -845,6 +1008,142 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.zynseq.libseq.copyPattern(paste[2], dst_pattern)
         if self.shown:
             self.load_pattern(dst_pattern)
+
+    def analyze_smf(self, fpath):
+        # Create SMF object and load file
+        smf = zynsmf.libsmf.addSmf()
+        if not zynsmf.load(smf, fpath):
+            logging.error(f"Failed to load SMF file '{fpath}'")
+            return
+        event_count = zynsmf.libsmf.getEvents(smf, -1)
+        if event_count == 0:
+            logging.warning(f"Empty SMF file '{fpath}'")
+            return
+        logging.debug(f"Loaded SMF file ({event_count} events)")
+
+        # Analyze channels
+        event_index = 0
+        midi_chan_info = [[0, None] for i in range(16)]       # [n_events, program] for each MIDI channel
+        zynsmf.libsmf.setPosition(smf, 0)
+        while zynsmf.libsmf.getEvent(smf, True):
+            event_index += 1
+            evtype = zynsmf.libsmf.getEventType()
+            # MIDI event
+            if evtype == 0x01:
+                evstatus = zynsmf.libsmf.getEventStatus();
+                evcode = (evstatus & 0xf0) >> 4
+                evchan = evstatus & 0x0f
+                #logging.debug(f"\tEvent {event_index} => 0x{evstatus:02X}: 0x{evcode:X}, {evchan}")
+                if evcode == 0x9:
+                    # Count number of note-on events for each MIDI channel
+                    midi_chan_info[evchan][0] += 1
+                elif evcode == 0xC:                                         # Get last program change message for each MIDI channel
+                #elif evcode == 0xC and midi_chan_info[evchan][1] is None:  # Get first program change message for each MIDI channel
+                    midi_chan_info[evchan][1] = zynsmf.libsmf.getEventValue1()
+        logging.info(f"SMF channel info => {midi_chan_info}")
+        options = {}
+        for chan, chan_info in enumerate(midi_chan_info):
+            if chan_info[0] > 0:
+                if chan == 9:
+                    program_name = "Drums & Perc"
+                    if chan_info[1] is not None:
+                        try:
+                            program_name += f" ({GM2_DRUMKITS[chan_info[1]]})"
+                        except:
+                            pass
+                elif chan_info[1] is not None:
+                    program_name = GM_INSTRUMENTS[chan_info[1]]
+                else:
+                    program_name = "???"
+                options[f"CH {chan + 1}: {program_name}"] = f"{fpath}#{chan}"
+        self.zyngui.screens['option'].config("SMF Channels", options, self.import_smf_cb)
+        self.zyngui.show_screen("option", hmode=self.zyngui.SCREEN_HMODE_NONE)
+
+    def import_smf_cb(self, chan_name, fpath):
+        # Parse file path and channel from received parameter
+        try:
+            parts = fpath.split("#")
+            fpath = parts[0]
+            midi_chan = int(parts[1])
+            logging.debug(f"{chan_name} => {fpath}, CH#{midi_chan}")
+        except:
+            logging.error(f"Error while importing SMF => {fpath}")
+            return
+
+        # Create SMF object and load file
+        smf = zynsmf.libsmf.addSmf()
+        if not zynsmf.load(smf, fpath):
+            logging.error(f"Failed to load SMF file '{fpath}'")
+            return
+        event_count = zynsmf.libsmf.getEvents(smf, -1)
+        if event_count == 0:
+            logging.warning(f"Empty SMF file '{fpath}'")
+            return
+
+        # Calculate timing parameters
+        ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
+        ticks_per_step = ticks_per_beat / self.n_steps_beat
+        beats_in_pattern = self.n_steps / self.n_steps_beat    # self.zynseq.bpb
+        ticks_in_pattern = ticks_per_beat * beats_in_pattern
+        #clocks_per_step = 1  # For 24 steps per beat
+        #ticks_per_clock = ticks_per_step / clocks_per_step
+        logging.debug(f"Loaded SMF file ({event_count} events) => {ticks_per_beat} ticks/beat")
+
+        # Clear pattern ensuring we can undo/redo
+        self.save_pattern_snapshot(now=True, force=False)
+        self.zynseq.libseq.clearNotes()
+
+        # Do import
+        start_time = None
+        event_index = 0
+        # Array of [time, velocity] indicating time that note on event received for matching note off and deriving duration
+        note_on_info = [None] * 127
+        zynsmf.libsmf.setPosition(smf, 0)
+        while zynsmf.libsmf.getEvent(smf, True):
+            event_index += 1
+            evtype = zynsmf.libsmf.getEventType()
+            # MIDI event
+            if evtype == 0x01:
+                evstatus = zynsmf.libsmf.getEventStatus();
+                evchan = evstatus & 0x0f
+                # Filter MIDI channel
+                if evchan == midi_chan:
+                    evcode = (evstatus & 0xf0) >> 4
+                    evtime = zynsmf.libsmf.getEventTime()
+                    #logging.debug(f"\tEvent {event_index} => 0x{evcode:X} at {evtime}")
+                    if start_time is not None and evtime > (start_time + ticks_in_pattern):
+                        logging.debug(f"\tReached end of pattern at {evtime - start_time}!")
+                        break
+                    note = zynsmf.libsmf.getEventValue1()
+                    velo = zynsmf.libsmf.getEventValue2()
+                    if evcode == 0x9 and velo:
+                        #logging.debug(f"\tNote-on at {evtime} => {note}, {velo}")
+                        # Calculate start time (first note)
+                        if start_time is None:
+                            start_beat = evtime // ticks_per_beat
+                            start_bar = start_beat // self.bpb
+                            start_time = start_bar * self.bpb * ticks_per_beat
+                            logging.debug(f"\tStart at bar {start_bar} => {start_time} ticks.")
+                        # Register Note-On
+                        note_on_info[note] = [evtime, velo]
+                    elif evcode in (0x8, 0x9):
+                        #logging.debug(f"\tNote-off at {evtime} => {note}, {velo}")
+                        ninfo = note_on_info[note]
+                        if ninfo:
+                            # Add note to pattern
+                            fstep = (ninfo[0] - start_time) / ticks_per_step
+                            step = int(fstep)
+                            duration = (evtime - ninfo[0]) / ticks_per_step
+                            offset = fstep - step
+                            self.zynseq.libseq.addNote(step, note, ninfo[1], duration, offset)
+                            logging.debug(f"\tAdd Note {note}, {ninfo[1]} => {step} + {offset}, {duration}")
+                            note_on_info[note] = None
+        # Save state for undo/redo
+        self.save_pattern_snapshot(now=True, force=True)
+        # Clean SMF object
+        zynsmf.libsmf.removeSmf(smf)
+        # Refresh view
+        self.redraw_pending = 4
 
     # Function to export pattern to SMF
     def export_smf(self, fname):

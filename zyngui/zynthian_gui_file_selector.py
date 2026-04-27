@@ -178,8 +178,8 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.path = path
                 self.sel_path = path
                 self.init_path = path
-                self.cb_func(path)
                 self.zyngui.close_screen()
+                self.cb_func(path)
             else:
                 self.zyngui.close_screen()
 
