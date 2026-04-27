@@ -165,7 +165,7 @@ class zynthian_tts:
             return f"{num} "
 
         text = self.translate_pattern.sub(lambda m : TTS_DICT[m.group(0)], text) # tech dictionary
-        text = re.sub(r"(-?\d+\.\d+)", normalize_number, text)
+        text = re.sub(r"(-?\d+(?:\.\d+)?)", normalize_number, text)
 
         return text
 
