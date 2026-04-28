@@ -6,32 +6,62 @@
  <body>
  <div class="knobs_action_container">
   <div class="knob_action knob_action_1">
-   <div>chain volume<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>chain solo<img src="icons/white_icon_action_short_push.png"></div>
-   <div>---<img src="icons/white_icon_action_bold_push.png"></div>
+   <div class="action rotate">chain volume</div>
+   <div class="action short_press">chain solo</div>
+   <div class="action bold_press">---</div>
   </div>
   <div class="knob_action knob_action_2">
-   <div>chain balance<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>chain mute<img src="icons/white_icon_action_short_push.png"></div>
-   <div>---<img src="icons/white_icon_action_bold_push.png"></div>
+   <div class="action rotate">chain balance</div>
+   <div class="action short_press">chain mute</div>
+   <div class="action bold_press">---</div>
   </div>
   <div class="knob_action knob_action_3">
-   <div>main volume<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>add chain<img src="icons/white_icon_action_short_push.png"></div>
-   <div>---<img src="icons/white_icon_action_bold_push.png"></div>
+   <div class="action rotate">main volume</div>
+   <div class="action short_press">add chain</div>
+   <div class="action bold_press">---</div>
   </div>
   <div class="knob_action knob_action_4">
-   <div>select chain<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>chain control<img src="icons/white_icon_action_short_push.png"></div>
-   <div>chain options<img src="icons/white_icon_action_bold_push.png"></div>
+   <div class="action rotate">select chain</div>
+   <div class="action short_press">chain control</div>
+   <div class="action bold_press">chain options</div>
   </div>
  </div>
 
  <div class="left_container">
   <h1>Mixer View</h1>
-  <div w3-include-html="mixer_intro"></div>
+  <p>The mixer is the zynthian's root view. You can always access the mixer by pushing the MIX button. You can also
+   push BACK until reaching it. From the launcher, you can access the mixer by pushing BACK. Similarly, from the mixer, you can
+   access the launcher by pushing BACK. Mixer and Launcher are, indeed, a single view with 2 modes.</p>
+  <p>It's composed of vertical strips associated with chains. Initially it will be empty, showing the main strip alone.
+   For each chain you create, a new strip is added to the mixer. There can be more mixer strips than can be displayed.
+   They will scroll left / right if you select a strip that is off screen.</p>
+  <p>Each strip is an interactive widget that can be manipulated in several ways and it shows status info about the
+   associated chain.<p>
+  <p>Controllers from top to bottom:</p>
  </div>
- <div w3-include-html="mixer"></div>
+
+ <div class="right_float_container">
+  <img src="img/mixer_strip_legend_bg_black.png" class="full">
+ </div>
+
+ <div class="left_container">
+  <ul>
+   <li><b>Solo:</b> Solo flag. Push to toggle. This is a non-exclusive solo mode. When a chain has solo enabled, all
+    other chains without solo enabled will be muted, allowing auditioning of one or more chains. The <i>main</i> solo
+    will disable all chain solos.</li>
+   <li><b>Mute:</b> Mute flag. Push to toggle. When a chain is muted ("mute" enabled), it will remain silent.</li>
+   <li><b>Fader:</b> Mixing volume for the associated chain. Rotate knob 1 or drag up & down to modify the fader level.
+    On the touchscreen you can drag multiple faders at once. Tap it to set the active chain.</li>
+   <li><b>DPM:</b> Digital Peak Meter for the associated chain, covering the range from -50dBFS to 0dBFS. </li>
+   <li><b>Description:</b> A vertically oriented text describing the chain. By default, for a synth chain it will show
+    synth processor and preset name. If you give a name to the chain, this will be included in the description too.</li>
+   <li><b>Balance/Pan:</b> Mixing right/left balance (or pan of a mono signal) for the associated chain. Rotate knob 2
+    or drag left & right on the fader to modify.</li>
+   <li><b>Legend:</b> It shows an icon for the chain's type and a number for the assigned MIDI channel. Tap it to access
+    the chain's control view.</li>
+  </ul>
+ </div>
+
  <div class="clear"></div>
  </body>
 </html>

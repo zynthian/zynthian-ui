@@ -20,12 +20,14 @@ div.knobs_action_container_left {
 	clear: left;
 	float: left;
 	width: 49%;
+	margin-bottom: 1em;
 }
 
 div.knobs_action_container_right {
 	clear: right;
 	float: right;
 	width: 49%;
+	margin-bottom: 1em;
 }
 
 div.knob_action {
@@ -36,9 +38,11 @@ div.knob_action {
 }
 
 div.knob_action div.knob_title {
+	width: 30%;
 	margin: 0.2em;
 	font-size: 120%;
 	font-weight: bold;
+	border: 1px red;
 }
 
 div.knobs_action_container_left div.knob_action {
@@ -48,6 +52,7 @@ div.knobs_action_container_left div.knob_action {
 
 div.knobs_action_container_left div.knob_action div.knob_title {
 	float: right;
+	text-align: right;
 }
 
 div.knobs_action_container_right div.knob_action {
@@ -55,8 +60,9 @@ div.knobs_action_container_right div.knob_action {
 	text-align: right;
 }
 
-div.knobs_action_container_left div.knob_action div.knob_title {
+div.knobs_action_container_right div.knob_action div.knob_title {
 	float: left;
+	text-align: left;
 }
 
 div.knob_action img {
@@ -85,4 +91,29 @@ div.knob_action_3 {
 }
 div.knob_action_4 {
 	border-right: 10px solid #40D030;
+}
+
+div.knob_action div.action {
+	background-repeat: no-repeat;
+	height: 38px;
+	padding-top: 11px;
+}
+div.knob_action div.rotate {
+	background-image: url("icons/white_icon_action_knob_rotate.png");
+}
+div.knob_action div.short_press {
+	background-image: url("icons/white_icon_action_short_push.png");
+}
+div.knob_action div.bold_press {
+	background-image: url("icons/white_icon_action_bold_push.png");
+}
+div.knob_action_1 div.action,
+div.knob_action_2 div.action {
+	background-position: left;
+	padding-left: 46px;
+}
+div.knob_action_3 div.action,
+div.knob_action_4 div.action {
+	background-position: right;
+	padding-right: 46px;
 }
