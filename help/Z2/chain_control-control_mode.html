@@ -4,85 +4,85 @@
  </head>
 
  <body>
- <div class="knobs_action_container">
-  <div class="knob_action knob_action_1">
-   <div class="knob_title">param 1</div>
-   <div>value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>options<img src="icons/white_icon_action_bold_push.png"></div>
+  <div class="knobs_action_container">
+   <div class="knob_action knob_action_1">
+    <div class="knob_title">param 1</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+   <div class="knob_action knob_action_2">
+    <div class="knob_title">param 2</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+   <div class="knob_action knob_action_3">
+    <div class="knob_title">param 3</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+   <div class="knob_action knob_action_4">
+    <div class="knob_title">param 4</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
   </div>
-  <div class="knob_action knob_action_2">
-   <div class="knob_title">param 2</div>
-   <div>value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>options<img src="icons/white_icon_action_bold_push.png"></div>
+
+  <div class="left_container">
+   <h1>Control Mode</h1>
+   <p>When in control mode you can:</p>
+   <ul>
+    <li>Modify the value of processor parameters by <b>rotating the knobs</b>.</li>
+    <li>MIDI learn parameters by <b>short-pushing the knobs</b></li>
+    <li>Access parameter control options by <b>bold-pushing the knobs</b>.</li>
+   </ul>
+   <p>Processor parameters are grouped in pages of 4. You can move across the list
+   using the UP / DOWN buttons. The list contains the control pages for all processors
+   in the chain. To move faster across the pages, enter <b>select mode</b> with
+   <b>short+SELECT</b> or <b>short+OPT</b>.</p>
+
+   <h2>MIDI Learn</h2>
+   <p>You can bind any parameter to knobs, faders and CC-pads from your MIDI controllers.
+   There are 2 different MIDI learn modes:</p>
+   <p><b>Chain Learn:</b> Binding is relative to the selected chain. You can bind the same knob
+    to one or several parameters in the same or different chains. Only the selected chain
+    will react to the knob rotation.</p>
+   <ul>
+    <li><b>short-push</b> the knob associated to the parameter you want to learn. A little green
+    "??#??" will be displayed.</li>
+    <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
+    little green text now shows then MIDI channel and CC number </li>
+   </ul>
+   <p><b>Global Learn:</b> The bind is global. You can bind the same knob
+    to one or several parameters in the same or different chains. All of them will react, not
+    matter the selected chain.</p>
+   <ul>
+    <li><b>short-push twice</b> the knob associated to the parameter you want to learn. A little yellow
+    "??#??" will be displayed.</li>
+    <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
+    little yellow text now shows then MIDI channel and CC number </li>
+   </ul>
+
+   <h2>Parameter control options</h2>
+   <p><b>Bold-push on any knob</b> to access the controller options for the associated parameter:</p>
+   <ul>
+    <li><b>Chain Controller:</b> When checked, the parameter is added to the chain controller pages,
+    at the beginning of the page list. This feature acts as a kind of "favorite parameters" for the chain.</li>
+    <li><b>X-Y touchpad:</b> When numeric parameters have been selected for X and Y axis, "Show Touchpad"
+    option is available and you can X-Y control both parameters at once using your finger "a la chaos-pad".</li>
+    <li><b>Absolute/Relative Mode:</b> Allows to configure incremental knobs (encoders).</li>
+    <li><b>CC Value Range:</b> Configure how MIDI CC values are mapped to the associated parameter.</li>
+    <li><b>Chain Learn:</b> Start Chain MIDI learn for the parameter.</li>
+    <li><b>Global Learn:</b> Start Global MIDI learn for the parameter.</li>
+    <li><b>Zynstep CC:</b> Choose the CC number used by the sequencer to automate the parameter.</li>
+    <li><b>Unlearn:</b> Unlearn the parameter.</li>
+    <li><b>Unlearn all controls:</b> Unlearn all parameters in the engine.</li>
+   </ul>
   </div>
-  <div class="knob_action knob_action_3">
-   <div class="knob_title">param 3</div>
-   <div>value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>options<img src="icons/white_icon_action_bold_push.png"></div>
-  </div>
-  <div class="knob_action knob_action_4">
-   <div class="knob_title">param 4</div>
-   <div>value<img src="icons/white_icon_action_knob_rotate.png"></div>
-   <div>midi learn<img src="icons/white_icon_action_short_push.png"></div>
-   <div>options<img src="icons/white_icon_action_bold_push.png"></div>
-  </div>
- </div>
 
- <div class="left_container">
-  <h1>Control Mode</h1>
-  <p>When in control mode you can:</p>
-  <ul>
-   <li>Modify the value of processor parameters by <b>rotating the knobs</b>.</li>
-   <li>MIDI learn parameters by <b>short-pushing the knobs</b></li>
-   <li>Access parameter control options by <b>bold-pushing the knobs</b>.</li>
-  </ul>
-  <p>Processor parameters are grouped in pages of 4. You can move across the list
-  using the UP / DOWN buttons. The list contains the control pages for all processors
-  in the chain. To move faster across the pages, enter <b>select mode</b> with
-  <b>short+SELECT</b> or <b>short+OPT</b>.</p>
-
-  <h2>MIDI Learn</h2>
-  <p>You can bind any parameter to knobs, faders and CC-pads from your MIDI controllers.
-  There are 2 different MIDI learn modes:</p>
-  <p><b>Chain Learn:</b> Binding is relative to the selected chain. You can bind the same knob
-   to one or several parameters in the same or different chains. Only the selected chain
-   will react to the knob rotation.</p>
-  <ul>
-   <li><b>short-push</b> the knob associated to the parameter you want to learn. A little green
-   "??#??" will be displayed.</li>
-   <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
-   little green text now shows then MIDI channel and CC number </li>
-  </ul>
-  <p><b>Global Learn:</b> The bind is global. You can bind the same knob
-   to one or several parameters in the same or different chains. All of them will react, not
-   matter the selected chain.</p>
-  <ul>
-   <li><b>short-push twice</b> the knob associated to the parameter you want to learn. A little yellow
-   "??#??" will be displayed.</li>
-   <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
-   little yellow text now shows then MIDI channel and CC number </li>
-  </ul>
-
-  <h2>Parameter control options</h2>
-  <p><b>Bold-push on any knob</b> to access the controller options for the associated parameter:</p>
-  <ul>
-   <li><b>Chain Controller:</b> When checked, the parameter is added to the chain controller pages,
-   at the beginning of the page list. This feature acts as a kind of "favorite parameters" for the chain.</li>
-   <li><b>X-Y touchpad:</b> When numeric parameters have been selected for X and Y axis, "Show Touchpad"
-   option is available and you can X-Y control both parameters at once using your finger "a la chaos-pad".</li>
-   <li><b>Absolute/Relative Mode:</b> Allows to configure incremental knobs (encoders).</li>
-   <li><b>CC Value Range:</b> Configure how MIDI CC values are mapped to the associated parameter.</li>
-   <li><b>Chain Learn:</b> Start Chain MIDI learn for the parameter.</li>
-   <li><b>Global Learn:</b> Start Global MIDI learn for the parameter.</li>
-   <li><b>Zynstep CC:</b> Choose the CC number used by the sequencer to automate the parameter.</li>
-   <li><b>Unlearn:</b> Unlearn the parameter.</li>
-   <li><b>Unlearn all controls:</b> Unlearn all parameters in the engine.</li>
-  </ul>
- </div>
-
- <div class="clear"></div>
+  <div class="clear"></div>
  </body>
 </html>

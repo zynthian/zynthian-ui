@@ -30,6 +30,8 @@ div.knob_action {
 }
 div.knob_action div.knob_title {
 	float: left;
+	width: 40%;
+	text-align: left;
 	margin: 0.2em;
 	font-size: 120%;
 	font-weight: bold;
@@ -53,3 +55,28 @@ div.knob_action_3 {
 div.knob_action_4 {
 	border-right: 10px solid #40D030;
 }
+div.knob_action div.rotate {
+	background-image: url("icons/white_icon_action_knob_rotate.png");
+	background-repeat: no-repeat;
+	background-position: right;
+	height: 32px;
+	padding-top: 6px;
+	padding-right: 41px;
+}
+div.knob_action div.short_press {
+	background-image: url("icons/white_icon_action_short_push.png");
+	background-repeat: no-repeat;
+	background-position: right;
+	height: 32px;
+	padding-top: 6px;
+	padding-right: 41px;
+}
+div.knob_action div.bold_press {
+	background-image: url("icons/white_icon_action_bold_push.png");
+	background-repeat: no-repeat;
+	background-position: right;
+	height: 32px;
+	padding-top: 6px;
+	padding-right: 41px;
+}
+

@@ -366,19 +366,19 @@ class zynthian_gui_help:
                 self.tts_knobs = []
                 knob_action_container = self.soup.find("div", class_="knobs_action_container")
                 if knob_action_container:
-                    encoder_actions = ["Rotate:", "Press:", "Bold press:"]
+                    encoder_actions = ["Rotate: ", "Short press: ", "Bold press: "]
                     for knob_idx in range(1, 5):
                         knob_action_div = self.soup.find("div", class_=f"knob_action_{knob_idx}")
                         if not knob_action_div:
                             continue
-                        knob_text = f"Knob {knob_idx}. "
-                        for i, action in enumerate(knob_action_div.find_all("div")):
-                            if i > 2:
-                                break
+                        self.tts_knobs.append(f"Knob {knob_idx}. ")
+                        knob_title_div = knob_action_div.find("div", class_="knob_title")
+                        if knob_title_div:
+                            self.tts_knobs.append(knob_title_div.get_text() + ". ")
+                        for i, action in enumerate(knob_action_div.find_all("div", class_="action")):
                             action_text = action.get_text()
                             if action_text and action_text != "---":
-                                knob_text += f"{encoder_actions[i]} {action.get_text()}. "
-                        self.tts_knobs.append(knob_text)
+                                self.tts_knobs.append(f"{encoder_actions[i]} {action.get_text()}. ")
                     knob_action_container.decompose()
 
                 # Ensure brief pause after each header and paragraph
@@ -401,4 +401,5 @@ class zynthian_gui_help:
         self.zyngui.tts.announce("Knob actions.")
         for tts in self.tts_knobs:
             self.zyngui.tts.announce(tts, False, False, False)
+
 # -------------------------------------------------------------------------------
