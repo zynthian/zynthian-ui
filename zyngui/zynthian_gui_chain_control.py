@@ -114,6 +114,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
         if not self.subscreen.shown:
+            self.subscreen.build_view()
             self.subscreen.show()
         return True
 
