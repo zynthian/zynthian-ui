@@ -1056,8 +1056,12 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 else:
                     program_name = "???"
                 options[f"CH {chan + 1}: {program_name}"] = f"{fpath}#{chan}"
-        self.zyngui.screens['option'].config("SMF Channels", options, self.import_smf_cb)
-        self.zyngui.show_screen("option", hmode=self.zyngui.SCREEN_HMODE_NONE)
+        if len(options) > 1:
+            self.zyngui.screens['option'].config("SMF Channels", options, self.import_smf_cb)
+            self.zyngui.show_screen("option", hmode=self.zyngui.SCREEN_HMODE_NONE)
+        elif len(options) == 1:
+            opt = list(options.items())[0]
+            self.import_smf_cb(opt[0], opt[1])
 
     def import_smf_cb(self, chan_name, fpath):
         # Parse file path and channel from received parameter
