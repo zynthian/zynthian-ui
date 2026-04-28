@@ -157,6 +157,13 @@ class zynthian_gui_help:
             self.soup = BeautifulSoup(html, "html.parser")
 
             if fpath != "index:":
+                for tag in self.soup.find_all("div", attrs={"w3-include-html": True}):
+                    try:
+                        with open(f"{self.ui_dir}/help/include/{tag['w3-include-html']}") as f:
+                            include_html = f.read()
+                        tag.replace_with(BeautifulSoup(include_html, "html.parser"))
+                    except:
+                        pass
                 with open(f"{self.ui_dir}/help/header.html") as f:
                     header_html = f.read()
                 self.soup.body.insert(0, BeautifulSoup(header_html, "html.parser"))
