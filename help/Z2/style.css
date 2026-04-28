@@ -28,6 +28,12 @@ div.knob_action {
 	text-align: right;
 	background: #404040;
 }
+div.knob_action div.knob_title {
+	float: left;
+	margin: 0.2em;
+	font-size: 120%;
+	font-weight: bold;
+}
 div.knob_action img {
 	height: 37px;
 	margin-left: 4px;

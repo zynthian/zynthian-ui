@@ -35,14 +35,28 @@ div.knob_action {
 	background: #404040;
 }
 
+div.knob_action div.knob_title {
+	margin: 0.2em;
+	font-size: 120%;
+	font-weight: bold;
+}
+
 div.knobs_action_container_left div.knob_action {
 	padding-left: 4px;
 	text-align: left;
 }
 
+div.knobs_action_container_left div.knob_action div.knob_title {
+	float: right;
+}
+
 div.knobs_action_container_right div.knob_action {
 	padding-right: 4px;
 	text-align: right;
+}
+
+div.knobs_action_container_left div.knob_action div.knob_title {
+	float: left;
 }
 
 div.knob_action img {
