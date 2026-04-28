@@ -1078,7 +1078,7 @@ class zynthian_chain_manager:
             self.refresh_mixbus_sends()
             # Set current processor if adding new (proc_id = None)
             # and the MI/MR processor is the only one in the chain
-            if send_signal and not chain.current_processor:
+            if send_signal and chain.current_processor is None:
                 chain.current_processor = processor
         # Set current processor if adding new (proc_id = None)
         elif send_signal:
