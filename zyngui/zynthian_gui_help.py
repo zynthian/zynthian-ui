@@ -126,7 +126,7 @@ class zynthian_gui_help:
   <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
  </head>
  <body>
-  <h1>INDEX</h1>
+  <h1>Index</h1>
    <ul class="index">
 """
 
