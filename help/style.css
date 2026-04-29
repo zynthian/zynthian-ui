@@ -60,6 +60,16 @@ img.full {
 	width: 100%;
 }
 
+.note-block {
+  width: 90%;
+  margin: 20px auto;
+  background-color: #a855f7;
+  padding: 16px 20px;
+  border-left: 4px solid #ffffff;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
 div.clear {
 	clear: both;
 }
