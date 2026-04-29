@@ -1021,6 +1021,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             return
         logging.debug(f"Loaded SMF file ({event_count} events)")
 
+        ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
+        ticks_per_bar = self.bpb * ticks_per_beat
+        start_time = end_time = None
+
         # Analyze channels
         event_index = 0
         midi_chan_info = [[0, None] for i in range(16)]       # [n_events, program] for each MIDI channel
@@ -1033,13 +1037,29 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 evstatus = zynsmf.libsmf.getEventStatus();
                 evcode = (evstatus & 0xf0) >> 4
                 evchan = evstatus & 0x0f
+                evtime = zynsmf.libsmf.getEventTime()
                 #logging.debug(f"\tEvent {event_index} => 0x{evstatus:02X}: 0x{evcode:X}, {evchan}")
                 if evcode == 0x9:
                     # Count number of note-on events for each MIDI channel
                     midi_chan_info[evchan][0] += 1
+                    # Look for first event time
+                    if start_time is None:
+                        start_bar = evtime // ticks_per_bar
+                        start_time = start_bar * self.bpb * ticks_per_beat
+                        logging.debug(f"\tStart at bar {start_bar} => {start_time} ticks.")
                 elif evcode == 0xC:                                         # Get last program change message for each MIDI channel
                 #elif evcode == 0xC and midi_chan_info[evchan][1] is None:  # Get first program change message for each MIDI channel
                     midi_chan_info[evchan][1] = zynsmf.libsmf.getEventValue1()
+                # Get last event time
+                if start_time is not None and evcode in (0x8, 0x9):
+                    end_time = evtime
+
+        # Calculate number of bars
+        dtime = end_time - start_time
+        n_bars = dtime // ticks_per_bar
+        if (dtime % ticks_per_bar) / dtime > 0.1:
+            n_bars += 1
+
         logging.info(f"SMF channel info => {midi_chan_info}")
         options = {}
         for chan, chan_info in enumerate(midi_chan_info):
@@ -1061,15 +1081,15 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.zyngui.show_screen("option", hmode=self.zyngui.SCREEN_HMODE_NONE)
         elif len(options) == 1:
             opt = list(options.items())[0]
-            self.import_smf_cb(opt[0], opt[1])
+            self.import_smf_cb(opt[0], opt[1], n_bars)
 
-    def import_smf_cb(self, chan_name, fpath):
+    def import_smf_cb(self, chan_name, fpath, n_bars=None):
         # Parse file path and channel from received parameter
         try:
             parts = fpath.split("#")
             fpath = parts[0]
             midi_chan = int(parts[1])
-            logging.debug(f"{chan_name} => {fpath}, CH#{midi_chan}")
+            logging.debug(f"{chan_name} => {fpath}, CH#{midi_chan} ({n_bars} bars)")
         except:
             logging.error(f"Error while importing SMF => {fpath}")
             return
@@ -1084,18 +1104,24 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             logging.warning(f"Empty SMF file '{fpath}'")
             return
 
+        # Change pattern length if needed
+        if n_bars and n_bars != self.zynseq.libseq.getBeatsInPattern(self.pattern) / self.bpb:
+            self.set_beats_in_pattern(n_bars * self.bpb)
+        else:
+            # If length not changed, ensure we can undo/redo
+            self.save_pattern_snapshot(now=True, force=False)
+        # TODO => Make undo/redo to work across changes of pattern length
+
+        # Clear pattern
+        self.zynseq.libseq.clearNotes()
+
         # Calculate timing parameters
         ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
+        ticks_per_bar = self.bpb * ticks_per_beat
         ticks_per_step = ticks_per_beat / self.n_steps_beat
         beats_in_pattern = self.n_steps / self.n_steps_beat    # self.zynseq.bpb
         ticks_in_pattern = ticks_per_beat * beats_in_pattern
-        #clocks_per_step = 1  # For 24 steps per beat
-        #ticks_per_clock = ticks_per_step / clocks_per_step
         logging.debug(f"Loaded SMF file ({event_count} events) => {ticks_per_beat} ticks/beat")
-
-        # Clear pattern ensuring we can undo/redo
-        self.save_pattern_snapshot(now=True, force=False)
-        self.zynseq.libseq.clearNotes()
 
         # Do import
         start_time = None
@@ -1124,8 +1150,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                         #logging.debug(f"\tNote-on at {evtime} => {note}, {velo}")
                         # Calculate start time (first note)
                         if start_time is None:
-                            start_beat = evtime // ticks_per_beat
-                            start_bar = start_beat // self.bpb
+                            start_bar = evtime // ticks_per_bar
                             start_time = start_bar * self.bpb * ticks_per_beat
                             logging.debug(f"\tStart at bar {start_bar} => {start_time} ticks.")
                         # Register Note-On
@@ -1142,6 +1167,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                             self.zynseq.libseq.addNote(step, note, ninfo[1], duration, offset)
                             logging.debug(f"\tAdd Note {note}, {ninfo[1]} => {step} + {offset}, {duration}")
                             note_on_info[note] = None
+        # TODO Off pending notes?
         # Save state for undo/redo
         self.save_pattern_snapshot(now=True, force=True)
         # Clean SMF object
