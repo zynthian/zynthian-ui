@@ -68,6 +68,58 @@
     <li>Active MIDI channel Enabled: All chains with the same MIDI channel as the active chain receive data from the MIDI input in active mode. This is very useful for layering sounds without any extra routing. You simply create several synth chains with the same MIDI channel and they will play in unison. You can also create keyboard splits by adjusting note range and transpose for each chain (see <a href="key_range.html">key range view for details</a>).</li>
     </ul>
     <h3>Multitimbral mode</h3>
+    <p>
     When a MIDI input is configured in multitimbral mode, only those chains matching the input's MIDI channel will receive data from this input. No MIDI channel translation is performed. Multitimbral mode allows receiving and managing each MIDI channel individually. Each MIDI input selects the chains it drives using the MIDI channel. If you are using an external sequencer or a MIDI controller that sends on multiple MIDI channels, you may want to use multitimbral mode.
+    </p>
+   <img src="../img/Active_multi_mode.png" class="full"/>
+   <h2>Signal workflow</h2>
+   <p>
+    As introduced above, Zynthian's signal workflow is based around chains of audio & MIDI processors that feed an audio summing mixer and MIDI outputs. This diagram gives an overview of signal paths which may help in understanding the flow of audio and MIDI signals.
+  </p>
+   <img src="../img/Zynthian_Signal_Flow.png" class="full"/>
+
+  <div class="left_container">
+    <h2>Snapshots</h2>
+    <p>A snapshot is the captured state of zynthian at the time of saving the snapshot. Snapshots are saved in a JSON file with .zss extension and can be loaded at any time, which effectively restores the state of the zynthian device when the snapshot was saved. Snapshots include:
+    <ul>
+    <li>Chains layout: configuration of each chain including its processors and how they are arranged and connected</li>
+    <li>Audio levels: (optional) physical audio interface settings</li>
+    <li>Sequencer: patterns & sequences</li>
+    <li>MIDI settings: global MIDI settings, USB MIDI port names, etc.</li>
+    <li>Multitrack record settings: mixer strips armed for multitrack recording</li>
+    <li>UI state: some user interface configuration relevant to the snapshot (most UI is configured globally)</li>
+    <li>Sub-snapshots: most other configuration (see ZS3 below)</li>
+    </ul>
+    Each time you overwrite an existing snapshot file, a backup copy is created. Backups can also be restored at any time, which can avoid much suffering. When you feel the panic, remember that zynthian stores the full save history for all snapshots!
+    </p>
+  </div>
+  <div class="right_float_container">
+    <img src="../img/600px-Snapshot_structure.png" class="full">
+  </div>
+  <div class="note-block">
+    Note: Many zynthian users like to consider a snapshot as a zynthian project. This is not a a bad approach.
+  </div>
+
+  <h2>Sub-snapshots: ZS3</h2>
+  <p>ZS3 means Zynthian Sub-SnapShot. A ZS3 is a partial state that is stored in memory and can be recalled very fast. Each ZS3 can easily be associated (or learned) to MIDI Programs, i.e. program change events. Of course, every ZS3 is saved and restored within its snapshot. When a snapshot is first loaded, it uses the default sub-snapshot called, ZS3-0.</p>
+
+  <p>See <a href="zs3 view.html">ZS3 view help</a> for how to save and restore a ZS3 with a MIDI Program Change message.</p>
+
+  <p>Each ZS3 includes:
+  <ul>
+  <li>Chains configuration: for each chain; MIDI channel, note-range, transpose, etc.</li>
+  <li>Processors state: for each processor; bank, preset & parameter values.</li>
+  <li>Mixer settings: for each mixer strip; fader, balance, mute, solo, etc.</li>
+  <li>MIDI devices configuration: active / multitimbral mode, etc.</li>
+  <li>MIDI & Audio routing: connections between chains.</li>
+  <li>MIDI learning: MIDI bindings to processor parameters.</li>
+  <li>Global settings: some settings that can be changed by ZS3, e.g. MIDI transpose. (Most global settings are not changed by ZS3.)</li>
+  <li>Active chain: the chain that was active when the ZS3 was saved.</li>
+  </ul>
+  The key concept to understand for ZS3 is that the chains layout is not stored in a ZS3, i.e. the chains layout is not modified when restoring a ZS3. You can't add/remove chains or processors by restoring a ZS3 because this is a slow operation and a ZS3 needs to be restored very fast. When loading a full snapshot, all the chains and processors are created. Later, when recalling a ZS3 within that snapshot, the chains layout will remain the same. Although a ZS3 can modify routing, splits, banks, presets, etc., the quantity of chains and processors will be unchanged.</p>
+  <div class="note-block">
+  Note: For instance, if you are keyboardist that plays with several bands, you could have a snapshot for each band with a ZS3 for each song.
+  </div>
+
  </body>
 </html>
