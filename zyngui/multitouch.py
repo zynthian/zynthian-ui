@@ -234,7 +234,7 @@ class MultiTouch(object):
                 idev = InputDevice(device)
                 idev_caps = idev.capabilities()
                 # Look for the first device supporting multi-touch
-                if idev_caps[ecodes.EV_ABS][ecodes.ABS_Z][0] == ecodes.ABS_MT_SLOT:
+                if ecodes.EV_ABS in idev_caps and ecodes.ABS_MT_SLOT in idev_caps[ecodes.EV_ABS]:
                     self.max_x = idev_caps[ecodes.EV_ABS][ecodes.ABS_X][1].max
                     self.max_y = idev_caps[ecodes.EV_ABS][ecodes.ABS_Y][1].max
                     self._f_device = open(device, 'rb', self.EVENT_SIZE)
@@ -242,9 +242,7 @@ class MultiTouch(object):
                         if idev.name in libinput and "slave  pointer" in libinput:
                             device_id = libinput.split("id=")[1].split()[0]
                             self.xinput("disable", device_id)
-                            break
                     self.device_name = idev.name
-                    break
             except:
                 pass
         self.detect = False
@@ -270,8 +268,7 @@ class MultiTouch(object):
                         self._process_evdev_events()
             except OSError:
                 # Touchscreen driver may have been unloaded so stop thread and enable detection of multitouch (on next xinput touch event)
-                logging.info(f"Multitouch device {self.device_name} disconnected")
-                break
+                logging.warning("Táctil perdido... Reintentando en 2s"); import time; time.sleep(2); self.open_device()
             except Exception as e:
                 logging.warning(e)
         self.detect = True
