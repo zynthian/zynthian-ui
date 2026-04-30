@@ -530,6 +530,11 @@ class zynthian_gui_selector(zynthian_gui_base):
                 self.zyngui.zynswitch_defered('L', 2)
             """
 
+    def get_help_fpath(self):
+        if self.param_editor_zctrl:
+            return "parameter_editor.html"
+        return "selector.html"
+
     # --------------------------------------------------------------------------
     # Narrator TTS
     # --------------------------------------------------------------------------
