@@ -53,6 +53,8 @@ OFF_ARP_OCTAVE = 37
 # Message constants
 MANUFACTURER_ID = 0x47
 PRODUCT_ID = 0x24
+ALT_PRODUCT_ID = 0x49  # Alternate product ID used by some MPK249 firmware/reports
+KNOWN_PRODUCT_IDS = [PRODUCT_ID, ALT_PRODUCT_ID]
 DATA_MSG_LEN = 407
 MSG_PAYLOAD_LEN = 400
 MSG_DIRECTION_OUT = 0x7f
@@ -150,11 +152,12 @@ FN_SELECT = 0x06
 #  SysEx command for querying a device program/settings
 # --------------------------------------------------------------------------
 class SysExQueryProgram:
-    def __init__(self, program=0):
+    def __init__(self, program=0, product_id=PRODUCT_ID):
         assert 0 <= program <= 8, "Invalid program number, only 0 (RAM) to 8 available."
+        assert product_id in KNOWN_PRODUCT_IDS, f"Invalid MPK249 product ID: {product_id:#02x}"
 
         self.data = [
-            MANUFACTURER_ID, MSG_DIRECTION_OUT, PRODUCT_ID, CMD_QUERY_DATA,
+            MANUFACTURER_ID, MSG_DIRECTION_OUT, product_id, CMD_QUERY_DATA,
             0, 1, program,
         ]
 
@@ -464,13 +467,18 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynmixer):
             self._current_handler.cc_change(ccnum, ccval)
 
         elif ev[0] == CONST.MIDI_SYSEX:
-            logging.info(f"MPK249 SYSEX received: len={len(ev)}, first_byte={ev[1] if len(ev) > 1 else 'N/A'}")
-            # Check for valid MPK249 SysEx response header
-            if (len(ev) > 10 and ev[1] == MANUFACTURER_ID and ev[2] == MSG_DIRECTION_IN and 
-                ev[3] == PRODUCT_ID and ev[4] == CMD_INCOMING_DATA and self._saved_mpk_program is None):
+            header = ev[:8].hex(' ')
+            logging.info(f"MPK249 SYSEX received: len={len(ev)}, header={header}")
+
+            if (len(ev) > 10 and ev[1] == MANUFACTURER_ID and ev[2] == MSG_DIRECTION_IN and
+                    ev[4] == CMD_INCOMING_DATA and self._saved_mpk_program is None):
+                if ev[3] in KNOWN_PRODUCT_IDS:
+                    logging.info(f"MPK249: Accepted SysEx response for product_id={ev[3]:#02x}")
+                else:
+                    logging.warning(f"MPK249: Accepted SysEx response with unexpected product_id={ev[3]:#02x}")
+
                 self._saved_mpk_program = ev[1:-1]
                 logging.info("MPK249: Received SysEx program, activating handler")
-                # Now, we can change the device program
                 self._current_handler.set_active(True)
                 return
 
@@ -498,9 +506,11 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynmixer):
             handler.on_screen_change(screen)
 
     def _save_mpk_program(self):
-        cmd = SysExQueryProgram(program=0)
-        query = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self.idev_out, query, len(query))
+        for product_id in KNOWN_PRODUCT_IDS:
+            cmd = SysExQueryProgram(program=0, product_id=product_id)
+            query = bytes.fromhex("F0 {} F7".format(cmd))
+            logging.debug(f"MPK249: Sending SysEx query with product_id={product_id:#02x}")
+            lib_zyncore.dev_send_midi_event(self.idev_out, query, len(query))
 
     def _restore_mpk_program(self):
         if self._saved_mpk_program is None:
@@ -556,6 +566,7 @@ class MixerHandler(ModeHandlerBase):
         self._idev_out = idev_out
         self._saved_state = saved_state
         self._chains_bank = 0
+        self._knobs_ease = KnobSpeedControl(steps_normal=5)
 
     def set_active(self, active):
         logging.info(f"MPK249 MixerHandler.set_active({active})")
@@ -683,14 +694,14 @@ class MixerHandler(ModeHandlerBase):
                 "cc": [22, 23, 24, 25, 26, 27, 28, 29],
                 "min": [0] * 8,
                 "max": [127] * 8,
-                "name": [f"Pan {i+1}" for i in range(8)]
+                "name": [f"Pan {i+1}" if i < 7 else "Master Pan" for i in range(8)]
             },
             faders={
                 "mode": [FADER_MODE_ABS] * 8,
                 "cc": [12, 13, 14, 15, 16, 17, 18, 19],
                 "min": [0] * 8,
                 "max": [127] * 8,
-                "name": [f"Vol {i+1}" for i in range(8)]
+                "name": [f"Vol {i+1}" if i < 7 else "Master Vol" for i in range(8)]
             }
         )
         msg = bytes.fromhex("F0 {} F7".format(cmd))
@@ -704,7 +715,52 @@ class MixerHandler(ModeHandlerBase):
     def _update_pan(self, ccnum, ccval):
         # Debug logging
         logging.info(f"MPK249 PAN: ccnum={ccnum}, ccval={ccval}")
-        return self._update_chain("balance", ccnum, ccval, -100, 100)
+        
+        # Map CC to knob index: CC22-29 -> knobs 0-7
+        if 22 <= ccnum <= 29:
+            knob_idx = ccnum - 22
+        else:
+            return False
+        
+        delta = self._knobs_ease.feed(ccnum, ccval)
+        if delta is None:
+            return False
+
+        # Knob 7 (CC29) is master pan and uses relative encoder updates
+        if knob_idx == 7:
+            logging.info(f"MPK249 PAN: updating master pan")
+            master_chain = self._chain_manager.get_chain_by_index(-1)
+            if master_chain is None or master_chain.zynmixer_proc is None:
+                logging.info("MPK249 PAN: no master chain available")
+                return False
+            mixer_chan = master_chain.zynmixer_proc.mixer_chan
+            value = self._state_manager.zynmixer_chan.get_balance(mixer_chan)
+            value *= 100
+            value += delta
+            value = max(-100, min(value, 100))
+            value /= 100
+            logging.info(f"MPK249 PAN: setting master mixer_chan {mixer_chan} to {value}")
+            self._state_manager.zynmixer_chan.set_balance(mixer_chan, value)
+            return True
+
+        # Knobs 0-6 control chain pans using relative encoder updates
+        index = ccnum - self.CC_KNOBS_START + self._chains_bank * 8
+        chain = self._chain_manager.get_chain_by_index(index)
+        if chain is None or chain.chain_id == 0:
+            logging.info(f"MPK249 PAN: no chain at index {index}")
+            return False
+        if chain.zynmixer_proc is None:
+            logging.info(f"MPK249 PAN: chain {index} has no zynmixer_proc")
+            return False
+        mixer_chan = chain.zynmixer_proc.mixer_chan
+        value = self._state_manager.zynmixer_chan.get_balance(mixer_chan)
+        value *= 100
+        value += delta
+        value = max(-100, min(value, 100))
+        value /= 100
+        logging.info(f"MPK249 PAN: setting chain {chain.chain_id} mixer_chan {mixer_chan} to {value}")
+        self._state_manager.zynmixer_chan.set_balance(mixer_chan, value)
+        return True
 
     def _update_mute(self, ccnum, ccval):
         return self._update_chain("mute", ccnum, ccval)
@@ -721,6 +777,21 @@ class MixerHandler(ModeHandlerBase):
             fader_idx = ccnum - 12
         else:
             return False
+        
+        value = ccval / 127.0  # Absolute value (0-1)
+        
+        # Fader 7 (CC19) is master volume
+        if fader_idx == 7:
+            logging.info(f"MPK249 FADER: setting master volume to {value}")
+            master_chain = self._chain_manager.get_chain_by_index(-1)
+            if master_chain is None or master_chain.zynmixer_proc is None:
+                logging.info("MPK249 FADER: no master chain available")
+                return False
+            mixer_chan = master_chain.zynmixer_proc.mixer_chan
+            self._state_manager.zynmixer_chan.set_level(mixer_chan, value)
+            return True
+        
+        # Faders 0-6 control chain volumes
         index = fader_idx
         chain = self._chain_manager.get_chain_by_index(index)
         if chain is None or chain.chain_id == 0:
@@ -730,9 +801,8 @@ class MixerHandler(ModeHandlerBase):
             logging.info(f"MPK249 FADER: chain {index} has no zynmixer_proc")
             return False
         mixer_chan = chain.zynmixer_proc.mixer_chan
-        value = ccval / 127.0 * 100  # Absolute value
         logging.info(f"MPK249 FADER: setting chain {chain.chain_id} mixer_chan {mixer_chan} to {value}")
-        self._zynmixer.set_level(mixer_chan, value)
+        self._state_manager.zynmixer_chan.set_level(mixer_chan, value)
         return True
 
     def _update_chain(self, type, ccnum, ccval, minv=None, maxv=None):
@@ -751,11 +821,11 @@ class MixerHandler(ModeHandlerBase):
         logging.info(f"MPK249 UPDATE_CHAIN: chain_id={chain.chain_id}, mixer_chan={mixer_chan}")
 
         if type == "balance":
-            value = self._zynmixer.get_balance(mixer_chan)
-            set_value = self._zynmixer.set_balance
+            value = self._state_manager.zynmixer_chan.get_balance(mixer_chan)
+            set_value = self._state_manager.zynmixer_chan.set_balance
         elif type == "mute":
             value = ccval < 64
-            def set_value(c, v): return self._zynmixer.set_mute(c, v, True)
+            def set_value(c, v): return self._state_manager.zynmixer_chan.set_mute(c, v, True)
         elif type == "solo":
             value = ccval < 64
             def set_value(c, v): return chain.set_solo(v)
