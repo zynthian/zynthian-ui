@@ -29,42 +29,42 @@
   </div>
  </div>
 
- <div class="full_container">
-  <h1>Control Mode</h1>
-  <p>When in control mode you can:</p>
+  <div class="full_container">
+   <h1>Control View: Control Mode</h1>
+   <p>The control view provides access to the parameters of a processor. When in control mode you can:</p>
   <ul>
    <li>Modify the value of processor parameters by <b>rotating the knobs</b>.</li>
-   <li>Enter MIDI learn mode by <b>short-pushing knob#3</b>.</li>
+   <li>Enter MIDI learn mode by <b>short pressing knob 3</b>.</li>
   </ul>
-  <p>Processor parameters are grouped in pages of 4. You can move across the list
+  <p>Processor parameters are grouped in pages with up to 4 parameters per page. Select pages
   using the S3 / S4 buttons. The list contains the control pages for all processors
-  in the chain. To move across the pages, enter <b>select mode</b> with <b>short+SELECT</b>
-  or <b>short+OPT</b>.</p>
+  in the chain. To move faster across the pages, enter <a href="chain_control-select_mode.html">select mode</a> with <b>short press SELECT</b>
+  or <b>short press OPT</b>.</p>
 
   <h2>MIDI Learn</h2>
-  <p>You can bind any parameter to knobs, faders and CC-pads from your MIDI controllers.
+  <p>You can bind any parameter to knobs, faders and CC-pads on your external MIDI controllers.
   There are 2 different MIDI learn modes:</p>
   <ul>
-   <li><b>Chain Learn (short+knob#3):</b> Binding is relative to the selected chain. You can
+   <li><b>Chain Learn:</b> Binding is only to the selected chain. You can
    bind the same knob to one or several parameters in the same or different chains. Only the
-   selected chain will react to the knob rotation. Displayed in green</li>
-   <li><b>Global Learn (short+knob#3 twice):</b> The bind is global. You can bind the same knob
-   to one or several parameters in the same or different chains. All of them will react, not
-   matter the selected chain. Displayed in yellow.</li>
+   selected chain will react to the MIDI CC message.</li>
+   <li><b>Global Learn:</b> The bind is global. You can bind the same knob
+   to one or several parameters in the same or different chains. All of them will react, no
+   matter the selected chain.</li>
   </ul>
   The MIDI learn procedure is:
   <ul>
-   <li><b>short+knob#3</b> once to enter chain MIDI learn or twice to enter global MIDI learn.</li>
-   <li><b>rotate knob</b> associated to the parameter you want to learn. "??#??" will be displayed in
-   green or yellow depending of the MIDI learn mode.</li>
-   <li><b>move a knob/fader</b> or <b>push a CC-pad</b> in your MIDI controller. The binding is complete and the
-   little green/yellow text now shows then MIDI channel and CC number </li>
+   <li><b>short press knob 3</b>. A <span style="color: green">##?##</span> indication is displayed on all parameters indicating chain learning mode. If required, press again to enter global MIDI learn. The indication will change to yellow: <span style="color: yellow">??#??</span>.</li>
+   <li><b>rotate the knob</b> associated with the parameter you want to learn. The "??#??" indication will be displayed in
+   be displayed only on that parameter, indicating it is listening for MIDI learn.</li>
+   <li><b>move a knob/fader</b> or <b>tap a CC-pad</b> on your external MIDI controller. The binding is complete and the
+    indication now shows then MIDI channel and CC number in white.</li>
   </ul>
-  <p>While in MIDI learn mode, you can access the <b>parameter control options</b> by <b>bold-pushing the knobs</b>.</p>
-  <p>You can cancel MIDI learn at any moment by <b>pushing back</b>.</p>
+  <p>While in MIDI learn mode, you can access the <b>parameter control options</b> by <b>bold presing the knobs</b>.</p>
+  <p>You can cancel MIDI learn at any moment by <b>pressing back</b>.</p>
 
   <h2>Parameter control options</h2>
-  <p>While in MIDI learn mode, <b>bold-push any knob</b> to access the controller options for the associated parameter:</p>
+  <p>While in MIDI learn mode, <b>bold press any knob</b> to access the controller options for the associated parameter:</p>
   <ul>
    <li><b>Chain Controller:</b> When checked, the parameter is added to the chain controller pages,
    at the beginning of the page list. This feature acts as a kind of "favorite parameters" for the chain.</li>
