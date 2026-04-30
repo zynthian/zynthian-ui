@@ -37,7 +37,7 @@ from zyngui import zynthian_gui_config
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_help:
+class zynthian_gui_help(HtmlFrame):
 
     ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
 
@@ -63,31 +63,31 @@ class zynthian_gui_help:
         self.history = []
 
         # Main Frame
-        self.main_frame = HtmlFrame(zynthian_gui_config.top,
+        super().__init__(zynthian_gui_config.top,
                                     width=zynthian_gui_config.display_width,
                                     height=zynthian_gui_config.display_height,
                                     vertical_scrollbar=False,
                                     messages_enabled=False)
-        self.main_frame.grid_propagate(False)
-        self.link_text = tkinter.Label(self.main_frame,
+        self.grid_propagate(False)
+        self.link_text = tkinter.Label(self,
                                     font=zynthian_gui_config.font_topbar,
                                     bg=zynthian_gui_config.color_ctrl_bg_off,
                                     fg=zynthian_gui_config.color_ctrl_tx_off)
-        self.loading_overlay = tkinter.Label(self.main_frame,
+        self.loading_overlay = tkinter.Label(self,
                                     font=zynthian_gui_config.font_topbar,
                                     bg=zynthian_gui_config.color_panel_bd,
                                     fg=zynthian_gui_config.color_ctrl_tx_off
                                     )
         # Patch HtmlFrame widget
-        self.main_frame.event_generate = self.main_frame.html.event_generate
+        self.event_generate = self.html.event_generate
         # Bind events
-        self.main_frame.on_done_loading(self.done_loading)
-        self.main_frame.on_link_click(self.link_cb)
-        self.main_frame.bind("<Button-1>", self.cb_touch_push)
-        self.main_frame.bind("<ButtonRelease-1>", self.cb_touch_release, add="+")
-        self.main_frame.bind("<Button-4>", self.cb_scroll_wheel)
-        self.main_frame.bind("<Button-5>", self.cb_scroll_wheel)
-        self.main_frame.bind("<B1-Motion>", self.cb_touch_motion)
+        self.on_done_loading(self.done_loading)
+        self.on_link_click(self.link_cb)
+        self.bind("<Button-1>", self.cb_touch_push)
+        self.bind("<ButtonRelease-1>", self.cb_touch_release, add="+")
+        self.bind("<Button-4>", self.cb_scroll_wheel)
+        self.bind("<Button-5>", self.cb_scroll_wheel)
+        self.bind("<B1-Motion>", self.cb_touch_motion)
 
     def done_loading(self):
         self.loading_overlay.place_forget()
@@ -180,7 +180,7 @@ class zynthian_gui_help:
 
             self.path = os.path.dirname(fpath)
             self.loading_overlay.place(relwidth=1, relheight=1) # Avoid showing until fully rendered
-            self.main_frame.load_html(html, base_url=f"file://{self.path}/")
+            self.load_html(html, base_url=f"file://{self.path}/")
             self.history.append(fpath)
             return True
         except Exception as e:
@@ -193,14 +193,15 @@ class zynthian_gui_help:
     def hide(self):
         if self.shown:
             self.shown = False
-            self.main_frame.place_forget()
+            self.place_forget()
             self.history = []
 
     def show(self):
         if not self.shown:
             self.shown = True
-            self.main_frame.grid_propagate(False)
-            self.main_frame.place(x=0, y=0)
+            self.grid_propagate(False)
+            self.place(x=0, y=0)
+            self.tkraise()
 
     def link_cb(self, url):
         self.zyngui.show_help(url)
@@ -221,12 +222,12 @@ class zynthian_gui_help:
         if self.zyngui.tts:
             self.zyngui.tts.announce(lbl_text)
         if self.link is None:
-           self.link_timer = self.main_frame.after(2000, self.link_text.place_forget)
+           self.link_timer = self.after(2000, self.link_text.place_forget)
 
     def zynpot_cb(self, i, dval):
         if i == 3:
             if self.link is None:
-                self.main_frame.yview_scroll(dval, "units")
+                self.yview_scroll(dval, "units")
             else:
                 self.select_link(self.link + dval)
             return True
@@ -281,10 +282,10 @@ class zynthian_gui_help:
         pass
 
     def arrow_up(self):
-        self.main_frame.yview_scroll(-4, "units")
+        self.yview_scroll(-4, "units")
 
     def arrow_down(self):
-        self.main_frame.yview_scroll(4, "units")
+        self.yview_scroll(4, "units")
 
     def arrow_left(self):
         if self.zyngui.tts:
@@ -315,7 +316,7 @@ class zynthian_gui_help:
         offset_y = int(dy / self.touch_motion_step)
         if offset_y:
             self.touch_swiping = True
-            self.main_frame.yview_scroll(offset_y, "units")
+            self.yview_scroll(offset_y, "units")
             self.touch_swipe_dir = abs(dy) // dy
             self.touch_y0 = event.y + self.touch_swipe_dir * (abs(dy) % self.touch_motion_step)
             # Use time delta between last motion and release to determine speed of swipe
@@ -338,7 +339,7 @@ class zynthian_gui_help:
 
     def cb_scroll_wheel(self, event):
         dval = 1 if event.num else -1
-        self.main_frame.yview_scroll(dval, "units")
+        self.yview_scroll(dval, "units")
 
     def touch_swipe_nudge(self, dts):
         self.touch_swipe_speed = int(len(self.touch_swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.touch_swipe_roll_scale))
@@ -349,7 +350,7 @@ class zynthian_gui_help:
     def swipe_update(self):
         if self.touch_swipe_speed > 0:
             self.touch_swipe_speed -= 1
-            self.main_frame.yview_scroll(self.touch_swipe_dir * self.touch_swipe_roll_scale[self.touch_swipe_speed], "units")
+            self.yview_scroll(self.touch_swipe_dir * self.touch_swipe_roll_scale[self.touch_swipe_speed], "units")
 
     def plot_zctrls(self):
         self.swipe_update()
