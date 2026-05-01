@@ -946,6 +946,12 @@ class zynthian_gui_control(zynthian_gui_selector):
         else:
             self.select_path.set(self.chain_manager.get_active_chain().get_title())
 
+    def get_help_fpath(self):
+        try:
+            return self.zyngui.get_current_processor().name.lower() + ".html"
+        except:
+            return super().get_help_fpath()
+
     # --------------------------------------------------------------------------
     # Narrator TTS
     # --------------------------------------------------------------------------

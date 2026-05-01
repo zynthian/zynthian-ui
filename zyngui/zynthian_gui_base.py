@@ -626,7 +626,7 @@ class zynthian_gui_base(tkinter.Frame):
 
         self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
         if self.zyngui.tts:
-            self.zyngui.tts.announce("Enabled parameter editor")
+            self.zyngui.tts.announce("Enabled param editor")
         self.update_param_editor(True)
         self.update_layout()
 
@@ -643,21 +643,23 @@ class zynthian_gui_base(tkinter.Frame):
         except:
             pass
         if self.zyngui.tts:
-            self.zyngui.tts.announce("Disabled parameter editor")
+            self.zyngui.tts.announce("Disabled param editor")
 
     # Function to display label in parameter editor
     def update_param_editor(self, first_show=False):
         if self.param_editor_zctrl:
             if self.param_editor_zctrl.labels:
-                text = f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}"
+                value = self.param_editor_zctrl.get_value2label()
+                text = f"{self.param_editor_zctrl.name}: {value}"
             else:
-                text = self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value)
+                value = self.param_editor_zctrl.value
+                text = self.format_print.format(self.param_editor_zctrl.name, value)
             self.select_path.set(text)
             if self.zyngui.tts:
                 if first_show:
                     self.zyngui.tts.announce(text, False, False, False)
                 else:
-                    self.zyngui.tts.announce(str(self.param_editor_zctrl.value))
+                    self.zyngui.tts.announce(str(value))
 
     # --------------------------------------------------------------------------
     # MIDI learning

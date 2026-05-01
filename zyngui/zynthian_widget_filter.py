@@ -151,7 +151,7 @@ class zynthian_widget_filter(zynthian_widget_base.zynthian_widget_base):
         # 1. Normalize for math consistency across engines
         norm_cutoff = (self.cutoff_param.value - self.cutoff_param.value_min) / self.cutoff_param.value_range if self.cutoff_param else 0.5
         norm_res = (self.resonance_param.value - self.resonance_param.value_min) / self.resonance_param.value_range if self.resonance_param else 0.0
-        if force or [norm_cutoff, norm_res] == self.last_values and not self.is_dragging:
+        if not force or [norm_cutoff, norm_res] == self.last_values and not self.is_dragging:
             return
 
         # 2. Precalculate some geometric values
