@@ -580,6 +580,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         try:
             chain_idx, col_idx, row_idx = self.selected_node
             node_id = self.nodes[chain_idx][col_idx][row_idx]["id"]
+            if node_id is None:
+                return
             if not self.moving_chain:
                 self.canvas.itemconfig(node_id, outline=color, width=2)
         except:
