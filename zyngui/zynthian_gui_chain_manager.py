@@ -568,9 +568,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.select_node(proc=sel_proc)
 
     def _draw_selection(self):
-        """
-        Draw selection cursor.
-        """
+        """ Draw selection cursor """
+
         self.canvas.itemconfig("node", outline="")
         if not self.selected_node:
             self.selected_node = [0, 0, 0]
@@ -584,7 +583,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if not self.moving_chain:
                 self.canvas.itemconfig(node_id, outline=color, width=2)
         except:
-            pass
+            return
 
         #Scroll the canvas to ensure the selected node is visible.
         self.canvas.update_idletasks() # Ensure all redrawing has completed
@@ -766,16 +765,22 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if self.moving_proc and not self.chain_manager.can_move_processor(self.moving_proc):
             self.moving_proc = None
         self.select_node(proc=self.moving_proc)
+        if self.zyngui.tts and self.moving_proc:
+            self.zyngui.tts.announce("Move processor.")
 
     def end_moving_processor(self):
         """ Exit processor move mode
         """
 
         self.moving_proc = None
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("End move processor.")
 
     def start_moving_chain(self):
         self.moving_chain = True
         self._draw_graph(self.moving_proc)
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Move chain.")
 
     def end_moving_chain(self):
         if not self.moving_chain:
@@ -784,6 +789,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.strip_drag_start = None
         self.canvas.delete("chain_move")
         self.select_node()
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("End move chain.")
 
     def arrow_down(self):
         """
