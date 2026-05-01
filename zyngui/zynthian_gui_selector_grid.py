@@ -382,3 +382,5 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
     def set_select_path(self):
         self.select_path.set(self.title)
 
+    def get_help_fpath(self):
+        return "selector_grid.html"
