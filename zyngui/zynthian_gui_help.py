@@ -157,6 +157,13 @@ class zynthian_gui_help(HtmlFrame):
             self.soup = BeautifulSoup(html, "html.parser")
 
             if fpath != "index:":
+                for tag in self.soup.find_all("div", attrs={"id": "lv2-info"}):
+                    try:
+                        cur_proc = self.zyngui.get_current_processor()
+                        info = self.zyngui.chain_manager.engine_info[cur_proc.eng_code]
+                        tag.replace_with(BeautifulSoup(f'<div class="note-block">{info["NAME"]}: {info["DESCR"]}</div>', "html.parser"))
+                    except:
+                        pass
                 for tag in self.soup.find_all("div", attrs={"w3-include-html": True}):
                     try:
                         with open(f"{self.ui_dir}/help/include/{tag['w3-include-html']}") as f:

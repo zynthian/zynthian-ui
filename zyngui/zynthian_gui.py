@@ -955,7 +955,7 @@ class zynthian_gui:
         if Path(fpath).exists():
             self.screens['help'].load_file(fpath)
         else:
-            topic = fpath.split(".")[0]
+            topic = str(fpath).split("/")[-1]
             logging.warning(f"No help for '{topic}'")
 
     # TODO: Rename - this is called for various chain manipulation purposes
