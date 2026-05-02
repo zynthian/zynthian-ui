@@ -157,7 +157,7 @@ class zynthian_gui_help(HtmlFrame):
             self.soup = BeautifulSoup(html, "html.parser")
 
             if fpath != "index:":
-                for tag in self.soup.find_all("div", attrs={"id": "lv2-info"}):
+                for tag in self.soup.find_all("div", attrs={"id": "zynproc-info"}):
                     try:
                         cur_proc = self.zyngui.get_current_processor()
                         info = self.zyngui.chain_manager.engine_info[cur_proc.eng_code]
