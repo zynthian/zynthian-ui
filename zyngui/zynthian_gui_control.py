@@ -540,7 +540,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if self.midi_learning:
                     self.midi_learn(i, self.midi_learning)
                     if self.zyngui.tts:
-                        self.zyngui.tts.announce(f"Control {i} MIDI learning")
+                        self.zyngui.tts.announce(f"MIDI learning: {self.zgui_controllers[i].zctrl.name}")
                 elif self.zyngui.tts:
                     zctrl = self.zgui_controllers[i].zctrl
                     self.zyngui.tts.announce(f"{zctrl.name}: {zctrl.get_value2label()}")
