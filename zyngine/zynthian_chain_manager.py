@@ -136,8 +136,8 @@ class zynthian_chain_manager:
             return cls.engine_info
 
         cls.engine_info = eng_info
-        cls.engine_info["MI"] = {"ID":"0", "NAME":"Mixer Channel Strip", "TITLE": "Mixer Channel Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 0, "URL": "", "UI": "", "DESCR": "Audio mixer channel strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
-        cls.engine_info["MR"] = {"ID":"1", "NAME":"Mixer Return Strip", "TITLE": "Mixer Effect Return Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 1, "URL": "", "UI": "", "DESCR": "Audio mixer effect return strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
+        cls.engine_info["MI"] = {"ID":"0", "NAME":"Mixer Channel Strip", "TITLE": "Mixer Channel Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 0, "URL": "", "UI": "", "DESCR": "Audio mixer channel strip. Provides: fader, balance, mute, solo, mono, phase reverse, M+S, multitrack record arm and effects send level and pre/post fader switching to any mixbus chains.", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
+        cls.engine_info["MR"] = {"ID":"1", "NAME":"Mixer Return Strip", "TITLE": "Mixer Effect Return Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 1, "URL": "", "UI": "", "DESCR": "Audio mixer effect return strip. Provides: fader, balance, mute, solo, mono, phase reverse, M+S & multitrack record arm ", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
         cls.engine_info["MX"] = {"NAME": "Alsa_Mixer", "TITLE": "ALSA Mixer", "TYPE": "Global", "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": False}
         cls.engine_info["TP"] = {"NAME": "Tempo", "TITLE": "Tempo", "TYPE": "Global", "CAT": None, "ENGINE": zynthian_engine_tempo, "ENABLED": False}
         # Look for an engine class for each one

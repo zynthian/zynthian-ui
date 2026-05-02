@@ -359,12 +359,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                     page_name = "chain_control-select_mode"
                 else:
                     page_name = "chain_control-control_mode"
-            elif self.subscreen_key == "chain_options":
-                return "selector.html"
             else:
-                page_name = self.subscreen_name
-                if not self.subscreen_name.startswith("chain_"):
-                    page_name = "chain_" + page_name
+                page_name = "selector"
             fpath = f"{page_name}.html"
         return fpath
 
