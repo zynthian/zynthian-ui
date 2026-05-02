@@ -199,12 +199,15 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
             i += 1
 
     @staticmethod
-    def get_midi_note_name(num):
+    def get_midi_note_name(num, convert_sharps=False):
         note_names = ("C", "C#", "D", "D#", "E", "F",
                       "F#", "G", "G#", "A", "A#", "B")
         scale = int(num / 12) - 2
         num = int(num % 12)
-        return "{}{}".format(note_names[num], scale)
+        if convert_sharps:
+            return f"{note_names[num].replace('#', ' sharp ')} {scale}"
+        else:
+            return f"{note_names[num]}{scale}"
 
     def plot_text(self):
         fs = int(1.7 * zynthian_gui_config.font_size)
@@ -245,7 +248,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
     def set_zctrls(self):
         if not self.octave_zgui_ctrl:
             i = zynthian_gui_config.layout['ctrl_order'][0]
-            self.octave_zctrl = zynthian_controller(self, 'octave transpose', {'value_min': -5, 'value_max': 6})
+            labels = []
+            for n in range(-5, 7):
+                labels.append(f"+{n}" if n> 0 else str(n))
+            self.octave_zctrl = zynthian_controller(self, 'octave transpose', {'value_min': -5, 'value_max': 6, 'labels': labels})
             self.octave_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.octave_zctrl)
             self.zgui_ctrls[i] = self.octave_zgui_ctrl
         self.octave_zgui_ctrl.setup_zynpot()
@@ -254,7 +260,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
         if not self.halftone_zgui_ctrl:
             i = zynthian_gui_config.layout['ctrl_order'][1]
-            self.halftone_zctrl = zynthian_controller(self, 'semitone transpose', {'value_min': -12, 'value_max': 12})
+            labels = []
+            for n in range(-12, 13):
+                labels.append(f"+{n}" if n> 0 else str(n))
+            self.halftone_zctrl = zynthian_controller(self, 'semitone transpose', {'value_min': -12, 'value_max': 12, 'labels':labels})
             self.halftone_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.halftone_zctrl)
             self.zgui_ctrls[i] = self.halftone_zgui_ctrl
         self.halftone_zgui_ctrl.setup_zynpot()
@@ -340,6 +349,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
                 lib_zyncore.zmop_set_note_low(self.zmop_index, zctrl.value)
                 logging.debug("SETTING RANGE NOTE LOW: {}".format(zctrl.value))
                 self.replot = True
+                if self.zyngui.tts:
+                    self.zyngui.tts.announce(f"Range low: {self.get_midi_note_name(zctrl.value, True)}")
 
             elif zctrl == self.nhigh_zctrl:
                 self.note_high = zctrl.value
@@ -348,18 +359,24 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
                 lib_zyncore.zmop_set_note_high(self.zmop_index, zctrl.value)
                 logging.debug("SETTING RANGE NOTE HIGH: {}".format(zctrl.value))
                 self.replot = True
+                if self.zyngui.tts:
+                    self.zyngui.tts.announce(f"Range high: {self.get_midi_note_name(zctrl.value, True)}")
 
             elif zctrl == self.octave_zctrl:
                 self.octave_trans = zctrl.value
                 lib_zyncore.zmop_set_transpose_octave(self.zmop_index, zctrl.value)
                 logging.debug("SETTING OCTAVE TRANSPOSE: {}".format(zctrl.value))
                 self.replot = True
+                if self.zyngui.tts:
+                    self.zyngui.tts.announce(f"Transpose: {zctrl.get_value2label()} octaves")
 
             elif zctrl == self.halftone_zctrl:
                 self.halftone_trans = zctrl.value
                 lib_zyncore.zmop_set_transpose_semitone(self.zmop_index, zctrl.value)
                 logging.debug("SETTING SEMITONE TRANSPOSE: {}".format(zctrl.value))
                 self.replot = True
+                if self.zyngui.tts:
+                    self.zyngui.tts.announce(f"Transpose: {zctrl.get_value2label()} semitones")
 
     def learn_note_range(self, num):
         if self.learn_mode == -1:
@@ -420,5 +437,14 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
     def cb_nhigh_wheel_down(self, event):
         self.nhigh_zgui_ctrl.zynpot_cb(-1)
+
+    # --------------------------------------------------------------------------
+    # Narrator TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        super().tts_info()
+        self.zyngui.tts.announce(f"Transpose: {self.octave_zctrl.get_value2label()} octaves and {self.halftone_zctrl.get_value2label()} semitones.", False, False, False)
+        self.zyngui.tts.announce(f"Range: {self.get_midi_note_name(self.note_low)} to {self.get_midi_note_name(self.note_high)}.", False, False, False)
 
 # ------------------------------------------------------------------------------
