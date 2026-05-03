@@ -58,10 +58,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
     def fill_list(self):
         self.list_data = []
         if self.zs3_id == "zs3-0":
-            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state overwritting this ZS3.", "zs3_overwrite.png"]))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
         else:
-            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Configure data to restore from this ZS3.", "zs3_settings.png"]))
-            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state overwritting this ZS3.", "zs3_overwrite.png"]))
+            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Select which elements will be restored from this ZS3.", "zs3_settings.png"]))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
             self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_delete, 4, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
 
@@ -115,7 +115,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             logging.error(f"Bad ZS3 id ({self.zs3_id}).")
             return
 
-        options = {"Toggle All Mixer": ""}
+        options = {"Toggle All Mixer": ["",["Toggle the selection of all audio mixer parameters that will be restored.", None]]}
         mixer_list = []
 
         for idx, chain_id in enumerate(self.zyngui.chain_manager.chains):
@@ -131,10 +131,11 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     restore = state["chains"][chain_id]["restore"]
                 except:
                     restore = True
+                info = "Toggle whether chain parameters will be restored."
                 if restore:
-                    options[f"\u2612 {label}"] = f"chains_{chain_id}"
+                    options[f"\u2612 {label}"] = [f"chains_{chain_id}", [info, None]]
                 else:
-                    options[f"\u2610 {label}"] = f"chains_{chain_id}"
+                    options[f"\u2610 {label}"] = [f"chains_{chain_id}", [info, None]]
             else:
                 options[label] = None
             for proc in chain.get_processors():
@@ -148,11 +149,12 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                         mixer_list.append(str(proc.id))
                     else:
                         label = f"{proc.name} ({proc.id})"
+                    info = "Toggle whether processor parameters will be restored."
                     if restore:
-                        options[f"\u2612   ⤷{label}"] = f"processors_{proc.id}"
+                        options[f"\u2612   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
                     else:
-                        options[f"\u2610   ⤷{label}"] = f"processors_{proc.id}"
-        options["Toggle All Mixer"] = ",".join(mixer_list)
+                        options[f"\u2610   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
+        options["Toggle All Mixer"][0] = ",".join(mixer_list)
         return options
 
     def zs3_restoring_options_select_cb(self, label, param, ct):
