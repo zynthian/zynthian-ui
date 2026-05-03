@@ -139,8 +139,9 @@ class zynthian_gui_tts():
     def midi_rec_cb(self, state):
         self.announce(f"MIDI recorder {'started' if state else 'stopped'}")
 
-    def busy_cb(self, state):
-        self._tts.set_busy(state)
+    def busy_cb(self, state, tts=True):
+        if tts:
+            self._tts.set_busy(state)
 
 # -------------------------------------------------------
 # TTS Screen Class
