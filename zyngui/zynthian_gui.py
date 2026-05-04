@@ -1557,6 +1557,13 @@ class zynthian_gui:
         except:
             pass
 
+    # Select action => it receives type of action: S, B, L
+    def cuia_select_action(self, params=None):
+        try:
+            self.get_current_screen_obj().switch_select(params[0])
+        except (AttributeError, TypeError):
+            pass
+
     # Select element in list => it receives an integer parameter!
     def cuia_select(self, params=None):
         try:

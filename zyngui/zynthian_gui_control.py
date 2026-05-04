@@ -486,6 +486,12 @@ class zynthian_gui_control(zynthian_gui_selector):
             except:
                 # TODO Fix this to catch exceptions from widget!!
                 pass
+
+        # V4's bank/preset
+        if swi == 3 and t == 'B':
+            self.zyngui.cuia_bank_preset()
+            return True
+
         return False
 
     def cuia_v5_zynpot_switch(self, params):
@@ -507,7 +513,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             elif self.mode == 'select':
                 self.set_mode_control()
         elif t == 'B':
-            self.zyngui.cuia_bank_preset()
+            self.show_menu()
         return True
 
     def select(self, index=None, set_zctrl=True):

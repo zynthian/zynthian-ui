@@ -213,9 +213,6 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         elif self.chain_shown and swi == 2:
             self.chain_canvas.switch_select(t)
             return True
-        elif self.chain_shown and swi == 3 and t =='B':
-            self.show_menu()
-            return True
 
         return False
 
