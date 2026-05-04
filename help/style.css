@@ -61,13 +61,10 @@ img.full {
 }
 
 .note-block {
-  width: 90%;
-  margin: 20px auto;
-  background-color: #a855f7;
-  padding: 16px 20px;
-  border-left: 4px solid #ffffff;
-  border-radius: 6px;
-  box-sizing: border-box;
+	margin: 1em auto;
+	padding: 1em 1em;
+	background-color: #9020c0;
+	border-left: 0.3em solid #ffffff;
 }
 
 div.clear {
