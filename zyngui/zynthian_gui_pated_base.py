@@ -264,6 +264,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.channel = 0
         self.seq_info = {}  # Launcher sequence info - None to use phrase 0xffff, sequence 0
         self.last_menu_options = {}  # Last menu options (indexes) saved for each pattern. May be dirty, but we want good UX ;-)
+        self.last_smf_import = {}  # Same for import SMF
 
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
@@ -692,7 +693,11 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             case 'Save pattern':
                 self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
             case 'Import from SMF':
-                self.zyngui.screens["file_selector"].config(self.analyze_smf, fexts=["mid"])
+                try:
+                    fpath = self.last_smf_import[self.pattern]
+                except:
+                    fpath = None
+                self.zyngui.screens["file_selector"].config(self.analyze_smf, fexts=["mid"], path=fpath)
                 self.zyngui.show_screen("file_selector")
             case 'Export to SMF':
                 self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
@@ -1088,6 +1093,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         try:
             parts = fpath.split("#")
             fpath = parts[0]
+            self.last_smf_import[self.pattern] = fpath
             midi_chan = int(parts[1])
             logging.debug(f"{chan_name} => {fpath}, CH#{midi_chan} ({n_bars} bars)")
         except:
@@ -1106,7 +1112,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         # Change pattern length if needed
         if n_bars and n_bars != self.zynseq.libseq.getBeatsInPattern(self.pattern) / self.bpb:
-            self.set_beats_in_pattern(n_bars * self.bpb)
+            self.set_beats_in_pattern(min(n_bars, 16) * self.bpb)
         else:
             # If length not changed, ensure we can undo/redo
             self.save_pattern_snapshot(now=True, force=False)
