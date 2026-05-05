@@ -445,11 +445,7 @@ class DeviceHandler(ModeHandlerBase):
 
     def insert_chain(self, params=None):
         zyngui = zynthian_gui_config.zyngui
-        # pos = zyngui.chain_manager.get_chain_index(self.chain.chain_id)
-        active_chain = self._chain_manager.get_active_chain()
-        pos = zyngui.chain_manager.get_chain_index(active_chain.chain_id if active_chain else 0)
-        zyngui.screens["add_chain"].set_chain_pos(pos)
-        zyngui.show_screen("add_chain")
+        zyngui.screens["chain_options"].insert_chain()
 
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
