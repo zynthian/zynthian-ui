@@ -2925,7 +2925,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     self._on_media_change_state(state, f"audio-{handle}", "player")),
 
             (zynsigman.S_AUDIO_RECORDER,
-                state_manager.zynsigman.SS_AUDIO_RECORDER_STATE,
+                zynsigman.SS_AUDIO_RECORDER_STATE,
                 partial(self._on_media_change_state, media="audio", kind="recorder")),
 
             (zynsigman.S_STATE_MAN,
