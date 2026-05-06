@@ -1193,8 +1193,8 @@ void setPattern(uint32_t id, const char* patn_state) {
     pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
     for (auto& jEvent: jPattern["events"]) {
         uint32_t nStep = jEvent[0];
-        float fDuration = jEvent[1];
-        float fOffset = jEvent[2];
+        float fOffset = jEvent[1];
+        float fDuration = jEvent[2];
         uint8_t nCommand = jEvent[3];
         uint8_t nValue1start = jEvent[4];
         uint8_t nValue2start = jEvent[6];
@@ -1203,11 +1203,18 @@ void setPattern(uint32_t id, const char* patn_state) {
         pEvent->setValue2end(jEvent[7]);
         pEvent->setStutterSpeed(jEvent[8]);
         pEvent->setStutterVelfx(jEvent[9]);
-        pEvent->setStutterRamp(jEvent[10]);
-        pEvent->setPlayChance(float(jEvent[11]) / 100);
-        pEvent->setPlayFreq(jEvent[12]);
-        pEvent->setStutterChance(float(jEvent[13]) / 100);
-        pEvent->setStutterFreq(jEvent[14]);
+        // Legacy format
+        if (jEvent.size() == 11) {
+            pEvent->setPlayChance(float(jEvent[10]) / 100);
+        }
+        // Extended parameters: stutter speed-ramp, play freq, stutter chance, stutter freq
+        else {
+            pEvent->setStutterRamp(jEvent[10]);
+            pEvent->setPlayChance(float(jEvent[11]) / 100);
+            pEvent->setPlayFreq(jEvent[12]);
+            pEvent->setStutterChance(float(jEvent[13]) / 100);
+            pEvent->setStutterFreq(jEvent[14]);
+        }
     }
 }
 
@@ -1561,8 +1568,10 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 if (checkBlock(pFile, nBlockSize, 8))
                     continue;
             }
-            jPattern["beats"] = fileRead32u(pFile);
-            jPattern["steps"] = fileRead16u(pFile);
+            uint32_t beats = fileRead32(pFile);
+            uint16_t spb = fileRead16(pFile);
+            jPattern["steps"] = beats * spb;
+            jPattern["beats"] = beats;
             jPattern["scale"] = fileRead8u(pFile);
             jPattern["tonic"] = fileRead8u(pFile);
             if (nVersion > 4) {
