@@ -378,12 +378,13 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zcontrollers = self.screen_info[5]
             # Processor controllers
             else:
-                self.zyngui.get_current_processor().set_current_screen_index(self.screen_info[4])
-                self.zcontrollers = self.zyngui.get_current_processor().get_ctrl_screen(self.screen_title)
+                curproc = self.zyngui.get_current_processor()
+                curproc.set_current_screen_index(self.screen_info[4])
+                self.zcontrollers = curproc.get_ctrl_screen(self.screen_title)
                 # Show the widget for the current processor (NOT for chain controllers pages!)
                 self.get_screen_type()
                 if self.mode == 'control':
-                    self.show_widget(self.zyngui.get_current_processor())
+                    self.show_widget(curproc)
         else:
             self.zcontrollers = []
             self.screen_title = ""

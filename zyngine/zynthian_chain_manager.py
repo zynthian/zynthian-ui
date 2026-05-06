@@ -1009,7 +1009,7 @@ class zynthian_chain_manager:
 
         proc_ids = list(self.processors)
         proc_ids.sort()
-        id = 0
+        id = 1
         while id in proc_ids:
             id += 1
         return id
@@ -1076,13 +1076,6 @@ class zynthian_chain_manager:
             chain.zynmixer_proc = processor
             # Add FX sends to existing chains
             self.refresh_mixbus_sends()
-            # Set current processor if adding new (proc_id = None)
-            # and the MI/MR processor is the only one in the chain
-            if send_signal and chain.current_processor is None:
-                chain.current_processor = processor
-        # Set current processor if adding new (proc_id = None)
-        elif send_signal:
-            chain.current_processor = processor
 
         # Update group chains
         for src_chain in self.chains.values():

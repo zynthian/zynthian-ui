@@ -1094,7 +1094,8 @@ class zynthian_gui:
             screen_name = "control"
         else:
             screen_name = "chain_control"
-            self.screens["chain_control"].reset()
+            if not force_bank_preset:
+                self.screens["chain_control"].reset()
 
         if self.current_processor and force_bank_preset:
             # If not preset is selected => bank/preset selector screen

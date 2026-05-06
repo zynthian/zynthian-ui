@@ -2133,11 +2133,13 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if self.highlighted_strip.chain.chain_id == 0:
             self.item_menu()
             return True
-        if type(self.highlighted_strip.chain.midi_chan) is int and self.highlighted_strip.chain.midi_chan < zynseq.PHRASE_CHANNEL:
-            if self.highlighted_strip.chain.midi_chan > 15:
-                proc = self.highlighted_strip.chain.get_processors()[0]
-                proc.engine.set_phrase(proc, self.zynseq.phrase)
-                self.zyngui.chain_control(self.highlighted_strip.chain.chain_id, proc)
+        chain = self.highlighted_strip.chain
+        if type(chain.midi_chan) is int and chain.midi_chan < zynseq.PHRASE_CHANNEL:
+            if chain.midi_chan > 15:
+                cl_proc = chain.get_processors()[0]
+                chain.set_current_processor(cl_proc)
+                cl_proc.engine.set_phrase(cl_proc, self.zynseq.phrase)
+                self.zyngui.chain_control(chain.chain_id)
                 return True
             else:
                 return self.edit_pattern()
