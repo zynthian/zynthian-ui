@@ -217,7 +217,7 @@ class zynthian_gui:
     # Capture Log
     # ---------------------------------------------------------------------------
 
-    def start_capture_log(self, title="ui_sesion"):
+    def start_capture_log(self, title="ui_session"):
         now = datetime.now()
         self.capture_log_ts0 = now
         self.capture_log_fname = f"{title}-{now.strftime('%Y%m%d%H%M%S')}"
@@ -1266,7 +1266,7 @@ class zynthian_gui:
     def cuia_last_state_action(self, params=None):
         self.screens['admin'].last_state_action()
 
-    def cuia_workflow_capture_start(self, params=["ui_sesion"]):
+    def cuia_workflow_capture_start(self, params=["ui_session"]):
         self.start_capture_log(params[0])
 
     def cuia_workflow_capture_stop(self, params=None):
