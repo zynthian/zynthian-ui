@@ -58,9 +58,9 @@ class zynthian_engine_setbfree(zynthian_engine):
     ]
 
     bank_twmodels_list = [
-        ['Sin', 0, 'Sine', '_'],
-        ['Sqr', 1, 'Square', '_'],
-        ['Tri', 2, 'Triangle', '_']
+        ['Sin', 0, 'Sine (Hammond)', '_'],
+        ['Sqr', 1, 'Square (Combo)', '_'],
+        ['Tri', 2, 'Triangle (Combo)', '_']
     ]
 
     tonewheel_config = {
@@ -75,11 +75,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 
         "Tri": """
 			osc.harmonic.1=1.0
-			osc.harmonic.3=0.111111111111
+			osc.harmonic.3=-0.111111111111
 			osc.harmonic.5=0.04
-			osc.harmonic.7=0.02040816326530612
+			osc.harmonic.7=-0.02040816326530612
 			osc.harmonic.9=0.012345679012345678
-			osc.harmonic.11=0.008264462809917356"""
+			osc.harmonic.11=-0.008264462809917356"""
     }
 
     # ---------------------------------------------------------------------------
