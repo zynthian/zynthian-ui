@@ -1,11 +1,14 @@
-# !/usr/bin/python3
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for "Akai MPK249"
 #
-# Copyright (C) 2024 Adapted from MPK mini mk3 driver
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
+#
+# Copyright (C) 2026 MPK249 driver contributions
 #
 # ******************************************************************************
 #
@@ -23,1661 +26,780 @@
 #
 # ******************************************************************************
 
-import time
 import logging
-from bisect import bisect
+import time
+import threading
 
 from zyncoder.zyncore import lib_zyncore
+from zynlibs.zynseq import zynseq
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.ctrldev.zynthian_ctrldev_base import (
+    zynthian_ctrldev_base,
+    zynthian_ctrldev_zynmixer,
+    zynthian_ctrldev_zynpad,
+)
 
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
-from zyngine.ctrldev.zynthian_ctrldev_base_extended import CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
-from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
+# ------------------------------------------------------------------------------
+# MIDI routing
+# ------------------------------------------------------------------------------
+# Leave False so note/CC data still reaches chains unless this handler consumes
+# the message (returns True). Keys on one channel and pads on another is the
+# usual factory layout.
+#
+# If your MPK preset puts drums on channel 10 and the keybed on channel 1, you
+# are fine. If everything shares one channel, either reprogram the MPK or set
+# a narrow unroute mask (see zynthian_ctrldev_base.unroute_from_chains).
+# ------------------------------------------------------------------------------
 
+# Wire-format channel nibble (0 = MIDI ch 1, 9 = MIDI ch 10).
+CTRL_MIDI_CH = 0
+CTRL_BANK_B_MIDI_CH = 1
+CTRL_BANK_C_MIDI_CH = 2
+PAD_MIDI_CH = 9
+# Some MPK presets send pads on a different channel than expected. When True,
+# mapped pad notes are accepted on any channel as a fallback.
+PAD_ACCEPT_MAPPED_NOTES_ANY_CH = True
+# Optional bank-by-channel mapping for presets where pad banks A/B/C/D reuse
+# notes but transmit on different channels.
+# Wire-format channels: MIDI ch2..5 => 1..4
+PAD_BANK_CH_FIRST = 1
+PAD_BANK_CH_COUNT = 4
+PAD_BANK_COL_STRIDE = 4
+PAD_BANK_ROW_STRIDE = 4
+# Bank layout over an 8x8 logical matrix (bank order A,B,C,D):
+#   Top row:    A, C
+#   Bottom row: B, D
+#   A: cols 1-4, rows 1-4
+#   B: cols 1-4, rows 5-8
+#   C: cols 5-8, rows 1-4
+#   D: cols 5-8, rows 5-8
+PAD_BANK_LAYOUT_COLS = 2
+# Pad LED feedback: either MPK2 RAM writes (SysEx) or note-on velocity (preset-dependent).
+# SysEx layout from community reverse-engineering (MPK261); MPK249 uses product id 0x24
+# instead of 0x25. See https://practicalusage.com/akai-mpk261-one-more-thing/
+PAD_LED_USE_SYSEX = True
+# Mirror note-based LED updates to all banks even when SysEx is enabled.
+# Some MPK presets keep per-bank pad LED state only when receiving note-on
+# feedback on each bank channel.
+PAD_LED_MIRROR_NOTES_ALL_BANKS = False
+MPK249_SYSEX_PRODUCT_ID = 0x24
+# MPK261_SYSEX_PRODUCT_ID = 0x25
+# Palette indices 0x00–0x0B (not RGB); tune to taste / firmware.
+PAD_SYSEX_COLOR_OFF = 0x00
+# Idle = has pattern but not playing; keep well separated from ACTIVE on the hardware.
+PAD_SYSEX_COLOR_IDLE = 0x03
+PAD_SYSEX_COLOR_ACTIVE = 0x06
+PAD_SYSEX_COLOR_STARTING = 0x05
+PAD_SYSEX_COLOR_STOPPING = 0x04
+# Note-on LED feedback for pad banks B–C–D (and optional mirror on bank A).
+# Many MPK presets map note-on to a small palette; keep idle distinct from active.
+PAD_LED_OFF_VEL = 0
+PAD_LED_IDLE_VEL = 16
+PAD_LED_ACTIVE_VEL = 127
+PAD_LED_STARTING_VEL = 96
+PAD_LED_STOPPING_VEL = 48
+# For banks B/C/D (note-feedback), choose how "playing" is shown:
+# - "blink": pulse active pads (best distinction on limited note palettes)
+# - "steady": keep active pads steady (no blinking)
+PAD_NON_A_PLAY_MODE = "blink"
+PAD_LED_BLINK_PERIOD_S = 1.0
+# Bank B send feedback mode:
+# - none: no UI focus/refresh side effects (parameter change only)
+# - active_chain: update active chain only, no screen switch (least intrusive)
+# - control_screen: jump to SCREEN_CONTROL for explicit send-page visibility
+CTRL_BANK_B_FEEDBACK_MODE = "none"
+CTRL_BANK_B_AUTOFOCUS_COOLDOWN_S = 0.5
+# Verbose bank/LED routing (uses logging.warning so it shows at default log level).
+PAD_BANK_DEBUG_LOG = False
 
-# NOTE: some of these constants are taken from:
-# https://github.com/tsmetana/mpk3-settings/blob/master/src/message.h
-# Adapted for MPK249
+# ------------------------------------------------------------------------------
+# Maps — VERIFY with Webconf → MIDI log (your preset may differ).
+#
+# Preset 1 (factory default at power-on) matches the fader/knob CC layout used
+# by zynthian_ctrldev_akai_mpk249.py when it programs the device: faders
+# CC 12–19 (last fader = main volume); knobs CC 22–29 on the control channel are
+# pan/balance — CC 22–28 → seven chain columns (with scroll_h), CC 29 → main bus.
+#
+# Some generic / DAW-oriented presets use a gap after fader 1: CC 18, then 21,
+# 22, 23, 24, 25, 26, 27 for faders 1–8. Set FADER_CCS to that list if needed
+# and set MASTER_FADER_INDEX = None if all eight faders are chain strips.
+# ------------------------------------------------------------------------------
+FADER_CCS = [12, 13, 14, 15, 16, 17, 18, 19]
+# Index into FADER_CCS for main mix level (None = every fader maps to a chain column).
+MASTER_FADER_INDEX = 7
+MASTER_CC = None
+# Optional per-control-bank master fader (channel nibble => CC number). If set,
+# the given CC controls main level for that control bank.
+MASTER_CC_BY_CTRL_BANK = {
+    CTRL_MIDI_CH: MASTER_CC,
+    CTRL_BANK_B_MIDI_CH: None,
+    CTRL_BANK_C_MIDI_CH: None,
+}
+# Mixbus chain title used by CONTROL BANK B send mapping.
+CTRL_BANK_B_SEND_CHAIN_TITLE = "Reverb"
 
-# Offsets from the beginning of the SYSEX message
-OFF_PGM_NAME = 8
-OFF_KEYBED_OCTAVE = 27
-OFF_ARP_ON = 28
-OFF_ARP_MODE = 29
-OFF_ARP_DIVISION = 30
-OFF_ARP_CLK_EXT = 31
-OFF_ARP_LATCH = 32
-OFF_ARP_SWING = 33
-OFF_ARP_OCTAVE = 37
+# Pan/balance knobs (MIDI ch 1 / CTRL_MIDI_CH): CC 22–28 = chains, CC 29 = main.
+# Absolute 0–127 ↔ balance −1.0..+1.0 via cc/64−1 (same as MIDI Mix).
+# Do not send pan CC back in update_mixer_strip: many controllers echo or move
+# encoders, which causes wrong LEDs and “snap left” on first touch.
+KNOB_PAN_CC_FIRST = 22
+KNOB_PAN_MASTER_CC = 29
+CHAIN_PAN_KNOB_COUNT = 7
 
-# Message constants
-MANUFACTURER_ID = 0x47
-PRODUCT_ID = 0x24
-ALT_PRODUCT_ID = 0x49  # Alternate product ID used by some MPK249 firmware/reports
-KNOWN_PRODUCT_IDS = [PRODUCT_ID, ALT_PRODUCT_ID]
-DATA_MSG_LEN = 407
-MSG_PAYLOAD_LEN = 400
-MSG_DIRECTION_OUT = 0x7f
-MSG_DIRECTION_IN = 0x00
+# Pad grid for bank A only (row-major, top row first). Each value is the MIDI
+# note number emitted by that pad. Rebuild from the MIDI log if launching fails.
+PAD_NOTE_BANK = [
+    [81, 83, 84, 86],
+    [74, 76, 77, 79],
+    [67, 69, 71, 72],
+    [60, 62, 64, 65],
+]
 
-# Command values
-CMD_WRITE_DATA = 0x64
-CMD_QUERY_DATA = 0x66
-CMD_INCOMING_DATA = 0x67
-
-# Name (program, knob) string length
-NAME_STR_LEN = 16
-
-# Aftertouch settings
-AFTERTOUCH_OFF = 0x00
-AFTERTOUCH_CHANNEL = 0x01
-AFTERTOUCH_POLYPHONIC = 0x02
-
-# Keybed octave
-KEY_OCTAVE_MIN = 0x00
-KEY_OCTAVE_MAX = 0x08
-
-# Arpeggiator settings
-ARP_ON = 0x7f
-ARP_OFF = 0x00
-ARP_OCTAVE_MIN = 0x00
-ARP_OCTAVE_MAX = 0x03
-ARP_MODE_UP = 0x00
-ARP_MODE_DOWN = 0x01
-ARP_MODE_EXCL = 0x02
-ARP_MODE_INCL = 0x03
-ARP_MODE_ORDER = 0x04
-ARP_MODE_RAND = 0x05
-ARP_DIV_1_4 = 0x00
-ARP_DIV_1_4T = 0x01
-ARP_DIV_1_8 = 0x02
-ARP_DIV_1_8T = 0x03
-ARP_DIV_1_16 = 0x04
-ARP_DIV_1_16T = 0x05
-ARP_DIV_1_32 = 0x06
-ARP_DIV_1_32T = 0x07
-ARP_LATCH_OFF = 0x00
-ARP_LATCH_ON = 0x01
-ARP_SWING_MIN = 0x00
-ARP_SWING_MAX = 0x19
-
-# Clock settings
-CLK_INTERNAL = 0x00
-CLK_EXTERNAL = 0x01
-TEMPO_TAPS_MIN = 0x02
-TEMPO_TAPS_MAX = 0x04
-BPM_MIN = 60
-BPM_MAX = 240
-
-# Joystick
-JOY_MODE_PITCHBEND = 0x00
-JOY_MODE_SINGLE = 0x01
-JOY_MODE_DUAL = 0x02
-
-# Knobs
-KNOB_MODE_ABS = 0x00
-KNOB_MODE_REL = 0x01
-
-# Faders
-FADER_MODE_ABS = 0x00
-
-# Device Layout constants
-DEFAULT_KEYBED_CH = 0x00
-DEFAULT_PADS_CH = 0x09
-DEFAULT_TEMPO_TAPS = 0x03
-DEFAULT_KEYBED_OCTAVE = 0x04
-
-# PC numbers for related actions
-PROG_MIXER_MODE = 0x04
-PROG_DEVICE_MODE = 0x05
-PROG_PATTERN_MODE = 0x06
-PROG_NOTEPAD_MODE = 0x07
-PROG_USER_MODE = 0x0c
-PROG_CONFIG_MODE = 0x0d
-
-PROG_OPEN_MIXER = 0x00
-PROG_OPEN_ZYNPAD = 0x01
-PROG_OPEN_TEMPO = 0x02
-PROG_OPEN_SNAPSHOT = 0x03
-
-# Function/State constants
-FN_VOLUME = 0x01
-FN_PAN = 0x02
-FN_SOLO = 0x03
-FN_MUTE = 0x04
-FN_SELECT = 0x06
-
-
-# --------------------------------------------------------------------------
-#  SysEx command for querying a device program/settings
-# --------------------------------------------------------------------------
-class SysExQueryProgram:
-    def __init__(self, program=0, product_id=PRODUCT_ID):
-        assert 0 <= program <= 8, "Invalid program number, only 0 (RAM) to 8 available."
-        assert product_id in KNOWN_PRODUCT_IDS, f"Invalid MPK249 product ID: {product_id:#02x}"
-
-        self.data = [
-            MANUFACTURER_ID, MSG_DIRECTION_OUT, product_id, CMD_QUERY_DATA,
-            0, 1, program,
-        ]
-
-    def __repr__(self):
-        return " ".join(f"{b:02X}" for b in self.data)
-
-
-# --------------------------------------------------------------------------
-#  SysEx command for updating a device program/settings
-# --------------------------------------------------------------------------
-class SysExSetProgram:
-    def __init__(self, program=0, name="Zynthian", channels={}, aftertouch=AFTERTOUCH_OFF,
-                 keybed_octave=4, arp={}, tempo_taps=3, tempo=90,
-                 pads={}, knobs={}, faders={}, transpose=0x0c):
-
-        arp_swing = int(arp.get("swing", ARP_SWING_MIN))
-        assert 0 <= program <= 8, "Invalid program number: {program} (valid: 0(RAM)-8)."
-        assert aftertouch in [AFTERTOUCH_OFF, AFTERTOUCH_CHANNEL, AFTERTOUCH_POLYPHONIC], \
-            f"Invalid aftertouch mode: {aftertouch} (valid: 0-2)."
-        assert KEY_OCTAVE_MIN <= keybed_octave <= KEY_OCTAVE_MAX, \
-            f"Invalid keybed octave: {keybed_octave} (valid: 0-8)."
-        assert ARP_SWING_MIN <= arp_swing <= ARP_SWING_MAX, \
-            f"Invalid swing value: {arp_swing} (valid: 0-25)."
-        assert TEMPO_TAPS_MIN <= tempo_taps <= TEMPO_TAPS_MAX, \
-            f"Invalid tempo taps: {tempo_taps} (valid: {TEMPO_TAPS_MIN}-{TEMPO_TAPS_MAX})."
-        assert BPM_MIN <= tempo <= BPM_MAX, f"Invalid tempo: {tempo} (valid: 60-240)."
-        for c in channels.values():
-            assert 0 <= c <= 15, f"Invalid channel number: {c} (valid: 0-15)."
-        for field in ["note", "pc", "cc"]:
-            assert field in pads, f"Invalid pads definition, missing '{field}' list."
-            assert len(
-                pads[field]) == 16, f"Invalid pads definition, len('{field}') != 16."
-            for v in pads[field]:
-                assert 0 <= v <= 127, f"Invalid pads definition, invalid value: {v}."
-        for field in ["mode", "cc", "min", "max", "name"]:
-            assert field in knobs, f"Invalid knobs definition, missing '{field}' list."
-            assert len(
-                knobs[field]) == 8, f"Invalid knobs definition, len('{field}') != 8."
-        for field in ["mode", "cc", "min", "max", "name"]:
-            assert field in faders, f"Invalid faders definition, missing '{field}' list."
-            assert len(
-                faders[field]) == 8, f"Invalid faders definition, len('{field}') != 8."
-
-        self.data = [
-            MANUFACTURER_ID, MSG_DIRECTION_OUT, PRODUCT_ID, CMD_WRITE_DATA,
-            (MSG_PAYLOAD_LEN >> 7) & 127, MSG_PAYLOAD_LEN & 127, program,
-            0,  # extra for offset
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            channels.get("pads", DEFAULT_PADS_CH),
-            aftertouch,
-            channels.get("keybed", DEFAULT_KEYBED_CH),
-            keybed_octave,
-            ARP_ON if arp.get("on") else ARP_OFF,
-            arp.get("mode", ARP_MODE_UP),
-            arp.get("division", ARP_DIV_1_4),
-            CLK_EXTERNAL if arp.get("ext_clock", False) else CLK_INTERNAL,
-            ARP_LATCH_ON if arp.get("latch", False) else ARP_LATCH_OFF,
-            arp_swing,
-            tempo_taps, (tempo >> 7) & 127, tempo & 127,
-            arp.get("octave", ARP_OCTAVE_MIN),
-        ]
-
-        for pidx in range(16):
-            self.data.append(pads["note"][pidx])
-            self.data.append(pads["pc"][pidx])
-            self.data.append(pads["cc"][pidx])
-
-        for kidx in range(8):
-            self.data.append(knobs["mode"][kidx])
-            self.data.append(knobs["cc"][kidx])
-            self.data.append(knobs["min"][kidx])
-            self.data.append(knobs["max"][kidx])
-            padname = list(bytes(16))
-            padname[:len(knobs["name"][kidx])] = [ord(c)
-                                                  for c in knobs["name"][kidx]]
-            self.data += padname
-
-        for fidx in range(8):
-            self.data.append(faders["mode"][fidx])
-            self.data.append(faders["cc"][fidx])
-            self.data.append(faders["min"][fidx])
-            self.data.append(faders["max"][fidx])
-            padname = list(bytes(16))
-            padname[:len(faders["name"][fidx])] = [ord(c)
-                                                   for c in faders["name"][fidx]]
-            self.data += padname
-
-        self.data.append(transpose)
-
-        padname = list(bytes(16))
-        padname[:len(name)] = [ord(c) for c in name]
-        self.data[OFF_PGM_NAME:OFF_PGM_NAME +
-                  NAME_STR_LEN] = padname[:NAME_STR_LEN]
-
-        assert len(self.data) == DATA_MSG_LEN, \
-            f"ERROR, invalid message size!! ({len(self.data)} != {DATA_MSG_LEN})"
-
-    @classmethod
-    def get_user_fields_from_sysex(self, msg):
-        if msg is None or len(msg) != DATA_MSG_LEN:
-            logging.error(" invalid SysEx message, discarded!")
-            return {}
-
-        return dict(
-            keybed_octave=msg[OFF_KEYBED_OCTAVE],
-            arp=dict(
-                on=msg[OFF_ARP_ON],
-                division=msg[OFF_ARP_DIVISION],
-                mode=msg[OFF_ARP_MODE],
-                latch=msg[OFF_ARP_LATCH] == 1,
-                swing=msg[OFF_ARP_SWING],
-                octave=msg[OFF_ARP_OCTAVE],
-                ext_clock=msg[OFF_ARP_CLK_EXT] == 1,
-            )
-        )
-
-    def __repr__(self):
-        return " ".join(f"{b:02X}" for b in self.data)
+# Optional transport (CC, must be on CTRL_MIDI_CH). Value > 0 triggers once.
+# REW/FF default to navigation actions that are broadly useful in arranger/editor.
+TRANSPORT_PLAY_CC = 118
+TRANSPORT_STOP_CC = 117
+TRANSPORT_REC_CC = 119
+TRANSPORT_REW_CC = 115
+TRANSPORT_FF_CC = 116
+TRANSPORT_LOOP_CC = 114
+TRANSPORT_REW_CUIA = "ARROW_LEFT"
+TRANSPORT_FF_CUIA = "ARROW_RIGHT"
+# No global "TOGGLE_LOOP" CUIA is defined across all contexts; choose one that
+# matches your workflow (e.g. a screen navigation action) or leave None.
+TRANSPORT_LOOP_CUIA = "TOGGLE_PATTERN_EDITOR_ZYNPAD"
 
 
-# --------------------------------------------------------------------------
-#  Class to marshall/un-marshall saved state of those handlers that need it
-# --------------------------------------------------------------------------
-class SavedState:
-    def __init__(self, zynseq):
-        self._zynseq = zynseq
+class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
-        self.is_empty = True
-        self.pads_channel = None
-        self.keybed_channel = None
-        self.keybed_octave = DEFAULT_KEYBED_OCTAVE
-        self.pad_notes = []
-        self.aftertouch = AFTERTOUCH_OFF
-        self.tempo_taps = DEFAULT_TEMPO_TAPS
-        self.arpeggiator = dict(
-            on=False,
-            division=ARP_DIV_1_4,
-            mode=ARP_MODE_UP,
-            latch=ARP_LATCH_OFF,
-            swing=ARP_SWING_MIN,
-            octave=ARP_OCTAVE_MIN,
-            ext_clock=False,
-        )
-
-    @property
-    def tempo(self):
-        return int(round(self._zynseq.get_tempo()))
-
-    def load(self, state: dict):
-        self.pads_channel = state.get("pads_channel", DEFAULT_PADS_CH)
-        self.keybed_channel = state.get("keybed_channel", DEFAULT_KEYBED_CH)
-        self.keybed_octave = state.get("keybed_octave", DEFAULT_KEYBED_OCTAVE)
-        self.pad_notes = state.get("pad_notes", list(range(16)))
-        self.aftertouch = state.get("aftertouch", AFTERTOUCH_OFF)
-        self.tempo_taps = state.get("tempo_taps", DEFAULT_TEMPO_TAPS)
-        self.arpeggiator = dict(
-            on=state.get("on", False),
-            division=state.get("division", ARP_DIV_1_4),
-            mode=state.get("mode", ARP_MODE_UP),
-            latch=state.get("latch", ARP_LATCH_OFF),
-            swing=state.get("swing", ARP_SWING_MIN),
-            octave=state.get("octave", ARP_OCTAVE_MIN),
-            ext_clock=state.get("ext_clock", False),
-        )
-        self.is_empty = False
-
-    def save(self):
-        return {
-            "pads_channel": self.pads_channel,
-            "keybed_channel": self.keybed_channel,
-            "keybed_octave": self.keybed_octave,
-            "pad_notes": self.pad_notes,
-            "aftertouch": self.aftertouch,
-            "tempo_taps": self.tempo_taps,
-            "arpeggiator": self.arpeggiator,
-        }
-
-
-# --------------------------------------------------------------------------
-# 'Akai MPK249' device controller class
-# --------------------------------------------------------------------------
-class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynmixer):
-
-    dev_ids = ["MPK249 IN 1", "MPK249 IN 2", "MPK249 IN 3", "MPK249 IN 4"]
-    driver_description = "Full UI integration"
+    dev_ids = [
+        "MPK249 IN 1",
+        "MPK249 IN 2",
+        "MPK249 IN 3",
+        "MPK249 IN 4",
+        "MPK249 IN3",
+    ]
+    driver_name = "Akai MPK249"
+    driver_description = "MPK249 — mixer, pan, zynpad; keys pass through"
     unroute_from_chains = False
-    autoload_flag = True
 
-    def __init__(self, state_manager, idev_in, idev_out):
-        self._saved_state = SavedState(state_manager.zynseq)
-        self._mixer_handler = MixerHandler(
-            state_manager, idev_out, self._saved_state)
-        self._device_handler = DeviceHandler(
-            state_manager, idev_out, self._saved_state)
-        self._pattern_handler = PatternHandler(
-            state_manager, idev_out, self._saved_state)
-        self._notepad_handler = NotePadHandler(
-            state_manager, idev_out, self._saved_state)
-        self._user_handler = UserHandler(
-            state_manager, idev_out, self._saved_state)
-        self._config_handler = ConfigHandler(
-            state_manager, idev_out, self._saved_state)
-        self._current_handler = self._mixer_handler
+    def __init__(self, state_manager, idev_in, idev_out=None):
+        self._pad_note_to_rc = {}
         self._current_screen = None
-        self._saved_mpk_program = None
-
-        self._signals = [
-            (zynsigman.S_GUI,
-                zynsigman.SS_GUI_SHOW_SCREEN,
-                self._on_gui_show_screen),
-
-            # FIXME: add a signal for tempo change, and then update device!
-        ]
+        self._loop_pending_editor = False
+        self._blink_timer = None
+        self._blink_stop = threading.Event()
+        self._blink_phase = False
+        self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_CH_COUNT)}
+        self._last_ctrl_bank_b_focus_ts = 0.0
         super().__init__(state_manager, idev_in, idev_out)
+        self._active_pad_bank = 0
+        self.cols = 4
+        self.rows = 4
+        self.phrase_launcher_col = self.cols
+        self._build_pad_map()
+
+    def _dbg(self, msg):
+        # Use WARNING so lines appear with default ZYNTHIAN_LOG_LEVEL (WARNING).
+        if PAD_BANK_DEBUG_LOG:
+            logging.warning(f"MPK249 DBG: {msg}")
 
     def init(self):
         super().init()
-        for signal, subsignal, callback in self._signals:
-            zynsigman.register(signal, subsignal, callback)
-        self._save_mpk_program()
-
-        # Fallback: activate handler after a delay if no SysEx response received
-        # This handles cases where the device doesn't respond to SysEx query
-        def fallback_activate():
-            if self._saved_mpk_program is None:
-                logging.warning("MPK249: No SysEx response received, activating handler anyway")
-                self._current_handler.set_active(True)
-
-        import threading
-        timer = threading.Timer(2.0, fallback_activate)
-        timer.daemon = True
-        timer.start()
+        self._start_blink_timer()
+        zynsigman.register_queued(
+            zynsigman.S_GUI,
+            zynsigman.SS_GUI_SHOW_SCREEN,
+            self.on_gui_show_screen,
+        )
 
     def end(self):
-        for signal, subsignal, callback in self._signals:
-            zynsigman.unregister(signal, subsignal, callback)
-        self._restore_mpk_program()
+        self._stop_blink_timer()
+        zynsigman.unregister(
+            zynsigman.S_GUI,
+            zynsigman.SS_GUI_SHOW_SCREEN,
+            self.on_gui_show_screen,
+        )
         super().end()
 
-    def get_state(self):
-        return self._saved_state.save()
+    def _start_blink_timer(self):
+        if PAD_NON_A_PLAY_MODE != "blink":
+            return
+        self._blink_stop.clear()
+        self._schedule_blink_tick()
 
-    def set_state(self, state):
-        self._saved_state.load(state)
+    def _stop_blink_timer(self):
+        self._blink_stop.set()
+        if self._blink_timer is not None:
+            self._blink_timer.cancel()
+            self._blink_timer = None
 
-        # Change to active handler only if MPK program is saved
-        if self._saved_mpk_program is not None:
-            logging.info("MPK249: Activating handler due to set_state with saved program")
-            self._current_handler.set_active(True)
-        else:
-            logging.info("MPK249: NOT activating handler - no saved program yet")
+    def _schedule_blink_tick(self):
+        if self._blink_stop.is_set():
+            return
+        self._blink_timer = threading.Timer(
+            max(0.2, PAD_LED_BLINK_PERIOD_S * 0.5), self._blink_tick
+        )
+        self._blink_timer.daemon = True
+        self._blink_timer.start()
 
-    def midi_event(self, ev: bytes):
-        # Debug: log all MIDI events
-        logging.info(f"MPK249 MIDI event: {ev.hex()}")
+    def _blink_tick(self):
+        try:
+            # Bank A uses SysEx color states and should remain steady.
+            if (
+                self.idev_out is not None
+                and PAD_NON_A_PLAY_MODE == "blink"
+                and self._active_pad_bank != 0
+            ):
+                self._blink_phase = not self._blink_phase
+                vel = PAD_LED_ACTIVE_VEL if self._blink_phase else PAD_LED_OFF_VEL
+                ch = PAD_BANK_CH_FIRST + self._active_pad_bank
+                notes = tuple(self._blink_notes_by_bank.get(self._active_pad_bank, ()))
+                for note in notes:
+                    lib_zyncore.dev_send_note_on(self.idev_out, ch, note, vel)
+        except Exception as ex:
+            logging.warning(f"MPK249 blink tick: {ex}")
+        finally:
+            self._schedule_blink_tick()
 
-        evtype = (ev[0] >> 4) & 0x0F
-
-        if evtype == CONST.MIDI_PC:
-            program = ev[1] & 0x7F
-            if program == PROG_MIXER_MODE:
-                self._change_handler(self._mixer_handler)
-            elif program == PROG_DEVICE_MODE:
-                self._change_handler(self._device_handler)
-            elif program == PROG_PATTERN_MODE:
-                self._change_handler(self._pattern_handler)
-            elif program == PROG_NOTEPAD_MODE:
-                self._change_handler(self._notepad_handler)
-            elif program == PROG_USER_MODE:
-                self._change_handler(self._user_handler)
-            elif program == PROG_CONFIG_MODE:
-                self._change_handler(self._config_handler)
-            elif program == PROG_OPEN_MIXER:
-                self.state_manager.send_cuia(
-                    "SCREEN_ALSA_MIXER" if self._current_screen == "mixer" else
-                    "SCREEN_MIXER"
-                )
-            elif program == PROG_OPEN_ZYNPAD:
-                self.state_manager.send_cuia({
-                    "zynpad": "SCREEN_ARRANGER",
-                    "arranger": "SCREEN_PATTERN_EDITOR"
-                }.get(self._current_screen, "SCREEN_ZYNPAD"))
-            elif program == PROG_OPEN_TEMPO:
-                self.state_manager.send_cuia("TEMPO")
-            elif program == PROG_OPEN_SNAPSHOT:
-                self.state_manager.send_cuia(
-                    "SCREEN_SNAPSHOT" if self._current_screen == "zs3" else
-                    "SCREEN_ZS3"
-                )
-            else:
-                self._current_handler.pg_change(program)
-
-        elif evtype == CONST.MIDI_NOTE_ON:
-            note = ev[1] & 0x7F
-            velocity = ev[2] & 0x7F
-            channel = ev[0] & 0x0F
-            self._current_handler.note_on(note, channel, velocity)
-
-        elif evtype == CONST.MIDI_NOTE_OFF:
-            note = ev[1] & 0x7F
-            channel = ev[0] & 0x0F
-            self._current_handler.note_off(note, channel)
-
-        elif evtype == CONST.MIDI_CC:
-            ccnum = ev[1] & 0x7F
-            ccval = ev[2] & 0x7F
-            self._current_handler.cc_change(ccnum, ccval)
-
-        elif ev[0] == CONST.MIDI_SYSEX:
-            header = ev[:8].hex(' ')
-            logging.info(f"MPK249 SYSEX received: len={len(ev)}, header={header}")
-
-            if (len(ev) > 10 and ev[1] == MANUFACTURER_ID and ev[2] == MSG_DIRECTION_IN and
-                    ev[4] == CMD_INCOMING_DATA and self._saved_mpk_program is None):
-                if ev[3] in KNOWN_PRODUCT_IDS:
-                    logging.info(f"MPK249: Accepted SysEx response for product_id={ev[3]:#02x}")
-                else:
-                    logging.warning(f"MPK249: Accepted SysEx response with unexpected product_id={ev[3]:#02x}")
-
-                self._saved_mpk_program = ev[1:-1]
-                logging.info("MPK249: Received SysEx program, activating handler")
-                self._current_handler.set_active(True)
-                return
-
-            self._current_handler.sysex_message(ev[1:-1])
+    def on_gui_show_screen(self, screen):
+        self._current_screen = screen
 
     def refresh(self):
-        pass
+        """Rebuild pad LEDs for the *active* MPK bank's quadrant of the zynpad.
+
+        The base zynpad refresh walks phrases ``scroll_v .. scroll_v+rows-1``, which
+        is only correct for a full 8×8 (or scrolled) view. Each MPK pad bank (A–D)
+        maps to a 4×4 quadrant: row offset ``bank_row * 4`` and column offset
+        ``bank_col * 4`` — same as :meth:`_handle_pad_note`.
+        """
+
+        zynthian_ctrldev_base.refresh(self)
+        if self.idev_out is None:
+            return
+        self.light_off()
+        bank_row = self._active_pad_bank % PAD_BANK_LAYOUT_COLS
+        bank_col = self._active_pad_bank // PAD_BANK_LAYOUT_COLS
+        for row in range(self.rows):
+            phrase = row + self.scroll_v + bank_row * PAD_BANK_ROW_STRIDE
+            for chan in range(32):
+                self.update_seq_state(phrase, chan)
+            self.update_seq_state(phrase, zynseq.PHRASE_CHANNEL)
+
+    def update_seq_state(self, phrase, chan):
+        """Map global phrase / chain index to the 4×4 grid for the active bank."""
+
+        if chan is None or self.idev_out is None:
+            return
+
+        bank_row = self._active_pad_bank % PAD_BANK_LAYOUT_COLS
+        bank_col = self._active_pad_bank // PAD_BANK_LAYOUT_COLS
+        row = phrase - self.scroll_v - bank_row * PAD_BANK_ROW_STRIDE
+        if row < 0 or row >= self.rows:
+            return
+
+        if chan == zynseq.PHRASE_CHANNEL:
+            col = self.phrase_launcher_col
+            try:
+                pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]
+                pad_info["empty"] = False
+            except Exception:
+                pad_info = None
+            self.update_pad(row, col, pad_info)
+            return
+
+        try:
+            pad_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["sequences"][chan]
+            if pad_info["group"] < 16:
+                try:
+                    pattern = pad_info["tracks"][0]["patns"]["0"]
+                    pad_info["empty"] = len(self.zynseq.state["patns"][str(pattern)]["events"]) == 0
+                except Exception:
+                    pad_info["empty"] = True
+            else:
+                try:
+                    chain_id = self.chain_manager.get_chain_ids_by_midi_chan(chan)[0]
+                    chain = self.chain_manager.chains[chain_id]
+                    clippy_proc = chain.get_clippy_processor()
+                    if clippy_proc.controllers_dict[f"file {phrase + 1}"].get_value():
+                        pad_info["empty"] = False
+                    else:
+                        pad_info["empty"] = True
+                except Exception:
+                    pad_info["empty"] = True
+        except IndexError:
+            pad_info = None
+
+        for idx in self.chain_manager.get_pos_by_midi_chan(chan):
+            col = idx - self.scroll_h - bank_col * PAD_BANK_COL_STRIDE
+            if 0 <= col < self.cols:
+                self.update_pad(row, col, pad_info)
+
+    def _build_pad_map(self):
+        self._pad_note_to_rc.clear()
+        for r, row in enumerate(PAD_NOTE_BANK):
+            for c, note in enumerate(row):
+                self._pad_note_to_rc[note] = (r, c)
+
+    @staticmethod
+    def _mpk249_pad_ram_bytes(row, col):
+        """Return two address bytes (each ≤0x7F) for pad RAM color slot.
+
+        Community docs list SysEx pad RAM from the bottom row of the hardware
+        (0x0A7C–0x0A7F) then upward through 0x0B00–0x0B0B.  PAD_NOTE_BANK uses
+        row 0 as the top row (highest MIDI notes).  Map logical rows without
+        flipping column order.
+        """
+
+        if not (0 <= row <= 3 and 0 <= col <= 3):
+            raise ValueError(f"bad pad cell {row},{col}")
+        ram_row = 3 - row
+        if ram_row == 0:
+            return (0x0A, 0x7C + col)
+        return (0x0B, (ram_row - 1) * 4 + col)
+
+    def _send_pad_led_sysex(self, row, col, color):
+        if self.idev_out is None:
+            return
+        ah, al = self._mpk249_pad_ram_bytes(row, col)
+        color &= 0x7F
+        msg = bytes(
+            [
+                0xF0,
+                0x47,
+                0x00,
+                MPK249_SYSEX_PRODUCT_ID,
+                0x31,
+                0x00,
+                0x04,
+                0x01,
+                ah,
+                al,
+                color,
+                0xF7,
+            ]
+        )
+        try:
+            lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
+        except Exception as ex:
+            logging.warning(f"MPK249 pad SysEx: {ex}")
+
+    @staticmethod
+    def _cc_to_balance(ccval):
+        """Map MIDI CC 0–127 to zynmixer balance −1..+1 (MIDI Mix style)."""
+
+        return max(-1.0, min(1.0, ccval / 64.0 - 1.0))
+
+    def _set_strip_balance_from_cc(self, pos, ccval):
+        """Apply pan to a chain strip mixer; always drive zynmixer (not only on zctrl delta)."""
+
+        val = self._cc_to_balance(ccval)
+        chain = self.get_filtered_chain_by_index(pos)
+        if not chain or not chain.zynmixer_proc:
+            return
+        proc = chain.zynmixer_proc
+        try:
+            proc.zynmixer.set_balance(proc.mixer_chan, val)
+            zc = proc.controllers_dict.get("balance")
+            if zc is not None:
+                zc.set_value(val, send=False)
+        except Exception as ex:
+            logging.warning(f"MPK249 chain balance: {ex}")
+
+    def _set_main_balance_from_cc(self, ccval):
+        val = self._cc_to_balance(ccval)
+        mp = self.state_manager.main_mixbus_proc
+        if not mp:
+            return
+        try:
+            mp.zynmixer.set_balance(mp.mixer_chan, val)
+            zc = mp.controllers_dict.get("balance")
+            if zc is not None:
+                zc.set_value(val, send=False)
+        except Exception as ex:
+            logging.warning(f"MPK249 main balance: {ex}")
+
+    @staticmethod
+    def _control_bank_name_from_channel(ch):
+        return {
+            CTRL_MIDI_CH: "A",
+            CTRL_BANK_B_MIDI_CH: "B",
+            CTRL_BANK_C_MIDI_CH: "C",
+        }.get(ch, "?")
 
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
-        pass
+        """Mirror mixer changes onto MPK faders (best-effort; faders are not motorized)."""
 
-    def update_mixer_active_chain(self, active_chain):
-        pass
-
-    def _change_handler(self, new_handler):
-        if new_handler == self._current_handler:
+        if self.idev_out is None or symbol != "level":
             return
-        self._current_handler.set_active(False)
-        self._current_handler = new_handler
-        self._current_handler.set_active(True)
-
-    def _on_gui_show_screen(self, screen):
-        self._current_screen = screen
-        for handler in [self._device_handler, self._mixer_handler, self._pattern_handler]:
-            handler.on_screen_change(screen)
-
-    def _save_mpk_program(self):
-        for product_id in KNOWN_PRODUCT_IDS:
-            cmd = SysExQueryProgram(program=0, product_id=product_id)
-            query = bytes.fromhex("F0 {} F7".format(cmd))
-            logging.debug(f"MPK249: Sending SysEx query with product_id={product_id:#02x}")
-            lib_zyncore.dev_send_midi_event(self.idev_out, query, len(query))
-
-    def _restore_mpk_program(self):
-        if self._saved_mpk_program is None:
-            return
-
-        query = [0xF0]
-        query.extend(list(self._saved_mpk_program))
-        query[2] = MSG_DIRECTION_OUT
-        query[4] = CMD_WRITE_DATA
-        query.append(0xF7)
-        lib_zyncore.dev_send_midi_event(
-            self.idev_out, bytes(query), len(query))
-
-
-# --------------------------------------------------------------------------
-# Audio mixer and (a sort of) Zynpad handler (Mixer mode)
-# --------------------------------------------------------------------------
-class MixerHandler(ModeHandlerBase):
-
-    CC_PAD_START_A = 8
-    CC_PAD_VOLUME_A = 8
-    CC_PAD_PAN_A = 9
-    CC_PAD_MUTE_A = 10
-    CC_PAD_SOLO_A = 11
-    CC_PAD_PANIC_STOP_A = 12
-    CC_PAD_AUDIO_RECORD = 13
-    CC_PAD_AUDIO_STOP = 14
-    CC_PAD_AUDIO_PLAY = 15
-    CC_PAD_END_A = 15
-
-    CC_PAD_START_B = 16
-    CC_PAD_VOLUME_B = 16
-    CC_PAD_PAN_B = 17
-    CC_PAD_MUTE_B = 18
-    CC_PAD_SOLO_B = 19
-    CC_PAD_PANIC_STOP_B = 20
-    CC_PAD_MIDI_RECORD = 21
-    CC_PAD_MIDI_STOP = 22
-    CC_PAD_MIDI_PLAY = 23
-    CC_PAD_END_B = 23
-
-    CC_KNOBS_START = 22
-    CC_KNOBS_END = 29  # CC22-29
-
-    CC_FADERS_START = 12
-    CC_FADERS_END = 19  # CC12-19
-
-    CC_JOY_X_NEG = 32
-    CC_JOY_X_POS = 33
-
-    def __init__(self, state_manager, idev_out, saved_state: SavedState):
-        super().__init__(state_manager)
-        self._idev_out = idev_out
-        self._saved_state = saved_state
-        self._chains_bank = 0
-        self._knobs_ease = KnobSpeedControl(steps_normal=5)
-
-    def set_active(self, active):
-        logging.info(f"MPK249 MixerHandler.set_active({active})")
-        super().set_active(active)
-        if active:
-            self._upload_mode_layout_to_device()
-
-    def cc_change(self, ccnum, ccval):
-        # Debug logging
-        logging.info(f"MPK249 CC: ccnum={ccnum}, ccval={ccval}, screen={self._current_screen}, is_active={self._is_active}")
-
-        if not self._is_active:
-            logging.warning("MPK249 MixerHandler: NOT ACTIVE - ignoring CC")
-            return
-
-        # Allow on mixer, zynpad, or any screen (for testing)
-        # TODO: restrict to specific screens in production
-        allowed_screens = ["mixer", "zynpad", None]
-        if self._current_screen not in allowed_screens:
-            logging.info(f"MPK249: Skipping CC - screen '{self._current_screen}' not in allowed list")
-            # For debugging, let's allow all screens for now
-            pass
-
-        # Is a Fader (Volume) - CC12-19
-        if 12 <= ccnum <= 19:
-            self._update_fader_volume(ccnum, ccval)
-            return
-
-        # Is a Knob rotation (Pan) - CC22-29
-        if self.CC_KNOBS_START <= ccnum <= self.CC_KNOBS_END:
-            self._update_pan(ccnum, ccval)
-            return
-
-        # Is a PAD press
-        if self.CC_PAD_START_A <= ccnum <= self.CC_PAD_END_B:
-
-            # Single step actions
-            cuia = {
-                self.CC_PAD_PANIC_STOP_A: "ALL_SOUNDS_OFF",
-                self.CC_PAD_PANIC_STOP_B: "ALL_SOUNDS_OFF",
-                self.CC_PAD_AUDIO_RECORD: "TOGGLE_AUDIO_RECORD",
-                self.CC_PAD_AUDIO_STOP: "STOP_AUDIO_PLAY",
-                self.CC_PAD_AUDIO_PLAY: "TOGGLE_AUDIO_PLAY",
-                self.CC_PAD_MIDI_RECORD: "TOGGLE_MIDI_RECORD",
-                self.CC_PAD_MIDI_STOP: "STOP_MIDI_PLAY",
-                self.CC_PAD_MIDI_PLAY: "TOGGLE_MIDI_PLAY",
-            }.get(ccnum)
-            if cuia is not None:
-                if ccval > 0:
-                    if cuia == "ALL_SOUNDS_OFF":
-                        self._stop_all_sounds()
-                    else:
-                        self._state_manager.send_cuia(cuia)
-                return
-
-            if ccval == 0:
-                self._chains_bank = 0
-            elif self.CC_PAD_START_B <= ccnum <= self.CC_PAD_END_B:
-                self._chains_bank = 1
-
-            if self._current_screen in ["mixer", "zynpad"]:
-                if ccnum in (self.CC_PAD_VOLUME_A, self.CC_PAD_VOLUME_B):
-                    # Select chain
-                    self._change_chain(ccnum, ccval)
-                elif ccnum in (self.CC_PAD_MUTE_A, self.CC_PAD_MUTE_B):
-                    self._update_mute(ccnum, ccval)
-                elif ccnum in (self.CC_PAD_SOLO_A, self.CC_PAD_SOLO_B):
-                    self._update_solo(ccnum, ccval)
-
-    def note_on(self, note, channel, velocity):
-        # Debug logging
-        logging.info(f"MPK249 NOTE ON: note={note}, channel={channel}, velocity={velocity}")
-
-        if velocity == 0:
-            self.note_off(note, channel)
-            return
-        # MPK249 LiveLite preset pads: C4(60) to D6(83) on Channels 2-5
-        # Bank A (Channel 2): notes 60-75
-        # Bank B (Channel 3): notes 60-75
-        # Bank C (Channel 4): notes 60-75
-        # Bank D (Channel 5): notes 60-75
-        if 60 <= note <= 75:
-            pad = note - 60
-            # Determine bank from channel
-            if channel == 1:  # Channel 2 in 0-indexed = 1
-                self._chains_bank = 0
-            elif channel == 2:  # Channel 3 in 0-indexed = 2
-                self._chains_bank = 1
-            elif channel == 3:  # Channel 4 in 0-indexed = 3
-                self._chains_bank = 2
-            elif channel == 4:  # Channel 5 in 0-indexed = 4
-                self._chains_bank = 3
-            ccnum = self.CC_PAD_START_A + pad
-            self.cc_change(ccnum, 127)
-
-    def note_off(self, note, channel):
-        # Debug logging
-        logging.info(f"MPK249 NOTE OFF: note={note}, channel={channel}")
-
-        # MPK249 LiveLite preset pads: C4(60) to D6(83)
-        if 60 <= note <= 75:
-            pad = note - 60
-            ccnum = self.CC_PAD_START_A + pad
-            self.cc_change(ccnum, 0)
-
-    def _upload_mode_layout_to_device(self):
-        cmd = SysExSetProgram(
-            name="Zynthian MIXER",
-            tempo=self._saved_state.tempo,
-            arp=self._saved_state.arpeggiator,
-            tempo_taps=self._saved_state.tempo_taps,
-            aftertouch=self._saved_state.aftertouch,
-            keybed_octave=self._saved_state.keybed_octave,
-            channels={
-                "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel
-            },
-            pads={
-                "note": self._saved_state.pad_notes,
-                "pc": range(16),
-                "cc": range(self.CC_PAD_START_A, self.CC_PAD_END_B + 1)
-            },
-            knobs={
-                "mode": [KNOB_MODE_REL] * 8,
-                "cc": [22, 23, 24, 25, 26, 27, 28, 29],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Pan {i+1}" if i < 7 else "Master Pan" for i in range(8)]
-            },
-            faders={
-                "mode": [FADER_MODE_ABS] * 8,
-                "cc": [12, 13, 14, 15, 16, 17, 18, 19],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Vol {i+1}" if i < 7 else "Master Vol" for i in range(8)]
-            }
-        )
-        msg = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
-
-    def _change_chain(self, ccnum, ccval):
-        # CCNUM is a PAD, offset to get chain index
-        ccnum = ccnum + self.CC_KNOBS_START - self.CC_PAD_START_A
-        return self._update_chain("select", ccnum, ccval)
-
-    def _update_pan(self, ccnum, ccval):
-        # Debug logging
-        logging.info(f"MPK249 PAN: ccnum={ccnum}, ccval={ccval}")
-        
-        # Map CC to knob index: CC22-29 -> knobs 0-7
-        if 22 <= ccnum <= 29:
-            knob_idx = ccnum - 22
-        else:
-            return False
-        
-        delta = self._knobs_ease.feed(ccnum, ccval)
-        if delta is None:
-            return False
-
-        # Knob 7 (CC29) is master pan and uses relative encoder updates
-        if knob_idx == 7:
-            logging.info(f"MPK249 PAN: updating master pan")
-            master_chain = self._chain_manager.get_chain_by_index(-1)
-            if master_chain is None or master_chain.zynmixer_proc is None:
-                logging.info("MPK249 PAN: no master chain available")
-                return False
-            mixer_chan = master_chain.zynmixer_proc.mixer_chan
-            value = self._state_manager.zynmixer_chan.get_balance(mixer_chan)
-            value *= 100
-            value += delta
-            value = max(-100, min(value, 100))
-            value /= 100
-            logging.info(f"MPK249 PAN: setting master mixer_chan {mixer_chan} to {value}")
-            self._state_manager.zynmixer_chan.set_balance(mixer_chan, value)
-            return True
-
-        # Knobs 0-6 control chain pans using relative encoder updates
-        index = ccnum - self.CC_KNOBS_START + self._chains_bank * 8
-        chain = self._chain_manager.get_chain_by_index(index)
-        if chain is None or chain.chain_id == 0:
-            logging.info(f"MPK249 PAN: no chain at index {index}")
-            return False
-        if chain.zynmixer_proc is None:
-            logging.info(f"MPK249 PAN: chain {index} has no zynmixer_proc")
-            return False
-        mixer_chan = chain.zynmixer_proc.mixer_chan
-        value = self._state_manager.zynmixer_chan.get_balance(mixer_chan)
-        value *= 100
-        value += delta
-        value = max(-100, min(value, 100))
-        value /= 100
-        logging.info(f"MPK249 PAN: setting chain {chain.chain_id} mixer_chan {mixer_chan} to {value}")
-        self._state_manager.zynmixer_chan.set_balance(mixer_chan, value)
-        return True
-
-    def _update_mute(self, ccnum, ccval):
-        return self._update_chain("mute", ccnum, ccval)
-
-    def _update_solo(self, ccnum, ccval):
-        return self._update_chain("solo", ccnum, ccval)
-
-    def _update_fader_volume(self, ccnum, ccval):
-        # Debug logging
-        logging.info(f"MPK249 FADER: ccnum={ccnum}, ccval={ccval}")
-
-        # Map CC to fader index: CC12-19 -> faders 0-7
-        if 12 <= ccnum <= 19:
-            fader_idx = ccnum - 12
-        else:
-            return False
-        
-        value = ccval / 127.0  # Absolute value (0-1)
-        
-        # Fader 7 (CC19) is master volume
-        if fader_idx == 7:
-            logging.info(f"MPK249 FADER: setting master volume to {value}")
-            master_chain = self._chain_manager.get_chain_by_index(-1)
-            if master_chain is None or master_chain.zynmixer_proc is None:
-                logging.info("MPK249 FADER: no master chain available")
-                return False
-            mixer_chan = master_chain.zynmixer_proc.mixer_chan
-            self._state_manager.zynmixer_chan.set_level(mixer_chan, value)
-            return True
-        
-        # Faders 0-6 control chain volumes
-        index = fader_idx
-        chain = self._chain_manager.get_chain_by_index(index)
-        if chain is None or chain.chain_id == 0:
-            logging.info(f"MPK249 FADER: no chain at index {index}")
-            return False
-        if chain.zynmixer_proc is None:
-            logging.info(f"MPK249 FADER: chain {index} has no zynmixer_proc")
-            return False
-        mixer_chan = chain.zynmixer_proc.mixer_chan
-        logging.info(f"MPK249 FADER: setting chain {chain.chain_id} mixer_chan {mixer_chan} to {value}")
-        self._state_manager.zynmixer_chan.set_level(mixer_chan, value)
-        return True
-
-    def _update_chain(self, type, ccnum, ccval, minv=None, maxv=None):
-        # Debug logging
-        logging.info(f"MPK249 UPDATE_CHAIN: type={type}, ccnum={ccnum}, ccval={ccval}, bank={self._chains_bank}")
-
-        index = ccnum - self.CC_KNOBS_START + self._chains_bank * 8
-        chain = self._chain_manager.get_chain_by_index(index)
-        if chain is None or chain.chain_id == 0:
-            logging.info(f"MPK249 UPDATE_CHAIN: no chain at index {index}")
-            return False
-        if chain.zynmixer_proc is None:
-            logging.info(f"MPK249 UPDATE_CHAIN: chain {index} has no zynmixer_proc")
-            return False
-        mixer_chan = chain.zynmixer_proc.mixer_chan
-        logging.info(f"MPK249 UPDATE_CHAIN: chain_id={chain.chain_id}, mixer_chan={mixer_chan}")
-
-        if type == "balance":
-            value = self._state_manager.zynmixer_chan.get_balance(mixer_chan)
-            set_value = self._state_manager.zynmixer_chan.set_balance
-        elif type == "mute":
-            value = ccval < 64
-            def set_value(c, v): return self._state_manager.zynmixer_chan.set_mute(c, v, True)
-        elif type == "solo":
-            value = ccval < 64
-            def set_value(c, v): return chain.set_solo(v)
-        elif type == "select":
-            return self._chain_manager.set_active_chain_by_id(chain.chain_id)
-        else:
-            return False
-
-        # NOTE: knobs are encoders, so ccval is relative
-        if minv is not None and maxv is not None:
-            value *= 100
-            value += ccval if ccval < 64 else ccval - 128
-            value = max(minv, min(value, maxv))
-            value /= 100
-
-        set_value(mixer_chan, value)
-        return True
-
-
-# --------------------------------------------------------------------------
-# Handle GUI (Device mode)
-# --------------------------------------------------------------------------
-class DeviceHandler(ModeHandlerBase):
-
-    CC_PAD_START = 8
-    CC_PAD_LEFT = 8
-    CC_PAD_DOWN = 9
-    CC_PAD_RIGHT = 10
-    CC_PAD_CTRL_PRESET = 11
-    CC_PAD_BACK_NO = 12
-    CC_PAD_UP = 13
-    CC_PAD_SEL_YES = 14
-    CC_PAD_OPT_ADMIN = 15
-
-    CC_PAD_KNOB1_BTN = 16
-    CC_PAD_KNOB2_BTN = 17
-    CC_PAD_KNOB3_BTN = 18
-    CC_PAD_KNOB4_BTN = 19
-    CC_PAD_PANIC_STOP = 20
-    CC_PAD_RECORD = 21
-    CC_PAD_STOP = 22
-    CC_PAD_PLAY = 23
-    CC_PAD_END = 23
-
-    PC_PAD_KNOB1_BTN = 8
-    PC_PAD_KNOB2_BTN = 9
-    PC_PAD_KNOB3_BTN = 10
-    PC_PAD_KNOB4_BTN = 11
-
-    CC_KNOB_START = 22
-    CC_KNOB_LAYER = 22
-    CC_KNOB_SNAPSHOT = 23
-    CC_KNOB_TEMPO = 24
-    CC_KNOB_BACK = 26
-    CC_KNOB_SELECT = 27
-    CC_KNOB_END = 29
-
-    def __init__(self, state_manager, idev_out, saved_state: SavedState):
-        super().__init__(state_manager)
-        self._idev_out = idev_out
-        self._saved_state = saved_state
-        self._knobs_ease = KnobSpeedControl()
-        self._btn_timer = ButtonTimer(self._handle_timed_button)
-
-    def set_active(self, active):
-        super().set_active(active)
-        if active:
-            self._upload_mode_layout_to_device()
-
-    def pg_change(self, program):
-        zynswitch = {
-            self.PC_PAD_KNOB1_BTN: 0,  # Layer
-            self.PC_PAD_KNOB2_BTN: 1,  # Back
-            self.PC_PAD_KNOB3_BTN: 2,  # Snapshot
-            self.PC_PAD_KNOB4_BTN: 3,  # Select
-        }.get(program)
-        if zynswitch is not None:
-            self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [zynswitch, 'S'])
-
-    def cc_change(self, ccnum, ccval):
-        if self.CC_PAD_START <= ccnum <= self.CC_PAD_END:
-
-            # PADs that support short/bold/long push
-            if ccnum in (self.CC_PAD_CTRL_PRESET, self.CC_PAD_OPT_ADMIN, self.CC_PAD_SEL_YES,
-                         self.CC_PAD_KNOB1_BTN, self.CC_PAD_KNOB2_BTN, self.CC_PAD_KNOB3_BTN,
-                         self.CC_PAD_KNOB4_BTN):
-                self._btn_timer.is_released(ccnum) if ccval == 0 else \
-                    self._btn_timer.is_pressed(ccnum, time.time())
-
-            if ccval == 0:  # Release
-                return
-            if ccnum == self.CC_PAD_UP:
-                self._state_manager.send_cuia("ARROW_UP")
-            elif ccnum == self.CC_PAD_DOWN:
-                self._state_manager.send_cuia("ARROW_DOWN")
-            elif ccnum == self.CC_PAD_LEFT:
-                self._state_manager.send_cuia("ARROW_LEFT")
-            elif ccnum == self.CC_PAD_RIGHT:
-                self._state_manager.send_cuia("ARROW_RIGHT")
-            elif ccnum == self.CC_PAD_BACK_NO:
-                self._state_manager.send_cuia("BACK")
-            elif ccnum == self.CC_PAD_PANIC_STOP:
-                self._stop_all_sounds()
-            elif ccnum == self.CC_PAD_RECORD:
-                self._state_manager.send_cuia("TOGGLE_RECORD")
-            elif ccnum == self.CC_PAD_STOP:
-                self._state_manager.send_cuia("STOP")
-            elif ccnum == self.CC_PAD_PLAY:
-                self._state_manager.send_cuia("TOGGLE_PLAY")
-
-        elif ccnum == self.CC_KNOB_TEMPO:
-            delta = self._knobs_ease.feed(ccnum, ccval)
-            if delta is None:
-                return
-            self._show_screen_briefly(
-                screen="tempo", cuia="TEMPO", timeout=1500)
-            tempo = self._zynseq.get_tempo() + delta * 0.1
-            self._zynseq.set_tempo(tempo)
-            self._timer.add("update-device-tempo", 1500, lambda _:
-                            self._upload_mode_layout_to_device())
-
-        else:
-            delta = self._knobs_ease.feed(ccnum, ccval)
-            if delta is None:
-                return
-
-            zynpot = {
-                self.CC_KNOB_LAYER: 0,
-                self.CC_KNOB_BACK: 1,
-                self.CC_KNOB_SNAPSHOT: 2,
-                self.CC_KNOB_SELECT: 3
-            }.get(ccnum, None)
-            if zynpot is None:
-                return
-
-            self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
-
-    def note_on(self, note, channel, velocity):
-        if velocity == 0:
-            return
-        # Map notes to CC for pads
-        note_to_cc = {
-            36: self.CC_PAD_LEFT,
-            37: self.CC_PAD_DOWN,
-            38: self.CC_PAD_RIGHT,
-            39: self.CC_PAD_CTRL_PRESET,
-            40: self.CC_PAD_BACK_NO,
-            41: self.CC_PAD_UP,
-            42: self.CC_PAD_SEL_YES,
-            43: self.CC_PAD_OPT_ADMIN,
-            44: self.CC_PAD_KNOB1_BTN,
-            45: self.CC_PAD_KNOB2_BTN,
-            46: self.CC_PAD_KNOB3_BTN,
-            47: self.CC_PAD_KNOB4_BTN,
-            48: self.CC_PAD_PANIC_STOP,
-            49: self.CC_PAD_RECORD,
-            50: self.CC_PAD_STOP,
-            51: self.CC_PAD_PLAY,
-        }
-        ccnum = note_to_cc.get(note)
-        if ccnum is not None:
-            self.cc_change(ccnum, 127)
-
-    def _handle_timed_button(self, btn, press_type):
-        zynswitch = {
-            self.CC_PAD_KNOB1_BTN: 0,  # Layer
-            self.CC_PAD_KNOB2_BTN: 1,  # Back
-            self.CC_PAD_KNOB3_BTN: 2,  # Snapshot
-            self.CC_PAD_KNOB4_BTN: 3,  # Select
-        }.get(btn)
-        if zynswitch is not None:
-            state = 'B' if press_type == CONST.PT_BOLD else 'S'
-            self._state_manager.send_cuia(
-                "V5_ZYNPOT_SWITCH", [zynswitch, state])
-            return
-
-        cuia = None
-        if press_type == CONST.PT_SHORT:
-            if btn == self.CC_PAD_CTRL_PRESET:
-                cuia = ("PRESET" if self._current_screen == "control"
-                        else "SCREEN_BANK" if self._current_screen == "preset"
-                        else "SCREEN_CONTROL")
-            elif btn == self.CC_PAD_OPT_ADMIN:
-                cuia = "SCREEN_ADMIN" if self._current_screen == "chain_manager" else "MENU"
-            elif btn == self.CC_PAD_SEL_YES:
-                self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
-
-        elif press_type == CONST.PT_BOLD:
-            if btn == self.CC_PAD_CTRL_PRESET:
-                cuia = "SCREEN_PATTERN_EDITOR"
-            elif btn == self.CC_PAD_SEL_YES:
-                self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'B'])
-
-        elif press_type == CONST.PT_LONG:
-            cuia = {
-                self.CC_PAD_OPT_ADMIN:   "POWER",
-                self.CC_PAD_CTRL_PRESET: "PRESET_FAV",
-            }.get(btn)
-
-        if cuia:
-            self._state_manager.send_cuia(cuia)
-
-    def _upload_mode_layout_to_device(self):
-        cmd = SysExSetProgram(
-            name="Zynthian DEVICE",
-            tempo=self._saved_state.tempo,
-            arp=self._saved_state.arpeggiator,
-            tempo_taps=self._saved_state.tempo_taps,
-            aftertouch=self._saved_state.aftertouch,
-            keybed_octave=self._saved_state.keybed_octave,
-            channels={
-                "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel
-            },
-            pads={
-                "note": self._saved_state.pad_notes,
-                "pc": range(16),
-                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
-            },
-            knobs={
-                "mode": [KNOB_MODE_REL] * 3 + [KNOB_MODE_ABS, KNOB_MODE_REL,
-                                               KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS],
-                "cc": [22, 23, 24, 25, 26, 27, 28, 29],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [
-                    "Knob#1", "Knob#3", "Tempo", "K4",
-                    "Knob#2", "Knob#4", "K7", "K8"
-                ]
-            },
-            faders={
-                "mode": [FADER_MODE_ABS] * 8,
-                "cc": [12, 13, 14, 15, 16, 17, 18, 19],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Fader {i+1}" for i in range(8)]
-            }
-        )
-        msg = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
-
-
-# --------------------------------------------------------------------------
-# Handle pattern editor (Pattern mode)
-# --------------------------------------------------------------------------
-class PatternHandler(ModeHandlerBase):
-
-    CC_KNOB_START = 22
-    CC_KNOB_MOVE_V = 23  # K2
-    CC_KNOB_STUTTER_COUNT = 24  # K3
-    CC_KNOB_STUTTER_DURATION = 25  # K4
-    CC_KNOB_MOVE_H = 27  # K6
-    CC_KNOB_DURATION = 28  # K7
-    CC_KNOB_VELOCITY = 29  # K8
-    CC_KNOB_END = 29
-
-    CC_PAD_START = 8
-    CC_PAD_PREV_PATTERN_A = 9   # PAD 1 A
-    CC_PAD_NEXT_PATTERN_A = 13  # PAD 2 A
-    CC_PAD_SHIFT_A = 17  # PAD 3 A
-    CC_PAD_ACTION_A = 21  # PAD 4 A
-    CC_PAD_PANIC_STOP_A = 8   # PAD 5 A
-    CC_PAD_RECORD_A = 12  # PAD 6 A
-    CC_PAD_STOP_A = 16  # PAD 7 A
-    CC_PAD_PLAY_A = 20  # PAD 8 A
-    CC_PAD_PREV_PATTERN_B = 11  # PAD 1 B
-    CC_PAD_NEXT_PATTERN_B = 15  # PAD 2 B
-    CC_PAD_SHIFT_B = 19  # PAD 3 B
-    CC_PAD_ACTION_B = 23  # PAD 4 B
-    CC_PAD_PANIC_STOP_B = 10  # PAD 5 B
-    CC_PAD_RECORD_B = 14  # PAD 6 B
-    CC_PAD_STOP_B = 18  # PAD 7 B
-    CC_PAD_PLAY_B = 22  # PAD 8 B
-    CC_PAD_END = 23
-
-    def __init__(self, state_manager, idev_out, saved_state: SavedState):
-        super().__init__(state_manager)
-        self._libseq = self._zynseq.libseq
-        self._idev_out = idev_out
-        self._saved_state = saved_state
-        self._knobs_ease = KnobSpeedControl(steps_normal=5)
-        self._joystick_timer = None
-
-    def set_active(self, active):
-        super().set_active(active)
-        if active:
-            self._upload_mode_layout_to_device()
-
-    def cc_change(self, ccnum, ccval):
-        if self._current_screen not in ("zynpad", "arranger", "pattern_editor"):
-            return
-
-        # If 'FULL-LEVEL' is active (ccval=127), then use PADs to launch sequences
-        if self.CC_PAD_START <= ccnum <= self.CC_PAD_END:
-            if ccval == 127 and self._current_screen == "zynpad":
-                pad = ccnum - self.CC_PAD_START
-                info = self._zynseq.get_launcher_info(pad // 4, pad % 4)
-                if info is not None:
-                    self._libseq.togglePlayState(self._zynseq.scene, info['phrase'], info["sequence"])
-                return
-
-        if ccnum in (self.CC_PAD_SHIFT_A, self.CC_PAD_SHIFT_B):
-            self.on_shift_changed(ccval > 0)
-        if ccnum in (self.CC_PAD_PANIC_STOP_A, self.CC_PAD_PANIC_STOP_B):
-            if ccval > 0:
-                self._stop_all_sounds()
-        elif ccnum == self.CC_KNOB_MOVE_H:
-            delta = self._knobs_ease.feed(ccnum, ccval)
-            if delta is not None:
-                dir = "RIGHT" if delta >= 1 else "LEFT"
-                self._state_manager.send_cuia(f"ARROW_{dir}")
-        if ccnum == self.CC_KNOB_MOVE_V:
-            delta = self._knobs_ease.feed(ccnum, ccval)
-            if delta is not None:
-                dir = "DOWN" if delta >= 1 else "UP"
-                self._state_manager.send_cuia(f"ARROW_{dir}")
-        elif ccnum in (self.CC_PAD_ACTION_A, self.CC_PAD_ACTION_B):
-            if ccval > 0:
-                self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
-
-        elif self.CC_JOY_X_NEG <= ccnum <= self.CC_JOY_Y_POS:
-            if self._joystick_timer is None:
-                self._joystick_timer = IntervalTimer()
-            key, cuia = {
-                self.CC_JOY_X_POS: ("+x", "ARROW_RIGHT"),
-                self.CC_JOY_X_NEG: ("-x", "ARROW_LEFT"),
-                self.CC_JOY_Y_POS: ("+y", "ARROW_UP"),
-                self.CC_JOY_Y_NEG: ("-y", "ARROW_DOWN"),
-            }.get(ccnum)
-            ts = [None, 800, 300, 50][bisect([30, 100, 120], ccval)]
-            if ts is None:
-                self._joystick_timer.remove(key)
-            else:
-                if key not in self._joystick_timer:
-                    self._joystick_timer.add(
-                        key, ts, lambda _: self._state_manager.send_cuia(cuia))
-                else:
-                    self._joystick_timer.update(key, ts)
-
-        if self._current_screen != "pattern_editor":
-            return
-
-        elif ccnum == self.CC_KNOB_DURATION:
-            self._change_step_duration(ccnum, ccval)
-        elif ccnum == self.CC_KNOB_VELOCITY:
-            note, step = self._get_selected_step()
-            self._libseq.setNoteVelocity(step, note, ccval)
-        elif ccnum == self.CC_KNOB_STUTTER_COUNT:
-            note, step = self._get_selected_step()
-            self._libseq.setStutterCount(step, note, ccval)
-        elif ccnum == self.CC_KNOB_STUTTER_DURATION:
-            note, step = self._get_selected_step()
-            self._libseq.setStutterDur(step, note, ccval)
-
-        elif ccval > 0:
-            if ccnum in (self.CC_PAD_NEXT_PATTERN_A, self.CC_PAD_NEXT_PATTERN_B):
-                self._change_to_next_pattern()
-            elif ccnum in (self.CC_PAD_PREV_PATTERN_A, self.CC_PAD_PREV_PATTERN_B):
-                self._change_to_previous_pattern()
-            elif ccnum in (self.CC_PAD_RECORD_A, self.CC_PAD_RECORD_B):
-                self._state_manager.send_cuia("TOGGLE_RECORD")
-            elif ccnum in (self.CC_PAD_STOP_A, self.CC_PAD_STOP_B):
-                self._state_manager.send_cuia("STOP")
-            elif ccnum in (self.CC_PAD_PLAY_A, self.CC_PAD_PLAY_B):
-                self._state_manager.send_cuia("TOGGLE_PLAY")
-
-    def _change_to_next_pattern(self):
-        # FIXME: what if this track has the same pattern twice? It will go back!
-        seq = self._get_selected_sequence()
-        patterns: list = self._get_sequence_patterns(self._zynseq.bank, seq)
-        current = self._libseq.getPatternIndex()
         try:
-            pos = patterns.index(current)
-            if pos == len(patterns) - 1:
-                if not self._is_shifted:
+            if mixbus:
+                mp = self.state_manager.main_mixbus_proc
+                if not mp or chan != mp.mixer_chan:
                     return
-                pattern = self._libseq.createPattern()
-                self._add_pattern_to_end_of_track(
-                    self._zynseq.bank, seq, 0, pattern)
-                patterns.append(pattern)
-            self._libseq.selectPattern(patterns[pos + 1])
-            self._refresh_pattern_editor()
-        except ValueError:
-            pass
+                if MASTER_FADER_INDEX is not None:
+                    ccval = min(127, max(0, int(round(float(value) * 127.0))))
+                    lib_zyncore.dev_send_ccontrol_change(
+                        self.idev_out,
+                        CTRL_MIDI_CH,
+                        FADER_CCS[MASTER_FADER_INDEX],
+                        ccval,
+                    )
+                return
+            pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus)
+            if pos is None:
+                return
+            col = pos - self.scroll_h
+            max_chain_fader = (
+                MASTER_FADER_INDEX
+                if MASTER_FADER_INDEX is not None
+                else len(FADER_CCS)
+            )
+            if 0 <= col < max_chain_fader:
+                ccval = min(127, max(0, int(round(float(value) * 127.0))))
+                lib_zyncore.dev_send_ccontrol_change(
+                    self.idev_out, CTRL_MIDI_CH, FADER_CCS[col], ccval
+                )
+        except Exception as ex:
+            logging.warning(f"MPK249 mixer feedback: {ex}")
 
-    def _change_to_previous_pattern(self):
-        # FIXME: what if this track has the same pattern twice? It will go back!
-        seq = self._get_selected_sequence()
-        patterns: list = self._get_sequence_patterns(self._zynseq.bank, seq)
-        current = self._libseq.getPatternIndex()
-        try:
-            pos = patterns.index(current)
-            if pos > 0:
-                self._libseq.selectPattern(patterns[pos - 1])
-                self._refresh_pattern_editor()
-        except ValueError:
-            pass
+    def _handle_control_bank_a_cc(self, ccnum, ccval):
+        """Default BANK A mapping: current mixer/pan/transport behavior."""
 
-    def _change_step_duration(self, ccnum, ccval):
-        if self._knobs_ease.feed(ccnum, ccval) is None:
-            return
-        note, step = self._get_selected_step()
-        duration = self._libseq.getNoteDuration(step, note)
-        if not duration:
-            return
+        master_cc = MASTER_CC_BY_CTRL_BANK.get(CTRL_MIDI_CH, MASTER_CC)
+        if master_cc is not None and ccnum == master_cc:
+            self.set_mixer_param("level", -1, ccval / 127.0)
+            return True
 
-        # When shifted, move to the nearest half point
-        if self._is_shifted:
-            duration -= duration % 0.5
-        inc = 0.5 if self._is_shifted else 0.1
-        delta = inc if ccval == 1 else -inc
-        duration = max(0.1, round(duration + delta, 1))
-        self._set_note_duration(step, note, duration)
+        if ccnum in FADER_CCS:
+            col = FADER_CCS.index(ccnum)
+            if MASTER_FADER_INDEX is not None and col == MASTER_FADER_INDEX:
+                # Main mixbus lives on zynmixer_bus (not zynmixer_chan); use the
+                # chain-0 MR processor so level updates route correctly.
+                mp = self.state_manager.main_mixbus_proc
+                if mp and "level" in mp.controllers_dict:
+                    val = ccval / 127.0
+                    zc = mp.controllers_dict["level"]
+                    if zc.value != val:
+                        zc.set_value(val)
+                return True
+            pos = self.scroll_h + col
+            self.set_mixer_param("level", pos, ccval / 127.0)
+            return True
 
-    def _upload_mode_layout_to_device(self):
-        cmd = SysExSetProgram(
-            name="Zynthian PATTERN",
-            tempo=self._saved_state.tempo,
-            arp=self._saved_state.arpeggiator,
-            tempo_taps=self._saved_state.tempo_taps,
-            aftertouch=self._saved_state.aftertouch,
-            keybed_octave=self._saved_state.keybed_octave,
-            channels={
-                "pads":  self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel
-            },
-            pads={
-                "note": self._saved_state.pad_notes,
-                # "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1),
-                # "cc": [1, 5, 9, 13, 0, 4, 8, 12, 3, 7, 11, 15, 2, 6, 10, 14],
-                # This order is the same as pads in Zynpad
-                "cc": [9, 13, 17, 21, 8, 12, 16, 20, 11, 15, 19, 23, 10, 14, 18, 22]
-            },
-            knobs={
-                "mode": [
-                    KNOB_MODE_ABS, KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS,
-                    KNOB_MODE_ABS, KNOB_MODE_REL, KNOB_MODE_REL, KNOB_MODE_ABS
-                ],
-                "cc": [22, 23, 24, 25, 26, 27, 28, 29],
-                "min": [0, 0, 0, 1, 0, 0, 0, 0],
-                "max": [1, 1, 32, 96, 1, 1, 1, 127],
-                "name": [
-                    "K1", "Cursor V", "Stutter Count", "Stutter Duration",
-                    "k5", "Cursor H", "Duration", "Velocity"
-                ],
-            },
-            faders={
-                "mode": [FADER_MODE_ABS] * 8,
-                "cc": [12, 13, 14, 15, 16, 17, 18, 19],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Fader {i+1}" for i in range(8)]
-            },
-            joy={
-                "x-mode": JOY_MODE_DUAL,
-                "x-neg-ch": self.CC_JOY_X_NEG,
-                "x-pos-ch": self.CC_JOY_X_POS,
-                "y-mode": JOY_MODE_DUAL,
-                "y-neg-ch": self.CC_JOY_Y_NEG,
-                "y-pos-ch": self.CC_JOY_Y_POS
-            }
-        )
-        msg = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
+        if ccnum == KNOB_PAN_MASTER_CC:
+            self._set_main_balance_from_cc(ccval)
+            return True
 
+        if KNOB_PAN_CC_FIRST <= ccnum < KNOB_PAN_CC_FIRST + CHAIN_PAN_KNOB_COUNT:
+            idx = ccnum - KNOB_PAN_CC_FIRST
+            pos = self.scroll_h + idx
+            self._set_strip_balance_from_cc(pos, ccval)
+            return True
 
-# --------------------------------------------------------------------------
-# Handle an editor of note pads (NotePad mode)
-# --------------------------------------------------------------------------
-class NotePadHandler(ModeHandlerBase):
-
-    CC_PAD_START = 8
-    CC_PAD_END = 23
-
-    CC_KNOB_START = 22
-    CC_KNOB_ADJUST_NOTE = 28
-    CC_KNOB_REMOVE_NOTE = 29
-    CC_KNOB_END = 29
-
-    CC_JOY_X_NEG = 32
-    CC_JOY_X_POS = 33
-    CC_JOY_Y_NEG = 34
-    CC_JOY_Y_POS = 35
-
-    def __init__(self, state_manager, idev_out, saved_state: SavedState):
-        super().__init__(state_manager)
-        self._libseq = self._zynseq.libseq
-        self._saved_state = saved_state
-        if saved_state.is_empty:
-            saved_state.pads_channel = DEFAULT_PADS_CH
-            saved_state.keybed_channel = DEFAULT_KEYBED_CH
-            # Note: do not create a zero list, as this index is used to know what pad is pressed
-            saved_state.pad_notes = list(range(16))
-            saved_state.is_empty = False
-
-        self._idev_out = idev_out
-        self._knobs_ease = KnobSpeedControl()
-        self._channel_to_commit = None
-        self._notes_to_add = {}
-        self._notes_to_remove = set()
-        self._notes_to_change = {}
-        self._pressed_pads = {}
-
-    def set_active(self, active):
-        super().set_active(active)
-        if active:
-            self._channel_to_commit = None
-            self._notes_to_add.clear()
-            self._upload_mode_layout_to_device()
-
-    def note_on(self, note, channel, velocity):
-        if channel == self._saved_state.pads_channel:
-            try:
-                pad = self._saved_state.pad_notes.index(note)
-                self._pressed_pads[pad] = time.time()
-            except ValueError:
-                pass
-
-        # NOTE: Keybed channel and pad channel may be the same
-        if channel == self._saved_state.keybed_channel:
-            if len(self._pressed_pads) == 1:
-                pad = next(iter(self._pressed_pads))
-                if note not in self._saved_state.pad_notes:
-                    self._notes_to_add[pad] = note
-
-    def note_off(self, note, channel):
-        should_upload = False
-        if channel == self._saved_state.pads_channel:
-            try:
-                pad = self._saved_state.pad_notes.index(note)
-                self._pressed_pads.pop(pad, None)
-            except ValueError:
-                pass
-
-            playing = self._notes_to_change.pop(pad, None)
-            if playing:
-                note_off = 0x80 | self._saved_state.pads_channel
-                self._libseq.sendMidiCommand(note_off, playing, 0)
-                self._saved_state.pad_notes[pad] = playing
-                should_upload = True
-
-        if len(self._pressed_pads) == 0:
-            should_upload |= len(self._notes_to_add) > 0 or len(
-                self._notes_to_remove) > 0
-            while self._notes_to_add:
-                pad, note = self._notes_to_add.popitem()
-                self._saved_state.pad_notes[pad] = note
-
-        if should_upload:
-            self._upload_mode_layout_to_device()
-
-    def cc_change(self, ccnum, ccval):
-        if ccnum == self.CC_KNOB_ADJUST_NOTE and len(self._pressed_pads) == 1:
-            self._adjust_note_pad(ccnum, ccval, list(
-                self._pressed_pads.keys())[0])
-        elif ccnum == self.CC_KNOB_REMOVE_NOTE:
-            self._toggle_mark_to_remove(ccval)
-
-    def _adjust_note_pad(self, ccnum, ccval, pad):
-        delta = self._knobs_ease.feed(ccnum, ccval)
-        if delta is None:
-            return
-
-        # Get note to update
-        note = self._notes_to_change.get(pad)
-        if note is None:
-            note = self._saved_state.pad_notes[pad]
-
-        # Mute current note
-        note_off = 0x80 | self._saved_state.pads_channel
-        self._libseq.sendMidiCommand(note_off, note, 0)
-
-        # Increase/decrease note
-        note = min(127, max(16, note + (1 if ccval == 1 else -1)))
-        self._notes_to_change[pad] = note
-        # FIXME: check if note is repeated, and do not update it (or remove the older
-        # when commited)
-
-        # Play new note
-        note_on = 0x90 | self._saved_state.pads_channel
-        self._libseq.sendMidiCommand(note_on, note, 64)
-
-    def _toggle_mark_to_remove(self, ccval):
-        note_off = 0x80 | self._saved_state.pads_channel
-        note_on = 0x90 | self._saved_state.pads_channel
-
-        # CCW rotation: set notes to be removed
-        if ccval == 127:
-            for pad in self._pressed_pads:
-                if pad in self._notes_to_remove:
-                    continue
-                self._notes_to_remove.add(pad)
-                self._libseq.sendMidiCommand(
-                    note_off, self._saved_state.pad_notes[pad], 0)
-
-        # CW rotation, undo not-commited changes
-        elif ccval == 1:
-            for pad in self._pressed_pads:
-                if pad in self._notes_to_remove:
-                    self._notes_to_remove.discard(pad)
-                    self._libseq.sendMidiCommand(
-                        note_on, self._saved_state.pad_notes[pad], 64)
-
-    def _upload_mode_layout_to_device(self):
-        cmd = SysExSetProgram(
-            name="Zynthian NOTEPAD",
-            tempo=self._saved_state.tempo,
-            arp=self._saved_state.arpeggiator,
-            tempo_taps=self._saved_state.tempo_taps,
-            aftertouch=self._saved_state.aftertouch,
-            keybed_octave=self._saved_state.keybed_octave,
-            channels={
-                "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel
-            },
-            pads={
-                "note": self._saved_state.pad_notes,
-                "pc": range(16),
-                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
-            },
-            knobs={
-                "mode": [KNOB_MODE_ABS] + [KNOB_MODE_REL] * 7,
-                "cc": [22, 23, 24, 25, 26, 27, 28, 29],
-                "min": [1] + [0] * 7,
-                "max": [16] + [127] * 7,
-                "name": [f"K{i}" for i in range(1, 7)] + ["Adjust Note", "Remove Note"]
-            },
-            faders={
-                "mode": [FADER_MODE_ABS] * 8,
-                "cc": [12, 13, 14, 15, 16, 17, 18, 19],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Fader {i+1}" for i in range(8)]
-            }
-        )
-        msg = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
-
-
-# --------------------------------------------------------------------------
-# Empty handler to allow the use of PADs/KNOBs for MIDI learn (User mode)
-# --------------------------------------------------------------------------
-class UserHandler(ModeHandlerBase):
-
-    CC_JOY_X_NEG = 64
-    CC_JOY_X_POS = 65
-
-    def __init__(self, state_manager, idev_out, saved_state: SavedState):
-        super().__init__(state_manager)
-        self._idev_out = idev_out
-        self._saved_state = saved_state
-
-    def set_active(self, active):
-        super().set_active(active)
-        if active:
-            self._upload_mode_layout_to_device()
-
-    def _upload_mode_layout_to_device(self):
-        cmd = SysExSetProgram(
-            name="Zynthian USER",
-            tempo=self._saved_state.tempo,
-            arp=self._saved_state.arpeggiator,
-            tempo_taps=self._saved_state.tempo_taps,
-            aftertouch=self._saved_state.aftertouch,
-            keybed_octave=self._saved_state.keybed_octave,
-            channels={
-                "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel
-            },
-            pads={
-                "note": self._saved_state.pad_notes,
-                "pc": range(16),
-                "cc": range(40, 56)
-            },
-            knobs={
-                #"mode": [KNOB_MODE_ABS] * 8,
-                "mode": [KNOB_MODE_REL] * 8,
-                "cc": range(56, 64),
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"K{i}" for i in range(1, 9)]
-            },
-            faders={
-                "mode": [FADER_MODE_ABS] * 8,
-                "cc": [12, 13, 14, 15, 16, 17, 18, 19],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Fader {i+1}" for i in range(8)]
-            },
-            joy={
-                "x-mode": JOY_MODE_DUAL,
-                "x-neg-ch": self.CC_JOY_X_NEG,
-                "x-pos-ch": self.CC_JOY_X_POS,
-                "y-mode": JOY_MODE_PITCHBEND
-            }
-        )
-        msg = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
-
-
-# --------------------------------------------------------------------------
-# Config handler to allow the user change MPK settings and store them in the snapshot, and
-# not loose them in evert mode change. (Config mode)
-# --------------------------------------------------------------------------
-class ConfigHandler(ModeHandlerBase):
-
-    CC_PAD_START = 8
-    CC_PAD_SHIFT = 10
-    CC_PAD_ARP_TOGGLE = 11
-    CC_PAD_END = 23
-
-    CC_KNOB_START = 22
-    CC_KNOB_TEMPO_TAPS = 22
-    CC_KNOB_SWING = 23
-    CC_KNOB_AFTERTOUCH = 24
-    CC_KNOB_KEYBED_OCTAVE = 25
-    CC_KNOB_EXT_CLOCK = 27
-    CC_KNOB_PAD_CHANNEL = 28
-    CC_KNOB_KEYBED_CHANNEL = 29
-    CC_KNOB_END = 29
-
-    NOTE_ARP_DIV_START = 48
-    NOTE_ARP_DIV_END = 55
-    NOTE_ARP_MODE_START = 56
-    NOTE_ARP_MODE_END = 61
-    NOTE_ARP_LATCH_TOGGLE = 62
-    NOTE_ARP_OCTAVE_START = 63
-    NOTE_ARP_OCTAVE_END = 66
-    NOTE_ARP_SWING_START = 67
-    NOTE_ARP_SWING_END = 72
-
-    def __init__(self, state_manager, idev_out, saved_state: SavedState):
-        super().__init__(state_manager)
-        self._idev_out = idev_out
-        self._libseq = self._zynseq.libseq
-        self._saved_state = saved_state
-        self._changes_to_commit = {}
-        self._pressed_pads = {}
-
-    def set_active(self, active):
-        super().set_active(active)
-        if active:
-            self._upload_mode_layout_to_device()
-
-    def note_on(self, note, channel, velocity):
-        if self.NOTE_ARP_DIV_START <= note <= self.NOTE_ARP_DIV_END:
-            step = note - self.NOTE_ARP_DIV_START
-            self._saved_state.arpeggiator["division"] = ARP_DIV_1_4 + step
-        elif self.NOTE_ARP_MODE_START <= note <= self.NOTE_ARP_MODE_END:
-            step = note - self.NOTE_ARP_MODE_START
-            self._saved_state.arpeggiator["mode"] = ARP_MODE_UP + step
-        elif note == self.NOTE_ARP_LATCH_TOGGLE:
-            self._saved_state.arpeggiator["latch"] ^= True
-        elif self.NOTE_ARP_OCTAVE_START <= note <= self.NOTE_ARP_OCTAVE_END:
-            step = note - self.NOTE_ARP_OCTAVE_START
-            self._saved_state.arpeggiator["octave"] = ARP_OCTAVE_MIN + step
-        elif self.NOTE_ARP_SWING_START <= note <= self.NOTE_ARP_SWING_END:
-            step = {
-                self.NOTE_ARP_SWING_START: 0,
-                self.NOTE_ARP_SWING_START + 1: 5,
-                self.NOTE_ARP_SWING_START + 2: 7,
-                self.NOTE_ARP_SWING_START + 3: 9,
-                self.NOTE_ARP_SWING_START + 4: 11,
-                self.NOTE_ARP_SWING_START + 5: 14,
-            }[note]
-            self._saved_state.arpeggiator["swing"] = ARP_SWING_MIN + step
-        else:
-            return False
-        note_off = 0x80 | self._saved_state.keybed_channel
-        self._libseq.sendMidiCommand(note_off, note, 0)
-        self._upload_mode_layout_to_device()
-
-    def cc_change(self, ccnum, ccval):
-        # SHIFT NoteOn & NoteOff events
-        if ccnum == self.CC_PAD_SHIFT:
-            if ccval > 0:
-                self._pressed_pads[ccnum] = time.time()
-            else:
-                for target, value in self._changes_to_commit.items():
-                    if target.startswith("arp."):
-                        target = target.split(".")[1]
-                        self._saved_state.arpeggiator[target] = value
+        if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
+            self.state_manager.send_cuia("TOGGLE_PLAY")
+            return True
+        if TRANSPORT_STOP_CC is not None and ccnum == TRANSPORT_STOP_CC and ccval > 0:
+            self.state_manager.send_cuia("STOP")
+            return True
+        if TRANSPORT_REC_CC is not None and ccnum == TRANSPORT_REC_CC and ccval > 0:
+            self.state_manager.send_cuia("TOGGLE_RECORD")
+            return True
+        if TRANSPORT_REW_CC is not None and ccnum == TRANSPORT_REW_CC and ccval > 0:
+            if TRANSPORT_REW_CUIA:
+                self.state_manager.send_cuia(TRANSPORT_REW_CUIA)
+            return True
+        if TRANSPORT_FF_CC is not None and ccnum == TRANSPORT_FF_CC and ccval > 0:
+            if TRANSPORT_FF_CUIA:
+                self.state_manager.send_cuia(TRANSPORT_FF_CUIA)
+            return True
+        if TRANSPORT_LOOP_CC is not None and ccnum == TRANSPORT_LOOP_CC and ccval > 0:
+            if TRANSPORT_LOOP_CUIA == "TOGGLE_PATTERN_EDITOR_ZYNPAD":
+                if self._current_screen == "pattern_editor":
+                    self._loop_pending_editor = False
+                    self.state_manager.send_cuia("SCREEN_ZYNPAD")
+                else:
+                    # Deterministic two-step toggle:
+                    # 1) Normalize to ZynPad from any non-editor screen.
+                    # 2) Next press enters Pattern Editor.
+                    if self._loop_pending_editor:
+                        self._loop_pending_editor = False
+                        self.state_manager.send_cuia("SCREEN_PATTERN_EDITOR")
+                    elif self._current_screen in ("zynpad", "arranger", "launcher"):
+                        self.state_manager.send_cuia("SCREEN_PATTERN_EDITOR")
                     else:
-                        setattr(self._saved_state, target, value)
-                if self._changes_to_commit:
-                    self._changes_to_commit.clear()
-                    self._upload_mode_layout_to_device()
-                self._pressed_pads.pop(ccnum, None)
+                        self._loop_pending_editor = True
+                        self.state_manager.send_cuia("SCREEN_ZYNPAD")
+            elif TRANSPORT_LOOP_CUIA:
+                self.state_manager.send_cuia(TRANSPORT_LOOP_CUIA)
+            return True
 
-        # ARP toggle
-        elif ccnum == self.CC_PAD_ARP_TOGGLE:
-            if ccval > 0:
-                self._saved_state.arpeggiator["on"] ^= True
-                self._upload_mode_layout_to_device()
+        return False
 
-        # SHIFTed functions
-        if self.CC_PAD_SHIFT in self._pressed_pads:
-            target, convert_value = {
-                self.CC_KNOB_TEMPO_TAPS:     ("tempo_taps", lambda v: v),
-                self.CC_KNOB_SWING:          ("arp.swing", lambda v: 50 - v),
-                self.CC_KNOB_AFTERTOUCH:     ("aftertouch", lambda v: v),
-                self.CC_KNOB_KEYBED_OCTAVE:  ("keybed_octave", lambda v: v),
-                self.CC_KNOB_EXT_CLOCK:      ("arp.ext_clock", lambda v: v),
-                self.CC_KNOB_PAD_CHANNEL:    ("pads_channel", lambda v: v - 1),
-                self.CC_KNOB_KEYBED_CHANNEL: ("keybed_channel", lambda v: v - 1),
-            }.get(ccnum, (None, None))
-            if target is not None:
-                self._changes_to_commit[target] = convert_value(ccval)
+    def _handle_control_bank_b_cc(self, ccnum, ccval):
+        """CONTROL BANK B mapping hook (MIDI channel 2 / nibble 1).
 
-    def _upload_mode_layout_to_device(self):
-        cmd = SysExSetProgram(
-            name="Zynthian CONFIG",
-            tempo=self._saved_state.tempo,
-            arp=self._saved_state.arpeggiator,
-            tempo_taps=self._saved_state.tempo_taps,
-            aftertouch=self._saved_state.aftertouch,
-            keybed_octave=self._saved_state.keybed_octave,
-            channels={
-                "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel
-            },
-            pads={
-                "note": self._saved_state.pad_notes,
-                "pc": range(16),
-                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
-            },
-            knobs={
-                "cc": [22, 23, 24, 25, 26, 27, 28, 29],
-                "mode": [
-                    KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS,
-                    KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS
-                ],
-                "min": [
-                    TEMPO_TAPS_MIN, 50 + ARP_SWING_MIN, AFTERTOUCH_OFF, KEY_OCTAVE_MIN,
-                    0, 0, 1, 1
-                ],
-                "max": [
-                    TEMPO_TAPS_MAX, 50 + ARP_SWING_MAX, AFTERTOUCH_POLYPHONIC, KEY_OCTAVE_MAX,
-                    1, 1, 16, 16
-                ],
-                "name": [
-                    "Tempo Taps", "Swing", "Aftertouch", "KeyBed Octave",
-                    "K5", "Ext Clock", "PADs Channel", "KeyBed Channel"
-                ]
-            },
-            faders={
-                "mode": [FADER_MODE_ABS] * 8,
-                "cc": [12, 13, 14, 15, 16, 17, 18, 19],
-                "min": [0] * 8,
-                "max": [127] * 8,
-                "name": [f"Fader {i+1}" for i in range(8)]
-            }
+        Mapping:
+        - Knobs 1..7  => send level to mixbus named CTRL_BANK_B_SEND_CHAIN_TITLE
+        - Knob 8      => return level of that mixbus chain
+        - Transport   => mirrored from BANK A
+        """
+
+        def _get_mixbus_chain_by_title(title):
+            title_l = (title or "").strip().lower()
+            if not title_l:
+                return None
+            for chain in self.chain_manager.chains.values():
+                try:
+                    if not chain.is_mixbus():
+                        continue
+                    if (chain.get_title() or "").strip().lower() == title_l:
+                        return chain
+                except Exception:
+                    continue
+            return None
+
+        def _focus_control_for_chain(chain_id):
+            if CTRL_BANK_B_FEEDBACK_MODE not in ("active_chain", "control_screen"):
+                return
+            now = time.monotonic()
+            if now - self._last_ctrl_bank_b_focus_ts < CTRL_BANK_B_AUTOFOCUS_COOLDOWN_S:
+                return
+            try:
+                self.chain_manager.set_active_chain_by_id(chain_id)
+                if CTRL_BANK_B_FEEDBACK_MODE == "control_screen":
+                    self.state_manager.send_cuia("SCREEN_CONTROL")
+                    self.state_manager.send_cuia("refresh_screen", ["control"])
+                else:
+                    # No screen switch: hint UI to refresh overlays/widgets.
+                    self.state_manager.send_cuia("refresh_screen", ["control"])
+                    self.state_manager.send_cuia("refresh_screen", ["audio_mixer"])
+            except Exception as ex:
+                logging.warning(f"MPK249 BANK B control focus: {ex}")
+            self._last_ctrl_bank_b_focus_ts = now
+
+        # Knobs (CC22..29) map to reverb sends/return.
+        if KNOB_PAN_CC_FIRST <= ccnum <= KNOB_PAN_MASTER_CC:
+            send_chain = _get_mixbus_chain_by_title(CTRL_BANK_B_SEND_CHAIN_TITLE)
+            if not send_chain or not send_chain.zynmixer_proc:
+                return False
+
+            val = ccval / 127.0
+            knob_idx = ccnum - KNOB_PAN_CC_FIRST
+            # Knob 8 controls reverb return level.
+            if knob_idx == 7:
+                _focus_control_for_chain(send_chain.chain_id)
+                try:
+                    zc = send_chain.zynmixer_proc.controllers_dict.get("level")
+                    if zc is not None and zc.value != val:
+                        zc.set_value(val)
+                        return True
+                except Exception as ex:
+                    logging.warning(f"MPK249 BANK B reverb return: {ex}")
+                return False
+
+            # Knobs 1..7 control visible chain sends to reverb mixbus.
+            pos = self.scroll_h + knob_idx
+            chain = self.get_filtered_chain_by_index(pos)
+            if not chain or not chain.zynmixer_proc:
+                return False
+            _focus_control_for_chain(chain.chain_id)
+            send_symbol = f"send_{send_chain.chain_id}_level"
+            try:
+                zc = chain.zynmixer_proc.controllers_dict.get(send_symbol)
+                if zc is None:
+                    return False
+                if zc.value != val:
+                    zc.set_value(val)
+                return True
+            except Exception as ex:
+                logging.warning(f"MPK249 BANK B send '{send_symbol}': {ex}")
+                return False
+
+        if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
+            self.state_manager.send_cuia("TOGGLE_PLAY")
+            return True
+        if TRANSPORT_STOP_CC is not None and ccnum == TRANSPORT_STOP_CC and ccval > 0:
+            self.state_manager.send_cuia("STOP")
+            return True
+        if TRANSPORT_REC_CC is not None and ccnum == TRANSPORT_REC_CC and ccval > 0:
+            self.state_manager.send_cuia("TOGGLE_RECORD")
+            return True
+        return False
+
+    def _handle_control_bank_c_cc(self, ccnum, ccval):
+        """CONTROL BANK C mapping hook (MIDI channel 3 / nibble 2).
+
+        Default: no CC assignments. Add mappings here as desired.
+        """
+
+        return False
+
+    @staticmethod
+    def _pad_led_feedback(pad_info):
+        """Return (note_velocity, sysex_color) for pad_info from zynpad."""
+
+        vel = PAD_LED_OFF_VEL
+        syx = PAD_SYSEX_COLOR_OFF
+        try:
+            state = pad_info["state"]
+            if state == zynseq.SEQ_PLAYING:
+                vel = PAD_LED_ACTIVE_VEL
+                syx = PAD_SYSEX_COLOR_ACTIVE
+            elif state in (
+                zynseq.SEQ_STARTING,
+                zynseq.SEQ_STOPPING,
+                zynseq.SEQ_STOPPING_SYNC,
+            ):
+                if state == zynseq.SEQ_STARTING:
+                    vel = PAD_LED_STARTING_VEL
+                    syx = PAD_SYSEX_COLOR_STARTING
+                else:
+                    vel = PAD_LED_STOPPING_VEL
+                    syx = PAD_SYSEX_COLOR_STOPPING
+            elif state == zynseq.SEQ_STOPPED and not pad_info.get("empty", True):
+                vel = PAD_LED_IDLE_VEL
+                syx = PAD_SYSEX_COLOR_IDLE
+        except Exception:
+            pass
+        return vel, syx
+
+    def update_pad(self, row, col, pad_info):
+        if self.idev_out is None or col == self.cols:
+            return
+        try:
+            note = PAD_NOTE_BANK[row][col]
+        except Exception:
+            return
+
+        vel, syx = self._pad_led_feedback(pad_info)
+        state = None if pad_info is None else pad_info.get("state")
+        empty = None if pad_info is None else pad_info.get("empty")
+        self._dbg(
+            f"update_pad row={row} col={col} bank={self._active_pad_bank} "
+            f"note={note} state={state} empty={empty} vel={vel} syx={syx}"
         )
-        msg = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
+
+        # SysEx RAM writes are reliable for Bank A but unstable across B/C/D on
+        # some MPK firmware presets (can blank/ghost Bank A). Keep SysEx on A.
+        if PAD_LED_USE_SYSEX and self._active_pad_bank == 0:
+            self._send_pad_led_sysex(row, col, syx)
+            if not PAD_LED_MIRROR_NOTES_ALL_BANKS:
+                return
+
+        # Track which pads are PLAYING so we can blink them without repainting
+        # the whole bank (avoids "everything red flickers" effect).
+        if PAD_NON_A_PLAY_MODE == "blink" and self._active_pad_bank != 0:
+            notes = self._blink_notes_by_bank.setdefault(self._active_pad_bank, set())
+            if state == zynseq.SEQ_PLAYING:
+                notes.add(note)
+            else:
+                notes.discard(note)
+
+        ch = PAD_BANK_CH_FIRST + self._active_pad_bank
+        self._dbg(f"send_note_led ch={ch} note={note} vel={vel}")
+        lib_zyncore.dev_send_note_on(self.idev_out, ch, note, vel)
+
+    def light_off(self):
+        if self.idev_out is None:
+            return
+        self._dbg(f"light_off bank={self._active_pad_bank}")
+        # Only clear SysEx pad RAM while Bank A is active. Clearing RAM during
+        # B/C/D refresh can blank Bank A's physical colors until A refreshes.
+        if PAD_LED_USE_SYSEX and self._active_pad_bank == 0:
+            for row in range(len(PAD_NOTE_BANK)):
+                for col in range(len(PAD_NOTE_BANK[row])):
+                    self._send_pad_led_sysex(row, col, PAD_SYSEX_COLOR_OFF)
+        # Wipe note-feedback on every pad MIDI channel so switching A↔B does not leave
+        # stale velocities on an inactive bank (shows wrong quadrant on the hardware).
+        for bank in range(PAD_BANK_CH_COUNT):
+            ch = PAD_BANK_CH_FIRST + bank
+            for row in range(len(PAD_NOTE_BANK)):
+                for col in range(len(PAD_NOTE_BANK[row])):
+                    note = PAD_NOTE_BANK[row][col]
+                    self._dbg(f"send_note_off ch={ch} note={note} vel={PAD_LED_OFF_VEL}")
+                    lib_zyncore.dev_send_note_on(
+                        self.idev_out, ch, note, PAD_LED_OFF_VEL
+                    )
+
+    def _get_pad_bank_from_channel(self, ch):
+        """Return pad bank index from wire-format MIDI channel nibble."""
+
+        bank = ch - PAD_BANK_CH_FIRST
+        if 0 <= bank < PAD_BANK_CH_COUNT:
+            return bank
+        return 0
+
+    def _handle_pad_note(self, note, ch):
+        pos = self._pad_note_to_rc.get(note)
+        if not pos:
+            return False
+        row, col = pos
+        bank = self._get_pad_bank_from_channel(ch)
+        self._dbg(f"pad_note_in ch={ch} note={note} -> bank={bank}")
+        if bank != self._active_pad_bank:
+            # Stop blink state from leaking across banks.
+            self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_CH_COUNT)}
+            self._active_pad_bank = bank
+            # Reload persisted LED state for the newly active hardware bank.
+            self._dbg(f"bank_switch active_bank={self._active_pad_bank}; refresh()")
+            self.refresh()
+        bank_col = bank // PAD_BANK_LAYOUT_COLS
+        bank_row = bank % PAD_BANK_LAYOUT_COLS
+        phrase = self.scroll_v + row + bank_row * PAD_BANK_ROW_STRIDE
+        chain_col = self.scroll_h + col + bank_col * PAD_BANK_COL_STRIDE
+        midi_chan = self.get_filtered_midi_chan_by_index(chain_col)
+        if midi_chan is None:
+            return True
+        try:
+            self._dbg(
+                f"toggle_play scene={self.zynseq.scene} phrase={phrase} midi_chan={midi_chan} "
+                f"(row={row} col={col} bank={bank})"
+            )
+            self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
+        except Exception as ex:
+            logging.warning(f"MPK249 pad toggle => {ex}")
+        return True
+
+    def midi_event(self, ev):
+        evtype = (ev[0] >> 4) & 0x0F
+        ch = ev[0] & 0x0F
+
+        if evtype == 0xB:
+            ccnum = ev[1] & 0x7F
+            ccval = ev[2] & 0x7F
+            if ch == CTRL_MIDI_CH:
+                return self._handle_control_bank_a_cc(ccnum, ccval)
+            if ch == CTRL_BANK_B_MIDI_CH:
+                return self._handle_control_bank_b_cc(ccnum, ccval)
+            if ch == CTRL_BANK_C_MIDI_CH:
+                return self._handle_control_bank_c_cc(ccnum, ccval)
+            return False
+
+        if evtype == 0x9:
+            vel = ev[2] & 0x7F
+            note = ev[1] & 0x7F
+            is_mapped_pad_note = note in self._pad_note_to_rc
+            is_pad_input = ch == PAD_MIDI_CH or (
+                PAD_ACCEPT_MAPPED_NOTES_ANY_CH and is_mapped_pad_note
+            )
+            if is_pad_input:
+                self._dbg(f"midi_note_on ch={ch} note={note} vel={vel} pad_input={is_pad_input}")
+                # Always consume pad-channel note events so they don't leak to
+                # other subsystems (e.g. pattern editor keymap handlers).
+                if vel > 0:
+                    self._handle_pad_note(note, ch)
+                return True
+            return False
+
+        if evtype == 0x8:
+            note = ev[1] & 0x7F
+            is_mapped_pad_note = note in self._pad_note_to_rc
+            if ch == PAD_MIDI_CH or (PAD_ACCEPT_MAPPED_NOTES_ANY_CH and is_mapped_pad_note):
+                return True
+            return False
+
+        return False
+
+# ------------------------------------------------------------------------------
