@@ -58,6 +58,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         self.cb_func = None
         self.root_dirs = []
         self.fexts = []
+        self.collection_info = {}
         self.path = None
         self.dirpath = None
         self.init_path = None
@@ -105,6 +106,20 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 return True
         return False
 
+    def get_collection_icon(self, dpath):
+        for de in os.scandir(dpath + "/Art"):
+            if de.is_file() and os.path.splitext(de.name)[-1] in (".jpg", ".png"):
+                return de.path
+
+    def get_collection_info(self, dpath):
+        prefix = zynthian_engine.my_data_dir + "/collections/"
+        if dpath.startswith(prefix):
+            try:
+                dname = dpath[len(prefix):].split("/")[0]
+                return self.collection_info[dname]
+            except:
+                return None
+
     def config(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):
         self.list_data = []
         self.root_dirs = []
@@ -127,8 +142,20 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         # Config root dirs
         if dirnames is None:
             dirnames = self.get_root_dirnames(self.fexts)
+        # User files
         for dirname in dirnames:
             self.root_dirs.append((f"User {dirname}", zynthian_engine.my_data_dir + "/files/" + dirname))
+        # Collections
+        for de in os.scandir(zynthian_engine.my_data_dir + "/collections"):
+            if de.is_dir():
+                self.collection_info[de.name] = {
+                    "icon": self.get_collection_icon(de.path),
+                    "author": "hozlina",
+                    "description": ""
+                }
+                for dirname in dirnames:
+                    self.root_dirs.append((f"{de.name} {dirname}", de.path + "/" + dirname))
+        # System files
         for dirname in dirnames:
             self.root_dirs.append((f"System {dirname}", zynthian_engine.data_dir + "/files/" + dirname))
         if self.dirpath and not self.is_confined_to_root_dirs(self.dirpath):
@@ -154,7 +181,14 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         # Add info and find selected index
         self.index = 0
         for i, item in enumerate(self.list_data):
-            if len(item) == 6:
+            if not item[0]:
+                continue
+            if item[0] == self.path:
+                self.index = i
+            colinfo = self.get_collection_info(item[0])
+            if colinfo:
+                item.append([f"\nAuthor: {colinfo['author']}\n\n{colinfo['description']}", colinfo['icon']])
+            elif len(item) == 6:
                 try:
                     fticon = self.fext2dirname[item[5]][1]
                 except:
@@ -163,8 +197,6 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 item.append(["", fticon])
             else:
                 item.append(["Folder", "folder.png"])
-            if item[0] == self.path:
-                self.index = i
         super().fill_list()
 
     def select_action(self, i, t='S'):

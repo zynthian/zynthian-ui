@@ -112,22 +112,26 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
     def get_icon(self, icon_fname):
         if not icon_fname:
             icon_fname = self.default_icon
+        if icon_fname[0] == "/":
+            icon_fpath = icon_fname
+        else:
+            icon_fpath = f"{self.ui_dir}/icons/{icon_fname}"
         try:
-            if self.icons[icon_fname][zynthian_gui_config.touch_shown]:
-                return self.icons[icon_fname][zynthian_gui_config.touch_shown]
+            if self.icons[icon_fpath][zynthian_gui_config.touch_shown]:
+                return self.icons[icon_fpath][zynthian_gui_config.touch_shown]
         except:
             pass
         try:
-            img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
+            img = Image.open(icon_fpath)
             side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
             icon_size = (side_width - 2, side_width - 2)
             icon = ImageTk.PhotoImage(img.resize(icon_size))
-            if icon_fname not in self.icons:
-                self.icons[icon_fname] = [None, None]
-            self.icons[icon_fname][zynthian_gui_config.touch_shown] = icon
+            if icon_fpath not in self.icons:
+                self.icons[icon_fpath] = [None, None]
+            self.icons[icon_fpath][zynthian_gui_config.touch_shown] = icon
             return icon
         except Exception as e:
-            logging.error(f"Can't load info icon {icon_fname} => {e}")
+            logging.error(f"Can't load info icon {icon_fpath} => {e}")
             return zynthian_gui_config.loading_imgs[0]
 
     def set_selector(self, zs_hidden=None):
