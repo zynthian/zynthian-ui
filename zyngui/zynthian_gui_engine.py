@@ -236,11 +236,23 @@ class zynthian_gui_engine(zynthian_gui_selector):
             path = eng_info["TYPE"]
         if self.engine_cats:
             path = path + "/" + eng_info["CAT"]
-        text = f"{eng_info['NAME']}\n\n{path}\n"
-        text += "Quality: " + "★" * eng_info["QUALITY"] + "\n"
-        text += "Complexity: " + "⚈" * eng_info["COMPLEX"] + "\n\n"
-        text += eng_info["DESCR"]
-        self.zyngui.show_info(text)
+        if eng_info:
+            description = eng_info["DESCR"].replace("\n", "</p>\n<p>")
+            html = f"""<html>
+ <head>
+  <link rel="stylesheet" href="style_details.css">
+ </head>
+ <body>
+ <div class="details_container">
+  <h1>{eng_info['NAME']}</h1>
+  <div class="engine_path">{path}</div>
+  <div class="quality">Quality: <span class="stars">{"★" * eng_info["QUALITY"]}</span></div>
+  <div class="complexity">Complexity: <span class="stars">{"⚈" * eng_info["COMPLEX"]}</span></div>
+  <p class="description">{description}</p>
+ </body>
+</html>
+"""
+            self.zyngui.screens['help'].set_html(html)
 
     def get_engines_by_cat(self):
         self.chain_manager.get_engine_info()

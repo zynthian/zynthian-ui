@@ -194,6 +194,14 @@ class zynthian_gui_help(HtmlFrame):
             logging.error(f"Can't load HTML file => {e}")
         return False
 
+    def set_html(self, html):
+        self.loading_overlay.place(relwidth=1, relheight=1) # Avoid showing until fully rendered
+        self.path = ""
+        self.load_html(html, base_url=f"file://{self.ui_dir}/help/")
+        self.history = []
+        self.links = []
+        self.link = None
+
     def build_view(self):
         return True
 
