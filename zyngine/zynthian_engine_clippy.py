@@ -42,8 +42,7 @@ import zynautoconnect
 # ------------------------------------------------------------------------------
 
 MAX_BEATS = 128 # Maximum quantity of beats in a clip
-MAX_DURATION = 30 # Maximum audio duration to warp, in seconds
-MAX_STORAGE = 500 * 1000 * 1024 # Maximum storage for temporary files
+MAX_DURATION = 60 # Maximum audio duration to warp, in seconds
 
 class zynthian_engine_clippy(zynthian_engine):
 
