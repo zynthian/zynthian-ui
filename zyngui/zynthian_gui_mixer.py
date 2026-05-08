@@ -223,9 +223,11 @@ class zynthian_gui_launcher_pad():
             name = state_seq["name"]
             # If not asigned name => generate default name on-the-fly
             if not name:
-                name = chr(ord('A') + self.phrase)
                 if self.chain.chain_id > 0:
-                    name += str(self.chain.midi_chan + 1)  # QUESTION: It MIDI chan same than group?
+                    name = chr(ord('A') + self.chain.midi_chan) # QUESTION: It MIDI chan same than group?
+                else:
+                    name = "_"
+                name += str(self.phrase)
 
             disabled = state_seq["repeat"] == 0
             empty = False
