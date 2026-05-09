@@ -532,6 +532,7 @@ class zynthian_engine_clippy(zynthian_engine):
         labels = []
         i = 0
         while True:
+            # Iterate until exceed limit, double value on each iteration
             val = 2 ** i
             if val > frames / 40:
                 break
@@ -628,6 +629,7 @@ class zynthian_engine_clippy(zynthian_engine):
         # Set crop and zoom limits to big-enough values so it can receive the new state values
         note = 1
         while True:
+            # Iterate until note exceeds quantity of clips (controllers)
             try:
                 crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
                 crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
@@ -648,6 +650,7 @@ class zynthian_engine_clippy(zynthian_engine):
     def set_state_post(self, processor):
         note = 1
         while True:
+            # Iterate until note exceeds quantity of clips (file controllers)
             try:
                 file_zctrl = processor.controllers_dict[f"file {note}"]
             except:

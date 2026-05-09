@@ -340,6 +340,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
         self.cue_points = []
         i = 0
         while True:
+            # Iterate until exceed quantity of cues in player
             pos = zynaudioplayer.get_cue_point_position(self.processor.handle, i)
             if pos < 0.0:
                 break

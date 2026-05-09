@@ -674,6 +674,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
                     self.last_status = now
             buffer = bytes()
             while True:
+                # Iterate until all messages received and 1s timeout occurs
+                # TODO: Can this lockup if different type of error occurs?
                 try:
                     response = self.client.recv(1024)
                     buffer += response

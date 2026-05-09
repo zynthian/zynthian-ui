@@ -39,6 +39,7 @@ class zyn_headless:
         autoconnect.autoconnect()
 
         while True:
+            # TODO: There should be an exit option from this program loop
             sleep(1)
 
 

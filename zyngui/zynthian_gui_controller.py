@@ -606,6 +606,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
         # Reduce text font size until it fits vertically
         while True:
+            # Iterate until text height is less than max height or min size
             self.itemconfigure(obj_id, text=title, font=font)
             bbox = self.bbox(obj_id)
             if bbox is None or bbox[3] - bbox[1] <= max_height:

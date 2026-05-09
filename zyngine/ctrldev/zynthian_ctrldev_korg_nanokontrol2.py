@@ -78,6 +78,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         data = bytearray()
         pos = 0
         while True:
+            # Iterate until pos exceeds midi sysex length
             bitsbyte = midi[pos]
             for i in range(0, 7):
                 b7 = (bitsbyte >> i) & 0x1
@@ -94,6 +95,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         midi = bytearray()
         pos = 0
         while True:
+            # Iterate until pos exceeds sysex data length
             bitsbyte = 0x0
             for i in range(0, 7):
                 bitsbyte |= (data[pos + i] >> 7) << i
