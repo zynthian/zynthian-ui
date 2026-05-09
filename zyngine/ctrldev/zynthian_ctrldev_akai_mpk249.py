@@ -50,6 +50,14 @@ from zyngine.ctrldev.zynthian_ctrldev_base import (
 # are fine. If everything shares one channel, either reprogram the MPK or set
 # a narrow unroute mask (see zynthian_ctrldev_base.unroute_from_chains).
 # ------------------------------------------------------------------------------
+#
+# Generic preset notes (MPK249):
+# - Pads/faders/knobs/Bank-B sends are mapped for Generic-style layouts in this
+#   driver (single pad channel + distinct pad notes + custom CC maps).
+# - Transport in MMC/MIDI mode works for Play/Stop/Record via realtime/MMC.
+# - Loop is not emitted as a distinct MMC/realtime message on tested hardware, so
+#   Loop requires Transport Type=CC to trigger TRANSPORT_LOOP_CC.
+# ------------------------------------------------------------------------------
 
 # Wire-format channel nibble (0 = MIDI ch 1, 9 = MIDI ch 10).
 CTRL_MIDI_CH = 0
@@ -66,7 +74,7 @@ PAD_MIDI_CH = 9
 PAD_BANK_MODE = "single_channel"
 # Some MPK presets send pads on a different channel than expected. When True,
 # mapped pad notes are accepted on any channel as a fallback.
-PAD_ACCEPT_MAPPED_NOTES_ANY_CH = True
+PAD_ACCEPT_MAPPED_NOTES_ANY_CH = False
 # Optional bank-by-channel mapping for presets where pad banks A/B/C/D reuse
 # notes but transmit on different channels (PAD_BANK_MODE == "channel" only).
 # Wire-format channels: MIDI ch2..5 => 1..4
@@ -106,6 +114,13 @@ PAD_LED_IDLE_VEL = 16
 PAD_LED_ACTIVE_VEL = 127
 PAD_LED_STARTING_VEL = 96
 PAD_LED_STOPPING_VEL = 48
+# Dedicated note-feedback velocities for non-A banks (B/C/D). These are kept
+# separate because some presets map low velocities to "off", making idle pads
+# appear dark unless raised. Tune to taste per preset.
+PAD_NON_A_IDLE_VEL = 96
+PAD_NON_A_ACTIVE_VEL = 127
+PAD_NON_A_STARTING_VEL = 112
+PAD_NON_A_STOPPING_VEL = 64
 # For banks B/C/D (note-feedback), choose how "playing" is shown:
 # - "blink": pulse active pads (best distinction on limited note palettes)
 # - "steady": keep active pads steady (no blinking)
@@ -144,6 +159,8 @@ if _mpk249_use_generic_mixer_layout():
     MASTER_FADER_INDEX = 7
     # Knobs 1..8 in physical order.
     KNOB_PAN_CCS = [3, 9, 14, 15, 16, 17, 20, 19]
+    # CONTROL BANK B knob CCs for Generic preset (knobs 1..8).
+    CTRL_BANK_B_KNOB_CCS = [52, 53, 54, 55, 57, 58, 59, 60]
     # Generic encoders behave more reliably as delta from successive absolute-style
     # values (prevents first-contact jumps from stale internal encoder position).
     # This preset appears to emit absolute-like values that do not represent a
@@ -155,6 +172,7 @@ else:
     FADER_CCS = [12, 13, 14, 15, 16, 17, 18, 19]
     MASTER_FADER_INDEX = 7
     KNOB_PAN_CCS = [22, 23, 24, 25, 26, 27, 28, 29]
+    CTRL_BANK_B_KNOB_CCS = KNOB_PAN_CCS.copy()
     KNOB_PAN_VALUE_MODE = "absolute"
 
 CHAIN_PAN_KNOB_COUNT = 7
@@ -230,8 +248,27 @@ TRANSPORT_REC_CC = 119
 TRANSPORT_REW_CC = 115
 TRANSPORT_FF_CC = 116
 TRANSPORT_LOOP_CC = 114
+# Optional quick-clear command (CC on CTRL_MIDI_CH):
+# clears all patterns in the currently selected phrase for the active chain.
+TRANSPORT_CLEAR_ACTIVE_LOOP_CC = TRANSPORT_REW_CC
 TRANSPORT_REW_CUIA = "ARROW_LEFT"
 TRANSPORT_FF_CUIA = "ARROW_RIGHT"
+# If True, FF clones active loop cell to the next chain (same phrase),
+# non-destructive: does nothing when destination already has content.
+TRANSPORT_FF_CLONE_NEXT_CHAIN = True
+# If True, cloning from the last visible chain wraps destination to first chain.
+TRANSPORT_FF_CLONE_WRAP_TO_FIRST = True
+# Also accept transport via MIDI Realtime / MMC so Generic presets can work
+# without manually changing transport Type from MMC/MIDI to CC.
+TRANSPORT_ACCEPT_MIDI_REALTIME = True
+TRANSPORT_ACCEPT_MMC = True
+# Optional extra MMC command IDs that should trigger LOOP CUIA when using
+# transport Type MMC/MIDI. Leave empty until identified from MIDI logs.
+TRANSPORT_LOOP_MMC_CMDS = []
+# Debug aid: log unhandled MMC command IDs for one-time discovery.
+TRANSPORT_LOG_UNHANDLED_MMC = True
+# Debug aid: log incoming realtime/MMC transport bytes at warning level.
+TRANSPORT_DEBUG_LOG = False
 # No global "TOGGLE_LOOP" CUIA is defined across all contexts; choose one that
 # matches your workflow (e.g. a screen navigation action) or leave None.
 TRANSPORT_LOOP_CUIA = "TOGGLE_PATTERN_EDITOR_ZYNPAD"
@@ -248,7 +285,10 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
     ]
     driver_name = "Akai MPK249"
     driver_description = "MPK249 — mixer, pan, zynpad; keys pass through"
-    unroute_from_chains = False
+    # Unroute MIDI channel 10 (wire channel nibble 9) from direct chain note
+    # passthrough so pad hits only drive zynpad/loop actions.
+    # Bit 9 set => 0b0000001000000000
+    unroute_from_chains = 0b0000001000000000
 
     def __init__(self, state_manager, idev_in, idev_out=None):
         self._pad_note_to_rc = {}
@@ -283,11 +323,12 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         )
         logging.info(
             "MPK249 CTRL_MIXER_LAYOUT=%s generic=%s FADER_CCS=%s KNOB_PAN_CCS=%s "
-            "KNOB_PAN_VALUE_MODE=%s MASTER_FADER_INDEX=%s",
+            "BANK_B_KNOB_CCS=%s KNOB_PAN_VALUE_MODE=%s MASTER_FADER_INDEX=%s",
             CTRL_MIXER_LAYOUT,
             _mpk249_use_generic_mixer_layout(),
             FADER_CCS,
             KNOB_PAN_CCS,
+            CTRL_BANK_B_KNOB_CCS,
             KNOB_PAN_VALUE_MODE,
             MASTER_FADER_INDEX,
         )
@@ -723,13 +764,18 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         if TRANSPORT_REC_CC is not None and ccnum == TRANSPORT_REC_CC and ccval > 0:
             self.state_manager.send_cuia("TOGGLE_RECORD")
             return True
+        if (
+            TRANSPORT_CLEAR_ACTIVE_LOOP_CC is not None
+            and ccnum == TRANSPORT_CLEAR_ACTIVE_LOOP_CC
+            and ccval > 0
+        ):
+            self._clear_active_loop_sequence()
+            return True
         if TRANSPORT_REW_CC is not None and ccnum == TRANSPORT_REW_CC and ccval > 0:
-            if TRANSPORT_REW_CUIA:
-                self.state_manager.send_cuia(TRANSPORT_REW_CUIA)
             return True
         if TRANSPORT_FF_CC is not None and ccnum == TRANSPORT_FF_CC and ccval > 0:
-            if TRANSPORT_FF_CUIA:
-                self.state_manager.send_cuia(TRANSPORT_FF_CUIA)
+            if TRANSPORT_FF_CLONE_NEXT_CHAIN:
+                self._clone_active_loop_to_next_chain()
             return True
         if TRANSPORT_LOOP_CC is not None and ccnum == TRANSPORT_LOOP_CC and ccval > 0:
             if TRANSPORT_LOOP_CUIA == "TOGGLE_PATTERN_EDITOR_ZYNPAD":
@@ -796,8 +842,8 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 logging.warning(f"MPK249 BANK B control focus: {ex}")
             self._last_ctrl_bank_b_focus_ts = now
 
-        # Knobs 1..8 (in KNOB_PAN_CCS order) map to reverb sends/return.
-        if ccnum in KNOB_PAN_CCS:
+        # Knobs 1..8 (in CTRL_BANK_B_KNOB_CCS order) map to reverb sends/return.
+        if ccnum in CTRL_BANK_B_KNOB_CCS:
             if self._should_ignore_first_absolute_pan(ccnum):
                 return True
             send_chain = _get_mixbus_chain_by_title(CTRL_BANK_B_SEND_CHAIN_TITLE)
@@ -805,7 +851,7 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 return False
 
             val = ccval / 127.0
-            knob_idx = KNOB_PAN_CCS.index(ccnum)
+            knob_idx = CTRL_BANK_B_KNOB_CCS.index(ccnum)
             # Knob 8 controls reverb return level.
             if knob_idx == KNOB_PAN_MASTER_INDEX:
                 _focus_control_for_chain(send_chain.chain_id)
@@ -855,6 +901,208 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
 
         return False
 
+    def _clear_sequence(self, phrase, seq, create_empty=True):
+        """Remove all patterns in a sequence, optionally leaving one empty pattern."""
+
+        libseq = self.zynseq.libseq
+        seq_len = libseq.getSequenceLength(self.zynseq.scene, phrase, seq)
+        if seq_len != 0:
+            n_tracks = libseq.getTracksInSequence(self.zynseq.scene, phrase, seq)
+            for track in range(n_tracks):
+                n_patts = libseq.getPatternsInTrack(self.zynseq.scene, phrase, seq, track)
+                if n_patts == 0:
+                    continue
+                pos = 0
+                while pos < seq_len:
+                    pattern = libseq.getPatternAt(self.zynseq.scene, phrase, seq, track, pos)
+                    if pattern != -1:
+                        libseq.removePattern(self.zynseq.scene, phrase, seq, track, pos)
+                        pos += libseq.getPatternLength(pattern)
+                    else:
+                        # Arranger's offset step is a quarter note (24 clocks)
+                        pos += 24
+
+            if n_tracks > 0:
+                for track in range(n_tracks - 1):
+                    libseq.removeTrackFromSequence(phrase, seq, track)
+
+        if create_empty:
+            pattern = libseq.createPattern()
+            libseq.addPattern(self.zynseq.scene, phrase, seq, 0, 0, pattern)
+            libseq.selectPattern(pattern)
+
+    def _clear_active_loop_sequence(self):
+        """Quick clear for selected phrase + active chain's sequence."""
+
+        try:
+            phrase = int(self.zynseq.phrase)
+        except Exception:
+            phrase = 0
+
+        chain = self.chain_manager.get_active_chain()
+        if chain is None or chain.midi_chan is None:
+            return False
+        seq = int(chain.midi_chan)
+        try:
+            self._clear_sequence(phrase, seq, create_empty=True)
+            self.update_seq_state(phrase, seq)
+            self._refresh_loop_screens()
+            return True
+        except Exception as ex:
+            logging.warning(f"MPK249 clear active loop: {ex}")
+            return False
+
+    def _refresh_loop_screens(self):
+        """Refresh sequencer model + controller LEDs after destructive edits."""
+
+        try:
+            # Rebuild full zynseq.state (patterns/events metadata), not only
+            # transient play-state deltas, then emit SS_SEQ_STATE for listeners.
+            self.zynseq.refresh_state(send=True)
+        except Exception:
+            pass
+        try:
+            self.refresh()
+        except Exception:
+            pass
+
+    def _sequence_has_content(self, phrase, seq):
+        """True when sequence has at least one non-empty pattern."""
+
+        libseq = self.zynseq.libseq
+        seq_len = libseq.getSequenceLength(self.zynseq.scene, phrase, seq)
+        if seq_len == 0:
+            return False
+        n_tracks = libseq.getTracksInSequence(self.zynseq.scene, phrase, seq)
+        for track in range(n_tracks):
+            pos = 0
+            while pos < seq_len:
+                pattern = libseq.getPatternAt(self.zynseq.scene, phrase, seq, track, pos)
+                if pattern != -1:
+                    if not self.zynseq.is_pattern_empty(pattern):
+                        return True
+                    pos += libseq.getPatternLength(pattern)
+                else:
+                    pos += 24
+        return False
+
+    def _copy_sequence(self, src_phrase, src_seq, dst_phrase, dst_seq):
+        """Copy all patterns from source sequence to destination sequence."""
+
+        libseq = self.zynseq.libseq
+        self._clear_sequence(dst_phrase, dst_seq, create_empty=False)
+
+        seq_len = libseq.getSequenceLength(self.zynseq.scene, src_phrase, src_seq)
+        if seq_len == 0:
+            return
+
+        n_tracks = libseq.getTracksInSequence(self.zynseq.scene, src_phrase, src_seq)
+        for track in range(n_tracks):
+            if track >= libseq.getTracksInSequence(self.zynseq.scene, dst_phrase, dst_seq):
+                libseq.addTrackToSequence(dst_phrase, dst_seq)
+            n_patts = libseq.getPatternsInTrack(self.zynseq.scene, src_phrase, src_seq, track)
+            if n_patts == 0:
+                continue
+            pos = 0
+            while pos < seq_len:
+                pattern = libseq.getPatternAt(self.zynseq.scene, src_phrase, src_seq, track, pos)
+                if pattern != -1:
+                    new_pattern = libseq.createPattern()
+                    libseq.copyPattern(pattern, new_pattern)
+                    libseq.addPattern(self.zynseq.scene, dst_phrase, dst_seq, track, pos, new_pattern)
+                    pos += libseq.getPatternLength(pattern)
+                else:
+                    pos += 24
+
+    def _clone_active_loop_to_next_chain(self):
+        """Clone active loop cell to next chain in filtered order."""
+
+        try:
+            phrase = int(self.zynseq.phrase)
+        except Exception:
+            phrase = 0
+
+        src_chain = self.chain_manager.get_active_chain()
+        if src_chain is None or src_chain.midi_chan is None:
+            return False
+        src_idx = self.get_filtered_index_by_chain(src_chain)
+        if src_idx < 0:
+            return False
+
+        dst_chain = self.get_filtered_chain_by_index(src_idx + 1)
+        if dst_chain is None and TRANSPORT_FF_CLONE_WRAP_TO_FIRST:
+            if self.get_num_filtered_chains() > 1:
+                dst_chain = self.get_filtered_chain_by_index(0)
+        if dst_chain is None or dst_chain.midi_chan is None:
+            return False
+
+        src_seq = int(src_chain.midi_chan)
+        dst_seq = int(dst_chain.midi_chan)
+        if self._sequence_has_content(phrase, dst_seq):
+            self._dbg(f"clone_skip dst occupied phrase={phrase} dst_seq={dst_seq}")
+            return False
+
+        try:
+            self._copy_sequence(phrase, src_seq, phrase, dst_seq)
+            self.update_seq_state(phrase, src_seq)
+            self.update_seq_state(phrase, dst_seq)
+            self._refresh_loop_screens()
+            return True
+        except Exception as ex:
+            logging.warning(f"MPK249 clone to next chain: {ex}")
+            return False
+
+    def _handle_midi_realtime_transport(self, status):
+        if not TRANSPORT_ACCEPT_MIDI_REALTIME:
+            return False
+        if TRANSPORT_DEBUG_LOG and status in (0xFA, 0xFB, 0xFC):
+            logging.warning(f"MPK249 realtime transport status: 0x{status:02X}")
+        # MIDI realtime transport: Start(FA), Continue(FB), Stop(FC)
+        if status in (0xFA, 0xFB):
+            self.state_manager.send_cuia("TOGGLE_PLAY")
+            return True
+        if status == 0xFC:
+            self.state_manager.send_cuia("STOP")
+            return True
+        return False
+
+    def _handle_mmc_sysex_transport(self, ev):
+        if not TRANSPORT_ACCEPT_MMC:
+            return False
+        # Universal SysEx MMC command:
+        # F0 7F <device-id> 06 <cmd> ... F7
+        if len(ev) < 6 or ev[0] != 0xF0 or ev[-1] != 0xF7:
+            return False
+        if ev[1] not in (0x7F, 0x7E) or ev[3] != 0x06:
+            return False
+        cmd = ev[4] & 0x7F
+        if TRANSPORT_DEBUG_LOG:
+            logging.warning(f"MPK249 MMC command received: 0x{cmd:02X}")
+        # Common MMC transport command set.
+        if cmd in (0x02, 0x03):  # Play / Deferred Play
+            self.state_manager.send_cuia("TOGGLE_PLAY")
+            return True
+        if cmd == 0x01:  # Stop
+            self.state_manager.send_cuia("STOP")
+            return True
+        if cmd == 0x06:  # Record Strobe
+            self.state_manager.send_cuia("TOGGLE_RECORD")
+            return True
+        if cmd == 0x04:  # Fast Forward
+            if TRANSPORT_FF_CLONE_NEXT_CHAIN:
+                self._clone_active_loop_to_next_chain()
+            return True
+        if cmd == 0x05:  # Rewind
+            self._clear_active_loop_sequence()
+            return True
+        if cmd in TRANSPORT_LOOP_MMC_CMDS:
+            if TRANSPORT_LOOP_CUIA:
+                self.state_manager.send_cuia(TRANSPORT_LOOP_CUIA)
+            return True
+        if TRANSPORT_LOG_UNHANDLED_MMC:
+            logging.warning(f"MPK249 MMC unhandled command: 0x{cmd:02X}")
+        return False
+
     @staticmethod
     def _pad_led_feedback(pad_info):
         """Return (note_velocity, sysex_color) for pad_info from zynpad."""
@@ -884,6 +1132,22 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             pass
         return vel, syx
 
+    @staticmethod
+    def _note_led_vel_for_bank(bank, vel):
+        """Map generic note LED velocity to bank-specific output velocity."""
+
+        if bank == 0:
+            return vel
+        if vel == PAD_LED_ACTIVE_VEL:
+            return PAD_NON_A_ACTIVE_VEL
+        if vel == PAD_LED_IDLE_VEL:
+            return PAD_NON_A_IDLE_VEL
+        if vel == PAD_LED_STARTING_VEL:
+            return PAD_NON_A_STARTING_VEL
+        if vel == PAD_LED_STOPPING_VEL:
+            return PAD_NON_A_STOPPING_VEL
+        return PAD_LED_OFF_VEL
+
     def update_pad(self, row, col, pad_info):
         if self.idev_out is None or col == self.cols:
             return
@@ -893,11 +1157,12 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             return
 
         vel, syx = self._pad_led_feedback(pad_info)
+        note_vel = self._note_led_vel_for_bank(self._active_pad_bank, vel)
         state = None if pad_info is None else pad_info.get("state")
         empty = None if pad_info is None else pad_info.get("empty")
         self._dbg(
             f"update_pad row={row} col={col} bank={self._active_pad_bank} "
-            f"note={note} state={state} empty={empty} vel={vel} syx={syx}"
+            f"note={note} state={state} empty={empty} vel={vel} note_vel={note_vel} syx={syx}"
         )
 
         # SysEx RAM writes are reliable for Bank A but unstable across B/C/D on
@@ -917,8 +1182,8 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 notes.discard(note)
 
         ch = self._pad_led_out_channel()
-        self._dbg(f"send_note_led ch={ch} note={note} vel={vel}")
-        lib_zyncore.dev_send_note_on(self.idev_out, ch, note, vel)
+        self._dbg(f"send_note_led ch={ch} note={note} vel={note_vel}")
+        lib_zyncore.dev_send_note_on(self.idev_out, ch, note, note_vel)
 
     def light_off(self):
         if self.idev_out is None:
@@ -1006,6 +1271,13 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         return True
 
     def midi_event(self, ev):
+        status = ev[0] & 0xFF
+        # Handle transport from MIDI realtime and MMC SysEx first.
+        if status >= 0xF8:
+            return self._handle_midi_realtime_transport(status)
+        if status == 0xF0:
+            return self._handle_mmc_sysex_transport(ev)
+
         evtype = (ev[0] >> 4) & 0x0F
         ch = ev[0] & 0x0F
 
@@ -1013,6 +1285,11 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if ch == CTRL_MIDI_CH:
+                # Some Generic presets keep control banks on one channel and
+                # differentiate bank A/B by CC numbers instead. Route those CCs
+                # to BANK B mapping before BANK A.
+                if ccnum in CTRL_BANK_B_KNOB_CCS and ccnum not in KNOB_PAN_CCS:
+                    return self._handle_control_bank_b_cc(ccnum, ccval)
                 return self._handle_control_bank_a_cc(ccnum, ccval)
             if ch == CTRL_BANK_B_MIDI_CH:
                 return self._handle_control_bank_b_cc(ccnum, ccval)
