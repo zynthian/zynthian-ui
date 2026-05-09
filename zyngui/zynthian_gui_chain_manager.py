@@ -300,6 +300,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             chain_id: The chain id of the node.
             proc_id: The processor of the node or string describing node type. None for non-processor nodes.
         """
+
         while len(self.nodes) <= chain_idx:
             self.nodes.append([])
         while len(self.nodes[chain_idx]) <= row:
@@ -319,24 +320,60 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "Special", "midi_key_range", "midi_input", "add_midi_proc", "audio_in")
         })
 
-    def _get_name(self, text, max_width):
-        """
-        Trim text so that its pixel width fits within max_width.
-        Adds an ellipsis (…) if trimmed.
-        """
-        node_font = font.Font(family=self.font[0], size=self.font[1])
-        if node_font.measure(text) <= max_width:
-            return text  # already fits
+    def fit_text_to_box(self, text, min_font_size=6):
+        """ Ensure wrapped text fits inside a rectangle.
 
-        ellipsis = "…"
-        ellipsis_width = node_font.measure(ellipsis)
+        Rules:
+        - Keep the original font size if at least one line fits horizontally.
+        - If even a single line cannot fit, reduce the font size until it can.
+        - Truncate text from the end and append "..." until the wrapped
+        text fits within the rectangle height.
 
-        # Start trimming from the end
-        for i in range(len(text), 0, -1):
-            sub = text[:i]
-            if node_font.measure(sub) + ellipsis_width <= max_width:
-                return sub.strip() + ellipsis
-        return ellipsis  # fallbackpass
+        Returns:
+            (final_text, final_font_size)
+        """
+
+        size = self.font[1]
+        while size >= min_font_size:
+            f = font.Font(family=self.font[0], size=size)
+            line_height = f.metrics("linespace")
+            single_line_width = f.measure("W")
+            width_ok = single_line_width <= self.BLOCK_WIDTH
+            height_ok = line_height <= self.BLOCK_HEIGHT
+            if width_ok and height_ok:
+                break
+            size -= 1
+        size = max(size, min_font_size)
+        f = font.Font(family=self.font[0], size=size)
+
+        def wrapped_height(s):
+            words = s.split()
+            if not words:
+                return f.metrics("linespace")
+            lines = []
+            current = words[0]
+            for word in words[1:]:
+                trial = current + " " + word
+                if f.measure(trial) <= self.BLOCK_WIDTH:
+                    current = trial
+                else:
+                    lines.append(current)
+                    current = word
+            lines.append(current)
+            line_height = f.metrics("linespace")
+            return len(lines) * line_height
+
+        fitted = text
+        while fitted:
+            h = wrapped_height(fitted)
+            if h <= self.BLOCK_HEIGHT:
+                break
+            fitted = fitted[:-1].rstrip()
+            if len(fitted) > 3:
+                fitted = fitted[:-3].rstrip() + "..."
+            else:
+                fitted = "..."
+        return fitted, size
 
     def build_graph(self, proc=None):
         """
@@ -357,8 +394,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             row = 0
 
             # Add chain option button
-            name = self._get_name(chain.get_name(), self.BLOCK_WIDTH)
-            self._add_node(chain_idx, row, f"{name}", chain_id, "chain_options")
+            self._add_node(chain_idx, row, chain.get_name(), chain_id, "chain_options")
             row += 1
             # Add MIDI input
             if chain.is_midi():
@@ -460,20 +496,16 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
             fill=bg_col, outline=bg_col, tags="node"
         )
+        title, size = self.fit_text_to_box(title)
         # Draw node text
         node["text_id"] = self.canvas.create_text(
             x + self.BLOCK_WIDTH / 2, y + self.BLOCK_HEIGHT / 2,
-            text=title, fill=fg_col,
-            font=self.font,
+            text=title,
+            fill=fg_col,
+            font=(self.font[0], size),
             width=self.BLOCK_WIDTH,
             justify=tkinter.CENTER
         )
-        while True:
-            x0, y0, x1, y1 = self.canvas.bbox(node["text_id"])
-            if y1 - y0 < self.BLOCK_HEIGHT:
-                break
-            title = title[:-1].strip()
-            self.canvas.itemconfig(node["text_id"], text=f"{title}...")
         self.node2pos[node["id"]] = node
 
     def _draw_line(self, start_id, end_id):
