@@ -1021,6 +1021,8 @@ class PadMatrixHandler(ModeHandlerBase):
     def _stop_all_seqs(self, in_all_scenes=False):
         scene = 0 if in_all_scenes else self._zynseq.scene
         while True:
+            # Iterate max 64 scenes or until no playing sequences
+            # TODO: Should use a constant for max scenes
             seq_num = self._libseq.getSequencesInscene(scene)
             for seq in range(seq_num):
                 state = self._libseq.getPlayState(scene, seq)
@@ -1156,6 +1158,7 @@ class StepSyncProvider(mp.Process):
 
         # Process incoming messages
         while True:
+            # TODO: This looks like it will never end!
             cmd = self._commands.get()
             if cmd[0] == "stop":
                 break
@@ -1219,6 +1222,7 @@ class StepSyncConsumer(Thread):
 
     def run(self):
         while True:
+            # TODO: This looks like it will never end!
             ev = self._events.get()
             self._callback(ev)
 
@@ -2657,6 +2661,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     def midi_event(self, ev):
         if self._on_midi_event(ev):
             while True:
+                # Iterate until queue is empty
                 action = self._current_handler.pop_action_request()
                 if not action:
                     return True

@@ -82,6 +82,7 @@ class RunTimer(Thread):
 
     def run(self):
         while True:
+            # TODO: This looks like it will never end!
             if not self._actions:
                 self._awake.wait()
             self._awake.clear()
@@ -137,6 +138,7 @@ class IntervalTimer(RunTimer):
 
     def run(self):
         while True:
+            # TODO: This looks like it will never end!
             if not self._actions:
                 self._awake.wait()
             self._awake.clear()
@@ -185,6 +187,7 @@ class ButtonTimer(Thread):
 
     def run(self):
         while True:
+            # TODO: This looks like it will never end!
             with self._lock:
                 expired, elapsed = self._get_expired()
             if expired is not None:
