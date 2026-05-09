@@ -683,7 +683,7 @@ class zynthian_gui:
                 self.screen_lock.release()
                 return
         else:
-            self.current_processor = self.get_current_processor()
+            self.current_processor = self.chain_manager.active_chain.current_processor
 
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
