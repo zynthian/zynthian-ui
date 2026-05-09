@@ -118,6 +118,8 @@ class zynthian_side_chain(tkinter.Canvas):
         self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
         self.BLOCK_WIDTH =  2 * int(0.45 * self.width)
         self.BLOCK_HEIGHT = int(0.12 * self.height)
+        self.BLOCK_TEXT_WIDTH = int(0.9 * self.BLOCK_WIDTH)
+        self.BLOCK_TEXT_HEIGHT = int(0.9 * self.BLOCK_HEIGHT)
         self.H_SPACING = self.width - self.BLOCK_WIDTH
         self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 10)
         self._draw_graph()
@@ -199,8 +201,8 @@ class zynthian_side_chain(tkinter.Canvas):
             f = font.Font(family=self.font[0], size=size)
             line_height = f.metrics("linespace")
             single_line_width = f.measure("W")
-            width_ok = single_line_width <= self.BLOCK_WIDTH
-            height_ok = line_height <= self.BLOCK_HEIGHT
+            width_ok = single_line_width <= self.BLOCK_TEXT_WIDTH
+            height_ok = line_height <= self.BLOCK_TEXT_HEIGHT
             if width_ok and height_ok:
                 break
             size -= 1
@@ -215,7 +217,7 @@ class zynthian_side_chain(tkinter.Canvas):
             current = words[0]
             for word in words[1:]:
                 trial = current + " " + word
-                if f.measure(trial) <= self.BLOCK_WIDTH:
+                if f.measure(trial) <= self.BLOCK_TEXT_WIDTH:
                     current = trial
                 else:
                     lines.append(current)
@@ -227,7 +229,7 @@ class zynthian_side_chain(tkinter.Canvas):
         fitted = text
         while fitted:
             h = wrapped_height(fitted)
-            if h <= self.BLOCK_HEIGHT:
+            if h <= self.BLOCK_TEXT_HEIGHT:
                 break
             fitted = fitted[:-1].rstrip()
             if len(fitted) > 3:
@@ -348,7 +350,7 @@ class zynthian_side_chain(tkinter.Canvas):
             x + self.BLOCK_WIDTH / 2, y + self.BLOCK_HEIGHT / 2,
             text=title, fill=fg_col,
             font=(self.font[0],size),
-            width=self.BLOCK_WIDTH,
+            width=self.BLOCK_TEXT_WIDTH,
             justify=tkinter.CENTER
         )
         self.node2pos[node["id"]] = node
