@@ -68,13 +68,13 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             highlightthickness=0,
             bg=zynthian_gui_config.color_bg)
         self.grid_info_canvas()
-        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
         self.info_text = self.info_canvas.create_text(
             0, 0,
             anchor=tkinter.NW,
             justify=tkinter.LEFT,
             fill=zynthian_gui_config.color_panel_tx
         )
+        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
 
     def grid_info_canvas(self):
         if self.zsel_hidden:
@@ -138,6 +138,16 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         if zs_hidden is None:
             zs_hidden = self.zsel_hidden
         super().set_selector(zs_hidden)
+
+    def zynpot_cb(self, i, dval):
+        if i == 2:
+            x0, y0, x1, y1 = self.info_canvas.bbox(self.info_text)
+            w_top = self.info_canvas.bbox(self.info_icon)[3]
+            w_bottom = self.info_canvas.winfo_height()
+            if dval > 0 and y1 > w_bottom or dval < 0 and y0 < w_top:
+                self.info_canvas.move(self.info_text, 0, dval * -10)
+            return True
+        return super().zynpot_cb(i, dval)
 
     def select(self, index=None, set_zctrl=True):
         super().select(index, set_zctrl)
