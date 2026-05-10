@@ -52,6 +52,11 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 
 LOOP_INFO_WIDTH = 0.2
 DRAG_THRESHOLD = 5
+SPEAKER_ICON = "\uf028"
+MICROPHONE_ICON = "\uf130"
+QUAVER_ICON = "\u266b"
+SLIDERS_ICON = "\uf1de"
+PHRASE_ICON = "\u25B6..."
 
 class zynthian_gui_launcher_pad():
 
@@ -205,7 +210,6 @@ class zynthian_gui_launcher_pad():
     def draw(self):
         """ Update the launcher button elements"""
 
-        mode_image = None
         mode_text = ""
         timesig_text = ""
         tempo_text = ""
@@ -223,11 +227,14 @@ class zynthian_gui_launcher_pad():
             name = state_seq["name"]
             # If not asigned name => generate default name on-the-fly
             if not name:
-                if self.chain.chain_id > 0:
-                    name = chr(ord('A') + self.chain.midi_chan) # QUESTION: It MIDI chan same than group?
+                if self.chain.chain_id == 0:
+                    # Main chain
+                    name = f"{self.phrase + 1} {PHRASE_ICON}"
                 else:
-                    name = "_"
-                name += str(self.phrase)
+                    if 15 < self.chain.midi_chan < 32:
+                        name = f"🔈 {chr(ord('A') + self.chain.midi_chan - 16)}{self.phrase + 1}"
+                    else:
+                        name = f"{chr(ord('A') + self.chain.midi_chan)}{self.phrase + 1}" # QUESTION: Is MIDI chan same as group? ANSWER: Only until arranger is reinstated.
 
             disabled = state_seq["repeat"] == 0
             empty = False
@@ -414,7 +421,7 @@ class zynthian_gui_launcher_pad():
             color_mode = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
-            state_text = "?"
+            state_text = ""
 
         self.canvas.itemconfig(self.pad, fill=color)
         self.canvas.itemconfig(self.title, text=title, fill=color_text)
@@ -792,7 +799,7 @@ class zynthian_gui_mixer_strip():
             text = "\uf32f"
         else:
             bgcolor = self.gui_mixer.button_bgcol
-            text = "\uf028"
+            text = SPEAKER_ICON
 
         self.canvas.itemconfig(self.mute, fill=bgcolor)
         self.canvas.itemconfig(self.mute_text, text=text, font=font, fill=txcolor)
@@ -807,17 +814,18 @@ class zynthian_gui_mixer_strip():
         if control is None:
             # Draw the common elements used by all strips
             if self.chain.chain_id == 0:
-                self.canvas.itemconfig(self.legend_strip_txt, text="Main", font=self.gui_mixer.font)
+                strip_txt = "Main"
             else:
                 if self.chain.is_generator():
-                    font = self.gui_mixer.font_icons
-                    strip_txt = "\uf028"  # Speaker icon
-                elif self.chain.is_midi():
-                    font = self.gui_mixer.font
-                    if self.chain.audio_thru:
-                        strip_txt = "\uf130♫"   # Add microphone icon for MIDI+Audio chains
+                    if self.chain.midi_chan is not None and 15 < self.chain.midi_chan < 32:
+                        strip_txt = f"{SPEAKER_ICON} {chr(ord('A') + self.chain.midi_chan - 16)}"
                     else:
-                        strip_txt = "♫ "
+                        strip_txt = SPEAKER_ICON
+                elif self.chain.is_midi():
+                    if self.chain.audio_thru:
+                        strip_txt = f"{MICROPHONE_ICON}{QUAVER_ICON}"   # Add microphone icon for MIDI+Audio chains
+                    else:
+                        strip_txt = f"{QUAVER_ICON} "
                     if 0 <= self.chain.midi_chan < 16:
                         strip_txt += f"{self.chain.midi_chan + 1}"
                     elif self.chain.midi_chan == 0xffff:
@@ -825,16 +833,14 @@ class zynthian_gui_mixer_strip():
                     else:
                         strip_txt += f"Err"
                 elif self.chain.is_audio():
-                    font = self.gui_mixer.font_icons
                     if self.chain.zynmixer_proc.eng_code == "MI":
-                        strip_txt = "\uf130"  # Microphone icon
+                        strip_txt = MICROPHONE_ICON
                     else:
-                        strip_txt = "\uf1de"  # Sliders
+                        strip_txt = SLIDERS_ICON
                 else:
-                    font = self.gui_mixer.font_icons
                     strip_txt = ""
                     # procs = self.chain.get_processor_count() - 1
-                self.canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
+            self.canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.gui_mixer.font)
             self.draw_fader_text()
 
         if self.chain.zynmixer_proc:
@@ -1216,7 +1222,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.font = (zynthian_gui_config.font_family, font_size)
         self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
         self.font_clip_state = (zynthian_gui_config.font_family, int(0.6 * font_size))
-        self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
+        self.font_clip_title = ("fontawesome", int(0.8 * font_size))
         self.font_timebase = (zynthian_gui_config.font_family, int(0.5 * font_size))
         self.font_icons = ("forkawesome", int(1.2 * font_size))
 
