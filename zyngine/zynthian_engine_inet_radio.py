@@ -683,6 +683,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
                         break
                 except TimeoutError:
                     break
+                except Exception as e:
+                    logging.error(e)
             if buffer:
                 for i, c in enumerate(buffer):
                     if c == 13:
