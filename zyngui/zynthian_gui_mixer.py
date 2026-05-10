@@ -56,7 +56,11 @@ SPEAKER_ICON = "\uf028"
 MICROPHONE_ICON = "\uf130"
 QUAVER_ICON = "\u266b"
 SLIDERS_ICON = "\uf1de"
-PHRASE_ICON = "\u25B6..."
+
+CHANNEL_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'
+                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Γ', 'Δ', 'Λ', 'Π', 'Σ', 'Ω']
+                 # 'Θ', 'Ξ', 'Φ', 'Ψ',
+
 
 class zynthian_gui_launcher_pad():
 
@@ -229,12 +233,11 @@ class zynthian_gui_launcher_pad():
             if not name:
                 if self.chain.chain_id == 0:
                     # Main chain
-                    name = f"{self.phrase + 1} {PHRASE_ICON}"
+                    name = f"{self.phrase + 1}"
                 else:
-                    if 15 < self.chain.midi_chan < 32:
-                        name = f"🔈 {chr(ord('A') + self.chain.midi_chan - 16)}{self.phrase + 1}"
-                    else:
-                        name = f"{chr(ord('A') + self.chain.midi_chan)}{self.phrase + 1}" # QUESTION: Is MIDI chan same as group? ANSWER: Only until arranger is reinstated.
+                    # QUESTION: Is MIDI chan same as group? ANSWER: Only until arranger is reinstated. => Understood! ;-)
+                    name = f"{CHANNEL_CHARS[self.chain.midi_chan]}{self.phrase + 1}"
+
 
             disabled = state_seq["repeat"] == 0
             empty = False
@@ -424,7 +427,11 @@ class zynthian_gui_launcher_pad():
             state_text = ""
 
         self.canvas.itemconfig(self.pad, fill=color)
-        self.canvas.itemconfig(self.title, text=title, fill=color_text)
+        if len(title) > 3:
+            font_title = self.gui_mixer.font_clip_title_small
+        else:
+            font_title = self.gui_mixer.font_clip_title
+        self.canvas.itemconfig(self.title, text=title, fill=color_text, font=font_title)
         self.canvas.itemconfig(self.play_state, text=state_text, fill=color_state)
         if self.chain.chain_id:
             # Chain sequence launcher
@@ -818,7 +825,7 @@ class zynthian_gui_mixer_strip():
             else:
                 if self.chain.is_generator():
                     if self.chain.midi_chan is not None and 15 < self.chain.midi_chan < 32:
-                        strip_txt = f"{SPEAKER_ICON} {chr(ord('A') + self.chain.midi_chan - 16)}"
+                        strip_txt = f"{SPEAKER_ICON} {CHANNEL_CHARS[self.chain.midi_chan]}"
                     else:
                         strip_txt = SPEAKER_ICON
                 elif self.chain.is_midi():
@@ -1226,7 +1233,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.font = (zynthian_gui_config.font_family, font_size)
         self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
         self.font_clip_state = (zynthian_gui_config.font_family, int(0.6 * font_size))
-        self.font_clip_title = ("fontawesome", int(0.8 * font_size))
+        self.font_clip_title = (zynthian_gui_config.font_family, int(0.8 * font_size))
+        self.font_clip_title_small = ("sans-serif", int(0.65 * font_size))
         self.font_timebase = (zynthian_gui_config.font_family, int(0.5 * font_size))
         self.font_icons = ("forkawesome", int(1.2 * font_size))
 
