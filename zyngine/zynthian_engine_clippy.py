@@ -244,8 +244,10 @@ class zynthian_engine_clippy(zynthian_engine):
 
         note = phrase + 1
         file_zctrl = processor.controllers_dict[f"file {note}"]
-        path = file_zctrl.value
-        if path:
+        fpath = file_zctrl.value
+        if fpath:
+            filename = os.path.basename(fpath)
+
             clip_channel = processor.midi_chan - 16
             warp_zctrl = processor.controllers_dict[f"warp {note}"]
             beats_zctrl = processor.controllers_dict[f"beats {note}"]
@@ -253,8 +255,8 @@ class zynthian_engine_clippy(zynthian_engine):
             crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
 
             quality = 4     # Re-sampling quality (1-4)
-            sr = self.libclippy.getFileSamplerate(bytes(path, "utf-8"))
-            frames = self.libclippy.getFileFrames(bytes(path, "utf-8"))
+            sr = self.libclippy.getFileSamplerate(bytes(fpath, "utf-8"))
+            frames = self.libclippy.getFileFrames(bytes(fpath, "utf-8"))
             self.update_controllers(processor, note, frames)
 
             # Try to determine playing tempo
@@ -265,42 +267,50 @@ class zynthian_engine_clippy(zynthian_engine):
             else:
                 tempo_lock = True
 
-            # Try to determine sample tempo from filename
-            filename = os.path.basename(path)
+            # Try to determine sample tempo from file path (not only the filename => it could be in a subdir)
             regptn = r"(\d+)\s*(?=bpm|BPM)"
-            matches = re.findall(regptn, filename)
+            matches = re.findall(regptn, fpath)
             try:
                 file_tempo = float(matches[0])
             except:
                 file_tempo = tempo
 
+            # Get Beats Per Bar
+            beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "bpb")
+            if beats_per_bar < 1:
+                beats_per_bar = self.zynseq.bpb
+
             # Configure clip with required beats to play whole file at this tempo
             try:
                 reset = False
                 if autoreset:
-                    current_path = self.libclippy.getClipPath(clip_channel, phrase)
-                    if not current_path or current_path.decode("utf-8") != path:
+                    current_fpath = self.libclippy.getClipPath(clip_channel, phrase)
+                    if not current_fpath or current_fpath.decode("utf-8") != fpath:
                         reset = True
                 if reset:
-                    beats_zctrl.value = 0
-                    warp_zctrl.value = 1
-                    crop_start_zctrl.value = 0
-                    crop_end_zctrl.value = frames
-                    min_duration = (60 / file_tempo)
+                    min_duration = 60 / file_tempo
+                    # Try to auto-crop to an integer number of bars at the given BPM
+                    beats = frames * file_tempo / (60 * sr)
+                    bars = round(beats / beats_per_bar)
+                    duration = bars * beats_per_bar * 60 / file_tempo
+                    crop_start = 0
+                    crop_end = int(duration * sr)
+                    # Reset zctrl values
+                    beats_zctrl.value = beats_value = 0
+                    warp_zctrl.value = warp_value = 1
+                    crop_start_zctrl.value = crop_start
+                    crop_end_zctrl.value = crop_end
+                    #crop_end_zctrl.value = frames
                 else:
-                    min_duration = (15 / file_tempo)
-
-                beats_value = beats_zctrl.value
-                warp_value = warp_zctrl.value
-                crop_start = crop_start_zctrl.value
-                crop_end = crop_end_zctrl.value
-
-                duration = (crop_end - crop_start) / sr
-                beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "bpb")
-                if beats_per_bar < 1:
-                    beats_per_bar = self.zynseq.bpb
-                beats = duration * file_tempo / 60
-                bars = round(beats / beats_per_bar)
+                    min_duration = 15 / file_tempo
+                    # Get zctrl values
+                    beats_value = beats_zctrl.value
+                    warp_value = warp_zctrl.value
+                    crop_start = crop_start_zctrl.value
+                    crop_end = crop_end_zctrl.value
+                    duration = (crop_end - crop_start) / sr
+                    beats = duration * file_tempo / 60
+                    bars = round(beats / beats_per_bar)
 
                 if beats_value:
                     whole_beats = beats_value
@@ -320,9 +330,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 if not warp_zctrl.value:
                     tempo = 0.0
 
-                #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] {tempo}BPM => {path}")
+                #logging.debug(f"LOAD SAMPLE ({whole_beats} BEATS): [{crop_start} - {crop_end}] {tempo}BPM => {fpath}")
                 # Setup clippy note
-                new_note = self.libclippy.loadClip(clip_channel, note, bytes(path, "utf-8"), whole_beats,
+                new_note = self.libclippy.loadClip(clip_channel, note, bytes(fpath, "utf-8"), whole_beats,
                                                    crop_start, crop_end, quality, ctypes.c_float(tempo), tempo_lock)
                 if new_note == 0:
                     logging.warning(f"Can't load/process sample file!")
@@ -342,7 +352,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     self.set_phrase(processor, phrase)
                 #else:
                     # Used for display purpose only
-                    #processor.preset_name = path.split("/")[-1]
+                    #processor.preset_name = fpath.split("/")[-1]
 
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
