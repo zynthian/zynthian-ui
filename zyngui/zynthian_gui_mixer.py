@@ -837,6 +837,10 @@ class zynthian_gui_mixer_strip():
                         strip_txt = MICROPHONE_ICON
                     else:
                         strip_txt = SLIDERS_ICON
+                        try:
+                            strip_txt = f"{SLIDERS_ICON} {int(self.chain.title.split(' ')[-1])}"
+                        except:
+                            strip_txt = SLIDERS_ICON
                 else:
                     strip_txt = ""
                     # procs = self.chain.get_processor_count() - 1
