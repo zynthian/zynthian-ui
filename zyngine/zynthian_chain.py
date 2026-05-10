@@ -127,8 +127,9 @@ class zynthian_chain:
             return self.midi_slots
         elif type == "Audio Effect":
             return self.audio_slots
-        else:
-            return self.synth_slots
+        elif type is None:
+            return self.midi_slots + self.synth_slots + self.audio_slots
+        return self.synth_slots
 
     def get_type(self):
         if self.synth_slots:
@@ -544,28 +545,26 @@ class zynthian_chain:
         else:
             return 0
 
-    def get_processor_count(self, type=None, slot=None):
+    def get_processor_count(self, type=None, slot=None, eng_code=None):
         """Get quantity of processors in chain (slot)
 
         type : processor type to filter results (Default: whole chain)
         slot : Index of slot or None for whole chain (Default: whole chain)
+        eng_code: Optional engine code to filter by engine type
         Returns : Quantity of processors in (sub)chain or slot
         """
 
         count = 0
-        if type is None:
-            if slot is None or slot < 0:
-                for j in self.midi_slots + self.synth_slots + self.audio_slots:
-                    count += len(j)
-        else:
-            slots = self.get_slots_by_type(type)
-
-            if slot is None or slot < 0:
-                for j in slots:
-                    count += len(j)
-            else:
-                if slot < slots:
-                    count = len(slots[slot])
+        slots = self.get_slots_by_type(type)
+        try:
+            if slot >= 0:
+                slots = [slots[slot]]
+        except:
+            pass
+        for slot in slots:
+            for proc in slot:
+                if not eng_code or proc.eng_code == eng_code:
+                    count += 1
         return count
 
     def get_processors(self, type=None, slot=None):

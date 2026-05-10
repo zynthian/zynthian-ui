@@ -80,6 +80,12 @@ class zynthian_gui_add_chain(zynthian_gui_selector_grid):
                 "action": self.zyngui.modify_chain,
                 "action_params": [{"type": "Audio Effect", "midi_thru": False, "audio_thru": True, "mixbus": True, "pos": self.pos}]
             }]
+        if self.zyngui.chain_manager.get_processor_count(eng_code="CL") > 15:
+            self.config[2] = {
+                "title": "Clip Launcher\nMax. 16 reached!",
+                "icon": "audio.png",
+                "action": None
+            }
 
     # Setup position and reset
     def set_chain_pos(self, pos):

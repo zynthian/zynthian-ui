@@ -139,18 +139,20 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         y = self.SPACING
         for idx, node in enumerate(self.config):
             if node:
+                fill = "#666666" if node["action"] else "#444444"
                 self.canvas.create_rectangle(x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
-                fill="#666666",
-                outline="#666666",
-                tags=("node", f"node_{idx}"))
+                    fill=fill,
+                    outline=fill,
+                    tags=("node", f"node_{idx}"))
                 if "icon" in node:
                     img = self.get_icon(node["icon"])
                     if img:
                         self.canvas.create_image(x, y + self.BLOCK_HEIGHT // 2, image=img, anchor="w")
+                fill = "#ffffff" if node["action"] else "#aaaaaa"
                 self.canvas.create_text(
                     x + 2 * self.BLOCK_WIDTH // 3, y + self.BLOCK_HEIGHT // 2,
                     text=node["title"],
-                    fill="white",
+                    fill=fill,
                     font=self.font,
                     width=self.BLOCK_WIDTH // 2,
                     justify=tkinter.CENTER

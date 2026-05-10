@@ -1256,23 +1256,24 @@ class zynthian_chain_manager:
             return 0
         return self.chains[chain_id].get_slot_count(type)
 
-    def get_processor_count(self, chain_id=None, type=None, slot=None):
+    def get_processor_count(self, chain_id=None, type=None, slot=None, eng_code=None):
         """Get the quantity of processors in a slot
 
         chain_id : Chain id (Default: all processors in all chains)
         type : Processor type to filter result (Default: all types)
         slot : Index of slot or None for whole chain (Default: whole chain)
+        eng_code: Optional engine code to filter by engine type
         Returns : Quantity of processors in (sub)chain or slot
         """
 
         if chain_id is None:
             count = 0
             for chain in self.chains:
-                count += self.chains[chain].get_processor_count(type, slot)
-                return count
+                count += self.chains[chain].get_processor_count(type, slot, eng_code)
+            return count
         if chain_id not in self.chains:
             return 0
-        return self.chains[chain_id].get_processor_count(type, slot)
+        return self.chains[chain_id].get_processor_count(type, slot, eng_code)
 
     def get_processor_id(self, processor):
         """Get processor uid from processor object
