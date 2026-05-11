@@ -38,6 +38,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base import (
     zynthian_ctrldev_zynmixer,
     zynthian_ctrldev_zynpad,
 )
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 
 # ------------------------------------------------------------------------------
 # MIDI routing
@@ -54,6 +55,9 @@ from zyngine.ctrldev.zynthian_ctrldev_base import (
 # Generic preset notes (MPK249):
 # - Pads/faders/knobs/Bank-B sends are mapped for Generic-style layouts in this
 #   driver (single pad channel + distinct pad notes + custom CC maps).
+# - Control bank switches: A = mute; B = solo on strips 1–7, switch 8 = toggle:
+#   CC 127 starts main fade-out; CC 0 stops all launcher clips + restores saved
+#   mixer snapshot; C = record arm per visible strip (switch 8 → chain 0).
 # - Transport in MMC/MIDI mode works for Play/Stop/Record via realtime/MMC.
 # - Loop is not emitted as a distinct MMC/realtime message on tested hardware, so
 #   Loop requires Transport Type=CC to trigger TRANSPORT_LOOP_CC.
@@ -175,8 +179,31 @@ else:
     CTRL_BANK_B_KNOB_CCS = KNOB_PAN_CCS.copy()
     KNOB_PAN_VALUE_MODE = "absolute"
 
+# Assignable switches (8 per control bank), in physical order 1..8.
+# Generic preset mappings from MIDI log.
+CTRL_BANK_A_SWITCH_CCS = [28, 29, 30, 31, 35, 41, 46, 47]
+CTRL_BANK_B_SWITCH_CCS = [75, 76, 77, 78, 79, 80, 81, 82]
+CTRL_BANK_C_SWITCH_CCS = [106, 107, 108, 109, 110, 111, 112, 113]
+# Bank B switch 8: CC 127 = start main fade; CC 0 = stop clips + restore snapshot.
+# Fade shape: "smoothstep" = classic S-curve (gentle at start and end, faster mid);
+# "linear" = constant dV/dt (old behavior).
+CTRL_BANK_B_FADE_OUT_SECONDS = 10.0
+CTRL_BANK_B_FADE_OUT_TARGET_LEVEL = 0.0
+CTRL_BANK_B_FADE_OUT_CURVE = "smoothstep"
+CTRL_BANK_B_FADE_OUT_TICK_S = 0.03
+# CC 0 restore pipeline (order matters):
+# 1) Stop every launcher cell (loops).
+# 2) POST_STOP_DRAIN — let seq/JACK drain straggling MIDI before killing voices.
+# 3) all_notes_off (+ raw).
+# 4) RESTORE_SETTLE — DSP tail after note-offs.
+# 5) Ramp main + strips back (de-click).
+CTRL_BANK_B_POST_STOP_DRAIN_S = 0.10
+CTRL_BANK_B_RESTORE_SETTLE_S = 0.10
+CTRL_BANK_B_RESTORE_MAIN_RAMP_S = 0.25
+
 CHAIN_PAN_KNOB_COUNT = 7
 KNOB_PAN_MASTER_INDEX = 7
+CTRL_SWITCH_MASTER_INDEX = 7
 # Balance increment per relative encoder "step".
 KNOB_PAN_REL_STEP = 0.02
 # Snap to exact edges when boundary CC values are reached in matching direction.
@@ -248,8 +275,8 @@ TRANSPORT_REC_CC = 119
 TRANSPORT_REW_CC = 115
 TRANSPORT_FF_CC = 116
 TRANSPORT_LOOP_CC = 114
-# Optional quick-clear command (CC on CTRL_MIDI_CH):
-# clears all patterns in the currently selected phrase for the active chain.
+# Optional quick-clear command (CC on CTRL_MIDI_CH): clears pattern *events*
+# (notes/CC) for the active chain's clip without changing sequence length or layout.
 TRANSPORT_CLEAR_ACTIVE_LOOP_CC = TRANSPORT_REW_CC
 TRANSPORT_REW_CUIA = "ARROW_LEFT"
 TRANSPORT_FF_CUIA = "ARROW_RIGHT"
@@ -303,6 +330,9 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         self._blink_phase = False
         self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_CH_COUNT)}
         self._last_ctrl_bank_b_focus_ts = 0.0
+        self._fade_out_cancel = None
+        self._fade_out_thread = None
+        self._bank_b_sw8_snapshot = None
         super().__init__(state_manager, idev_in, idev_out)
         self._active_pad_bank = 0
         self.cols = 4
@@ -323,12 +353,16 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         )
         logging.info(
             "MPK249 CTRL_MIXER_LAYOUT=%s generic=%s FADER_CCS=%s KNOB_PAN_CCS=%s "
-            "BANK_B_KNOB_CCS=%s KNOB_PAN_VALUE_MODE=%s MASTER_FADER_INDEX=%s",
+            "BANK_B_KNOB_CCS=%s A_SWITCH_CCS=%s B_SWITCH_CCS=%s C_SWITCH_CCS=%s "
+            "KNOB_PAN_VALUE_MODE=%s MASTER_FADER_INDEX=%s",
             CTRL_MIXER_LAYOUT,
             _mpk249_use_generic_mixer_layout(),
             FADER_CCS,
             KNOB_PAN_CCS,
             CTRL_BANK_B_KNOB_CCS,
+            CTRL_BANK_A_SWITCH_CCS,
+            CTRL_BANK_B_SWITCH_CCS,
+            CTRL_BANK_C_SWITCH_CCS,
             KNOB_PAN_VALUE_MODE,
             MASTER_FADER_INDEX,
         )
@@ -340,6 +374,12 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         )
 
     def end(self):
+        if self._fade_out_cancel is not None:
+            self._fade_out_cancel.set()
+            self._fade_out_cancel = None
+        if self._fade_out_thread is not None and self._fade_out_thread.is_alive():
+            self._fade_out_thread.join(timeout=0.3)
+            self._fade_out_thread = None
         self._stop_blink_timer()
         zynsigman.unregister(
             zynsigman.S_GUI,
@@ -666,6 +706,192 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         except Exception as ex:
             logging.warning(f"MPK249 main balance: {ex}")
 
+    def _handle_strip_switch_cc(self, ccnum, ccval, param, switch_ccs):
+        """Map switch CCs 1..8 to chain controls; switch 8 targets main bus.
+
+        Buttons in toggle mode usually send alternating 127/0 values. We follow
+        that state directly so every press updates mixer state predictably.
+        """
+
+        if ccnum not in switch_ccs:
+            return False
+        idx = switch_ccs.index(ccnum)
+        state = 1 if ccval > 0 else 0
+        if idx == CTRL_SWITCH_MASTER_INDEX:
+            self.set_mixer_param(param, -1, state)
+            return True
+        pos = self.scroll_h + idx
+        self.set_mixer_param(param, pos, state)
+        return True
+
+    def _snapshot_mixer_levels_for_bank_b_sw8(self):
+        """Capture main + visible chain fader levels for later restore."""
+
+        snap = {"main": None, "strips": []}
+        mp = self.state_manager.main_mixbus_proc
+        if mp and "level" in mp.controllers_dict:
+            snap["main"] = float(mp.controllers_dict["level"].value)
+        max_chain = (
+            MASTER_FADER_INDEX
+            if MASTER_FADER_INDEX is not None
+            else len(FADER_CCS)
+        )
+        for col in range(max_chain):
+            if MASTER_FADER_INDEX is not None and col == MASTER_FADER_INDEX:
+                continue
+            pos = self.scroll_h + col
+            chain = self.get_filtered_chain_by_index(pos)
+            if chain and chain.zynmixer_proc:
+                try:
+                    lvl = float(chain.zynmixer_proc.controllers_dict["level"].value)
+                except Exception:
+                    lvl = None
+            else:
+                lvl = None
+            snap["strips"].append((pos, lvl))
+        return snap
+
+    def _ramp_main_mix_level_sync(self, target_level, duration_s):
+        """Raise or lower main mixbus level over ``duration_s`` (smoothstep); blocks."""
+
+        mp = self.state_manager.main_mixbus_proc
+        if not mp or "level" not in mp.controllers_dict:
+            return
+        zc = mp.controllers_dict["level"]
+        start = float(zc.value)
+        target = float(target_level)
+        duration = max(0.0, float(duration_s))
+        if duration < 0.005:
+            zc.set_value(target)
+            return
+        t0 = time.monotonic()
+        tick = min(0.025, max(0.01, duration / 12.0))
+        while True:
+            elapsed = time.monotonic() - t0
+            if elapsed >= duration:
+                if zc.value != target:
+                    zc.set_value(target)
+                break
+            u = elapsed / duration
+            shaped = u * u * (3.0 - 2.0 * u)
+            level = start + (target - start) * shaped
+            if zc.value != level:
+                zc.set_value(level)
+            time.sleep(tick)
+
+    def _restore_mixer_levels_after_fade_declick(self, snap):
+        """Restore snapshot after fade: per-chain levels first, then ramp main bus up."""
+
+        if not snap:
+            return
+        for pos, lvl in snap.get("strips") or []:
+            if lvl is not None:
+                self.set_mixer_param("level", pos, lvl)
+        if snap.get("main") is None:
+            return
+        self._ramp_main_mix_level_sync(snap["main"], CTRL_BANK_B_RESTORE_MAIN_RAMP_S)
+
+    def _bank_b_sw8_join_fade_thread(self):
+        t = self._fade_out_thread
+        if t is not None and t.is_alive():
+            t.join(timeout=0.35)
+        self._fade_out_thread = None
+
+    @staticmethod
+    def _fade_out_shape(t_linear):
+        """Map linear time 0..1 to fade progress 0..1. smoothstep = S-curve (Perlin)."""
+
+        t = min(1.0, max(0.0, float(t_linear)))
+        if CTRL_BANK_B_FADE_OUT_CURVE == "linear":
+            return t
+        # smoothstep: zero derivative at 0 and 1 → record-style ease-out tail and soft attack
+        return t * t * (3.0 - 2.0 * t)
+
+    def _stop_all_launcher_sequences(self):
+        try:
+            for midi_chan in range(MAX_NUM_MIDI_CHANS + 1):
+                for phrase in range(self.zynseq.phrases):
+                    self.zynseq.libseq.setPlayState(
+                        self.zynseq.scene,
+                        phrase,
+                        midi_chan,
+                        zynseq.SEQ_STOPPED,
+                    )
+        except Exception as ex:
+            logging.warning(f"MPK249 stop all sequences: {ex}")
+
+    def _handle_bank_b_switch8(self, ccval):
+        """Switch 8 toggle: 127 = snapshot + main fade; 0 = stop clips + restore levels."""
+
+        if ccval > 0:
+            self._bank_b_sw8_snapshot = self._snapshot_mixer_levels_for_bank_b_sw8()
+            self._start_main_mix_fade_thread()
+            return
+
+        if self._fade_out_cancel is not None:
+            self._fade_out_cancel.set()
+            self._bank_b_sw8_join_fade_thread()
+        snap = self._bank_b_sw8_snapshot
+        self._bank_b_sw8_snapshot = None
+        self._stop_all_launcher_sequences()
+        try:
+            time.sleep(max(0.0, float(CTRL_BANK_B_POST_STOP_DRAIN_S)))
+        except Exception:
+            pass
+        try:
+            self.state_manager.all_notes_off()
+            self.state_manager.raw_all_notes_off()
+        except Exception:
+            pass
+        try:
+            time.sleep(max(0.0, float(CTRL_BANK_B_RESTORE_SETTLE_S)))
+        except Exception:
+            pass
+        self._restore_mixer_levels_after_fade_declick(snap)
+        try:
+            self.zynseq.refresh_state(send=True)
+        except Exception as ex:
+            logging.warning(f"MPK249 switch8 off refresh_state: {ex}")
+        self.refresh()
+
+    def _start_main_mix_fade_thread(self):
+        """Background main-mix fade (S-curve or linear); cancel via CC 0 or new CC 127."""
+
+        if self._fade_out_cancel is not None:
+            self._fade_out_cancel.set()
+            self._bank_b_sw8_join_fade_thread()
+        cancel = threading.Event()
+        self._fade_out_cancel = cancel
+
+        def _run():
+            try:
+                mp = self.state_manager.main_mixbus_proc
+                if not mp or "level" not in mp.controllers_dict:
+                    return
+                zc = mp.controllers_dict["level"]
+                start_level = float(zc.value)
+                target = float(CTRL_BANK_B_FADE_OUT_TARGET_LEVEL)
+                duration = max(0.05, float(CTRL_BANK_B_FADE_OUT_SECONDS))
+                t0 = time.monotonic()
+                tick = max(0.01, float(CTRL_BANK_B_FADE_OUT_TICK_S))
+                while not cancel.is_set():
+                    elapsed = time.monotonic() - t0
+                    if elapsed >= duration:
+                        if zc.value != target:
+                            zc.set_value(target)
+                        break
+                    u = elapsed / duration
+                    shaped = self._fade_out_shape(u)
+                    level = start_level + (target - start_level) * shaped
+                    if zc.value != level:
+                        zc.set_value(level)
+                    time.sleep(tick)
+            except Exception as ex:
+                logging.warning(f"MPK249 main mix fade-out: {ex}")
+
+        self._fade_out_thread = threading.Thread(target=_run, daemon=True)
+        self._fade_out_thread.start()
+
     def _should_ignore_first_absolute_pan(self, ccnum):
         if KNOB_PAN_VALUE_MODE != "absolute" or not KNOB_PAN_IGNORE_FIRST_ABS:
             return False
@@ -755,6 +981,9 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 self._set_strip_balance_from_cc(pos, ccval, ccnum)
                 return True
 
+        if self._handle_strip_switch_cc(ccnum, ccval, "mute", CTRL_BANK_A_SWITCH_CCS):
+            return True
+
         if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
             self.state_manager.send_cuia("TOGGLE_PLAY")
             return True
@@ -806,6 +1035,8 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         Mapping:
         - Knobs 1..7  => send level to mixbus named CTRL_BANK_B_SEND_CHAIN_TITLE
         - Knob 8      => return level of that mixbus chain
+        - Switches 1..7 => solo for visible chains
+        - Switch 8    => 127: main fade; 0: stop clips + restore snapshot
         - Transport   => mirrored from BANK A
         """
 
@@ -882,6 +1113,18 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 logging.warning(f"MPK249 BANK B send '{send_symbol}': {ex}")
                 return False
 
+        if ccnum == CTRL_BANK_B_SWITCH_CCS[CTRL_SWITCH_MASTER_INDEX]:
+            self._handle_bank_b_switch8(ccval)
+            return True
+
+        if self._handle_strip_switch_cc(
+            ccnum,
+            ccval,
+            "solo",
+            CTRL_BANK_B_SWITCH_CCS[:CTRL_SWITCH_MASTER_INDEX],
+        ):
+            return True
+
         if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
             self.state_manager.send_cuia("TOGGLE_PLAY")
             return True
@@ -894,11 +1137,22 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         return False
 
     def _handle_control_bank_c_cc(self, ccnum, ccval):
-        """CONTROL BANK C mapping hook (MIDI channel 3 / nibble 2).
+        """CONTROL BANK C: record arm per strip (switch 8 = same main target as A/B)."""
 
-        Default: no CC assignments. Add mappings here as desired.
-        """
+        if self._handle_strip_switch_cc(
+            ccnum, ccval, "record", CTRL_BANK_C_SWITCH_CCS
+        ):
+            return True
 
+        if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
+            self.state_manager.send_cuia("TOGGLE_PLAY")
+            return True
+        if TRANSPORT_STOP_CC is not None and ccnum == TRANSPORT_STOP_CC and ccval > 0:
+            self.state_manager.send_cuia("STOP")
+            return True
+        if TRANSPORT_REC_CC is not None and ccnum == TRANSPORT_REC_CC and ccval > 0:
+            self.state_manager.send_cuia("TOGGLE_RECORD")
+            return True
         return False
 
     def _clear_sequence(self, phrase, seq, create_empty=True):
@@ -932,8 +1186,15 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             libseq.selectPattern(pattern)
 
     def _clear_active_loop_sequence(self):
-        """Quick clear for selected phrase + active chain's sequence."""
+        """Clear musical content of the active chain's patterns for the current phrase.
 
+        Uses ``libseq.clearPattern`` on each pattern referenced in that sequence slot
+        (same idea as the pattern editor's clear-all). Sequence length, tracks, and
+        which pattern sits where are unchanged — only note/CC (and other pattern
+        events) are removed.
+        """
+
+        libseq = self.zynseq.libseq
         try:
             phrase = int(self.zynseq.phrase)
         except Exception:
@@ -944,7 +1205,29 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             return False
         seq = int(chain.midi_chan)
         try:
-            self._clear_sequence(phrase, seq, create_empty=True)
+            seq_len = libseq.getSequenceLength(self.zynseq.scene, phrase, seq)
+            if seq_len == 0:
+                return False
+            n_tracks = libseq.getTracksInSequence(self.zynseq.scene, phrase, seq)
+            cleared_ids = set()
+            for track in range(n_tracks):
+                pos = 0
+                while pos < seq_len:
+                    pat = libseq.getPatternAt(
+                        self.zynseq.scene, phrase, seq, track, pos
+                    )
+                    if pat != -1:
+                        if pat not in cleared_ids:
+                            libseq.clearPattern(pat)
+                            cleared_ids.add(pat)
+                        pos += libseq.getPatternLength(pat)
+                    else:
+                        pos += 24
+            if cleared_ids:
+                try:
+                    self.state_manager.all_notes_off()
+                except Exception:
+                    pass
             self.update_seq_state(phrase, seq)
             self._refresh_loop_screens()
             return True
@@ -1285,10 +1568,19 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if ch == CTRL_MIDI_CH:
+                # Generic-style: banks B/C may share MIDI ch 1 with A; disambiguate by CC.
+                if ccnum in CTRL_BANK_C_SWITCH_CCS:
+                    return self._handle_control_bank_c_cc(ccnum, ccval)
                 # Some Generic presets keep control banks on one channel and
                 # differentiate bank A/B by CC numbers instead. Route those CCs
                 # to BANK B mapping before BANK A.
-                if ccnum in CTRL_BANK_B_KNOB_CCS and ccnum not in KNOB_PAN_CCS:
+                if (
+                    ccnum in CTRL_BANK_B_KNOB_CCS
+                    or ccnum in CTRL_BANK_B_SWITCH_CCS
+                ) and (
+                    ccnum not in KNOB_PAN_CCS
+                    and ccnum not in CTRL_BANK_A_SWITCH_CCS
+                ):
                     return self._handle_control_bank_b_cc(ccnum, ccval)
                 return self._handle_control_bank_a_cc(ccnum, ccval)
             if ch == CTRL_BANK_B_MIDI_CH:
