@@ -1,0 +1,30 @@
+<html>
+ <head>
+  <link rel="stylesheet" href="../style.css">
+ </head>
+
+ <body>
+ <h1>Chain Manager</h1>
+    <p>The chain manager view allows adding, removing and modifying chains. The view represents chains and their elements as a scrollable grid. (With a touchscreen, you can move the view by dragging the background.) Chains are shown left to right as columns of interconnected blocks, representing inputs, processors, outputs, etc. with the signal flow from top to bottom. The main chain is always on the far right.</p>
+  <h2>Chains</h2>
+    <p>Each chain consists of a one or more processors. These are represented by blocks laid out in a vertical column. Audio and/or MIDI signal flows from top to bottom. Processors may be in parallel, in which case additional columns will be shown with parallel processors in the same row.</p>
+    <p>The chain may have the following elements which may be pressed or selected to show its context menu:</p>
+   <ul>
+    <li><a href="select.html">Chain Options</a>: This is always at the top of every chain and shows the chain's name.</li>
+    <li><a href="select.html">MIDI Input</a></li>
+    <li><a href="select.html">Audio Input</a></li>
+    <li><a href="chain_control-select_mode.html">MIDI Processors</a></li>
+    <li><a href="chain_control-select_mode.html">Synth Processor</a></li>
+    <li><a href="chain_control-select_mode.html">Audio Processors</a></li>
+    <li><a href="select.html">MIDI Output</a></li>
+    <li><a href="select.html">Audio Output</a></li>
+   </ul>
+   <div class="note-block">Note: Audio chains will have an audio mixer processor which acts similarly to other audio processors but cannot be placed in parallel. Similarly, synth processors cannot be placed in parallel.</div>
+   <p>Navigate the grid using knobs 3 & 4 or arrow keys and access an element's context menu by short pressing knob 4 or SELECT.</p>
+   <p>To move a processor, bold press knob 4 to enter processor move mode. A yellow outline will indicate a processor will be moved. Use knobs 3 to move the processor up/down the chain. As it passes other processors it will show in parallel, and then in series. Use knob 4 to move the processor to another chain. Press BACK to exit processor-move mode. With a touchscreen you can bold press the processor to enter move mode then drag the processor. Short press to exit move mode.</p>
+   <h2>Display order</h2>
+   <p>The order in which chains are displayed in the mixer is the same as in chain manager view. To move a chain, bold select the <b>chain options</b> block (at the top of the chain). This toggles move mode. You can now use knob 4 to move the chain left and right, then press BACK to exit chain move mode.</p>
+   <h2>Pinned chains</h2>
+   <b>It is possible to pin chains to the right-hand side of the mixer view, immediately before the main chain. This is purely visual. There is darker background below the main chain. Moving a chain to this area will pin it. You may wish to pin mixbus chains that you use as effects returns.</b>
+ </body>
+</html>

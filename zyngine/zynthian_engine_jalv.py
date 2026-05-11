@@ -930,14 +930,23 @@ class zynthian_engine_jalv(zynthian_engine):
                 logging.exception(traceback.format_exc())
 
         if self.type == "Audio Effect":
-            if "bypass" in zctrls:
-                zctrls["bypass"].labels = ["inline", "bypass"]
-                zctrls["bypass"].is_toggle = True
-                zctrls["bypass"].display_priority = 0
-            elif "BYPASS" in zctrls:
-                zctrls["BYPASS"].labels = ["inline", "bypass"]
-                zctrls["BYPASS"].is_toggle = True
-                zctrls["BYPASS"].display_priority = 0
+            try:
+                bypass_zctrl = zctrls["bypass"]
+            except:
+                try:
+                    bypass_zctrl = zctrls["BYPASS"]
+                except:
+                    try:
+                        bypass_zctrl = zctrls["Bypass"]
+                    except:
+                        try:
+                            bypass_zctrl = zctrls["ByPass"]
+                        except:
+                            bypass_zctrl = None
+            if bypass_zctrl:
+                bypass_zctrl.labels = ["inline", "bypass"]
+                bypass_zctrl.is_toggle = True
+                bypass_zctrl.display_priority = 0
             else:
                 # Add jack-routing bypass control
                 zctrls["bypass"] = zynthian_controller(self, 'bypass', {

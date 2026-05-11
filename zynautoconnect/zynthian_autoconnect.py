@@ -1204,6 +1204,7 @@ def update_hw_audio_ports():
         for device in list(alsa_audio_srcs):
             try:
                 while True:
+                    # Flush all messages or remove device
                     proc = alsa_audio_srcs[device]
                     line = proc.readline()
                     if line.startswith("err"):
@@ -1218,6 +1219,7 @@ def update_hw_audio_ports():
         for device in list(alsa_audio_dests):
             try:
                 while True:
+                    # Flush all messages or remove device
                     proc = alsa_audio_dests[device]
                     line = proc.readline()
                     if line.startswith("err"):

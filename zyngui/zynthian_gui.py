@@ -217,7 +217,7 @@ class zynthian_gui:
     # Capture Log
     # ---------------------------------------------------------------------------
 
-    def start_capture_log(self, title="ui_sesion"):
+    def start_capture_log(self, title="ui_session"):
         now = datetime.now()
         self.capture_log_ts0 = now
         self.capture_log_fname = f"{title}-{now.strftime('%Y%m%d%H%M%S')}"
@@ -683,7 +683,7 @@ class zynthian_gui:
                 self.screen_lock.release()
                 return
         else:
-            self.current_processor = self.get_current_processor()
+            self.current_processor = self.chain_manager.active_chain.current_processor
 
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
@@ -955,7 +955,7 @@ class zynthian_gui:
         if Path(fpath).exists():
             self.screens['help'].load_file(fpath)
         else:
-            topic = fpath.split(".")[0]
+            topic = str(fpath).split("/")[-1]
             logging.warning(f"No help for '{topic}'")
 
     # TODO: Rename - this is called for various chain manipulation purposes
@@ -1094,7 +1094,8 @@ class zynthian_gui:
             screen_name = "control"
         else:
             screen_name = "chain_control"
-            self.screens["chain_control"].reset()
+            if not force_bank_preset:
+                self.screens["chain_control"].reset()
 
         if self.current_processor and force_bank_preset:
             # If not preset is selected => bank/preset selector screen
@@ -1265,7 +1266,7 @@ class zynthian_gui:
     def cuia_last_state_action(self, params=None):
         self.screens['admin'].last_state_action()
 
-    def cuia_workflow_capture_start(self, params=["ui_sesion"]):
+    def cuia_workflow_capture_start(self, params=["ui_session"]):
         self.start_capture_log(params[0])
 
     def cuia_workflow_capture_stop(self, params=None):
@@ -1555,6 +1556,13 @@ class zynthian_gui:
         try:
             self.back_screen()
         except:
+            pass
+
+    # Select action => it receives type of action: S, B, L
+    def cuia_select_action(self, params=None):
+        try:
+            self.get_current_screen_obj().switch_select(params[0])
+        except (AttributeError, TypeError):
             pass
 
     # Select element in list => it receives an integer parameter!

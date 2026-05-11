@@ -449,25 +449,25 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def get_hotplug_menu_options(self):
         options = {}
         if zynthian_gui_config.hotplug_audio_enabled:
-            options[f"\u2612 Hotplug Audio"] = "disable_hotplug"
+            options[f"\u2612 Hotplug Audio"] = ["disable_hotplug", ["Toggle USB hotplug audio enable.", None]]
             options["Input Devices"] = None
             for device in zynautoconnect.get_alsa_audio_devices(False, "hotplug"):
                 if device in zynthian_gui_config.disabled_audio_in:
-                    options[f"\u2610 {device} in"] = "enable_input"
+                    options[f"\u2610 {device} in"] = ["enable_input", ["Toggle enable USB input audio device.", None]]
                 else:
-                    options[f"\u2612 {device} in"] = "disable_input"
+                    options[f"\u2612 {device} in"] = ["disable_input", ["Toggle enable USB input audio device.", None]]
             options["Output Devices"] = None
             devices = zynautoconnect.get_alsa_audio_devices(True, "hotplug")
             if devices:
                 for device in devices:
                     if device in zynthian_gui_config.disabled_audio_out:
-                        options[f"\u2610 {device} out"] = "enable_output"
+                        options[f"\u2610 {device} out"] = ["enable_output", ["Toggle enable USB audio output device.", None]]
                     else:
-                        options[f"\u2612 {device} out"] = "disable_output"
+                        options[f"\u2612 {device} out"] = ["disable_output", ["Toggle enable USB audio output device.", None]]
             else:
-                options["No soundcards - check Narrator"] = "tts"
+                options["No available soundcard outputs - check Narrator"] = ["tts", ["No free audio outputs. Select to navigate to Narrator config.", None]]
         else:
-            options[f"\u2610 Hotplug Audio"] = "enable_hotplug"
+            options[f"\u2610 Hotplug Audio"] = ["enable_hotplug", ["Toggle USB hotplug audio enable.", None]]
         return options
 
     def hotplug_audio_menu(self):

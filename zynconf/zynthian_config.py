@@ -388,7 +388,8 @@ def get_wifi_list():
                 enabled = False
                 bullet = "\u2610"
             title = f"{bullet} {bars} {ssid} ({rate})"
-            wifi_data.append((ssid, 0, title, configured, enabled))
+            txt = "Disconnect from" if enabled else "Connect to"
+            wifi_data.append((ssid, 0, title, configured, enabled, [f"{txt} Wi-Fi access point.", None]))
 
     # Add Access Point
     if ap_enabled:
@@ -396,7 +397,7 @@ def get_wifi_list():
     else:
         bullet = "\u2610"
     title = f"{bullet} ACCESS POINT zynthian"
-    wifi_data.append(("zynthian-ap", 0, title, True, ap_enabled))
+    wifi_data.append(("zynthian-ap", 0, title, True, ap_enabled, ["Enable zynthian Wi-Fi access point.", None]))
 
     return wifi_data
 

@@ -244,11 +244,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     # Function to initialise class
     def __init__(self):
         super().__init__()
-        self.zynseq_dpath = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/zynseq"
-        self.patterns_dpath = self.zynseq_dpath + "/patterns"
-        self.my_zynseq_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/zynseq"
-        self.my_patterns_dpath = self.my_zynseq_dpath + "/patterns"
-        self.my_captures_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+        self.my_data_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+        self.my_patterns_dpath =  self.my_data_dpath + "/files/Patterns"
+        self.my_capture_dpath = self.my_data_dpath + "/capture"
+        self.my_smf_dpath = self.my_data_dpath + "/files/Midi/patterns"
 
         self.state_manager = self.zyngui.state_manager
         self.zynseq = self.state_manager.zynseq
@@ -264,6 +263,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.channel = 0
         self.seq_info = {}  # Launcher sequence info - None to use phrase 0xffff, sequence 0
         self.last_menu_options = {}  # Last menu options (indexes) saved for each pattern. May be dirty, but we want good UX ;-)
+        self.last_smf_import = {}  # Same for import SMF
 
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
@@ -685,17 +685,19 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             case 'Paste pattern':
                 self.paste_pattern(params[1])
             case 'Load pattern':
-                self.zyngui.screens['option'].config_file_list("Load pattern",
-                                                               [self.patterns_dpath, self.my_patterns_dpath],
-                                                               "*.zpat", self.load_pattern_file)
-                self.zyngui.show_screen('option')
+                self.zyngui.screens["file_selector"].config(self.load_pattern_file, fexts=["zpat"])
+                self.zyngui.show_screen("file_selector")
             case 'Save pattern':
-                self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
+                self.zyngui.show_keyboard(self.save_pattern_file, "pattern_{}".format(self.pattern))
             case 'Import from SMF':
-                self.zyngui.screens["file_selector"].config(self.analyze_smf, fexts=["mid"])
+                try:
+                    fpath = self.last_smf_import[self.pattern]
+                except:
+                    fpath = None
+                self.zyngui.screens["file_selector"].config(self.analyze_smf, fexts=["mid"], path=fpath)
                 self.zyngui.show_screen("file_selector")
             case 'Export to SMF':
-                self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
+                self.zyngui.show_keyboard(self.export_smf, "pattern_{}".format(self.pattern))
             case 'Clear pattern ALL':
                 self.clear_pattern_all()
 
@@ -896,7 +898,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def do_save_pattern_file(self, fpath):
         self.zynseq.save_pattern(self.pattern, fpath)
 
-    def load_pattern_file(self, fname, fpath):
+    def load_pattern_file(self, fpath):
         if not self.zynseq.is_pattern_empty(self.pattern):
             self.zyngui.show_confirm(f"Do you want to overwrite pattern '{self.pattern}'?",
                                      self.do_load_pattern_file, fpath)
@@ -905,8 +907,13 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     def do_load_pattern_file(self, fpath):
         self.zynseq.load_pattern(self.pattern, fpath)
+        self.load_pattern(self.pattern)
+        # I don't understand why this is needed when steps/beat has changed
+        n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
+        self.zynseq.libseq.setBeatsInPattern(self.pattern, n_beats)
+        # Reset pattern snapshots => No undo/redo after loading pattern!!
+        self.zynseq.libseq.resetPatternSnapshots()
         self.changed = False
-        self.redraw_pending = 4
 
     # If changed, save snapshot:
     #  + right now, if now=True
@@ -1039,7 +1046,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 evchan = evstatus & 0x0f
                 evtime = zynsmf.libsmf.getEventTime()
                 #logging.debug(f"\tEvent {event_index} => 0x{evstatus:02X}: 0x{evcode:X}, {evchan}")
-                if evcode == 0x9:
+                if evcode in (0x8, 0x9, 0xB):
                     # Count number of note-on events for each MIDI channel
                     midi_chan_info[evchan][0] += 1
                     # Look for first event time
@@ -1088,6 +1095,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         try:
             parts = fpath.split("#")
             fpath = parts[0]
+            self.last_smf_import[self.pattern] = fpath
             midi_chan = int(parts[1])
             logging.debug(f"{chan_name} => {fpath}, CH#{midi_chan} ({n_bars} bars)")
         except:
@@ -1106,7 +1114,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         # Change pattern length if needed
         if n_bars and n_bars != self.zynseq.libseq.getBeatsInPattern(self.pattern) / self.bpb:
-            self.set_beats_in_pattern(n_bars * self.bpb)
+            self.set_beats_in_pattern(min(n_bars, 16) * self.bpb)
         else:
             # If length not changed, ensure we can undo/redo
             self.save_pattern_snapshot(now=True, force=False)
@@ -1144,29 +1152,36 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                     if start_time is not None and evtime > (start_time + ticks_in_pattern):
                         logging.debug(f"\tReached end of pattern at {evtime - start_time}!")
                         break
-                    note = zynsmf.libsmf.getEventValue1()
-                    velo = zynsmf.libsmf.getEventValue2()
-                    if evcode == 0x9 and velo:
-                        #logging.debug(f"\tNote-on at {evtime} => {note}, {velo}")
-                        # Calculate start time (first note)
+                    if evcode in (0x8, 0x9, 0xB):
+                        # Calculate start time (first event)
                         if start_time is None:
                             start_bar = evtime // ticks_per_bar
                             start_time = start_bar * self.bpb * ticks_per_beat
                             logging.debug(f"\tStart at bar {start_bar} => {start_time} ticks.")
-                        # Register Note-On
-                        note_on_info[note] = [evtime, velo]
-                    elif evcode in (0x8, 0x9):
-                        #logging.debug(f"\tNote-off at {evtime} => {note}, {velo}")
-                        ninfo = note_on_info[note]
-                        if ninfo:
-                            # Add note to pattern
-                            fstep = (ninfo[0] - start_time) / ticks_per_step
-                            step = int(fstep)
-                            duration = (evtime - ninfo[0]) / ticks_per_step
-                            offset = fstep - step
-                            self.zynseq.libseq.addNote(step, note, ninfo[1], duration, offset)
-                            logging.debug(f"\tAdd Note {note}, {ninfo[1]} => {step} + {offset}, {duration}")
-                            note_on_info[note] = None
+                        if evcode == 0xB:
+                            ccnum = zynsmf.libsmf.getEventValue1()
+                            ccval = zynsmf.libsmf.getEventValue2()
+                            step = int((evtime - start_time) / ticks_per_step)
+                            self.zynseq.libseq.addControl(step, ccnum, ccval, ccval, 1, 0)
+                        else:
+                            note = zynsmf.libsmf.getEventValue1()
+                            velo = zynsmf.libsmf.getEventValue2()
+                            if evcode == 0x9 and velo:
+                                #logging.debug(f"\tNote-on at {evtime} => {note}, {velo}")
+                                # Register Note-On
+                                note_on_info[note] = [evtime, velo]
+                            else:
+                                #logging.debug(f"\tNote-off at {evtime} => {note}, {velo}")
+                                ninfo = note_on_info[note]
+                                if ninfo:
+                                    # Add note to pattern
+                                    fstep = (ninfo[0] - start_time) / ticks_per_step
+                                    step = int(fstep)
+                                    duration = (evtime - ninfo[0]) / ticks_per_step
+                                    offset = fstep - step
+                                    self.zynseq.libseq.addNote(step, note, ninfo[1], duration, offset)
+                                    logging.debug(f"\tAdd Note {note}, {ninfo[1]} => {step} + {offset}, {duration}")
+                                    note_on_info[note] = None
         # TODO Off pending notes?
         # Save state for undo/redo
         self.save_pattern_snapshot(now=True, force=True)
@@ -1175,8 +1190,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # Refresh view
         self.redraw_pending = 4
 
-    # Function to export pattern to SMF
     def export_smf(self, fname):
+        fpath = f"{self.my_smf_dpath}/{fname}.mid"
+        if os.path.exists(fpath):
+            self.zyngui.show_confirm(f"Do you want to overwrite SMF file '{fname}'?",
+                                     self.do_export_smf, fpath)
+        else:
+            self.do_export_smf(fpath)
+
+    # Function to export pattern to SMF
+    def do_export_smf(self, fpath):
         smf = zynsmf.libsmf.addSmf()
         tempo = self.zynseq.libseq.getTempo()
         zynsmf.libsmf.addTempo(smf, 0, tempo)
@@ -1191,7 +1214,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 velocity = self.zynseq.libseq.getNoteVelocity(step, note)
                 zynsmf.libsmf.addNote(smf, 0, time, duration, self.channel, note, velocity)
         zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.n_steps * ticks_per_step))
-        zynsmf.save(smf, "{}/{}.mid".format(self.my_captures_dpath, fname))
+        zynsmf.save(smf, fpath)
 
     # Function to add program change at start of pattern
     def add_program_change(self, value):

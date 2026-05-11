@@ -104,7 +104,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
             self.options = self.options_cb()
         for k, v in self.options.items():
             if isinstance(v, list):
-                self.list_data.append((v[0], i, k, v[1]))
+                self.list_data.append((v[0], i, k, *v[1:]))
             else:
                 self.list_data.append((v, i, k))
             i += 1

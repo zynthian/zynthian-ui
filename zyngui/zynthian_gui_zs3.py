@@ -80,11 +80,11 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def fill_list(self):
         self.list_data = []
-        self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3", ["Save current state as new ZS3.", "zs3_new.png"]))
+        self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3", ["Save current state as a new ZS3.", "zs3_new.png"]))
         idx = 2
         try:
             self.list_data.append(
-                ("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Default state", ["Load default state (zs3-0).", "zs3_default.png"]))
+                ("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Default state", ["Load default ZS3 state.\n\nBold select to show ZS3 options.", "zs3_default.png"]))
             idx += 1
         except:
             pass
@@ -106,7 +106,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                         title = f"{state['title']} -> CH#{int(parts[0]) + 1}:PRG#{parts[1]}"
                 else:
                     title = f"{state['title']} ({id})"
-            self.list_data.append((id, state, title))
+            self.list_data.append((id, state, title, ["Load ZS3.\n\nBold select to show ZS3 options.", None]))
             if id == self.zyngui.state_manager.last_zs3_id:
                 self.index = idx
             idx += 1

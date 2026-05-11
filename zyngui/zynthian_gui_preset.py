@@ -264,7 +264,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
     def preload_action(self):
         self.preload_timer_id = None
         if self.list_data and self.index < len(self.list_data):
-            self.zyngui.state_manager.start_busy("preload preset")
+            self.zyngui.state_manager.start_busy("preload preset", tts=False)
             self.processor.preload_preset(self.index)
             self.zyngui.state_manager.end_busy("preload preset")
 

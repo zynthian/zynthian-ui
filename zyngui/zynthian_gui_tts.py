@@ -139,8 +139,9 @@ class zynthian_gui_tts():
     def midi_rec_cb(self, state):
         self.announce(f"MIDI recorder {'started' if state else 'stopped'}")
 
-    def busy_cb(self, state):
-        self._tts.set_busy(state)
+    def busy_cb(self, state, tts=True):
+        if tts:
+            self._tts.set_busy(state)
 
 # -------------------------------------------------------
 # TTS Screen Class
@@ -160,24 +161,26 @@ class zynthian_gui_tts_screen(zynthian_gui_selector_info):
 
         if self.zyngui.tts:
             self.list_data.append((self.toggle_tts, 0, f"\u2612 Enable narrator feedback",
-                                   ["Toggle narrator enable", None]))
+                                   ["Toggle narrator enable.", None]))
             self.list_data.append((self.set_voice, 0, f"Voice: {self.zyngui.tts.get_voice_name().split(':')[0]}",
-                                   ["Select the voice", None]))
+                                   ["Select narrator voice.", None]))
             self.list_data.append((self.set_speed, 0, f"Speed: {zynthian_gui_config.tts_speed:.1f}",
-                                   ["Adjust narrator speed", None]))
-            self.list_data.append((self.set_volume, 0, f"Volume: {zynthian_gui_config.tts_volume}%"))
+                                   ["Adjust narrator speed.", None]))
+            self.list_data.append((self.set_volume, 0, f"Volume: {zynthian_gui_config.tts_volume}%",
+                                  ["Adjust narrator volume.", None]))
             self.list_data.append((None, 0, "Soundcard"))
             soundcards = zynautoconnect.get_alsa_audio_devices(True, "tts")
             if soundcards:
                 for soundcard in soundcards:
                     if zynthian_gui_config.tts_soundcard == soundcard:
                         self.list_data.append((self.set_soundcard, soundcard, f"\u2612 {soundcard}",
-                            ["Select soundcard for narrator output", None]))
+                            ["Select soundcard for narrator output.", None]))
                     else:
                         self.list_data.append((self.set_soundcard, soundcard, f"\u2610 {soundcard}",
-                            ["Select soundcard for narrator output", None]))
+                            ["Select soundcard for narrator output.", None]))
             else:
-                self.list_data.append((self.hotplug, 0, "No soundcards - check hotplug USB"))
+                self.list_data.append((self.hotplug, 0, "No soundcards - check hotplug USB",
+                            ["No free soundcard outputs.Select to navigate to hotplug audio config.", None]))
         else:
             self.list_data.append((self.toggle_tts, 1, f"\u2610 Enable narrator feedback",
                 ["Toggle narrator enable", None]))
@@ -220,7 +223,7 @@ class zynthian_gui_tts_screen(zynthian_gui_selector_info):
         self.update_list()
 
     def hotplug(self):
-        self.zyngui.screens("admin").hotplug_audio_menu()
+        self.zyngui.screens["admin"].hotplug_audio_menu()
 
     def set_select_path(self):
         self.select_path.set("Narrator options")

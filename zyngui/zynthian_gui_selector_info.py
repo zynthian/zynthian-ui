@@ -68,13 +68,13 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             highlightthickness=0,
             bg=zynthian_gui_config.color_bg)
         self.grid_info_canvas()
-        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
         self.info_text = self.info_canvas.create_text(
             0, 0,
             anchor=tkinter.NW,
             justify=tkinter.LEFT,
             fill=zynthian_gui_config.color_panel_tx
         )
+        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
 
     def grid_info_canvas(self):
         if self.zsel_hidden:
@@ -112,28 +112,42 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
     def get_icon(self, icon_fname):
         if not icon_fname:
             icon_fname = self.default_icon
+        if icon_fname[0] == "/":
+            icon_fpath = icon_fname
+        else:
+            icon_fpath = f"{self.ui_dir}/icons/{icon_fname}"
         try:
-            if self.icons[icon_fname][zynthian_gui_config.touch_shown]:
-                return self.icons[icon_fname][zynthian_gui_config.touch_shown]
+            if self.icons[icon_fpath][zynthian_gui_config.touch_shown]:
+                return self.icons[icon_fpath][zynthian_gui_config.touch_shown]
         except:
             pass
         try:
-            img = Image.open(f"{self.ui_dir}/icons/{icon_fname}")
+            img = Image.open(icon_fpath)
             side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
             icon_size = (side_width - 2, side_width - 2)
             icon = ImageTk.PhotoImage(img.resize(icon_size))
-            if icon_fname not in self.icons:
-                self.icons[icon_fname] = [None, None]
-            self.icons[icon_fname][zynthian_gui_config.touch_shown] = icon
+            if icon_fpath not in self.icons:
+                self.icons[icon_fpath] = [None, None]
+            self.icons[icon_fpath][zynthian_gui_config.touch_shown] = icon
             return icon
         except Exception as e:
-            logging.error(f"Can't load info icon {icon_fname} => {e}")
+            logging.error(f"Can't load info icon {icon_fpath} => {e}")
             return zynthian_gui_config.loading_imgs[0]
 
     def set_selector(self, zs_hidden=None):
         if zs_hidden is None:
             zs_hidden = self.zsel_hidden
         super().set_selector(zs_hidden)
+
+    def zynpot_cb(self, i, dval):
+        if i == 2:
+            x0, y0, x1, y1 = self.info_canvas.bbox(self.info_text)
+            w_top = self.info_canvas.bbox(self.info_icon)[3]
+            w_bottom = self.info_canvas.winfo_height()
+            if dval > 0 and y1 > w_bottom or dval < 0 and y0 < w_top:
+                self.info_canvas.move(self.info_text, 0, dval * -10)
+            return True
+        return super().zynpot_cb(i, dval)
 
     def select(self, index=None, set_zctrl=True):
         super().select(index, set_zctrl)

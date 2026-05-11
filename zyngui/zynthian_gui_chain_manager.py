@@ -73,9 +73,10 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.font = (zynthian_gui_config.font_family, int(0.026 * self.height))
         self.BLOCK_WIDTH = 120 # Width of each processor block in pixels
         self.BLOCK_HEIGHT = 40 # Height of each processor block in pixels
+        self.BLOCK_TEXT_WIDTH = int(0.9 * self.BLOCK_WIDTH)
+        self.BLOCK_TEXT_HEIGHT = int(0.9 * self.BLOCK_HEIGHT)
         self.H_SPACING = 10 # Horizontal spacing between processor blocks in pixels
         self.V_SPACING = 10 # Vertical spacing between processor blocks in pixels
-
         self.last_active_proc = None # The last processor to be selected
         self.long_press_id = None
 
@@ -117,6 +118,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         # Formual 2 * (x // y) ensures even values which helps with spacing and dividers
         self.BLOCK_WIDTH = 2 * (self.width // 12)
         self.BLOCK_HEIGHT = 2 * (self.height // 16)
+        self.BLOCK_TEXT_WIDTH = int(0.9 * self.BLOCK_WIDTH)
+        self.BLOCK_TEXT_HEIGHT = int(0.9 * self.BLOCK_HEIGHT)
         self.H_SPACING = 2 * (self.BLOCK_WIDTH // 28)
         self.V_SPACING = 2 * (self.BLOCK_HEIGHT // 8)
         shown = self.shown
@@ -300,6 +303,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             chain_id: The chain id of the node.
             proc_id: The processor of the node or string describing node type. None for non-processor nodes.
         """
+
         while len(self.nodes) <= chain_idx:
             self.nodes.append([])
         while len(self.nodes[chain_idx]) <= row:
@@ -319,24 +323,60 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             "is_src": proc_type in ("MIDI Synth", "Audio Generator", "Audio Effect", "MIDI Tool", "Special", "midi_key_range", "midi_input", "add_midi_proc", "audio_in")
         })
 
-    def _get_name(self, text, max_width):
-        """
-        Trim text so that its pixel width fits within max_width.
-        Adds an ellipsis (…) if trimmed.
-        """
-        node_font = font.Font(family=self.font[0], size=self.font[1])
-        if node_font.measure(text) <= max_width:
-            return text  # already fits
+    def fit_text_to_box(self, text, min_font_size=6):
+        """ Ensure wrapped text fits inside a rectangle.
 
-        ellipsis = "…"
-        ellipsis_width = node_font.measure(ellipsis)
+        Rules:
+        - Keep the original font size if at least one line fits horizontally.
+        - If even a single line cannot fit, reduce the font size until it can.
+        - Truncate text from the end and append "..." until the wrapped
+        text fits within the rectangle height.
 
-        # Start trimming from the end
-        for i in range(len(text), 0, -1):
-            sub = text[:i]
-            if node_font.measure(sub) + ellipsis_width <= max_width:
-                return sub.strip() + ellipsis
-        return ellipsis  # fallbackpass
+        Returns:
+            (final_text, final_font_size)
+        """
+
+        size = self.font[1]
+        while size >= min_font_size:
+            f = font.Font(family=self.font[0], size=size)
+            line_height = f.metrics("linespace")
+            single_line_width = f.measure("W")
+            width_ok = single_line_width <= self.BLOCK_TEXT_WIDTH
+            height_ok = line_height <= self.BLOCK_TEXT_HEIGHT
+            if width_ok and height_ok:
+                break
+            size -= 1
+        size = max(size, min_font_size)
+        f = font.Font(family=self.font[0], size=size)
+
+        def wrapped_height(s):
+            words = s.split()
+            if not words:
+                return f.metrics("linespace")
+            lines = []
+            current = words[0]
+            for word in words[1:]:
+                trial = current + " " + word
+                if f.measure(trial) <= self.BLOCK_TEXT_WIDTH:
+                    current = trial
+                else:
+                    lines.append(current)
+                    current = word
+            lines.append(current)
+            line_height = f.metrics("linespace")
+            return len(lines) * line_height
+
+        fitted = text
+        while fitted:
+            h = wrapped_height(fitted)
+            if h <= self.BLOCK_TEXT_HEIGHT:
+                break
+            fitted = fitted[:-1].rstrip()
+            if len(fitted) > 3:
+                fitted = fitted[:-3].rstrip() + "..."
+            else:
+                fitted = "..."
+        return fitted, size
 
     def build_graph(self, proc=None):
         """
@@ -357,8 +397,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             row = 0
 
             # Add chain option button
-            name = self._get_name(chain.get_name(), self.BLOCK_WIDTH)
-            self._add_node(chain_idx, row, f"{name}", chain_id, "chain_options")
+            self._add_node(chain_idx, row, chain.get_name(), chain_id, "chain_options")
             row += 1
             # Add MIDI input
             if chain.is_midi():
@@ -460,20 +499,16 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
             fill=bg_col, outline=bg_col, tags="node"
         )
+        title, size = self.fit_text_to_box(title)
         # Draw node text
         node["text_id"] = self.canvas.create_text(
             x + self.BLOCK_WIDTH / 2, y + self.BLOCK_HEIGHT / 2,
-            text=title, fill=fg_col,
-            font=self.font,
-            width=self.BLOCK_WIDTH,
+            text=title,
+            fill=fg_col,
+            font=(self.font[0], size),
+            width=self.BLOCK_TEXT_WIDTH,
             justify=tkinter.CENTER
         )
-        while True:
-            x0, y0, x1, y1 = self.canvas.bbox(node["text_id"])
-            if y1 - y0 < self.BLOCK_HEIGHT:
-                break
-            title = title[:-1].strip()
-            self.canvas.itemconfig(node["text_id"], text=f"{title}...")
         self.node2pos[node["id"]] = node
 
     def _draw_line(self, start_id, end_id):
@@ -568,9 +603,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.select_node(proc=sel_proc)
 
     def _draw_selection(self):
-        """
-        Draw selection cursor.
-        """
+        """ Draw selection cursor """
+
         self.canvas.itemconfig("node", outline="")
         if not self.selected_node:
             self.selected_node = [0, 0, 0]
@@ -581,10 +615,12 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         try:
             chain_idx, col_idx, row_idx = self.selected_node
             node_id = self.nodes[chain_idx][col_idx][row_idx]["id"]
+            if node_id is None:
+                return
             if not self.moving_chain:
                 self.canvas.itemconfig(node_id, outline=color, width=2)
         except:
-            pass
+            return
 
         #Scroll the canvas to ensure the selected node is visible.
         self.canvas.update_idletasks() # Ensure all redrawing has completed
@@ -766,16 +802,22 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         if self.moving_proc and not self.chain_manager.can_move_processor(self.moving_proc):
             self.moving_proc = None
         self.select_node(proc=self.moving_proc)
+        if self.zyngui.tts and self.moving_proc:
+            self.zyngui.tts.announce("Move processor.")
 
     def end_moving_processor(self):
         """ Exit processor move mode
         """
 
         self.moving_proc = None
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("End move processor.")
 
     def start_moving_chain(self):
         self.moving_chain = True
         self._draw_graph(self.moving_proc)
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Move chain.")
 
     def end_moving_chain(self):
         if not self.moving_chain:
@@ -784,6 +826,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.strip_drag_start = None
         self.canvas.delete("chain_move")
         self.select_node()
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("End move chain.")
 
     def arrow_down(self):
         """

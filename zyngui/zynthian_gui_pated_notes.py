@@ -868,6 +868,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         evdata = zynseq.event_data()
         index = 0
         while True:
+            # Iterate until no more event data
             res = self.zynseq.libseq.getEventDataAt(index, evdata)
             if res < 0:
                 break
@@ -886,6 +887,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             evdata = zynseq.event_data()
             index = 0
             while True:
+                # Iterate until no more event data
                 res = self.zynseq.libseq.getBufferEventDataAt(index, evdata)
                 if res < 0:
                     break

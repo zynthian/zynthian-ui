@@ -76,10 +76,10 @@ class zynthian_gui_wifi(zynthian_gui_selector_info):
         wifi_status_code = zynconf.get_nwdev_status_code("wlan0")
         if wifi_status_code == 20:
             self.list_data = [
-                (self.enable_wifi, None, "\u2610 Wi-Fi is disabled", False, False)]
+                (self.enable_wifi, None, "\u2610 Wi-Fi is disabled", False, False, ["Toggle Wi-Fi enable.", None])]
         elif wifi_status_code in (30, 50, 100):
             self.list_data = [
-                (self.disable_wifi, None, "\u2612 Wi-Fi is enabled", False, False)]
+                (self.disable_wifi, None, "\u2612 Wi-Fi is enabled", False, False, ["Toggle Wi-Fi enable.", None])]
             if not self.wifi_data:
                 self.list_data.append(
                     (None, None, "Scanning Wi-Fi Networks...", False, False))

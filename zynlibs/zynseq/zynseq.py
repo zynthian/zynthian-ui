@@ -439,6 +439,7 @@ class zynseq(zynthian_engine):
             phrase = self.phrase
         i = phrase
         while True:
+            # Iterate until exceed quantity of phrases in scene
             try:
                 info = self.state["scenes"][self.scene]["phrases"][i]
             except:
@@ -465,6 +466,7 @@ class zynseq(zynthian_engine):
         i = phrase
         res = []
         while True:
+            # Iterate until exceed quantity of phrases in scene
             try:
                 info = self.state["scenes"][self.scene]["phrases"][i]
             except:

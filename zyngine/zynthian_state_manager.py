@@ -380,13 +380,13 @@ class zynthian_state_manager:
     # Busy state management
     # -------------------------------------------------------------------------
 
-    def start_busy(self, clid, message=None, details=None):
+    def start_busy(self, clid, message=None, details=None, tts=True):
         """Add client to list of busy clients
         clid : Client id
         """
 
         if not self.busy:
-            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=True)
+            zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=True, tts=tts)
         self.busy.add(clid)
         if message:
             self.busy_message = message
