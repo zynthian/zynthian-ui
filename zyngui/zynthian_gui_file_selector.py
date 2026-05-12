@@ -231,7 +231,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                                                                root_dirs=self.root_dirs,
                                                                recursion=1)
         # Add info and find selected index
-        #self.index = 0
+        self.index = 0
         for i, item in enumerate(self.list_data):
             if not item[0]:
                 continue
@@ -257,6 +257,13 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 item.append(["Folder", "folder.png"])
         super().fill_list()
 
+    def update_list(self):
+        if self.shown:
+            self.fill_list()
+            self.set_selector()
+            self.set_select_path()
+            self.select()
+
     def switch(self, i, t):
         if i == 2 and t == 'S':
             self.show_details()
@@ -277,7 +284,6 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.path = path
                 self.dirpath = self.get_dirpath(path)
                 self.update_list()
-                self.set_select_path()
             elif os.path.isfile(path):
                 self.path = path
                 self.sel_path = path
@@ -294,7 +300,6 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.path = self.dirpath
                 self.dirpath = parts[0]
                 self.update_list()
-                self.set_select_path()
                 return True
         return False
 
