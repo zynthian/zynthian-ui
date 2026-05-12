@@ -291,7 +291,10 @@ class zynthian_engine_clippy(zynthian_engine):
                     min_duration = 60 / file_tempo
                     # Try to auto-crop to an integer number of bars at the given BPM
                     beats = frames * file_tempo / (60 * sr)
-                    bars = int(beats / beats_per_bar)
+                    fbars = beats / beats_per_bar
+                    bars = int(fbars)
+                    if (fbars - bars) > 0.95:   # Ensure 3.97 bars is rounded to 4 bars
+                        bars += 1
                     beats = bars * beats_per_bar
                     duration = beats * 60 / file_tempo
                     crop_start = 0
