@@ -25,9 +25,10 @@
 import os
 import logging
 import tkinter
-from tkinterweb import HtmlFrame
-from bs4 import BeautifulSoup
 from pathlib import Path
+from bs4 import BeautifulSoup
+from tkinterweb import HtmlFrame
+
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
