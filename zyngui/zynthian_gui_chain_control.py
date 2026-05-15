@@ -362,7 +362,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         return fpath
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

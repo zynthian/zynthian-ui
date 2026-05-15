@@ -160,7 +160,7 @@ class IntervalTimer(RunTimer):
 
 
 # --------------------------------------------------------------------------
-# A handy timer for triggering short/bold/long push actions
+# A handy timer for triggering short/bold/long press actions
 # --------------------------------------------------------------------------
 class ButtonTimer(Thread):
     def __init__(self, callback):

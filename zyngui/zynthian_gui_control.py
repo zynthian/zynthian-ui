@@ -960,7 +960,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             return super().get_help_fpath()
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

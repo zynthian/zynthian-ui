@@ -503,7 +503,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.select_path.set(path)
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

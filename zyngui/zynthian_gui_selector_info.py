@@ -163,7 +163,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         self.zyngui.cuia_help()
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):
