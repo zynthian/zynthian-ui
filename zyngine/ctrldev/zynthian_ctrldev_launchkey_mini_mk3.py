@@ -161,7 +161,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                         case self.POT_MODE_PAN:
                             self.set_mixer_param("balance", pot, 2 * ccval / 127.0 - 1)
                         case self.POT_MODE_DEVICE:
-                            return False
+                            try:
+                                chain_zctrl = self.chain_manager.active_chain.zctrls[pot]
+                                chain_zctrl.midi_control_change(ccval)
+                            except:
+                                return False # Allows learning of non-auto mapped controls
                 elif ccnum == 0x66:
                     # TRACK RIGHT
                     self.state_manager.send_cuia("ARROW_RIGHT")
