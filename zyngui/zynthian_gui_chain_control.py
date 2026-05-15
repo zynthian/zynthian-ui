@@ -113,6 +113,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         super().build_view()
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        if self.chain_shown:
+            self.chain_canvas.build_view()
+            self.refresh_chain()
         if not self.subscreen.shown:
             self.subscreen.build_view()
             self.subscreen.show()
@@ -191,6 +194,10 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.chain_canvas.select_node(proc=ssname, action=True)
         if show_chain != self.chain_shown:
             self.show_chain(show_chain)
+
+    def refresh_subscreen(self):
+        if self.subscreen_key == "control":
+            self.subscreen.update_list()
 
     # --------------------------------------------------------------------------
     # Zynpot & zynswitch callbacks

@@ -754,6 +754,7 @@ class zynthian_side_chain(tkinter.Canvas):
             proc = self.moving_proc
             self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, False)
             self.build_graph(proc)
+            self.chain_control.refresh_subscreen()
         else:
             row = self.selected_index + 1
             if row < len(self.nodes):
@@ -770,6 +771,7 @@ class zynthian_side_chain(tkinter.Canvas):
             proc = self.moving_proc
             self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, True)
             self.build_graph(proc)
+            self.chain_control.refresh_subscreen()
         else:
             row = self.selected_index - 1
             if row >= 0:
