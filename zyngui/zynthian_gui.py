@@ -985,7 +985,7 @@ class zynthian_gui:
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
                             self.close_screen("loading")
-                            self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
+                            self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True, reset=False)
                 else:
                     # Adding processor to existing chain
                     if "slot" in self.modify_chain_status:
@@ -997,7 +997,7 @@ class zynthian_gui:
                     if processor:
                         zynautoconnect.autoconnect()
                         self.close_screen("loading")
-                        self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
+                        self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True, reset=False)
                     else:
                         #self.show_screen_reset("root")
                         self.chain_control(self.modify_chain_status["chain_id"])
@@ -1050,7 +1050,7 @@ class zynthian_gui:
                         if processor.eng_code == "CL":
                             self.show_screen("launcher")
                         else:
-                            self.chain_control(chain_id, processor, force_bank_preset=True)
+                            self.chain_control(chain_id, processor, force_bank_preset=True, reset=True)
                     else:
                         # Created empty chain
                         self.chain_control(chain_id)
@@ -1072,7 +1072,7 @@ class zynthian_gui:
             # TODO: Offer type selection
             pass
 
-    def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_ADD, force_bank_preset=False):
+    def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_ADD, force_bank_preset=False, reset=True):
         if chain_id is None:
             chain_id = self.chain_manager.active_chain.chain_id
         else:
@@ -1094,8 +1094,13 @@ class zynthian_gui:
             screen_name = "control"
         else:
             screen_name = "chain_control"
-            #if not force_bank_preset:
-            self.screens["chain_control"].reset()
+            if reset:
+                # TODO => Refact current_processor code!
+                # Avoid chain_control reset changing current processor:
+                # => It does for certain engines that doesn't have controllers before chosing a preset.
+                curproc = self.current_processor
+                self.screens["chain_control"].reset()
+                self.set_current_processor(curproc)
 
         if self.current_processor and force_bank_preset:
             # If not preset is selected => bank/preset selector screen
@@ -2540,7 +2545,7 @@ class zynthian_gui:
         busy_timeout = 0
         busy_warn_time = 300
         while not self.exit_flag:
-            if self.state_manager.is_busy():
+            if self.state_manager.is_busy() and (monotonic() - self.state_manager.busy_ts) > 0.1 :
                 busy_timeout += 1
                 busy_message = self.state_manager.get_busy_message()
                 busy_details = self.state_manager.get_busy_details()

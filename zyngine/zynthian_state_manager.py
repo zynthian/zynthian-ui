@@ -89,6 +89,7 @@ class zynthian_state_manager:
         self.busy_warning = None
         self.busy_success = None
         self.busy_details = None
+        self.busy_ts = None
         self.start_busy("zynthian_state_manager")
 
         self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/snapshots"
@@ -386,6 +387,7 @@ class zynthian_state_manager:
         """
 
         if not self.busy:
+            self.busy_ts = monotonic()
             zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=True, tts=tts)
         self.busy.add(clid)
         if message:

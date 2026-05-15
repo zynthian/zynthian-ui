@@ -1146,8 +1146,7 @@ class zynthian_chain_manager:
         if self.state_manager.is_busy():
             self.state_manager.start_busy("remove_processor", None, f"removing {processor.get_basepath()} from chain {chain_id}")
         else:
-            self.state_manager.start_busy(
-                "remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
+            self.state_manager.start_busy("remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
 
         for symbol in processor.controllers_dict:
             self.remove_midi_learn(processor, symbol)
