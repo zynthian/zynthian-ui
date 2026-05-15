@@ -545,7 +545,7 @@ class zynthian_gui_selector(zynthian_gui_base):
         return "selector.html"
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

@@ -207,7 +207,7 @@ class zynthian_gui:
 
         self.prog_change = [0] * 16 # Track last program change for each MIDI channel
 
-        # Restore narrator TTS
+        # Restore ZynVoice TTS
         if zynthian_gui_config.tts_enabled:
             self.tts = zynthian_gui_tts(self.state_manager)
         else:
@@ -1275,7 +1275,7 @@ class zynthian_gui:
     def cuia_workflow_capture_text(self, params=None):
         self.write_capture_log(f"TEXT: {params[0]}")
 
-    # Narrator TTS actions
+    # ZynVoice TTS actions
     def cuia_tts_announce(self, params=["", True, False, True]):
         """ Announce a TTS message
         Params:

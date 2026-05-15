@@ -372,7 +372,7 @@ class zynthian_gui_help(HtmlFrame):
         self.swipe_update()
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

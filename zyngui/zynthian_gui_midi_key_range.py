@@ -439,7 +439,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         self.nhigh_zgui_ctrl.zynpot_cb(-1)
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

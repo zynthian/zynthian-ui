@@ -76,7 +76,7 @@ class zynthian_tts:
         self._stop_event = threading.Event()
         self._thread.start()
         self.set_volume()
-        self.append("Narrator enabled")
+        self.append("ZynVoice enabled")
 
     def close(self):
         """ Stop background services and cleanup """
@@ -359,7 +359,7 @@ class zynthian_tts:
         if self.announce_disable:
             try:
                 with self._lock:
-                    self._process = subprocess.Popen(self._build_command("Narrator disabled"), env={"ALSA_CARD": self.soundcard})
+                    self._process = subprocess.Popen(self._build_command("ZynVoice disabled"), env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
                 print(f"TTS error: {e}")
