@@ -399,13 +399,20 @@ class zynthian_gui_help(HtmlFrame):
                     knob_action_container.decompose()
 
                 # Ensure brief pause after each header and paragraph
-                for tag in self.soup.find_all(["p", "br", "h1", "h2", "h3", "li"]):
+                for tag in self.soup.find_all(["p", "br"]):
                     tag.insert_after(". ")
                 for tag in self.soup.find_all(class_="no_tts"):
                     tag.decompose()
+                for i in range(1, 7):
+                    for tag in self.soup.find_all(f"h{i}"):
+                        tag.insert_before(f". Header {i}. ")
+                        tag.insert_after(". ")
                 for tag in self.soup.find_all("ul"):
-                        tag.insert_before("List. ")
-                        tag.insert_after("End of list. ")
+                    tag.insert_before(". List. ")
+                    tag.insert_after(". End of list. ")
+                for tag in self.soup.find_all("li"):
+                    tag.insert_before(". Bullet: ")
+                    tag.insert_after(". ")
                 parsed_tag = self.soup.new_tag("div", **{"class": "tts_parsed"})
                 self.soup.head.append(parsed_tag)
             text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
