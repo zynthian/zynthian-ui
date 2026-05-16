@@ -103,7 +103,7 @@ class zynthian_tts:
             if self.busy_timer:
                 self.busy_timer.cancel()
                 self.busy_timer = None
-            else:
+            elif self.busy:
                 self.beep(0.4, 600)
             self.busy = False
 
