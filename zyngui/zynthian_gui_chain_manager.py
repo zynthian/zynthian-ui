@@ -809,6 +809,8 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """ Exit processor move mode
         """
 
+        if not self.moving_proc:
+            return
         self.moving_proc = None
         if self.zyngui.tts:
             self.zyngui.tts.announce("End move processor.")
