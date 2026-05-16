@@ -305,9 +305,6 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.chain_canvas.arrow_up()
         else:
             self.subscreen.arrow_up()
-            if self.subscreen_key == "control":
-                proc=self.subscreen.get_selected_processor()
-                self.chain_canvas.select_processor(proc=proc)
         return True
 
     def cuia_arrow_down(self, params=None):
@@ -315,9 +312,6 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.chain_canvas.arrow_down()
         else:
             self.subscreen.arrow_down()
-            if self.subscreen_key == "control":
-                proc=self.subscreen.get_selected_processor()
-                self.chain_canvas.select_processor(proc=proc)
         return True
 
     def cuia_arrow_right(self, params=None):
