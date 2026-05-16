@@ -1646,11 +1646,15 @@ class zynthian_gui:
         self.show_screen("launcher")
 
     def cuia_screen_pattern_editor(self, params=None):
-        success = False
-        if self.current_screen == "launcher":
-            success = self.screens['launcher'].edit_clip()
-        if not success:
-            self.show_screen("pattern_editor")
+        if self.chain_manager.get_active_chain().midi_chan is None:
+            # Set active the first chain with MIDI chan, if any
+            midi_chain_ids = self.chain_manager.get_chain_ids_filtered(["synth", "midi"])
+            if midi_chain_ids:
+                self.chain_manager.set_active_chain_by_id(midi_chain_ids[0])
+            else:
+                # Can't open pattern editor if no MIDI chain does exist!
+                return
+        self.screens['launcher'].edit_pattern()
 
     def cuia_screen_calibrate(self, params=None):
         self.calibrate_touchscreen()

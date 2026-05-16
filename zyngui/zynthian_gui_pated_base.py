@@ -469,13 +469,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         if not self.param_editor_zctrl:
             self.set_title()
 
-        # Set active the first chain with pattern's MIDI chan
-        try:
-            chain_id = self.zyngui.chain_manager.get_chain_ids_by_midi_chan(self.channel)[0]
-            self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
-        except:
-            logging.error(f"Couldn't set active chain to channel {self.channel}.")
-
         self.toggle_midi_record(self.midi_record)
         self.redraw_pending = 4
         return True
@@ -804,16 +797,20 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.phrase = self.zynseq.phrase
             self.sequence = self.chain_manager.active_chain.midi_chan
             self.channel = self.chain_manager.active_chain.midi_chan
-            try:
-                self.bpb = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["bpb"]
-            except:
-                self.bpb = 0
-            if self.bpb == 0:
-                self.bpb = self.zynseq.bpb
+        except:
+            self.phrase = 0
+            self.sequence = 0
+            self.channel = 0
+        try:
+            self.bpb = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["bpb"]
+        except:
+            self.bpb = 0
+        if self.bpb == 0:
+            self.bpb = self.zynseq.bpb
+        try:
             self.seq_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["sequences"][self.sequence]
         except Exception as e:
-            logging.warning(f"Unable to refresh sequence info for pattern: {e}")
-            self.channel = 0
+            logging.error(f"Unable to refresh sequence info for pattern: {e}")
             self.seq_info = {}
 
     def update_sequence_params(self, params):
