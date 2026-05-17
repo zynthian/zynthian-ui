@@ -268,7 +268,10 @@ class MultiTouch(object):
                         self._process_evdev_events()
             except OSError:
                 # Touchscreen driver may have been unloaded so stop thread and enable detection of multitouch (on next xinput touch event)
-                logging.warning("Táctil perdido... Reintentando en 2s"); import time; time.sleep(2); self.open_device()
+                logging.warning(f"Multitouch device {self.device_name} disconnected. Retrying in 2 seconds...")
+                import time
+                time.sleep(2)
+                self.open_device()
             except Exception as e:
                 logging.warning(e)
         self.detect = True
