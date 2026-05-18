@@ -413,6 +413,10 @@ class zynthian_gui_help(HtmlFrame):
                 for tag in self.soup.find_all("li"):
                     tag.insert_before(". Bullet: ")
                     tag.insert_after(". ")
+                for tag in self.soup.find_all("img"):
+                    alt_text = tag.get("alt", "")
+                    if alt_text:
+                        tag.replace_with(f". Image: {alt_text}. ")
                 parsed_tag = self.soup.new_tag("div", **{"class": "tts_parsed"})
                 self.soup.head.append(parsed_tag)
             text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
