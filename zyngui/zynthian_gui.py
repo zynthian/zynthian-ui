@@ -969,38 +969,37 @@ class zynthian_gui:
             self.modify_chain_status = status
 
         if "engine" in self.modify_chain_status:
+            engine = self.modify_chain_status["engine"]
             # We always need an engine for creating or modifying a chain!
             if "chain_id" in self.modify_chain_status:
+                chain_id = self.modify_chain_status["chain_id"]
                 # Modifying an existing chain
                 if "processor" in self.modify_chain_status:
                     # Replacing processor in existing chain
-                    chain = self.chain_manager.get_chain(self.modify_chain_status["chain_id"])
+                    chain = self.chain_manager.get_chain(chain_id)
                     old_processor = self.modify_chain_status["processor"]
                     if chain and old_processor:
-                        slot = chain.get_slot(old_processor)
-                        processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"],
-                                                                     self.modify_chain_status["engine"], slot)
+                        processor = self.chain_manager.add_processor(chain_id, engine, chain.get_slot(old_processor))
                         if processor:
-                            self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
+                            self.chain_manager.remove_processor(chain_id, old_processor)
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
                             self.close_screen("loading")
-                            self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True, reset=False)
+                            self.chain_control(chain_id, processor, force_bank_preset=True, reset=False)
                 else:
                     # Adding processor to existing chain
                     if "slot" in self.modify_chain_status:
                         slot = self.modify_chain_status["slot"]
                     else:
                         slot = None
-                    processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"],
-                                                                 self.modify_chain_status["engine"], slot)
+                    processor = self.chain_manager.add_processor(chain_id, engine, slot)
                     if processor:
                         zynautoconnect.autoconnect()
                         self.close_screen("loading")
-                        self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True, reset=False)
+                        self.chain_control(chain_id, processor, force_bank_preset=True, reset=False)
                     else:
                         #self.show_screen_reset("root")
-                        self.chain_control(self.modify_chain_status["chain_id"])
+                        self.chain_control(chain_id)
                         self.show_info("Failed to create processor", 1500)
             else:
                 # Creating a new chain
@@ -1081,13 +1080,13 @@ class zynthian_gui:
         if processor is None:
             self.current_processor = self.chain_manager.get_active_chain().current_processor
         elif processor in self.chain_manager.get_processors(chain_id):
-            self.current_processor = processor
+            self.set_current_processor(processor)
         else:
             self.current_processor = None
             for t in ["MIDI Synth", "MIDI Tool", "Audio Effect", "Special"]:
                 processors = self.chain_manager.get_processors(chain_id, t)
                 if processors:
-                    self.current_processor = processors[0]
+                    self.set_current_processor(processors[0])
                     break
 
         if self.current_processor and self.current_processor.id < -1:
@@ -1116,9 +1115,6 @@ class zynthian_gui:
                         if len(self.current_processor.preset_list):
                             self.current_processor.set_preset(0)
         self.show_screen(screen_name, hmode)
-
-    def show_control(self):
-        self.chain_control()
 
     def toggle_favorites(self):
         curproc = self.get_current_processor()
