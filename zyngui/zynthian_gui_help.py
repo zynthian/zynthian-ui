@@ -97,60 +97,10 @@ class zynthian_gui_help(HtmlFrame):
         if self.zyngui.tts:
             self.tts_info()
 
-    def create_index(self):
-        def get_data(files):
-            items = []
-            for file in files:
-                with open(file, "r", encoding="utf-8") as f:
-                    soup = BeautifulSoup(f, "html.parser")
-                    # Try <title> first
-                    title_tag = soup.find("title")
-                    title = title_tag.get_text(strip=True) if title_tag else None
-                    # Fallback to <h1>
-                    if not title:
-                        h1 = soup.find("h1")
-                        title = h1.get_text(strip=True) if h1 else file.stem
-                    items.append((title, file._str))
-            return items
-
-        files = list(Path(f"{self.ui_dir}/help/core").glob("*.html")) + \
-                list(Path(f"{self.ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
-        files.sort(key=lambda f: f.name)
-        widgets = list(Path(f"{self.ui_dir}/help/widgets").glob("*.html"))
-
-        # Build index HTML
-        html_output = f"""
-<!DOCTYPE html>
-<html>
- <head>
-  <meta charset="utf-8">
-  <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
- </head>
- <body>
-  <h1>Help Index</h1>
-   <ul class="index">
-"""
-
-        for title, filename in get_data(files):
-            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
-        html_output += """
-  </ul>
-  <h2>Control GUI Widgets</h2>
-  <ul class="index">
-"""
-        for title, filename in get_data(widgets):
-            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
-        html_output += """
-   </ul>
-  </body>
-</html>
-"""
-        return html_output
-
     def load_file(self, fpath):
         try:
             if fpath == "index:":
-                html = self.create_index()
+                html = self.get_index()
                 self.history = []
             else:
                 with open(fpath) as f:
@@ -429,5 +379,58 @@ class zynthian_gui_help(HtmlFrame):
         self.zyngui.tts.announce("Knob actions.")
         for tts in self.tts_knobs:
             self.zyngui.tts.announce(tts, False, False, False)
+
+
+    @classmethod
+    def get_index(self):
+        ui_dir = zynthian_gui_help.ui_dir
+        def get_data(files):
+            items = []
+            for file in files:
+                with open(file, "r", encoding="utf-8") as f:
+                    soup = BeautifulSoup(f, "html.parser")
+                    # Try <title> first
+                    title_tag = soup.find("title")
+                    title = title_tag.get_text(strip=True) if title_tag else None
+                    # Fallback to <h1>
+                    if not title:
+                        h1 = soup.find("h1")
+                        title = h1.get_text(strip=True) if h1 else file.stem
+                    items.append((title, file._str))
+            return items
+
+        files = list(Path(f"{ui_dir}/help/core").glob("*.html")) + \
+                list(Path(f"{ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
+        files.sort(key=lambda f: f.name)
+        widgets = list(Path(f"{ui_dir}/help/widgets").glob("*.html"))
+
+        # Build index HTML
+        html_output = f"""
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="{ui_dir}/help/style.css">
+ </head>
+ <body>
+  <h1>Help Index</h1>
+   <ul class="index">
+"""
+
+        for title, filename in get_data(files):
+            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
+        html_output += """
+  </ul>
+  <h2>Control GUI Widgets</h2>
+  <ul class="index">
+"""
+        for title, filename in get_data(widgets):
+            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
+        html_output += """
+   </ul>
+  </body>
+</html>
+"""
+        return html_output
 
 # -------------------------------------------------------------------------------
