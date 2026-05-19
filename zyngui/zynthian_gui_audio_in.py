@@ -38,12 +38,17 @@ from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def __init__(self, parent=None, topbar=None):
+        self.chain = None
         super().__init__('Audio In', parent=parent, topbar=topbar)
 
     def build_view(self):
         self.check_ports = 0
         self.capture_ports = zynautoconnect.get_audio_capture_ports()
         return super().build_view()
+
+    def hide(self):
+        super().hide()
+        self.chain = None
 
     def refresh_status(self):
         super().refresh_status()
@@ -57,13 +62,14 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def fill_list(self):
         self.list_data = []
+        chain = self.chain if self.chain else self.zyngui.chain_manager.active_chain
 
         for i, scp in enumerate(self.capture_ports):
             if scp.aliases:
                 suffix = f" ({scp.aliases[0]})"
             else:
                 suffix = ""
-            if i + 1 in self.zyngui.chain_manager.active_chain.audio_in:
+            if i + 1 in chain.audio_in:
                 self.list_data.append(
                     (i + 1, scp.name, f"\u2612 Audio input {i + 1}{suffix}",
                     [f"Audio input {i + 1} is connected to this chain.", "audio_input.png"]))
@@ -79,7 +85,8 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def select_action(self, i, t='S'):
         if t == 'S':
-            self.zyngui.chain_manager.active_chain.toggle_audio_in(self.list_data[i][0])
+            chain = self.chain if self.chain else self.zyngui.chain_manager.active_chain
+            chain.toggle_audio_in(self.list_data[i][0])
             self.fill_list()
         elif t == "B":
             if not self.list_data[i][1].startswith("system:"):
@@ -104,10 +111,18 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
             if ctrl_list:
                 self.zyngui.show_screen("alsa_mixer", params=ctrl_list)
 
+    def set_chain(self, chain):
+        """ Set chain object for inputs to control
+        Args:
+            chain: Chain object or None to use current active chain
+        """
+        self.chain = chain
+
     def set_select_path(self):
         title = "Capture Audio from ..."
+        chain = self.chain if self.chain else self.zyngui.chain_manager.active_chain
         try:
-            self.select_path.set(f"{self.zyngui.chain_manager.active_chain.get_name()}/{title}")
+            self.select_path.set(f"{chain.get_name()}/{title}")
         except:
             self.select_path.set(title)
 
