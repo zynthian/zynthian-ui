@@ -398,11 +398,20 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->dpmA *= g_fDpmDecay;
                 strip->dpmB *= g_fDpmDecay;
             }
-        } else if (strip->enable_dpm) {
-            strip->dpmA  = 0.0f;
-            strip->dpmB  = 0.0f;
-            strip->holdA = 0.0f;
-            strip->holdB = 0.0f;
+        } else {
+            if (strip->enable_dpm) {
+                strip->dpmA  = 0.0f;
+                strip->dpmB  = 0.0f;
+                strip->holdA = 0.0f;
+                strip->holdB = 0.0f;
+            }
+            if (strip->outRouted) {
+                // Silence channel outputs
+                pChanOutA = jack_port_get_buffer(strip->outPortA, frames);
+                pChanOutB = jack_port_get_buffer(strip->outPortB, frames);
+                memset(pChanOutA, 0.0, frames * sizeof(jack_default_audio_sample_t));
+                memset(pChanOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
+            }
         }
     }
 
