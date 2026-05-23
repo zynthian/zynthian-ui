@@ -45,8 +45,14 @@ TTS_DICT = {
     "\u2610": "un-checked: ",
     "\u2612": "checked: ",
     "ctrl": "control",
-    "param": "parameter"
+    "param": "parameter",
+    "\u2673": "Shared by 1 chain:",
+    "\u267A": "Shared by many chains:"
 }
+for i in range(2, 8):
+    char = chr(0x2672 + i)
+    TTS_DICT[char] = f"Shared by {i} chains:"
+
 SINE_WAVETABLE_SIZE = 1024
 
 class zynthian_tts:
