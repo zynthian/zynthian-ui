@@ -47,7 +47,8 @@ TTS_DICT = {
     "ctrl": "control",
     "param": "parameter",
     "\u2673": "Shared by 1 chain:",
-    "\u267A": "Shared by many chains:"
+    "\u267A": "Shared by many chains:",
+    "*": ""
 }
 for i in range(2, 8):
     char = chr(0x2672 + i)
