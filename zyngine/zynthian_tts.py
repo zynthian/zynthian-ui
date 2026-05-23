@@ -48,7 +48,8 @@ TTS_DICT = {
     "param": "parameter",
     "\u2673": "Shared by 1 chain:",
     "\u267A": "Shared by many chains:",
-    "*": ""
+    "*": "",
+    "❤": "Favourite:"
 }
 for i in range(2, 8):
     char = chr(0x2672 + i)

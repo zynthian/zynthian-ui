@@ -125,7 +125,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         try:
             preset = copy.deepcopy(self.list_data[self.index])
             if preset[2][0] == "❤":
-                preset[2] = preset[2][1:]
+                preset[2] = preset[2][2:]
             preset_name = preset[2]
             title = f"Preset: {preset_name}"
         except:
