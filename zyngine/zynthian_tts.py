@@ -46,17 +46,17 @@ TTS_DICT = {
     "\u2612": "checked: ",
     "ctrl": "control",
     "param": "parameter",
-    "*": "" # Ignore asterisk
+    "*": "", # Ignore asterisk
+    "⇥": "Active mode icon. ",
+    "⇶": "Multi-timbral mode icon. ",
+    "♣": "Sequencer capture icon. ",
+    "⏱": "MIDI Clock source icon. ",
+    "⌨": "Control driver icon. "
 }
 TTS_DICT_DEFER = {
+    "❤": ". Favourite icon",
     "\u2673": ". Shared by 1 chain",
-    "\u267A": ". Shared by many chains",
-    "❤": ". Favourite",
-    "⇥": ". Active mode",
-    "⇶": ". Multi-timbral mode",
-    "♣": ". Sequencer capture",
-    "⏱": ". MIDI Clock source",
-    "⌨": ". Control driver"
+    "\u267A": ". Shared by many chains"
 }
 for i in range(2, 8):
     char = chr(0x2672 + i)

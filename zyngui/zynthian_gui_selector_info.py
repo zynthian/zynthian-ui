@@ -169,6 +169,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
     def tts_info(self):
         super().tts_info()
         try:
+            self.zyngui.tts.announce("Help info.", False, False, False)
             self.zyngui.tts.announce(self.list_data[self.index][3][0].replace("\n", " . "),  False, False, False)
         except:
             pass

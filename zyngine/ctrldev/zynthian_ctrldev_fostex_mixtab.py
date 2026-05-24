@@ -66,7 +66,7 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
 
     dev_ids = ["*"]
     driver_name = "Fostex MixTab"
-    driver_description = "Zynthian Mixer integration"
+    driver_description = "Integrates Fostex MixTab hardware controller with zynthian mixer."
     autoload_flag = False
 
     # Function to initialise class
