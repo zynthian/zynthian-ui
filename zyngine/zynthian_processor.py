@@ -329,7 +329,7 @@ class zynthian_processor:
         elif self.bank_info:
             for preset in self.engine.get_preset_list(self.bank_info, self):
                 if self.engine.is_preset_fav(preset):
-                    preset[2] = "❤" + preset[2]
+                    preset[2] = "❤ " + preset[2]
                 preset_list.append(preset)
         else:
             return
@@ -370,7 +370,7 @@ class zynthian_processor:
 
         # Remove favorite marker char
         if preset_name[0] == '❤':
-            preset_name = preset_name[1:]
+            preset_name = preset_name[2:]
 
         # Check if preset is in favorites pseudo-bank and set real bank if needed
         if preset_id in self.engine.preset_favs:
@@ -422,12 +422,12 @@ class zynthian_processor:
         TODO:Optimize search!!
         """
         if preset_name[0] == '❤':
-            preset_name = preset_name[1:]
+            preset_name = preset_name[2:]
         for i in range(len(self.preset_list)):
             name_i = self.preset_list[i][2]
             try:
                 if name_i[0] == '❤':
-                    name_i = name_i[1:]
+                    name_i = name_i[2:]
                 if preset_name == name_i:
                     return self.set_preset(i, set_engine, force_set_engine)
             except:

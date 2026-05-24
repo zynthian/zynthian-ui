@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Midi-Channel Selector Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -43,6 +43,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
         super().__init__('Channel', True)
         self.chan_list = list(range(16))
         self.set_mode('ADD')
+        self.tts_title = "MIDI Channel"
 
     def set_mode(self, mode, chan=None, chan_all=False):
         self.mode = mode

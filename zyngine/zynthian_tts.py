@@ -45,8 +45,25 @@ TTS_DICT = {
     "\u2610": "un-checked: ",
     "\u2612": "checked: ",
     "ctrl": "control",
-    "param": "parameter"
+    "param": "parameter",
+    "*": "" # Ignore asterisk
 }
+TTS_DICT_DEFER = {
+    "\u2673": ". Shared by 1 chain",
+    "\u267A": ". Shared by many chains",
+    "❤": ". Favourite",
+    "⇥": ". Active mode",
+    "⇶": ". Multi-timbral mode",
+    "♣": ". Sequencer capture",
+    "⏱": ". MIDI Clock source",
+    "⌨": ". Control driver"
+}
+for i in range(2, 8):
+    char = chr(0x2672 + i)
+    TTS_DICT_DEFER[char] = f". Shared by {i} chains"
+
+ALL_KEYS = list(TTS_DICT) + list(TTS_DICT_DEFER)
+
 SINE_WAVETABLE_SIZE = 1024
 
 class zynthian_tts:
@@ -69,7 +86,7 @@ class zynthian_tts:
         self._process = None
         self._lock = threading.Lock() # Process locking mutex
         self.playing = False
-        self.translate_pattern = re.compile("|".join(map(re.escape, TTS_DICT)))
+        self.translate_pattern = re.compile("|".join(map(re.escape, sorted(ALL_KEYS, key=len, reverse=True))))
 
         self.clear_queue()
         self._thread = threading.Thread(target=self._worker, daemon=True)
@@ -158,14 +175,32 @@ class zynthian_tts:
         zynconf.save_config({"ZYNTHIAN_TTS_SPEED": str(zynthian_gui_config.tts_speed)}, False)
 
     def translate(self, text):
+        deferred = []
+
+        def replace_match(m):
+            token = m.group(0)
+            if token in TTS_DICT_DEFER:
+                deferred.append(TTS_DICT_DEFER[token])
+                return ""   # remove from inline text
+            return TTS_DICT[token]
+
         def normalize_number(m):
-            # Enforce numeric handling with trailing decimal zeros removed
             num = float(m.group(1))
             num = str(int(num)) if num.is_integer() else str(num)
             return f"{num} "
 
-        text = self.translate_pattern.sub(lambda m : TTS_DICT[m.group(0)], text) # tech dictionary
+        # Perform token translation
+        text = self.translate_pattern.sub(replace_match, text)
+
+        # Normalize whitespace after removals
+        text = re.sub(r"\s+", " ", text).strip()
+
+        # Number normalization
         text = re.sub(r"(-?\d+(?:\.\d+)?)", normalize_number, text)
+
+        # Append deferred announcements
+        if deferred:
+            text += ". " + ". ".join(deferred)
 
         return text
 
