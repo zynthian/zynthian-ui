@@ -25,9 +25,10 @@
 import os
 import logging
 import tkinter
-from tkinterweb import HtmlFrame
-from bs4 import BeautifulSoup
 from pathlib import Path
+from bs4 import BeautifulSoup
+from tkinterweb import HtmlFrame
+
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -96,60 +97,10 @@ class zynthian_gui_help(HtmlFrame):
         if self.zyngui.tts:
             self.tts_info()
 
-    def create_index(self):
-        def get_data(files):
-            items = []
-            for file in files:
-                with open(file, "r", encoding="utf-8") as f:
-                    soup = BeautifulSoup(f, "html.parser")
-                    # Try <title> first
-                    title_tag = soup.find("title")
-                    title = title_tag.get_text(strip=True) if title_tag else None
-                    # Fallback to <h1>
-                    if not title:
-                        h1 = soup.find("h1")
-                        title = h1.get_text(strip=True) if h1 else file.stem
-                    items.append((title, file._str))
-            return items
-
-        files = list(Path(f"{self.ui_dir}/help/core").glob("*.html")) + \
-                list(Path(f"{self.ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
-        files.sort(key=lambda f: f.name)
-        widgets = list(Path(f"{self.ui_dir}/help/widgets").glob("*.html"))
-
-        # Build index HTML
-        html_output = f"""
-<!DOCTYPE html>
-<html>
- <head>
-  <meta charset="utf-8">
-  <link rel="stylesheet" href="{self.ui_dir}/help/style.css">
- </head>
- <body>
-  <h1>Help Index</h1>
-   <ul class="index">
-"""
-
-        for title, filename in get_data(files):
-            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
-        html_output += """
-  </ul>
-  <h2>Control GUI Widgets</h2>
-  <ul class="index">
-"""
-        for title, filename in get_data(widgets):
-            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
-        html_output += """
-   </ul>
-  </body>
-</html>
-"""
-        return html_output
-
     def load_file(self, fpath):
         try:
             if fpath == "index:":
-                html = self.create_index()
+                html = self.get_index()
                 self.history = []
             else:
                 with open(fpath) as f:
@@ -371,7 +322,7 @@ class zynthian_gui_help(HtmlFrame):
         self.swipe_update()
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):
@@ -397,14 +348,25 @@ class zynthian_gui_help(HtmlFrame):
                                 self.tts_knobs.append(f"{encoder_actions[i]} {action.get_text()}. ")
                     knob_action_container.decompose()
 
-                # Ensure brief pause after each header and paragraph
-                for tag in self.soup.find_all(["p", "br", "h1", "h2", "h3", "li"]):
+                # Ensure brief pause after each paragraph
+                for tag in self.soup.find_all(["p", "br"]):
                     tag.insert_after(". ")
                 for tag in self.soup.find_all(class_="no_tts"):
                     tag.decompose()
+                for i in range(1, 7):
+                    for tag in self.soup.find_all(f"h{i}"):
+                        tag.insert_before(f". Header {i}: ")
+                        tag.insert_after(". ")
                 for tag in self.soup.find_all("ul"):
-                        tag.insert_before("List. ")
-                        tag.insert_after("End of list. ")
+                    tag.insert_before(". List. ")
+                    tag.insert_after(". End of list. ")
+                for tag in self.soup.find_all("li"):
+                    tag.insert_before(". Bullet: ")
+                    tag.insert_after(". ")
+                for tag in self.soup.find_all("img"):
+                    alt_text = tag.get("alt", "")
+                    if alt_text:
+                        tag.replace_with(f". Image: {alt_text}. ")
                 parsed_tag = self.soup.new_tag("div", **{"class": "tts_parsed"})
                 self.soup.head.append(parsed_tag)
             text = self.soup.get_text(separator=" ", strip=True).replace("\n", "")
@@ -417,5 +379,58 @@ class zynthian_gui_help(HtmlFrame):
         self.zyngui.tts.announce("Knob actions.")
         for tts in self.tts_knobs:
             self.zyngui.tts.announce(tts, False, False, False)
+
+
+    @classmethod
+    def get_index(self):
+        ui_dir = zynthian_gui_help.ui_dir
+        def get_data(files):
+            items = []
+            for file in files:
+                with open(file, "r", encoding="utf-8") as f:
+                    soup = BeautifulSoup(f, "html.parser")
+                    # Try <title> first
+                    title_tag = soup.find("title")
+                    title = title_tag.get_text(strip=True) if title_tag else None
+                    # Fallback to <h1>
+                    if not title:
+                        h1 = soup.find("h1")
+                        title = h1.get_text(strip=True) if h1 else file.stem
+                    items.append((title, file._str))
+            return items
+
+        files = list(Path(f"{ui_dir}/help/core").glob("*.html")) + \
+                list(Path(f"{ui_dir}/help/{zynthian_gui_config.layout['name']}").glob("*.html"))
+        files.sort(key=lambda f: f.name)
+        widgets = list(Path(f"{ui_dir}/help/widgets").glob("*.html"))
+
+        # Build index HTML
+        html_output = f"""
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="{ui_dir}/help/style.css">
+ </head>
+ <body>
+  <h1>Help Index</h1>
+   <ul class="index">
+"""
+
+        for title, filename in get_data(files):
+            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
+        html_output += """
+  </ul>
+  <h2>Control GUI Widgets</h2>
+  <ul class="index">
+"""
+        for title, filename in get_data(widgets):
+            html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
+        html_output += """
+   </ul>
+  </body>
+</html>
+"""
+        return html_output
 
 # -------------------------------------------------------------------------------

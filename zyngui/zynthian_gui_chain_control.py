@@ -113,6 +113,9 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         super().build_view()
         if not self.shown:
             zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        if self.chain_shown:
+            self.chain_canvas.build_view()
+            self.refresh_chain()
         if not self.subscreen.shown:
             self.subscreen.build_view()
             self.subscreen.show()
@@ -191,6 +194,10 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.chain_canvas.select_node(proc=ssname, action=True)
         if show_chain != self.chain_shown:
             self.show_chain(show_chain)
+
+    def refresh_subscreen(self):
+        if self.subscreen_key == "control":
+            self.subscreen.update_list()
 
     # --------------------------------------------------------------------------
     # Zynpot & zynswitch callbacks
@@ -294,17 +301,17 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         return self.subscreen.cuia_v5_zynpot_switch(params)
 
     def cuia_arrow_up(self, params=None):
-        self.subscreen.arrow_up()
-        if self.subscreen_key == "control":
-            proc=self.subscreen.get_selected_processor()
-            self.chain_canvas.select_processor(proc=proc)
+        if self.chain_shown:
+            self.chain_canvas.arrow_up()
+        else:
+            self.subscreen.arrow_up()
         return True
 
     def cuia_arrow_down(self, params=None):
-        self.subscreen.arrow_down()
-        if self.subscreen_key == "control":
-            proc=self.subscreen.get_selected_processor()
-            self.chain_canvas.select_processor(proc=proc)
+        if self.chain_shown:
+            self.chain_canvas.arrow_down()
+        else:
+            self.subscreen.arrow_down()
         return True
 
     def cuia_arrow_right(self, params=None):
@@ -362,7 +369,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         return fpath
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

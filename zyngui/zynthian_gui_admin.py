@@ -174,7 +174,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((None, 0, "> AUDIO"))
 
         self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
-        self.list_data.append((self.show_tts, 0, "Narrator (accessibility)", ["Show the user interface narrator accessibility options", None]))
+        self.list_data.append((self.show_tts, 0, "ZynVoice (text to speech)", ["Show the user interface text to speech accessibility options", None]))
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
                 self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",
@@ -186,7 +186,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                         "headphones.png"]))
 
         self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio",
-                               ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always remain connected and not a device used for Narrator.",
+                               ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always remain connected and not a device used for ZynVoice.",
                                 "audio_options.png"]))
 
         if zynthian_gui_config.snapshot_mixer_settings:
@@ -465,7 +465,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                     else:
                         options[f"\u2612 {device} out"] = ["disable_output", ["Toggle enable USB audio output device.", None]]
             else:
-                options["No available soundcard outputs - check Narrator"] = ["tts", ["No free audio outputs. Select to navigate to Narrator config.", None]]
+                options["No available soundcard outputs - check ZynVoice"] = ["tts", ["No free audio outputs. Select to navigate to ZynVoice config.", None]]
         else:
             options[f"\u2610 Hotplug Audio"] = ["enable_hotplug", ["Toggle USB hotplug audio enable.", None]]
         return options

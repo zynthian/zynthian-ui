@@ -503,15 +503,18 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.select_path.set(path)
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):
         if not self.zyngui.tts:
             return
+        eng_info = self.get_info()
         self.zyngui.tts.announce(f"View: Engine")
         self.zyngui.tts.announce(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
         self.zyngui.tts.announce(f"Engine: {self.list_data[self.index][2]}", False, False, False)
+        complex = ["No", "Minimal", "Low", "Medium", "High", "Maximum"][eng_info["COMPLEX"]]
+        self.zyngui.tts.announce(f"{eng_info['QUALITY']} stars. {complex} complexity. {eng_info['DESCR']}", False, False, False)
         self.zyngui.tts.announce(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
 # ------------------------------------------------------------------------------

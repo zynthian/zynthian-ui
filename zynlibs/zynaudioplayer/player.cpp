@@ -645,6 +645,7 @@ uint8_t save(AUDIO_PLAYER* pPlayer, const char* filename) {
     if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, &cues, cue_size))
         fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
 
+    /* libsndfile does not support SFC_SET_LOOP_INFO riban fork adds but PR not submitted/accepted upstream
     if (pPlayer->beats) {
         SF_LOOP_INFO loopInfo;
         loopInfo.time_sig_num = 4; //!@todo Get time signature
@@ -653,9 +654,9 @@ uint8_t save(AUDIO_PLAYER* pPlayer, const char* filename) {
         loopInfo.num_beats    = pPlayer->beats;
         loopInfo.loop_mode    = pPlayer->loop ? SF_LOOP_FORWARD : SF_LOOP_NONE;
         loopInfo.root_key     = pPlayer->base_note;
-        //!@todo sf_command does not support SFC_SET_LOOP_INFO
         sf_command(outfile, SFC_SET_LOOP_INFO, &loopInfo, sizeof(loopInfo));
     }
+    */
 
     // loop points
     SF_INSTRUMENT inst;

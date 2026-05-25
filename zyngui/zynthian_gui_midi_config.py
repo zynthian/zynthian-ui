@@ -139,7 +139,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             if self.midi_input:
                 port = zynautoconnect.devices_in[idev]
                 mode = get_mode_str(idev)
-                input_mode_info = f"\n\n{ZMIP_ICON_MODE_ACTIVE} Active mode\n"
+                input_mode_info = f"\n\nICONS KEY:\n"
+                input_mode_info += f"{ZMIP_ICON_MODE_ACTIVE} Active mode\n"
                 input_mode_info += f"{ZMIP_ICON_MODE_MULTI} Multitimbral mode\n"
                 input_mode_info += f"{ZMIP_ICON_SEQ_EXCL} Sequencer capture\n"
                 input_mode_info += f"{ZMIP_ICON_MIDI_CLOCK} MIDI Clock\n"
@@ -148,17 +149,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 input_mode_info += f"{ZMIP_ICON_CTRLDEV_DRIVER} Driver loaded"
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}",
-                                           [f"OPT / bold push to show options'.{input_mode_info}", "midi_input.png"]))
+                                           [f"Has option menu'.{input_mode_info}", "midi_input.png"]))
                 elif not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                     self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}",
-                                           [f"Captured by driver.\n\nOPT / bold push to show options'.{input_mode_info}", "midi_input.png"]))
+                                           [f"Captured by driver.\n\nHas option menu.{input_mode_info}", "midi_input.png"]))
                 else:
                     if lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev):
                         self.list_data.append((port.aliases[0], idev, f"\u2612 {mode}{port.aliases[1]}",
-                                               [f"Connected to chain.\n\nOPT / bold push to show options.{input_mode_info}", "midi_input.png"]))
+                                               [f"Connected to chain.\n\nHas option menu.{input_mode_info}", "midi_input.png"]))
                     else:
                         self.list_data.append((port.aliases[0], idev, f"\u2610 {mode}{port.aliases[1]}",
-                                               [f"Disconnected from chain.\n\nOPT / bold push to show options.{input_mode_info}", "midi_input.png"]))
+                                               [f"Disconnected from chain.\n\nHas option menu.{input_mode_info}", "midi_input.png"]))
             else:
                 port = zynautoconnect.devices_out[idev]
                 if port.aliases[0] in zynautoconnect.get_midi_clock_output_ports():
@@ -167,13 +168,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     name = port.aliases[1]
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, name,
-                                           [f"OPT / bold push to show options'.", "midi_output.png"]))
+                                           [f"Has option menu'.", "midi_output.png"]))
                 elif port.aliases[0] in self.chain.midi_out:
                     self.list_data.append((port.aliases[0], idev, f"\u2612 {name}",
-                                           [f"Connected to chain.\n\nOPT / bold push to show options.", "midi_output.png"]))
+                                           [f"Connected to chain.\n\nHas option menu.", "midi_output.png"]))
                 else:
                     self.list_data.append((port.aliases[0], idev, f"\u2610 {name}",
-                                           [f"Disconnected to chain.\n\nOPT / bold push to show options.", "midi_output.png"]))
+                                           [f"Disconnected to chain.\n\nHas option menu.", "midi_output.png"]))
 
         def append_service(service, name, help_info="", icon="midi_logo.png"):
             try:
@@ -394,30 +395,26 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 options["Options"] = None
                 opt_info = "Toggle input mode.\n\n"
                 if zynautoconnect.get_midi_in_dev_mode(idev):
-                    title = f"{ZMIP_ICON_MODE_ACTIVE} Active mode"
                     if lib_zyncore.get_active_midi_chan():
-                        opt_info += f"{title}. Translate MIDI channel. Send to chains matching active chain's MIDI channel."
+                        opt_info += f"{ZMIP_ICON_MODE_ACTIVE}: Active chain.\n\nTranslate MIDI channel. Send to chains matching active chain's MIDI channel."
                     else:
-                        opt_info += f"{title}. Translate MIDI channel. Send to active chain only."
-                    options[title] = ["MODE_MULTI", [opt_info, "midi_input.png"]]
+                        opt_info += f"{ZMIP_ICON_MODE_ACTIVE}: Active chain.\n\nTranslate MIDI channel. Send to active chain only."
+                    options["Input mode (Active chain)"] = ["MODE_MULTI", [opt_info, "midi_input.png"]]
                 else:
-                    title = f"{ZMIP_ICON_MODE_MULTI} Multitimbral mode"
-                    opt_info += f"{title}. Don't translate MIDI channel. Send to chains matching device's MIDI channel."
-                    options[title] = ["MODE_ACTI", [opt_info, "midi_input.png"]]
+                    opt_info += f"{ZMIP_ICON_MODE_MULTI}: Multitimbral.\n\nDon't translate MIDI channel. Send to chains matching device's MIDI channel."
+                    options["Input mode (Multitimbral)"] = ["MODE_ACTI", [opt_info, "midi_input.png"]]
 
-                opt_info = "Use this input device for live recording from the step sequencer."
+                opt_info = f"Toggle sequencer capture.\n\n{ZMIP_ICON_SEQ_EXCL}: Sequencer.\n\nUse this input device for live recording from the step sequencer."
                 if port.aliases[0] in zynautoconnect.get_zynseq_exclude_ports():
-                    options[f"\u2610 {ZMIP_ICON_SEQ_EXCL} Sequencer capture"] = [idev, [opt_info, "midi_input.png"]]
+                    options[f"\u2610 Sequencer capture"] = [idev, [opt_info, "midi_input.png"]]
                 else:
-                    options[f"\u2612 {ZMIP_ICON_SEQ_EXCL} Sequencer capture"] = [idev, [opt_info, "midi_input.png"]]
+                    options[f"\u2612 Sequencer capture"] = [idev, [opt_info, "midi_input.png"]]
 
-                opt_info = "Sync to MIDI clock from this device.\nIt's an exclusive option that will disable syncing from other devices."
+                opt_info = f"Toggle MIDI clock.\n\n{ZMIP_ICON_MIDI_CLOCK}: MIDI Clock.\n\nSync to MIDI clock from this device.\nThis is an exclusive option that will disable syncing from other devices."
                 if zynautoconnect.get_ext_clock_zmip() == idev:
-                    title = f"\u2612 {ZMIP_ICON_MIDI_CLOCK} MIDI Clock Source"
-                    options[title] = ["MIDI_CLOCK/OFF", [opt_info, "midi_input.png"]]
+                    options[f"\u2612 MIDI Clock Source"] = ["MIDI_CLOCK/OFF", [opt_info, "midi_input.png"]]
                 else:
-                    title = f"\u2610 {ZMIP_ICON_MIDI_CLOCK} MIDI Clock Source"
-                    options[title] = ["MIDI_CLOCK/ON", [opt_info, "midi_input.png"]]
+                    options[f"\u2610 MIDI Clock Source"] = ["MIDI_CLOCK/ON", [opt_info, "midi_input.png"]]
 
                 """
                 opt_info = "Route non real-time system messages from this device.\n\n"
@@ -462,14 +459,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     driver_description = driver_class.get_driver_description()
                     if not driver_description:
                         driver_description = "Device driver integrating UI functions and customized workflow."
+                    driver_description = f"{ZMIP_ICON_CTRLDEV_DRIVER}: Driver.\n\n{driver_description}"
                     if idev in loaded_drivers and type(loaded_drivers[idev]) is driver_class:
-                        driver_options[f"\u2612 {ZMIP_ICON_CTRLDEV_DRIVER} {driver_name}"] = [
+                        driver_options[f"\u2612 {driver_name}"] = [
                             ["UNLOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                     else:
-                        driver_options[f"\u2610 {ZMIP_ICON_CTRLDEV_DRIVER} {driver_name}"] = [
+                        driver_options[f"\u2610 {driver_name}"] = [
                             ["LOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
                 if driver_options:
-                    options["Drivers"] = None
+                    options[f"Drivers {ZMIP_ICON_CTRLDEV_DRIVER}"] = None
                     options.update(driver_options)
 
             else:

@@ -94,6 +94,8 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         self.callback_params = cb_params
         if not self.shown:
             super().show()
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"{text}. Yes or no.")
 
     def zynpot_cb(self, i, dval):
         pass
@@ -105,6 +107,8 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         logging.info("callback %s", self.callback_params)
         self.zyngui.close_screen()
         if self.callback:
+            if self.zyngui.tts:
+                self.zyngui.tts._tts.beep(frequency=800)
             self.callback(self.callback_params)
 
     def switch(self, i, t):

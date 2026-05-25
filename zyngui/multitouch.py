@@ -35,6 +35,7 @@ from select import select
 from time import monotonic
 from threading import Thread
 from subprocess import run, PIPE
+from tkinterweb import HtmlFrame
 from dataclasses import dataclass
 from collections import namedtuple
 from evdev import ecodes, InputDevice
@@ -357,7 +358,7 @@ class MultiTouch(object):
                     event.widget = None
                 if event.widget is None:
                     gui_obj = zynthian_gui_config.zyngui.get_current_screen_obj()
-                    if isinstance(gui_obj, tkinter.Frame):
+                    if isinstance(gui_obj, tkinter.Frame) or isinstance(gui_obj, HtmlFrame):
                         event.widget = gui_obj
                         #logging.debug("Using current screen object for touch event")
                     else:
@@ -383,8 +384,7 @@ class MultiTouch(object):
                     # First touch so wait to see if another touch event arrives to start a gesture
                     event._type = MultitouchTypes.GESTURE_PRESS
                     self._g_pending = event
-                    self._g_timeout = zynthian_gui_config.top.after(
-                        100, self._on_touch_timeout)
+                    self._g_timeout = zynthian_gui_config.top.after(100, self._on_touch_timeout)
 
             elif event._type == MultitouchTypes.MULTI_RELEASE:
                 if self._g_pending:
@@ -447,22 +447,18 @@ class MultiTouch(object):
                 event._type = MultitouchTypes.IDLE
 
             elif event._type == MultitouchTypes.GESTURE_H_PINCH:
-                pinch = abs(event.x - event.gest_pair.x) - \
-                    abs(event.last_x - event.gest_pair.last_x)
+                pinch = abs(event.x - event.gest_pair.x) - abs(event.last_x - event.gest_pair.last_x)
                 # logging.warning(f"H-pinch {pinch}")
                 for ev_handler in self._on_gesture:
                     if ev_handler.widget == None or ev_handler.widget == event.widget:
-                        ev_handler.function(
-                            MultitouchTypes.GESTURE_H_PINCH, pinch)
+                        ev_handler.function(MultitouchTypes.GESTURE_H_PINCH, pinch)
 
             elif event._type == MultitouchTypes.GESTURE_V_PINCH:
-                pinch = abs(event.y - event.gest_pair.y) - \
-                    abs(event.last_y - event.gest_pair.last_y)
+                pinch = abs(event.y - event.gest_pair.y) - abs(event.last_y - event.gest_pair.last_y)
                 # logging.warning(f"V-pinch {pinch}")
                 for ev_handler in self._on_gesture:
                     if ev_handler.widget == None or ev_handler.widget == event.widget:
-                        ev_handler.function(
-                            MultitouchTypes.GESTURE_V_PINCH, pinch)
+                        ev_handler.function(MultitouchTypes.GESTURE_V_PINCH, pinch)
 
             elif event._type == MultitouchTypes.GESTURE_H_DRAG:
                 if event.slot > event.gest_pair.slot:
@@ -470,8 +466,7 @@ class MultiTouch(object):
                     # logging.warning(f"H-drag {drag}")
                     for ev_handler in self._on_gesture:
                         if ev_handler.widget == None or ev_handler.widget == event.widget:
-                            ev_handler.function(
-                                MultitouchTypes.GESTURE_H_DRAG, drag)
+                            ev_handler.function(MultitouchTypes.GESTURE_H_DRAG, drag)
 
             elif event._type == MultitouchTypes.GESTURE_V_DRAG:
                 if event.slot > event.gest_pair.slot:
@@ -479,8 +474,7 @@ class MultiTouch(object):
                     # logging.warning(f"V-drag {drag}")
                     for ev_handler in self._on_gesture:
                         if ev_handler.widget == None or ev_handler.widget == event.widget:
-                            ev_handler.function(
-                                MultitouchTypes.GESTURE_V_DRAG, drag)
+                            ev_handler.function(MultitouchTypes.GESTURE_V_DRAG, drag)
 
             elif event._type == MultitouchTypes.SINGLE_RELEASE:
                 if event.widget:

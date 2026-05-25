@@ -157,20 +157,19 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)
 
     def do_remove(self, unused=None):
-        self.zyngui.close_screen()
-        self.zyngui.chain_manager.remove_processor(
-            self.zyngui.chain_manager.active_chain.chain_id, self.processor)
+        self.zyngui.chain_manager.remove_processor(self.zyngui.chain_manager.active_chain.chain_id, self.processor)
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
         self.processor = None
+        self.zyngui.close_screen()
 
     def preset_list(self):
         self.zyngui.cuia_bank_preset(self.processor)
 
     def midi_clean(self):
         if self.processor:
-            self.zyngui.show_confirm(
-                f"Do you want to clean MIDI-learn for ALL controls in {self.processor.name}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
+            self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.processor.name}?",
+                                     self.zyngui.chain_manager.clean_midi_learn, self.processor)
 
     def control_view(self):
         self.zyngui.chain_control(hmode=self.zyngui.SCREEN_HMODE_REPLACE)
@@ -213,8 +212,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
     def set_select_path(self):
         if self.processor:
-            self.select_path.set("{} > Processor Options".format(
-                self.processor.get_basepath()))
+            self.select_path.set("{} > Processor Options".format(self.processor.get_basepath()))
         else:
             self.select_path.set("Processor Options")
 

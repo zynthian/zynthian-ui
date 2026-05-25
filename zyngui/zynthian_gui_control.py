@@ -364,11 +364,24 @@ class zynthian_gui_control(zynthian_gui_selector):
             except (AttributeError, TypeError):
                 pass
 
+
+    # TODO: Should this be refactored so current_processor is not a zyngui variable?
+    # Should current_processor be a chain_control variable?
+
+    def set_current_processor(self, proc):
+        if proc != self.zyngui.get_current_processor():
+            self.zyngui.set_current_processor(proc)
+            if self.parent:
+                self.parent.chain_canvas.select_processor(proc=proc)
+
+    def get_current_processor(self):
+        return self.zyngui.get_current_processor()
+
     def set_controller_screen(self):
         # Get screen info
         if self.get_screen_info():
             try:
-                self.zyngui.set_current_processor(self.screen_info[3])
+                self.set_current_processor(self.screen_info[3])
             except Exception as e:
                 logging.warning(f"Failed to set current processor {e}")
 
@@ -378,7 +391,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zcontrollers = self.screen_info[5]
             # Processor controllers
             else:
-                curproc = self.zyngui.get_current_processor()
+                curproc = self.get_current_processor()
                 curproc.set_current_screen_index(self.screen_info[4])
                 self.zcontrollers = curproc.get_ctrl_screen(self.screen_title)
                 # Show the widget for the current processor (NOT for chain controllers pages!)
@@ -960,7 +973,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             return super().get_help_fpath()
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):

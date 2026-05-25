@@ -163,12 +163,13 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         self.zyngui.cuia_help()
 
     # --------------------------------------------------------------------------
-    # Narrator TTS
+    # ZynVoice TTS
     # --------------------------------------------------------------------------
 
     def tts_info(self):
         super().tts_info()
         try:
+            self.zyngui.tts.announce("Help info.", False, False, False)
             self.zyngui.tts.announce(self.list_data[self.index][3][0].replace("\n", " . "),  False, False, False)
         except:
             pass

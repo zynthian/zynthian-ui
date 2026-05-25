@@ -58,6 +58,7 @@ EDIT_PARAM_PLAY_CHANCE = 7  # Edit note play chance
 EDIT_PARAM_STUT_FREQ = 8    # Edit note stutter frequency
 EDIT_PARAM_STUT_CHANCE = 9  # Edit note stutter chance
 EDIT_PARAM_LAST = 9         # Index of last parameter
+EDIT_PARAM_LAST_MULTI = 1   # Index of last multi-edit parameter
 
 STUT_VFX_OPTIONS = (
     "FLAT",
@@ -1754,8 +1755,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.edit_param += dval
                 if self.edit_param < 0:
                     self.edit_param = 0
-                if self.edit_param > EDIT_PARAM_LAST:
-                    self.edit_param = EDIT_PARAM_LAST
+                if self.edit_mode == EDIT_MODE_SINGLE:
+                    if self.edit_param > EDIT_PARAM_LAST:
+                        self.edit_param = EDIT_PARAM_LAST
+                elif self.edit_mode == EDIT_MODE_MULTI:
+                    if self.edit_param > EDIT_PARAM_LAST_MULTI:
+                        self.edit_param = EDIT_PARAM_LAST_MULTI
                 self.set_edit_title()
                 return True
 

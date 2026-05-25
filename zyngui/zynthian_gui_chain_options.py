@@ -72,7 +72,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                                    ["Remove CC bindings from all parameters of all processors in this chain.", "midi_learn.png"]))
 
         self.list_data.append((self.rename_chain, None, "Rename chain",
-                               ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
+                               ["Change the name of the chain. Clear name to reset to default name.", "rename.png"]))
 
         if self.chain.chain_id:
             self.list_data.append((self.move_chain, None, "Move chain",
@@ -80,11 +80,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
         if self.chain.is_midi():
             self.list_data.append((self.midifx_add, None, "Add MIDI-FX processor",
-                                    ["Add a MIDI-FX processor to this the end of this chain.", "midi_processor.png"]))
+                                    ["Add a MIDI effects processor to this the end of this chain.", "midi_processor.png"]))
 
         if self.chain.is_audio():
             self.list_data.append((self.audiofx_add, None, "Add Audio-FX processor",
-                                    ["Add an audio-FX processor to the end of this chain.", "audio_processor.png"]))
+                                    ["Add an audio effects processor to the end of this chain.", "audio_processor.png"]))
 
         if midi_proc_count > 0:
             self.list_data.append((self.remove_all_midifx, None, "Remove all MIDI-FX",
@@ -99,7 +99,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
         #if self.chain.chain_id:
         self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
-                                ["Save this chain as a snapshot.\n\nThe saved snapshot may loaded or imported into another snapshot.", "snapshot_chains.png"]))
+                                ["Save this chain as a snapshot.\n\nThe saved snapshot may loaded or may be imported into another snapshot.", "snapshot_chains.png"]))
 
         self.list_data.append((None, None, "> Global chain management"))
         self.list_data.append((self.insert_chain, None, "Insert new chain",

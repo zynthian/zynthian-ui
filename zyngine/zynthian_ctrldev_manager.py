@@ -47,7 +47,8 @@ DRIVER_DEVELOPMENT = False
 
 class zynthian_ctrldev_manager():
 
-    ctrldev_dpath = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngine/ctrldev"
+    ctrldev_path_base = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngine"
+    ctrldev_dirnames = ["ctrldev_user", "ctrldev"]
 
     # Function to initialise class
     def __init__(self, state_manager):
@@ -71,24 +72,25 @@ class zynthian_ctrldev_manager():
             self.driver_classes = {}
 
         # Find and load new driver modules
-        for module_path in glob.glob(f"{self.ctrldev_dpath}/*.py"):
-            module_name = Path(module_path).stem
-            if not module_name.startswith("__") and not module_name.startswith("zynthian_ctrldev_base") and module_name not in self.driver_classes:
-                try:
-                    #spec = importlib.util.spec_from_file_location(module_name, module_path)
-                    #module = importlib.util.module_from_spec(spec)
-                    #spec.loader.exec_module(module)
-                    module = importlib.import_module(f"zyngine.ctrldev.{module_name}")
-                    if reload_modules:
-                        module = importlib.reload(module)
-                except Exception as e:
-                    logging.error(f"Can't load ctrldev driver module '{module_name}' => {e}")
-                    continue
-                try:
-                    self.driver_classes[module_name] = getattr(module, module_name)
-                    logging.debug(f"Loaded ctrldev driver class '{module_name}'")
-                except:
-                    logging.error(f"Ctrldev driver class '{module_name}' not found in module '{module_name}'")
+        for dirname in self.ctrldev_dirnames:
+            for module_path in glob.glob(f"{self.ctrldev_path_base}/{dirname}/*.py"):
+                module_name = Path(module_path).stem
+                if not module_name.startswith("__") and not module_name.startswith("zynthian_ctrldev_base") and module_name not in self.driver_classes:
+                    try:
+                        #spec = importlib.util.spec_from_file_location(module_name, module_path)
+                        #module = importlib.util.module_from_spec(spec)
+                        #spec.loader.exec_module(module)
+                        module = importlib.import_module(f"zyngine.{dirname}.{module_name}")
+                        if reload_modules:
+                            module = importlib.reload(module)
+                    except Exception as e:
+                        logging.error(f"Can't load ctrldev driver module '{module_name}' => {e}")
+                        continue
+                    try:
+                        self.driver_classes[module_name] = getattr(module, module_name)
+                        logging.debug(f"Loaded ctrldev driver class '{module_name}'")
+                    except:
+                        logging.error(f"Ctrldev driver class '{module_name}' not found in module '{module_name}'")
 
         # Regenerate available drivers dict
         for module_name, driver_class in self.driver_classes.items():
