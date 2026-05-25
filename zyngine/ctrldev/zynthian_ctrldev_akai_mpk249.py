@@ -155,9 +155,7 @@ MASTER_CC_BY_CTRL_BANK = {
 CTRL_BANK_A_SWITCH_CCS = [28, 29, 30, 31, 35, 41, 46, 47]
 CTRL_BANK_B_SWITCH_CCS = [75, 76, 77, 78, 79, 80, 81, 82]
 CTRL_BANK_C_SWITCH_CCS = [106, 107, 108, 109, 110, 111, 112, 113]
-# Bank A switch 8: "mute" = main bus mute (APC-style); "fade_stop" = performer layout.
-# Performer: fade/stop-restore on Bank A switch 8; main mute on Bank B switch 8.
-# Default "mute" (APC-style); use "fade_stop" for performer layout (fade on A, main mute on B).
+# Bank A switch 8: "mute" = main bus mute (APC-style, default); "fade_stop" = fade on A, main mute on B.
 CTRL_BANK_A_SWITCH8_ACTION = "mute"
 # Bank C switch 8: "record" = main chain record arm; "panic_stop" = instant all-MIDI stop.
 CTRL_BANK_C_SWITCH8_ACTION = "panic_stop"
