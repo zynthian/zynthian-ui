@@ -5,10 +5,7 @@
 #
 # Zynthian Control Device Driver for "Akai MPK249"
 #
-# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
-#                         Brian Walton <brian@riban.co.uk>
-#
-# Copyright (C) 2026 MPK249 driver contributions
+# Copyright (C) 2026 Nathan Foster <devel@forbesfoster.com>
 #
 # ******************************************************************************
 #
@@ -41,205 +38,44 @@ from zyngine.ctrldev.zynthian_ctrldev_base import (
 from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 
 # ------------------------------------------------------------------------------
-# MIDI routing
+# Driver overview (Generic preset #25 on MPK249)
 # ------------------------------------------------------------------------------
-# Leave False so note/CC data still reaches chains unless this handler consumes
-# the message (returns True). Keys on one channel and pads on another is the
-# usual factory layout.
+# Keys pass through unless this handler consumes the message (returns True).
+# Pads on MIDI ch 10 (wire nibble 9) are unrouted from chains — see unroute_from_chains.
 #
-# If your MPK preset puts drums on channel 10 and the keybed on channel 1, you
-# are fine. If everything shares one channel, either reprogram the MPK or set
-# a narrow unroute mask (see zynthian_ctrldev_base.unroute_from_chains).
-# ------------------------------------------------------------------------------
-#
-# Generic preset notes (MPK249):
-# - Pads/faders/knobs/Bank-B sends are mapped for Generic-style layouts in this
-#   driver (single pad channel + distinct pad notes + custom CC maps).
-# - Control bank switches: A = mute; B = solo on strips 1–7, switch 8 = toggle:
-#   CC 127 starts main fade-out; CC 0 stops all launcher clips + restores saved
-#   mixer snapshot; C = record arm per visible strip (switch 8 → chain 0).
-# - Transport in MMC/MIDI mode works for Play/Stop/Record via realtime/MMC.
-# - Loop is not emitted as a distinct MMC/realtime message on tested hardware, so
-#   Loop requires Transport Type=CC to trigger TRANSPORT_LOOP_CC.
+# - Requires MPK Generic preset (#25): pads on ch 10, CC maps below.
+# - Bank A: solo 1–7; switch 8 = fade/end-set or main mute (CTRL_BANK_A_SWITCH8_ACTION).
+# - Bank B: mute 1–7; reverb-send knobs; switch 8 = main mute or fade/end-set.
+# - Bank C: record arm 1–7; switch 8 = record arm or MIDI panic (CTRL_BANK_C_SWITCH8_ACTION).
+# - Transport: Play/Stop/Record via CC / realtime / MMC.
+# - Rewind = clear active loop; Fast-forward = clone loop; Loop = ZynPad / pattern editor.
+# - Panic (C switch 8): all_sounds_off + all_notes_off; every press; no level restore.
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+# Device profile (MPK249; MPK261/MPK225 may differ sysex_product_id + dev_ids)
+# ------------------------------------------------------------------------------
+# SysEx pad RAM: https://practicalusage.com/akai-mpk261-one-more-thing/
+MPK249_SYSEX_PRODUCT_ID = 0x24  # MPK261 = 0x25
+
+# ------------------------------------------------------------------------------
+# MIDI channels & pad routing
+# ------------------------------------------------------------------------------
 # Wire-format channel nibble (0 = MIDI ch 1, 9 = MIDI ch 10).
 CTRL_MIDI_CH = 0
 CTRL_BANK_B_MIDI_CH = 1
 CTRL_BANK_C_MIDI_CH = 2
 PAD_MIDI_CH = 9
-# How pad banks are distinguished:
-# - "channel": banks A–D use different MIDI channels (legacy Preset 1–style).
-#   Bank index comes from the channel nibble; PAD_NOTE_BANK is one 4×4 grid shared
-#   by all banks (same notes on different channels).
-# - "single_channel": all pads use PAD_MIDI_CH; each physical pad/bank combination
-#   must have a unique MIDI note (factory Generic / MIDI Out–style). Bank index is
-#   derived from the note; PAD_NOTE_BANKS lists one 4×4 grid per bank A–D.
-PAD_BANK_MODE = "single_channel"
-# Some MPK presets send pads on a different channel than expected. When True,
-# mapped pad notes are accepted on any channel as a fallback.
-PAD_ACCEPT_MAPPED_NOTES_ANY_CH = False
-# Optional bank-by-channel mapping for presets where pad banks A/B/C/D reuse
-# notes but transmit on different channels (PAD_BANK_MODE == "channel" only).
-# Wire-format channels: MIDI ch2..5 => 1..4
-PAD_BANK_CH_FIRST = 1
-PAD_BANK_CH_COUNT = 4
+PAD_BANK_COUNT = 4
 PAD_BANK_COL_STRIDE = 4
 PAD_BANK_ROW_STRIDE = 4
-# Bank layout over an 8x8 logical matrix (bank order A,B,C,D):
-#   Top row:    A, C
-#   Bottom row: B, D
-#   A: cols 1-4, rows 1-4
-#   B: cols 1-4, rows 5-8
-#   C: cols 5-8, rows 1-4
-#   D: cols 5-8, rows 5-8
+# 8×8 logical matrix — banks A,B,C,D: top row A,C; bottom row B,D.
 PAD_BANK_LAYOUT_COLS = 2
-# Pad LED feedback: either MPK2 RAM writes (SysEx) or note-on velocity (preset-dependent).
-# SysEx layout from community reverse-engineering (MPK261); MPK249 uses product id 0x24
-# instead of 0x25. See https://practicalusage.com/akai-mpk261-one-more-thing/
-PAD_LED_USE_SYSEX = True
-# Mirror note-based LED updates to all banks even when SysEx is enabled.
-# Some MPK presets keep per-bank pad LED state only when receiving note-on
-# feedback on each bank channel.
-PAD_LED_MIRROR_NOTES_ALL_BANKS = False
-MPK249_SYSEX_PRODUCT_ID = 0x24
-# MPK261_SYSEX_PRODUCT_ID = 0x25
-# Palette indices 0x00–0x0B (not RGB); tune to taste / firmware.
-PAD_SYSEX_COLOR_OFF = 0x00
-# Idle = has pattern but not playing; keep well separated from ACTIVE on the hardware.
-PAD_SYSEX_COLOR_IDLE = 0x03
-PAD_SYSEX_COLOR_ACTIVE = 0x06
-PAD_SYSEX_COLOR_STARTING = 0x05
-PAD_SYSEX_COLOR_STOPPING = 0x04
-# Note-on LED feedback for pad banks B–C–D (and optional mirror on bank A).
-# Many MPK presets map note-on to a small palette; keep idle distinct from active.
-PAD_LED_OFF_VEL = 0
-PAD_LED_IDLE_VEL = 16
-PAD_LED_ACTIVE_VEL = 127
-PAD_LED_STARTING_VEL = 96
-PAD_LED_STOPPING_VEL = 48
-# Dedicated note-feedback velocities for non-A banks (B/C/D). These are kept
-# separate because some presets map low velocities to "off", making idle pads
-# appear dark unless raised. Tune to taste per preset.
-PAD_NON_A_IDLE_VEL = 96
-PAD_NON_A_ACTIVE_VEL = 127
-PAD_NON_A_STARTING_VEL = 112
-PAD_NON_A_STOPPING_VEL = 64
-# For banks B/C/D (note-feedback), choose how "playing" is shown:
-# - "blink": pulse active pads (best distinction on limited note palettes)
-# - "steady": keep active pads steady (no blinking)
-PAD_NON_A_PLAY_MODE = "blink"
-PAD_LED_BLINK_PERIOD_S = 1.0
-# Bank B send feedback mode:
-# - none: no UI focus/refresh side effects (parameter change only)
-# - active_chain: update active chain only, no screen switch (least intrusive)
-# - control_screen: jump to SCREEN_CONTROL for explicit send-page visibility
-CTRL_BANK_B_FEEDBACK_MODE = "none"
-CTRL_BANK_B_AUTOFOCUS_COOLDOWN_S = 0.5
-# Verbose bank/LED routing (uses logging.warning so it shows at default log level).
-PAD_BANK_DEBUG_LOG = False
 
 # ------------------------------------------------------------------------------
-# Control Bank A — faders & pan knobs (VERIFY with Webconf → MIDI log)
+# Pad note maps — Generic preset (rebuild from Webconf → MIDI log if needed)
 # ------------------------------------------------------------------------------
-# None: use Generic layout when PAD_BANK_MODE == "single_channel", else Preset 1.
-# "generic": faders CC 18, 21–27 (MPK2 Generic / MIDI Out style, see alanschrank/MPK249);
-#            knobs in observed order [3, 9, 14, 15, 16, 17, 20, 19].
-#            All eight faders → chain levels.
-# "preset1": faders CC 12–19, last fader = main mix; knobs CC 22–29.
-CTRL_MIXER_LAYOUT = None
-
-def _mpk249_use_generic_mixer_layout():
-    if CTRL_MIXER_LAYOUT == "generic":
-        return True
-    if CTRL_MIXER_LAYOUT == "preset1":
-        return False
-    return PAD_BANK_MODE == "single_channel"
-
-
-if _mpk249_use_generic_mixer_layout():
-    FADER_CCS = [18, 21, 22, 23, 24, 25, 26, 27]
-    # Keep fader 8 as main mix, consistent with Preset 1 behavior.
-    MASTER_FADER_INDEX = 7
-    # Knobs 1..8 in physical order.
-    KNOB_PAN_CCS = [3, 9, 14, 15, 16, 17, 20, 19]
-    # CONTROL BANK B knob CCs for Generic preset (knobs 1..8).
-    CTRL_BANK_B_KNOB_CCS = [52, 53, 54, 55, 57, 58, 59, 60]
-    # Generic encoders behave more reliably as delta from successive absolute-style
-    # values (prevents first-contact jumps from stale internal encoder position).
-    # This preset appears to emit absolute-like values that do not represent a
-    # real hardware pickup point after bank/preset load. "absolute_delta" treats
-    # each message as movement since prior message from that knob CC.
-    # If feel is too fast/slow, tune KNOB_PAN_REL_STEP below.
-    KNOB_PAN_VALUE_MODE = "absolute_delta"
-else:
-    FADER_CCS = [12, 13, 14, 15, 16, 17, 18, 19]
-    MASTER_FADER_INDEX = 7
-    KNOB_PAN_CCS = [22, 23, 24, 25, 26, 27, 28, 29]
-    CTRL_BANK_B_KNOB_CCS = KNOB_PAN_CCS.copy()
-    KNOB_PAN_VALUE_MODE = "absolute"
-
-# Assignable switches (8 per control bank), in physical order 1..8.
-# Generic preset mappings from MIDI log.
-CTRL_BANK_A_SWITCH_CCS = [28, 29, 30, 31, 35, 41, 46, 47]
-CTRL_BANK_B_SWITCH_CCS = [75, 76, 77, 78, 79, 80, 81, 82]
-CTRL_BANK_C_SWITCH_CCS = [106, 107, 108, 109, 110, 111, 112, 113]
-# Bank B switch 8: CC 127 = start main fade; CC 0 = stop clips + restore snapshot.
-# Fade shape: "smoothstep" = classic S-curve (gentle at start and end, faster mid);
-# "linear" = constant dV/dt (old behavior).
-CTRL_BANK_B_FADE_OUT_SECONDS = 10.0
-CTRL_BANK_B_FADE_OUT_TARGET_LEVEL = 0.0
-CTRL_BANK_B_FADE_OUT_CURVE = "smoothstep"
-CTRL_BANK_B_FADE_OUT_TICK_S = 0.03
-# CC 0 restore pipeline (order matters):
-# 1) Stop every launcher cell (loops).
-# 2) POST_STOP_DRAIN — let seq/JACK drain straggling MIDI before killing voices.
-# 3) all_notes_off (+ raw).
-# 4) RESTORE_SETTLE — DSP tail after note-offs.
-# 5) Ramp main + strips back (de-click).
-CTRL_BANK_B_POST_STOP_DRAIN_S = 0.10
-CTRL_BANK_B_RESTORE_SETTLE_S = 0.10
-CTRL_BANK_B_RESTORE_MAIN_RAMP_S = 0.25
-
-CHAIN_PAN_KNOB_COUNT = 7
-KNOB_PAN_MASTER_INDEX = 7
-CTRL_SWITCH_MASTER_INDEX = 7
-# Balance increment per relative encoder "step".
-KNOB_PAN_REL_STEP = 0.02
-# Snap to exact edges when boundary CC values are reached in matching direction.
-KNOB_PAN_EDGE_SNAP = True
-# In absolute mode, ignore the first event for each pan knob to avoid initial
-# pickup jumps from stale hardware encoder state.
-KNOB_PAN_IGNORE_FIRST_ABS = True
-MASTER_CC = None
-MASTER_CC_BY_CTRL_BANK = {
-    CTRL_MIDI_CH: MASTER_CC,
-    CTRL_BANK_B_MIDI_CH: None,
-    CTRL_BANK_C_MIDI_CH: None,
-}
-CTRL_BANK_B_SEND_CHAIN_TITLE = "Reverb"
-
-# Pan/balance on CTRL_MIDI_CH follows KNOB_PAN_CCS in physical knob order:
-# indices 0..6 map to visible chains; index KNOB_PAN_MASTER_INDEX maps to main balance.
-# Absolute 0–127 ↔ balance −1..+1 via cc/64−1.
-# Do not send pan CC back in update_mixer_strip: many controllers echo or move
-# encoders, which causes wrong LEDs and “snap left” on first touch.
-
-# Pad grid for bank A only (row-major, top row first). Each value is the MIDI
-# note number emitted by that pad. Used when PAD_BANK_MODE == "channel"
-# (same 16 notes on each pad channel). Rebuild from the MIDI log if launching fails.
-PAD_NOTE_BANK = [
-    [81, 83, 84, 86],
-    [74, 76, 77, 79],
-    [67, 69, 71, 72],
-    [60, 62, 64, 65],
-]
-
-# One 4×4 grid per hardware pad bank A–D when PAD_BANK_MODE == "single_channel".
-# Rows are top-to-bottom on the hardware (row 0 = top row of pads); columns left-to-right.
-# Factory-style chromatic layout (Pad 1 = bottom-left = C2, Pad 16 = top-right = D#3,
-# then each bank continues upward by semitones): Bank A 36–51, B 52–67, C 68–83, D 84–99.
-# If your preset differs, confirm with Admin → Webconf → MIDI log.
+# One 4×4 MIDI note grid per hardware pad bank A–D (all on PAD_MIDI_CH).
 PAD_NOTE_BANKS = (
     [
         [48, 49, 50, 51],
@@ -267,38 +103,99 @@ PAD_NOTE_BANKS = (
     ],
 )
 
-# Optional transport (CC, must be on CTRL_MIDI_CH). Value > 0 triggers once.
-# REW/FF default to navigation actions that are broadly useful in arranger/editor.
+# ------------------------------------------------------------------------------
+# Pad LED feedback
+# ------------------------------------------------------------------------------
+PAD_LED_USE_SYSEX = True
+PAD_LED_MIRROR_NOTES_ALL_BANKS = False
+PAD_SYSEX_COLOR_OFF = 0x00
+PAD_SYSEX_COLOR_IDLE = 0x03
+PAD_SYSEX_COLOR_ACTIVE = 0x06
+PAD_SYSEX_COLOR_STARTING = 0x05
+PAD_SYSEX_COLOR_STOPPING = 0x04
+PAD_LED_OFF_VEL = 0
+PAD_LED_IDLE_VEL = 16
+PAD_LED_ACTIVE_VEL = 127
+PAD_LED_STARTING_VEL = 96
+PAD_LED_STOPPING_VEL = 48
+PAD_NON_A_IDLE_VEL = 96
+PAD_NON_A_ACTIVE_VEL = 127
+PAD_NON_A_STARTING_VEL = 112
+PAD_NON_A_STOPPING_VEL = 64
+PAD_NON_A_PLAY_MODE = "blink"
+PAD_LED_BLINK_PERIOD_S = 1.0
+
+# ------------------------------------------------------------------------------
+# Mixer CC maps — Generic preset (verify with Webconf → MIDI log)
+# ------------------------------------------------------------------------------
+FADER_CCS = [18, 21, 22, 23, 24, 25, 26, 27]
+MASTER_FADER_INDEX = 7
+KNOB_PAN_CCS = [3, 9, 14, 15, 16, 17, 20, 19]
+CTRL_BANK_B_KNOB_CCS = [52, 53, 54, 55, 57, 58, 59, 60]
+KNOB_PAN_VALUE_MODE = "absolute_delta"
+
+# Mixer behavior tuning (feel — largely preset-independent)
+CHAIN_PAN_KNOB_COUNT = 7
+KNOB_PAN_MASTER_INDEX = 7
+CTRL_SWITCH_MASTER_INDEX = 7
+KNOB_PAN_REL_STEP = 0.02
+KNOB_PAN_EDGE_SNAP = True
+KNOB_PAN_IGNORE_FIRST_ABS = True
+MASTER_CC = None
+MASTER_CC_BY_CTRL_BANK = {
+    CTRL_MIDI_CH: MASTER_CC,
+    CTRL_BANK_B_MIDI_CH: None,
+    CTRL_BANK_C_MIDI_CH: None,
+}
+# Do not echo pan CC in update_mixer_strip (encoder pickup / LED snap issues).
+
+# ------------------------------------------------------------------------------
+# Control banks A / B / C (hardware CC maps + switch-8 actions)
+# ------------------------------------------------------------------------------
+CTRL_BANK_A_SWITCH_CCS = [28, 29, 30, 31, 35, 41, 46, 47]
+CTRL_BANK_B_SWITCH_CCS = [75, 76, 77, 78, 79, 80, 81, 82]
+CTRL_BANK_C_SWITCH_CCS = [106, 107, 108, 109, 110, 111, 112, 113]
+# Bank A switch 8: "mute" = main bus mute (APC-style); "fade_stop" = performer layout.
+# Performer: fade/stop-restore on Bank A switch 8; main mute on Bank B switch 8.
+# Default "mute" (APC-style); use "fade_stop" for performer layout (fade on A, main mute on B).
+CTRL_BANK_A_SWITCH8_ACTION = "mute"
+# Bank C switch 8: "record" = main chain record arm; "panic_stop" = instant all-MIDI stop.
+CTRL_BANK_C_SWITCH8_ACTION = "panic_stop"
+CTRL_BANK_B_SEND_CHAIN_TITLE = "Reverb"
+CTRL_BANK_B_FEEDBACK_MODE = "none"
+CTRL_BANK_B_AUTOFOCUS_COOLDOWN_S = 0.5
+CTRL_BANK_B_FADE_OUT_SECONDS = 10.0
+CTRL_BANK_B_FADE_OUT_TARGET_LEVEL = 0.0
+CTRL_BANK_B_FADE_OUT_CURVE = "smoothstep"
+CTRL_BANK_B_FADE_OUT_TICK_S = 0.03
+CTRL_BANK_B_POST_STOP_DRAIN_S = 0.10
+CTRL_BANK_B_RESTORE_SETTLE_S = 0.10
+CTRL_BANK_B_RESTORE_MAIN_RAMP_S = 0.25
+# Brief drain after stopping sequences before note-off (panic only; no mixer restore).
+CTRL_PANIC_STOP_DRAIN_S = 0.05
+
+# ------------------------------------------------------------------------------
+# Transport (REW/FF = loop edit; Loop button = GUI screens only)
+# ------------------------------------------------------------------------------
 TRANSPORT_PLAY_CC = 118
 TRANSPORT_STOP_CC = 117
 TRANSPORT_REC_CC = 119
 TRANSPORT_REW_CC = 115
 TRANSPORT_FF_CC = 116
 TRANSPORT_LOOP_CC = 114
-# Optional quick-clear command (CC on CTRL_MIDI_CH): clears pattern *events*
-# (notes/CC) for the active chain's clip without changing sequence length or layout.
-TRANSPORT_CLEAR_ACTIVE_LOOP_CC = TRANSPORT_REW_CC
-TRANSPORT_REW_CUIA = "ARROW_LEFT"
-TRANSPORT_FF_CUIA = "ARROW_RIGHT"
-# If True, FF clones active loop cell to the next chain (same phrase),
-# non-destructive: does nothing when destination already has content.
 TRANSPORT_FF_CLONE_NEXT_CHAIN = True
-# If True, cloning from the last visible chain wraps destination to first chain.
 TRANSPORT_FF_CLONE_WRAP_TO_FIRST = True
-# Also accept transport via MIDI Realtime / MMC so Generic presets can work
-# without manually changing transport Type from MMC/MIDI to CC.
 TRANSPORT_ACCEPT_MIDI_REALTIME = True
 TRANSPORT_ACCEPT_MMC = True
-# Optional extra MMC command IDs that should trigger LOOP CUIA when using
-# transport Type MMC/MIDI. Leave empty until identified from MIDI logs.
 TRANSPORT_LOOP_MMC_CMDS = []
-# Debug aid: log unhandled MMC command IDs for one-time discovery.
-TRANSPORT_LOG_UNHANDLED_MMC = True
-# Debug aid: log incoming realtime/MMC transport bytes at warning level.
-TRANSPORT_DEBUG_LOG = False
-# No global "TOGGLE_LOOP" CUIA is defined across all contexts; choose one that
-# matches your workflow (e.g. a screen navigation action) or leave None.
 TRANSPORT_LOOP_CUIA = "TOGGLE_PATTERN_EDITOR_ZYNPAD"
+
+# ------------------------------------------------------------------------------
+# Debug
+# ------------------------------------------------------------------------------
+PAD_BANK_DEBUG_LOG = False
+TRANSPORT_LOG_UNHANDLED_MMC = False
+TRANSPORT_DEBUG_LOG = False
 
 
 class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
@@ -308,17 +205,17 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         "MPK249 IN 2",
         "MPK249 IN 3",
         "MPK249 IN 4",
-        "MPK249 IN3",
     ]
     driver_name = "Akai MPK249"
-    driver_description = "MPK249 — mixer, pan, zynpad; keys pass through"
+    driver_description = (
+        "MPK249 Generic preset — zynpad, mixer, pan, solo/mute banks, fade & panic"
+    )
     # Unroute MIDI channel 10 (wire channel nibble 9) from direct chain note
     # passthrough so pad hits only drive zynpad/loop actions.
     # Bit 9 set => 0b0000001000000000
     unroute_from_chains = 0b0000001000000000
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self._pad_note_to_rc = {}
         self._pad_note_to_brc = {}
         self._pan_abs_seen_ccs = set()
         self._pan_last_cc_val = {}
@@ -328,11 +225,15 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         self._blink_timer = None
         self._blink_stop = threading.Event()
         self._blink_phase = False
-        self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_CH_COUNT)}
+        self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_COUNT)}
         self._last_ctrl_bank_b_focus_ts = 0.0
         self._fade_out_cancel = None
         self._fade_out_thread = None
+        self._bank_b_sw8_restore_cancel = None
+        self._bank_b_sw8_restore_thread = None
         self._bank_b_sw8_snapshot = None
+        self._midi_panic_thread = None
+        self._last_midi_panic_ts = 0.0
         super().__init__(state_manager, idev_in, idev_out)
         self._active_pad_bank = 0
         self.cols = 4
@@ -347,16 +248,21 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
 
     def init(self):
         super().init()
-        logging.info(
-            "MPK249 PAD_BANK_MODE=%s (set single_channel + PAD_NOTE_BANKS for Generic/MIDI Out)",
-            PAD_BANK_MODE,
+        bank_b_sw8 = (
+            "main_mute"
+            if CTRL_BANK_A_SWITCH8_ACTION == "fade_stop"
+            else "fade_stop"
         )
         logging.info(
-            "MPK249 CTRL_MIXER_LAYOUT=%s generic=%s FADER_CCS=%s KNOB_PAN_CCS=%s "
+            "MPK249 Bank A switch 8=%s Bank B switch 8=%s Bank C switch 8=%s",
+            CTRL_BANK_A_SWITCH8_ACTION,
+            bank_b_sw8,
+            CTRL_BANK_C_SWITCH8_ACTION,
+        )
+        logging.info(
+            "MPK249 Generic preset FADER_CCS=%s KNOB_PAN_CCS=%s "
             "BANK_B_KNOB_CCS=%s A_SWITCH_CCS=%s B_SWITCH_CCS=%s C_SWITCH_CCS=%s "
             "KNOB_PAN_VALUE_MODE=%s MASTER_FADER_INDEX=%s",
-            CTRL_MIXER_LAYOUT,
-            _mpk249_use_generic_mixer_layout(),
             FADER_CCS,
             KNOB_PAN_CCS,
             CTRL_BANK_B_KNOB_CCS,
@@ -374,12 +280,21 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         )
 
     def end(self):
+        if self._bank_b_sw8_restore_cancel is not None:
+            self._bank_b_sw8_restore_cancel.set()
+            self._bank_b_sw8_restore_cancel = None
+        if self._bank_b_sw8_restore_thread is not None and self._bank_b_sw8_restore_thread.is_alive():
+            self._bank_b_sw8_restore_thread.join(timeout=0.5)
+            self._bank_b_sw8_restore_thread = None
         if self._fade_out_cancel is not None:
             self._fade_out_cancel.set()
             self._fade_out_cancel = None
         if self._fade_out_thread is not None and self._fade_out_thread.is_alive():
             self._fade_out_thread.join(timeout=0.3)
             self._fade_out_thread = None
+        if self._midi_panic_thread is not None and self._midi_panic_thread.is_alive():
+            self._midi_panic_thread.join(timeout=0.5)
+            self._midi_panic_thread = None
         self._stop_blink_timer()
         zynsigman.unregister(
             zynsigman.S_GUI,
@@ -504,55 +419,45 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
     def _pad_note_for_cell(self, bank, row, col):
         """MIDI note used for LED feedback for this logical bank/cell."""
 
-        if PAD_BANK_MODE == "single_channel":
-            return PAD_NOTE_BANKS[bank][row][col]
-        return PAD_NOTE_BANK[row][col]
+        return PAD_NOTE_BANKS[bank][row][col]
 
     def _pad_led_out_channel(self):
         """Wire-format channel nibble for pad LED note-on feedback."""
 
-        if PAD_BANK_MODE == "single_channel":
-            return PAD_MIDI_CH
-        return PAD_BANK_CH_FIRST + self._active_pad_bank
+        return PAD_MIDI_CH
 
     def _build_pad_map(self):
-        self._pad_note_to_rc.clear()
         self._pad_note_to_brc.clear()
-        if PAD_BANK_MODE == "single_channel":
-            if len(PAD_NOTE_BANKS) != PAD_BANK_CH_COUNT:
-                logging.warning(
-                    "MPK249 PAD_NOTE_BANKS must have %s banks (got %s)",
-                    PAD_BANK_CH_COUNT,
-                    len(PAD_NOTE_BANKS),
-                )
-            seen = {}
-            for bank, grid in enumerate(PAD_NOTE_BANKS):
-                for r, row in enumerate(grid):
-                    for c, note in enumerate(row):
-                        if note in seen:
-                            logging.warning(
-                                "MPK249 PAD_NOTE_BANKS: duplicate note %s at "
-                                "bank %s cell %s,%s and %s",
-                                note,
-                                bank,
-                                r,
-                                c,
-                                seen[note],
-                            )
-                        seen[note] = (bank, r, c)
-                        self._pad_note_to_brc[note] = (bank, r, c)
-            return
-        for r, row in enumerate(PAD_NOTE_BANK):
-            for c, note in enumerate(row):
-                self._pad_note_to_rc[note] = (r, c)
+        if len(PAD_NOTE_BANKS) != PAD_BANK_COUNT:
+            logging.warning(
+                "MPK249 PAD_NOTE_BANKS must have %s banks (got %s)",
+                PAD_BANK_COUNT,
+                len(PAD_NOTE_BANKS),
+            )
+        seen = {}
+        for bank, grid in enumerate(PAD_NOTE_BANKS):
+            for r, row in enumerate(grid):
+                for c, note in enumerate(row):
+                    if note in seen:
+                        logging.warning(
+                            "MPK249 PAD_NOTE_BANKS: duplicate note %s at "
+                            "bank %s cell %s,%s and %s",
+                            note,
+                            bank,
+                            r,
+                            c,
+                            seen[note],
+                        )
+                    seen[note] = (bank, r, c)
+                    self._pad_note_to_brc[note] = (bank, r, c)
 
     @staticmethod
     def _mpk249_pad_ram_bytes(row, col):
         """Return two address bytes (each ≤0x7F) for pad RAM color slot.
 
         Community docs list SysEx pad RAM from the bottom row of the hardware
-        (0x0A7C–0x0A7F) then upward through 0x0B00–0x0B0B.  PAD_NOTE_BANK uses
-        row 0 as the top row (highest MIDI notes).  Map logical rows without
+        (0x0A7C–0x0A7F) then upward through 0x0B00–0x0B0B.  Row 0 is the top pad
+        row (highest MIDI notes).  Map logical rows without
         flipping column order.
         """
 
@@ -752,7 +657,10 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         return snap
 
     def _ramp_main_mix_level_sync(self, target_level, duration_s):
-        """Raise or lower main mixbus level over ``duration_s`` (smoothstep); blocks."""
+        """Raise or lower main mixbus level over ``duration_s`` (smoothstep).
+
+        Blocks the calling thread; only call from background worker threads.
+        """
 
         mp = self.state_manager.main_mixbus_proc
         if not mp or "level" not in mp.controllers_dict:
@@ -797,6 +705,22 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
             t.join(timeout=0.35)
         self._fade_out_thread = None
 
+    def _bank_b_sw8_join_restore_thread(self):
+        t = self._bank_b_sw8_restore_thread
+        if t is not None and t.is_alive():
+            t.join(timeout=0.6)
+        self._bank_b_sw8_restore_thread = None
+
+    def _cancel_bank_b_sw8_restore(self):
+        if self._bank_b_sw8_restore_cancel is not None:
+            self._bank_b_sw8_restore_cancel.set()
+        self._bank_b_sw8_join_restore_thread()
+
+    def _cancel_bank_b_sw8_fade(self):
+        if self._fade_out_cancel is not None:
+            self._fade_out_cancel.set()
+        self._bank_b_sw8_join_fade_thread()
+
     @staticmethod
     def _fade_out_shape(t_linear):
         """Map linear time 0..1 to fade progress 0..1. smoothstep = S-curve (Perlin)."""
@@ -820,46 +744,135 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         except Exception as ex:
             logging.warning(f"MPK249 stop all sequences: {ex}")
 
+    def _run_midi_panic(self):
+        """Instant stop: transport, all launcher cells, MIDI panic (no fade or level restore)."""
+
+        try:
+            if self._fade_out_cancel is not None:
+                self._fade_out_cancel.set()
+            self._cancel_bank_b_sw8_fade()
+            self._cancel_bank_b_sw8_restore()
+            self._bank_b_sw8_snapshot = None
+            self._stop_all_launcher_sequences()
+            time.sleep(max(0.0, float(CTRL_PANIC_STOP_DRAIN_S)))
+            try:
+                # CC 120 All Sound Off — cuts sustained/release tails, not just note-off.
+                self.state_manager.all_sounds_off()
+                self.state_manager.all_notes_off()
+                self.state_manager.raw_all_notes_off()
+            except Exception:
+                pass
+            try:
+                self.zynseq.refresh_state(send=True)
+            except Exception:
+                pass
+            try:
+                self.refresh()
+            except Exception:
+                pass
+        except Exception as ex:
+            logging.warning(f"MPK249 MIDI panic: {ex}")
+
+    def _handle_bank_c_switch8_panic(self):
+        """Bank C switch 8 — every physical press (toggle sends alternating 127/0)."""
+
+        now = time.monotonic()
+        if now - self._last_midi_panic_ts < 0.2:
+            return True
+        self._last_midi_panic_ts = now
+        self._start_midi_panic()
+        return True
+
+    def _start_midi_panic(self):
+        """Run full MIDI panic off the MIDI input thread."""
+
+        t = self._midi_panic_thread
+        if t is not None and t.is_alive():
+            t.join(timeout=0.15)
+
+        def _run():
+            try:
+                self._run_midi_panic()
+            finally:
+                self._midi_panic_thread = None
+
+        self._midi_panic_thread = threading.Thread(
+            target=_run, daemon=True, name="MPK249-midi-panic"
+        )
+        self._midi_panic_thread.start()
+
+    def _run_bank_b_switch8_restore(self, snap, cancel):
+        """Stop clips, drain MIDI, restore mixer snapshot (background thread)."""
+
+        try:
+            self._cancel_bank_b_sw8_fade()
+            if cancel.is_set():
+                return
+            self._stop_all_launcher_sequences()
+            if cancel.is_set():
+                return
+            time.sleep(max(0.0, float(CTRL_BANK_B_POST_STOP_DRAIN_S)))
+            if cancel.is_set():
+                return
+            try:
+                self.state_manager.all_notes_off()
+                self.state_manager.raw_all_notes_off()
+            except Exception:
+                pass
+            if cancel.is_set():
+                return
+            time.sleep(max(0.0, float(CTRL_BANK_B_RESTORE_SETTLE_S)))
+            if cancel.is_set():
+                return
+            self._restore_mixer_levels_after_fade_declick(snap)
+            if cancel.is_set():
+                return
+            try:
+                self.zynseq.refresh_state(send=True)
+            except Exception as ex:
+                logging.warning(f"MPK249 switch8 off refresh_state: {ex}")
+            self.refresh()
+        except Exception as ex:
+            logging.warning(f"MPK249 switch8 restore: {ex}")
+
+    def _start_bank_b_switch8_restore_thread(self, snap):
+        """Run stop/restore pipeline off the MIDI input thread."""
+
+        self._cancel_bank_b_sw8_restore()
+        cancel = threading.Event()
+        self._bank_b_sw8_restore_cancel = cancel
+
+        def _run():
+            try:
+                self._run_bank_b_switch8_restore(snap, cancel)
+            finally:
+                if self._bank_b_sw8_restore_cancel is cancel:
+                    self._bank_b_sw8_restore_cancel = None
+
+        self._bank_b_sw8_restore_thread = threading.Thread(
+            target=_run, daemon=True, name="MPK249-bankB-sw8-restore"
+        )
+        self._bank_b_sw8_restore_thread.start()
+
     def _handle_bank_b_switch8(self, ccval):
         """Switch 8 toggle: 127 = snapshot + main fade; 0 = stop clips + restore levels."""
 
         if ccval > 0:
+            self._cancel_bank_b_sw8_restore()
             self._bank_b_sw8_snapshot = self._snapshot_mixer_levels_for_bank_b_sw8()
             self._start_main_mix_fade_thread()
             return
 
-        if self._fade_out_cancel is not None:
-            self._fade_out_cancel.set()
-            self._bank_b_sw8_join_fade_thread()
         snap = self._bank_b_sw8_snapshot
         self._bank_b_sw8_snapshot = None
-        self._stop_all_launcher_sequences()
-        try:
-            time.sleep(max(0.0, float(CTRL_BANK_B_POST_STOP_DRAIN_S)))
-        except Exception:
-            pass
-        try:
-            self.state_manager.all_notes_off()
-            self.state_manager.raw_all_notes_off()
-        except Exception:
-            pass
-        try:
-            time.sleep(max(0.0, float(CTRL_BANK_B_RESTORE_SETTLE_S)))
-        except Exception:
-            pass
-        self._restore_mixer_levels_after_fade_declick(snap)
-        try:
-            self.zynseq.refresh_state(send=True)
-        except Exception as ex:
-            logging.warning(f"MPK249 switch8 off refresh_state: {ex}")
-        self.refresh()
+        if self._fade_out_cancel is not None:
+            self._fade_out_cancel.set()
+        self._start_bank_b_switch8_restore_thread(snap)
 
     def _start_main_mix_fade_thread(self):
         """Background main-mix fade (S-curve or linear); cancel via CC 0 or new CC 127."""
 
-        if self._fade_out_cancel is not None:
-            self._fade_out_cancel.set()
-            self._bank_b_sw8_join_fade_thread()
+        self._cancel_bank_b_sw8_fade()
         cancel = threading.Event()
         self._fade_out_cancel = cancel
 
@@ -981,7 +994,12 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 self._set_strip_balance_from_cc(pos, ccval, ccnum)
                 return True
 
-        if self._handle_strip_switch_cc(ccnum, ccval, "mute", CTRL_BANK_A_SWITCH_CCS):
+        if ccnum == CTRL_BANK_A_SWITCH_CCS[CTRL_SWITCH_MASTER_INDEX]:
+            if CTRL_BANK_A_SWITCH8_ACTION == "fade_stop":
+                self._handle_bank_b_switch8(ccval)
+                return True
+
+        if self._handle_strip_switch_cc(ccnum, ccval, "solo", CTRL_BANK_A_SWITCH_CCS):
             return True
 
         if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
@@ -993,14 +1011,8 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         if TRANSPORT_REC_CC is not None and ccnum == TRANSPORT_REC_CC and ccval > 0:
             self.state_manager.send_cuia("TOGGLE_RECORD")
             return True
-        if (
-            TRANSPORT_CLEAR_ACTIVE_LOOP_CC is not None
-            and ccnum == TRANSPORT_CLEAR_ACTIVE_LOOP_CC
-            and ccval > 0
-        ):
-            self._clear_active_loop_sequence()
-            return True
         if TRANSPORT_REW_CC is not None and ccnum == TRANSPORT_REW_CC and ccval > 0:
+            self._clear_active_loop_sequence()
             return True
         if TRANSPORT_FF_CC is not None and ccnum == TRANSPORT_FF_CC and ccval > 0:
             if TRANSPORT_FF_CLONE_NEXT_CHAIN:
@@ -1035,8 +1047,8 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         Mapping:
         - Knobs 1..7  => send level to mixbus named CTRL_BANK_B_SEND_CHAIN_TITLE
         - Knob 8      => return level of that mixbus chain
-        - Switches 1..7 => solo for visible chains
-        - Switch 8    => 127: main fade; 0: stop clips + restore snapshot
+        - Switches 1..7 => mute for visible chains
+        - Switch 8    => main mute, or fade/end-set when CTRL_BANK_A_SWITCH8_ACTION is mute
         - Transport   => mirrored from BANK A
         """
 
@@ -1114,13 +1126,19 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 return False
 
         if ccnum == CTRL_BANK_B_SWITCH_CCS[CTRL_SWITCH_MASTER_INDEX]:
-            self._handle_bank_b_switch8(ccval)
-            return True
+            if CTRL_BANK_A_SWITCH8_ACTION == "fade_stop":
+                if self._handle_strip_switch_cc(
+                    ccnum, ccval, "mute", CTRL_BANK_B_SWITCH_CCS
+                ):
+                    return True
+            else:
+                self._handle_bank_b_switch8(ccval)
+                return True
 
         if self._handle_strip_switch_cc(
             ccnum,
             ccval,
-            "solo",
+            "mute",
             CTRL_BANK_B_SWITCH_CCS[:CTRL_SWITCH_MASTER_INDEX],
         ):
             return True
@@ -1137,12 +1155,19 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         return False
 
     def _handle_control_bank_c_cc(self, ccnum, ccval):
-        """CONTROL BANK C: record arm per strip (switch 8 = same main target as A/B)."""
+        """CONTROL BANK C: record arm 1–7; switch 8 record or MIDI panic (every press)."""
 
-        if self._handle_strip_switch_cc(
-            ccnum, ccval, "record", CTRL_BANK_C_SWITCH_CCS
+        if (
+            CTRL_BANK_C_SWITCH8_ACTION == "panic_stop"
+            and ccnum == CTRL_BANK_C_SWITCH_CCS[CTRL_SWITCH_MASTER_INDEX]
         ):
-            return True
+            return self._handle_bank_c_switch8_panic()
+
+        if CTRL_BANK_C_SWITCH8_ACTION == "record":
+            if self._handle_strip_switch_cc(
+                ccnum, ccval, "record", CTRL_BANK_C_SWITCH_CCS
+            ):
+                return True
 
         if TRANSPORT_PLAY_CC is not None and ccnum == TRANSPORT_PLAY_CC and ccval > 0:
             self.state_manager.send_cuia("TOGGLE_PLAY")
@@ -1371,11 +1396,11 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         if cmd == 0x06:  # Record Strobe
             self.state_manager.send_cuia("TOGGLE_RECORD")
             return True
-        if cmd == 0x04:  # Fast Forward
+        if cmd == 0x04:  # Fast Forward → clone active loop to next chain slot
             if TRANSPORT_FF_CLONE_NEXT_CHAIN:
                 self._clone_active_loop_to_next_chain()
             return True
-        if cmd == 0x05:  # Rewind
+        if cmd == 0x05:  # Rewind → clear active loop pattern events
             self._clear_active_loop_sequence()
             return True
         if cmd in TRANSPORT_LOOP_MMC_CMDS:
@@ -1475,63 +1500,30 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         # Only clear SysEx pad RAM while Bank A is active. Clearing RAM during
         # B/C/D refresh can blank Bank A's physical colors until A refreshes.
         if PAD_LED_USE_SYSEX and self._active_pad_bank == 0:
-            for row in range(len(PAD_NOTE_BANK)):
-                for col in range(len(PAD_NOTE_BANK[row])):
+            for row in range(len(PAD_NOTE_BANKS[0])):
+                for col in range(len(PAD_NOTE_BANKS[0][row])):
                     self._send_pad_led_sysex(row, col, PAD_SYSEX_COLOR_OFF)
-        # Wipe note-feedback: multi-channel presets use one channel per bank; single-channel
-        # presets use PAD_MIDI_CH with distinct notes per bank/cell.
-        if PAD_BANK_MODE == "single_channel":
-            ch = PAD_MIDI_CH
-            for bank in range(PAD_BANK_CH_COUNT):
-                for row in range(len(PAD_NOTE_BANKS[bank])):
-                    for col in range(len(PAD_NOTE_BANKS[bank][row])):
-                        note = PAD_NOTE_BANKS[bank][row][col]
-                        self._dbg(
-                            f"send_note_off ch={ch} note={note} vel={PAD_LED_OFF_VEL}"
-                        )
-                        lib_zyncore.dev_send_note_on(
-                            self.idev_out, ch, note, PAD_LED_OFF_VEL
-                        )
-        else:
-            for bank in range(PAD_BANK_CH_COUNT):
-                ch = PAD_BANK_CH_FIRST + bank
-                for row in range(len(PAD_NOTE_BANK)):
-                    for col in range(len(PAD_NOTE_BANK[row])):
-                        note = PAD_NOTE_BANK[row][col]
-                        self._dbg(
-                            f"send_note_off ch={ch} note={note} vel={PAD_LED_OFF_VEL}"
-                        )
-                        lib_zyncore.dev_send_note_on(
-                            self.idev_out, ch, note, PAD_LED_OFF_VEL
-                        )
-
-    def _get_pad_bank_from_channel(self, ch):
-        """Return pad bank index from wire-format MIDI channel nibble."""
-
-        bank = ch - PAD_BANK_CH_FIRST
-        if 0 <= bank < PAD_BANK_CH_COUNT:
-            return bank
-        return 0
+        ch = PAD_MIDI_CH
+        for bank in range(PAD_BANK_COUNT):
+            for row in range(len(PAD_NOTE_BANKS[bank])):
+                for col in range(len(PAD_NOTE_BANKS[bank][row])):
+                    note = PAD_NOTE_BANKS[bank][row][col]
+                    self._dbg(
+                        f"send_note_off ch={ch} note={note} vel={PAD_LED_OFF_VEL}"
+                    )
+                    lib_zyncore.dev_send_note_on(
+                        self.idev_out, ch, note, PAD_LED_OFF_VEL
+                    )
 
     def _handle_pad_note(self, note, ch):
-        if PAD_BANK_MODE == "single_channel":
-            brc = self._pad_note_to_brc.get(note)
-            if not brc:
-                return False
-            bank, row, col = brc
-            self._dbg(
-                f"pad_note_in ch={ch} note={note} -> bank={bank} (single_ch map)"
-            )
-        else:
-            pos = self._pad_note_to_rc.get(note)
-            if not pos:
-                return False
-            row, col = pos
-            bank = self._get_pad_bank_from_channel(ch)
-            self._dbg(f"pad_note_in ch={ch} note={note} -> bank={bank}")
+        brc = self._pad_note_to_brc.get(note)
+        if not brc:
+            return False
+        bank, row, col = brc
+        self._dbg(f"pad_note_in ch={ch} note={note} -> bank={bank} row={row} col={col}")
         if bank != self._active_pad_bank:
             # Stop blink state from leaking across banks.
-            self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_CH_COUNT)}
+            self._blink_notes_by_bank = {b: set() for b in range(PAD_BANK_COUNT)}
             self._active_pad_bank = bank
             # Reload persisted LED state for the newly active hardware bank.
             self._dbg(f"bank_switch active_bank={self._active_pad_bank}; refresh()")
@@ -1592,17 +1584,9 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         if evtype == 0x9:
             vel = ev[2] & 0x7F
             note = ev[1] & 0x7F
-            if PAD_BANK_MODE == "single_channel":
-                is_mapped_pad_note = note in self._pad_note_to_brc
-            else:
-                is_mapped_pad_note = note in self._pad_note_to_rc
-            is_pad_input = ch == PAD_MIDI_CH or (
-                PAD_ACCEPT_MAPPED_NOTES_ANY_CH and is_mapped_pad_note
-            )
-            if is_pad_input:
-                self._dbg(f"midi_note_on ch={ch} note={note} vel={vel} pad_input={is_pad_input}")
-                # Always consume pad-channel note events so they don't leak to
-                # other subsystems (e.g. pattern editor keymap handlers).
+            if ch == PAD_MIDI_CH:
+                self._dbg(f"midi_note_on ch={ch} note={note} vel={vel}")
+                # Consume pad notes so they don't leak (e.g. pattern editor keymap).
                 if vel > 0:
                     self._handle_pad_note(note, ch)
                 return True
@@ -1610,11 +1594,7 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
 
         if evtype == 0x8:
             note = ev[1] & 0x7F
-            if PAD_BANK_MODE == "single_channel":
-                is_mapped_pad_note = note in self._pad_note_to_brc
-            else:
-                is_mapped_pad_note = note in self._pad_note_to_rc
-            if ch == PAD_MIDI_CH or (PAD_ACCEPT_MAPPED_NOTES_ANY_CH and is_mapped_pad_note):
+            if ch == PAD_MIDI_CH:
                 return True
             return False
 
