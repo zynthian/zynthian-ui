@@ -131,7 +131,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     restore = state["chains"][chain_id]["restore"]
                 except:
                     restore = True
-                info = "Toggle whether chain parameters will be restored."
+                info = "Toggle whether chain parameters will be restored.\n\nBold SELECT to toggle all."
                 if restore:
                     options[f"\u2612 {label}"] = [f"chains_{chain_id}", [info, None]]
                 else:
@@ -149,7 +149,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                         mixer_list.append(str(proc.id))
                     else:
                         label = f"{proc.name} ({proc.id})"
-                    info = "Toggle whether processor parameters will be restored."
+                    info = "Toggle whether processor parameters will be restored..\n\nBold SELECT to toggle all."
                     if restore:
                         options[f"\u2612   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
                     else:
@@ -173,9 +173,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                 logging.error("Bad ZS3 ID ({}).".format(self.zs3_id))
                 return
             # Invert selection (toggle all elements in list)
-            for chain_id in list(state["chains"]) + list(state["processors"]):
-                self.zyngui.state_manager.toggle_zs3_chain_restore_flag(
-                    self.zs3_id, chain_id)
+            for chain_id in list(state["chains"]):
+                self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "chains", chain_id)
+            for proc_id in list(state["processors"]):
+                self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "processors", proc_id)
 
     def zs3_rename(self):
         title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
