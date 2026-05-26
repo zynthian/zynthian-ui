@@ -2057,11 +2057,11 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         return True
 
     def cuia_copy(self, params=None):
-        self.copy_pattern(params[0])
+        self.copy_pattern(int(params[0]))
         return True
 
     def cuia_paste(self, params=None):
-        self.paste_pattern(params[0])
+        self.paste_pattern(int(params[0]))
         return True
 
     def update_wsleds(self, leds):
