@@ -155,12 +155,18 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     else:
                         options[f"\u2610   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
         options["Toggle All Mixer"][0] = ",".join(mixer_list)
-        options["Store"] = None
-        store_midi_learn = "store_midi_learn" in state
-        if store_midi_learn:
-            options[f"\u2612 MIDI Learn"] = [f"store_midi_learn", store_midi_learn]
+        try:
+            restore_midi_learn = state["restore_midi_learn"]
+        except:
+            restore_midi_learn = None
+        params = ["midi_learn", ["Toggle how MIDI learn (CC binding) is restored.", None]]
+        if restore_midi_learn is None:
+            options["Do not restore MIDI learn"] = params
+        elif restore_midi_learn:
+            options["Restore MIDI learn from this ZS3"] = params
         else:
-            options[f"\u2610 MIDI Learn"] = [f"store_midi_learn", store_midi_learn]
+            options["Restore MIDI learn from default ZS3"] = params
+
         return options
 
     def zs3_restoring_options_select_cb(self, label, param, ct):
@@ -169,8 +175,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             for id in ids:
                 self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "processors", id)
             return
-        elif param == "store_midi_learn":
-            self.zyngui.state_manager.toggle_zs3_store_midi_learn(self.zs3_id)
+        elif param == "midi_learn":
+            self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "midi_learn")
             return
         type, id = param.split("_")
         if ct == "S":
