@@ -155,17 +155,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     else:
                         options[f"\u2610   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
         options["Toggle All Mixer"][0] = ",".join(mixer_list)
-        try:
-            restore_midi_learn = state["restore_midi_learn"]
-        except:
-            restore_midi_learn = None
-        params = ["midi_learn", ["Toggle how MIDI learn (CC binding) is restored.", None]]
-        if restore_midi_learn is None:
-            options["Do not restore MIDI learn"] = params
-        elif restore_midi_learn:
-            options["Restore MIDI learn from this ZS3"] = params
-        else:
-            options["Restore MIDI learn from default ZS3"] = params
+        prefix = "\u2612" if state.get("restore_midi_learn", False) else "\u2610"
+        options[f"{prefix} MIDI learn"] = ["midi_learn", ["Toggle whether MIDI learn (CC binding) is restored.", None]]
 
         return options
 

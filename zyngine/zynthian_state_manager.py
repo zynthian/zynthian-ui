@@ -1341,14 +1341,7 @@ class zynthian_state_manager:
     def toggle_zs3_restore_flag(self, zs3_id, type, id=None):
         zs3_state = self.zs3[zs3_id]
         if type == "midi_learn":
-            val = zs3_state.get("restore_midi_learn", None)
-            if val == None:
-                val = True
-            elif val == True:
-                val = False
-            else:
-                val = None
-            zs3_state["restore_midi_learn"] = val
+            zs3_state["restore_midi_learn"] = not zs3_state.get("restore_midi_learn", False)
             return
         try:
             tstate = zs3_state[type][int(id)]
@@ -1391,7 +1384,7 @@ class zynthian_state_manager:
 
         restored_chains = []
         restored_cc_mapping = []
-        restore_midi_learn = zs3_state.get("restore_midi_learn", None)
+        restore_midi_learn = zs3_id == "zs3-0" or zs3_state.get("restore_midi_learn", False)
         mute_pause = False
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
@@ -1449,16 +1442,11 @@ class zynthian_state_manager:
                             chain.audio_out.append(out)
                 chain.rebuild_graph()
 
-                ml_chain_state = None
                 if restore_midi_learn:
-                    ml_chain_state = chain_state
-                elif restore_midi_learn is None and chain_id in self.zs3["zs3-0"]["chains"]:
-                    ml_chain_state = self.zs3["zs3-0"]["chains"][chain_id]
-                if ml_chain_state:
                     # Current (correct) chain MIDI-learn state
                     self.chain_manager.clean_midi_learn(chain_id)
-                    if "midi_learn" in ml_chain_state:
-                        for low_key, cfg in ml_chain_state["midi_learn"].items():
+                    if "midi_learn" in chain_state:
+                        for low_key, cfg in chain_state["midi_learn"].items():
                             low_key = int(low_key)
                             midi_chan = (low_key >> 8) & 0xff
                             midi_cc = low_key & 0x7f
@@ -1466,8 +1454,8 @@ class zynthian_state_manager:
                                 if proc_id in self.chain_manager.processors:
                                     restored_cc_mapping.append((proc_id, symbol, midi_chan, midi_cc))
                     # Legacy (wrong) chain MIDI-learn state
-                    elif "midi_cc" in ml_chain_state:
-                        for midi_cc, cfg in ml_chain_state["midi_cc"].items():
+                    elif "midi_cc" in chain_state:
+                        for midi_cc, cfg in chain_state["midi_cc"].items():
                             midi_chan = 0xff
                             midi_cc = int(midi_cc) & 0x7f
                             for proc_id, symbol in cfg:
@@ -1510,7 +1498,7 @@ class zynthian_state_manager:
 
         if "midi_capture" in zs3_state:
             self.set_busy_details("restoring midi capture state")
-            self.set_midi_capture_state(zs3_state['midi_capture'], restore_midi_learn=restore_midi_learn!=False)
+            self.set_midi_capture_state(zs3_state['midi_capture'], restore_midi_learn=restore_midi_learn)
 
         if "global" in zs3_state:
             try:
@@ -1609,7 +1597,7 @@ class zynthian_state_manager:
         # Store persistent config
         omit_processors = []
         omit_chains = []
-        restore_midi_learn = None
+        restore_midi_learn = False
         if zs3_id in self.zs3:
             zs3 = self.zs3[zs3_id]
             if "processors" in zs3:
@@ -1620,15 +1608,16 @@ class zynthian_state_manager:
                 for chain_id, chain in zs3["chains"].items():
                     if "restore" in chain and not chain["restore"]:
                         omit_chains.append(chain_id)
-            restore_midi_learn = zs3.get("restore_midi_learn", None)
+            restore_midi_learn = zs3.get("restore_midi_learn", False)
 
         # Initialise zs3
         self.zs3[zs3_id] = {
             "title": title,
             "active_chain": self.chain_manager.active_chain.chain_id,
-            "global": {},
-            "restore_midi_learn": restore_midi_learn
+            "global": {}
         }
+        if restore_midi_learn:
+            self.zs3[zs3_id]["restore_midi_learn"] = True
 
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
