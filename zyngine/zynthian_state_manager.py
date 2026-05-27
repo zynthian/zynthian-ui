@@ -1349,6 +1349,14 @@ class zynthian_state_manager:
         except:
             tstate["restore"] = False
 
+    def toggle_zs3_store_midi_learn(self, zs3_id):
+        if zs3_id == "zs3-0" or zs3_id not in self.zs3:
+            return
+        try:
+            self.zs3[zs3_id].pop("store_midi_learn")
+        except:
+            self.zs3[zs3_id]["store_midi_learn"] = True
+
     def load_zs3(self, zs3_id, autoconnect=True):
         """Restore a ZS3
 
@@ -1437,10 +1445,15 @@ class zynthian_state_manager:
                             chain.audio_out.append(out)
                 chain.rebuild_graph()
 
-                # Current (right) chain MIDI-learn state
+                # Restore CC binding if configured, else use default from zs3-0
+                if "midi_learn" in chain_state or "midi_cc" in chain.state:
+                    ml_chain_state = chain_state
+                else:
+                    ml_chain_state = self.zs3["zs3-0"]
+                # Current (correct) chain MIDI-learn state
                 self.chain_manager.clean_midi_learn(chain_id)
-                if "midi_learn" in chain_state:
-                    for low_key, cfg in chain_state["midi_learn"].items():
+                if "midi_learn" in ml_chain_state:
+                    for low_key, cfg in ml_chain_state["midi_learn"].items():
                         low_key = int(low_key)
                         midi_chan = (low_key >> 8) & 0xff
                         midi_cc = low_key & 0x7f
@@ -1448,8 +1461,8 @@ class zynthian_state_manager:
                             if proc_id in self.chain_manager.processors:
                                 restored_cc_mapping.append((proc_id, symbol, midi_chan, midi_cc))
                 # Legacy (wrong) chain MIDI-learn state
-                elif "midi_cc" in chain_state:
-                    for midi_cc, cfg in chain_state["midi_cc"].items():
+                elif "midi_cc" in ml_chain_state:
+                    for midi_cc, cfg in ml_chain_state["midi_cc"].items():
                         midi_chan = 0xff
                         midi_cc = int(midi_cc) & 0x7f
                         for proc_id, symbol in cfg:
@@ -1601,6 +1614,10 @@ class zynthian_state_manager:
                 for chain_id, chain in zs3["chains"].items():
                     if "restore" in chain and not chain["restore"]:
                         omit_chains.append(chain_id)
+            try:
+                store_midi_learn = zs3_id == "zs3-0" or zs3["store_midi_learn"]
+            except:
+                store_midi_learn = False
 
         # Initialise zs3
         self.zs3[zs3_id] = {
@@ -1608,6 +1625,8 @@ class zynthian_state_manager:
             "active_chain": self.chain_manager.active_chain.chain_id,
             "global": {}
         }
+        if store_midi_learn:
+            self.zs3[zs3_id]["store_midi_learn"] = True
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
             chain_state = {
@@ -1644,12 +1663,13 @@ class zynthian_state_manager:
                             break
                 chain_state["audio_out"].append(out)
             # Add chain MIDI mapping
-            for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
-                if chain_id == (key >> 16) & 0xff:
-                    key_low = key & 0xff7f
-                    chain_state["midi_learn"][key_low] = []
-                    for zctrl in zctrls:
-                        chain_state["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
+            if store_midi_learn:
+                for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
+                    if chain_id == (key >> 16) & 0xff:
+                        key_low = key & 0xff7f
+                        chain_state["midi_learn"][key_low] = []
+                        for zctrl in zctrls:
+                            chain_state["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
             if chain_state:
                 chain_states[chain_id] = chain_state
         if chain_states:
@@ -1676,9 +1696,10 @@ class zynthian_state_manager:
             self.zs3[zs3_id]["processors"] = processor_states
 
         # Add MIDI capture state
-        mcstate = self.get_midi_capture_state()
-        if mcstate:
-            self.zs3[zs3_id]["midi_capture"] = mcstate
+        if store_midi_learn:
+            mcstate = self.get_midi_capture_state()
+            if mcstate:
+                self.zs3[zs3_id]["midi_capture"] = mcstate
 
         # Add global parameters
         self.zs3[zs3_id]["global"]["clock_source"] = zynautoconnect.get_ext_clock_device_name()
