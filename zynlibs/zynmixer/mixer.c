@@ -62,6 +62,8 @@ struct channel_strip {
     jack_port_t* inPortB;  // Jack input port B
     jack_port_t* outPortA; // Jack output port A
     jack_port_t* outPortB; // Jack output port B
+    float gain;            // Current gain 0..10
+    float reqgain;         // Requested gain 0..10
     float level;           // Current fader level 0..1
     float reqlevel;        // Requested fader level 0..1
     float balance;         // Current balance -1..+1
@@ -240,13 +242,13 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         ) {
             // Calculate current (last set) balance
             if (strip->balance > 0.0)
-                curLevelA = strip->level * (1 - strip->balance);
+                curLevelA = strip->gain * strip->level * (1 - strip->balance);
             else
-                curLevelA = strip->level;
+                curLevelA = strip->gain * strip->level;
             if (strip->balance < 0.0)
-                curLevelB = strip->level * (1 + strip->balance);
+                curLevelB = strip->gain * strip->level * (1 + strip->balance);
             else
-                curLevelB = strip->level;
+                curLevelB = strip->gain * strip->level;
 
             // Calculate mute and target level and balance (that we will fade to over this cycle period to avoid abrupt change clicks)
             //!@todo Crossfade send levels
@@ -256,13 +258,14 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 reqLevelB             = 0.0;
             } else {
                 if (strip->reqbalance > 0.0)
-                    reqLevelA = strip->reqlevel * (1 - strip->reqbalance);
+                    reqLevelA = strip->reqgain * strip->reqlevel * (1 - strip->reqbalance);
                 else
-                    reqLevelA = strip->reqlevel;
+                    reqLevelA = strip->reqgain * strip->reqlevel;
                 if (strip->reqbalance < 0.0)
-                    reqLevelB = strip->reqlevel * (1 + strip->reqbalance);
+                    reqLevelB = strip->reqgain * strip->reqlevel * (1 + strip->reqbalance);
                 else
-                    reqLevelB = strip->reqlevel;
+                    reqLevelB = strip->reqgain * strip->reqlevel;
+                strip->gain    = strip->reqgain;
                 strip->level   = strip->reqlevel;
                 strip->balance = strip->reqbalance;
             }
@@ -623,6 +626,20 @@ void end() {
     fprintf(stderr, "zynmixer ended\n");
 }
 
+void setGain(uint8_t channel, float gain) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || gain < 0.0f)
+        return;
+    g_channelStrips[channel]->reqgain = gain;
+    sprintf(g_oscpath, "/mixer/channel/%d/gain", channel);
+    sendOscFloat(g_oscpath, gain);
+}
+
+float getGain(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return 0.0f;
+    return g_channelStrips[channel]->reqgain;
+}
+
 void setLevel(uint8_t channel, float level) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
@@ -842,6 +859,7 @@ void toggleMS(uint8_t channel) {
 }
 
 void reset(uint8_t channel) {
+    setGain(channel, 1.0);
     setLevel(channel, 0.8);
     setBalance(channel, 0.0);
     setMute(channel, 0);
@@ -949,6 +967,8 @@ int8_t addStrip() {
             free(strip);
             return -1;
         }
+        strip->gain       = 1.0;
+        strip->reqgain    = 1.0;
         strip->level      = 0.0;
         strip->reqlevel   = 0.8;
         strip->balance    = 0.0;
@@ -1096,6 +1116,7 @@ int addOscClient(const char* client) {
         fprintf(stderr, "libzynmixer: Added OSC client %d: %s\n", i, client);
         for (int chan = 0; chan < MAX_CHANNELS; ++chan) {
             setBalance(chan, getBalance(chan));
+            setGain(chan, getGain(chan));
             setLevel(chan, getLevel(chan));
             setMono(chan, getMono(chan));
             setMute(chan, getMute(chan));

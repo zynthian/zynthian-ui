@@ -39,8 +39,9 @@ class zynthian_engine_audio_mixer(zynthian_engine):
 
     # Controller Screens
     _ctrl_screens = [
-        ['main', ['level', 'balance', 'mute', 'solo']],
-        ['options', ['mono', 'phase', 'ms', 'record']]
+        ['gain', ['gain', 'level', 'balance', 'mute']],
+        ['toggles', ['solo', 'mono', 'phase', 'ms']],
+        ['recorder', ['record']],
     ]
 
     # Function to initialize library
@@ -58,6 +59,15 @@ class zynthian_engine_audio_mixer(zynthian_engine):
     def get_controllers_dict(self, processor):
         if not processor.controllers_dict:
             processor.controllers_dict = {
+                'gain': zynthian_controller(self, 'gain', {
+                    'is_integer': True,
+                    'value_min': -40,
+                    'value_max': 40,
+                    'value_default': 0,
+                    'labels': [f"{x}dB" for x in range(-40, 41)],
+                    'value': processor.zynmixer.get_gain(processor.mixer_chan),
+                    'processor': processor
+                }),
                 'level': zynthian_controller(self, 'level', {
                     'is_integer': False,
                     'value_max': 1.0,
@@ -175,8 +185,9 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 processor.mixer_chan = 0
                 processor.name = "Main Mixbus"
                 self._ctrl_screens = [
-                    ['main', ['level', 'balance', 'mute', 'solo']],
-                    ['options', ['mono', 'phase', 'ms', 'record']],
+                    ['gain', ['gain', 'level', 'balance', 'mute']],
+                    ['toggles', ['solo', 'mono', 'phase', 'ms']],
+                    ['recorder', ['record']],
                     ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']]
                 ]
         else:
