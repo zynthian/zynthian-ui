@@ -64,7 +64,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value_min': -40,
                     'value_max': 40,
                     'value_default': 0,
-                    'labels': [f"{x}dB" for x in range(-40, 41)],
+                    'labels': ["0dB" if x==0 else f"{x:+d}dB" for x in range(-40, 41)],
                     'value': processor.zynmixer.get_gain(processor.mixer_chan),
                     'processor': processor
                 }),
