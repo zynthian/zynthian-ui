@@ -301,25 +301,25 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         return self.subscreen.cuia_v5_zynpot_switch(params)
 
     def cuia_arrow_up(self, params=None):
-        if self.chain_shown:
-            self.chain_canvas.arrow_up()
-        else:
-            self.subscreen.arrow_up()
+        self.subscreen.arrow_up()
         return True
 
     def cuia_arrow_down(self, params=None):
-        if self.chain_shown:
-            self.chain_canvas.arrow_down()
-        else:
-            self.subscreen.arrow_down()
+        self.subscreen.arrow_down()
         return True
 
     def cuia_arrow_right(self, params=None):
-        self.chain_manager.next_chain()
+        if self.chain_shown:
+            self.chain_canvas.arrow_down()
+        else:
+            self.chain_manager.next_chain()
         return True
 
     def cuia_arrow_left(self, params=None):
-        self.chain_manager.previous_chain()
+        if self.chain_shown:
+            self.chain_canvas.arrow_up()
+        else:
+            self.chain_manager.previous_chain()
         return True
 
     def update_wsleds(self, leds):
