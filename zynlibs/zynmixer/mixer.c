@@ -63,7 +63,6 @@ struct channel_strip {
     jack_port_t* outPortA; // Jack output port A
     jack_port_t* outPortB; // Jack output port B
     float gain;            // Current gain 0..10
-    float reqgain;         // Requested gain 0..10
     float level;           // Current fader level 0..1
     float reqlevel;        // Requested fader level 0..1
     float balance;         // Current balance -1..+1
@@ -242,13 +241,13 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         ) {
             // Calculate current (last set) balance
             if (strip->balance > 0.0)
-                curLevelA = strip->gain * strip->level * (1 - strip->balance);
+                curLevelA = strip->level * (1 - strip->balance);
             else
-                curLevelA = strip->gain * strip->level;
+                curLevelA = strip->level;
             if (strip->balance < 0.0)
-                curLevelB = strip->gain * strip->level * (1 + strip->balance);
+                curLevelB = strip->level * (1 + strip->balance);
             else
-                curLevelB = strip->gain * strip->level;
+                curLevelB = strip->level;
 
             // Calculate mute and target level and balance (that we will fade to over this cycle period to avoid abrupt change clicks)
             //!@todo Crossfade send levels
@@ -258,14 +257,13 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 reqLevelB             = 0.0;
             } else {
                 if (strip->reqbalance > 0.0)
-                    reqLevelA = strip->reqgain * strip->reqlevel * (1 - strip->reqbalance);
+                    reqLevelA = strip->reqlevel * (1 - strip->reqbalance);
                 else
-                    reqLevelA = strip->reqgain * strip->reqlevel;
+                    reqLevelA = strip->reqlevel;
                 if (strip->reqbalance < 0.0)
-                    reqLevelB = strip->reqgain * strip->reqlevel * (1 + strip->reqbalance);
+                    reqLevelB = strip->reqlevel * (1 + strip->reqbalance);
                 else
-                    reqLevelB = strip->reqgain * strip->reqlevel;
-                strip->gain    = strip->reqgain;
+                    reqLevelB = strip->reqlevel;
                 strip->level   = strip->reqlevel;
                 strip->balance = strip->reqbalance;
             }
@@ -306,6 +304,10 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 fSampleA = pInA[frame];
                 fSampleB = pInB[frame];
 #endif
+                // Handle gain
+                fSampleA *= strip->gain;
+                fSampleB *= strip->gain;
+
                 // Handle channel phase reverse
                 if (strip->phase)
                     fSampleB = -fSampleB;
@@ -629,7 +631,7 @@ void end() {
 void setGain(uint8_t channel, float gain) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || gain < 0.0f)
         return;
-    g_channelStrips[channel]->reqgain = gain;
+    g_channelStrips[channel]->gain = gain;
     sprintf(g_oscpath, "/mixer/channel/%d/gain", channel);
     sendOscFloat(g_oscpath, gain);
 }
@@ -637,7 +639,7 @@ void setGain(uint8_t channel, float gain) {
 float getGain(uint8_t channel) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return 0.0f;
-    return g_channelStrips[channel]->reqgain;
+    return g_channelStrips[channel]->gain;
 }
 
 void setLevel(uint8_t channel, float level) {
@@ -968,7 +970,6 @@ int8_t addStrip() {
             return -1;
         }
         strip->gain       = 1.0;
-        strip->reqgain    = 1.0;
         strip->level      = 0.0;
         strip->reqlevel   = 0.8;
         strip->balance    = 0.0;
