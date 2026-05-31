@@ -682,8 +682,9 @@ class zynthian_gui:
                 logging.error("Audio Player not created!")
                 self.screen_lock.release()
                 return
-        else:
-            self.current_processor = self.chain_manager.active_chain.current_processor
+        # WARNING! Disabled to fix access to Audio Player file list (bank/presets) => Could have side effects!!
+        #else:
+            #self.current_processor = self.chain_manager.active_chain.current_processor
 
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
@@ -1403,7 +1404,7 @@ class zynthian_gui:
             self.screens['bank'].click_listbox()
         elif n_banks == 0:
             self.close_screen()
-            self.close_screen()
+            #self.close_screen()
 
     def cuia_start_midi_record(self, params=None):
         self.state_manager.start_midi_record()
