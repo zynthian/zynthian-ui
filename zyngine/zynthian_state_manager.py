@@ -2182,6 +2182,7 @@ class zynthian_state_manager:
     def create_audio_player(self):
         if not self.audio_player:
             self.audio_player = self.chain_manager.add_processor(None, "AP", None, AUDIO_PLAYER_ID)
+            self.audio_player.name = "Audio Player"
 
     def destroy_audio_player(self):
         if self.audio_player:

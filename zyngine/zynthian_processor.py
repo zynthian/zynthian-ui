@@ -944,10 +944,7 @@ class zynthian_processor:
     def get_basepath(self):
         """Get base path string"""
 
-        if self.engine:
-            path = self.engine.get_path(self)
-        else:
-            path = "NONE"
+        path = self.name
         if isinstance(self.midi_chan, int):
             if 0 <= self.midi_chan < 16:
                 path = f"{self.midi_chan + 1}#{path}"
