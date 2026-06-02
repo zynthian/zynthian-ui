@@ -1164,8 +1164,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def pianoroll_note_on(self, note):
         # Highlight the note key
         row = self.get_row_from_note(note)
-        if row is not None:
-            self.pianoroll_set_row(row, "#40FF40")
+        if row is None:
+            # Note not present in current keymap (can happen with external pads /
+            # custom note layouts). Ignore instead of touching uninitialized rows.
+            return
+        self.pianoroll_set_row(row, "#40FF40")
 
         # Re-center vertically if note is off the view area
         if not self.keymap_offset <= row < self.keymap_offset + self.view_rows:
@@ -1444,7 +1447,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def midi_note_on(self, note):
         self.pianoroll_note_on(note)
         if self.zynseq.libseq.isMidiRecord():
-            self.rows_pending.put_nowait(note)
+            row = self.get_row_from_note(note)
+            if row is not None:
+                self.rows_pending.put_nowait(row)
 
     def midi_note_off(self, note):
         self.pianoroll_note_off(note)
@@ -1453,7 +1458,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.save_pattern_snapshot(now=True, force=True)
             else:
                 self.changed = True
-            self.rows_pending.put_nowait(note)
+            row = self.get_row_from_note(note)
+            if row is not None:
+                self.rows_pending.put_nowait(row)
 
     def set_edit_title(self):
         color_fg = zynthian_gui_config.color_header_bg
