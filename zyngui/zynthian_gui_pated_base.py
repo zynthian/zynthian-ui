@@ -1684,6 +1684,12 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # Plot
         self.plot_select_block()
 
+    def select_block_all(self):
+        self.block_cell_start = [0, 0]
+        self.block_cell_end = [self.n_steps - 1, 127]
+        # Plot
+        self.plot_select_block()
+
     def hide_selected_block(self):
         if self.rect_selected_block:
             self.grid_canvas.delete(self.rect_selected_block)
@@ -1746,15 +1752,18 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                                                                  self.block_cell_start[0], self.block_cell_end[0],
                                                                  self.get_evnum_from_row(self.block_cell_start[1]),
                                                                  self.get_evnum_from_row(self.block_cell_end[1]))
-        # If selection is empty => end select mode
-        if not self.selected_events:
-            self.end_select_block()
-            return
-        # Enter EDIT_MODE_MULTI and replot to highlight selected events
         #logging.debug(f"SELECTED EVENTS => {self.selected_events}")
-        self.set_edit_mode(EDIT_MODE_MULTI)
-        #self.hide_selected_block()
-        #self.hide_selected_cell()
+
+        # If selection is empty => end select mode
+        #if not self.selected_events:
+        #    self.end_select_block()
+        #    return
+
+        # Replot to highlight selected events
+        self.redraw_pending = 3
+
+    def select_all_events(self):
+        self.selected_events = self.zynseq.get_pattern_selection(self.pattern, 0, self.n_steps, 0, 127)
         self.redraw_pending = 3
 
     def move_block(self, dstep, drow):
@@ -1892,12 +1901,14 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 self.set_edit_mode(EDIT_MODE_NONE)
         elif st == "B":
             if self.edit_mode == EDIT_MODE_NONE:
-                self.set_edit_mode(EDIT_MODE_SINGLE)
-            elif self.edit_mode == EDIT_MODE_SINGLE:
-                self.set_edit_mode(EDIT_MODE_MULTI)
+                if self.selected_events:
+                    self.set_edit_mode(EDIT_MODE_MULTI)
+                else:
+                    self.set_edit_mode(EDIT_MODE_SINGLE)
             elif self.edit_mode == EDIT_MODE_BLOCK:
                 if not self.block_copied:
                     self.select_block_events()
+                self.set_edit_mode(EDIT_MODE_MULTI)
 
     # Function to handle switch press
     #   i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -1939,23 +1950,30 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 self.zyngui.toggle_pated()
                 return True
         elif i == 1:
-            if t == 'S' or t == 'B':
+            if t == 'S':
                 self.reset_grid_zoom()
                 return True
+            elif t == 'B':
+                #if self.param_editor_zctrl:
+                #    self.disable_param_editor()
+                #else:
+                self.menu_cb("Length", "Length")
         elif i == 2:
             if t == 'S':
-                if self.edit_mode == EDIT_MODE_BLOCK:
+                if self.edit_mode == EDIT_MODE_NONE:
+                    self.set_edit_mode(EDIT_MODE_BLOCK)
+                    return True
+                elif self.edit_mode == EDIT_MODE_BLOCK:
                     if not self.block_copied:
                         self.copy_block(cut=True)
                     return True
-                elif self.edit_mode == EDIT_MODE_NONE:
-                    self.set_edit_mode(EDIT_MODE_BLOCK)
-                    return True
             elif t == 'B':
-                if self.param_editor_zctrl:
-                    self.disable_param_editor()
-                else:
-                    self.menu_cb("Length", "Length")
+                self.select_all_events()
+                self.set_edit_mode(EDIT_MODE_MULTI)
+                #if self.edit_mode == EDIT_MODE_NONE:
+                #    self.set_edit_mode(EDIT_MODE_BLOCK)
+                #self.select_block_all()
+                #self.select_block_events()
                 return True
         return False
 

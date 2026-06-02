@@ -1555,10 +1555,7 @@ class zynthian_gui:
 
     # Back action
     def cuia_back(self, params=None):
-        try:
-            self.back_screen()
-        except:
-            pass
+        self.back_screen()
 
     # Select action => it receives type of action: S, B, L
     def cuia_select_action(self, params=None):

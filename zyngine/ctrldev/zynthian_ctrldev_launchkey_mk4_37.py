@@ -42,7 +42,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
 
     dev_ids = ["Launchkey MK4 37 DAW In", "Launchkey MK4 37 IN 2"]
     driver_name = "Launchkey MK4 37"
-    driver_description = "Interface Novation Launchkey Mk4 with zynpad"
+    driver_description = "Launcher Interface for Novation Launchkey Mk4"
 
     PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
     STARTING_COLOUR = 123
