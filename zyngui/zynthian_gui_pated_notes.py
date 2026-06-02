@@ -873,13 +873,13 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             res = self.zynseq.libseq.getEventDataAt(index, evdata)
             if res < 0:
                 break
+            index += 1
             #logging.debug(f"DRAWING EVENT AT {index} => {evdata.position}, {evdata.command}")
             if evdata.command == zynseq.MIDI_NOTE_ON:
-                if self.selected_events and index in self.selected_events:
+                if self.selected_events and evdata.get_key() in self.selected_events:
                     self.draw_event(evdata, EVENT_DRAW_SEL)
                 else:
                     self.draw_event(evdata, EVENT_DRAW_NORMAL)
-            index += 1
 
     # Draw all note events in the copy/paste buffer
     def draw_cp_events(self):
@@ -1052,7 +1052,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             if index >= 0:
                 evdata = zynseq.event_data()
                 self.zynseq.libseq.getEventDataAt(index, evdata)
-                if self.selected_events and index in self.selected_events:
+                if self.selected_events and evdata.get_key() in self.selected_events:
                     mode = EVENT_DRAW_SEL
                 else:
                     mode = EVENT_DRAW_NORMAL
@@ -1581,9 +1581,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             elif self.edit_mode == EDIT_MODE_MULTI:
                 if self.edit_param == EDIT_PARAM_DUR:
                     if self.selected_events:
-                        self.zynseq.libseq.changeDurationList(dval * 0.1, zynseq.event_indexes_buffer, len(self.selected_events))
-                    else:
-                        self.zynseq.libseq.changeDurationAll(dval * 0.1)
+                        self.zynseq.libseq.changeDurationList(dval * 0.1, zynseq.event_key_buffer, len(self.selected_events))
+                    #else:
+                    #    self.zynseq.libseq.changeDurationAll(dval * 0.1)
                     self.redraw_pending = 3
                     return True
 
@@ -1738,15 +1738,15 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             elif self.edit_mode == EDIT_MODE_MULTI:
                 if self.edit_param == EDIT_PARAM_DUR:
                     if self.selected_events:
-                        self.zynseq.libseq.changeDurationList(dval, zynseq.event_indexes_buffer, len(self.selected_events))
-                    else:
-                        self.zynseq.libseq.changeDurationAll(dval)
+                        self.zynseq.libseq.changeDurationList(dval, zynseq.event_key_buffer, len(self.selected_events))
+                    #else:
+                    #    self.zynseq.libseq.changeDurationAll(dval)
                     self.redraw_pending = 3
                 elif self.edit_param == EDIT_PARAM_VEL:
                     if self.selected_events:
-                        self.zynseq.libseq.changeVelocityList(dval, zynseq.event_indexes_buffer, len(self.selected_events))
-                    else:
-                        self.zynseq.libseq.changeVelocityAll(dval)
+                        self.zynseq.libseq.changeVelocityList(dval, zynseq.event_key_buffer, len(self.selected_events))
+                    #else:
+                    #    self.zynseq.libseq.changeVelocityAll(dval)
                     self.redraw_pending = 3
                 return True
 

@@ -121,6 +121,8 @@ PATTERN_PARAMS = [
     "stutVfx" # Stutter velocity FX value
 ]
 
+# Maximum number of steps in a pattern
+MAX_STEPS_PATTERN = 256 * 12 * 96
 
 class event_data(ctypes.Structure):
     _pack_ = 1                              # Crucial for matching C's packing
@@ -160,6 +162,9 @@ class event_data(ctypes.Structure):
         self.play_chance = pc
         self.stut_chance = sc
 
+    def get_key(self):
+        return self.val1_start * MAX_STEPS_PATTERN + self.position
+
     def __str__(self):
         return f"""(position={self.position}, offset={self.offset}, duration={self.duration}, command={self.command},
     val1_start={self.val1_start}, val2_start={self.val2_start}, val1_end={self.val1_end}, val2_end={self.val2_end},
@@ -169,8 +174,8 @@ class event_data(ctypes.Structure):
 
 
 # Buffer to select pattern events (event indexes)
-event_indexes_limit = 10000
-event_indexes_buffer = (ctypes.c_uint32 * event_indexes_limit)()
+event_key_buffer_size = 10000
+event_key_buffer = (ctypes.c_uint32 * event_key_buffer_size)()
 
 
 class zynseq(zynthian_engine):
@@ -187,8 +192,8 @@ class zynseq(zynthian_engine):
 
             self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
             self.libseq.pastePatternBuffer.argtypes = [ctypes.c_uint32, ctypes.c_int32, ctypes.c_float, ctypes.c_int8, ctypes.c_bool]
-            self.libseq.getPatternSelectionIndexes.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32,
-                                                               ctypes.c_uint32, ctypes.c_int32, ctypes.c_uint8, ctypes.c_uint8]
+            self.libseq.getPatternSelectionKeys.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32,
+                                                            ctypes.c_uint32, ctypes.c_int32, ctypes.c_uint8, ctypes.c_uint8]
             self.libseq.getEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
             self.libseq.getBufferEventDataAt.argtypes = [ctypes.c_uint32, ctypes.POINTER(event_data)]
             self.libseq.getNoteData.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(event_data)]
@@ -572,15 +577,15 @@ class zynseq(zynthian_engine):
         Returns: A list of event indexes
         """
 
-        # Initially, event indexes are copied into a ctypes buffer array
-        n = self.libseq.getPatternSelectionIndexes(pattern, event_indexes_buffer, event_indexes_limit,
+        # Initially, event keys (step+note) are copied into a ctypes buffer array
+        n = self.libseq.getPatternSelectionKeys(pattern, event_key_buffer, event_key_buffer_size,
                                                step1, step2, note1, note2)
-        # Then copied and returned in a list
-        res = []
+
+        # Then copy and return in a dictionary
+        res = {}
         for i in range(n):
-            res.append(event_indexes_buffer[i])
+            res[event_key_buffer[i]] = True
         return res
-        #return event_indexes_buffer
 
     # -------------------------------------------------------------------
     # MIDI transport & clock settings

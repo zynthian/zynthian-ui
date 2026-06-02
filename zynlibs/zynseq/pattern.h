@@ -236,8 +236,8 @@ class Pattern {
     */
     Pattern* getPatternSelection(uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127, bool cut=false);
 
-    /** @brief  Get indexes of note events in the specified time & note range.
-        @param  ev_indexes pointer to integer array. It will be filled with the list of event indexes
+    /** @brief  Get keys (step+note) of note events in the specified time & note range.
+        @param  ev_keys pointer to integer array. It will be filled with the list of event indexes
         @param  limit size of integer array (ev_indexes)
         @param  step1 step-range start
         @param  step2 step-range end
@@ -245,7 +245,7 @@ class Pattern {
         @param  note2 note-range end
         @retval uint32_t the number of event indexes copied into ev_indexes.
     */
-    uint32_t getPatternSelectionIndexes(uint32_t* ev_indexes, uint32_t limit, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
+    uint32_t getPatternSelectionKeys(uint32_t* ev_keys, uint32_t limit, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
 
     /** @brief  Add step event to pattern
         @param  position Quantity of steps from start of pattern

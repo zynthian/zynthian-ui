@@ -2251,10 +2251,10 @@ void changeVelocityAll(int value) {
     }
 }
 
-void changeVelocityList(float value, uint32_t* evi_list, uint32_t n) {
+void changeVelocityList(float value, uint32_t* ev_key_list, uint32_t n) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeVelocityList(value, evi_list, n);
+        g_pPattern->changeVelocityList(value, ev_key_list, n);
         g_bDirty = true;
     }
 }
@@ -2267,10 +2267,10 @@ void changeDurationAll(float value) {
     }
 }
 
-void changeDurationList(float value, uint32_t* evi_list, uint32_t n) {
+void changeDurationList(float value, uint32_t* ev_key_list, uint32_t n) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeDurationList(value, evi_list, n);
+        g_pPattern->changeDurationList(value, ev_key_list, n);
         g_bDirty = true;
     }
 }
@@ -2344,10 +2344,10 @@ uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1, uint32_t step2, uin
     return 0;
 }
 
-uint32_t getPatternSelectionIndexes(uint32_t pattern, uint32_t* ev_indexes, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
+uint32_t getPatternSelectionKeys(uint32_t pattern, uint32_t* ev_keys, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern) {
-        return pPattern->getPatternSelectionIndexes(ev_indexes, limit, step1, step2, note1, note2);
+        return pPattern->getPatternSelectionKeys(ev_keys, limit, step1, step2, note1, note2);
     }
     return 0;
 }

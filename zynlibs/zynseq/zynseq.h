@@ -248,9 +248,9 @@ void pastePatternBuffer(uint32_t pattern, int32_t dstep, float doffset, int8_t d
 */
 uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127, bool cut=false);
 
-/** @brief  Get indexes of note events from a specified pattern in the specified step & note range.
+/** @brief  Get keys of note events from a specified pattern in the specified step & note range.
     @param  pattern Index of pattern
-    @param  ev_indexes pointer to integer array. It will be filled with the list of event indexes
+    @param  ev_keys pointer to integer array. It will be filled with the list of event keys (step+note)
     @param  limit size of integer array (ev_indexes)
     @param  step1 step-range start
     @param  step2 step-range end
@@ -258,7 +258,7 @@ uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1=0, uint32_t step2=0x
     @param  note2 note-range end
     @retval uint32_t the number of event indexes copied into the array ev_indexes.
 */
-uint32_t getPatternSelectionIndexes(uint32_t pattern, uint32_t* ev_indexes, uint32_t limit, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
+uint32_t getPatternSelectionKeys(uint32_t pattern, uint32_t* ev_keys, uint32_t limit, uint32_t step1=0, uint32_t step2=0xFFFFFFFF, uint8_t note1=0, uint8_t note2=127);
 
 
 // ** Functions acting on the globally selected pattern **
@@ -595,10 +595,10 @@ void changeVelocityAll(int value);
 
 /** @brief  Change velocity of a list of notes in pattern
     @param  value Offset to adjust +/-127
-    @param  evi_list Event index list
+    @param  ev_key_list Event key list
     @param  n number of events in list
 */
-void changeVelocityList(float value, uint32_t* evi_list, uint32_t n);
+void changeVelocityList(float value, uint32_t* ev_key_list, uint32_t n);
 
 /** @brief  Change duration of all notes in patterm
     @param  value Offset to adjust +/-100.0 or whatever
@@ -607,10 +607,10 @@ void changeDurationAll(float value);
 
 /** @brief  Change duration of a list of notes in pattern
     @param  value Offset to adjust +/-127
-    @param  evi_list Event index list
+    @param  ev_key_list Event key list
     @param  n number of events in list
 */
-void changeDurationList(float value, uint32_t* evi_list, uint32_t n);
+void changeDurationList(float value, uint32_t* ev_key_list, uint32_t n);
 
 /** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
     @param  pPattern Pointer to pattern
