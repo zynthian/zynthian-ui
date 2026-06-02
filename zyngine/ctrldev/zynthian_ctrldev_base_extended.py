@@ -358,21 +358,21 @@ class ModeHandlerBase:
         )
 
     # FIXME: Could this (or part of this) be in libseq?
-    def _get_sequence_patterns(self, phrase, seq, create=False):
-        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, seq)
+    def _get_sequence_patterns(self, phrase, midi_chan, create=False):
+        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, midi_chan)
         pattern = -1
         retval = []
 
         if seq_len == 0:
             if create:
                 pattern = self._libseq.createPattern()
-                self._libseq.addPattern(self._zynseq.scene, phrase, seq, 0, 0, pattern)
+                self._libseq.addPattern(self._zynseq.scene, phrase, midi_chan, 0, 0, pattern)
                 retval.append(pattern)
             return retval
 
-        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq)
+        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, midi_chan)
         for track in range(n_tracks):
-            retval.extend(self._get_patterns_in_track(self._zynseq.scene, phrase, seq, track))
+            retval.extend(self._get_patterns_in_track(phrase, midi_chan, track))
         return retval
 
     # FIXME: Could this be in libseq?
@@ -410,12 +410,12 @@ class ModeHandlerBase:
     # FIXME: Could this be in libseq?
     def _set_note_duration(self, step, note, duration):
         velocity = self._libseq.getNoteVelocity(step, note)
-        stutt_count = self._libseq.getStutterCount(step, note)
-        stutt_duration = self._libseq.getStutterDur(step, note)
+        stutt_speed = self._libseq.getNoteStutterSpeed(step, note)
+        stutt_velfx = self._libseq.getNoteStutterVelfx(step, note)
         self._libseq.removeNote(step, note)
         self._libseq.addNote(step, note, velocity, duration, 0)
-        self._libseq.setStutterCount(step, note, stutt_count)
-        self._libseq.setStutterDur(step, note, stutt_duration)
+        self._libseq.setNoteStutterSpeed(step, note, stutt_speed)
+        self._libseq.setNoteStutterVelfx(step, note, stutt_velfx)
 
     def _show_screen_briefly(self, screen, cuia, timeout):
         # Only created when/if needed

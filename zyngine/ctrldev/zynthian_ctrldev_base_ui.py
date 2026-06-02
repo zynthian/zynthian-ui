@@ -39,27 +39,23 @@ from zyngine.ctrldev.zynthian_ctrldev_base_extended import *
 class ModeHandlerBase(ModeHandlerBase):
 
     # FIXME: This way avoids to show Zynpad every time, BUT is coupled to UI!
-    def _show_pattern_editor(self, seq=None, skip_arranger=False):
-        if self._current_screen != 'pattern_editor':
-            self._state_manager.send_cuia("SCREEN_ZYNPAD")
+    def _show_pattern_editor(self, seq=None):
         if seq is not None:
-            self._select_pad(seq)
-            self._refresh_pattern_editor()
-        if not skip_arranger:
-            zynthian_gui_config.zyngui.screens["zynpad"].show_pattern_editor()
-        else:
-            zynthian_gui_config.zyngui.show_screen("pattern_editor")
-
-    # FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
-    def _select_pad(self, pad):
-        zynthian_gui_config.zyngui.screens["zynpad"].select_pad(pad)
+            self._select_launcher(*seq)
+        zynthian_gui_config.zyngui.screens["launcher"].edit_pattern()
+        
+    def _select_launcher(self, phrase, midi_chan):
+        self._zynseq.select_phrase(phrase)
+        pos = self._chain_manager.get_pos_by_midi_chan(midi_chan)
+        self._chain_manager.set_active_chain_by_index(pos[0])
+        self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, midi_chan)
 
     # This SHOULD not be coupled to UI! This is needed because when the pattern is changed in
     # zynseq, it is not reflected in pattern editor.
     def _refresh_pattern_editor(self):
-        zynpad = zynthian_gui_config.zyngui.screens["zynpad"]
+        zynpad = zynthian_gui_config.zyngui.screens["launcher"]
         patted = zynthian_gui_config.zyngui.screens['pattern_editor']
-        pattern = self._zynseq.libseq.getPattern(self.zynseq.scene, zynpad.bank, zynpad.selected_pad, 0, 0)
+        pattern = self._zynseq.libseq.getPattern(self._zynseq.scene, self._zynseq.phrase, self._zynseq.chan, 0, 0)
 
         self._state_manager.start_busy("load_pattern", f"loading pattern {pattern}")
         patted.bank = zynpad.bank
@@ -69,7 +65,7 @@ class ModeHandlerBase(ModeHandlerBase):
 
     # FIXME: This SHOULD not be coupled to UI!
     def _get_selected_sequence(self):
-        return zynthian_gui_config.zyngui.screens["zynpad"].selected_pad
+        return zynthian_gui_config.zyngui.screens["launcher"].selected_pad
 
     # FIXME: This SHOULD not be coupled to UI!
     def _get_selected_step(self):
@@ -79,6 +75,8 @@ class ModeHandlerBase(ModeHandlerBase):
     # FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
     # NOTE: It runs in a thread to avoid lagging the hardware interface
     def _update_ui_arranger(self, cell_selected=(None, None)):
+        logging.debug('Arranger turned off until further notice')
+        return
         def run():
             arranger = zynthian_gui_config.zyngui.screens["arranger"]
             arranger.select_cell(*cell_selected)
