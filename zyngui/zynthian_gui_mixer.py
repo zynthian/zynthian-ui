@@ -2307,9 +2307,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 elif t == "B":
                     if self.launcher_mode:
                         self.zyngui.show_screen("tempo")
-                    else:
-                        self.zyngui.screens["chain_options"].insert_chain()
-                    return True
+                        return True
             case 3:
                 return self.switch_select(t)
 
@@ -2342,6 +2340,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     if self.highlighted_strip is not None:
                         self.highlighted_strip.toggle_solo()
                     return True
+                elif t =='B':
+                    self.zyngui.chain_control()
+                    self.zyngui.screens["chain_control"].subscreen.select_mixer_processor(1)
+                    return True
             case 1:
                 if t == 'S':
                     if self.highlighted_strip is not None:
@@ -2349,7 +2351,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     return True
             case 2:
                 if t == 'S':
-                    self.zyngui.screens["chain_options"].insert_chain()
+                    self.zyngui.cuia_add_chain()
                     return True
             case 3:
                 self.switch_select(t)

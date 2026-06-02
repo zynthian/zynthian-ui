@@ -36,17 +36,17 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
         self.columns = 3
         self.title = "Main Menu"
         self.config = [{
-            "title": "Chain\nManager",
-            "icon": None,
-            "action": self.zyngui.cuia_screen_chain_manager
+            "title": "Add\nChain",
+            "icon": "add_chain.png",
+            "action": self.zyngui.cuia_add_chain
         }, {
             "title": "Snapshots",
             "icon": "snapshot.png",
             "action": self.zyngui.cuia_screen_snapshot
         }, {
-            "title": "ZS3",
-            "icon": "zs3.png",
-            "action": self.zyngui.cuia_screen_zs3
+            "title": "Clean",
+            "icon": "delete.png",
+            "action": self.clean
         }, {
             "title": "Tempo",
             "icon": "metronome.png",
@@ -61,11 +61,11 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
             "action": self.zyngui.cuia_screen_midi_recorder
         }, {
             "title": "Admin",
-            "icon": None,
+            "icon": "settings.png",
             "action": self.zyngui.cuia_screen_admin
         }, {
-            "title": "Soundcard\nLevels",
-            "icon": "audio.png",
+            "title": "Audio\nLevels",
+            "icon": "audio_options.png",
             "action": self.zyngui.cuia_screen_alsa_mixer
         }, {
             "title": "Power",
@@ -74,3 +74,25 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
          }
     ]
 
+    def clean(self):
+        self.zyngui.screens["grid_sel"].setup("Confirm Clean", [
+                {"icon": "delete_chains.png", "title": "Clean All Chains", "action": self.clean_chains_confirmed},
+                {"icon": "delete_sequences.png", "title": "Clean All Sequences", "action": self.clean_sequences_confirmed},
+                {"icon": "delete_all.png", "title": "Clean All Chains & Sequences", "action": self.clean_all_confirmed},
+                None, None, None,
+                {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen}
+        ])
+        self.zyngui.screens["grid_sel"].selected_node = 2
+        self.zyngui.show_screen("grid_sel")
+
+    def clean_chains_confirmed(self, params=None):
+        self.zyngui.clean_chains()
+        self.zyngui.show_screen_reset('mixer')
+
+    def clean_sequences_confirmed(self, params=None):
+        self.zyngui.clean_sequences()
+        self.zyngui.show_screen_reset('launcher')
+
+    def clean_all_confirmed(self, params=None):
+        self.zyngui.clean_all()
+        self.zyngui.show_screen_reset('root')

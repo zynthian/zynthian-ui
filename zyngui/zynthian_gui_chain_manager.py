@@ -1068,7 +1068,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.zyngui.show_screen('main_menu')
             return True
         elif swi == 2 and t == "S":
-            self.zyngui.screens["chain_options"].insert_chain()
+            self.zyngui.cuia_add_chain()
             return True
         elif swi == 3:
             return self.on_select(t)

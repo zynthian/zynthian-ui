@@ -1694,6 +1694,11 @@ class zynthian_gui:
     def cuia_main_menu(self, params=None):
         self.show_screen("main_menu")
 
+    def cuia_add_chain(self, params=None):
+        pos = self.chain_manager.get_active_chain_index()
+        self.screens["add_chain"].set_chain_pos(pos)
+        self.show_screen("add_chain")
+
     def cuia_chain_control(self, params=None):
         try:
             # Select chain by index
@@ -2308,6 +2313,7 @@ class zynthian_gui:
                 self.screens[self.current_screen].disable_param_editor()
             except:
                 pass
+            #self.zyngui.show_screen("main_menu")
             self.show_screen_reset('root')
             return True
 

@@ -50,7 +50,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.mode = "control"
 
         self.processors = []
-        self.ctrl_screens = {}
         self.zcontrollers = []
         self.zgui_controllers = []
         self.midi_learning = MIDI_LEARNING_DISABLED
@@ -474,6 +473,12 @@ class zynthian_gui_control(zynthian_gui_selector):
             return row[3]
         else:
             return None
+
+    def select_mixer_processor(self, page=0):
+        for i, row in enumerate(self.list_data):
+            if row[1] and row[1] > 0 and row[3].eng_code in ("MI", "MR"):
+                self.select(i + page)
+                return
 
     # --------------------------------------------------------------------------
     # Zynpot & zynswitch callbacks

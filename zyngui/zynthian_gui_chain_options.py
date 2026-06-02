@@ -65,19 +65,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
-        self.list_data.append((None, None, "> Manage this chain"))
-
-        if self.chain.get_processor_count():
-            self.list_data.append((self.clear_midi_learn, None, "Clear MIDI Learn",
-                                   ["Remove CC bindings from all parameters of all processors in this chain.", "midi_learn.png"]))
-
-        self.list_data.append((self.rename_chain, None, "Rename chain",
-                               ["Change the name of the chain. Clear name to reset to default name.", "rename.png"]))
-
-        if self.chain.chain_id:
-            self.list_data.append((self.move_chain, None, "Move chain",
-                               ["Reposition the chain in the mixer view.\n\nUse knob 4 to move the chain position.", "move_left_right.png"]))
-
+        self.list_data.append((None, None, "> Processors"))
         if self.chain.is_midi():
             self.list_data.append((self.midifx_add, None, "Add MIDI-FX processor",
                                     ["Add a MIDI effects processor to this the end of this chain.", "midi_processor.png"]))
@@ -94,19 +82,24 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
                                    ["Remove all audio-FX processors from this chain.", "delete_audio_processors.png"]))
 
-        self.list_data.append((self.remove_chain, None, "Remove chain",
-                               ["Remove this chain and all its processors.", "delete_chains.png"]))
+        if self.chain.get_processor_count():
+            self.list_data.append((self.clear_midi_learn, None, "Clean MIDI Learn",
+                                   ["Remove CC bindings from all parameters of all processors in this chain.", "midi_learn.png"]))
 
-        #if self.chain.chain_id:
+        self.list_data.append((None, None, "> Chain"))
+
+        if self.chain.chain_id:
+            self.list_data.append((self.move_chain, None, "Move chain",
+                               ["Reposition the chain in the mixer view.\n\nUse knob 4 to move the chain position.", "move_left_right.png"]))
+
+        self.list_data.append((self.rename_chain, None, "Rename chain",
+                               ["Change the name of the chain. Clear name to reset to default name.", "rename.png"]))
+
         self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                 ["Save this chain as a snapshot.\n\nThe saved snapshot may loaded or may be imported into another snapshot.", "snapshot_chains.png"]))
 
-        self.list_data.append((None, None, "> Global chain management"))
-        self.list_data.append((self.insert_chain, None, "Insert new chain",
-                               ["Create a new chain and insert immediately before this chain.", "add_chain.png"]))
-        #if self.chain.chain_id == 0:
-        self.list_data.append((self.remove_chains, 0, "Remove ALL",
-                            ["Remove all chains and/or sequences.", "delete_chains.png"]))
+        self.list_data.append((self.remove_chain, None, "Remove chain",
+                               ["Remove this chain and all its processors.", "delete_chains.png"]))
 
         super().fill_list()
 
@@ -174,77 +167,16 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
     def do_export_chain(self, path):
         self.zyngui.state_manager.export_chain(path, self.chain.chain_id)
 
-    # Remove submenu
-
-    def remove_cb(self):
-        options = {}
-        if self.chain.synth_slots and self.chain.get_processor_count("MIDI Tool"):
-            options['Remove All MIDI-FXs'] = "midifx"
-        if self.chain.get_processor_count("Audio Effect") > 1:
-            options['Remove All Audio-FXs'] = "audiofx"
-        if self.chain.chain_id != 0:
-            options['Remove Chain'] = "chain"
-        self.zyngui.screens['option'].config("Remove...", options, self.remove_all_cb)
-        self.zyngui.show_screen('option')
-
-    def remove_all_cb(self, options, params):
-        if params == 'midifx':
-            self.remove_all_midifx()
-        elif params == 'audiofx':
-            self.remove_all_audiofx()
-        elif params == 'chain':
-            self.remove_chain()
-
     def remove_chain(self, params=None):
         self.zyngui.show_confirm("Do you really want to remove this chain?",
-                                 self.chain_remove_confirmed)
+                                 self.remove_chain_confirmed)
 
-    def chain_remove_confirmed(self, params=None):
+    def remove_chain_confirmed(self, params=None):
         self.zyngui.chain_manager.remove_chain(self.chain.chain_id)
         if self.parent:
             self.zyngui.show_screen_reset('root')
         else:
             self.zyngui.show_screen_reset('chain_manager')
-
-    def remove_chains(self, t='S'):
-        self.zyngui.screens["grid_sel"].setup("Confirm Remove", [
-                {"icon": "delete_chains.png", "title": "Remove all chains", "action": self.remove_chains_confirmed},
-                {"icon": "delete_sequences.png", "title": "Remove all sequences", "action": self.remove_sequences_confirmed},
-                {"icon": "delete_all.png", "title": "Remove all chains & sequences", "action": self.remove_all_confirmed},
-                None, None, None,
-                {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen}
-        ])
-        self.zyngui.screens["grid_sel"].selected_node = 2
-        self.zyngui.show_screen("grid_sel")
-
-    def remove_all_confirmed(self, params=None):
-        self.index = 0
-        self.zyngui.clean_all()
-        if self.parent:
-            self.zyngui.show_screen_reset('root')
-        else:
-            self.zyngui.show_screen_reset('chain_manager')
-
-    def remove_chains_confirmed(self, params=None):
-        self.index = 0
-        self.zyngui.clean_chains()
-        if self.parent:
-            self.zyngui.show_screen_reset('mixer')
-        else:
-            self.zyngui.show_screen_reset('chain_manager')
-
-    def remove_sequences_confirmed(self, params=None):
-        self.index = 0
-        self.zyngui.clean_sequences()
-        if self.parent:
-            self.zyngui.show_screen_reset('launcher')
-        else:
-            self.zyngui.show_screen_reset('chain_manager')
-
-    def insert_chain(self, params=None):
-        pos = self.zyngui.chain_manager.get_chain_index(self.chain.chain_id)
-        self.zyngui.screens["add_chain"].set_chain_pos(pos)
-        self.zyngui.show_screen("add_chain")
 
     # FX-Chain management
 
