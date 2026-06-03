@@ -213,9 +213,9 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         self.list_data.append((None, 0, "> MIXER"))
         self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
-                               ["Quantity of chains shown in mixer", None]))
+                               ["Number of chains shown in mixer", None]))
         self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
-                               ["Quantity of launchers shown in mixer", None]))
+                               ["Number of launchers shown in mixer", None]))
         self.list_data.append((self.mixer_toggle, 0, f"Toggle Control ({zynthian_gui_config.mixer_toggle})",
                                ["The toggle control to show at top of each mixer channel", None]))
 
