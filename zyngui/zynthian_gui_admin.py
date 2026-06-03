@@ -213,14 +213,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         self.list_data.append((None, 0, "> MIXER"))
         self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
-                               ["Quantity of chains shown in mixer",
-                                None]))
+                               ["Quantity of chains shown in mixer", None]))
         self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
-                               ["Quantity of launchers shown in mixer",
-                                None]))
-        self.list_data.append((self.toggle_1, 0, f"Toggle Control ({zynthian_gui_config.mixer_toggle_1})",
-                               ["The toggle control to show at top of each mixer channel",
-                                None]))
+                               ["Quantity of launchers shown in mixer", None]))
+        self.list_data.append((self.mixer_toggle, 0, f"Toggle Control ({zynthian_gui_config.mixer_toggle})",
+                               ["The toggle control to show at top of each mixer channel", None]))
 
         self.list_data.append((None, 0, "> SETTINGS"))
         if zynthian_gui_config.preset_preload:
@@ -520,10 +517,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                  {'value_min': 4, 'value_max': 16, 'value': zynthian_gui_config.visible_launchers},
                                  self.visible_launchers_cb)
 
-    def toggle_1(self):
-        self.enable_param_editor(self, "Mixer toggle control",
-                                 {'labels': ['solo', 'mono', 'phase', 'ms', 'record'], 'value': zynthian_gui_config.mixer_toggle_1},
-                                 self.toggle_1_cb)
+    def mixer_toggle(self):
+        self.enable_param_editor(self, "Toggle Control",
+                                 {'labels': ['solo', 'mono', 'phase', 'ms', 'record'], 'value': zynthian_gui_config.mixer_toggle},
+                                 self.mixer_toggle_cb)
 
     def toggle_snapshot_mixer_settings(self):
         if zynthian_gui_config.snapshot_mixer_settings:
@@ -584,10 +581,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.zyngui.screens["mixer"].update_layout()
         self.update_list()
 
-    def toggle_1_cb(self, value):
+    def mixer_toggle_cb(self, value):
         val = self.param_editor_zctrl.value2label[str(value)]
-        zynconf.save_config({"ZYNTHIAN_UI_TOGGLE_1": val})
-        zynthian_gui_config.mixer_toggle_1 = val
+        zynconf.save_config({"ZYNTHIAN_UI_MIXER_TOGGLE": val})
+        zynthian_gui_config.mixer_toggle = val
         self.update_list()
 
     # -------------------------------------------------------------------------
