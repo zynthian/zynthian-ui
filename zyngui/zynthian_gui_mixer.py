@@ -491,7 +491,6 @@ class zynthian_gui_launcher_pad():
 class zynthian_gui_mixer_strip():
 
     bg_images = {} # Dict of background images, indexed by (width, length)
-    toggle_1_label = {"solo": "S", "mono": "M", "phase": "Ø", "ms": "MS", "record":"R"}
 
     def __init__(self, parent, canvas, x, width, height, chain):
         logging.getLogger('PIL').setLevel(logging.WARNING)
@@ -785,7 +784,7 @@ class zynthian_gui_mixer_strip():
     def draw_toggle_1(self):
         txcolor = self.gui_mixer.button_txcol
         font = self.gui_mixer.font
-        text = self.toggle_1_label[zynthian_gui_config.mixer_toggle_1]
+        text = self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle_1].name
         if zynthian_gui_config.mixer_toggle_1 == "solo" and self.chain.zynmixer_proc.eng_code == "MR" and self.chain.chain_id == 0:
             # Main mixbus so use the global solo state
             toggle_val = self.state_manager.zynmixer_bus.get_global_solo() > 0
