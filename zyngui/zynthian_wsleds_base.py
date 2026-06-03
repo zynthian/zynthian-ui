@@ -70,6 +70,7 @@ class zynthian_wsleds_base:
         self.wscolor_alt = self.wscolor_purple
         self.wscolor_active = self.wscolor_green
         self.wscolor_active2 = self.wscolor_orange
+        self.wscolor_active3 = self.wscolor_blue_light
         self.wscolor_admin = self.wscolor_red
         self.wscolor_low = self.create_color(0, 100, 0)
         # Color Codes
@@ -80,7 +81,8 @@ class zynthian_wsleds_base:
             str(self.wscolor_red): "R",
             str(self.wscolor_orange): "O",
             str(self.wscolor_yellow): "Y",
-            str(self.wscolor_purple): "P"
+            str(self.wscolor_purple): "P",
+            str(self.wscolor_blue_light): "T"
         }
 
     def create_color(self, r, g, b):

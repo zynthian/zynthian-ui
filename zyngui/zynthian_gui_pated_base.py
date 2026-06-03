@@ -381,17 +381,25 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         # Configure ALT mode layout depending on hardware
         if zynthian_gui_config.check_wiring_layout(["V5"]):
-            self.switch_i_clipboard = [11, 15, 19, 23]
-            self.wsleds_i_clipboard = [10, 11, 12, 13]
+            self.switch_i_clipboard = [11, 15]
+            self.wsleds_i_clipboard = [10, 11]
+            self.switch_i_block = 19
+            self.wsled_i_block = 12
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
-            self.switch_i_clipboard = [10, 11, 12, 13]
-            self.wsleds_i_clipboard = [10, 11, 12, 13]
+            self.switch_i_clipboard = [10, 11]
+            self.wsleds_i_clipboard = [10, 11]
+            self.switch_i_block = 12
+            self.wsled_i_block = 12
         elif zynthian_gui_config.check_kit_version(["V4"]):
             self.switch_i_clipboard = None
             self.wsleds_i_clipboard = None
+            self.switch_i_block = None
+            self.wsled_i_block = None
         else:
             self.switch_i_clipboard = None
             self.wsleds_i_clipboard = None
+            self.switch_i_block = None
+            self.wsled_i_block = None
 
     # Function to get name of this view
     def get_name(self):
@@ -1946,7 +1954,12 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 return True
             elif st == "P":
                 return False
-        # ALT mode => Use F1-F4 as copy/paste buttons
+
+        # Configured F button for block selection workflow
+        elif i == self.switch_i_block:
+            self.cuia_v5_zynpot_switch([2, st])
+
+        # ALT mode => Use configured F buttons as copy/paste buttons
         elif self.alt_mode and self.switch_i_clipboard is not None and i in self.switch_i_clipboard:
             index = self.switch_i_clipboard.index(i)
             if st == "S":
@@ -2096,6 +2109,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def update_wsleds(self, leds):
         wsl = self.zyngui.wsleds
 
+        # ALT mode
         if self.alt_mode:
             # ALT button
             wsl.set_led(leds[0], wsl.wscolor_active2)
@@ -2110,6 +2124,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                             wsl.blink(leds[wsli], wsl.wscolor_active2)
                     else:
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
+
+        # F3 => Block Selection
+        if self.edit_mode == EDIT_MODE_BLOCK:
+            if self.block_copied:
+                wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active)
+            else:
+                wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active2)
+        else:
+            wsl.set_led(leds[self.wsled_i_block], wsl.wscolor_active2)
+
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
             wsl.set_led(leds[1], wsl.wscolor_red)
@@ -2130,7 +2154,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         elif pb_status == zynseq.SEQ_STOPPED:
             wsl.set_led(leds[3], wsl.wscolor_active2)
         # Arrow buttons
-
         if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             wsl.set_led(leds[4], wsl.wscolor_active2)
             wsl.set_led(leds[5], wsl.wscolor_active2)
