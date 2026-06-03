@@ -634,6 +634,8 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setMS(channel, enable)
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                       chan=channel, symbol="ms", value=enable, mixbus=self.mixbus)
 
     def get_ms(self, channel):
         """
