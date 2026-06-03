@@ -2311,7 +2311,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case 3:
                 return self.switch_select(t)
 
-        # ALT mode => Use F1-F4 as copy/paste buttons
+        # ALT mode => Use F1-F2 as copy/paste buttons
         if self.launcher_mode and self.alt_mode\
            and self.switch_i_clipboard and swi in self.switch_i_clipboard:
             # Currently only pattern clips! => TODO Extend to audio clips!

@@ -390,10 +390,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.wsleds_i_clipboard = [10, 11]
             self.switch_i_block = 12
             self.wsled_i_block = 12
-        elif zynthian_gui_config.check_kit_version(["V4"]):
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
             self.switch_i_clipboard = None
             self.wsleds_i_clipboard = None
-            self.switch_i_block = None
+            self.switch_i_block = 6
             self.wsled_i_block = None
         else:
             self.switch_i_clipboard = None
@@ -1938,6 +1938,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     #   st: Press type [S=Short, B=Bold, L=Long]
     #   returns True if action fully handled or False if parent action should be triggered
     def switch(self, i, st):
+        logging.debug(f"SWITCH {i} == {self.switch_i_block}")
+
         if i == 0 and st == "S":
             self.show_menu()
             return True
@@ -1957,7 +1959,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         # Configured F button for block selection workflow
         elif i == self.switch_i_block:
-            self.cuia_v5_zynpot_switch([2, st])
+            return self.cuia_v5_zynpot_switch([2, st])
 
         # ALT mode => Use configured F buttons as copy/paste buttons
         elif self.alt_mode and self.switch_i_clipboard is not None and i in self.switch_i_clipboard:

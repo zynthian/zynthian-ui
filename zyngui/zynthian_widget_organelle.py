@@ -364,7 +364,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.switch_i_aux = 16
             self.wsled_i_selmode = 13
             self.wsled_i_aux = 14
-        elif zynthian_gui_config.check_kit_version(["V4"]):
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017_ZYN"]):
             self.show_touch_widgets = False
             self.switch_i_selmode = 5
             self.switch_i_aux = 4
