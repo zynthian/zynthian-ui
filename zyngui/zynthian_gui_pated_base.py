@@ -2011,14 +2011,14 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     # Function to handle CUIA ARROW_RIGHT
     def arrow_right(self):
-        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             self.redo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], 1)
 
     # Function to handle CUIA ARROW_LEFT
     def arrow_left(self):
-        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             self.undo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], -1)
@@ -2027,10 +2027,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def arrow_up(self):
         if super().arrow_up():
             return
+        elif (self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY:
+            self.redo_pattern_all()
         elif self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
             self.zynpot_cb(self.ctrl_order[2], 1)
-        elif self.alt_mode:
-            self.redo_pattern_all()
         else:
             self.zynpot_cb(self.ctrl_order[2], -1)
 
@@ -2038,10 +2038,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def arrow_down(self):
         if super().arrow_down():
             return
+        elif (self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY:
+            self.undo_pattern_all()
         elif self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
             self.zynpot_cb(self.ctrl_order[2], -1)
-        elif self.alt_mode:
-            self.undo_pattern_all()
         else:
             self.zynpot_cb(self.ctrl_order[2], 1)
 
@@ -2130,7 +2130,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         elif pb_status == zynseq.SEQ_STOPPED:
             wsl.set_led(leds[3], wsl.wscolor_active2)
         # Arrow buttons
-        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
+
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             wsl.set_led(leds[4], wsl.wscolor_active2)
             wsl.set_led(leds[5], wsl.wscolor_active2)
             wsl.set_led(leds[6], wsl.wscolor_active2)
