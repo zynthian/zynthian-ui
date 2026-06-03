@@ -2316,7 +2316,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
            and self.switch_i_clipboard and swi in self.switch_i_clipboard:
             # Currently only pattern clips! => TODO Extend to audio clips!
             pattern = self.get_selected_pattern()
-            logging.debug
             if pattern :
                 index = self.switch_i_clipboard.index(swi)
                 if t == "S":
