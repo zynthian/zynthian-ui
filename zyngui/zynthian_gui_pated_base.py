@@ -55,11 +55,11 @@ CONFIG_ROOT = "/zynthian/zynthian-data/zynseq"
 DRAG_SENSIBILITY = 1.5
 SAVE_SNAPSHOT_DELAY = 10
 
-EDIT_MODE_NONE = 0  # Edit mode disabled
-EDIT_MODE_SINGLE = 1  # Edit mode enabled for selected note
-EDIT_MODE_MULTI = 2  # Edit mode enabled for a selection of notes (or ALL)
-EDIT_MODE_HISTORY = 3  # Edit history mode (undo/redo)
-EDIT_MODE_BLOCK = 4  # Block edit mode
+EDIT_MODE_NONE = 0     # Edit mode disabled
+EDIT_MODE_BLOCK = 1    # Block edit mode
+EDIT_MODE_SINGLE = 2   # Edit mode enabled for selected note
+EDIT_MODE_MULTI = 3    # Edit mode enabled for a selection of notes (or ALL)
+EDIT_MODE_HISTORY = 4  # Edit history mode (undo/redo)
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
@@ -2027,7 +2027,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def arrow_up(self):
         if super().arrow_up():
             return
-        elif self.edit_mode:
+        elif self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
             self.zynpot_cb(self.ctrl_order[2], 1)
         elif self.alt_mode:
             self.redo_pattern_all()
@@ -2038,7 +2038,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def arrow_down(self):
         if super().arrow_down():
             return
-        elif self.edit_mode:
+        elif self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
             self.zynpot_cb(self.ctrl_order[2], -1)
         elif self.alt_mode:
             self.undo_pattern_all()
