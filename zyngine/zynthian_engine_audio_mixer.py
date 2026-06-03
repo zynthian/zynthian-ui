@@ -92,6 +92,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'solo': zynthian_controller(self, 'solo', {
+                    'name': "S",
+                    'short_name': "solo",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -100,6 +102,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'mono': zynthian_controller(self, 'mono', {
+                    'name': "M",
+                    'short_name': "mono",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -108,6 +112,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'ms': zynthian_controller(self, 'ms', {
+                    'name': "MS",
+                    'short_name': "M+S",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -117,6 +123,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'name': "M+S"
                 }),
                 'phase': zynthian_controller(self, 'phase', {
+                    'name': "Ø",
+                    'short_name': "phase",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -125,6 +133,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'record': zynthian_controller(self, 'record', {
+                    'name': "R",
+                    'short_name': "record",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,

@@ -525,7 +525,7 @@ class zynthian_gui_mixer_strip():
         self.legend_height = self.gui_mixer.legend_height
         self.balance_height = self.gui_mixer.balance_height
         self.balance_width = (self.width - 2) / 2 # Width of each half of the balance indicator
-        self.solo_y = parent.solo_y
+        self.toggle_1_y = parent.toggle_1_y
         self.mute_y = parent.mute_y
         self.balance_y = parent.balance_y
         self.fader_y = parent.fader_y
@@ -557,16 +557,16 @@ class zynthian_gui_mixer_strip():
         id = self.chain.chain_id
 
         # Block background to hide scrolling launchers, etc.
-        self.audio_bg = self.canvas.create_rectangle(x, self.solo_y, x + self.width, parent.launcher_y, fill=self.gui_mixer.button_bgcol, width=0)
+        self.audio_bg = self.canvas.create_rectangle(x, self.toggle_1_y, x + self.width, parent.launcher_y, fill=self.gui_mixer.button_bgcol, width=0)
         # Fader background defines height of fader
         self.fader_bg = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_bg_color, width=0, tags=("fader", f"fader_{id}"))
         # Audio mixer elements
         if self.chain.zynmixer_proc:
-            # Solo button
-            self.solo = self.canvas.create_rectangle(x, self.solo_y, x + self.width, self.mute_y, fill=self.gui_mixer.button_bgcol, width=0,
-                                                tags=(f"solo_{id}",))
-            self.solo_text = self.canvas.create_text(x + self.width / 2, self.solo_y + self.button_height * 0.5, text="S", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font,
-                                                tags=(f"solo_{id}",))
+            # Toggle 1 button
+            self.toggle_1 = self.canvas.create_rectangle(x, self.toggle_1_y, x + self.width, self.mute_y, fill=self.gui_mixer.button_bgcol, width=0,
+                                                tags=(f"toggle_1_{id}",))
+            self.toggle_1_text = self.canvas.create_text(x + self.width / 2, self.toggle_1_y + self.button_height * 0.5, text="S", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font,
+                                                tags=(f"toggle_1_{id}",))
 
             # Mute button
             self.mute = self.canvas.create_rectangle(x, self.mute_y, x + self.width, self.balance_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"mute_{id}",))
@@ -649,7 +649,7 @@ class zynthian_gui_mixer_strip():
         self.canvas.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
         self.canvas.tag_bind(f"balance_{id}", "<Button-5>", self.on_balance_wheel_down)
         self.canvas.tag_bind(f"mute_{id}", "<ButtonRelease-1>", self.on_mute_release)
-        self.canvas.tag_bind(f"solo_{id}", "<ButtonRelease-1>", self.on_solo_release)
+        self.canvas.tag_bind(f"toggle_1_{id}", "<ButtonRelease-1>", self.on_toggle_1_release)
         self.canvas.tag_bind(f"legend_strip_{id}", "<ButtonRelease-1>", self.on_strip_release)
 
         self.draw_control()
@@ -663,7 +663,7 @@ class zynthian_gui_mixer_strip():
                 self.canvas.itemconfig(self.dpm_scale, state=tkinter.HIDDEN)
                 if self.chain.chain_id == 0:
                     self.canvas.itemconfig(self.dpm_labels, state=tkinter.HIDDEN)
-                #self.canvas.coords(self.solo, self.x, self.solo_y, self.dpm_a_x0, self.mute_y)
+                #self.canvas.coords(self.toggle_1, self.x, self.toggle_1_y, self.dpm_a_x0, self.mute_y)
                 #self.canvas.coords(self.mute, self.x, self.mute_y, self.dpm_a_x0, self.balance_y)
             else:
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
@@ -672,7 +672,7 @@ class zynthian_gui_mixer_strip():
                 self.canvas.itemconfig(self.dpm_scale, state=tkinter.NORMAL)
                 if self.chain.chain_id == 0:
                     self.canvas.itemconfig(self.dpm_labels, state=tkinter.NORMAL)
-                #self.canvas.coords(self.solo, self.x, self.solo_y, self.x + self.width, self.mute_y)
+                #self.canvas.coords(self.toggle_1, self.x, self.toggle_1_y, self.x + self.width, self.mute_y)
                 #self.canvas.coords(self.mute, self.x, self.mute_y, self.x + self.width, self.balance_y)
         except:
             pass # meters not yet created?
@@ -781,22 +781,22 @@ class zynthian_gui_mixer_strip():
         x1 = self.x + int(progress * self.width / 100)
         self.canvas.coords(self.clip_progress, self.x, self.gui_mixer.legend_y, x1, self.gui_mixer.legend_y + 4)
 
-    def draw_solo(self):
+    def draw_toggle_1(self):
         txcolor = self.gui_mixer.button_txcol
         font = self.gui_mixer.font
-        text = "S"
-        if self.chain.zynmixer_proc.eng_code == "MR" and self.chain.chain_id == 0:
+        text = self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle_1].name
+        if zynthian_gui_config.mixer_toggle_1 == "solo" and self.chain.zynmixer_proc.eng_code == "MR" and self.chain.chain_id == 0:
             # Main mixbus so use the global solo state
-            solo = self.state_manager.zynmixer_bus.get_global_solo() > 0
+            toggle_val = self.state_manager.zynmixer_bus.get_global_solo() > 0
         else:
-            solo = self.chain.zynmixer_proc.controllers_dict["solo"].value
-        if solo:
-            bgcolor = self.gui_mixer.solo_color
+            toggle_val = self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle_1].value
+        if toggle_val:
+            bgcolor = self.gui_mixer.toggle_1_color
         else:
             bgcolor = self.gui_mixer.button_bgcol
 
-        self.canvas.itemconfig(self.solo, fill=bgcolor)
-        self.canvas.itemconfig(self.solo_text, text=text, font=font, fill=txcolor)
+        self.canvas.itemconfig(self.toggle_1, fill=bgcolor)
+        self.canvas.itemconfig(self.toggle_1_text, text=text, font=font, fill=txcolor)
 
     def draw_mute(self):
         txcolor = self.gui_mixer.button_txcol
@@ -858,8 +858,8 @@ class zynthian_gui_mixer_strip():
             if control in [None, 'level']:
                 self.draw_level()
 
-            if control in [None, 'solo']:
-                self.draw_solo()
+            if control in [None, zynthian_gui_config.mixer_toggle_1]:
+                self.draw_toggle_1()
 
             if control in [None, 'mute']:
                 self.draw_mute()
@@ -950,12 +950,12 @@ class zynthian_gui_mixer_strip():
         if self.chain.zynmixer_proc:
             self.chain.zynmixer_proc.controllers_dict['mute'].set_value(value)
 
-    def set_solo(self, value):
-        """ Function to set solo
-        value: Solo value (True/False)
+    def set_toggle_1(self, value):
+        """ Function to set toggle 1 control
+        value: Togle 1 control value (True/False)
         """
         if self.chain.zynmixer_proc:
-            self.chain.zynmixer_proc.controllers_dict['solo'].set_value(value)
+            self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle_1].set_value(value)
 
     def toggle_mute(self):
         """ Function to toggle mute
@@ -963,11 +963,11 @@ class zynthian_gui_mixer_strip():
         if self.chain.zynmixer_proc:
             self.set_mute(int(not self.chain.zynmixer_proc.controllers_dict['mute'].value))
 
-    def toggle_solo(self):
-        """ Function to toggle solo
+    def toggle_toggle_1(self):
+        """ Function to toggle the toggle 1 control
         """
         if self.chain.zynmixer_proc:
-            self.set_solo(int(not self.chain.zynmixer_proc.controllers_dict['solo'].value))
+            self.set_toggle_1(int(not self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle_1].value))
 
     # --------------------------------------------------------------------------
     # Mixer UI event management
@@ -1068,11 +1068,11 @@ class zynthian_gui_mixer_strip():
         """
         self.toggle_mute()
 
-    def on_solo_release(self, event):
-        """ Function to handle solo button release
+    def on_toggle_1_release(self, event):
+        """ Function to handle toggle 1 button release
         event: Mouse event
         """
-        self.toggle_solo()
+        self.toggle_toggle_1()
 
 
 # ------------------------------------------------------------------------------
@@ -1203,8 +1203,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.button_height = int(self.height * 0.07)
         self.legend_height = int(self.height * 0.08)
         self.balance_height = int(self.height * 0.03)
-        self.solo_y = 0
-        self.mute_y = self.solo_y + self.button_height
+        self.toggle_1_y = 0
+        self.mute_y = self.toggle_1_y + self.button_height
         self.balance_y = self.mute_y + self.button_height
         self.fader_y = self.balance_y + self.balance_height
         self.launcher_y = self.fader_y + self.balance_height
@@ -1227,7 +1227,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.high_color = "#CCCCCC"  # yellow
         self.rec_color = "#CC0000"  # red
         self.mute_color = "#CC0000"
-        self.solo_color = "#D0D000"
+        self.toggle_1_color = "#D0D000"
         self.mono_color = "#B0B0B0"
         font_size = min(int(0.5 * self.legend_height), int(0.25 * self.width))
         self.font = (zynthian_gui_config.font_family, font_size)
@@ -1516,7 +1516,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             strip = None
         if not strip or not strip.chain or strip.chain.zynmixer_proc.mixer_chan is None:
             return
-        if symbol == "solo" and strip.chain.chain_id == 0:
+        if symbol == zynthian_gui_config.mixer_toggle_1 and strip.chain.chain_id == 0:
             for s in self.chain_strips:
                 self.pending_refresh_queue.add((s, symbol))
         else:
@@ -2290,7 +2290,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case 0:
                 if t == "S":
                     if self.highlighted_strip is not None:
-                        self.highlighted_strip.toggle_solo()
+                        self.highlighted_strip.toggle_toggle_1()
                     return True
                 elif t == "B":
                     self.zyngui.show_screen("chain_manager")
@@ -2338,7 +2338,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case 0:
                 if t == 'S':
                     if self.highlighted_strip is not None:
-                        self.highlighted_strip.toggle_solo()
+                        self.highlighted_strip.toggle_toggle_1()
                     return True
                 elif t =='B':
                     self.zyngui.chain_control()

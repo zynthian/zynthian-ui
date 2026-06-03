@@ -108,14 +108,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.filling_list = True
         self.list_data = []
 
-        self.list_data.append((None, 0, "> MIXER"))
-        self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
-                               ["Quantity of chains shown in mixer",
-                                None]))
-        self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
-                               ["Quantity of launchers shown in mixer",
-                                None]))
-
         self.list_data.append((None, 0, "> MIDI"))
         self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices",
                                ["Configure MIDI input devices.", "midi_input.png"]))
@@ -218,6 +210,17 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server",
                                    ["Display of zynthian UI and processors' native GUI via VNC disabled.",
                                     "network.png"]))
+
+        self.list_data.append((None, 0, "> MIXER"))
+        self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
+                               ["Quantity of chains shown in mixer",
+                                None]))
+        self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
+                               ["Quantity of launchers shown in mixer",
+                                None]))
+        self.list_data.append((self.toggle_1, 0, f"Toggle Control ({zynthian_gui_config.mixer_toggle_1})",
+                               ["The toggle control to show at top of each mixer channel",
+                                None]))
 
         self.list_data.append((None, 0, "> SETTINGS"))
         if zynthian_gui_config.preset_preload:
@@ -517,6 +520,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                  {'value_min': 4, 'value_max': 16, 'value': zynthian_gui_config.visible_launchers},
                                  self.visible_launchers_cb)
 
+    def toggle_1(self):
+        self.enable_param_editor(self, "Mixer toggle control",
+                                 {'labels': ['solo', 'mono', 'phase', 'ms', 'record'], 'value': zynthian_gui_config.mixer_toggle_1},
+                                 self.toggle_1_cb)
+
     def toggle_snapshot_mixer_settings(self):
         if zynthian_gui_config.snapshot_mixer_settings:
             logging.info("Mixer Settings on Snapshots OFF")
@@ -574,6 +582,12 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         zynconf.save_config({"ZYNTHIAN_UI_VISIBLE_LAUNCHERS": str(value)})
         zynthian_gui_config.visible_launchers = value
         self.zyngui.screens["mixer"].update_layout()
+        self.update_list()
+
+    def toggle_1_cb(self, value):
+        val = self.param_editor_zctrl.value2label[str(value)]
+        zynconf.save_config({"ZYNTHIAN_UI_TOGGLE_1": val})
+        zynthian_gui_config.mixer_toggle_1 = val
         self.update_list()
 
     # -------------------------------------------------------------------------

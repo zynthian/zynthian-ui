@@ -603,6 +603,7 @@ ctrl_graph = get_env_int('ZYNTHIAN_UI_CTRL_GRAPH', 1)
 control_test_enabled = get_env_int('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0)
 power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
 preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
+mixer_toggle_1 = os.environ.get('ZYNTHIAN_UI_TOGGLE_1', "record")
 
 # ------------------------------------------------------------------------------
 # Audio Options
