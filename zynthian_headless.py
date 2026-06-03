@@ -14,33 +14,47 @@ class zyn_headless:
         # ------------------------------------------------------------------------------
         # Initialize and config control I/O subsystem: switches, analog I/O, ...
         # ------------------------------------------------------------------------------
-        try:
-            lib_zyncore = lib_zyncore_init()
-            zynthian_gui_config.num_zynswitches = lib_zyncore.get_num_zynswitches()
-            zynthian_gui_config.last_zynswitch_index = lib_zyncore.get_last_zynswitch_index()
-            zynthian_gui_config.num_zynpots = lib_zyncore.get_num_zynpots()
-            zynthian_gui_config.config_zynswitch_timing()
-            zynthian_gui_config.config_custom_switches()
-            zynthian_gui_config.config_zynaptik()
-            zynthian_gui_config.config_zyntof()
-        except Exception as e:
-            logging.error(
-                "ERROR configuring control I/O subsytem: {}".format(e))
+
+        lib_zyncore_init()
+
+        # ------------------------------------------------------------------------------
+        # Initialize state manager
+        # ------------------------------------------------------------------------------
 
         self.state_manager = zynthian_state_manager.zynthian_state_manager()
-        self.chain_manager = self.state_manager.chain_manager
 
-        if zynthian_gui_config.restore_last_state:
-            snapshot_loaded = self.state_manager.load_snapshot(
-                "/zynthian/zynthian-my-data/snapshots/last_state.zss")
+        # ------------------------------------------------------------------------------
+        # Start autoconnect
+        # ------------------------------------------------------------------------------
 
-        self.state_manager.init_midi()
-        self.state_manager.init_midi_services()
-        autoconnect.autoconnect()
+        autoconnect.start(self.state_manager)
 
-        while True:
-            # TODO: There should be an exit option from this program loop
-            sleep(1)
+        # ------------------------------------------------------------------------------
+        # Main loop
+        # ------------------------------------------------------------------------------
+
+        self.running = True
+        try:
+            while self.running:
+                sleep(0.2)
+        except KeyboardInterrupt:
+            # Use a guarded shutdown so a Ctrl+C exits cleanly instead of
+            # propagating an uncaught KeyboardInterrupt traceback.
+            logging.info("Caught keyboard interrupt, stopping headless engine...")
+            self.stop()
+
+    def stop(self):
+        """Cleanly stop the headless engine and its subsystems."""
+        self.running = False
+        try:
+            autoconnect.stop()
+        except Exception as e:
+            logging.error(f"Error stopping autoconnect: {e}")
+        try:
+            self.state_manager.stop()
+        except Exception as e:
+            logging.error(f"Error stopping state manager: {e}")
 
 
-zh = zyn_headless()
+if __name__ == "__main__":
+    zyn_headless()
