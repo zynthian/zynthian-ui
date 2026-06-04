@@ -41,8 +41,10 @@ import zynautoconnect
 # Clippy Engine Class
 # ------------------------------------------------------------------------------
 
-MAX_BEATS = 128 # Maximum quantity of beats in a clip
-MAX_DURATION = 60 # Maximum audio duration to warp, in seconds
+MAX_BEATS = 256 # Maximum quantity of beats in a clip
+MAX_DURATION = 120 # Maximum audio duration to warp, in seconds
+
+zctrl_symbols = ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode", "beat_slice")
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -106,7 +108,6 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def set_phrase(self, processor, phrase):
         """ Select the phrase for control, etc"""
-
         self.selected_proc = processor
         self.selected_phrase = phrase
         note = phrase + 1
@@ -115,9 +116,9 @@ class zynthian_engine_clippy(zynthian_engine):
             if file_path:
                 # Setup controllers screens
                 self._ctrl_screens = [
-                    ["Clip", [f"file {note}", f"crop_start {note}", f"crop_end {note}", f"zoom {note}"]],
-                    ["Control", [f"gain {note}", f"warp {note}", f"beats {note}", f"mode {note}"]],
-                    ["Recording", ["record"]]
+                    ["Clip", [f"file {note}", f"gain {note}", "record"]],
+                    ["Crop", [f"crop_start {note}", f"crop_end {note}", f"beats {note}", f"zoom {note}"]],
+                    ["Options", [f"warp {note}", f"beat_slice {note}", f"mode {note}"]]
                 ]
                 # Set monitor values (for widget)
                 for symbol in ["zoom", "crop_start", "crop_end", "warp", "beats"]:
@@ -165,7 +166,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libclippy.insertClip(processor.midi_chan - 16, phrase)
             for idx in range(self.zynseq.phrases, phrase, -1):
                 try:
-                    for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
+                    for symbol in zctrl_symbols:
                         processor.controllers_dict[f"{symbol} {idx}"] = processor.controllers_dict[f"{symbol} {idx - 1}"]
                         processor.controllers_dict[f"{symbol} {idx}"].symbol = f"{symbol} {idx}"
                 except:
@@ -183,7 +184,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libclippy.removeClip(processor.midi_chan - 16, phrase)
             for idx in range(phrase + 1, self.zynseq.phrases + 1):
                 try:
-                    for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
+                    for symbol in zctrl_symbols:
                         if idx < self.zynseq.phrases:
                             processor.controllers_dict[f"{symbol} {idx}"] = processor.controllers_dict[f"{symbol} {idx + 1}"]
                             processor.controllers_dict[f"{symbol} {idx}"].symbol = f"{symbol} {idx}"
@@ -200,7 +201,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.insert_phrase(phrase)
         for processor in self.processors:
-            for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
+            for symbol in zctrl_symbols:
                 try:
                     src_zctrl = processor.controllers_dict[f"{symbol} {phrase + 2}"]
                     dst_zctrl = processor.controllers_dict[f"{symbol} {phrase + 1}"]
@@ -221,7 +222,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libclippy.nudgeClip(processor.midi_chan - 16, phrase, forward)
             phrase2 = phrase + 1 if forward else phrase - 1
             try:
-                for symbol in ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode"):
+                for symbol in zctrl_symbols:
                     a = processor.controllers_dict[f"{symbol} {phrase + 1}"]
                     processor.controllers_dict[f"{symbol} {phrase + 1}"] = processor.controllers_dict[f"{symbol} {phrase2 + 1}"]
                     processor.controllers_dict[f"{symbol} {phrase2 + 1}"] = a
@@ -253,6 +254,7 @@ class zynthian_engine_clippy(zynthian_engine):
             beats_zctrl = processor.controllers_dict[f"beats {note}"]
             crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
             crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
+            beat_slice_zctrl = processor.controllers_dict[f"beat_slice {note}"]
 
             quality = 4     # Re-sampling quality (1-4)
             sr = self.libclippy.getFileSamplerate(bytes(fpath, "utf-8"))
@@ -272,8 +274,10 @@ class zynthian_engine_clippy(zynthian_engine):
             matches = re.findall(regptn, fpath)
             try:
                 file_tempo = float(matches[0])
+                beat_slice = True
             except:
                 file_tempo = tempo
+                beat_slice = False
 
             # Get Beats Per Bar
             beats_per_bar = self.zynseq.get_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "bpb")
@@ -305,9 +309,16 @@ class zynthian_engine_clippy(zynthian_engine):
                     crop_start_zctrl.value = crop_start
                     crop_end_zctrl.value = crop_end
                     #crop_end_zctrl.value = frames
+                    # Setup beat slice
+                    beat_slice_zctrl.value = beat_slice
+                    if beat_slice:
+                        frames_beat = crop_end / beats
+                        crop_start_zctrl.nudge_factor = frames_beat
+                        crop_end_zctrl.nudge_factor = frames_beat
                 else:
                     min_duration = 15 / file_tempo
                     # Get zctrl values
+                    beat_slice = beat_slice_zctrl.value
                     beats_value = beats_zctrl.value
                     warp_value = warp_zctrl.value
                     crop_start = crop_start_zctrl.value
@@ -315,6 +326,14 @@ class zynthian_engine_clippy(zynthian_engine):
                     duration = (crop_end - crop_start) / sr
                     #beats = duration * file_tempo / 60
                     #bars = round(beats / beats_per_bar)
+
+                    # Restoring state from snapshot
+                    if not autoreset:
+                        # Restore beat slice behaviour
+                        if beat_slice:
+                            frames_beat = (crop_end - crop_start) / beats_value
+                            crop_start_zctrl.nudge_factor = frames_beat
+                            crop_end_zctrl.nudge_factor = frames_beat
 
                 if beats_value <= MAX_BEATS and min_duration <= duration <= MAX_DURATION:
                     can_warp = True
@@ -429,7 +448,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 continue
 
     def tempo_average():
-
         d = deque(itertools.islice(it, n-1))
         d.appendleft(0)
         s = sum(d)
@@ -484,7 +502,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     "is_integer": True,
                     "value": 1,
                     "value_min": 1,
-                    "value_max": MAX_BEATS
+                    "value_max": MAX_BEATS,
+                    "nudge_factor": 1
                 }),
             f"mode {note}": zynthian_controller(self, f"mode {note}", {
                     "name": "mode",
@@ -521,18 +540,28 @@ class zynthian_engine_clippy(zynthian_engine):
                     "processor": processor,
                     "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
                     "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
+                }),
+            f"beat_slice {note}": zynthian_controller(self, f"beat_slice {note}", {
+                    "name": "beat slice",
+                    "processor": processor,
+                    "is_toggle": True,
+                    "labels": ["off", "on"],
+                    "ticks": [0, 1],
+                    "value": "on"
                 })
         }
         processor.controllers_dict.update(zctrls)
 
-    def update_controllers(self, processor, note, frames=100, reset=False):
-        crop_start_options = {"value_max": frames}
-        crop_end_options =  {"value_max": frames}
+    def update_controllers(self, processor, note, frames, reset=False):
+        zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
+        zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
+        crop_start_options = {"value_max": frames, "nudge_factor": zctrl_crop_start.nudge_factor}
+        crop_end_options =  {"value_max": frames, "nudge_factor": zctrl_crop_end.nudge_factor}
         if reset:
             crop_start_options["value"] = 0
             crop_end_options["value"] = frames
-        processor.controllers_dict[f"crop_start {note}"].set_options(crop_start_options)
-        processor.controllers_dict[f"crop_end {note}"].set_options(crop_end_options)
+        zctrl_crop_start.set_options(crop_start_options)
+        zctrl_crop_end.set_options(crop_end_options)
         ticks = []
         labels = []
         i = 0
@@ -554,17 +583,21 @@ class zynthian_engine_clippy(zynthian_engine):
         zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
         zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
         zctrl_zoom = processor.controllers_dict[f"zoom {note}"]
+        zctrl_beat_slice = processor.controllers_dict[f"beat_slice {note}"]
         frames = zctrl_crop_end.value_max
         zoom_val = zctrl_zoom.value
-        nudge_factor = frames // (100 * zoom_val)
-        if nudge_factor < 1:
-            nudge_factor = 1
+        if zctrl_beat_slice.value:
+            nudge_factor = zctrl_crop_start.nudge_factor
+        else:
+            nudge_factor = frames // (100 * zoom_val)
+            if nudge_factor < 1:
+                nudge_factor = 1
+            zctrl_crop_start.nudge_factor = nudge_factor
+            zctrl_crop_end.nudge_factor = nudge_factor
         nudge_factor_fine = nudge_factor // 100
         if nudge_factor_fine < 1:
             nudge_factor_fine = 1
-        zctrl_crop_start.nudge_factor = nudge_factor
         zctrl_crop_start.nudge_factor_fine = nudge_factor_fine
-        zctrl_crop_end.nudge_factor = nudge_factor
         zctrl_crop_end.nudge_factor_fine = nudge_factor_fine
 
     def send_controller_value(self, zctrl):
@@ -586,49 +619,64 @@ class zynthian_engine_clippy(zynthian_engine):
             return
 
         #logging.debug(f"ZCTRL {symbol}, {note} => {zctrl.value}")
-        match symbol:
-            case "file":
-                self.start_reload_timer(proc, phrase)
-            case "warp":
-                self.monitors_dict["warp"] = zctrl.value
-                self.start_reload_timer(zctrl.processor, phrase)
-            case "mode":
-                self.set_mode(phrase, zctrl.processor.midi_chan, zctrl.value)
-            case "crop_start":
-                zctrl_crop_end = zctrl.processor.controllers_dict[f"crop_end {note}"]
-                if zctrl.value >= zctrl_crop_end.value:
-                    zctrl.set_value(zctrl.crop_end.value - 1)
+        try:
+            match symbol:
+                case "file":
+                    self.start_reload_timer(proc, phrase)
+                case "warp":
+                    self.monitors_dict["warp"] = zctrl.value
+                    self.start_reload_timer(proc, phrase)
+                case "mode":
+                    self.set_mode(phrase, proc.midi_chan, zctrl.value)
+                case "crop_start":
+                    beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
+                    zctrl_crop_end = proc.controllers_dict[f"crop_end {note}"]
+                    if zctrl_crop_end.value - zctrl.value < zctrl.nudge_factor:
+                        zctrl.value = zctrl.crop_end.value - zctrl.nudge_factor
+                    self.monitors_dict["crop_start"] = zctrl.value
+                    if not proc.set_state_flag:
+                        if beat_slice:
+                            beats = round((zctrl_crop_end.value - zctrl.value) / zctrl.nudge_factor)
+                            proc.controllers_dict[f"beats {note}"].set_value(beats)
+                        else:
+                            self.start_reload_timer(proc, phrase)
                     return
-                self.monitors_dict["crop_start"] = zctrl.value
-
-                self.start_reload_timer(zctrl.processor, phrase)
-                return
-            case "crop_end":
-                zctrl_crop_start = zctrl.processor.controllers_dict[f"crop_start {note}"]
-                if zctrl.value <= zctrl_crop_start.value:
-                    zctrl.set_value(zctrl_crop_start.value + 1)
+                case "crop_end":
+                    beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
+                    zctrl_crop_start = proc.controllers_dict[f"crop_start {note}"]
+                    if zctrl.value - zctrl_crop_start.value < zctrl.nudge_factor:
+                        zctrl.value = zctrl_crop_start.value + zctrl.nudge_factor
+                    self.monitors_dict["crop_end"] = zctrl.value
+                    if not proc.set_state_flag:
+                        if beat_slice:
+                            beats = round((zctrl.value - zctrl_crop_start.value) / zctrl.nudge_factor)
+                            proc.controllers_dict[f"beats {note}"].set_value(beats)
+                        else:
+                            self.start_reload_timer(proc, phrase)
+                        return
+                case "beats":
+                    zctrl_warp = proc.controllers_dict[f"warp {note}"]
+                    self.monitors_dict["beats"] = zctrl.value
+                    if zctrl_warp.value == 0:
+                        self.libseq.setSequenceLength(self.zynseq.scene, phrase, proc.midi_chan, zctrl.value * self.zynseq.PPQN)
+                        self.libseq.updateSequenceInfo()
+                    else:
+                        self.start_reload_timer(proc, phrase)
+                case "gain":
+                    try:
+                        self.libclippy.setGain(proc.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
+                    except Exception as e:
+                        logging.warning(e)
                     return
-                self.monitors_dict["crop_end"] = zctrl.value
-                self.start_reload_timer(zctrl.processor, phrase)
-                return
-            case "beats":
-                zctrl_warp = zctrl.processor.controllers_dict[f"warp {note}"]
-                self.monitors_dict["beats"] = zctrl.value
-                if zctrl_warp.value == 0:
-                    self.libseq.setSequenceLength(self.zynseq.scene, phrase, proc.midi_chan, zctrl.value * self.zynseq.PPQN)
-                    self.libseq.updateSequenceInfo()
-                else:
-                    self.start_reload_timer(zctrl.processor, phrase)
-            case "gain":
-                try:
-                    self.libclippy.setGain(zctrl.processor.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
-                except Exception as e:
-                    logging.warning(e)
-                return
-            case "zoom":
-                self.update_nudge(zctrl.processor, note)
-                self.monitors_dict["zoom"] = zctrl.value
-                return
+                case "zoom":
+                    self.update_nudge(proc, note)
+                    self.monitors_dict["zoom"] = zctrl.value
+                    return
+                case "beat_slice":
+                    self.update_nudge(proc, note)
+                    return
+        except Exception as e:
+            logging.error(e)
 
     def set_state_pre(self, processor):
         # Set crop and zoom limits to big-enough values so it can receive the new state values
