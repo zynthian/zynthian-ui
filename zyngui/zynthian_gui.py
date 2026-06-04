@@ -682,9 +682,9 @@ class zynthian_gui:
                 logging.error("Audio Player not created!")
                 self.screen_lock.release()
                 return
-        # WARNING! Disabled to fix access to Audio Player file list (bank/presets) => Could have side effects!!
-        #else:
-            #self.current_processor = self.chain_manager.active_chain.current_processor
+        # WARNING! Modified to fix access to Audio Player file list (bank/presets) => Could have side effects!!
+        elif screen == "chain_control":
+            self.current_processor = self.chain_manager.active_chain.current_processor
 
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
