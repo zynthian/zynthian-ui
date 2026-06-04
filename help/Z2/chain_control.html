@@ -32,19 +32,24 @@
   </div>
 
   <div class="left_container">
-   <h1>Control View: Control Mode</h1>
+   <h1>Chain Control View</h1>
    <div id="zynproc-info"></div>
-   <p>The control view provides access to the parameters of a processor. When in <b>control mode</b> you can:</p>
+   <p>The chain control view provides access to the parameters of the processors in the active chain. You can:</p>
    <ul>
     <li>Modify the value of processor parameters by <b>rotating the knobs</b>.</li>
     <li>MIDI learn parameters by <b>short pressing the knobs</b></li>
-    <li>Access parameter control options by <b>bold pressing the knobs</b>.</li>
+    <li>Configure parameter control options by <b>bold pressing the knobs</b>.</li>
    </ul>
    <p>Processor parameters are grouped in pages with up to 4 parameters per page. Select pages
-   using the UP / DOWN buttons. The list contains the control pages for all processors
-   in the chain. To move faster across the pages, enter <a href="chain_control-select_mode.html">select mode</a> with
-   <b>short press SELECT</b> or <b>short press OPT</b>.</p>
+   using the UP / DOWN buttons. The list contains the control pages for all processors in the chain.</p>
+   <p>To move faster across the pages, enter <a href="chain_config.html">select mode</a> with:
+   <ul>
+    <li><b>short press SELECT</b></li> or
+    <li><b>short press OPT</b></li>
+   </ul>
+   <p>Note that <b>select mode</b> is also known as the <b>chain config</b> view.</p>
   </div>
+
    <div class="full_container">
    <h2>MIDI Learn</h2>
    <p>You can bind any parameter to knobs, faders and CC-pads on your external MIDI controllers.
@@ -59,8 +64,10 @@
   </ul>
   The MIDI learn procedure is:
     <ul>
-    <li><b>short press</b> the knob associated with the parameter you want to learn. A <span style="color: green">??#??</span>
-    indication will be displayed indicating the parameter is in chain learning mode. If required, press again to enter global learning mode. The indication will change to yellow: <span style="color: yellow">??#??</span>.</li>
+    <li><b>short press</b> the knob associated with the parameter you want to learn. A green indication
+    <span style="color: #70FF70">??#??</span> will be displayed indicating the parameter is in <b>chain learning mode</b>.</li>
+    <li>if required, short press again to enter <b>global learning mode</b>. The indication will change to yellow:
+    <span style="color: yellow">??#??</span>.</li>
     <li><b>move a knob/fader</b> or <b>tap a CC-pad</b> on your external MIDI controller. The binding is complete and the
     indication now shows then MIDI channel and CC number in white.</li>
    </ul>
@@ -78,7 +85,7 @@
     <li><b>Global Learn:</b> Start Global MIDI learn for the parameter.</li>
     <li><b>Zynstep CC:</b> Choose the CC number used by the sequencer to automate the parameter.</li>
     <li><b>Unlearn:</b> Unlearn the parameter.</li>
-    <li><b>Unlearn all controls:</b> Unlearn all parameters in the engine.</li>
+    <li><b>Unlearn all controls:</b> Unlearn all parameters in the processor.</li>
    </ul>
   </div>
 
