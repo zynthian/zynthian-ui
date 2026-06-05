@@ -43,6 +43,8 @@ import zynautoconnect
 
 MAX_BEATS = 256 # Maximum quantity of beats in a clip
 MAX_DURATION = 120 # Maximum audio duration to warp, in seconds
+MAX_FRAMES = 999999999 # Maximum number of frames
+
 
 zctrl_symbols = ("file", "crop_start", "crop_end", "zoom", "gain", "warp", "beats", "mode", "beat_slice")
 
@@ -311,10 +313,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     #crop_end_zctrl.value = frames
                     # Setup beat slice
                     beat_slice_zctrl.value = beat_slice
-                    if beat_slice:
-                        frames_beat = crop_end / beats
-                        crop_start_zctrl.nudge_factor = frames_beat
-                        crop_end_zctrl.nudge_factor = frames_beat
+                    self.update_nudge(processor, note, frames)
                 else:
                     min_duration = 15 / file_tempo
                     # Get zctrl values
@@ -326,14 +325,9 @@ class zynthian_engine_clippy(zynthian_engine):
                     duration = (crop_end - crop_start) / sr
                     #beats = duration * file_tempo / 60
                     #bars = round(beats / beats_per_bar)
-
-                    # Restoring state from snapshot
+                    # if restoring state (not autoreset) => Setup beat slice
                     if not autoreset:
-                        # Restore beat slice behaviour
-                        if beat_slice:
-                            frames_beat = (crop_end - crop_start) / beats_value
-                            crop_start_zctrl.nudge_factor = frames_beat
-                            crop_end_zctrl.nudge_factor = frames_beat
+                        self.update_nudge(processor, note, frames)
 
                 if beats_value <= MAX_BEATS and min_duration <= duration <= MAX_DURATION:
                     can_warp = True
@@ -525,15 +519,15 @@ class zynthian_engine_clippy(zynthian_engine):
                     "name": "crop start",
                     "processor": processor,
                     "is_integer": True,
-                    "value_max": 999999999,
+                    "value_max": MAX_FRAMES,
                     "value": 0
                 }),
             f"crop_end {note}": zynthian_controller(self, f"crop_end {note}", {
                     "name": "crop end",
                     "processor": processor,
                     "is_integer": True,
-                    "value_max": 999999999,
-                    "value": 999999999
+                    "value_max": MAX_FRAMES,
+                    "value": MAX_FRAMES
                 }),
             f"zoom {note}": zynthian_controller(self, f"zoom {note}", {
                     "name": "zoom",
@@ -552,16 +546,16 @@ class zynthian_engine_clippy(zynthian_engine):
         }
         processor.controllers_dict.update(zctrls)
 
-    def update_controllers(self, processor, note, frames, reset=False):
+    def update_controllers(self, processor, note, frames):
+        # Setup Crop range
         zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
         zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
-        crop_start_options = {"value_max": frames, "nudge_factor": zctrl_crop_start.nudge_factor}
-        crop_end_options =  {"value_max": frames, "nudge_factor": zctrl_crop_end.nudge_factor}
-        if reset:
-            crop_start_options["value"] = 0
-            crop_end_options["value"] = frames
+        crop_start_options = {"value_max": frames}
+        crop_end_options =  {"value_max": frames}
+        #, "nudge_factor": zctrl_crop_start.nudge_factor
         zctrl_crop_start.set_options(crop_start_options)
         zctrl_crop_end.set_options(crop_end_options)
+        # Setup Zoom values
         ticks = []
         labels = []
         i = 0
@@ -577,23 +571,24 @@ class zynthian_engine_clippy(zynthian_engine):
             "ticks": ticks,
             "labels": labels
         })
-        self.update_nudge(processor, note)
+        self.update_nudge(processor, note, frames)
 
-    def update_nudge(self, processor, note):
+    def update_nudge(self, processor, note, frames=None):
         zctrl_crop_start = processor.controllers_dict[f"crop_start {note}"]
         zctrl_crop_end = processor.controllers_dict[f"crop_end {note}"]
-        zctrl_zoom = processor.controllers_dict[f"zoom {note}"]
-        zctrl_beat_slice = processor.controllers_dict[f"beat_slice {note}"]
-        frames = zctrl_crop_end.value_max
-        zoom_val = zctrl_zoom.value
-        if zctrl_beat_slice.value:
-            nudge_factor = zctrl_crop_start.nudge_factor
+        beat_slice = processor.controllers_dict[f"beat_slice {note}"].value
+        if beat_slice:
+            beats_value = processor.controllers_dict[f"beats {note}"].value
+            nudge_factor = round((zctrl_crop_end.value - zctrl_crop_start.value) / beats_value)
         else:
-            nudge_factor = frames // (100 * zoom_val)
-            if nudge_factor < 1:
-                nudge_factor = 1
-            zctrl_crop_start.nudge_factor = nudge_factor
-            zctrl_crop_end.nudge_factor = nudge_factor
+            zoom_value = processor.controllers_dict[f"zoom {note}"].value
+            if frames is None:
+                frames = zctrl_crop_end.value_max
+            nudge_factor = frames // (100 * zoom_value)
+        if nudge_factor < 1:
+            nudge_factor = 1
+        zctrl_crop_start.nudge_factor = nudge_factor
+        zctrl_crop_end.nudge_factor = nudge_factor
         nudge_factor_fine = nudge_factor // 100
         if nudge_factor_fine < 1:
             nudge_factor_fine = 1
@@ -689,8 +684,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 zoom_zctrl = processor.controllers_dict[f"zoom {note}"]
             except:
                 break
-            crop_start_options = {"value_max": 999999999}
-            crop_end_options =  {"value_max": 999999999}
+            crop_start_options = {"value": 0, "value_max": MAX_FRAMES}
+            crop_end_options =  {"value": MAX_FRAMES, "value_max": MAX_FRAMES}
             crop_start_zctrl.set_options(crop_start_options)
             crop_end_zctrl.set_options(crop_end_options)
             zoom_options = {
