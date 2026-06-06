@@ -245,7 +245,10 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                             // End of repeats...
                             if (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)
                                 pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
+                            pSequence->setPlayState(STOPPED);
                             pSequence->setPlayed(0);
+                            pSequence->setPlayPosition(0);
+                            nPlayState = STOPPED;
                         } else {
                             // Triggering repeat
                             pSequence->setPlayed(nCount);
