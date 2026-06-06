@@ -374,7 +374,7 @@ class zynthian_side_chain(tkinter.Canvas):
                 proc_next = None
             # Create interconnect lines
             y += self.BLOCK_HEIGHT
-            if type(proc) != str and type(proc_next) != str and proc.type == proc_next.type and node["slot"] == node_next["slot"]:
+            if node_next and type(proc) != str and type(proc_next) != str and proc.type == proc_next.type and node["slot"] == node_next["slot"]:
                 x0 = x + self.BLOCK_WIDTH // 8
                 self.create_line(x0, y, x0, y + self.V_SPACING, fill="#AAAAAA", width=4, tags="lines")
                 x0 = x + 7 * self.BLOCK_WIDTH // 8

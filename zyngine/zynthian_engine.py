@@ -454,8 +454,7 @@ class zynthian_engine(zynthian_basic_engine):
             zynautoconnect.remove_sidechain_ports(processor.jackname)
             processor.jackname = None
         except Exception as e:
-            logging.error(
-                f"Processor {processor.get_name()} not found in engine's processors list => {e}")
+            logging.error(f"Processor {processor.get_name()} not found in engine's processors list => {e}")
 
     def get_free_parts(self):
         free_parts = list(range(0, 16))
