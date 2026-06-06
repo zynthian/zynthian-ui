@@ -627,7 +627,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
                     zctrl_crop_end = proc.controllers_dict[f"crop_end {note}"]
                     if zctrl_crop_end.value - zctrl.value < zctrl.nudge_factor:
-                        zctrl.value = zctrl.crop_end.value - zctrl.nudge_factor
+                        zctrl.value = zctrl_crop_end.value - zctrl.nudge_factor
                     self.monitors_dict["crop_start"] = zctrl.value
                     if not proc.set_state_flag:
                         if beat_slice:
