@@ -2450,7 +2450,7 @@ class zynthian_state_manager:
             zynthian_gui_config.midi_netump_enabled = 1
             return
         self.start_busy("start_netump", "starting NetUMP MIDI 2.0")
-        logging.info("STARTING NetUMP MIDI 2.0")
+        logging.info("STARTING Network MIDI 2.0")
         try:
             check_output(f"systemctl start {service}", shell=True)
             zynthian_gui_config.midi_netump_enabled = 1
@@ -2464,7 +2464,7 @@ class zynthian_state_manager:
             zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
-            self.set_busy_error("ERROR STARTING NetUMP MIDI 2.0", e)
+            self.set_busy_error("ERROR STARTING Network MIDI 2.0", e)
             sleep(2.0)
 
         self.end_busy("start_netump")
@@ -2474,8 +2474,8 @@ class zynthian_state_manager:
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_netump_enabled = 0
             return
-        self.start_busy("stop_netump", "stopping NetUMP MIDI 2.0")
-        logging.info("STOPPING NetUMP MIDI 2.0")
+        self.start_busy("stop_netump", "stopping Network MIDI 2.0")
+        logging.info("STOPPING Network MIDI 2.0")
         try:
             check_output(f"systemctl stop {service}", shell=True)
             zynthian_gui_config.midi_netump_enabled = 0
@@ -2488,7 +2488,7 @@ class zynthian_state_manager:
 
         except Exception as e:
             logging.error(e)
-            self.set_busy_error("ERROR STOPPING NetUMP MIDI 2.0", e)
+            self.set_busy_error("ERROR STOPPING Network MIDI 2.0", e)
             sleep(2.0)
 
         self.end_busy("stop_netump")

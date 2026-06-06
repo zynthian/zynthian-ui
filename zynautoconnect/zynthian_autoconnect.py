@@ -1415,7 +1415,7 @@ def build_midi_port_name(port):
         if ep_name:
             ep_name = ep_name[0].decode("utf-8")
             return f"NET:ump_{port.name[19:]}/{ep_name}", ep_name
-        return f"NET:ump_{port.name[19:]}", "NetUMP"
+        return f"NET:ump_{port.name[19:]}", "Network MIDI 2.0"
     elif port.name.startswith("jackrtpmidid:rtpmidi_"):
         return f"NET:rtp_{port.name[21:]}", "RTP MIDI"
     elif port.name.startswith("QmidiNet:"):
