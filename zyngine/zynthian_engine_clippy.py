@@ -157,6 +157,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followAction", zynseq.FOLLOW_ACTION_NONE)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followParam", 0)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "repeat", mode - 1)
+        self.libseq.updateSequenceInfo()
 
     def insert_phrase(self, phrase):
         """ Inserts a new empty phrase immediately before the indexed phrase
@@ -257,6 +258,7 @@ class zynthian_engine_clippy(zynthian_engine):
             crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
             crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
             beat_slice_zctrl = processor.controllers_dict[f"beat_slice {note}"]
+            mode_zctrl = processor.controllers_dict[f"mode {note}"]
 
             quality = 4     # Re-sampling quality (1-4)
             sr = self.libclippy.getFileSamplerate(bytes(fpath, "utf-8"))
@@ -349,7 +351,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
                 # Setup zynseq sequence
                 self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, beats_value * self.zynseq.PPQN)
-                self.set_mode(phrase, processor.midi_chan, 1) # Default repeat
+                self.set_mode(phrase, processor.midi_chan, mode_zctrl.value)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
                 self.libseq.updateSequenceInfo()
 
@@ -366,10 +368,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
         else:
             self.libseq.setPlayState(self.zynseq.scene, phrase, processor.midi_chan, zynseq.SEQ_STOPPED)
-            #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 1)
             self.set_mode(phrase, processor.midi_chan, 1)
-            self.libseq.updateSequenceInfo()
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
+            self.libseq.updateSequenceInfo()
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
             if phrase == self.selected_phrase:
                 self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
