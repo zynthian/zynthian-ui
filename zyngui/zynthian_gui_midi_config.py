@@ -268,8 +268,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     append_port(i)
             else:
                 if os.path.isfile("/usr/local/bin/jacknetumpd"):
-                    append_service("jacknetumpd", "NetUMP",
-                                   "NetUMP. Provides MIDI over an IP connection using NetUMP protocol (MIDI 2.0).", "midi_network.png")
+                    append_service("jacknetumpd", "Network MIDI 2.0",
+                                   "Network MIDI 2.0. Provides MIDI over an IP connection using Network MIDI 2.0 protocol.", "midi_network.png")
 
                 if os.path.isfile("/usr/local/bin/jackrtpmidid"):
                     append_service("jackrtpmidid", "RTP MIDI",
