@@ -1732,9 +1732,12 @@ class zynthian_chain_manager:
                     if proc.part_i == midi_chan:
                         for symbol, zctrl in proc.controllers_dict.items():
                             if zctrl.midi_cc == cc_num:
-                                #logging.debug(f"CONTROLLER FEEDBACK {proc.id}:{symbol} ({midi_chan}:{cc_num}) => {cc_val}")
+                                logging.debug(f"CONTROLLER FEEDBACK {proc.id}:{symbol} ({midi_chan}:{cc_num}) => {cc_val}")
                                 #zctrl.midi_control_change(cc_val, send=False)
-                                zctrl.set_value(cc_val, send=False)
+                                if zctrl.get_ignore_engine_fb():
+                                    logging.debug(f"IGNORED!!!")
+                                else:
+                                    zctrl.set_value(cc_val, send=False)
                                 return
                 except Exception as e:
                     logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")

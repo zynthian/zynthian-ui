@@ -274,6 +274,7 @@ class zynthian_engine_setbfree(zynthian_engine):
         self.processors[i].set_bank(0, False)
 
         # Extra manual processors: lower & pedals
+        restoring_from_state = False
         for j, manual in enumerate(["Lower", "Pedals"]):
             if self.manuals_config[j + 1]:
                 i += 1
@@ -298,7 +299,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                         processor.part_i = mchan
                         chain.insert_processor(processor)
                         chain_manager.processors[proc_id] = processor
-                        self.processors.append(processor)
+                        #self.processors.append(processor)
                         # Configure processor
                         # self.set_midi_chan(self.processors[i]) # Called when inserting processor in chain
                         self.processors[i].refresh_controllers()
@@ -310,6 +311,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                     except Exception as e:
                         logging.error(f"{manual} manual processor can't be added! => {e}")
                 else:
+                    restoring_from_state = True
                     chain_id = self.processors[i].chain_id
                     chain = chain_manager.get_chain(chain_id)
                     self.processors[i].part_i = mchan
@@ -332,9 +334,10 @@ class zynthian_engine_setbfree(zynthian_engine):
         zynautoconnect.request_audio_connect()
 
         # Load preset list for each manual and load preset 0
-        for processor in self.processors:
-            processor.load_preset_list()
-            processor.set_preset(0)
+        if not restoring_from_state:
+            for processor in self.processors:
+                processor.load_preset_list()
+                processor.set_preset(0)
 
         # Select first chain so that preset selection is on "Upper" manual
         chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
