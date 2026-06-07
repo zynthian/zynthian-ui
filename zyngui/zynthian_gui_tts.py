@@ -25,7 +25,6 @@
 # ******************************************************************************
 
 import logging
-import os
 
 # Zynthian specific modules
 import zynautoconnect
@@ -33,7 +32,6 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 from zyngine.zynthian_tts import zynthian_tts
 from zyngine import zynsigman
-import zynconf
 
 # -------------------------------------------------------------------------------
 # Zynthian TTS GUI Class
