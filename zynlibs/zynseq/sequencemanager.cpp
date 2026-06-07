@@ -241,18 +241,18 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     if (nPos >= pSequence->getLength()) {
                         nPos = 0;
                         uint8_t nCount = pSequence->getPlayed() + 1;
-                        if (nCount >= pSequence->getRepeat()) {
-                            // End of repeats...
-                            if (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)
-                                pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
+                        // Looping or still don't reached number of repeats => Triggering repeat
+                        if (nCount < pSequence->getRepeat() || (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)) {
+                            pSequence->setPlayed(nCount);
+                            pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
+                            //pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
+                        }
+                        // End of repeats...
+                        else {
                             pSequence->setPlayState(STOPPED);
                             pSequence->setPlayed(0);
                             pSequence->setPlayPosition(0);
                             nPlayState = STOPPED;
-                        } else {
-                            // Triggering repeat
-                            pSequence->setPlayed(nCount);
-                            pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}));
                         }
                     }
                     pSequence->setPlayPosition(nPos);
