@@ -658,6 +658,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
         if i is not None:
             # Restart MIDI learn with a new controller
+            if self.zgui_controllers[i].zctrl is None:
+                self.exit_midi_learn()
+                return self.midi_learn
             if self.zgui_controllers[i].zctrl != self.zyngui.state_manager.get_midi_learn_zctrl():
                 self.midi_learn(i, default_midi_learning_mode)
                 return self.midi_learning

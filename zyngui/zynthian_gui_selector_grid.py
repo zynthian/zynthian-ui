@@ -212,52 +212,36 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         Handle arrow left action.
         """
 
-        idx = self.selected_node - 1
-        while idx >= 0 and self.config[idx] is None:
-            idx -= 1
-        if idx >= 0:
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(-1)
 
     def arrow_right(self):
         """
         Handle arrow right action.
         """
 
-        idx = self.selected_node + 1
-        while idx < len(self.config) and self.config[idx] is None:
-            idx += 1
-        if idx < len(self.config):
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(1)
 
     def arrow_up(self):
         """ Handle arrow up action """
 
         if super().arrow_up():
             return True
-        idx = self.selected_node - self.columns
-        while idx >= 0 and self.config[idx] is None:
-            idx -= self.columns
-        if idx >= 0:
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(-self.columns)
 
     def arrow_down(self):
         """ Handle arrow down action """
 
         if super().arrow_down():
             return
-        idx = self.selected_node + self.columns
-        while idx < len(self.config) and self.config[idx] is None:
-            idx += self.columns
-        if idx < len(self.config):
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(self.columns)
 
     def select_offset(self, dval):
         idx = self.selected_node + dval
-        if idx < 0 or idx >= len(self.config):
+        # Skip empty items
+        while 0 < idx < len(self.config) and self.config[idx] is None:
+            idx += dval
+        idx = min(len(self.config), max(0, idx))
+        if self.config[idx] is None:
             return
         self.selected_node = idx
         self._draw_selection()
@@ -281,10 +265,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             self.select_offset(dval)
             return True
         elif i == 2:
-            if dval > 0:
-                self.arrow_down()
-            elif dval < 0:
-                self.arrow_up()
+            self.select_offset(dval * self.columns)
 
     def on_press(self, event):
         """
