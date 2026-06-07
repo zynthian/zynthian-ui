@@ -1692,7 +1692,9 @@ class zynthian_gui:
         self.show_screen("main_menu")
 
     def cuia_add_chain(self, params=None):
-        pos = self.chain_manager.get_active_chain_index()
+        pos = self.chain_manager.get_active_chain_index() + 1
+        if pos >= len(self.chain_manager.chains):
+            pos = len(self.chain_manager.chains) - 1
         self.screens["add_chain"].set_chain_pos(pos)
         self.show_screen("add_chain")
 

@@ -240,7 +240,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         # Skip empty items
         while 0 < idx < len(self.config) and self.config[idx] is None:
             idx += dval
-        idx = min(len(self.config), max(0, idx))
+        idx = min(len(self.config) - 1, max(0, idx))
         if self.config[idx] is None:
             return
         self.selected_node = idx
