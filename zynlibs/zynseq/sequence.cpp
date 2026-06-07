@@ -242,7 +242,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
         } else if (m_nState == STOPPING_SYNC) {
             setPlayState(STOPPED);
             m_nPosition = 0;
-        } else if (m_nState == PLAYING && bPhraseLauncher && m_nCount < m_nRepeat) {
+        } else if (bPhraseLauncher && m_nState == PLAYING && m_nRepeat != 255 && m_nCount < m_nRepeat) {
             // Playing at start of bar so must be triggering phrase
             nReturn |= CLOCK_TRIG_PHRASE;
             if (m_fTempo)

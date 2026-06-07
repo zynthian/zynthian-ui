@@ -174,8 +174,8 @@ class zynthian_engine_clippy(zynthian_engine):
                         processor.controllers_dict[f"{symbol} {idx}"].symbol = f"{symbol} {idx}"
                 except:
                     pass # Ignore unpopulated phrases
+                self.set_file(processor, phrase)
             self.add_controllers(processor, phrase + 1)
-            processor.controllers_dict[f"mode {idx}"].set_value(1)
 
     def remove_phrase(self, phrase):
         """ Remove a phrase
@@ -351,6 +351,8 @@ class zynthian_engine_clippy(zynthian_engine):
 
                 # Setup zynseq sequence
                 self.libseq.setSequenceLength(self.zynseq.scene, phrase, processor.midi_chan, beats_value * self.zynseq.PPQN)
+                if mode_zctrl.value == 0:
+                    mode_zctrl.value = 1 # Set to repeat if not already have mode
                 self.set_mode(phrase, processor.midi_chan, mode_zctrl.value)
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", os.path.splitext(filename)[0])
                 self.libseq.updateSequenceInfo()
@@ -368,7 +370,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
         else:
             self.libseq.setPlayState(self.zynseq.scene, phrase, processor.midi_chan, zynseq.SEQ_STOPPED)
-            self.set_mode(phrase, processor.midi_chan, 1)
+            self.set_mode(phrase, processor.midi_chan, 0) # Disable if no clip loaded
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
             self.libseq.updateSequenceInfo()
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
@@ -442,15 +444,6 @@ class zynthian_engine_clippy(zynthian_engine):
             except:
                 continue
 
-    def tempo_average():
-        d = deque(itertools.islice(it, n-1))
-        d.appendleft(0)
-        s = sum(d)
-        for elem in it:
-            s += elem - d.popleft()
-            d.append(elem)
-            yield s / n
-
     # ---------------------------------------------------------------
     # Controller management
     # ---------------------------------------------------------------
@@ -507,7 +500,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
                     "value_min": 0,
                     "value_max": 25,
-                    "value": 1
+                    "value": 0
                 }),
             f"gain {note}": zynthian_controller(self, f"gain {note}", {
                     "name": "gain (dB)",
@@ -736,7 +729,8 @@ class zynthian_engine_clippy(zynthian_engine):
         for phrase in range(self.zynseq.phrases):
             note = phrase + 1
             self.add_controllers(processor, note)
-            self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 1)
+            self.set_mode(phrase, processor.midi_chan, 0)
+            #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
         self.set_phrase(processor, self.zynseq.phrase)
 
     def remove_processor(self, processor):
@@ -745,7 +739,7 @@ class zynthian_engine_clippy(zynthian_engine):
             return
         for phrase in range(self.zynseq.phrases):
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
-            self.set_mode(phrase, processor.midi_chan, 1)
+            self.set_mode(phrase, processor.midi_chan, 0)
         super().remove_processor(processor)
 
 
