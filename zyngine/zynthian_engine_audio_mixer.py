@@ -187,9 +187,12 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 # Aux Mixbus
                 processor.mixer_chan = self.state_manager.zynmixer_bus.add_strip()
                 send = self.state_manager.zynmixer_chan.add_send()
-                if processor.mixer_chan != send:
-                    logging.warning("Aux Mixbus index mismatch")
-                processor.name = f"Aux Mixbus {self.state_manager.zynmixer_chan.get_send_count()}"
+                processor.name = f"Aux Mixbus {send}"
+                self._ctrl_screens = [
+                    ['gain', ['gain', 'level', 'balance', 'mute']],
+                    ['toggles', ['solo', 'mono', 'phase', 'ms']],
+                    ['recorder', ['record']]
+                ]
             else:
                 # Main mixbus
                 processor.mixer_chan = 0

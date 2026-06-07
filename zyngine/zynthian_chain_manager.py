@@ -479,18 +479,8 @@ class zynthian_chain_manager:
         chain = self.chains[chain_id]
         if chain.zynmixer_proc and chain.zynmixer_proc.eng_code == "MR":
             # Moved a mixbus (effects return) so update sends and default mixbus names
-            send = 1
-            for chain in self.chains.values():
-                parts = chain.title.split("Aux Mixbus ")
-                if len(parts) > 1:
-                    try:
-                        parts = parts[1].split(" ")
-                        parts[0] = str(send)
-                        chain.title = f"Aux Mixbus {' '.join(parts)}"
-                    except:
-                        pass
-                    send += 1
-        self.refresh_mixbus_sends()
+            self.refresh_mixbus_sends()
+
         self.rebuild_optimisation_cache()
         zynsigman.send(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN)
         return pos
@@ -1184,6 +1174,21 @@ class zynthian_chain_manager:
 
     def refresh_mixbus_sends(self):
         mixbus_chain_ids = self.get_chain_ids_filtered(["mixbus"])
+        idx = 1
+        for chain_id in mixbus_chain_ids:
+            if chain_id == 0:
+                continue
+            chain = self.chains[chain_id]
+            procs = chain.get_processors("Audio Effect")
+            for proc in procs:
+                if proc.eng_code != "MR":
+                    continue
+                proc.name = f"Aux Mixbus {idx}"
+                if chain.title.startswith("Aux Mixbus "):
+                    chain.title = proc.name
+                idx += 1
+                break
+
         for processor in self.processors.values():
             if processor.eng_code != "MI":
                 continue
