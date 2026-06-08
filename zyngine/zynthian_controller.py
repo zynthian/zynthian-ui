@@ -85,6 +85,8 @@ class zynthian_controller:
         self.is_trigger = False  # True if control is one-shot trigger
         self.is_integer = True  # True if control is Integer
         self.is_logarithmic = False  # True if control uses logarithmic scale
+        self.is_bypass = False  # True for the processor's bypass controller, if any. Shouldn't be more than one by processor.
+        self.bypass_value = 0   # Value that bypass the processor
         if full:
             self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
             self.path_file_types = None  # List of supported file types
@@ -213,6 +215,11 @@ class zynthian_controller:
             self.envelope = options['envelope']
         if 'filter' in options and options['filter'] is not None:
             self.filter = options['filter']
+        if 'is_bypass' in options:
+            self.is_bypass = options['is_bypass']
+        if 'bypass_value' in options:
+            self.bypass_value = options['bypass_value']
+
         self._configure()
 
     def _configure(self):
@@ -517,6 +524,10 @@ class zynthian_controller:
                 self.send_value_cb(self)
             except Exception as e:
                 logging.warning(f"Can't send value change feedback for {self.symbol} => {e}")
+
+        if self.is_bypass:
+            zynsigman.send_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, zctrl=self)
+
 
     def send_midi_cc(self, mval=None):
         if mval is None:

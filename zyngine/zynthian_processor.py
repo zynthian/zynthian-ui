@@ -92,6 +92,7 @@ class zynthian_processor:
         self.preload_info = None
 
         self.controllers_dict = {}  # Map of zctrls indexed by symbol
+        self.bypass_zctrl = None    # Bypass zctrl, if any
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.auto_save_bank = False
@@ -578,6 +579,18 @@ class zynthian_processor:
             self.engine.get_controllers_dict(self, params)
         else:
             self.engine.get_controllers_dict(self)
+
+        # Set bypass zctrl
+        try:
+            self.bypass_zctrl = self.engine.bypass_zctrl
+        except:
+            self.bypass_zctrl = None
+            # Take first bypass zctrl => It shouldn't be more than one!!'
+            for zctrl in self.controllers_dict.values():
+                if zctrl.is_bypass:
+                    self.bypass_zctrl = zctrl
+                    break
+
         self.init_ctrl_screens()
 
     def init_ctrl_screens(self, force_refresh=False):

@@ -40,7 +40,6 @@ from zyncoder.zyncore import lib_zyncore
 import zyngine.zynthian_lv2 as zynthian_lv2
 from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_controller import zynthian_controller
-from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.ctrlinfo import *
 
 # ------------------------------------------------------------------------------
@@ -209,6 +208,8 @@ class zynthian_engine_jalv(zynthian_engine):
         self.nickname = eng_code
         self.plugin_name = self.eng_info["NAME"]
         self.plugin_url = self.eng_info['URL']
+
+        self.bypass_zctrl = None
 
         # WARNING Show all controllers for Gareus Meters, as they seem to be wrongly marked with property "not_on_gui"
         if self.plugin_url.startswith("http://gareus.org/oss/lv2/meters"):
@@ -738,7 +739,7 @@ class zynthian_engine_jalv(zynthian_engine):
     def get_lv2_controllers_dict(self):
         logging.info("Getting Controller List from LV2 Plugin ...")
         zctrls = {}
-        bypass_zctrl = None
+        self.bypass_zctrl = None
         for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
             symbol = info['symbol']
 
@@ -756,6 +757,15 @@ class zynthian_engine_jalv(zynthian_engine):
             #logging.debug(f"Controller {symbol} group => {info['group_symbol']}")
 
             try:
+                # Detect native bypass/enable toggle => TODO Detect LV2 designation!!
+                if self.type == "Audio Effect" and symbol.lower() in ("bypass", "enable"):
+                    info['is_bypass'] = True
+                    # TODO: Should we detect the toggle logic to be sure?
+                    info['bypass_value'] = 0
+                else:
+                    info['is_bypass'] = False
+                    info['bypass_value'] = 0
+
                 display_priority = info['display_priority']
                 if info['group_display_priority'] > 0:
                     display_priority += 1000000 * info['group_display_priority']
@@ -785,6 +795,8 @@ class zynthian_engine_jalv(zynthian_engine):
                         'is_trigger': info['is_trigger'],
                         'is_integer': info['is_integer'],
                         'is_logarithmic': False,
+                        'is_bypass': info['is_bypass'],
+                        'bypass_value': info['bypass_value'],
                         'is_path': False,
                         'path_file_types': None,
                         'not_on_gui': info['not_on_gui'],
@@ -813,6 +825,8 @@ class zynthian_engine_jalv(zynthian_engine):
                             'is_trigger': False,
                             'is_integer': True,
                             'is_logarithmic': False,
+                            'is_bypass': info['is_bypass'],
+                            'bypass_value': info['bypass_value'],
                             'is_path': False,
                             'path_file_types': None,
                             'not_on_gui': info['not_on_gui'],
@@ -832,6 +846,8 @@ class zynthian_engine_jalv(zynthian_engine):
                             'is_trigger': False,
                             'is_integer': True,
                             'is_logarithmic': info['is_logarithmic'],
+                            'is_bypass': info['is_bypass'],
+                            'bypass_value': info['bypass_value'],
                             'is_path': False,
                             'path_file_types': None,
                             'not_on_gui': info['not_on_gui'],
@@ -857,6 +873,8 @@ class zynthian_engine_jalv(zynthian_engine):
                         'is_trigger': False,
                         'is_integer': False,
                         'is_logarithmic': False,
+                        'is_bypass': info['is_bypass'],
+                        'bypass_value': info['bypass_value'],
                         'is_path': False,
                         'path_file_types': None,
                         'not_on_gui': info['not_on_gui'],
@@ -917,6 +935,8 @@ class zynthian_engine_jalv(zynthian_engine):
                         'is_trigger': False,
                         'is_integer': False,
                         'is_logarithmic': info['is_logarithmic'],
+                        'is_bypass': info['is_bypass'],
+                        'bypass_value': info['bypass_value'],
                         'is_path': False,
                         'path_file_types': None,
                         'not_on_gui': info['not_on_gui'],
@@ -924,9 +944,9 @@ class zynthian_engine_jalv(zynthian_engine):
                         'envelope': info['envelope'],
                         'filter': info['filter']
                     })
-                # Detect native bypass/enable toggle
-                if self.type == "Audio Effect" and symbol.lower() in ("bypass", "enable"):
-                    bypass_zctrl = zctrls[symbol]
+
+                if info['is_bypass']:
+                    self.bypass_zctrl = zctrls[symbol]
 
             # If control info is not OK
             except Exception as e:
@@ -934,21 +954,27 @@ class zynthian_engine_jalv(zynthian_engine):
                 logging.exception(traceback.format_exc())
 
         # Setup zynthian bypass toggle
-        if self.type == "Audio Effect":
-            if bypass_zctrl:
-                bypass_zctrl.set_options({"short_name": "bypass", "labels": ["inline", "bypass"], "ticks": [1, 0], "display_priority": 0})
-            else:
-                # Add jack-routing bypass control
-                zctrls["bypass"] = zynthian_controller(self, 'bypass', {
-                    'name': "bypass",
-                    'is_toggle': True,
-                    'value_max': 1,
-                    'value_default': 0,
-                    'value': 0,
-                    'processor': self,
-                    'labels': ['inline', 'bypass'],
-                    "display_priority": 0
-                })
+        if self.bypass_zctrl:
+            # Reconfigure bypass zctrl to unify behaviour
+            self.bypass_zctrl.set_options({"short_name": "bypass",
+                                      "labels": ["inline", "bypass"],
+                                      "ticks": [int(not self.bypass_zctrl.bypass_value), self.bypass_zctrl.bypass_value],
+                                      "display_priority": 0})
+        elif self.type == "Audio Effect":
+            # Add jack-routing bypass zctrl
+            self.bypass_zctrl = zctrls["bypass"] = zynthian_controller(self, 'bypass', {
+                'name': "bypass",
+                'is_toggle': True,
+                'is_bypass': True,
+                'bypass_value': 0,
+                'value_max': 1,
+                'value_default': 1,
+                'value': 1,
+                'processor': self,
+                'labels': ['inline', 'bypass'],
+                'ticks': [1, 0],
+                "display_priority": 0
+            })
 
         return zctrls
 
@@ -987,8 +1013,6 @@ class zynthian_engine_jalv(zynthian_engine):
                 self.proc_cmd("%s=%s" % (zctrl.symbol, zctrl.value))
             else:
                 self.proc_cmd("%s=%.6f" % (zctrl.symbol, zctrl.value))
-        if zctrl.symbol == "bypass":
-            zynsigman.send_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, zctrl=zctrl)
 
     # ---------------------------------------------------------------------------
     # API methods

@@ -149,7 +149,10 @@ class zynthian_side_chain(tkinter.Canvas):
 
     def bypass_cb(self, zctrl):
         processor = zctrl.processor
-        col = "#808080" if zctrl.value else "#ffffff"
+        if processor.bypass_zctrl.bypass_value:
+            col = "#b0b0b0" if zctrl.value else "#ffffff"
+        else:
+            col = "#ffffff" if zctrl.value else "#b0b0b0"
         for proc, node in self.bypass2node.items():
             if proc == processor:
                 self.itemconfigure(node["text_id"], fill=col)
@@ -312,7 +315,11 @@ class zynthian_side_chain(tkinter.Canvas):
         bg_col = "#505050"
         fg_col = "#ffffff"
         try:
-            disabled = proc.controllers_dict['bypass'].value
+            # Disable block depending on the bypass zctrl logic
+            if proc.bypass_zctrl.bypass_value:
+                disabled = proc.bypass_zctrl.value
+            else:
+                disabled = not proc.bypass_zctrl.value
             self.bypass2node[proc] = node
         except:
             disabled = 0
@@ -333,13 +340,8 @@ class zynthian_side_chain(tkinter.Canvas):
                     bg_col = c_audio
                 case "Special":
                     bg_col = c_special
-            if proc.type == "Audio Effect":
-                try:
-                    if proc.controllers_dict["bypass"].value:
-                        disabled = True
-                        fg_col = "#808080"
-                except:
-                    pass
+            if disabled:
+                fg_col = "#b0b0b0"
         node["id"] = self.create_rectangle(
             x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
             fill=bg_col, outline=bg_col, tags="node"
