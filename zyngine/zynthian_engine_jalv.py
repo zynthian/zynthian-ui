@@ -931,28 +931,21 @@ class zynthian_engine_jalv(zynthian_engine):
 
         # Try all symbols we can imagine ;-)
         if self.type == "Audio Effect":
-            try:
-                bypass_zctrl = zctrls["bypass"]
-            except:
-                try:
-                    bypass_zctrl = zctrls["BYPASS"]
-                except:
-                    try:
-                        bypass_zctrl = zctrls["Bypass"]
-                    except:
-                        try:
-                            bypass_zctrl = zctrls["ByPass"]
-                        except:
-                            try:
-                                bypass_zctrl = zctrls["ENABLE"]
-                            except:
-                                try:
-                                    bypass_zctrl = zctrls["enable"]
-                                except:
-                                    bypass_zctrl = None
-
+            bypass_zctrl = None
+            for symbol in zctrls:
+                if symbol.lower() == "bypass":
+                    bypass_zctrl = zctrls[symbol]
+                    bp_pol = True
+                    break
+                elif symbol.lower() == "enable":
+                    bypass_zctrl = zctrls[symbol]
+                    bp_pol = False
+                    break
             if bypass_zctrl:
-                bypass_zctrl.labels = ["inline", "bypass"]
+                if bp_pol:
+                    bypass_zctrl.labels = ["inline", "bypass"]
+                else:
+                    bypass_zctrl.labels = ["bypass", "inline"]
                 bypass_zctrl.is_toggle = True
                 bypass_zctrl.display_priority = 0
             else:
