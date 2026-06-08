@@ -1003,14 +1003,24 @@ class zynthian_engine_jalv(zynthian_engine):
                 logging.error(f"Can't send controller '{zctrl.symbol}' with CC{zctrl.midi_cc} to zmop {zctrl.processor.chain.zmop_index} => {e}")
         elif zctrl.graph_path is not None:
             if zctrl.is_path:
-                #logging.debug("set %d %s" % (zctrl.graph_path, zctrl.value))
-                self.proc_cmd("set %d %s" % (zctrl.graph_path, zctrl.value))
+                if zctrl.value:
+                    val = zctrl.value
+                else:
+                    # Some engines (Ratatouille, Neuralrack) doesn't reset the path property when sending the null string
+                    val = '_'
+                #logging.debug(f"set {zctrl.graph_path} {val}")
+                self.proc_cmd(f"set {zctrl.graph_path} {val}")
             else:
                 self.proc_cmd("set %d %.6f" % (zctrl.graph_path, zctrl.value))
         else:
             if zctrl.is_path:
-                #logging.debug("%s=%s" % (zctrl.symbol, zctrl.value))
-                self.proc_cmd("%s=%s" % (zctrl.symbol, zctrl.value))
+                if zctrl.value:
+                    val = zctrl.value
+                else:
+                    # Some engines (Ratatouille, Neuralrack) doesn't reset the path property when sending the null string
+                    val = '_'
+                #logging.debug(f"{zctrl.symbol}={val}")
+                self.proc_cmd(f"{zctrl.symbol}={val}")
             else:
                 self.proc_cmd("%s=%.6f" % (zctrl.symbol, zctrl.value))
 
