@@ -738,6 +738,8 @@ class zynthian_engine_jalv(zynthian_engine):
     def get_lv2_controllers_dict(self):
         logging.info("Getting Controller List from LV2 Plugin ...")
         zctrls = {}
+        bypass_zctrl = None
+        bp_pol = False
         for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
             symbol = info['symbol']
 
@@ -923,24 +925,22 @@ class zynthian_engine_jalv(zynthian_engine):
                         'envelope': info['envelope'],
                         'filter': info['filter']
                     })
+                # Detect native bypass/enable toggle
+                if self.type == "Audio Effect":
+                    if symbol.lower() == "bypass":
+                        bypass_zctrl = zctrls[symbol]
+                        bp_pol = True
+                    elif symbol.lower() == "enable":
+                        bypass_zctrl = zctrls[symbol]
+                        bp_pol = False
 
             # If control info is not OK
             except Exception as e:
                 #logging.error(e)
                 logging.exception(traceback.format_exc())
 
-        # Try all symbols we can imagine ;-)
+        # Setup zynthian bypass toggle
         if self.type == "Audio Effect":
-            bypass_zctrl = None
-            for symbol in zctrls:
-                if symbol.lower() == "bypass":
-                    bypass_zctrl = zctrls[symbol]
-                    bp_pol = True
-                    break
-                elif symbol.lower() == "enable":
-                    bypass_zctrl = zctrls[symbol]
-                    bp_pol = False
-                    break
             if bypass_zctrl:
                 if bp_pol:
                     bypass_zctrl.labels = ["inline", "bypass"]
