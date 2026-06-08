@@ -593,19 +593,6 @@ class zynthian_processor:
 
         self.init_ctrl_screens()
 
-    # Return the processor's bypass zctrl, if any
-    def get_bypass_zctrl(self):
-        return self.bypass_zctrl
-
-    # Return True if the processor is bypassed
-    def is_bypassed(self):
-        if self.bypass_zctrl:
-            if self.bypass_zctrl.bypass_value:
-                return bool(self.bypass_zctrl.value)
-            else:
-                return not bool(self.bypass_zctrl.value)
-        return False
-
     def init_ctrl_screens(self, force_refresh=False):
         """Create controller screens from zynthian controller keys
 
@@ -737,6 +724,34 @@ class zynthian_processor:
             if zctrl.group_symbol == group:
                 zctrls.append(zctrl)
         return zctrls
+
+    # ---------------------------------------------------------------------------
+    # Bypass management
+    # ---------------------------------------------------------------------------
+
+    # Return the processor's bypass zctrl, if any
+    def get_bypass_zctrl(self):
+        return self.bypass_zctrl
+
+    # Return True if the processor is bypassed
+    def is_bypassed(self):
+        if self.bypass_zctrl:
+            if self.bypass_zctrl.bypass_value:
+                return bool(self.bypass_zctrl.value)
+            else:
+                return not bool(self.bypass_zctrl.value)
+        return False
+
+    # Set the bypass
+    def set_bypass(self, bypass):
+        if self.bypass_zctrl:
+            if bypass:
+                self.bypass_zctrl.set_value(self.bypass_zctrl.bypass_value)
+            else:
+                self.bypass_zctrl.set_value(int(not self.bypass_zctrl.bypass_value))
+
+    def toggle_bypass(self):
+        self.set_bypass(not self.is_bypassed())
 
     # ---------------------------------------------------------------------------
     # Keymap management
