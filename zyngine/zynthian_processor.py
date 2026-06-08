@@ -593,6 +593,19 @@ class zynthian_processor:
 
         self.init_ctrl_screens()
 
+    # Return the processor's bypass zctrl, if any
+    def get_bypass_zctrl(self):
+        return self.bypass_zctrl
+
+    # Return True if the processor is bypassed
+    def is_bypassed(self):
+        if self.bypass_zctrl:
+            if self.bypass_zctrl.bypass_value:
+                return bool(self.bypass_zctrl.value)
+            else:
+                return not bool(self.bypass_zctrl.value)
+        return False
+
     def init_ctrl_screens(self, force_refresh=False):
         """Create controller screens from zynthian controller keys
 

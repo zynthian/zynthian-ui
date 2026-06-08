@@ -148,13 +148,12 @@ class zynthian_side_chain(tkinter.Canvas):
         #self.hide()
 
     def bypass_cb(self, zctrl):
-        processor = zctrl.processor
-        if processor.bypass_zctrl.bypass_value:
-            col = "#b0b0b0" if zctrl.value else "#ffffff"
+        if zctrl.processor.is_bypassed():
+            col = "#b0b0b0"
         else:
-            col = "#ffffff" if zctrl.value else "#b0b0b0"
+            col = "#ffffff"
         for proc, node in self.bypass2node.items():
-            if proc == processor:
+            if proc == zctrl.processor:
                 self.itemconfigure(node["text_id"], fill=col)
                 break
 
@@ -309,21 +308,18 @@ class zynthian_side_chain(tkinter.Canvas):
         c_synth = "#32a893"
         c_audio = "#505080"
         c_special = "#708050"
-
-        # Draw node background
-        proc = node.get("proc")
         bg_col = "#505050"
         fg_col = "#ffffff"
+
+        # Draw node background
+        title = node.get("title")
+        proc = node.get("proc")
         try:
-            # Disable block depending on the bypass zctrl logic
-            if proc.bypass_zctrl.bypass_value:
-                disabled = proc.bypass_zctrl.value
-            else:
-                disabled = not proc.bypass_zctrl.value
+            # Disable block depending bypass status
+            disabled = proc.is_bypassed()
             self.bypass2node[proc] = node
         except:
-            disabled = 0
-        title = node.get("title")
+            disabled = False
         if type(proc) is str:
             match proc:
                 case "midi_input" | "midi_output" | "chain_controllers":
