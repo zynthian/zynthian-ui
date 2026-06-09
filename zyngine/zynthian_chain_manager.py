@@ -229,6 +229,7 @@ class zynthian_chain_manager:
         # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
         if not chain:
+            self.state_manager.end_busy("add_chain")
             return None
 
         # Insert chain into dict

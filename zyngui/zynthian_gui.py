@@ -985,7 +985,6 @@ class zynthian_gui:
                             self.chain_manager.remove_processor(chain_id, old_processor)
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
-                            self.close_screen("loading")
                             self.chain_control(chain_id, processor, force_bank_preset=True, reset=False)
                 else:
                     # Adding processor to existing chain
@@ -996,7 +995,6 @@ class zynthian_gui:
                     processor = self.chain_manager.add_processor(chain_id, engine, slot)
                     if processor:
                         zynautoconnect.autoconnect()
-                        self.close_screen("loading")
                         self.chain_control(chain_id, processor, force_bank_preset=True, reset=False)
                     else:
                         #self.show_screen_reset("root")
@@ -1006,6 +1004,7 @@ class zynthian_gui:
                 # Creating a new chain
                 if "midi_chan" in self.modify_chain_status:
                     # We know the MIDI channel so create a new chain and processor
+                    self.state_manager.start_busy("modify_chain", "Creating New Chain")
                     if "midi_thru" not in self.modify_chain_status:
                         self.modify_chain_status["midi_thru"] = False
                     if "audio_thru" not in self.modify_chain_status:
@@ -1044,7 +1043,7 @@ class zynthian_gui:
                     self.chain_manager.rebuild_optimisation_cache()
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
-                    self.close_screen("loading")
+                    self.state_manager.end_busy("modify_chain")
                     self.screen_history = []
                     if processor:
                         if processor.eng_code == "CL":
