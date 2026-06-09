@@ -123,7 +123,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     ["Options", [f"warp {note}", f"beat_slice {note}", f"mode {note}"]]
                 ]
                 # Set monitor values (for widget)
-                for symbol in ["zoom", "crop_start", "crop_end", "warp", "beats"]:
+                for symbol in ["zoom", "crop_start", "crop_end", "warp", "beats", "gain"]:
                     self.monitors_dict[symbol] = processor.controllers_dict[f"{symbol} {note}"].value
                 # Set processor name for display
                 processor.preset_name = file_path.split("/")[-1]
@@ -654,6 +654,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 case "gain":
                     try:
                         self.libclippy.setGain(proc.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
+                        self.monitors_dict["gain"] = zctrl.value
                     except Exception as e:
                         logging.warning(e)
                     return
