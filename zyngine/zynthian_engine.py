@@ -166,6 +166,7 @@ class zynthian_engine(zynthian_basic_engine):
     def __init__(self, state_manager=None):
         super().__init__()
         self.state_manager = state_manager
+        self.chain_manager = state_manager.chain_manager
 
         self.custom_gui_fpath = None
 

@@ -199,7 +199,7 @@ class zynthian_engine_jalv(zynthian_engine):
         self.save_preset_uri = None
 
         if state_manager:
-            self.eng_info = self.state_manager.chain_manager.engine_info[eng_code]
+            self.eng_info = self.chain_manager.engine_info[eng_code]
         else:
             self.eng_info = zynthian_lv2.get_engines()[eng_code]
 
@@ -228,7 +228,7 @@ class zynthian_engine_jalv(zynthian_engine):
             if jackname:
                 self.jackname = jackname
             else:
-                self.jackname = self.state_manager.chain_manager.get_next_jackname(self.plugin_name)
+                self.jackname = self.chain_manager.get_next_jackname(self.plugin_name)
 
             logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 
@@ -480,7 +480,8 @@ class zynthian_engine_jalv(zynthian_engine):
     def proc_parse_preset(self, line):
         parts = line.split(" ", maxsplit=1)
         if len(parts) == 2 and parts[1][0] == "(" and parts[1][-1] == ")":
-            self.add_preset(parts[0], parts[1][1:-1])
+            #self.add_preset(parts[0], parts[1][1:-1])
+            self.chain_manager.reload_engine_preset_info(self.nickname)
             self.save_preset_uri = parts[0]
         else:
             logging.warning(f"Wrong preset format when parsing jalv output => {line}")
@@ -570,12 +571,12 @@ class zynthian_engine_jalv(zynthian_engine):
                 logging.error(e)
 
             # Update cache
-            try:
-                self.preset_info[new_bank_name] = self.preset_info.pop(bank[2])
-                zynthian_lv2.save_plugin_presets_cache(
-                    self.plugin_name, self.preset_info)
-            except Exception as e:
-                logging.error(e)
+            self.chain_manager.reload_engine_preset_info(self.nickname)
+            #try:
+            #    self.preset_info[new_bank_name] = self.preset_info.pop(bank[2])
+            #    zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+            #except Exception as e:
+            #    logging.error(e)
 
     def remove_user_bank(self, bank):
         if self.is_preset_user(bank):
@@ -585,21 +586,21 @@ class zynthian_engine_jalv(zynthian_engine):
                 logging.error(e)
 
             # Update cache
-            if bank[2] in self.preset_info:
-                try:
-                    self.preset_info.pop(bank[2])
-                    zynthian_lv2.save_plugin_presets_cache(
-                        self.plugin_name, self.preset_info)
-                except Exception as e:
-                    logging.error(e)
+            self.chain_manager.reload_engine_preset_info(self.nickname)
+            #if bank[2] in self.preset_info:
+            #    try:
+            #        self.preset_info.pop(bank[2])
+            #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+            #    except Exception as e:
+            #        logging.error(e)
 
     def delete_user_bank(self, bank):
         if self.is_preset_user(bank):
             try:
                 for preset in list(self.preset_info[bank[2]]['presets']):
-                    self.delete_preset(bank, preset['url'])
+                    self.delete_preset(bank, preset['url'], refresh_cache=False)
                 self.remove_user_bank(bank)
-                # TODO: self.zyngui.curprocessor.load_preset_list()
+                # TODO: self.processors[0].load_preset_list()
             except Exception as e:
                 logging.error(e)
 
@@ -670,8 +671,10 @@ class zynthian_engine_jalv(zynthian_engine):
             i += 1
         return self.save_preset_uri
 
+    # Currently not used
     def add_preset(self, preset_uri, preset_name):
         logging.info(f"Add preset '{preset_name}' => {preset_uri}")
+        # TODO: Re-order cache after adding!
         # Add to cache
         try:
             # Add bank if needed
@@ -693,17 +696,19 @@ class zynthian_engine_jalv(zynthian_engine):
             logging.error(e)
         return False
 
-    def delete_preset(self, bank, preset):
+    def delete_preset(self, bank, preset, refresh_cache=True):
         if self.is_preset_user(preset):
             try:
                 # Remove from LV2 ttl
                 zynthian_engine_jalv.lv2_remove_preset(preset[0])
                 # Remove from  cache
-                for i, p in enumerate(self.preset_info[bank[2]]['presets']):
-                    if p['url'] == preset[0]:
-                        del self.preset_info[bank[2]]['presets'][i]
-                        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-                        break
+                if refresh_cache:
+                    self.chain_manager.reload_engine_preset_info(self.nickname)
+                    #for i, p in enumerate(self.preset_info[bank[2]]['presets']):
+                    #    if p['url'] == preset[0]:
+                    #        del self.preset_info[bank[2]]['presets'][i]
+                    #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+                    #        break
             except Exception as e:
                 logging.error(e)
 
@@ -724,11 +729,12 @@ class zynthian_engine_jalv(zynthian_engine):
                 # Update LV2 ttl
                 zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
                 # Update cache
-                for i, p in enumerate(self.preset_info[bank[2]]['presets']):
-                    if p['url'] == preset[0]:
-                        self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
-                        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-                        break
+                self.chain_manager.reload_engine_preset_info(self.nickname)
+                #for i, p in enumerate(self.preset_info[bank[2]]['presets']):
+                #    if p['url'] == preset[0]:
+                #        self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
+                #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+                #        break
             except Exception as e:
                 logging.error(e)
 

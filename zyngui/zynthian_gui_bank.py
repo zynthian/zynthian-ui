@@ -120,17 +120,18 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
             if hasattr(engine, "delete_user_bank"):
                 options["Delete"] = [bank, ["Delete bank", "folder_delete.png"]]
                 title_user = True
-        if hasattr(engine, "create_user_bank"):
-            options["Global"] = None
-            options["Create new bank"] = ["new bank", ["Create an empty bank", "folder_new.png"]]
+        # Empty banks are not shown, so creating empty banks is not very useful
+        # Alternately, we could show empty banks (see zynthian_lv2.py)
+        #if hasattr(engine, "create_user_bank"):
+        #    options["Global"] = None
+        #    options["Create new bank"] = ["new bank", ["Create an empty bank", "folder_new.png"]]
         if not options:
             options["No bank options!"] = None
         if title_user:
             title = f"Bank options: {bank_name}"
         else:
             title = "Bank options"
-        self.zyngui.screens['option'].config(
-            title, options, self.bank_options_cb)
+        self.zyngui.screens['option'].config(title, options, self.bank_options_cb)
         self.zyngui.show_screen('option')
 
     def show_menu(self):
@@ -144,21 +145,20 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
 
     def bank_options_cb(self, option, bank):
         self.options_bank_index = self.index
-        if option == "New":
-            self.zyngui.show_keyboard(self.create_bank, bank)
-        elif option == "Rename":
+        if option == "Rename":
             self.zyngui.show_keyboard(self.rename_bank, bank[2])
         elif option == "Delete":
-            self.zyngui.show_confirm("Do you really want to remove bank '{}' and delete all of its presets?".format(
-                bank[2]), self.delete_bank, bank)
+            self.zyngui.show_confirm(f"Do you really want to remove bank '{bank[2]}' and delete all of its presets?",
+                                     self.delete_bank, bank)
+        elif option == "Create new bank":
+            self.zyngui.show_keyboard(self.create_bank, bank)
 
     def create_bank(self, bank_name):
         self.processor.engine.create_user_bank(bank_name)
         self.zyngui.close_screen()
 
     def rename_bank(self, bank_name):
-        self.processor.engine.rename_user_bank(
-            self.list_data[self.options_bank_index], bank_name)
+        self.processor.engine.rename_user_bank(self.list_data[self.options_bank_index], bank_name)
         self.zyngui.close_screen()
 
     def delete_bank(self, bank):
