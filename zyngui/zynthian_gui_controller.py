@@ -770,7 +770,7 @@ class zynthian_gui_controller(tkinter.Canvas):
     def nudge(self, dval, fine=False):
         if self.preselection is not None:
             self.zyngui.screens["control"].zctrl_touch(self.preselection)
-        elif self.enabled and self.zctrl:
+        elif self.zctrl:
             return self.zctrl.nudge(dval, fine=fine)
         else:
             return False
@@ -795,7 +795,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         else:
             return # Long press already handled
         if self.active_motion_axis == 0:
-            if self.canvas_push_event and self.enabled and self.zctrl:
+            if self.canvas_push_event and self.zctrl:
                 dts = (event.time - self.canvas_push_event.time) / 1000
                 self.canvas_push_event = None
                 #logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")

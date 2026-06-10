@@ -589,17 +589,18 @@ class zynthian_gui_control(zynthian_gui_selector):
                 zgui_controller.set_midi_bind()
 
     def plot_zctrls(self, force=False):
-        if self.mode == 'select':
-            super().plot_zctrls()
-        elif self.zgui_controllers:
+        #if self.mode == 'select':
+        #    super().plot_zctrls()
+        if self.zgui_controllers:
             self.swipe_update()
             for zgui_ctrl in self.zgui_controllers:
                 if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
                     zgui_ctrl.calculate_plot_values()
                     zgui_ctrl.plot_value()
                     zgui_ctrl.zctrl.is_dirty = False
-        for k, widget in self.widgets.items():
-            widget.update()
+        if self.mode == 'control':
+            for k, widget in self.widgets.items():
+                widget.update()
 
     # --------------------------------------------------------------------------
     # CUIA => Pass CUIA to widget
