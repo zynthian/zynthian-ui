@@ -239,11 +239,15 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             if t == 'S':
                 self.zyngui.toggle_favorites()
                 return True
-        elif swi == 3:
-            if t == 'B':
-                self.show_preset_options()
-                return True
+
         return False
+
+    def switch_select(self, t='S'):
+        if super().switch_select(t):
+            return True
+        elif t == 'B':
+            self.show_preset_options()
+            return True
 
     def cuia_toggle_play(self, params=None):
         try:

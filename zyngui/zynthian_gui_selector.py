@@ -428,8 +428,10 @@ class zynthian_gui_selector(zynthian_gui_base):
         # Parameter editor implemented in base class!
         if super().switch_select(t):
             return True
-        self.click_listbox(None, t)
-        return True
+        elif t=='S':
+            self.click_listbox(None, t)
+            return True
+        return False
 
     def select_action(self, index, t='S'):
         pass
