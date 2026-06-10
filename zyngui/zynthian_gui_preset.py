@@ -118,6 +118,8 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
                     self.zyngui.replace_screen("chain_control")
                 else:
                     self.zyngui.replace_screen("control")
+        elif t == 'B':
+            self.show_preset_options()
 
     def show_preset_options(self):
         options = {}
@@ -241,13 +243,6 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
                 return True
 
         return False
-
-    def switch_select(self, t='S'):
-        if super().switch_select(t):
-            return True
-        elif t == 'B':
-            self.show_preset_options()
-            return True
 
     def cuia_toggle_play(self, params=None):
         try:

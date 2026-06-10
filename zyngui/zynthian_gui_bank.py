@@ -90,22 +90,25 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         return False
 
     def select_action(self, i, t='S'):
-        if self.list_data and self.list_data[i][0] == '*FAVS*':
-            self.processor.set_show_fav_presets(True)
-        else:
-            if self.processor.set_bank(i) is None:
-                # More setup stages to progress
-                self.set_select_path()
-                self.build_view()
-                return
-            self.processor.set_show_fav_presets(False)
+        if t == 'S':
+            if self.list_data and self.list_data[i][0] == '*FAVS*':
+                self.processor.set_show_fav_presets(True)
+            else:
+                if self.processor.set_bank(i) is None:
+                    # More setup stages to progress
+                    self.set_select_path()
+                    self.build_view()
+                    return
+                self.processor.set_show_fav_presets(False)
 
-        # If only one bank, show to preset list
-        if len(self.list_data) <= 1:
-            self.zyngui.replace_screen('preset')
-        else:
-            self.zyngui.show_screen('preset')
-        self.zyngui.screens["preset"].autoselect()
+            # If only one bank, show preset list
+            if len(self.list_data) <= 1:
+                self.zyngui.replace_screen('preset')
+            else:
+                self.zyngui.show_screen('preset')
+            self.zyngui.screens["preset"].autoselect()
+        elif t == 'B':
+            self.show_bank_options()
 
     def show_bank_options(self):
         options = {}
@@ -173,10 +176,6 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         if swi == 2:
             if t == 'S':
                 self.zyngui.show_favorites()
-                return True
-        elif swi == 3:
-            if t == 'B':
-                self.show_bank_options()
                 return True
         return False
 

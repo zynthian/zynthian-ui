@@ -128,19 +128,18 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def select_action(self, i, t='S'):
         zs3_index = self.list_data[i][0]
-        if zs3_index == "SAVE_ZS3":
+        if t == 'S':
             self.zyngui.state_manager.disable_learn_pc()
-            self.zyngui.state_manager.save_zs3()
-            return True
-        else:
-            if t == 'S':
-                self.zyngui.state_manager.disable_learn_pc()
+            if zs3_index == "SAVE_ZS3":
+                self.zyngui.state_manager.save_zs3()
+                return True
+            else:
                 self.zyngui.state_manager.load_zs3(zs3_index)
                 self.zyngui.close_screen()
                 return True
-            elif t == 'B':
-                self.show_menu()
-                return True
+        elif t == 'B':
+            self.show_menu()
+            return True
 
     def show_menu(self):
         try:
