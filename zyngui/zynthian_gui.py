@@ -1870,7 +1870,7 @@ class zynthian_gui:
     def cuia_midi_learn_control_options(self, params=None):
         scrobj = self.get_midi_learn_screen_obj()
         if scrobj:
-            scrobj.midi_learn_options(params[0])
+            scrobj.controller_options(params[0])
 
     # Learn control
     def cuia_midi_learn_control(self, params=None):

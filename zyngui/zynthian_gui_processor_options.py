@@ -51,6 +51,15 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.list_data = []
 
         self.list_data.append((None, None, "> Manage this processor"))
+
+        # TODO Implement bypass for MIDI processors!!
+        if self.processor.type == "Audio Effect" and self.processor.eng_code not in ("MI", "MR"):
+                if self.processor.is_bypassed():
+                    title = "\u2612 Bypass"
+                else:
+                    title = "\u2610 Bypass"
+                self.list_data.append((self.processor_bypass, None, title, ["Bypass this processor.", None]))
+
         # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator") and self.processor.chain is not None:
             if self.processor.chain.get_processor_count(self.processor.type) > 1:
@@ -152,6 +161,10 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
     def add_audio_processor(self):
         self.add_processor("Audio Effect")
+
+    def processor_bypass(self):
+        self.processor.toggle_bypass()
+        self.update_list()
 
     def processor_remove(self):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)

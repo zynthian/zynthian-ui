@@ -495,7 +495,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     #  returns True if action fully handled or False if parent action should be triggered
     def switch(self, swi, t='S'):
         if t == 'B' and self.midi_learning:
-            self.midi_learn_options(swi)
+            self.controller_options(swi)
             return True
 
         if self.current_widget:
@@ -518,10 +518,13 @@ class zynthian_gui_control(zynthian_gui_selector):
         t = params[1].upper()
         if self.mode == 'control':
             if t == 'S':
-                self.toggle_midi_learn(i)
+                if self.zcontrollers[i].is_path:
+                    self.zcontrollers[i].nudge(0)
+                else:
+                    self.toggle_midi_learn(i)
                 return True
             elif t == 'B' or t == 'L':
-                self.midi_learn_options(i)
+                self.controller_options(i)
                 return True
         return False
 
@@ -738,7 +741,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 logging.error("Can't get processor name.")
 
-    def midi_learn_options(self, i, keep_selection=False, unlearn_only=False):
+    def controller_options(self, i, keep_selection=False, unlearn_only=False):
         self.exit_midi_learn()
         try:
             options = {}
@@ -756,7 +759,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
                 options["Clear"] = zctrl
 
-                self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
+                self.zyngui.screens['option'].config(title, options, self.controller_options_cb)
                 self.zyngui.show_screen('option')
                 return
 
@@ -847,12 +850,12 @@ class zynthian_gui_control(zynthian_gui_selector):
                 index = None
             else:
                 index = 0
-            self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb, index=index)
+            self.zyngui.screens['option'].config(title, options, self.controller_options_cb, index=index)
             self.zyngui.show_screen('option')
         except Exception as e:
             logging.error(f"Can't show control options => {e}")
 
-    def midi_learn_options_cb(self, option, param):
+    def controller_options_cb(self, option, param):
         if option[2:] == "Chain Controller":
             if self.processors[0].chain:
                 self.processors[0].chain.toggle_zctrl(param)
@@ -876,7 +879,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if self.zyngui.state_manager.zctrl_y == zctrl:
                     self.zyngui.state_manager.zctrl_y = None
                 #self.refresh_midi_bind()
-                self.midi_learn_options(param, keep_selection=True)
+                self.controller_options(param, keep_selection=True)
             elif parts[1] == "Y-axis":
                 zctrl = self.zgui_controllers[param].zctrl
                 if self.zyngui.state_manager.zctrl_y == zctrl:
@@ -886,7 +889,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if self.zyngui.state_manager.zctrl_x == zctrl:
                     self.zyngui.state_manager.zctrl_x = None
                 #self.refresh_midi_bind()
-                self.midi_learn_options(param, keep_selection=True)
+                self.controller_options(param, keep_selection=True)
             elif parts[0] == "Chain":
                 self.midi_learn(param, MIDI_LEARNING_CHAIN)
             elif parts[0] == "Global":
@@ -908,13 +911,13 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 0
                 else:
                     self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
-                self.midi_learn_options(param, keep_selection=True)
+                self.controller_options(param, keep_selection=True)
             elif parts[1] == "Debounce":
                 if parts[0] == '\u2612':
                     self.zgui_controllers[param].zctrl.midi_cc_debounce = 0
                 else:
                     self.zgui_controllers[param].zctrl.midi_cc_debounce = 1
-                self.midi_learn_options(param, keep_selection=True)
+                self.controller_options(param, keep_selection=True)
             elif parts[0] in ["Relative", "Absolute"]:
                 options = {
                     "Absolute Mode": (param, 0),
@@ -931,12 +934,12 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])
         self.zgui_controllers[param[0]].zctrl.range_reversed = "Reverse" in option
-        self.midi_learn_options(param[0], keep_selection=True)
+        self.controller_options(param[0], keep_selection=True)
 
     def zynstep_midi_cc_cb(self, ccnum, i):
         zctrl = self.zgui_controllers[i].zctrl
         self.chain_manager.add_zynstep_midi_learn(ccnum, zctrl)
-        self.midi_learn_options(i, keep_selection=True)
+        self.controller_options(i, keep_selection=True)
 
     def show_xy(self, params=None):
         self.zyngui.show_screen("control_xy")
