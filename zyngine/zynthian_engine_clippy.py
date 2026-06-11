@@ -622,27 +622,27 @@ class zynthian_engine_clippy(zynthian_engine):
                     zctrl_crop_end = proc.controllers_dict[f"crop_end {note}"]
                     if zctrl_crop_end.value - zctrl.value < zctrl.nudge_factor:
                         zctrl.value = zctrl_crop_end.value - zctrl.nudge_factor
-                    self.monitors_dict["crop_start"] = zctrl.value
                     if not proc.set_state_flag:
                         if beat_slice:
                             beats = round((zctrl_crop_end.value - zctrl.value) / zctrl.nudge_factor)
+                            zctrl.value = zctrl_crop_end.value - beats * zctrl.nudge_factor
                             proc.controllers_dict[f"beats {note}"].set_value(beats)
                         else:
                             self.start_reload_timer(proc, phrase)
-                    return
+                    self.monitors_dict["crop_start"] = zctrl.value
                 case "crop_end":
                     beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
                     zctrl_crop_start = proc.controllers_dict[f"crop_start {note}"]
                     if zctrl.value - zctrl_crop_start.value < zctrl.nudge_factor:
                         zctrl.value = zctrl_crop_start.value + zctrl.nudge_factor
-                    self.monitors_dict["crop_end"] = zctrl.value
                     if not proc.set_state_flag:
                         if beat_slice:
                             beats = round((zctrl.value - zctrl_crop_start.value) / zctrl.nudge_factor)
+                            zctrl.value = zctrl_crop_start.value + beats * zctrl.nudge_factor
                             proc.controllers_dict[f"beats {note}"].set_value(beats)
                         else:
                             self.start_reload_timer(proc, phrase)
-                        return
+                    self.monitors_dict["crop_end"] = zctrl.value
                 case "beats":
                     zctrl_warp = proc.controllers_dict[f"warp {note}"]
                     self.monitors_dict["beats"] = zctrl.value
