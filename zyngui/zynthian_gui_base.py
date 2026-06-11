@@ -229,8 +229,7 @@ class zynthian_gui_base(tkinter.Frame):
         if self.shown:
             if self.param_editor_zctrl:
                 self.disable_param_editor()
-            if self.winfo_ismapped():
-                self.grid_remove()
+            self.grid_remove()
             self.shown = False
 
     # Show topbar (if allowed)
@@ -242,8 +241,7 @@ class zynthian_gui_base(tkinter.Frame):
                 self.tb_frame.grid(row=0, sticky="EW")
             else:
                 self.topbar_height = 0
-                if self.tb_frame.winfo_ismapped():
-                    self.tb_frame.grid_remove()
+                self.tb_frame.grid_remove()
             self.update_layout()
 
     # Show sidebar (override in derived classes if required)

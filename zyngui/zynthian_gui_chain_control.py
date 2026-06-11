@@ -95,8 +95,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             if self.chain_shown:
                 self.chain_shown = False
                 self.update_layout()
-                if self.chain_canvas.winfo_ismapped():
-                    self.chain_canvas.grid_remove()
+                self.chain_canvas.grid_remove()
 
     def toggle_chain(self):
         self.show_chain(not self.chain_shown)

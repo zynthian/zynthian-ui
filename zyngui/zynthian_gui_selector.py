@@ -195,9 +195,9 @@ class zynthian_gui_selector(zynthian_gui_base):
             if self.loading_canvas:
                 self.loading_canvas.grid()
         else:
-            if self.zselector and not self.zselector_hidden and self.zselector.winfo_ismapped():
+            if self.zselector and not self.zselector_hidden:
                 self.zselector.grid_remove()
-            if self.loading_canvas and self.loading_canvas.winfo_ismapped():
+            if self.loading_canvas:
                 self.loading_canvas.grid_remove()
         self.update_layout()
 
