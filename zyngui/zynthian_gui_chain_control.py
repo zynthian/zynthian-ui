@@ -87,13 +87,16 @@ class zynthian_gui_chain_control(zynthian_gui_base):
 
     def show_chain(self, show):
         if show:
-            self.chain_shown = True
-            self.update_layout()
-            self.chain_canvas.grid(row=0, column=0, padx=(0, 2), pady=(0, 0), sticky="NEWS")
+            if not self.chain_shown:
+                self.chain_shown = True
+                self.update_layout()
+                self.chain_canvas.grid(row=0, column=0, padx=(0, 2), pady=(0, 0), sticky="NEWS")
         else:
-            self.chain_shown = False
-            self.update_layout()
-            self.chain_canvas.grid_remove()
+            if self.chain_shown:
+                self.chain_shown = False
+                self.update_layout()
+                if self.chain_canvas.winfo_ismapped():
+                    self.chain_canvas.grid_remove()
 
     def toggle_chain(self):
         self.show_chain(not self.chain_shown)
@@ -102,23 +105,17 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.chain_canvas.build_graph()
 
     def reset(self):
-        self.set_chain()
-        if not self.chain.current_processor:
-            self.select_subscreen("chain_options", show_chain=True)
-        else:
-            self.select_subscreen("control", proc=self.chain.current_processor, show_chain=False)
-            self.subscreen.set_mode_control()
+        self.set_chain(reset=True)
 
     def build_view(self):
-        super().build_view()
-        if not self.shown:
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
         if self.chain_shown:
             self.chain_canvas.build_view()
             self.refresh_chain()
         if not self.subscreen.shown:
             self.subscreen.build_view()
             self.subscreen.show()
+        if not self.shown:
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
         return True
 
     def hide(self):
@@ -128,7 +125,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.subscreen.hide()
         super().hide()
 
-    def set_chain(self, chain_id=None):
+    def set_chain(self, chain_id=None, reset=False):
         if chain_id is None:
             self.chain_id = self.chain_manager.active_chain.chain_id
         else:
@@ -136,8 +133,20 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.chain = self.chain_manager.chains[self.chain_id]
         self.zyngui.current_processor = self.chain.current_processor
 
-        self.chain_canvas.set_chain(self.chain_id)
-        self.chain_canvas.build_view()
+        if reset:
+            if not self.chain.current_processor:
+                self.chain_canvas.set_chain(self.chain_id, proc="chain_options")
+                self.chain_canvas.build_view()
+                self.show_chain(True)
+            else:
+                self.chain_canvas.set_chain(self.chain_id, proc=self.chain.current_processor)
+                self.chain_canvas.build_view()
+                self.show_chain(False)
+                self.subscreen.set_mode_control()
+        else:
+            self.chain_canvas.set_chain(self.chain_id, proc=None)
+            self.chain_canvas.build_view()
+
 
     def cb_set_active_chain(self, active_chain_id):
         self.set_chain(active_chain_id)

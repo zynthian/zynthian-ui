@@ -89,7 +89,7 @@ class zynthian_side_chain(tkinter.Canvas):
 
         self.update_layout()
 
-    def set_chain(self, chain_id=None):
+    def set_chain(self, chain_id=None, proc=None):
         try:
             self.chain = self.chain_manager.chains[chain_id]
             self.chain_id = chain_id
@@ -98,12 +98,13 @@ class zynthian_side_chain(tkinter.Canvas):
             self.chain = self.chain_manager.chains[chain_id]
 
         # Save current selection across node graph rebuild => proc string
-        try:
-            proc = self.nodes[self.selected_index]["proc"]
-            if type(proc) != str:
-                proc = None
-        except:
-            proc = None
+        if proc is None:
+            try:
+                proc = self.nodes[self.selected_index]["proc"]
+                if type(proc) != str:
+                    proc = None
+            except:
+                pass
 
         self.selected_index = None
         self.build_graph()

@@ -973,7 +973,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         if self.select_mode:
             # Hide controller widgets
             for i in range(0, len(zgui_ctrls)):
-                if zgui_ctrls[i]:
+                if zgui_ctrls[i] and zgui_ctrls[i].winfo_ismapped():
                     zgui_ctrls[i].grid_remove()
             # Show selector widgets
             if self.zselector_gui:
@@ -989,7 +989,8 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.zselector_gui.grid(row=layout['ctrl_pos'][3][0], column=layout['ctrl_pos'][3][1], sticky="news")
         else:
             # Hide selector:
-            self.zselector_gui.grid_remove()
+            if self.zselector_gui.winfo_ismapped():
+                self.zselector_gui.grid_remove()
             # Show controller widgets
             for i in range(0, len(zgui_ctrls)):
                 if zgui_ctrls[i]:

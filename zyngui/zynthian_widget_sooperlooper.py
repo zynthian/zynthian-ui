@@ -360,7 +360,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                 self.pos_canvas[loop]['mute'].grid_remove()
             if self.loop_count < zynthian_engine_sooperlooper.MAX_LOOPS:
                 self.add_canvas.grid()
-            else:
+            elif self.add_canvas.winfo_ismapped():
                 self.add_canvas.grid_remove()
 
         # Update loop specific parameters

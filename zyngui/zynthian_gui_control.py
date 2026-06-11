@@ -125,7 +125,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         for zctrl in self.zgui_controllers:
             if self.sidebar_shown:
                 zctrl.grid()
-            else:
+            elif zctrl.winfo_ismapped():
                 zctrl.grid_remove()
         self.update_layout()
 
@@ -308,7 +308,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             # Display widget and hide other ones
             for k, widget in self.widgets.items():
                 if k == widget_name:
-                    self.listbox.grid_remove()
+                    if self.listbox.winfo_ismapped():
+                        self.listbox.grid_remove()
                     lb_rows = self.layout['rows'] - widget.rows
                     if lb_rows > 0:
                         self.listbox.grid(rowspan=lb_rows)
@@ -319,17 +320,20 @@ class zynthian_gui_control(zynthian_gui_selector):
                     widget.show()
                     self.set_current_widget(widget)
                 else:
-                    widget.grid_remove()
+                    if widget.winfo_ismapped():
+                        widget.grid_remove()
                     widget.hide()
         else:
             self.hide_widgets()
 
     def hide_widgets(self):
         for k, widget in self.widgets.items():
-            widget.grid_remove()
+            if widget.winfo_ismapped():
+                widget.grid_remove()
             widget.hide()
         self.set_current_widget(None)
-        self.listbox.grid_remove()
+        if self.listbox.winfo_ismapped():
+            self.listbox.grid_remove()
         self.listbox.grid(rowspan=4)
 
     def purge_widgets(self):
@@ -459,12 +463,15 @@ class zynthian_gui_control(zynthian_gui_selector):
             return
         # Chain controllers
         if not proc and self.processors[0].chain.zctrls:
-            self.select(1)
+            if self.index != 1:
+                self.select(1)
         # Processor controllers
         elif proc in self.processors:
             for i, row in enumerate(self.list_data):
                 if row[1] and row[1] > 0 and row[3] == proc:
-                    self.select(i + proc.current_screen_index)
+                    index = i + proc.current_screen_index
+                    if self.index != index:
+                        self.select(index)
                     return
 
     def get_selected_processor(self):

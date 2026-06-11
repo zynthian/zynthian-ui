@@ -98,14 +98,16 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
     def select_action(self, i, t='S'):
         if t == 'S':
             # Allow animation
-            self.info_canvas.grid_remove()
+            if self.info_canvas.winfo_ismapped():
+                self.info_canvas.grid_remove()
             self.grid_loading_canvas()
             self.zyngui.state_manager.start_busy("set preset")
             # Set preset
             result = self.zyngui.get_current_processor().set_preset(i)
             self.zyngui.state_manager.end_busy("set preset")
             # Stop animation and restore icon canvas
-            self.loading_canvas.grid_remove()
+            if self.loading_canvas.winfo_ismapped():
+                self.loading_canvas.grid_remove()
             self.grid_info_canvas()
             # If result is None (still browsing) => refresh preset list
             if result is None:
