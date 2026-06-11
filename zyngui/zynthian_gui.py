@@ -2359,11 +2359,14 @@ class zynthian_gui:
             return self.custom_switch_ui_action(i - 4, "S")
 
     # ------------------------------------------------------------------
-    # Defered Switch Events
+    # Defered Events
     # ------------------------------------------------------------------
 
     def zynswitch_defered(self, t, i):
         self.cuia_queue.put_nowait(("zynswitch", (i, t)))
+
+    def after_idle(self, func, *args):
+        zynthian_gui_config.top.after_idle(func, *args)
 
     # ------------------------------------------------------------------
     # Read Physical Zynswitches

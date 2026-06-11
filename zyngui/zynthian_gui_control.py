@@ -266,7 +266,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         elif self.screen_type:  # and not module_path
             module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
         else:
-            zynthian_gui_config.top.after_idle(self.hide_widgets)
+            self.zyngui.after_idle(self.hide_widgets)
             return
 
         module_name = Path(module_path).stem
@@ -282,7 +282,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.modules[module_name] = module
                 except Exception as e:
                     logging.error(f"Can't load custom widget module '{module_name}' => {e}")
-                    zynthian_gui_config.top.after_idle(self.hide_widgets)
+                    self.zyngui.after_idle(self.hide_widgets)
                     return
 
             # Create new widget if needed
@@ -299,17 +299,17 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.widgets[widget_name] = module_class(self)
                 except Exception as e:
                     logging.error(f"Can't create custom widget instance '{widget_name}' => {e}")
-                    zynthian_gui_config.top.after_idle(self.hide_widgets)
+                    self.zyngui.after_idle(self.hide_widgets)
                     return
 
             # Configure widget's processor
             self.widgets[widget_name].set_processor(processor)
 
             # Display widget
-            zynthian_gui_config.top.after_idle(self.display_widget, widget_name)
+            self.zyngui.after_idle(self.display_widget, widget_name)
 
         else:
-            zynthian_gui_config.top.after_idle(self.hide_widgets)
+            self.zyngui.after_idle(self.hide_widgets)
 
     # Display widget and hide other ones
     def display_widget(self, widget_name):
