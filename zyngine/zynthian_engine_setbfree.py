@@ -47,21 +47,23 @@ class zynthian_engine_setbfree(zynthian_engine):
     # Banks
     # ---------------------------------------------------------------------------
 
+    manual_info = ["Select up to 2 keyboards & a pedal board as linked chains or a single chain with manuals split across a single keyboard.", "note_range.png"]
     bank_manuals_list = [
-        ['Upper', 0, 'Upper', '_', {'manuals': [True, False, False], 'keyranges': None, 'transpose': None}],
-        ['Upper + Lower', 1, 'Upper + Lower', '_', {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}],
-        ['Upper + Pedals', 2, 'Upper + Pedals', '_', {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}],
-        ['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}],
-        ['Split Lower/Upper', 4, 'Split Lower/Upper', '_', {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}],  # 56
-        ['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}],  # 58
-        ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}],  # 57
+        ['Upper', 0, 'Upper', '_', {'manuals': [True, False, False], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Upper + Lower', 1, 'Upper + Lower', '_', {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Upper + Pedals', 2, 'Upper + Pedals', '_', {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Split Lower/Upper', 4, 'Split Lower/Upper', '_', {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}, manual_info],  # 56
+        ['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}, manual_info],  # 58
+        ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}, manual_info],  # 57
     ]
 
+    tonewheel_info = ["Tonewheels usually create sine waves but you may customise the waveform here. This is a variation from the traditional tonewheel.", "note_range.png"]
     bank_twmodels_list = [
-        ['Sin', 0, 'Sine (Hammond)', '_'],
-        ['Sqr', 1, 'Square (Combo)', '_'],
-        ['Tri', 2, 'Triangle (Combo)', '_'],
-        ['Saw', 2, 'Sawtooth (Combo)', '_']
+        ['Sin', 0, 'Sine (Hammond)', '_', tonewheel_info],
+        ['Sqr', 1, 'Square (Combo)', '_', tonewheel_info],
+        ['Tri', 2, 'Triangle (Combo)', '_', tonewheel_info],
+        ['Saw', 2, 'Sawtooth (Combo)', '_', tonewheel_info]
     ]
 
     tonewheel_config = {
