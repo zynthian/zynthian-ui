@@ -261,7 +261,7 @@ def save_config(config, updsys=False, fpath=None):
     # Add the rest
     vars_to_add = set(config.keys())-set(updated)
     for varname in vars_to_add:
-        value = config[varname].replace("\n", "\\n")
+        value = str(config[varname]).replace("\n", "\\n")
         value = value.replace("\r", "")
         os.environ[varname] = value
         lines.insert(add_row, "export %s=\"%s\"\n" % (varname, value))

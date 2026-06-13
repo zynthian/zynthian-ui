@@ -814,8 +814,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             self.state_manager.delete_last_state_snapshot()
         try:
             zynconf.save_config({"ZYNTHIAN_TOUCH_SHOWN": zynthian_gui_config.touch_shown})
-        except:
-            pass
+        except Exception as e:
+            logging.warning(f"Failed to save touch shown config: {e}")
         if self.zyngui.tts:
             self.zyngui.tts._tts.announce_disable = True
 
