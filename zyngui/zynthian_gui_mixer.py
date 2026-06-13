@@ -1986,7 +1986,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def get_phrase_title(self, phrase):
         title = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["name"]
         if not title:
-            title = chr(ord('A') + phrase)
+            title = f"Phrase {phrase}"
         return title
 
     def get_follow_info(self, phrase):
@@ -2006,10 +2006,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 title = f"{self.get_phrase_title(phrase)} (NEXT)"
             case _:
                 title = f"{self.get_phrase_title(phrase)} ({offset:+})"
-                if offset < 0:
-                    title = "LOOP from " + title
-                elif offset > 1:
-                    title = "JUMP to " + title
+        if offset < 0:
+            title = "LOOP from " + title
+        elif offset > 1:
+            title = "JUMP to " + title
 
         return (offset, title)
 
