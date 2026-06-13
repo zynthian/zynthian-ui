@@ -58,7 +58,7 @@ class zynthian_engine_setbfree(zynthian_engine):
         ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}, manual_info],  # 57
     ]
 
-    tonewheel_info = ["Tonewheels usually create sine waves but you may customise the waveform here. This is a variation from the traditional tonewheel.", "note_range.png"]
+    tonewheel_info = ["Tonewheels usually create sine waves but you may customise the waveform here. This is a variation from the traditional tonewheel.", "audio.png"]
     bank_twmodels_list = [
         ['Sin', 0, 'Sine (Hammond)', '_', tonewheel_info],
         ['Sqr', 1, 'Square (Combo)', '_', tonewheel_info],
