@@ -766,11 +766,8 @@ class zynthian_engine_jalv(zynthian_engine):
                 # Detect native bypass/enable toggle => TODO Detect LV2 designation!!
                 if self.type == "Audio Effect" and symbol.lower() in ("bypass", "enable"):
                     info['is_bypass'] = True
-                    # TODO: Improve logic auto-detection by inspecting label/tick values
-                    if symbol.lower() == "bypass":
-                        info['bypass_value'] = 1
-                    else:
-                        info['bypass_value'] = 0
+                    # Deduce bypass logic?? => Seems to be not needed!!
+                    info['bypass_value'] = 0
                 else:
                     info['is_bypass'] = False
                     info['bypass_value'] = 0
