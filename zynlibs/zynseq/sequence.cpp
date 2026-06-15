@@ -277,8 +277,8 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
                 }
             } else {
                 setPlayState(STOPPED);
+                m_nPosition = 0;
             }
-            m_nPosition = 0;
         }
     }
 

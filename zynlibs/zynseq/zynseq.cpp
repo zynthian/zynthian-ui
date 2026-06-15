@@ -2578,25 +2578,28 @@ void togglePlayState(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     }
     uint8_t nState = pSequence->getPlayState();
     switch (nState) {
-    case STOPPED:
-        nState = STARTING;
-        break;
-    case STARTING:
-        nState = STOPPED;
-        break;
-    case PLAYING:
-        nState = STOPPING_SYNC;
-        break;
-    case STOPPING:
-    case STOPPING_SYNC:
-        nState = PLAYING;
-        break;
-    case CHILD_PLAYING:
-        nState = CHILD_STOPPING;
-        break;
-    case CHILD_STOPPING:
-        nState = STARTING;
-        break;
+        case STOPPED:
+            nState = STARTING;
+            break;
+        case STARTING:
+            nState = STOPPED;
+            break;
+        case PLAYING:
+            if (pSequence->isPhraseLauncher())
+                nState = CHILD_STOPPING;
+            else
+                nState = STOPPING_SYNC;
+            break;
+        case STOPPING:
+        case STOPPING_SYNC:
+            nState = PLAYING;
+            break;
+        case CHILD_PLAYING:
+            nState = CHILD_STOPPING;
+            break;
+        case CHILD_STOPPING:
+            nState = STARTING;
+            break;
     }
     setPlayState(scene, phrase, sequence, nState);
 }
