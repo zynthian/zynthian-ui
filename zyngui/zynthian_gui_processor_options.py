@@ -28,8 +28,10 @@ import random
 from copy import copy
 
 # Zynthian specific modules
-from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 import zynautoconnect
+from zyngine.zynthian_signal_manager import zynsigman
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+
 
 # ------------------------------------------------------------------------------
 # Zynthian processor Options GUI Class
@@ -58,7 +60,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
                     title = "\u2612 Bypass"
                 else:
                     title = "\u2610 Bypass"
-                self.list_data.append((self.processor_bypass, None, title, ["Bypass this processor.", None]))
+                self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", None]))
 
         # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator") and self.processor.chain is not None:
@@ -114,9 +116,18 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
             self.processor = self.zyngui.get_current_processor()
             self.last_random = {}
         super().build_view()
+        zynsigman.register_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
         if self.index >= len(self.list_data):
             self.index = len(self.list_data) - 1
         return True
+
+    def hide(self):
+        zynsigman.unregister(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
+        super().hide()
+
+    def bypass_cb(self, zctrl):
+        if self.processor and self.processor.type == "Audio Effect" and self.processor.eng_code not in ("MI", "MR"):
+            self.update_list()
 
     def select_action(self, i, t='S'):
         self.index = i
@@ -161,10 +172,6 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
     def add_audio_processor(self):
         self.add_processor("Audio Effect")
-
-    def processor_bypass(self):
-        self.processor.toggle_bypass()
-        self.update_list()
 
     def processor_remove(self):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)

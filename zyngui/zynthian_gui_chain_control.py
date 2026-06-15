@@ -107,8 +107,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         self.set_chain(reset=True)
 
     def build_view(self):
+        self.chain_canvas.build_view()
         if self.chain_shown:
-            self.chain_canvas.build_view()
             self.refresh_chain()
         if not self.subscreen.shown:
             self.subscreen.build_view()
