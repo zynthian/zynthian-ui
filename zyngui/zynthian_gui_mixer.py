@@ -1986,7 +1986,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def get_phrase_title(self, phrase):
         title = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["name"]
         if not title:
-            title = f"Phrase {phrase}"
+            title = f"Phrase {phrase + 1}"
         return title
 
     def get_follow_info(self, phrase):
