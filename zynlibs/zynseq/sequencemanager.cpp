@@ -241,8 +241,9 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     if (nPos >= pSequence->getLength()) {
                         nPos = 0;
                         uint8_t nCount = pSequence->getPlayed() + 1;
+                        uint8_t nRepeat = pSequence->getRepeat();
                         // Looping or still don't reached number of repeats => Triggering repeat
-                        if (nCount < pSequence->getRepeat() || (pSequence->getFollowAction() == FOLLOW_ACTION_RELATIVE && pSequence->getFollowParam() == 0)) {
+                        if (nRepeat == 255 || nCount < nRepeat ) {
                             pSequence->setPlayed(nCount);
                             pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}}));
                             //pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
@@ -542,7 +543,7 @@ void SequenceManager::enableChannel(uint8_t channel, bool enable) {
         for (uint8_t nPhrase = 0; nPhrase < m_vScenes[nScene].size(); ++nPhrase) {
             Sequence* pSequence = getSequence(nScene, nPhrase, channel);
             if (pSequence) {
-                pSequence->setRepeat(enable ? 1 : 0);
+                pSequence->setRepeat(enable ? 255 : 0);
                 setPlayState(pSequence, STOPPED);
             }
         }

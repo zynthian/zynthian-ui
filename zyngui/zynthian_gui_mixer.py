@@ -282,19 +282,12 @@ class zynthian_gui_launcher_pad():
                         empty = True
                         timesig = "1"
 
-                match state_seq["followAction"]:
-                    case zynseq.FOLLOW_ACTION_NONE:
-                        if state_seq["repeat"] <= 1:
-                            mode_text = "↦"
-                        elif state_seq["repeat"] > 1:
-                            mode_text = "x" + str(state_seq["repeat"])
-                    case zynseq.FOLLOW_ACTION_RELATIVE:
-                        if state_seq["followParam"] == 0:
-                            mode_text = "↻"
-                        else:
-                            mode_text = "→"
-                    case _:
-                        mode_text = "→"
+                if state_seq["repeat"] == 1:
+                    mode_text = "↦"
+                elif state_seq["repeat"] == 255:
+                    mode_text = "↻"
+                elif state_seq["repeat"] > 1:
+                    mode_text = "x" + str(state_seq["repeat"])
 
                 # Launcher background color
                 if empty:

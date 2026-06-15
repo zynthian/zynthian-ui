@@ -222,70 +222,112 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, uint8_t nTimeSig) {
     uint8_t nCountInc = (m_nState == STARTING) ? 0 : 1;
     uint32_t nPulsesBar = PPQN_INTERNAL * nTimeSig;
     bool bPhraseLauncher = isPhraseLauncher();
-    // Start of bar
-    if (bSync) {
-        if (m_nMode & MODE_END_SYNC) {
-            if (m_nState == STOPPING) {
-                setPlayState(STOPPED);
-                m_nPosition = 0;
+
+    // Phrase
+    if (bPhraseLauncher) {
+        // Start of bar
+        if (bSync) {
+            if (m_nMode & MODE_END_SYNC) {
+                if (m_nState == STOPPING) {
+                    setPlayState(STOPPED);
+                    m_nPosition = 0;
+                }
             }
-        }
-        if (m_nState == STARTING) {
-            setPlayState(PLAYING);
-            if (bPhraseLauncher) {
+            if (m_nState == STARTING) {
+                setPlayState(PLAYING);
                 nReturn |= CLOCK_TRIG_PHRASE;
                 if (m_fTempo)
                     nReturn |= CLOCK_TRIG_TEMPO;
                 if (m_nTimeSig)
                     nReturn |= CLOCK_TRIG_TIMESIG;
             }
-        } else if (m_nState == STOPPING_SYNC) {
-            setPlayState(STOPPED);
-            m_nPosition = 0;
-        } else if (bPhraseLauncher && m_nState == PLAYING && m_nRepeat != 255 && m_nCount < m_nRepeat) {
-            // Playing at start of bar so must be triggering phrase
-            nReturn |= CLOCK_TRIG_PHRASE;
-            if (m_fTempo)
-                nReturn |= CLOCK_TRIG_TEMPO;
-            if (m_nTimeSig)
-                nReturn |= CLOCK_TRIG_TIMESIG;
+            else if (m_nState == STOPPING_SYNC) {
+                setPlayState(STOPPED);
+                m_nPosition = 0;
+            }
+            // Playing at start of first phrase bar => must be triggering phrase
+            else if (m_nState == PLAYING && m_nCount == 0) {
+                nReturn |= CLOCK_TRIG_PHRASE;
+                if (m_fTempo)
+                    nReturn |= CLOCK_TRIG_TEMPO;
+                if (m_nTimeSig)
+                    nReturn |= CLOCK_TRIG_TIMESIG;
+            }
         }
-    }
-    // Still playing so iterate through tracks
-    if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
-        bool trig = false;
-        for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-            trig |= (*it).clock(nTime, m_nPosition, bSync);
-        if (trig)
-            nReturn |= CLOCK_TRIG_MIDI;
-        ++m_nPosition;
+        // Still playing phrase => update position
+        if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
+            ++m_nPosition;
+        }
+        // End of phrase
+        if (m_nPosition >= nPulsesBar) {
+            if (m_nState == PLAYING) {
+                m_nCount += nCountInc;
+                m_nPosition = 0;
+                bool bFollow;
+                if (m_nRepeat == 255)
+                    bFollow = (m_nCount * nPulsesBar >= m_nLength);
+                else
+                    bFollow = (m_nCount >= m_nRepeat);
+                if (bFollow) {
+                    // Trigger Follow Action
+                    nReturn |= CLOCK_TRIG_SEQEND;
+                    // Stop if not looping self
+                    if (m_nFollowAction != FOLLOW_ACTION_RELATIVE || m_nFollowParam != 0)
+                        setPlayState(STOPPED);
+                }
+            } else {
+                setPlayState(STOPPED);
+            }
+            m_nPosition = 0;
+        }
     }
 
-    // End of sequence or phrase
-    if ((!bPhraseLauncher && (m_nPosition >= m_nLength)) || (bPhraseLauncher && (m_nPosition >= nPulsesBar))) {
-        if (m_nState == PLAYING) {
-            m_nCount += nCountInc;
-            m_nPosition = 0;
-            bool bFollow;
-            if (m_nRepeat == 255)
-                bFollow = (m_nCount * nPulsesBar >= m_nAutoFollow);
-            else
-                bFollow = (m_nCount >= m_nRepeat);
-            if (bFollow) {
-                // Follow action
-                nReturn |= CLOCK_TRIG_SEQEND;
-                // Stop if not looping self
-                if (m_nFollowAction != FOLLOW_ACTION_RELATIVE || m_nFollowParam != 0)
+    // "Normal" sequence => Not a phrase!!
+    else {
+        // Start of bar
+        if (bSync) {
+            if (m_nMode & MODE_END_SYNC) {
+                if (m_nState == STOPPING) {
                     setPlayState(STOPPED);
+                    m_nPosition = 0;
+                }
             }
-        } else {
-            setPlayState(STOPPED);
-            for (auto pChildSeq: m_aChildSequences) {
-                if (pChildSeq)
-                    pChildSeq->setPlayState(STOPPING_SYNC); // stopping_sync so that child sequences stop in sync
+            if (m_nState == STARTING) {
+                setPlayState(PLAYING);
+            }
+            else if (m_nState == STOPPING_SYNC) {
+                setPlayState(STOPPED);
+                m_nPosition = 0;
             }
         }
-        m_nPosition = 0;
+        // Still playing so iterate through tracks
+        if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
+            bool trig = false;
+            for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+                trig |= (*it).clock(nTime, m_nPosition, bSync);
+            if (trig)
+                nReturn |= CLOCK_TRIG_MIDI;
+            ++m_nPosition;
+        }
+        // End of sequence
+        if (m_nPosition >= m_nLength) {
+            if (m_nState == PLAYING) {
+                m_nCount += nCountInc;
+                m_nPosition = 0;
+                // Stop when not looping forever and reached the number of repeats
+                if (m_nRepeat != 255 and m_nCount >= m_nRepeat) {
+                    nReturn |= CLOCK_TRIG_SEQEND;
+                    setPlayState(STOPPED);
+                }
+            } else {
+                setPlayState(STOPPED);
+                for (auto pChildSeq: m_aChildSequences) {
+                    if (pChildSeq)
+                        pChildSeq->setPlayState(STOPPING_SYNC); // stopping_sync so that child sequences stop in sync
+                }
+            }
+            m_nPosition = 0;
+        }
     }
 
     m_bStateChanged |= (nState != m_nState);
@@ -315,20 +357,24 @@ SEQ_EVENT* Sequence::getEvent() {
 }
 
 void Sequence::updateLength(uint32_t length) {
-    m_nLength = length;
-    if (length)
-        return;
-    m_bEmpty = true;
-    for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
-        uint32_t nTrackLength = (*it).updateLength();
-        if (nTrackLength > m_nLength)
-            m_nLength = nTrackLength;
-        m_bEmpty &= (*it).isEmpty();
+    if (length) m_nLength = length;
+    else {
+        if (isPhraseLauncher()) {
+            updatePhraseLength();
+        }
+        else {
+            m_nLength = 0;
+            m_bEmpty = true;
+            for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
+                uint32_t nTrackLength = (*it).updateLength();
+                if (nTrackLength > m_nLength)
+                    m_nLength = nTrackLength;
+                m_bEmpty &= (*it).isEmpty();
+            }
+            if (m_pPhraseSequence)
+                m_pPhraseSequence->updatePhraseLength();
+        }
     }
-    if (m_pPhraseSequence)
-        m_pPhraseSequence->updateAutoFollow();
-    else
-        updateAutoFollow();
 }
 
 uint32_t Sequence::getLength() { return m_nLength; }
@@ -389,25 +435,27 @@ bool Sequence::isFollowPlay(uint8_t repeat) {
 void Sequence::setRepeat(uint8_t repeat) {
     m_nRepeat = repeat;
     if (m_pPhraseSequence)
-        m_pPhraseSequence->updateAutoFollow();
+        m_pPhraseSequence->updatePhraseLength();
     else if (repeat == 255)
-        updateAutoFollow();
-    else
-        m_nAutoFollow = 0;
+        updatePhraseLength();
 }
 
 uint8_t Sequence::getRepeat() {
     return m_nRepeat;
 }
 
-void Sequence::updateAutoFollow() {
-    m_nAutoFollow = 0;
+void Sequence::updatePhraseLength() {
+    m_nLength = 0;
     for (auto pSequence: m_aChildSequences) {
         if (!pSequence)
             continue;
-        uint32_t nDuration = pSequence->getLength() * pSequence->getRepeat();
-        if (nDuration > m_nAutoFollow)
-            m_nAutoFollow = nDuration;
+        uint32_t nDuration;
+        if (pSequence->m_nRepeat == 255)
+            nDuration = pSequence->m_nLength;
+        else
+            nDuration = pSequence->m_nLength * pSequence->m_nRepeat;
+        if (nDuration > m_nLength)
+            m_nLength = nDuration;
     }
 }
 
