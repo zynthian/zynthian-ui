@@ -1707,7 +1707,11 @@ class zynthian_gui:
                 chain_id = self.chain_manager.get_chain_id_by_index(index - 1)
         except:
             chain_id = self.chain_manager.active_chain.chain_id
-        self.chain_control(chain_id)
+        try:
+            proc = params[1]
+        except:
+            proc = None
+        self.chain_control(chain_id, proc)
 
     cuia_layer_control = cuia_chain_control
     cuia_screen_control = cuia_chain_control
