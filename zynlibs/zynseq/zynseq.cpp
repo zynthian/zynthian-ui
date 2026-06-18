@@ -1047,28 +1047,29 @@ const char* convertToJson(const char* filename) {
                         case 1:
                             // ONESHOT
                             jSeq["mode"] = MODE_END_IMMEDIATE;
+                            jSeq["repeat"] = 1;
                             break;
                         case 2:
                             // LOOP
-                            jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
-                            jSeq["followParam"] = 0;
+                            jSeq["repeat"] = 255;
                             break;
                         case 3:
                             // ONESHOTALL
+                            jSeq["repeat"] = 1;
                             break;
                         case 4:
                             // LOOPALL
-                            jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
-                            jSeq["followParam"] = 0;
+                            jSeq["repeat"] = 255;
                             break;
                         case 5:
                             // ONESHOTSYNC
                             jSeq["mode"] = MODE_END_SYNC;
+                            jSeq["repeat"] = 1;
                             break;
                         case 6:
                             // LOOPSYNC
-                            jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
-                            jSeq["followParam"] = 0;
+                            jSeq["mode"] = MODE_END_SYNC;
+                            jSeq["repeat"] = 255;
                             break;
                 }
                 uint8_t nGroup = fileRead8u(pFile);
@@ -1338,13 +1339,21 @@ bool setState(const char* state) {
                         pSequence->setPlayMode(jSeq.value("mode", 1));
                         pSequence->setGroup(jSeq.value("group", 0)); //!@todo Set default group to MIDI channel
                         pSequence->setName(jSeq.value("name", ""));
-                        pSequence->setRepeat(jSeq.value("repeat", 1));
 
+                        // Backward compatibility =>
+                        // Older vangelis sequences used FOLLOW_ACTION_RELATIVE for endless loop.
+                        // Currently, endless loop is flagged with repeat=255
+                        if (jSeq.value("followAction", FOLLOW_ACTION_NONE) != FOLLOW_ACTION_NONE) {
+                            pSequence->setRepeat(255);
+                        }
+                        else {
+                            pSequence->setRepeat(jSeq.value("repeat", 1));
+                        }
                         // Store the follow configuration to apply after all sequences have been created
                         std::array<int16_t, 6> followAction;
                         followAction[0] = nPhrase;
                         followAction[1] = nSeq;
-                        followAction[2] = jSeq.value("followAction", FOLLOW_ACTION_NONE);
+                        followAction[2] = FOLLOW_ACTION_NONE;
                         followAction[3] = jSeq.value("followParam", 0);
                         followAction[4] = jSeq.value("playFlags", 0);
                         followAction[5] = jSeq.value("followRepeat", 0);

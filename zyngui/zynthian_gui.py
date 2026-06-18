@@ -1709,7 +1709,6 @@ class zynthian_gui:
             chain_id = self.chain_manager.active_chain.chain_id
         self.chain_control(chain_id)
 
-    cuia_layer_control = cuia_chain_control
     cuia_screen_control = cuia_chain_control
 
     def cuia_chain_options(self, params=None):
