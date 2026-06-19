@@ -30,11 +30,11 @@ import logging
 from threading import Timer
 from collections import deque
 
+import zynautoconnect
 from zynlibs.zynseq import zynseq
 from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_controller import zynthian_controller
-import zynautoconnect
 
 
 # ------------------------------------------------------------------------------

@@ -220,6 +220,9 @@ class zynthian_engine(zynthian_basic_engine):
     def get_monitors_dict(self):
         return self.monitors_dict
 
+    def reset_monitors(self):
+        self.monitors_dict = {}
+
     # ---------------------------------------------------------------------------
     # OSC Management
     # ---------------------------------------------------------------------------
