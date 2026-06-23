@@ -1235,7 +1235,11 @@ class zynthian_gui:
         self.show_help(params)
 
     def cuia_power_save(self, params=None):
-        self.state_manager.set_power_save_mode(True)
+        if params != [0]:
+            self.state_manager.reset_event_flag()
+            self.state_manager.last_event_ts = monotonic() - zynthian_gui_config.power_save_secs
+        else:
+            self.state_manager.set_event_flag()
 
     def cuia_power(self, params=None):
         if params == ['CONFIRM']:
