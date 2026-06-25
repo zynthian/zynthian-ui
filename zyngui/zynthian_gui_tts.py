@@ -89,7 +89,7 @@ class zynthian_gui_tts():
         try:
             self._tts.append(text, replace, urgent, interrupt)
         except Exception as e:
-            logging.warning(f"TTS Error: {e}")
+            logging.error(e)
 
     def get_voice_name(self):
         """ Get the voice

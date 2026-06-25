@@ -23,20 +23,20 @@
 #
 # ****************************************************************************
 
-import logging
-import threading
-import subprocess
 import os
 import re
-import json
-from time import sleep
-import alsaaudio
 import math
+import json
 import struct
+import logging
+import alsaaudio
+import threading
+import subprocess
+from time import sleep
 
 import zynconf
-from zyngui import zynthian_gui_config
 import zynautoconnect
+from zyngui import zynthian_gui_config
 
 TTS_DATA_PATH = f"{os.environ.get('ZYNTHIAN_DATA_DIR', '/zynthian/zynthian-data')}/tts"
 TTS_FLITE_LEX_PATH = f"{TTS_DATA_PATH}/lexicon"
@@ -286,7 +286,7 @@ class zynthian_tts:
                 "-s", str(int(self.speed * 200)),
                 text
             ]
-        if self.voice == "espeak-f":
+        elif self.voice == "espeak-f":
             return [
                 "espeak-ng",
                 "-v", f"en+f1",
@@ -387,7 +387,7 @@ class zynthian_tts:
                     self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
-                print(f"TTS error: {e}")
+                logging.error(e)
             finally:
                 pass
 
@@ -397,7 +397,7 @@ class zynthian_tts:
                     self._process = subprocess.Popen(self._build_command("ZynVoice disabled"), env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
-                print(f"TTS error: {e}")
+                logging.error(e)
 
     def set_volume(self, volume=None):
         """ Attempt to set the volume of the soundcard
