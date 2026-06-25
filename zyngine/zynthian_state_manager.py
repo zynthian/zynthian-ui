@@ -912,12 +912,14 @@ class zynthian_state_manager:
     def power_save_check(self):
         if zynthian_gui_config.power_save_secs <= 0:
             return
-        if self.last_event_flag:
+        if self.last_event_flag or self.zynmixer_bus.dpm[0].a_hold > zynthian_gui_config.audio_power_threshold or self.zynmixer_bus.dpm[0].b_hold > zynthian_gui_config.audio_power_threshold:
             self.last_event_ts = monotonic()
             self.last_event_flag = False
             if self.power_save_mode:
                 self.set_power_save_mode(False)
-        elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
+        elif self.power_save_mode:
+            self.zynmixer_bus.update_dpm_states()
+        elif (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
             self.set_power_save_mode(True)
 
     def set_power_save_mode(self, psm=True):
