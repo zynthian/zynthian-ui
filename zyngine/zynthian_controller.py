@@ -23,8 +23,8 @@
 # ******************************************************************************
 
 import math
-import liblo
 import logging
+import pyliblo3 as liblo
 from time import monotonic
 from threading import Timer
 

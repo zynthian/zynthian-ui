@@ -19,13 +19,13 @@
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # ******************************************************************************
 
-import liblo
-import tkinter as tk
-from tkinter import font as tkFont
-import sys
 import os
-import math
 import re # NEW: Import regex for path parsing
+import sys
+import math
+import tkinter as tk
+import pyliblo3 as liblo
+from tkinter import font as tkFont
 
 # Zynthian specific modules
 sys.path.append("/zynthian/zynthian-ui/")

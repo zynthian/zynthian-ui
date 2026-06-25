@@ -24,10 +24,10 @@
 # ******************************************************************************
 
 import os
-import liblo
 import ffmpeg
 import logging
 import traceback
+import pyliblo3 as liblo
 from time import sleep
 from queue import Empty
 from pathlib import Path

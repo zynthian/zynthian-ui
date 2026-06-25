@@ -27,10 +27,10 @@ import re
 import json
 import glob
 import copy
-import liblo
 import logging
 import pexpect
 import fnmatch
+import pyliblo3 as liblo
 from time import sleep
 
 import zynconf

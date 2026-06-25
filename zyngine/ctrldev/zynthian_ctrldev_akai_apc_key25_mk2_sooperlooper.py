@@ -35,7 +35,7 @@ from threading import Timer
 from typing import Dict, Any, Callable, List
 from itertools import chain, islice
 
-import liblo
+import pyliblo3 as liblo
 
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_engine_sooperlooper import (

@@ -23,9 +23,9 @@
 #
 # ******************************************************************************
 
-import liblo
 import tkinter
 import logging
+import pyliblo3 as liblo
 from turtle import pos
 from threading import Timer
 from functools import partial
