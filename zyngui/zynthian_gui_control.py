@@ -528,7 +528,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         t = params[1].upper()
         if self.mode == 'control':
             if t == 'S':
-                if self.zcontrollers[i].is_path:
+                if len(self.zcontrollers) > i and self.zcontrollers[i] and self.zcontrollers[i].is_path:
                     self.zcontrollers[i].nudge(0)
                 else:
                     self.toggle_midi_learn(i)
@@ -753,12 +753,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def controller_options(self, i, keep_selection=False, unlearn_only=False):
         self.exit_midi_learn()
+        if len(self.zgui_controllers) > i and self.zgui_controllers[i] and self.zgui_controllers[i].zctrl:
+            zctrl = self.zgui_controllers[i].zctrl
+        else:
+            #logging.debug("No GUI zctrl#{i}!")
+            return
         try:
             options = {}
-            zctrl = self.zgui_controllers[i].zctrl
-            if zctrl is None:
-                return
-
             if zctrl.is_path:
                 title = f"Control options: {zctrl.name}"
                 if self.processors[0].chain:
@@ -863,7 +864,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zyngui.screens['option'].config(title, options, self.controller_options_cb, index=index)
             self.zyngui.show_screen('option')
         except Exception as e:
-            logging.error(f"Can't show control options => {e}")
+            logging.error(f"Can't show control options for GUI zctrl#{i} => {e}")
 
     def controller_options_cb(self, option, param):
         if option[2:] == "Chain Controller":
