@@ -13,3 +13,4 @@ ninja
 abletonparsing
 hwmon
 vcgencmd
+tkinterweb
