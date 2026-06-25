@@ -302,21 +302,22 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             else:
                 offset1 = x * frames_per_pixel
                 offset2 = offset1 + frames_per_pixel
-            for channel in range(self.channels):
+            for chan in range(self.channels):
                 # For each audio channel
                 v1[0:] = [0.0] * self.channels
                 v2[0:] = [0.0] * self.channels
                 frame = offset1
                 while int(frame) < int(offset2):
                     # Find peak audio within block of audio represented by this x-axis pixel
-                    av = a_data[int(frame)][channel] * self.v_zoom
-                    if av < v1[channel]:
-                        v1[channel] = av
-                    if av > v2[channel]:
-                        v2[channel] = av
+                    av = a_data[int(frame)][chan] * self.v_zoom
+                    if av < v1[chan]:
+                        v1[chan] = av
+                    if av > v2[chan]:
+                        v2[chan] = av
                     frame += step
-                data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0),
-                                  x, y_offsets[channel] + int(v2[channel] * y0))
+                y1 = int(y_offsets[chan] + v1[chan] * y0)
+                y2 = int(y_offsets[chan] + v2[chan] * y0)
+                data[chan] += [x, y1, x, y2]
 
         for chan in range(self.channels):
             # Plot each point on the graph as series of vertical lines spanning max and min peaks of audio represented by each x-axis pixel

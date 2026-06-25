@@ -80,7 +80,7 @@ class zynthian_widget_base(tkinter.Frame):
     def update(self):
         if self.shown and self.zyngui_control.shown:
             self.get_monitors()
-            self.refresh_gui()
+            zynthian_gui_config.top.after_idle(self.refresh_gui)
 
     def set_processor(self, processor):
         self.processor = processor
