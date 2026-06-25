@@ -68,8 +68,9 @@ class zynthian_gui_help(HtmlFrame):
                                     width=zynthian_gui_config.display_width,
                                     height=zynthian_gui_config.display_height,
                                     vertical_scrollbar=False,
-                                    messages_enabled=False)
-        self.grid_propagate(False)
+                                    messages_enabled=False,
+                                    on_link_click=self.link_cb)
+        #self.grid_propagate(False)
         self.link_text = tkinter.Label(self,
                                     font=zynthian_gui_config.font_topbar,
                                     bg=zynthian_gui_config.color_ctrl_bg_off,
@@ -82,15 +83,14 @@ class zynthian_gui_help(HtmlFrame):
         # Patch HtmlFrame widget
         self.event_generate = self.html.event_generate
         # Bind events
-        self.on_done_loading(self.done_loading)
-        self.on_link_click(self.link_cb)
         self.bind("<Button-1>", self.cb_touch_push)
         self.bind("<ButtonRelease-1>", self.cb_touch_release, add="+")
         self.bind("<Button-4>", self.cb_scroll_wheel)
         self.bind("<Button-5>", self.cb_scroll_wheel)
         self.bind("<B1-Motion>", self.cb_touch_motion)
+        self.bind("<<DoneLoading>>", self.done_loading)
 
-    def done_loading(self):
+    def done_loading(self, ev):
         self.loading_overlay.place_forget()
         self.link_text.place_forget()
         self.zyngui.show_screen("help", self.zyngui.SCREEN_HMODE_NONE)
@@ -165,7 +165,7 @@ class zynthian_gui_help(HtmlFrame):
     def show(self):
         if not self.shown:
             self.shown = True
-            self.grid_propagate(False)
+            #self.grid_propagate(False)
             self.place(x=0, y=0)
             self.tkraise()
 
