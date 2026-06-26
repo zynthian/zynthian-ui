@@ -763,6 +763,8 @@ class zynthian_processor:
             logging.debug(f"KEYMAP PLUGIN NAME => {self.engine.plugin_name}")
             if self.engine.plugin_name == "Fabla":
                 return "Fabla - " + self.preset_name
+        elif self.engine.nickname in ("SF", "LS") and self.engine.keymap:
+            return "SFZ - " + self.preset_name
         return None
 
     # Returns keymap if possible
@@ -770,6 +772,8 @@ class zynthian_processor:
         if self.engine.name.startswith("Jalv/"):
             if self.engine.plugin_name == "Fabla":
                 return self.get_keymap_fabla()
+        elif self.engine.nickname in ("SF", "LS") and self.engine.keymap:
+            return self.engine.keymap
         return None
 
     def get_keymap_fabla(self):
