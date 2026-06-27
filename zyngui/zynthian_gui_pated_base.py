@@ -380,7 +380,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.velocity_canvas.grid(column=0, row=1)
 
         # Configure ALT mode layout depending on hardware
-        if zynthian_gui_config.check_wiring_layout(["V5"]):
+        if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
             self.switch_i_clipboard = [11, 15]
             self.wsleds_i_clipboard = [10, 11]
             self.switch_i_block = 19
@@ -2112,13 +2112,14 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
 
         # F3 => Block Selection
-        if self.edit_mode == EDIT_MODE_BLOCK:
-            if self.block_copied:
-                wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active)
+        if self.wsled_i_block is not None:
+            if self.edit_mode == EDIT_MODE_BLOCK:
+                if self.block_copied:
+                    wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active)
+                else:
+                    wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active2)
             else:
-                wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active2)
-        else:
-            wsl.set_led(leds[self.wsled_i_block], wsl.wscolor_active2)
+                wsl.set_led(leds[self.wsled_i_block], wsl.wscolor_active2)
 
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
