@@ -100,7 +100,7 @@ BTN_PAD_14 = BTN_PAD_UP = 0x0D
 BTN_PAD_15 = BTN_SEL_YES = 0x0E
 BTN_PAD_16 = BTN_F3 = 0x0F
 BTN_PAD_21 = BTN_PAD_RECORD = 0x14
-BTN_PAD_22 = BTN_INSERT_CHAIN = 0x15
+BTN_PAD_22 = 0x15
 BTN_PAD_23 = BTN_PAD_PLAY = 0x16
 BTN_PAD_24 = BTN_F2 = 0x17
 BTN_PAD_32 = BTN_F1 = 0x1F
@@ -305,7 +305,6 @@ class DeviceHandler(ModeHandlerBase):
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
             BTN_RECORD:         ("TOGGLE_RECORD",),
-            BTN_INSERT_CHAIN:   (self.insert_chain,)
         }
 
         press_length_actions = {
@@ -328,6 +327,7 @@ class DeviceHandler(ModeHandlerBase):
             BTN_KNOB_2: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:1,{'B' if is_bold else 'S'}"]),
             BTN_KNOB_3: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:2,{'B' if is_bold else 'S'}"]),
             BTN_KNOB_4: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:3,{'B' if is_bold else 'S'}"]),
+            BTN_BACK_NO: (lambda is_bold: [f"{'MAIN_MENU' if is_bold else 'BACK'}"]),
             BTN_F1: (lambda is_bold: ["COPY:0" if is_bold else 'PASTE:0']),
             BTN_F2: (lambda is_bold: ["COPY:1" if is_bold else 'PASTE:1']),
             BTN_F3: (lambda is_bold: ["COPY:2" if is_bold else 'PASTE:2']),
@@ -443,10 +443,6 @@ class DeviceHandler(ModeHandlerBase):
         if self._is_recording:
             self._leds.led_on(BTN_PAD_RECORD, self._colors.COLOR_RED, LED_BLINKING_8)
 
-    def insert_chain(self, params=None):
-        zyngui = zynthian_gui_config.zyngui
-        zyngui.screens["chain_options"].insert_chain()
-
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
         if self._is_shifted:
@@ -464,8 +460,8 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("ARROW_RIGHT")
             elif note == BTN_SEL_YES:
                 self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
-            elif note == BTN_BACK_NO:
-                self._state_manager.send_cuia("BACK")
+            # elif note == BTN_BACK_NO:
+            #     self._state_manager.send_cuia("BACK")
             elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                 # Function buttons (F1-F4)
                 if self._current_screen == 'pattern_editor' and self._current_screen_obj.alt_mode:
@@ -531,7 +527,6 @@ class DeviceHandler(ModeHandlerBase):
             "pattern_editor": (BTN_PAD_STEP, 1),
             "arranger":       (BTN_PAD_STEP, 1),
             "tempo":          (BTN_METRONOME, 0),
-            "add_chain":      (BTN_INSERT_CHAIN, 0)
         }
 
         self._btn_states = {k: -1 for k in self._btn_states}
