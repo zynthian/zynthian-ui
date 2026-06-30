@@ -491,7 +491,7 @@ class DeviceHandler(ModeHandlerBase):
     def cc_change(self, ccnum, ccval):
         delta = self._knobs_ease.feed(ccnum, ccval, self._is_shifted)
         if delta is None:
-            return
+            return True
 
         zynpot = {
             KNOB_LAYER: 0,
@@ -499,10 +499,12 @@ class DeviceHandler(ModeHandlerBase):
             KNOB_SNAPSHOT: 2,
             KNOB_SELECT: 3
         }.get(ccnum, None)
+
         if zynpot is None:
-            return
+            return True
 
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
+        return True
 
     def on_alt_mode(self, alt_mode, refresh=False):
         if refresh:
@@ -777,14 +779,14 @@ class MixerHandler(ModeHandlerBase):
         if self._is_shifted:
             # Only main chain is handled with SHIFT, ignore the rest
             if ccnum != self.main_chain_knob:
-                return False
+                return True
             else:
                 index = -1
         else:
             index = (ccnum - KNOB_1) + self.driver.scroll_h
             chain = self._chain_manager.get_chain_by_index(index)
             if chain is None or chain.chain_id == 0:
-                return False
+                return True
             #mixer_chan = chain.mixer_chan
 
         if type == "level" or type == "balance":
@@ -2097,7 +2099,7 @@ class StepSeqHandler(ModeHandlerBase):
     def cc_change(self, ccnum, ccval):
         delta = self._knobs_ease.feed(ccnum, ccval, self._is_shifted)
         if delta is None:
-            return
+            return True
 
         if self._pressed_pads:
             if self._note_config is not None:
@@ -2137,6 +2139,7 @@ class StepSeqHandler(ModeHandlerBase):
         if ccnum == KNOB_1:
             delta *= 0.1 if self._is_shifted else 1
             self._zynseq.set_tempo(self._zynseq.get_tempo() + delta)
+            return True
 
         # Update sequence's chain volume
         elif ccnum == KNOB_2:
@@ -2149,7 +2152,8 @@ class StepSeqHandler(ModeHandlerBase):
                 level = max(
                     0, min(100, value * 100 + delta))
                 zctrl.set_value(level / 100)
-                
+            return True
+
     def update_seq_state(self, phrase, chan, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
         if state == zynseq.SEQ_STOPPED and self._cursor < self._used_pads:
@@ -2894,6 +2898,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
     driver_name = 'AKAI APC Key25 MK2'
     driver_description = 'Full UI integration'
+    unroute_from_chains = 0b1111111111111111
     apc_color_variant = "apc"
     cols = 8
     rows = 5

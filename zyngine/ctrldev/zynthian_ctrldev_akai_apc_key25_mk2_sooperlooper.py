@@ -1003,25 +1003,25 @@ class looper_handler(
             ccnum, ccval, getDeviceSetting("shifted", self.state)
         )  # @todo: use self._is_shifted (or not at all?)
         if delta is None:
-            return
+            return True
         knobnum = ccnum - 48
         if doLevelsOfSelectedMode(self.state):
             if knobnum == 0:
-                return
+                return True
             level = TRACK_LEVELS[knobnum]
             if not level:
-                return
+                return True
             loopnum = getGlob("selected_loop_num", self.state)
             if loopnum == -1:
-                return
+                return True
             self.increase(delta, level, self.state["tracks"][loopnum], loopnum)
-            return
+            return True
         loopoffset = getLoopoffset(self.state)
         loopnum = (knobnum % KNOBS_PER_ROW) - (loopoffset - 1)
         tracks = self.state["tracks"]
         track = tracks.get(loopnum)
         if track is None:  # Check if track is None
-            return None  # Or handle as needed
+            return True  # Or handle as needed
         funnum = knobnum // KNOBS_PER_ROW
         # todo: this could be larger than 1?
         funs = ["wet", "pan"]
@@ -1049,7 +1049,7 @@ class looper_handler(
                         self.increase(delta, ctrl, track, loopnum)
         else:
             self.increase(delta, fun, track, loopnum)
-        pass
+        return True
 
     def pad_event(self, evtype, pad):
         submode = getDeviceSetting("submode", self.state)
