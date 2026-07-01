@@ -193,10 +193,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     static jack_nframes_t nLastNow32 = 0;
     static uint64_t nLastExtClockFrame = 0; // Frames since jack epoch of last external clock
     static double dNextIntClockFrame = 0.0; // Frames since jack epoch of next internal clock
-    static uint32_t nExtClk = 0; // Count of external clocks in this beat (wrap at PPQN)
     static uint32_t nTickTime = 0; // Quantity of elapsed ticks since tick epoch that next event will be processed
     static uint32_t nBeatsPerBar = g_nBeatsPerBar; // Sequencer's live beats per bar, updated from g_nBeatsPerBar on bar boundary
-    static int64_t nNextBeatTime = 0; // Tick time of next beat
+    static uint32_t nNextBeatTime = 0; // Tick time of next beat
     static bool bRolling = g_bTransportRolling; // Transport rolling bars, updates g_bTranportRolling on next bar
 
     // Populate 64-bit monotonic frame clock (to avoid 24 hour overflow)
@@ -204,6 +203,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     if (nNow32 < nLastNow32)
         nNow += 0x100000000ULL;
     nNow = (nNow & 0xFFFFFFFF00000000ULL) | nNow32;
+    nLastNow32 = nNow32;
 
     // Metronome audio output buffer
     jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
@@ -247,14 +247,15 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nLastExtClockFrame = nNow + midiEvent.time;
                 uint32_t nTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
                 int32_t nTickDelta = nTicksBeforeClk - nExpectedTicksBeforeClk;
-                nNextBeatTime += nTickDelta;
+                // Ensure not negative result (uint32)
+                if (nTickDelta >= 0 || nNextBeatTime >= -nTickDelta)
+                    nNextBeatTime += nTickDelta;
                 break;
             }
             case MIDI_START: {
                 // Rx start on clock port so restart any playing sequences - this may cause disruption to playback - as expected
                 g_nBar = 1;
                 g_nBeat = 1;
-                nExtClk = 0;
                 g_nBarStartTick = 0;
                 fprintf(stderr, "START\n");
                 break;
