@@ -307,21 +307,21 @@ class zynthian_ctrldev_akai_apc_key25_sooperlooper(zynthian_ctrldev_akai_apc_key
             if self._current_handler == self._levels2_handler:
             # if doLevelsOfSelectedMode(self.state):
                 if knobnum == 0:
-                    return
+                    return True
                 level = TRACK_LEVELS[knobnum]
                 if not level:
-                    return
+                    return True
                 loopnum = getGlob("selected_loop_num", self.state)
                 if loopnum == -1:
-                    return
+                    return True
                 self.set(ccval, level, self.state["tracks"][loopnum], loopnum)
-                return
+                return True
             loopoffset = getLoopoffset(self.state)
             loopnum = (knobnum % KNOBS_PER_ROW) - (loopoffset - 1)
             tracks = self.state["tracks"]
             track = tracks.get(loopnum)
             if track is None:  # Check if track is None
-                return None  # Or handle as needed
+                return True  # Or handle as needed
             funnum = knobnum // KNOBS_PER_ROW
             # todo: this could be larger than 1?
             funs = ["wet", "pan"]
@@ -346,6 +346,4 @@ class zynthian_ctrldev_akai_apc_key25_sooperlooper(zynthian_ctrldev_akai_apc_key
                             self.set(ccval, ctrl, track, loopnum)
             else:
                 self.set(ccval, fun, track, loopnum)
-
-
-
+            return True

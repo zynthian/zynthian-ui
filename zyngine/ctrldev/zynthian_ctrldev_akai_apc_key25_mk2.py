@@ -100,7 +100,7 @@ BTN_PAD_14 = BTN_PAD_UP = 0x0D
 BTN_PAD_15 = BTN_SEL_YES = 0x0E
 BTN_PAD_16 = BTN_F3 = 0x0F
 BTN_PAD_21 = BTN_PAD_RECORD = 0x14
-BTN_PAD_22 = BTN_INSERT_CHAIN = 0x15
+BTN_PAD_22 = 0x15
 BTN_PAD_23 = BTN_PAD_PLAY = 0x16
 BTN_PAD_24 = BTN_F2 = 0x17
 BTN_PAD_32 = BTN_F1 = 0x1F
@@ -305,7 +305,6 @@ class DeviceHandler(ModeHandlerBase):
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
             BTN_RECORD:         ("TOGGLE_RECORD",),
-            BTN_INSERT_CHAIN:   (self.insert_chain,)
         }
 
         press_length_actions = {
@@ -328,6 +327,7 @@ class DeviceHandler(ModeHandlerBase):
             BTN_KNOB_2: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:1,{'B' if is_bold else 'S'}"]),
             BTN_KNOB_3: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:2,{'B' if is_bold else 'S'}"]),
             BTN_KNOB_4: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:3,{'B' if is_bold else 'S'}"]),
+            BTN_BACK_NO: (lambda is_bold: [f"{'MAIN_MENU' if is_bold else 'BACK'}"]),
             BTN_F1: (lambda is_bold: ["COPY:0" if is_bold else 'PASTE:0']),
             BTN_F2: (lambda is_bold: ["COPY:1" if is_bold else 'PASTE:1']),
             BTN_F3: (lambda is_bold: ["COPY:2" if is_bold else 'PASTE:2']),
@@ -443,10 +443,6 @@ class DeviceHandler(ModeHandlerBase):
         if self._is_recording:
             self._leds.led_on(BTN_PAD_RECORD, self._colors.COLOR_RED, LED_BLINKING_8)
 
-    def insert_chain(self, params=None):
-        zyngui = zynthian_gui_config.zyngui
-        zyngui.screens["chain_options"].insert_chain()
-
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
         if self._is_shifted:
@@ -464,8 +460,8 @@ class DeviceHandler(ModeHandlerBase):
                 self._state_manager.send_cuia("ARROW_RIGHT")
             elif note == BTN_SEL_YES:
                 self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
-            elif note == BTN_BACK_NO:
-                self._state_manager.send_cuia("BACK")
+            # elif note == BTN_BACK_NO:
+            #     self._state_manager.send_cuia("BACK")
             elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
                 # Function buttons (F1-F4)
                 if self._current_screen == 'pattern_editor' and self._current_screen_obj.alt_mode:
@@ -491,7 +487,7 @@ class DeviceHandler(ModeHandlerBase):
     def cc_change(self, ccnum, ccval):
         delta = self._knobs_ease.feed(ccnum, ccval, self._is_shifted)
         if delta is None:
-            return
+            return True
 
         zynpot = {
             KNOB_LAYER: 0,
@@ -499,10 +495,12 @@ class DeviceHandler(ModeHandlerBase):
             KNOB_SNAPSHOT: 2,
             KNOB_SELECT: 3
         }.get(ccnum, None)
+
         if zynpot is None:
-            return
+            return True
 
         self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
+        return True
 
     def on_alt_mode(self, alt_mode, refresh=False):
         if refresh:
@@ -529,7 +527,6 @@ class DeviceHandler(ModeHandlerBase):
             "pattern_editor": (BTN_PAD_STEP, 1),
             "arranger":       (BTN_PAD_STEP, 1),
             "tempo":          (BTN_METRONOME, 0),
-            "add_chain":      (BTN_INSERT_CHAIN, 0)
         }
 
         self._btn_states = {k: -1 for k in self._btn_states}
@@ -777,14 +774,14 @@ class MixerHandler(ModeHandlerBase):
         if self._is_shifted:
             # Only main chain is handled with SHIFT, ignore the rest
             if ccnum != self.main_chain_knob:
-                return False
+                return True
             else:
                 index = -1
         else:
             index = (ccnum - KNOB_1) + self.driver.scroll_h
             chain = self._chain_manager.get_chain_by_index(index)
             if chain is None or chain.chain_id == 0:
-                return False
+                return True
             #mixer_chan = chain.mixer_chan
 
         if type == "level" or type == "balance":
@@ -2097,7 +2094,7 @@ class StepSeqHandler(ModeHandlerBase):
     def cc_change(self, ccnum, ccval):
         delta = self._knobs_ease.feed(ccnum, ccval, self._is_shifted)
         if delta is None:
-            return
+            return True
 
         if self._pressed_pads:
             if self._note_config is not None:
@@ -2137,6 +2134,7 @@ class StepSeqHandler(ModeHandlerBase):
         if ccnum == KNOB_1:
             delta *= 0.1 if self._is_shifted else 1
             self._zynseq.set_tempo(self._zynseq.get_tempo() + delta)
+            return True
 
         # Update sequence's chain volume
         elif ccnum == KNOB_2:
@@ -2149,7 +2147,8 @@ class StepSeqHandler(ModeHandlerBase):
                 level = max(
                     0, min(100, value * 100 + delta))
                 zctrl.set_value(level / 100)
-                
+            return True
+
     def update_seq_state(self, phrase, chan, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
         if state == zynseq.SEQ_STOPPED and self._cursor < self._used_pads:
@@ -2894,6 +2893,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
     driver_name = 'AKAI APC Key25 MK2'
     driver_description = 'Full UI integration'
+    unroute_from_chains = 0b1111111111111111
     apc_color_variant = "apc"
     cols = 8
     rows = 5
