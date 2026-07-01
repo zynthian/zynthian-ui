@@ -200,10 +200,14 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
     def set_midi_chan(self, processor):
         if self.osc_server and processor.part_i is not None:
-            lib_zyncore.zmop_set_midi_chan_trans(
-                processor.chain.zmop_index,
-                processor.get_midi_chan(),
-                processor.part_i)
+            midi_chan = processor.get_midi_chan()
+            if 0 <= midi_chan < 16:
+                lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
+                                                    midi_chan,
+                                                    processor.part_i)
+            elif midi_chan == 0xffff:
+                lib_zyncore.zmop_set_midi_chan_all_trans(processor.chain.zmop_index,
+                                                    processor.part_i)
 
     # ----------------------------------------------------------------------------
     # Preset Managament
