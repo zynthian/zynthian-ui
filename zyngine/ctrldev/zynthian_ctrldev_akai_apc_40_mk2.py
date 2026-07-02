@@ -522,7 +522,8 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
             # Scene buttons => Phrase launcher
             elif LED_SCENE_LAUNCH_1 <= note <= LED_SCENE_LAUNCH_5:
-                phrase = note - LED_SCENE_LAUNCH_1
+                row = note - LED_SCENE_LAUNCH_1
+                phrase = row + self.scroll_v
                 self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, 32)
             # Track select button => Chain select
             elif note == LED_TRACK_SEL:
