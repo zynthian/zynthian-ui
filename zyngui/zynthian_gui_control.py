@@ -634,6 +634,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                     return cuia_func(params)
         return False
 
+    def get_alt_mode(self):
+        return self.alt_mode
+
     # --------------------------------------------------------------------------
     # MIDI learn management
     # --------------------------------------------------------------------------

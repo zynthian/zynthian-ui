@@ -260,7 +260,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["Play an audio track to test audio output.\n\nPress BACK to cancel playback.",
                                 "audio_output.png"]))
         self.list_data.append((self.test_midi, 0, "Test MIDI",
-                               ["Play a MIDI track to test MIDI output.\n\nThis will play the MIDI through any loaded chains.\nPress BACK to cancel playback.",
+                               ["Play a MIDI track to test MIDI output.\n\nThis will play the MIDI through any loaded chains.",
                                 "midi_output.png"]))
         if zynthian_gui_config.control_test_enabled:
             self.list_data.append((self.control_test, 0, "Test control HW",
@@ -734,7 +734,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
     def test_midi(self):
         logging.info("TESTING MIDI")
-        self.zyngui.alt_mode = self.state_manager.toggle_midi_playback(f"{self.data_dir}/mid/test.mid")
+        self.state_manager.toggle_midi_playback(f"{self.data_dir}/mid/test.mid")
+        self.zyngui.show_screen("midi_recorder")
 
     def control_test(self, t='S'):
         logging.info("TEST CONTROL HARDWARE")

@@ -1113,7 +1113,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self._left_chain = 0 # Index of chain currently displayed at left of view
 
         self.alt_mode = False
-        self.launcher_mode = self.zyngui.alt_mode
+        self.launcher_mode = False
 
         self.chan2strip = {} # Map of audio strips, indexed by [is_mixbus, mixer_channel]
         self.highlighted_strip = None  # Highligted mixer strip object
@@ -2476,11 +2476,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
     def get_alt_mode(self):
         return self.alt_mode
-
-    def cuia_toggle_alt_mode(self, params=None):
-        self.alt_mode = not self.alt_mode
-        self.zyngui.set_global_alt_mode(self.alt_mode)
-        return True
 
     def cuia_chain_control(self, params=None):
         if self.alt_mode:

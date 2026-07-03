@@ -244,6 +244,13 @@ class zynthian_ctrldev_manager():
             else:
                 logging.warning(f"Can't restore state for '{uid}'. Device not connected or driver not loaded.")
 
+    def need_wsled_state(self):
+        """Return True if some driver needs the wsled state"""
+        for dev in self.drivers.values():
+            if dev.need_wsled_state:
+                return True
+        return False
+
     def sleep_on(self):
         """Enable sleep state"""
 

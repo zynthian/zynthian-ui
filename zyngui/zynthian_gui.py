@@ -141,7 +141,6 @@ class zynthian_gui:
         self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
         self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
-        self.alt_mode = False
         self.ignore_next_touch_release = False
 
         self.screens = {}
@@ -371,7 +370,6 @@ class zynthian_gui:
             zynthian_gui_config.config_zynaptik()
             zynthian_gui_config.config_zyntof()
             self.zynswitches_midi_setup()
-            self.alt_mode = False
         except Exception as e:
             logging.error("ERROR configuring wiring: {}".format(e))
 
@@ -1160,14 +1158,7 @@ class zynthian_gui:
         try:
             return self.screens[self.current_screen].get_alt_mode()
         except:
-            return self.alt_mode
-
-    def get_global_alt_mode(self):
-        return self.alt_mode
-
-    def set_global_alt_mode(self, alt_mode):
-        self.alt_mode = alt_mode
-        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, alt_mode=self.alt_mode)
+            return False
 
     def clean_all(self):
         if self.chain_manager.get_chain_count() > 1:
@@ -1229,7 +1220,7 @@ class zynthian_gui:
         pass
 
     def cuia_toggle_alt_mode(self, params=None):
-        self.set_global_alt_mode(not self.alt_mode)
+        pass
 
     def cuia_help(self, params=None):
         self.show_help(params)
@@ -1432,19 +1423,19 @@ class zynthian_gui:
         self.state_manager.toggle_midi_playback()
 
     def cuia_toggle_record(self, params=None):
-        if self.alt_mode:
+        if self.get_alt_mode():
             self.cuia_toggle_midi_record()
         else:
             self.cuia_toggle_audio_record()
 
     def cuia_stop(self, params=None):
-        if self.alt_mode:
+        if self.get_alt_mode():
             self.cuia_stop_midi_play()
         else:
             self.cuia_stop_audio_play()
 
     def cuia_toggle_play(self, params=None):
-        if self.alt_mode:
+        if self.get_alt_mode():
             self.cuia_toggle_midi_play()
         else:
             self.cuia_toggle_audio_play()
@@ -2094,7 +2085,7 @@ class zynthian_gui:
                 self.callable_ui_action_params(cuia)
                 return
 
-        if self.alt_mode:
+        if self.get_alt_mode():
             at = "A" + t
             if at in action_config:
                 cuia = action_config[at]

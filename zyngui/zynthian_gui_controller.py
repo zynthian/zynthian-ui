@@ -760,7 +760,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                 self.zyngui.zynpot_pr_state[self.index] += 1
                 fine = True
             else:
-                fine = self.zyngui.alt_mode
+                fine = self.zyngui.get_alt_mode()
             #logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
             return self.zctrl.nudge(dval, fine=fine)
         else:
@@ -844,9 +844,9 @@ class zynthian_gui_controller(tkinter.Canvas):
                         # Y-axis drag active
                         if abs(dy) >= self.pixels_per_div:
                             if self.zctrl.range_reversed:
-                                self.nudge(-dy // self.pixels_per_div, self.zyngui.alt_mode)
+                                self.nudge(-dy // self.pixels_per_div, self.zyngui.get_alt_mode())
                             else:
-                                self.nudge(dy // self.pixels_per_div, self.zyngui.alt_mode)
+                                self.nudge(dy // self.pixels_per_div, self.zyngui.get_alt_mode())
                             self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
                     elif self.active_motion_axis == -1:
                         # X-axis drag active

@@ -62,6 +62,7 @@ class zynthian_gui_base(tkinter.Frame):
         self.zyngui = zynthian_gui_config.zyngui
         self.state_manager = self.zyngui.state_manager
         self.chain_manager = self.zyngui.chain_manager
+        self.alt_mode = False
 
         # Setup topbar, autodetecting from parent object
         if topbar is not None:
@@ -539,8 +540,18 @@ class zynthian_gui_base(tkinter.Frame):
             self.zyngui.tts.announce(f"View: {self.tts_title}", replace=True, interrupt=True)
 
     # --------------------------------------------------------------------------
-    # Zynpot Callbacks (rotaries!) & CUIA
+    # CUIA and Zynpot Callbacks (rotaries!)
     # --------------------------------------------------------------------------
+
+    # By default, screens have no ALT mode.
+    # To implement ALT mode, child classes have to redefine get_alt_mode() returning self.alt_mode
+    def get_alt_mode(self):
+        #return self.alt_mode
+        return False
+
+    def cuia_toggle_alt_mode(self, params=None):
+        self.alt_mode = not self.alt_mode
+        return True
 
     def arrow_up(self, nudge=1):
         """ Function to handle CUIA ARROW_UP

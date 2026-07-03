@@ -277,6 +277,12 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     # CUIA & LEDs
     # --------------------------------------------------------------------------
 
+    def get_alt_mode(self):
+        try:
+            return self.subscreen.get_alt_mode()
+        except:
+            return False
+
     def callable_ui_action(self, cuia, params=None):
         logging.debug("CUIA '{}' => {}".format(cuia, params))
         # First, try subscreen-defined catch-all cuia function

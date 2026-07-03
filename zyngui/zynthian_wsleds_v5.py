@@ -52,6 +52,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
     def update_wsleds(self):
         curscreen = self.zyngui.get_current_screen()
         workflow = self.zyngui.get_current_workflow()
+        alt_mode = self.zyngui.get_alt_mode()
 
         # Menu / Admin
         if workflow == "admin":
@@ -102,12 +103,12 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
             self.wsleds[6] = self.wscolor_default
 
         # ALT button:
-        if self.zyngui.alt_mode:
+        if alt_mode:
             self.wsleds[7] = self.wscolor_alt
         else:
             self.wsleds[7] = self.wscolor_default
 
-        if self.zyngui.alt_mode and curscreen != "midi_recorder":
+        if alt_mode and curscreen != "midi_recorder":
             self.zyngui.screens["midi_recorder"].update_wsleds(self.custom_wsleds)
         else:
             # REC Button
@@ -136,7 +137,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         self.wsleds[18] = self.wscolor_yellow
 
         # F1-F4 buttons
-        if self.zyngui.alt_mode:
+        if alt_mode:
             wscolor_fx = self.wscolor_alt
         else:
             wscolor_fx = self.wscolor_default

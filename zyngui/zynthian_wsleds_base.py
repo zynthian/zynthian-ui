@@ -40,6 +40,8 @@ class zynthian_wsleds_base:
 
     def __init__(self, zyngui):
         self.zyngui = zyngui
+        self.state_manager = self.zyngui.state_manager
+        self.ctrldev_manager = self.state_manager.ctrldev_manager
 
         # LED strip variables
         self.spi_board = None
@@ -192,7 +194,7 @@ class zynthian_wsleds_base:
                 logging.exception(traceback.format_exc())
             self.wsleds.show()
 
-            if self.zyngui.capture_log:
+            if self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state():
                 try:
                     wsled_state = []
                     for i in range(self.num_leds):

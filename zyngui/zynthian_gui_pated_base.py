@@ -2068,10 +2068,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def get_alt_mode(self):
         return self.alt_mode
 
-    def cuia_toggle_alt_mode(self, params=None):
-        self.alt_mode = not self.alt_mode
-        return True
-
     def cuia_toggle_record(self, params=None):
         self.toggle_midi_record()
         return True

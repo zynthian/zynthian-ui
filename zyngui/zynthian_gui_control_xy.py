@@ -236,7 +236,7 @@ class zynthian_gui_control_xy(zynthian_gui_fullscreen_modal):
                 self.zyngui.zynpot_pr_state[i] += 1
                 fine = True
             else:
-                fine = self.zyngui.alt_mode
+                fine = self.alt_mode
             res = zctrl.nudge(dval, fine=fine)
             if res:
                 self.get_controller_values()
@@ -248,6 +248,10 @@ class zynthian_gui_control_xy(zynthian_gui_fullscreen_modal):
 
     def switch_select(self, t='S'):
         pass
+
+    def get_alt_mode(self):
+        return self.alt_mode
+
 
 
 # ------------------------------------------------------------------------------
