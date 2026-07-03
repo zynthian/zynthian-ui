@@ -1,20 +1,14 @@
+
 import time
-from zyngine.ctrldev.zynthian_ctrldev_akai_apc_key25_mk2 import \
-    zynthian_ctrldev_akai_apc_key25_mk2, NotePad, KNOB_1, KNOB_LAYER, KNOB_2, KNOB_SNAPSHOT, KNOB_3, \
-KNOB_4,\
-KNOB_5, KNOB_BACK,\
-KNOB_6, KNOB_SELECT,\
-KNOB_7,\
-KNOB_8, \
-MAX_STUTTER_VELFX, \
-MAX_STUTTER_SPEED, \
-LED_BRIGHT_10, \
-LED_BRIGHT_100, \
-EV_NOTE_OFF, \
-EV_NOTE_ON, \
-EV_CC, \
-BTN_PAD_END, \
-LED_PULSING_8
+
+from zyngine.ctrldev.zynthian_ctrldev_akai_apc_key25_mk2 import zynthian_ctrldev_akai_apc_key25_mk2, NotePad, \
+    MAX_STUTTER_VELFX, MAX_STUTTER_SPEED, \
+    KNOB_1, KNOB_2, KNOB_3, KNOB_4, KNOB_5, KNOB_6, KNOB_7, KNOB_8, \
+    KNOB_ZYN_1, KNOB_ZYN_2, KNOB_ZYN_3, KNOB_ZYN_4, \
+    CCNUM_ZYNPOT, NOTE_ZYNSWITCH, ZYNSWITCH_NOTE, \
+    LED_BRIGHT_10, LED_BRIGHT_100, LED_PULSING_8, \
+    EV_NOTE_OFF, EV_NOTE_ON, EV_CC, \
+    BTN_PAD_START, BTN_PAD_END
 
 from zyncoder.zyncore import lib_zyncore
 
@@ -62,11 +56,21 @@ class COLORS:
     COLOR_LIME_DARK = 0x11
     COLOR_GREEN_YELLOW = 0x4A
 
+WSCOLORS_DICT = {
+    "0": COLORS.COLOR_BLACK,
+    "B": COLORS.COLOR_BLUE,
+    "G": COLORS.COLOR_GREEN,
+    "R": COLORS.COLOR_RED,
+    "O": COLORS.COLOR_ORANGE,
+    "Y": COLORS.COLOR_YELLOW,
+    "P": COLORS.COLOR_PURPLE,
+    "T": COLORS.COLOR_BLUE_LIGHT
+}
 
 class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
     dev_ids = ["APC Key 25 MIDI 1", "APC Key 25 IN 1"]
-    driver_name = 'AKAI APC Key25'
+    driver_name = 'Full Zynthian Integration for AKAI APC Key25'
     apc_color_variant = 'apc_mk1'
     unroute_from_chains = 0b1111111111111101
     on_notes = {}
@@ -104,27 +108,19 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
         ROWS = 4
 
         def cc_change(self, ccnum, ccval):
-
-            zynpot = {
-                KNOB_LAYER: 0,
-                KNOB_BACK: 1,
-                KNOB_SNAPSHOT: 2,
-                KNOB_SELECT: 3
-            }.get(ccnum, None)
-            if zynpot is None:
-                return
-
-            self._state_manager.send_cuia("ZYNPOT_ABS", [zynpot, ccval / 127])
+            zynpot = CCNUM_ZYNPOT.get(ccnum, None)
+            if zynpot is not None:
+                self._state_manager.send_cuia("ZYNPOT_ABS", [zynpot, ccval / 127])
 
         def note_on(self, note, velocity, shifted_override=None):
             if note < 4:
                 self._state_manager.send_cuia("ZYNPOT", [note, -10])
             elif self.COLS <= note < self.COLS*1+4:
-                self._state_manager.send_cuia("ZYNPOT", [note-self.COLS, -1])
+                self._state_manager.send_cuia("ZYNPOT", [note - self.COLS, -1])
             elif self.COLS*2 <= note < self.COLS*2+4:
-                self._state_manager.send_cuia("ZYNPOT", [note-self.COLS*2, +1])
+                self._state_manager.send_cuia("ZYNPOT", [note - self.COLS*2, +1])
             elif self.COLS*3 <= note < self.COLS*3+4:
-                self._state_manager.send_cuia("ZYNPOT", [note-self.COLS*3, +10])
+                self._state_manager.send_cuia("ZYNPOT", [note - self.COLS*3, +10])
             else:
                 super().note_on(note, velocity, shifted_override)
 

@@ -84,37 +84,80 @@ BTN_SOFT_KEY_SELECT = 0x56
 
 BTN_PAD_START = 0x00
 BTN_PAD_END = 0x27
-BTN_PAD_29 = BTN_ALT = 0x1C
-BTN_PAD_30 = BTN_METRONOME = 0x1D
-BTN_PAD_31 = BTN_PAD_STEP = 0x1E
+
 BTN_PAD_37 = BTN_OPT_ADMIN = 0x24
 BTN_PAD_38 = BTN_MIX_LEVEL = 0x25
 BTN_PAD_39 = BTN_CTRL_PRESET = 0x26
 BTN_PAD_40 = BTN_ZS3_SHOT = 0x27
-BTN_PAD_5 = BTN_PAD_LEFT = 0x04
-BTN_PAD_6 = BTN_PAD_DOWN = 0x05
-BTN_PAD_7 = BTN_PAD_RIGHT = 0x06
-BTN_PAD_8 = BTN_F4 = 0x07
+
+BTN_PAD_29 = BTN_ALT = 0x1C
+BTN_PAD_30 = BTN_METRONOME = 0x1D
+BTN_PAD_31 = BTN_PAD_STEP = 0x1E
+BTN_PAD_32 = BTN_F1 = 0x1F
+
+BTN_PAD_21 = BTN_PAD_RECORD = 0x14
+BTN_PAD_22 = BTN_PAD_STOP = 0x15
+BTN_PAD_23 = BTN_PAD_PLAY = 0x16
+BTN_PAD_24 = BTN_F2 = 0x17
+
 BTN_PAD_13 = BTN_BACK_NO = 0x0C
 BTN_PAD_14 = BTN_PAD_UP = 0x0D
 BTN_PAD_15 = BTN_SEL_YES = 0x0E
 BTN_PAD_16 = BTN_F3 = 0x0F
-BTN_PAD_21 = BTN_PAD_RECORD = 0x14
-BTN_PAD_22 = 0x15
-BTN_PAD_23 = BTN_PAD_PLAY = 0x16
-BTN_PAD_24 = BTN_F2 = 0x17
-BTN_PAD_32 = BTN_F1 = 0x1F
+
+BTN_PAD_5 = BTN_PAD_LEFT = 0x04
+BTN_PAD_6 = BTN_PAD_DOWN = 0x05
+BTN_PAD_7 = BTN_PAD_RIGHT = 0x06
+BTN_PAD_8 = BTN_F4 = 0x07
+
+# Dictionary: CC num to zynpot index
+NOTE_ZYNSWITCH = {
+    BTN_OPT_ADMIN: 0,
+    BTN_MIX_LEVEL: 1,
+    BTN_CTRL_PRESET: 2,
+    BTN_ZS3_SHOT: 3,
+
+    BTN_ALT: 4,
+    BTN_METRONOME: 5,
+    BTN_PAD_STEP: 6,
+    BTN_F1: 7,
+
+    BTN_PAD_RECORD: 8,
+    BTN_PAD_STOP: 9,
+    BTN_PAD_PLAY: 10,
+    BTN_F2: 11,
+
+    BTN_BACK_NO: 12,
+    BTN_PAD_UP: 13,
+    BTN_SEL_YES: 14,
+    BTN_F3: 15,
+
+    BTN_PAD_LEFT: 16,
+    BTN_PAD_DOWN: 17,
+    BTN_PAD_RIGHT: 18,
+    BTN_F4: 19
+}
+
+ZYNSWITCH_NOTE = list(NOTE_ZYNSWITCH.keys())
 
 # APC Key25 knobs
-KNOB_1 = KNOB_LAYER = 0x30
-KNOB_2 = KNOB_SNAPSHOT = 0x31
+KNOB_1 = KNOB_ZYN_1 = 0x30
+KNOB_2 = KNOB_ZYN_2 = 0x31
 KNOB_3 = 0x32
 KNOB_4 = 0x33
-KNOB_5 = KNOB_BACK = 0x34
-KNOB_6 = KNOB_SELECT = 0x35
+KNOB_5 = KNOB_ZYN_3 = 0x34
+KNOB_6 = KNOB_ZYN_4 = 0x35
 KNOB_7 = 0x36
 KNOB_8 = 0x37
 
+
+# Dictionary: CC num to zynpot index
+CCNUM_ZYNPOT = {
+    KNOB_ZYN_1: 0,
+    KNOB_ZYN_2: 1,
+    KNOB_ZYN_3: 2,
+    KNOB_ZYN_4: 3
+}
 
 # NOTE: use this tool to help you getting the right colors:
 # https://github.com/oscaracena/mdevtk/blob/main/examples/apc_key25_mk2/09-pad-tool.py
@@ -149,6 +192,17 @@ class COLORS:
     SOFT_OFF = 0x00
     SOFT_ON = 0x01
     SOFT_BLINK = 0x02
+
+WSCOLORS_DICT = {
+    "0": COLORS.COLOR_BLACK,
+    "B": COLORS.COLOR_BLUE,
+    "G": COLORS.COLOR_GREEN,
+    "R": COLORS.COLOR_RED,
+    "O": COLORS.COLOR_ORANGE,
+    "Y": COLORS.COLOR_YELLOW,
+    "P": COLORS.COLOR_PURPLE,
+    "T": COLORS.COLOR_BLUE_LIGHT
+}
 
 # mk2: midi channel,
 # mk1: midi channel stays 0, always on, blink is color + 1
@@ -295,24 +349,9 @@ class DeviceHandler(ModeHandlerBase):
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
         self._refresh_timer = RefreshTimer()
-        self._current_screen_obj = None
+        self.zyngui = zynthian_gui_config.zyngui
 
-        cyclable_actions = {
-            BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
-            BTN_MIX_LEVEL:      ("SCREEN_AUDIO_MIXER", "SCREEN_ALSA_MIXER"),
-            BTN_CTRL_PRESET:    ("CHAIN_CONTROL", "PRESET", "BANK_PRESET"),
-            BTN_ZS3_SHOT:       ("SCREEN_ZS3", "SCREEN_SNAPSHOT"),
-            BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
-            BTN_METRONOME:      ("TEMPO",),
-            BTN_RECORD:         ("TOGGLE_RECORD",),
-        }
-
-        press_length_actions = {
-            BTN_ALT: (
-                lambda is_bold: [
-                    "HELP" if is_bold else "TOGGLE_ALT_MODE"
-                ]
-            ),
+        self._btn_actions = {
             BTN_PLAY: (
                 lambda is_bold: [
                     "AUDIO_FILE_LIST" if is_bold else "TOGGLE_PLAY"
@@ -322,39 +361,8 @@ class DeviceHandler(ModeHandlerBase):
                 lambda is_bold: [
                     "ALL_SOUNDS_OFF" if is_bold else "STOP"
                 ]
-            ),
-            BTN_KNOB_1: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:0,{'B' if is_bold else 'S'}"]),
-            BTN_KNOB_2: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:1,{'B' if is_bold else 'S'}"]),
-            BTN_KNOB_3: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:2,{'B' if is_bold else 'S'}"]),
-            BTN_KNOB_4: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:3,{'B' if is_bold else 'S'}"]),
-            BTN_BACK_NO: (lambda is_bold: [f"{'MAIN_MENU' if is_bold else 'BACK'}"]),
-            BTN_F1: (lambda is_bold: ["COPY:0" if is_bold else 'PASTE:0']),
-            BTN_F2: (lambda is_bold: ["COPY:1" if is_bold else 'PASTE:1']),
-            BTN_F3: (lambda is_bold: ["COPY:2" if is_bold else 'PASTE:2']),
-            BTN_F4: (lambda is_bold: ["COPY:3" if is_bold else 'PASTE:3'])
+            )
         }
-
-        self._btn_actions = cyclable_actions | press_length_actions
-        self._btn_states = {k: -1 for k in cyclable_actions}
-
-    def widget_alt_state(self):
-        widget_obj = getattr(self._current_screen_obj, "current_widget", None)
-        return getattr(widget_obj, "alt_mode", None)
-
-    def local_alt_state(self):
-        return getattr(self._current_screen_obj, "alt_mode", None)
-
-    def is_global_alt_active(self):
-        return getattr(zynthian_gui_config.zyngui, "alt_mode", False)
-
-    def is_alt_active(self):
-        widget_alt = self.widget_alt_state()
-        if widget_alt is not None:
-            return widget_alt
-        screen_alt = self.local_alt_state()
-        if screen_alt is not None:
-            return screen_alt
-        return self.is_global_alt_active()
 
     def set_active(self, active):
         super().set_active(active)
@@ -383,65 +391,21 @@ class DeviceHandler(ModeHandlerBase):
         self._leds.led_blink(BTN_KNOB_CTRL_DEVICE)
 
         # Lit up fixed buttons
-        for btn in [BTN_PAD_UP, BTN_PAD_DOWN, BTN_PAD_LEFT, BTN_PAD_RIGHT]:
-            self._leds.led_on(btn, self._colors.COLOR_YELLOW, LED_BRIGHT_100)
-        self._leds.led_on(BTN_SEL_YES, self._colors.COLOR_GREEN, LED_BRIGHT_100)
-        self._leds.led_on(BTN_BACK_NO, self._colors.COLOR_RED, LED_BRIGHT_100)
-
         for btn in [BTN_KNOB_1, BTN_KNOB_2, BTN_KNOB_3, BTN_KNOB_4]:
             self._leds.led_on(btn, self._colors.COLOR_GREEN, LED_BRIGHT_100)
 
-
-        screenref = self._current_screen_obj
-
-        widget_alt_mode = self.widget_alt_state()
-        local_alt_mode = self.local_alt_state()
-        if widget_alt_mode is not None:
-            alt_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_ALT_OFF
-            fn_color = self._colors.COLOR_LOCAL_ALT_ON if widget_alt_mode else self._colors.COLOR_FN
-            for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
-        elif local_alt_mode is not None:
-            alt_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_ALT_OFF
-            fn_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_FN
-            if local_alt_mode and self._current_screen == 'pattern_editor':
-                # The functions of f1-f4 change with the local alt mode of pattern editor:
-                fn_color = self._colors.COLOR_LOCAL_ALT_ON if local_alt_mode else self._colors.COLOR_FN
-                for i, btn in enumerate([BTN_F1, BTN_F2, BTN_F3, BTN_F4]):
-                    if (screenref.clipboard[i] is not None):
-                        if (screenref.clipboard[i][2] == screenref.pattern):
-                            self._leds.led_on(btn, self._colors.COLOR_RED, LED_BLINKING_2)
-                        else:
-                            self._leds.led_on(btn, fn_color, LED_BLINKING_2)
-                    else:
-                        self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
-            else:
-                # The functions of f1-f4 do not change with the local alt mode of mixer/launchpad - so keep it purple:
-                fn_color = self._colors.COLOR_ALT_ON if local_alt_mode else self._colors.COLOR_FN
-                for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                    self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
-        else:
-            alt_color = self._colors.COLOR_ALT_ON if self.is_global_alt_active() else self._colors.COLOR_ALT_OFF
-            fn_color = self._colors.COLOR_ALT_ON if self.is_global_alt_active() else self._colors.COLOR_FN
-            for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                self._leds.led_on(btn, fn_color, LED_BRIGHT_100)
-
-        self._leds.led_on(BTN_ALT, alt_color, LED_BRIGHT_100)
-
-        # Lit up state-full control buttons
-        for btn, state in self._btn_states.items():
-            color = [self._colors.COLOR_STATE_1, self._colors.COLOR_STATE_2, self._colors.COLOR_STATE_0][state]
-            self._leds.led_on(btn, color, LED_BRIGHT_100)
-
-        # Tempo Screen
-        if self._current_screen != "tempo" and self._zynseq.libseq.getMetronomeMode() > 0:
-            self._leds.led_on(BTN_METRONOME, self._colors.COLOR_BLUE, LED_BLINKING_2)
-
-        # Lit up play/record buttons
-        if self._is_playing:
-            self._leds.led_on(BTN_PAD_PLAY, self._colors.COLOR_PLAYING, LED_BLINKING_8)
-        if self._is_recording:
-            self._leds.led_on(BTN_PAD_RECORD, self._colors.COLOR_RED, LED_BLINKING_8)
+        # Get UI wsled state
+        if self.zyngui.wsleds:
+            try:
+                wsled_state = self.zyngui.wsleds.last_wsled_state,split(",")
+                for i, colstr in enumerate(wsled_state):
+                    color = WSCOLORS_DICT.get(colstr, None)
+                    if color is not None:
+                        note = ZYNSWITCH_NOTE.get(i, None)
+                        if note is not None:
+                            self._leds.led_on(note, color, LED_BRIGHT_100)
+            except Exception as e:
+                logging.error(e)
 
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
@@ -450,137 +414,42 @@ class DeviceHandler(ModeHandlerBase):
                 self.refresh()
                 return True
         else:
-            if note in (BTN_UP, BTN_PAD_UP):
-                self._state_manager.send_cuia("ARROW_UP")
-            elif note in (BTN_DOWN, BTN_PAD_DOWN):
-                self._state_manager.send_cuia("ARROW_DOWN")
-            elif note in (BTN_LEFT, BTN_PAD_LEFT):
-                self._state_manager.send_cuia("ARROW_LEFT")
-            elif note in (BTN_RIGHT, BTN_PAD_RIGHT):
-                self._state_manager.send_cuia("ARROW_RIGHT")
-            elif note == BTN_SEL_YES:
-                self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
-            # elif note == BTN_BACK_NO:
-            #     self._state_manager.send_cuia("BACK")
-            elif note in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
-                # Function buttons (F1-F4)
-                if self._current_screen == 'pattern_editor' and self._current_screen_obj.alt_mode:
-                    self._btn_timer.is_pressed(note, time.time())
-                    # implement clipboard copy here
-                    return True
-                else:
-                    fn_btns = {BTN_F1: 1, BTN_F2: 2, BTN_F3: 3, BTN_F4: 4}
-                    pgm = fn_btns.get(note)
-                    if pgm is not None:
-                        pgm += 4 if self.is_alt_active() else 0
-                        self._state_manager.send_cuia("PROGRAM_CHANGE", [pgm])
-                        return True
+            i = NOTE_ZYNSWITCH.get(note, None)
+            if i is not None:
+                self.cuia_queue.put_nowait(("zynswitch", (i + 4, "P")))
             else:
-                # Buttons that may have bold/long press
-                self._btn_timer.is_pressed(note, time.time())
+                # Handle other APC buttons
+                pass
+
+            self._btn_timer.is_pressed(note, time.time())
             return True
 
     def note_off(self, note, shifted_override=None):
         self._on_shifted_override(shifted_override)
         self._btn_timer.is_released(note)
 
-    def cc_change(self, ccnum, ccval):
-        delta = self._knobs_ease.feed(ccnum, ccval, self._is_shifted)
-        if delta is None:
-            return True
+    def _handle_timed_button(self, btn, press_type):
 
-        zynpot = {
-            KNOB_LAYER: 0,
-            KNOB_BACK: 1,
-            KNOB_SNAPSHOT: 2,
-            KNOB_SELECT: 3
-        }.get(ccnum, None)
+        i = NOTE_ZYNSWITCH.get(note, None)
+        if i is not None:
+            self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
+        else:
+            # Handle other APC buttons
+            pass
 
-        if zynpot is None:
-            return True
-
-        self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
         return True
 
-    def on_alt_mode(self, alt_mode, refresh=False):
-        if refresh:
-            self.refresh()
-
-    def on_screen_change(self, screen):
-        self._current_screen = screen
-        zyngui = zynthian_gui_config.zyngui
-        self._current_screen_obj = zyngui.get_current_screen_obj()
-        screen_map = {
-            "option":         (BTN_OPT_ADMIN, 0),
-            "chain_manager":  (BTN_OPT_ADMIN, 0),
-            "admin":          (BTN_OPT_ADMIN, 1),
-            "mixer":          (BTN_MIX_LEVEL, 0),
-            "audio_mixer":    (BTN_MIX_LEVEL, 0),
-            "alsa_mixer":     (BTN_MIX_LEVEL, 1),
-            "control":        (BTN_CTRL_PRESET, 0),
-            "engine":         (BTN_CTRL_PRESET, 0),
-            "preset":         (BTN_CTRL_PRESET, 1),
-            "bank":           (BTN_CTRL_PRESET, 1),
-            "zs3":            (BTN_ZS3_SHOT, 0),
-            "snapshot":       (BTN_ZS3_SHOT, 1),
-            "launcher":       (BTN_PAD_STEP, 0),
-            "pattern_editor": (BTN_PAD_STEP, 1),
-            "arranger":       (BTN_PAD_STEP, 1),
-            "tempo":          (BTN_METRONOME, 0),
-        }
-
-        self._btn_states = {k: -1 for k in self._btn_states}
-        try:
-            btn, idx = screen_map[screen]
-            self._btn_states[btn] = idx
-        except KeyError:
-            pass
+    def cc_change(self, ccnum, ccval):
+        delta = self._knobs_ease.feed(ccnum, ccval, self._is_shifted)
+        if delta is not None:
+            zynpot = CCNUM_ZYNPOT.get(ccnum, None)
+            if zynpot is not None:
+                self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
+        return True
 
     def on_media_change(self, media, kind, state):
         flags = self._is_playing if kind == "player" else self._is_recording
         flags.add(media) if state else flags.discard(media)
-
-    def _handle_timed_button(self, btn, press_type):
-        if press_type == CONST.PT_LONG:
-            cmd = {
-                BTN_OPT_ADMIN:   "POWER",
-                BTN_CTRL_PRESET: "PRESET_FAV",
-#                BTN_PAD_STEP:    "SCREEN_ARRANGER",
-            }.get(btn)
-            if cmd:
-                self._state_manager.send_cuia(cmd)
-            return True
-
-        actions = self._btn_actions.get(btn)
-        if actions is None:
-            return
-        if callable(actions):
-            actions = actions(press_type == CONST.PT_BOLD)
-            cmd = actions[0]
-        else:
-            idx = -1
-            if press_type == CONST.PT_SHORT:
-                idx = self._btn_states[btn]
-                idx = (idx + 1) % len(actions)
-                cmd = actions[idx]
-            elif press_type == CONST.PT_BOLD:
-                # In buttons with 2 functions, the default on bold press is the second
-                idx = 1 if len(actions) > 1 else 0
-                cmd = actions[idx]
-
-        if callable(cmd):
-            return cmd()
-
-        # Split params, if given
-        params = []
-        if ":" in cmd:
-            cmd, params = cmd.split(":")
-            params = params.split(",")
-            params[0] = int(params[0])
-
-        self._state_manager.send_cuia(cmd, params)
-        return True
-
 
 # --------------------------------------------------------------------------
 # Handle Mixer (Mixpad mode)
@@ -2892,11 +2761,11 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
     dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
     driver_name = 'AKAI APC Key25 MK2'
-    driver_description = 'Full UI integration'
+    driver_description = 'Full Zynthian Integration for AKAI APC Key25 mk2'
     unroute_from_chains = 0b1111111111111111
+    need_wsled_state = True
+
     apc_color_variant = "apc"
-    cols = 8
-    rows = 5
 
     COLOR_SET = COLORS
     FeedbackLEDs = FeedbackLEDs
@@ -2913,6 +2782,9 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._stepseq_handler = self.StepSeqHandler(state_manager, self._leds, idev_in)
         self._current_handler = self._device_handler
         self._is_shifted = False
+
+        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
         self._signals = [
             (zynsigman.S_GUI,
@@ -2940,8 +2812,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         # NOTE: init will call refresh(), so _current_hanlder must be ready!
         super().__init__(state_manager, idev_in, idev_out)
         self._current_handler.set_active(True)
-        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
-        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
     def init(self):
         super().init()
@@ -3123,10 +2993,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         if self._current_handler == self._mixer_handler:
             self._current_handler.update_strip(chan, symbol, value)
 
-    def on_alt_mode(self, alt_mode: bool):
-        refresh = self._current_handler == self._device_handler
-        self._device_handler.on_alt_mode(alt_mode, refresh)
-        
     def on_active_chain(self, active_chain_id):
         refresh = self._current_handler == self._mixer_handler
         super().on_active_chain(active_chain_id)
