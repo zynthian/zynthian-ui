@@ -206,10 +206,11 @@ class zynthian_wsleds_base:
                     wsled_state = ",".join(wsled_state)
                     if wsled_state != self.last_wsled_state:
                         self.last_wsled_state = wsled_state
-                        self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
-                        # logging.debug(f"Capturing LED state log => {wsled_state}")
+                        if self.zyngui.capture_log:
+                            self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
+                            # logging.debug(f"Capturing LED state log => {wsled_state}")
                 except Exception as e:
-                    logging.error(f"Capturing LED state log => {e}")
+                    logging.error(f"Generating LED state string => {e}")
 
         self.blink_count += 1
 
