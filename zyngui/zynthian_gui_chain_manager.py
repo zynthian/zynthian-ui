@@ -32,6 +32,7 @@ import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_chain_manager import NUDGE_UP, NUDGE_DOWN, NUDGE_LEFT, NUDGE_RIGHT
 
 DRAG_THRESHOLD = 5
 
@@ -224,11 +225,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
                         else:
                             self.arrow_left()
                     elif dy > self.BLOCK_HEIGHT:
-                        if self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, self.moving_proc, True):
+                        if self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, self.moving_proc, NUDGE_UP):
                             self.build_graph(self.moving_proc)
                             self.press_event.y = event.y
                     elif dy < -self.BLOCK_HEIGHT:
-                        if self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, self.moving_proc, False):
+                        if self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, self.moving_proc, NUDGE_DOWN):
                             self.build_graph(self.moving_proc)
                             self.press_event.y = event.y
                     else:
@@ -750,38 +751,6 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             if self.zyngui.tts:
                 self.zyngui.tts.announce(f"Main chain: {node.get('title')}", replace=immediate, interrupt=immediate)
 
-    def move_processor(self, chain_idx, chain_offset):
-        if self.moving_proc.eng_code in ["MI", "MR"]:
-            return
-        try:
-            node = self._get_node(self.selected_node)
-            ordered_chains = list(self.chain_manager.chains)
-            chain_id = ordered_chains[chain_idx]
-            chain = self.chain_manager.chains[chain_id]
-            chain_dest_id = ordered_chains[chain_idx + chain_offset]
-            chain_dst = self.chain_manager.chains[chain_dest_id]
-            # Constrain which chains a process may be moved to
-            if self.moving_proc.type == "MIDI Tool":
-                if not chain_dst.is_midi():
-                    return
-            elif self.moving_proc.type == "Audio Effect":
-                if not chain_dst.is_audio():
-                    return
-            chain.remove_processor(self.moving_proc)
-            chain_dst.insert_processor(self.moving_proc, node.get("slot"))
-            # Rebuild routing in both chains
-            if self.moving_proc.type == "MIDI Tool":
-                chain.rebuild_midi_graph()
-                chain_dst.rebuild_midi_graph()
-                zynautoconnect.request_midi_connect(True)
-            elif self.moving_proc.type == "Audio Effect":
-                chain.rebuild_audio_graph()
-                chain_dst.rebuild_audio_graph()
-                zynautoconnect.request_audio_connect(True)
-        except Exception as e:
-            logging.error(f"Can't move processor! => {e}")
-        self.build_graph(self.moving_proc)
-
     def start_moving_processor(self, processor=None):
         """
         Enter 'Move Mode' for a specific processor.
@@ -839,7 +808,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         if self.moving_proc:
             proc = self.moving_proc
-            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, False)
+            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, NUDGE_DOWN)
             self.build_graph(proc)
         else:
             chain_idx, row, col = self.selected_node
@@ -858,7 +827,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         if self.moving_proc:
             proc = self.moving_proc
-            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, True)
+            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, NUDGE_UP)
             self.build_graph(proc)
         else:
             chain_idx, row, col = self.selected_node
@@ -874,8 +843,11 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """
         chain_idx, row, col = self.selected_node
         if self.moving_proc:
-            if chain_idx:
-                self.move_processor(chain_idx, -1)
+            chain_id = list(self.chain_manager.chains)[chain_idx]
+            if self.moving_proc.eng_code in ["MI", "MR"]:
+                return
+            if self.chain_manager.nudge_processor(chain_id, self.moving_proc, NUDGE_LEFT):
+                self.build_graph(self.moving_proc)
         elif self.moving_chain:
             self.selected_node[0] = self.chain_manager.nudge_chain(-1)
             self.build_graph()
@@ -897,9 +869,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """
         chain_idx, row, col = self.selected_node
         if self.moving_proc:
-            self.move_processor(chain_idx, 1)
+            chain_id = list(self.chain_manager.chains)[chain_idx]
+            if self.moving_proc.eng_code in ["MI", "MR"]:
+                return
+            if self.chain_manager.nudge_processor(chain_id, self.moving_proc, NUDGE_RIGHT):
+                self.build_graph(self.moving_proc)
         elif self.moving_chain:
-            self.selected_node[0] = self.chain_manager.nudge_chain(1)
+            self.selected_node[0] = self.chain_manager.nudge_chain(+1)
             self.build_graph()
         else:
             col += 1
@@ -993,16 +969,17 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         """
 
         # If moving, consume event and exit
-        if self.moving_chain:
-            self.end_moving_chain()
-            if t == "S":
-                return True
+        if t not in ['P', 'R']:
+            if self.moving_chain:
+                self.end_moving_chain()
+                if t == "S":
+                    return True
 
-        if self.moving_proc:
-            self.end_moving_processor()
-            self.select_node()
-            if t == "S":
-                return True
+            if self.moving_proc:
+                self.end_moving_processor()
+                self.select_node()
+                if t == "S":
+                    return True
 
         if not self.selected_node:
             self.selected_node = [0, 0, 0]

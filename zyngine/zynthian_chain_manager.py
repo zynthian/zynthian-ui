@@ -40,10 +40,14 @@ from zyngine import zynthian_state_manager
 from zyngui import zynthian_gui_config
 
 # ----------------------------------------------------------------------------
-# Some variables & definitions
+# Some constants & definitions
 # ----------------------------------------------------------------------------
 
 MAX_NUM_MIDI_CHANS = 32
+NUDGE_UP    = 0
+NUDGE_DOWN  = 1
+NUDGE_LEFT  = 2
+NUDGE_RIGHT = 3
 
 # Get ZynMidiRouter parameters and limits from lib_zyncore
 NUM_ZMOP_CHAINS = lib_zyncore.zmop_get_num_chains()
@@ -1098,24 +1102,66 @@ class zynthian_chain_manager:
             return True
         return False
 
-    def nudge_processor(self, chain_id, processor, up):
+    def nudge_processor(self, chain_id, processor, dir):
+        """ Nudge a processor in graph
+        Args:
+            chain_id: ID of chain containing processor
+            processor: ID of processor to move
+            dir: Direction to move [NUDGE_UP|NUDGE_DOWN|NUDGE_LEFT|NUDGE_RIGHT]
+        Returns: True on succuss
+        """
+
         if chain_id not in self.chains:
             return False
         chain = self.chains[chain_id]
-        if not chain.nudge_processor(processor, up):
-            return False
-        for src_chain in self.chains.values():
-            if chain_id in src_chain.audio_out:
-                src_chain.rebuild_graph()
+        if dir in [NUDGE_DOWN, NUDGE_UP]:
+            if not chain.nudge_processor(processor, dir==NUDGE_UP):
+                return False
+            for src_chain in self.chains.values():
+                if chain_id in src_chain.audio_out:
+                    src_chain.rebuild_graph()
 
-        if chain.is_audio():
-            # Audio chain so mute main output whilst making change (blunt but effective)
-            mute = self.state_manager.zynmixer_bus.get_mute(0)
-            self.state_manager.mute()
-            zynautoconnect.request_audio_connect(True)
-            self.state_manager.mute(mute)
-        zynautoconnect.request_midi_connect(True)
-        return True
+            if chain.is_audio():
+                # Audio chain so mute main output whilst making change (blunt but effective)
+                mute = self.state_manager.zynmixer_bus.get_mute(0)
+                self.state_manager.mute()
+                zynautoconnect.request_audio_connect(True)
+                self.state_manager.mute(mute)
+            zynautoconnect.request_midi_connect(True)
+            return True
+        else:
+            delta = +1 if dir==NUDGE_RIGHT else -1
+            try:
+                ordered_chains = list(self.chains)
+                chain = self.chains[chain_id]
+                chain_idx = ordered_chains.index(chain_id)
+                offset = chain_idx + delta
+                while 0 <= offset < len(ordered_chains):
+                    chain_dest_id = ordered_chains[offset]
+                    chain_dst = self.chains[chain_dest_id]
+                    offset += delta
+                    # Constrain which chains a process may be moved to
+                    if processor.type == "MIDI Tool":
+                        if not chain_dst.is_midi():
+                            continue
+                    elif processor.type == "Audio Effect":
+                        if not chain_dst.is_audio():
+                            continue
+                    chain.remove_processor(processor)
+                    chain_dst.insert_processor(processor)
+                    # Rebuild routing in both chains
+                    if processor.type == "MIDI Tool":
+                        chain.rebuild_midi_graph()
+                        chain_dst.rebuild_midi_graph()
+                        zynautoconnect.request_midi_connect(True)
+                    elif processor.type == "Audio Effect":
+                        chain.rebuild_audio_graph()
+                        chain_dst.rebuild_audio_graph()
+                        zynautoconnect.request_audio_connect(True)
+                    return True
+            except Exception as e:
+                logging.error(f"Can't move processor! => {e}")
+        return False
 
     def remove_processor(self, chain_id, processor, stop_engine=True):
         """Remove a processor from a chain

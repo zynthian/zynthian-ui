@@ -30,6 +30,7 @@ from tkinter import font
 
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_chain_manager import NUDGE_UP, NUDGE_DOWN
 
 DRAG_THRESHOLD = 5
 
@@ -607,11 +608,11 @@ class zynthian_side_chain(tkinter.Canvas):
                     pass
                 if node and self.clicked_node and node != self.clicked_node:
                     if dy > self.BLOCK_HEIGHT:
-                        if self.chain_manager.nudge_processor(self.chain.chain_id, self.moving_proc, True):
+                        if self.chain_manager.nudge_processor(self.chain.chain_id, self.moving_proc, NUDGE_UP):
                             self.build_graph(self.moving_proc)
                             self.press_event.y = event.y
                     elif dy < -self.BLOCK_HEIGHT:
-                        if self.chain_manager.nudge_processor(self.chain.chain_id, self.moving_proc, False):
+                        if self.chain_manager.nudge_processor(self.chain.chain_id, self.moving_proc, NUDGE_DOWN):
                             self.build_graph(self.moving_proc)
                             self.press_event.y = event.y
                     else:
@@ -751,7 +752,7 @@ class zynthian_side_chain(tkinter.Canvas):
 
         if self.moving_proc:
             proc = self.moving_proc
-            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, False)
+            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, NUDGE_DOWN)
             self.build_graph(proc)
             self.chain_control.refresh_subscreen()
         else:
@@ -768,7 +769,7 @@ class zynthian_side_chain(tkinter.Canvas):
 
         if self.moving_proc:
             proc = self.moving_proc
-            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, True)
+            self.chain_manager.nudge_processor(self.chain_manager.active_chain.chain_id, proc, NUDGE_UP)
             self.build_graph(proc)
             self.chain_control.refresh_subscreen()
         else:
