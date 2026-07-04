@@ -173,4 +173,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     def set_select_path(self):
         self.select_path.set("ZS3 (SubSnapShots)")
 
+    def get_alt_mode(self):
+        return self.alt_mode
+
 # -------------------------------------------------------------------------------
