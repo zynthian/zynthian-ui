@@ -110,35 +110,67 @@ BTN_PAD_6 = BTN_PAD_DOWN = 0x05
 BTN_PAD_7 = BTN_PAD_RIGHT = 0x06
 BTN_PAD_8 = BTN_F4 = 0x07
 
-# Dictionary: CC num to zynpot index
+# Dictionary: NOTE num to zynswitch index
 NOTE_ZYNSWITCH = {
-    BTN_OPT_ADMIN: 0,
-    BTN_MIX_LEVEL: 1,
-    BTN_CTRL_PRESET: 2,
-    BTN_ZS3_SHOT: 3,
+    BTN_KNOB_1: 0,
+    BTN_KNOB_2: 1,
+    BTN_KNOB_3: 2,
+    BTN_KNOB_4: 3,
 
-    BTN_ALT: 4,
-    BTN_METRONOME: 5,
-    BTN_PAD_STEP: 6,
-    BTN_F1: 7,
+    BTN_OPT_ADMIN: 4,
+    BTN_MIX_LEVEL: 5,
+    BTN_CTRL_PRESET: 6,
+    BTN_ZS3_SHOT: 7,
 
-    BTN_PAD_RECORD: 8,
-    BTN_PAD_STOP: 9,
-    BTN_PAD_PLAY: 10,
-    BTN_F2: 11,
+    BTN_ALT: 8,
+    BTN_METRONOME: 9,
+    BTN_PAD_STEP: 10,
+    BTN_F1: 11,
 
-    BTN_BACK_NO: 12,
-    BTN_PAD_UP: 13,
-    BTN_SEL_YES: 14,
-    BTN_F3: 15,
+    BTN_PAD_RECORD: 12,
+    BTN_PAD_STOP: 13,
+    BTN_PAD_PLAY: 14,
+    BTN_F2: 15,
 
-    BTN_PAD_LEFT: 16,
-    BTN_PAD_DOWN: 17,
-    BTN_PAD_RIGHT: 18,
-    BTN_F4: 19
+    BTN_BACK_NO: 16,
+    BTN_PAD_UP: 17,
+    BTN_SEL_YES: 18,
+    BTN_F3: 19,
+
+    BTN_PAD_LEFT: 20,
+    BTN_PAD_DOWN: 21,
+    BTN_PAD_RIGHT: 22,
+    BTN_F4: 23
 }
 
-ZYNSWITCH_NOTE = list(NOTE_ZYNSWITCH.keys())
+#ZYNSWITCH_NOTE = {v: k for k, v in NOTE_ZYNSWITCH.items()}
+#list(NOTE_ZYNSWITCH.keys())
+ZYNSWITCH_NOTE = {
+    4:    BTN_OPT_ADMIN,
+    5:    BTN_MIX_LEVEL,
+    6:    BTN_CTRL_PRESET,
+    7:    BTN_ZS3_SHOT,
+
+    8:    BTN_ALT,
+    9:    BTN_METRONOME,
+    10:   BTN_PAD_STEP,
+    11:   BTN_F1,
+
+    12:    BTN_PAD_RECORD,
+    # 13:    BTN_PAD_STOP,
+    14:    BTN_PAD_PLAY,
+    15:    BTN_F2,
+
+    16:    BTN_F3,
+    17:    BTN_SEL_YES,
+    18:    BTN_PAD_UP,
+    19:    BTN_BACK_NO,
+
+    20:    BTN_PAD_LEFT,
+    21:    BTN_PAD_DOWN,
+    22:    BTN_PAD_RIGHT,
+    23:    BTN_F4
+}
 
 # APC Key25 knobs
 KNOB_1 = KNOB_ZYN_1 = 0x30
@@ -204,6 +236,11 @@ WSCOLORS_DICT = {
     "T": COLORS.COLOR_BLUE_LIGHT
 }
 
+PRESSTYPE_DICT = {
+    "short": "S",
+    "bold": "B",
+    "long": "L"
+}
 # mk2: midi channel,
 # mk1: midi channel stays 0, always on, blink is color + 1
     # 0=off,
@@ -350,6 +387,7 @@ class DeviceHandler(ModeHandlerBase):
         self._btn_timer = ButtonTimer(self._handle_timed_button)
         self._refresh_timer = RefreshTimer()
         self.zyngui = zynthian_gui_config.zyngui
+        self.cuia_queue = state_manager.cuia_queue
 
         self._btn_actions = {
             BTN_PLAY: (
@@ -397,13 +435,17 @@ class DeviceHandler(ModeHandlerBase):
         # Get UI wsled state
         if self.zyngui.wsleds:
             try:
-                wsled_state = self.zyngui.wsleds.last_wsled_state,split(",")
+                wsled_state = self.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
+                    # print(i, colstr)
                     color = WSCOLORS_DICT.get(colstr, None)
                     if color is not None:
-                        note = ZYNSWITCH_NOTE.get(i, None)
+                        note = ZYNSWITCH_NOTE.get(i + 4, None)
                         if note is not None:
-                            self._leds.led_on(note, color, LED_BRIGHT_100)
+                            if colstr in ("B", "P") and note in (BTN_PAD_RECORD, BTN_PAD_PLAY):
+                                self._leds.led_off(note)
+                            else:
+                                self._leds.led_on(note, color, LED_BRIGHT_100)
             except Exception as e:
                 logging.error(e)
 
@@ -414,25 +456,38 @@ class DeviceHandler(ModeHandlerBase):
                 self.refresh()
                 return True
         else:
-            i = NOTE_ZYNSWITCH.get(note, None)
-            if i is not None:
-                self.cuia_queue.put_nowait(("zynswitch", (i + 4, "P")))
+            if note in (BTN_UP, BTN_PAD_UP):
+                self._state_manager.send_cuia("ARROW_UP")
+            elif note in (BTN_DOWN, BTN_PAD_DOWN):
+                self._state_manager.send_cuia("ARROW_DOWN")
+            elif note in (BTN_LEFT, BTN_PAD_LEFT):
+                self._state_manager.send_cuia("ARROW_LEFT")
+            elif note in (BTN_RIGHT, BTN_PAD_RIGHT):
+                self._state_manager.send_cuia("ARROW_RIGHT")
             else:
-                # Handle other APC buttons
-                pass
+           # i = NOTE_ZYNSWITCH.get(note, None)
+            # if i is not None:
+            #     self.cuia_queue.put_nowait(("zynswitch", (i + 4, "P")))
+            # else:
+            #     # Handle other APC buttons
+            #     pass
 
-            self._btn_timer.is_pressed(note, time.time())
-            return True
+                self._btn_timer.is_pressed(note, time.time())
+                return True
 
     def note_off(self, note, shifted_override=None):
         self._on_shifted_override(shifted_override)
         self._btn_timer.is_released(note)
 
-    def _handle_timed_button(self, btn, press_type):
+
+    def _handle_timed_button(self, note, press_type):
 
         i = NOTE_ZYNSWITCH.get(note, None)
         if i is not None:
-            self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
+            print("Press type", press_type)
+#            self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
+            self.cuia_queue.put_nowait(("zynswitch", (i # + 4
+                                                      , PRESSTYPE_DICT.get(press_type, "S"))))
         else:
             # Handle other APC buttons
             pass
