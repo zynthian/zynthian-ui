@@ -365,8 +365,9 @@ class zynthian_engine_jalv(zynthian_engine):
                 self.proc_exit = True
                 self.proc.terminate()
                 try:
-                    self.proc.wait(timeout=5)
+                    self.proc.communicate(timeout=5)
                 except:
+                    logging.warning(f"Jalv engine '{self.name}' can't be terminated. Killing it! => {e}")
                     self.proc.kill()
                 self.proc = None
             except Exception as err:
