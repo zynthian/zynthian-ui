@@ -44,16 +44,16 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
     driver_description = "Interface Novation Launchkey MK3 88 with zynpad and mixer"
     unroute_from_chains = True
 
-    # MIDI CC Numbers — pokrętła i suwaki (kanał 0)
+    # MIDI CC Numbers — knobs and sliders (channel 15)
     CC_KNOBS   = [21, 22, 23, 24, 25, 26, 27, 28]
     CC_SLIDERS = [53, 54, 55, 56, 57, 58, 59, 60]
     CC_MASTER  = 61
 
-    # CC przyciski pod suwakami chain (kanał 0)
+    # CC buttons under the sliders chain (channel 15)
     CC_CHAIN_BUTTONS = [37, 38, 39, 40, 41, 42, 43, 44]
     CC_MASTER_BUTTON = 45   # Zmiana trybu Select/Mute/Solo
 
-    # CC przycisków transportowych i nawigacyjnych (kanał 15 / 0xF w trybie DAW)
+    # CC transport and navigation buttons (channel 15 / 0xF in DAW MODE)
     CC_TRACK_RIGHT = 0x66   # 102
     CC_TRACK_LEFT  = 0x67   # 103
     CC_PLAY        = 0x73   # 115
@@ -65,12 +65,12 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
     CC_DEVICE_SEL  = 0x33   # 51
     CC_SHIFT       = 0x6C   # 108
 
-    # Tryby świecenia LED (kanały MIDI note-on do padów)
+    # LED lighting modes (MIDI note-on channels to pads)
     CHAN_STEADY = 0
     CHAN_FLASH  = 1
     CHAN_PULSE  = 2
 
-    # Kolory LEDów przycisków chain
+    # Chain button LED colors
     LED_OFF           = 0
     COLOR_WHITE_FULL  = 3
     COLOR_RED_DIM     = 7
@@ -86,7 +86,7 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
         self.rows = 2
 
     # ------------------------------------------------------------------
-    # Inicjalizacja i zakończenie
+    # Initialization and termination
     # ------------------------------------------------------------------
 
     def init(self):
@@ -107,11 +107,11 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
     # ------------------------------------------------------------------
-    # ZynPad — pady
+    # ZynPad — pads
     # ------------------------------------------------------------------
 
     def update_pad(self, row, col, pad_info):
-        """Koloruje pada na kontrolerze wg stanu sekwencji."""
+        """Colors the pad on the controller according to the sequence state."""
         if col >= self.cols:    # Phrase launcher col — nie implementujemy
             return
         note = 96 + row * 16 + col
@@ -133,7 +133,7 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
                 vel  = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
                 chan = self.CHAN_FLASH
             elif state == zynseq.SEQ_STARTING:
-                # Błysk kolorem grupy, potem flash kolor startowy
+                # Flash group color, then flash starting color
                 vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
                 lib_zyncore.dev_send_note_on(self.idev_out, self.CHAN_STEADY, note, vel)
                 vel  = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
@@ -152,17 +152,16 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
                 self.pad_off(col, row)
 
     # ------------------------------------------------------------------
-    # Zynmixer — LEDy przycisków chain
+    # Zynmixer — Chain button LEDs
     # ------------------------------------------------------------------
 
     def update_mixer_strip(self, chan, symbol, value, mixbus=False):
-        """Wywoływane przez bazę zynmixer przy każdej zmianie wartości miksera."""
+        """Called by the zynmixer database whenever the mixer value changes."""
         self._refresh_chain_leds()
 
     def _refresh_chain_leds(self, *args, **kwargs):
         """
-        Aktualizuje LEDy 8 przycisków chain i przycisku Master.
-        Indeks i+1 pomija chain 0 (Main) — identycznie jak set_mixer_param z idx+1.
+        Updates the LEDs of the 8 chain buttons and the Master button.
         """
         if self.idev_out is None:
             return
@@ -191,7 +190,7 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
             logging.warning(f"LaunchkeyMK3 88 _refresh_chain_leds: {e}")
 
     # ------------------------------------------------------------------
-    # Obsługa MIDI
+    # MIDI support
     # ------------------------------------------------------------------
 
     def midi_event(self, ev):
@@ -201,10 +200,10 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
         evtype = (ev[0] >> 4) & 0x0F
         chan   = ev[0] & 0x0F
 
-        # ----- NOTE ON — pady ZynPad -----
+        # ----- NOTE ON — ZynPad pads -----
         if evtype == 0x9:
             note = ev[1] & 0x7F
-            # Potwierdzenie trybu DAW od kontrolera — ignoruj
+            # DAW mode confirmation from controller - ignore
             if ev == b'\x9f\x0c\x7f':
                 return True
             vel = ev[2] & 0x7F
@@ -225,10 +224,10 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
 
-            # === Kanał 15 (0xF) — wszystkie kontrolki w trybie DAW ===
+            # === Channel 15 (0xF) - All controls in DAW mode ===
             if chan == 0xF:
                 if ccval == 0:
-                    return True  # Ignoruj zwolnienie przycisków
+                    return True  # Ignore button release
 
                 # Transport
                 if ccnum == self.CC_PLAY:
@@ -275,26 +274,26 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
                 elif ccnum == self.CC_DEVICE_SEL:
                     self.state_manager.send_cuia("SCREEN_ZYNPAD")
 
-                # Suwaki — poziom głośności chainów
+                # Sliders - Chain Volume Level
                 elif ccnum in self.CC_SLIDERS:
                     idx = self.CC_SLIDERS.index(ccnum)
                     self.set_mixer_param("level", idx + self.scroll_h, ccval / 127.0)
 
-                # Master suwak — głośność Main (chain 0)
+                # Master slider - Main volume (chain 15)
                 elif ccnum == self.CC_MASTER:
                     self.set_mixer_param("level", -1, ccval / 127.0)
 
-                # Pokrętła — panorama chainów
+                # Knobs - Chain Panorama
                 elif ccnum in self.CC_KNOBS:
                     idx = self.CC_KNOBS.index(ccnum)
                     self.set_mixer_param("balance", idx + self.scroll_h, 2 * ccval / 127.0 - 1)
 
-                # Master button — zmiana trybu Select/Mute/Solo
+                # Master button - Select/Mute/Solo(Rec) mode change
                 elif ccnum == self.CC_MASTER_BUTTON:
                     self.buttons_mode = (self.buttons_mode + 1) % 3
                     self._refresh_chain_leds()
 
-                # Przyciski chain (Select / Mute / Solo)
+                # Chain buttons (Select / Mute / Solo(Rec))
                 elif ccnum in self.CC_CHAIN_BUTTONS:
                     idx = self.CC_CHAIN_BUTTONS.index(ccnum)
                     filt_idx = idx + self.scroll_h
@@ -304,13 +303,13 @@ class zynthian_ctrldev_launchkey_mk3_88(zynthian_ctrldev_zynpad, zynthian_ctrlde
                             self.chain_manager.set_active_chain_by_id(chain.chain_id)
                         elif self.buttons_mode == 1:  # MUTE
                             self.toggle_mixer_param("mute", filt_idx)
-                        else:                         # SOLO
+                        else:                         # SOLO(Rec)
                             self.toggle_mixer_param("record", filt_idx)
                         self._refresh_chain_leds()
 
                 return True
 
-            # === Kanał 0 — tylko Shift (przesyłany poza trybem DAW) ===
+            # === Channel 0 - Shift only (transmitted outside of DAW mode) ===
             if ccnum == self.CC_SHIFT:
                 self.shift = (ccval != 0)
                 return True
