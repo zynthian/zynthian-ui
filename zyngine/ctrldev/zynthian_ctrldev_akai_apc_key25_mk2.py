@@ -140,7 +140,17 @@ NOTE_ZYNSWITCH = {
     BTN_PAD_LEFT: 20,
     BTN_PAD_DOWN: 21,
     BTN_PAD_RIGHT: 22,
-    BTN_F4: 23
+    BTN_F4: 23,
+
+    # Extra, non-pad
+    BTN_UP: 17,
+    BTN_LEFT: 20,
+    BTN_DOWN: 21,
+    BTN_RIGHT: 22,
+
+    BTN_RECORD: 12,
+    BTN_STOP_ALL_CLIPS: 13,
+    BTN_PLAY: 14,
 }
 
 #ZYNSWITCH_NOTE = {v: k for k, v in NOTE_ZYNSWITCH.items()}
@@ -152,8 +162,8 @@ ZYNSWITCH_NOTE = {
     7:    BTN_ZS3_SHOT,
 
     8:    BTN_ALT,
-    9:    BTN_METRONOME,
-    10:   BTN_PAD_STEP,
+    9:    BTN_PAD_STEP,
+    10:   BTN_METRONOME,
     11:   BTN_F1,
 
     12:    BTN_PAD_RECORD,
@@ -389,19 +399,6 @@ class DeviceHandler(ModeHandlerBase):
         self.zyngui = zynthian_gui_config.zyngui
         self.cuia_queue = state_manager.cuia_queue
 
-        self._btn_actions = {
-            BTN_PLAY: (
-                lambda is_bold: [
-                    "AUDIO_FILE_LIST" if is_bold else "TOGGLE_PLAY"
-                ]
-            ),
-            BTN_STOP_ALL_CLIPS: (
-                lambda is_bold: [
-                    "ALL_SOUNDS_OFF" if is_bold else "STOP"
-                ]
-            )
-        }
-
     def set_active(self, active):
         super().set_active(active)
         # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
@@ -456,38 +453,25 @@ class DeviceHandler(ModeHandlerBase):
                 self.refresh()
                 return True
         else:
-            if note in (BTN_UP, BTN_PAD_UP):
-                self._state_manager.send_cuia("ARROW_UP")
-            elif note in (BTN_DOWN, BTN_PAD_DOWN):
-                self._state_manager.send_cuia("ARROW_DOWN")
-            elif note in (BTN_LEFT, BTN_PAD_LEFT):
-                self._state_manager.send_cuia("ARROW_LEFT")
-            elif note in (BTN_RIGHT, BTN_PAD_RIGHT):
-                self._state_manager.send_cuia("ARROW_RIGHT")
+            i = NOTE_ZYNSWITCH.get(note, None)
+            if i is not None:
+                self.cuia_queue.put_nowait(("zynswitch", (i, "P")))
             else:
-           # i = NOTE_ZYNSWITCH.get(note, None)
-            # if i is not None:
-            #     self.cuia_queue.put_nowait(("zynswitch", (i + 4, "P")))
-            # else:
-            #     # Handle other APC buttons
-            #     pass
+                # Handle other APC buttons
+                pass
 
-                self._btn_timer.is_pressed(note, time.time())
-                return True
+            self._btn_timer.is_pressed(note, time.time())
+            return True
 
     def note_off(self, note, shifted_override=None):
         self._on_shifted_override(shifted_override)
         self._btn_timer.is_released(note)
 
-
     def _handle_timed_button(self, note, press_type):
-
         i = NOTE_ZYNSWITCH.get(note, None)
         if i is not None:
             print("Press type", press_type)
-#            self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
-            self.cuia_queue.put_nowait(("zynswitch", (i # + 4
-                                                      , PRESSTYPE_DICT.get(press_type, "S"))))
+            self.cuia_queue.put_nowait(("zynswitch", (i, PRESSTYPE_DICT.get(press_type, "S"))))
         else:
             # Handle other APC buttons
             pass
