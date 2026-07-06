@@ -3,7 +3,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
-# Zynthian Control Device Driver for "Behringer FCB1010" with SooperLooper"
+# Zynthian Control Device Driver for to drive SooperLooper from MIDI CC
 #
 # Copyright (C) 2026 TK Conrad <tkconrad@gmail.com>
 #
@@ -24,16 +24,15 @@
 # ******************************************************************************
 
 import logging
-from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  CONSTANTS — MIDI MAPPING BEHRINGER FCB1010 -> SOOPERLOOPER
+#  CONSTANTS — MIDI MAPPING CC -> SOOPERLOOPER
 # ──────────────────────────────────────────────────────────────────────────────
 #
-# The FCB1010 sends plain Control Change (CC) messages, one per pedal, with a
+# The MIDI controller (e.g. Behringer FCB1010) should send plain Control Change (CC) messages, one per pedal, with a
 # value > 0 on press ("down") and 0 on release ("up"). All the logic below
 # triggers on press (byte2 > 0) and ignores release (byte2 == 0), unless
 # stated otherwise.
@@ -102,11 +101,14 @@ SYNC_SOURCE_LOOP1     = 1   # 1-indexed on the OSC side -> loop 1
 #  MAIN DRIVER
 # ──────────────────────────────────────────────────────────────────────────────
 
-class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
+class zynthian_ctrldev_sooperlooper_ccx10(zynthian_ctrldev_base):
 
     # ── ALSA identification ───────────────────────────────────────────────────
     # Check with 'aconnect -l' and adapt the exact name if necessary.
     dev_ids = ["*"]
+    driver_name = "SooperLooper CCx10"
+    driver_description = "Integrates up to to 10 MIDI CC with SooperLooper. Tested with Behringer FCB1010."
+
 
     # The CC numbers handled here are consumed (return True); everything else
     # passes through freely for Zynthian's standard MIDI Learn.
@@ -147,7 +149,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
     def refresh(self, force=False):
         cm = self.state_manager.chain_manager
         for chain_id, chain in cm.chains.items():
-            logging.debug(f"FCB1010: scanning chain id={chain_id} name='{chain.get_name()}'")
+            logging.debug(f"SooperLooper CCx10x10: scanning chain id={chain_id} name='{chain.get_name()}'")
             processors = chain.get_processors()
             for processor in processors:
                 if processor.get_name() == "SooperLooper":
@@ -155,7 +157,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
                     self.processor = processor
 
         if self.processor is None:
-            logging.warning("FCB1010: refresh() found NO 'SooperLooper' processor in any chain.")
+            logging.warning("SooperLooper CCx10: refresh() found NO 'SooperLooper' processor in any chain.")
             return
 
         cdict = self.processor.controllers_dict
@@ -236,9 +238,9 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
         # 2 = Recording, 4 = Play, 5 = Overdubbing, 6 = Multiplying, 7 = Inserting, 8 = Replacing
         if state_val in (2, 4, 5, 6, 7, 8):
             self._record_loop(loop_index)
-            logging.debug(f"FCB1010: Loop {loop_index} was active (state {state_val}), stopped it.")
+            logging.debug(f"SooperLooper CCx10: Loop {loop_index} was active (state {state_val}), stopped it.")
         else:
-            logging.debug(f"FCB1010: Loop {loop_index} is stable (state {state_val}), skipped record toggle.")
+            logging.debug(f"SooperLooper CCx10: Loop {loop_index} is stable (state {state_val}), skipped record toggle.")
 
 
     def _set_mute(self, loop_index, muted):
@@ -255,7 +257,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
         is_currently_muted = self._is_muted(loop_index)
 
         if is_currently_muted == bool(muted):
-            logging.debug(f"FCB1010: _set_mute SKIP -> loop {loop_index} is already muted={muted}")
+            logging.debug(f"SooperLooper CCx10: _set_mute SKIP -> loop {loop_index} is already muted={muted}")
             self.mute_state[loop_index] = bool(muted) # keep fallback tracker synced
             return
 
@@ -263,11 +265,11 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
         zctrl.set_value(1)
         zctrl.send_value(True)
         self.mute_state[loop_index] = bool(muted)
-        logging.debug(f"FCB1010: _set_mute OK -> toggled {key} to reach state muted={muted}")
+        logging.debug(f"SooperLooper CCx10: _set_mute OK -> toggled {key} to reach state muted={muted}")
 
     def _mute_only(self, loops_to_mute, loop_to_unmute):
         """Mute every loop in `loops_to_mute` and unmute `loop_to_unmute`."""
-        logging.debug(f"FCB1010: _mute_only called -> mute={loops_to_mute} unmute={loop_to_unmute}")
+        logging.debug(f"SooperLooper CCx10: _mute_only called -> mute={loops_to_mute} unmute={loop_to_unmute}")
         for idx in loops_to_mute:
             self._set_mute(idx, True)
         self._set_mute(loop_to_unmute, False)
@@ -286,10 +288,10 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
             cdict[key].set_value(1)
             cdict[key].set_value(0)
             self.mute_state[loop_index] = False  # update fallback tracker
-            logging.debug(f"FCB1010: _trigger_loop OK -> triggered {key}")
+            logging.debug(f"SooperLooper CCx10: _trigger_loop OK -> triggered {key}")
         else:
             logging.warning(
-                f"FCB1010: _trigger_loop FAILED -> '{key}' not found in "
+                f"SooperLooper CCx10: _trigger_loop FAILED -> '{key}' not found in "
                 f"controllers_dict, falling back to plain unmute."
             )
             self._set_mute(loop_index, False)
@@ -301,7 +303,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
         so they land together at the same loop boundary.
         """
         logging.debug(
-            f"FCB1010: _solo_trigger called -> mute={loops_to_mute} trigger={loop_to_trigger}"
+            f"SooperLooper CCx10: _solo_trigger called -> mute={loops_to_mute} trigger={loop_to_trigger}"
         )
         for idx in loops_to_mute:
             self._set_mute(idx, True)
@@ -315,7 +317,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
             cdict[key].set_value(1)
             cdict[key].set_value(0)
             self.mute_state[loop_index] = False # update fallback tracker
-            logging.debug(f"FCB1010: _record_loop OK -> toggled {key}")
+            logging.debug(f"SooperLooper CCx10: _record_loop OK -> toggled {key}")
 
     def _select_next_loop(self):
         """Explicitly calculate and select the next loop, wrapping around Loop 1."""
@@ -329,7 +331,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
             zctrl = cdict[LOOP_SELECTED_SYMBOL]
             zctrl.set_value(next_idx + 1)
             zctrl.send_value(True) 
-            logging.debug(f"FCB1010: _select_next_loop OK -> selected loop {next_idx + 1}")
+            logging.debug(f"SooperLooper CCx10: _select_next_loop OK -> selected loop {next_idx + 1}")
             
         return next_idx
 
@@ -343,7 +345,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
           - Re-apply the quantize/sync engine settings.
         Recorded audio content is left untouched.
         """
-        logging.debug("FCB1010: CC_SOFT_RESET -> starting full soft reset")
+        logging.debug("SooperLooper CCx10: CC_SOFT_RESET -> starting full soft reset")
 
         # Re-discover the processor and re-apply quantize/sync/mute_quantized
         # settings first, so the state read below is accurate.
@@ -352,7 +354,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
         self.refresh(force=True)
 
         if self.processor is None:
-            logging.warning("FCB1010: CC_SOFT_RESET aborted -> no SooperLooper processor found.")
+            logging.warning("SooperLooper CCx10: CC_SOFT_RESET aborted -> no SooperLooper processor found.")
             return
 
         # Stop any recording/overdub in progress, then mute, on every loop.
@@ -370,14 +372,14 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
         # Reset the local fallback mute tracker to match reality (all muted).
         self.mute_state = [True] * NUM_LOOPS
 
-        logging.debug("FCB1010: CC_SOFT_RESET -> completed full soft reset")
+        logging.debug("SooperLooper CCx10: CC_SOFT_RESET -> completed full soft reset")
         return
 
     # ── MIDI event processing ─────────────────────────────────────────────────
 
     def midi_event(self, ev):
         """
-        Dispatch MIDI events received from the FCB1010.
+        Dispatch MIDI events received from the MIDI controller.
         Returns True  -> event consumed here.
         Returns False -> event passed through normally into Zynthian.
         """
@@ -403,7 +405,7 @@ class zynthian_ctrldev_behringer_fcb1010_ssoperlooper(zynthian_ctrldev_base):
                 # Loop 1: Check absolute state and only end recording if it's actually recording.
                 # Bypasses the mute completely. 
                 self._stop_recording_if_active(loop_to_finish)
-                logging.debug("FCB1010: CC_CURRENT_MUTE_RECORD on Loop 1 -> ended recording, bypassing mute.")
+                logging.debug("SooperLooper CCx10: CC_CURRENT_MUTE_RECORD on Loop 1 -> ended recording, bypassing mute.")
             else:
                 # Loops 2-5: Stop recording and mute. 
                 self._stop_recording_if_active(loop_to_finish)
