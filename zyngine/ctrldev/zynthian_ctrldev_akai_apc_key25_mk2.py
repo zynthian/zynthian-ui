@@ -235,17 +235,6 @@ class COLORS:
     SOFT_ON = 0x01
     SOFT_BLINK = 0x02
 
-WSCOLORS_DICT = {
-    "0": COLORS.COLOR_BLACK,
-    "B": COLORS.COLOR_BLUE,
-    "G": COLORS.COLOR_GREEN,
-    "R": COLORS.COLOR_RED,
-    "O": COLORS.COLOR_ORANGE,
-    "Y": COLORS.COLOR_YELLOW,
-    "P": COLORS.COLOR_PURPLE,
-    "T": COLORS.COLOR_BLUE_LIGHT
-}
-
 
 PRESSTYPE_DICT = {
     "short": "S",
@@ -394,6 +383,7 @@ class RefreshTimer(IntervalTimer):
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
 class DeviceHandler(ModeHandlerBase):
+
     WSCOLORS_DICT = {
         "0": COLORS.COLOR_BLACK,
         "B": COLORS.COLOR_BLUE,
@@ -403,6 +393,78 @@ class DeviceHandler(ModeHandlerBase):
         "Y": COLORS.COLOR_YELLOW,
         "P": COLORS.COLOR_PURPLE,
         "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_SCREEN_COLORS = ZYNSWITCH_CONFIRM_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_FN_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_WHITE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_TRANSPORT_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_ARROW_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_NOTES_AND_COLORS = {
+        4:    [BTN_OPT_ADMIN, ZYNSWITCH_SCREEN_COLORS],
+        5:    [BTN_MIX_LEVEL, ZYNSWITCH_SCREEN_COLORS],
+        6:    [BTN_CTRL_PRESET, ZYNSWITCH_SCREEN_COLORS],
+        7:    [BTN_ZS3_SHOT, ZYNSWITCH_SCREEN_COLORS],
+
+        8:    [BTN_ALT, ZYNSWITCH_SCREEN_COLORS],
+        9:    [BTN_PAD_STEP, ZYNSWITCH_SCREEN_COLORS],
+        10:   [BTN_METRONOME, ZYNSWITCH_SCREEN_COLORS],
+        11:   [BTN_F1, ZYNSWITCH_FN_COLORS],
+
+        12:    [BTN_PAD_RECORD, ZYNSWITCH_TRANSPORT_COLORS],
+        13:    [BTN_PAD_STOP,  ZYNSWITCH_TRANSPORT_COLORS],
+        14:    [BTN_PAD_PLAY, ZYNSWITCH_TRANSPORT_COLORS],
+        15:    [BTN_F2, ZYNSWITCH_FN_COLORS],
+
+        16:    [BTN_F3, ZYNSWITCH_FN_COLORS],
+        17:    [BTN_SEL_YES, ZYNSWITCH_CONFIRM_COLORS],
+        18:    [BTN_PAD_UP, ZYNSWITCH_ARROW_COLORS],
+        19:    [BTN_BACK_NO, ZYNSWITCH_CONFIRM_COLORS],
+
+        20:    [BTN_PAD_LEFT, ZYNSWITCH_ARROW_COLORS],
+        21:    [BTN_PAD_DOWN, ZYNSWITCH_ARROW_COLORS],
+        22:    [BTN_PAD_RIGHT, ZYNSWITCH_ARROW_COLORS],
+        23:    [BTN_F4, ZYNSWITCH_FN_COLORS]
+
     }
 
     def __init__(self, state_manager, leds: FeedbackLEDs, colors: COLORS):
@@ -452,15 +514,13 @@ class DeviceHandler(ModeHandlerBase):
             try:
                 wsled_state = self.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
-                    # print(i, colstr)
-                    color = self.WSCOLORS_DICT.get(colstr, None)
-                    if color is not None:
-                        note = ZYNSWITCH_NOTE.get(i + 4, None)
-                        if note is not None:
-                            # if colstr in ("B", "P") and note in (BTN_PAD_RECORD, BTN_PAD_PLAY):
-                            #     self._leds.led_off(note)
-                            # else:
+                    [note, colors_dict] = self.ZYNSWITCH_NOTES_AND_COLORS.get(i + 4, [None, self.WSCOLORS_DICT])
+                    if note is not None:
+                        color = colors_dict.get(colstr, None)
+                        if color is not None:
                             self._leds.led_on(note, color, WSBRIGHTNESS_DICT.get(note, LED_BRIGHT_100))
+                        else:
+                            self._leds.led_off(note)
             except Exception as e:
                 logging.error(e)
 
@@ -488,7 +548,6 @@ class DeviceHandler(ModeHandlerBase):
     def _handle_timed_button(self, note, press_type):
         i = NOTE_ZYNSWITCH.get(note, None)
         if i is not None:
-            print("Press type", press_type)
             self.cuia_queue.put_nowait(("zynswitch", (i, PRESSTYPE_DICT.get(press_type, "S"))))
         else:
             # Handle other APC buttons
