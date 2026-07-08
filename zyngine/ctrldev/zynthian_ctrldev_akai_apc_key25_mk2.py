@@ -1071,6 +1071,11 @@ class PadMatrixHandler(ModeHandlerBase):
             note = row + BTN_SOFT_KEY_START
         else:
             return
+        # Outside of matrix, guardrail, but should not happen if cols and rows are correct
+        if note < 0:
+            return
+        if note > BTN_SOFT_KEY_END:
+            return
         led_mode = RGB_MODE_PRIMARY
         led_colour = 0
         group = 32
@@ -1104,25 +1109,20 @@ class PadMatrixHandler(ModeHandlerBase):
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_PULSE_2
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_4
             elif state == zynseq.SEQ_STARTING:
-                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_8
             elif state == zynseq.SEQ_CHILD_PLAYING:
                 led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR[self.driver.apc_color_variant]
                 led_mode = RGB_MODE_PULSE_2
             elif state == zynseq.SEQ_CHILD_STOPPING:
-                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_4
         except:
             return
         self._leds.led_on(note, led_colour, led_mode, False)
-        #lib_zyncore.dev_send_note_on(self.driver.idev_out, led_mode, note, led_colour)
-
 
     def _update_seq_pad(self, seq, refresh=True):
         state = self._libseq.getSequenceState(self._zynseq.scene, seq[0], seq[1])
@@ -2829,9 +2829,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler = self._device_handler
         self._is_shifted = False
 
-        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
-        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
-
         self._signals = [
             (zynsigman.S_GUI,
                 zynsigman.SS_GUI_SHOW_SCREEN,
@@ -2855,8 +2852,13 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 partial(self._on_media_change_state, media="midi", kind="recorder")),
         ]
 
-        # NOTE: init will call refresh(), so _current_hanlder must be ready!
+        # NOTE: init will call refresh(), so _current_handler must be ready!
         super().__init__(state_manager, idev_in, idev_out)
+
+        # Since super().__init__() sets self.cols and self.rows both to 0, we have to do that now.
+        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
+
         self._current_handler.set_active(True)
 
     def init(self):
