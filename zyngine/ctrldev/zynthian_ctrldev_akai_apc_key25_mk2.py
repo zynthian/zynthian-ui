@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # ******************************************************************************
@@ -184,10 +183,10 @@ ZYNSWITCH_NOTE = {
 
 # APC Key25 knobs
 KNOB_1 = KNOB_ZYN_1 = 0x30
-KNOB_2 = KNOB_ZYN_2 = 0x31
+KNOB_2 = KNOB_ZYN_3 = 0x31
 KNOB_3 = 0x32
 KNOB_4 = 0x33
-KNOB_5 = KNOB_ZYN_3 = 0x34
+KNOB_5 = KNOB_ZYN_2 = 0x34
 KNOB_6 = KNOB_ZYN_4 = 0x35
 KNOB_7 = 0x36
 KNOB_8 = 0x37
