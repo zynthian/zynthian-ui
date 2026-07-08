@@ -167,7 +167,7 @@ ZYNSWITCH_NOTE = {
     11:   BTN_F1,
 
     12:    BTN_PAD_RECORD,
-    # 13:    BTN_PAD_STOP,
+    13:    BTN_PAD_STOP,
     14:    BTN_PAD_PLAY,
     15:    BTN_F2,
 
@@ -246,6 +246,7 @@ WSCOLORS_DICT = {
     "T": COLORS.COLOR_BLUE_LIGHT
 }
 
+
 PRESSTYPE_DICT = {
     "short": "S",
     "bold": "B",
@@ -278,6 +279,12 @@ LED_BLINKING_16 = 0x0C
 LED_BLINKING_8 = 0x0D
 LED_BLINKING_4 = 0x0E
 LED_BLINKING_2 = 0x0F
+
+WSBRIGHTNESS_DICT = {
+    BTN_PAD_PLAY: LED_BRIGHT_25,
+    BTN_PAD_STOP: LED_BRIGHT_25,
+    BTN_PAD_RECORD: LED_BRIGHT_25
+}
 
 # MIDI channels set mode of RGB buttons
 RGB_MODE_PRIMARY    = 0x00  # Show RGB LED primary colour
@@ -439,10 +446,10 @@ class DeviceHandler(ModeHandlerBase):
                     if color is not None:
                         note = ZYNSWITCH_NOTE.get(i + 4, None)
                         if note is not None:
-                            if colstr in ("B", "P") and note in (BTN_PAD_RECORD, BTN_PAD_PLAY):
-                                self._leds.led_off(note)
-                            else:
-                                self._leds.led_on(note, color, LED_BRIGHT_100)
+                            # if colstr in ("B", "P") and note in (BTN_PAD_RECORD, BTN_PAD_PLAY):
+                            #     self._leds.led_off(note)
+                            # else:
+                            self._leds.led_on(note, color, WSBRIGHTNESS_DICT.get(note, LED_BRIGHT_100))
             except Exception as e:
                 logging.error(e)
 
