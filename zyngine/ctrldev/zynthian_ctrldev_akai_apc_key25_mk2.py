@@ -394,6 +394,17 @@ class RefreshTimer(IntervalTimer):
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
 class DeviceHandler(ModeHandlerBase):
+    WSCOLORS_DICT = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
     def __init__(self, state_manager, leds: FeedbackLEDs, colors: COLORS):
         super().__init__(state_manager)
         self._leds = leds
@@ -442,7 +453,7 @@ class DeviceHandler(ModeHandlerBase):
                 wsled_state = self.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
                     # print(i, colstr)
-                    color = WSCOLORS_DICT.get(colstr, None)
+                    color = self.WSCOLORS_DICT.get(colstr, None)
                     if color is not None:
                         note = ZYNSWITCH_NOTE.get(i + 4, None)
                         if note is not None:

@@ -56,16 +56,6 @@ class COLORS:
     COLOR_LIME_DARK = 0x11
     COLOR_GREEN_YELLOW = 0x4A
 
-WSCOLORS_DICT = {
-    "0": COLORS.COLOR_BLACK,
-    "B": COLORS.COLOR_BLUE,
-    "G": COLORS.COLOR_GREEN,
-    "R": COLORS.COLOR_RED,
-    "O": COLORS.COLOR_ORANGE,
-    "Y": COLORS.COLOR_YELLOW,
-    "P": COLORS.COLOR_PURPLE,
-    "T": COLORS.COLOR_BLUE_LIGHT
-}
 
 class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
@@ -106,6 +96,16 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
         COLS = 8
         ROWS = 4
+        WSCOLORS_DICT = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_BLUE,
+            "G": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_ORANGE,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_PURPLE,
+            "T": COLORS.COLOR_BLUE_LIGHT
+        }
 
         def cc_change(self, ccnum, ccval):
             zynpot = CCNUM_ZYNPOT.get(ccnum, None)
