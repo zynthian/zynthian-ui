@@ -830,7 +830,7 @@ class MixerHandler(ModeHandlerBase):
 # --------------------------------------------------------------------------
 class PadMatrixHandler(ModeHandlerBase):
 
-    BRIGHT_OFF = LED_BRIGHT_25
+    BRIGHT_OFF = LED_BRIGHT_10
 
     def __init__(self, state_manager, driver, leds: FeedbackLEDs):
         super().__init__(state_manager)
@@ -963,7 +963,6 @@ class PadMatrixHandler(ModeHandlerBase):
                 #     self.pad_off(c, r)
                 #     continue
         for note in range(0, 40):
-
             pos = self.driver.scroll_h + note % 8
             row = note // 8
             midi_chan = self.driver.get_filtered_midi_chan_by_index(pos)
