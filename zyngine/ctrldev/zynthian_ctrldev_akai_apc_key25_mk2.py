@@ -111,11 +111,6 @@ BTN_PAD_8 = BTN_F4 = 0x07
 
 # Dictionary: NOTE num to zynswitch index
 NOTE_ZYNSWITCH = {
-    BTN_KNOB_1: 0,
-    BTN_KNOB_2: 1,
-    BTN_KNOB_3: 2,
-    BTN_KNOB_4: 3,
-
     BTN_OPT_ADMIN: 4,
     BTN_MIX_LEVEL: 5,
     BTN_CTRL_PRESET: 6,
@@ -140,6 +135,11 @@ NOTE_ZYNSWITCH = {
     BTN_PAD_DOWN: 21,
     BTN_PAD_RIGHT: 22,
     BTN_F4: 23,
+
+    BTN_KNOB_1: 24,
+    BTN_KNOB_2: 25,
+    BTN_KNOB_3: 26,
+    BTN_KNOB_4: 27,
 
     # Extra, non-pad
     BTN_UP: 17,
@@ -178,16 +178,21 @@ ZYNSWITCH_NOTE = {
     20:    BTN_PAD_LEFT,
     21:    BTN_PAD_DOWN,
     22:    BTN_PAD_RIGHT,
-    23:    BTN_F4
+    23:    BTN_F4,
+
+    24:    BTN_KNOB_1,
+    25:    BTN_KNOB_2,
+    26:    BTN_KNOB_3,
+    27:    BTN_KNOB_4,
 }
 
 # APC Key25 knobs
 KNOB_1 = KNOB_ZYN_1 = 0x30
-KNOB_2 = KNOB_ZYN_3 = 0x31
-KNOB_3 = 0x32
-KNOB_4 = 0x33
-KNOB_5 = KNOB_ZYN_2 = 0x34
-KNOB_6 = KNOB_ZYN_4 = 0x35
+KNOB_2 = KNOB_ZYN_2 = 0x31
+KNOB_3 = KNOB_ZYN_3 = 0x32
+KNOB_4 = KNOB_ZYN_4 = 0x33
+KNOB_5 = 0x34
+KNOB_6 = 0x35
 KNOB_7 = 0x36
 KNOB_8 = 0x37
 
@@ -291,7 +296,6 @@ RGB_MODE_BLINK_16   = 0x0C  # Show RGB LED secondary colour - blinking 1/24
 RGB_MODE_BLINK_8    = 0x0D  # Show RGB LED secondary colour - blinking 1/24
 RGB_MODE_BLINK_4    = 0x0E  # Show RGB LED secondary colour - blinking 1/24
 RGB_MODE_BLINK_2    = 0x0F  # Show RGB LED secondary colour - blinking 1/24
-
 
 # Function/State constants
 FN_VOLUME = 0x01
@@ -475,7 +479,6 @@ class DeviceHandler(ModeHandlerBase):
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
         self._refresh_timer = RefreshTimer()
-        self.zyngui = zynthian_gui_config.zyngui
         self.cuia_queue = state_manager.cuia_queue
 
     def set_active(self, active):
@@ -483,11 +486,9 @@ class DeviceHandler(ModeHandlerBase):
         # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
         if not active:
             self._refresh_timer.remove('refresh_leds')
-            pass
             #self._zynseq.libseq.updateSequenceInfo()
         else:
             self._refresh_timer.add('refresh_leds', 1, self.refresh_timed)
-            pass
 
     def refresh_timed(self, name):
         if (name == 'refresh_leds'):
@@ -501,7 +502,7 @@ class DeviceHandler(ModeHandlerBase):
         if self._state_manager.power_save_mode:
             return True
 
-        # On this mode, DEVICE led is always lit
+        # On this mode, DEVICE led is always blinking
         self._leds.led_blink(BTN_KNOB_CTRL_DEVICE)
 
         # Lit up fixed buttons
@@ -509,9 +510,9 @@ class DeviceHandler(ModeHandlerBase):
             self._leds.led_on(btn, self._colors.COLOR_GREEN, LED_BRIGHT_100)
 
         # Get UI wsled state
-        if self.zyngui.wsleds:
+        if zynthian_gui_config.zyngui and zynthian_gui_config.zyngui.wsleds:
             try:
-                wsled_state = self.zyngui.wsleds.last_wsled_state.split(",")
+                wsled_state = zynthian_gui_config.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
                     [note, colors_dict] = self.ZYNSWITCH_NOTES_AND_COLORS.get(i + 4, [None, self.WSCOLORS_DICT])
                     if note is not None:
