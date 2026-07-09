@@ -8,7 +8,20 @@ from zyngine.ctrldev.zynthian_ctrldev_akai_apc_key25_mk2 import zynthian_ctrldev
     CCNUM_ZYNPOT, NOTE_ZYNSWITCH, ZYNSWITCH_NOTE, \
     LED_BRIGHT_10, LED_BRIGHT_100, LED_PULSING_8, \
     EV_NOTE_OFF, EV_NOTE_ON, EV_CC, \
-    BTN_PAD_START, BTN_PAD_END
+    BTN_PAD_START, BTN_PAD_END, \
+    BTN_OPT_ADMIN, BTN_MIX_LEVEL, BTN_CTRL_PRESET, BTN_ZS3_SHOT, BTN_ALT, BTN_PAD_STEP, BTN_METRONOME, BTN_F1, \
+    BTN_PAD_RECORD,\
+    BTN_PAD_STOP,\
+    BTN_PAD_PLAY,\
+    BTN_F2,\
+    BTN_F3,\
+    BTN_SEL_YES,\
+    BTN_PAD_UP,\
+    BTN_BACK_NO,\
+    BTN_PAD_LEFT,\
+    BTN_PAD_DOWN,\
+    BTN_PAD_RIGHT,\
+    BTN_F4
 
 from zyncoder.zyncore import lib_zyncore
 
@@ -56,16 +69,6 @@ class COLORS:
     COLOR_LIME_DARK = 0x11
     COLOR_GREEN_YELLOW = 0x4A
 
-WSCOLORS_DICT = {
-    "0": COLORS.COLOR_BLACK,
-    "B": COLORS.COLOR_BLUE,
-    "G": COLORS.COLOR_GREEN,
-    "R": COLORS.COLOR_RED,
-    "O": COLORS.COLOR_ORANGE,
-    "Y": COLORS.COLOR_YELLOW,
-    "P": COLORS.COLOR_PURPLE,
-    "T": COLORS.COLOR_BLUE_LIGHT
-}
 
 class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
@@ -106,6 +109,81 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
         COLS = 8
         ROWS = 4
+        WSCOLORS_DICT = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_GREEN,
+            "G": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_PURPLE,
+            "T": COLORS.COLOR_BLUE_LIGHT
+        }
+        ZYNSWITCH_SCREEN_COLORS = WSCOLORS_DICT
+        ZYNSWITCH_CONFIRM_COLORS = {
+            "G": COLORS.COLOR_GREEN,
+            "R": COLORS.COLOR_RED
+        }
+
+        ZYNSWITCH_FN_COLORS = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_RED,
+            "T": COLORS.COLOR_GREEN
+        }
+
+        ZYNSWITCH_TRANSPORT_COLORS = {
+            "0": None,
+            "B": None,
+            "G": COLORS.COLOR_GREEN,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_RED,
+            "T": COLORS.COLOR_GREEN
+        }
+
+        ZYNSWITCH_ARROW_COLORS = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_YELLOW,
+            "G": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_RED,
+            "T": COLORS.COLOR_GREEN
+        }
+
+        ZYNSWITCH_NOTES_AND_COLORS = {
+            4:    [BTN_OPT_ADMIN, ZYNSWITCH_SCREEN_COLORS],
+            5:    [BTN_MIX_LEVEL, ZYNSWITCH_SCREEN_COLORS],
+            6:    [BTN_CTRL_PRESET, ZYNSWITCH_SCREEN_COLORS],
+            7:    [BTN_ZS3_SHOT, ZYNSWITCH_SCREEN_COLORS],
+
+            8:    [BTN_ALT, ZYNSWITCH_SCREEN_COLORS],
+            9:    [BTN_PAD_STEP, ZYNSWITCH_SCREEN_COLORS],
+            10:   [BTN_METRONOME, ZYNSWITCH_SCREEN_COLORS],
+            11:   [BTN_F1, ZYNSWITCH_FN_COLORS],
+
+            12:    [BTN_PAD_RECORD, ZYNSWITCH_TRANSPORT_COLORS],
+            13:    [BTN_PAD_STOP,  ZYNSWITCH_TRANSPORT_COLORS],
+            14:    [BTN_PAD_PLAY, ZYNSWITCH_TRANSPORT_COLORS],
+            15:    [BTN_F2, ZYNSWITCH_FN_COLORS],
+
+            16:    [BTN_F3, ZYNSWITCH_FN_COLORS],
+            17:    [BTN_SEL_YES, ZYNSWITCH_CONFIRM_COLORS],
+            18:    [BTN_PAD_UP, ZYNSWITCH_ARROW_COLORS],
+            19:    [BTN_BACK_NO, ZYNSWITCH_CONFIRM_COLORS],
+
+            20:    [BTN_PAD_LEFT, ZYNSWITCH_ARROW_COLORS],
+            21:    [BTN_PAD_DOWN, ZYNSWITCH_ARROW_COLORS],
+            22:    [BTN_PAD_RIGHT, ZYNSWITCH_ARROW_COLORS],
+            23:    [BTN_F4, ZYNSWITCH_FN_COLORS]
+
+        }
 
         def cc_change(self, ccnum, ccval):
             zynpot = CCNUM_ZYNPOT.get(ccnum, None)

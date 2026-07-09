@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # ******************************************************************************
@@ -140,7 +139,17 @@ NOTE_ZYNSWITCH = {
     BTN_PAD_LEFT: 20,
     BTN_PAD_DOWN: 21,
     BTN_PAD_RIGHT: 22,
-    BTN_F4: 23
+    BTN_F4: 23,
+
+    # Extra, non-pad
+    BTN_UP: 17,
+    BTN_LEFT: 20,
+    BTN_DOWN: 21,
+    BTN_RIGHT: 22,
+
+    BTN_RECORD: 12,
+    BTN_STOP_ALL_CLIPS: 13,
+    BTN_PLAY: 14,
 }
 
 #ZYNSWITCH_NOTE = {v: k for k, v in NOTE_ZYNSWITCH.items()}
@@ -152,12 +161,12 @@ ZYNSWITCH_NOTE = {
     7:    BTN_ZS3_SHOT,
 
     8:    BTN_ALT,
-    9:    BTN_METRONOME,
-    10:   BTN_PAD_STEP,
+    9:    BTN_PAD_STEP,
+    10:   BTN_METRONOME,
     11:   BTN_F1,
 
     12:    BTN_PAD_RECORD,
-    # 13:    BTN_PAD_STOP,
+    13:    BTN_PAD_STOP,
     14:    BTN_PAD_PLAY,
     15:    BTN_F2,
 
@@ -174,10 +183,10 @@ ZYNSWITCH_NOTE = {
 
 # APC Key25 knobs
 KNOB_1 = KNOB_ZYN_1 = 0x30
-KNOB_2 = KNOB_ZYN_2 = 0x31
+KNOB_2 = KNOB_ZYN_3 = 0x31
 KNOB_3 = 0x32
 KNOB_4 = 0x33
-KNOB_5 = KNOB_ZYN_3 = 0x34
+KNOB_5 = KNOB_ZYN_2 = 0x34
 KNOB_6 = KNOB_ZYN_4 = 0x35
 KNOB_7 = 0x36
 KNOB_8 = 0x37
@@ -225,16 +234,6 @@ class COLORS:
     SOFT_ON = 0x01
     SOFT_BLINK = 0x02
 
-WSCOLORS_DICT = {
-    "0": COLORS.COLOR_BLACK,
-    "B": COLORS.COLOR_BLUE,
-    "G": COLORS.COLOR_GREEN,
-    "R": COLORS.COLOR_RED,
-    "O": COLORS.COLOR_ORANGE,
-    "Y": COLORS.COLOR_YELLOW,
-    "P": COLORS.COLOR_PURPLE,
-    "T": COLORS.COLOR_BLUE_LIGHT
-}
 
 PRESSTYPE_DICT = {
     "short": "S",
@@ -268,6 +267,12 @@ LED_BLINKING_16 = 0x0C
 LED_BLINKING_8 = 0x0D
 LED_BLINKING_4 = 0x0E
 LED_BLINKING_2 = 0x0F
+
+WSBRIGHTNESS_DICT = {
+    BTN_PAD_PLAY: LED_BRIGHT_25,
+    BTN_PAD_STOP: LED_BRIGHT_25,
+    BTN_PAD_RECORD: LED_BRIGHT_25
+}
 
 # MIDI channels set mode of RGB buttons
 RGB_MODE_PRIMARY    = 0x00  # Show RGB LED primary colour
@@ -377,6 +382,90 @@ class RefreshTimer(IntervalTimer):
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
 class DeviceHandler(ModeHandlerBase):
+
+    WSCOLORS_DICT = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_SCREEN_COLORS = ZYNSWITCH_CONFIRM_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_FN_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_WHITE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_TRANSPORT_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_ARROW_COLORS = {
+        "0": COLORS.COLOR_BLACK,
+        "B": COLORS.COLOR_BLUE,
+        "G": COLORS.COLOR_GREEN,
+        "R": COLORS.COLOR_RED,
+        "O": COLORS.COLOR_ORANGE,
+        "Y": COLORS.COLOR_YELLOW,
+        "P": COLORS.COLOR_PURPLE,
+        "T": COLORS.COLOR_BLUE_LIGHT
+    }
+
+    ZYNSWITCH_NOTES_AND_COLORS = {
+        4:    [BTN_OPT_ADMIN, ZYNSWITCH_SCREEN_COLORS],
+        5:    [BTN_MIX_LEVEL, ZYNSWITCH_SCREEN_COLORS],
+        6:    [BTN_CTRL_PRESET, ZYNSWITCH_SCREEN_COLORS],
+        7:    [BTN_ZS3_SHOT, ZYNSWITCH_SCREEN_COLORS],
+
+        8:    [BTN_ALT, ZYNSWITCH_SCREEN_COLORS],
+        9:    [BTN_PAD_STEP, ZYNSWITCH_SCREEN_COLORS],
+        10:   [BTN_METRONOME, ZYNSWITCH_SCREEN_COLORS],
+        11:   [BTN_F1, ZYNSWITCH_FN_COLORS],
+
+        12:    [BTN_PAD_RECORD, ZYNSWITCH_TRANSPORT_COLORS],
+        13:    [BTN_PAD_STOP,  ZYNSWITCH_TRANSPORT_COLORS],
+        14:    [BTN_PAD_PLAY, ZYNSWITCH_TRANSPORT_COLORS],
+        15:    [BTN_F2, ZYNSWITCH_FN_COLORS],
+
+        16:    [BTN_F3, ZYNSWITCH_FN_COLORS],
+        17:    [BTN_SEL_YES, ZYNSWITCH_CONFIRM_COLORS],
+        18:    [BTN_PAD_UP, ZYNSWITCH_ARROW_COLORS],
+        19:    [BTN_BACK_NO, ZYNSWITCH_CONFIRM_COLORS],
+
+        20:    [BTN_PAD_LEFT, ZYNSWITCH_ARROW_COLORS],
+        21:    [BTN_PAD_DOWN, ZYNSWITCH_ARROW_COLORS],
+        22:    [BTN_PAD_RIGHT, ZYNSWITCH_ARROW_COLORS],
+        23:    [BTN_F4, ZYNSWITCH_FN_COLORS]
+
+    }
+
     def __init__(self, state_manager, leds: FeedbackLEDs, colors: COLORS):
         super().__init__(state_manager)
         self._leds = leds
@@ -388,19 +477,6 @@ class DeviceHandler(ModeHandlerBase):
         self._refresh_timer = RefreshTimer()
         self.zyngui = zynthian_gui_config.zyngui
         self.cuia_queue = state_manager.cuia_queue
-
-        self._btn_actions = {
-            BTN_PLAY: (
-                lambda is_bold: [
-                    "AUDIO_FILE_LIST" if is_bold else "TOGGLE_PLAY"
-                ]
-            ),
-            BTN_STOP_ALL_CLIPS: (
-                lambda is_bold: [
-                    "ALL_SOUNDS_OFF" if is_bold else "STOP"
-                ]
-            )
-        }
 
     def set_active(self, active):
         super().set_active(active)
@@ -437,15 +513,13 @@ class DeviceHandler(ModeHandlerBase):
             try:
                 wsled_state = self.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
-                    # print(i, colstr)
-                    color = WSCOLORS_DICT.get(colstr, None)
-                    if color is not None:
-                        note = ZYNSWITCH_NOTE.get(i + 4, None)
-                        if note is not None:
-                            if colstr in ("B", "P") and note in (BTN_PAD_RECORD, BTN_PAD_PLAY):
-                                self._leds.led_off(note)
-                            else:
-                                self._leds.led_on(note, color, LED_BRIGHT_100)
+                    [note, colors_dict] = self.ZYNSWITCH_NOTES_AND_COLORS.get(i + 4, [None, self.WSCOLORS_DICT])
+                    if note is not None:
+                        color = colors_dict.get(colstr, None)
+                        if color is not None:
+                            self._leds.led_on(note, color, WSBRIGHTNESS_DICT.get(note, LED_BRIGHT_100))
+                        else:
+                            self._leds.led_off(note)
             except Exception as e:
                 logging.error(e)
 
@@ -456,38 +530,24 @@ class DeviceHandler(ModeHandlerBase):
                 self.refresh()
                 return True
         else:
-            if note in (BTN_UP, BTN_PAD_UP):
-                self._state_manager.send_cuia("ARROW_UP")
-            elif note in (BTN_DOWN, BTN_PAD_DOWN):
-                self._state_manager.send_cuia("ARROW_DOWN")
-            elif note in (BTN_LEFT, BTN_PAD_LEFT):
-                self._state_manager.send_cuia("ARROW_LEFT")
-            elif note in (BTN_RIGHT, BTN_PAD_RIGHT):
-                self._state_manager.send_cuia("ARROW_RIGHT")
+            i = NOTE_ZYNSWITCH.get(note, None)
+            if i is not None:
+                self.cuia_queue.put_nowait(("zynswitch", (i, "P")))
             else:
-           # i = NOTE_ZYNSWITCH.get(note, None)
-            # if i is not None:
-            #     self.cuia_queue.put_nowait(("zynswitch", (i + 4, "P")))
-            # else:
-            #     # Handle other APC buttons
-            #     pass
+                # Handle other APC buttons
+                pass
 
-                self._btn_timer.is_pressed(note, time.time())
-                return True
+            self._btn_timer.is_pressed(note, time.time())
+            return True
 
     def note_off(self, note, shifted_override=None):
         self._on_shifted_override(shifted_override)
         self._btn_timer.is_released(note)
 
-
     def _handle_timed_button(self, note, press_type):
-
         i = NOTE_ZYNSWITCH.get(note, None)
         if i is not None:
-            print("Press type", press_type)
-#            self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
-            self.cuia_queue.put_nowait(("zynswitch", (i # + 4
-                                                      , PRESSTYPE_DICT.get(press_type, "S"))))
+            self.cuia_queue.put_nowait(("zynswitch", (i, PRESSTYPE_DICT.get(press_type, "S"))))
         else:
             # Handle other APC buttons
             pass
@@ -1080,6 +1140,11 @@ class PadMatrixHandler(ModeHandlerBase):
             note = row + BTN_SOFT_KEY_START
         else:
             return
+        # Outside of matrix, guardrail, but should not happen if cols and rows are correct
+        if note < 0:
+            return
+        if note > BTN_SOFT_KEY_END:
+            return
         led_mode = RGB_MODE_PRIMARY
         led_colour = 0
         group = 32
@@ -1113,25 +1178,20 @@ class PadMatrixHandler(ModeHandlerBase):
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_PULSE_2
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPING_SYNC]:
-                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_4
             elif state == zynseq.SEQ_STARTING:
-                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_8
             elif state == zynseq.SEQ_CHILD_PLAYING:
                 led_colour = zynthian_gui_config.LAUNCHER_PLAYING_COLOUR[self.driver.apc_color_variant]
                 led_mode = RGB_MODE_PULSE_2
             elif state == zynseq.SEQ_CHILD_STOPPING:
-                #lib_zyncore.dev_send_note_on(self.idev_out, RGB_MODE_PRIMARY, note, led_colour)
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_BLINK_4
         except:
             return
         self._leds.led_on(note, led_colour, led_mode, False)
-        #lib_zyncore.dev_send_note_on(self.driver.idev_out, led_mode, note, led_colour)
-
 
     def _update_seq_pad(self, seq, refresh=True):
         state = self._libseq.getSequenceState(self._zynseq.scene, seq[0], seq[1])
@@ -2838,9 +2898,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler = self._device_handler
         self._is_shifted = False
 
-        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
-        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
-
         self._signals = [
             (zynsigman.S_GUI,
                 zynsigman.SS_GUI_SHOW_SCREEN,
@@ -2864,8 +2921,13 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 partial(self._on_media_change_state, media="midi", kind="recorder")),
         ]
 
-        # NOTE: init will call refresh(), so _current_hanlder must be ready!
+        # NOTE: init will call refresh(), so _current_handler must be ready!
         super().__init__(state_manager, idev_in, idev_out)
+
+        # Since super().__init__() sets self.cols and self.rows both to 0, we have to do that now.
+        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
+
         self._current_handler.set_active(True)
 
     def init(self):
