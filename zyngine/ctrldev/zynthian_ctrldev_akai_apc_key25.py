@@ -208,7 +208,52 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             self._knobmoves = {}
             super().__init__(state_manager, driver, leds)
 
-        def _update_control(self, type, ccnum, ccval, minv, maxv):
+
+        def _update_volume(self, ccnum, ccval):
+            if self._is_shifted:
+                # Only main chain is handled with SHIFT, ignore the rest
+                if ccnum == self.main_chain_knob:
+                    index = -1
+                else:
+                    return True
+            else:
+                index = (ccnum - KNOB_1) + self.driver.scroll_h
+            self.driver.set_mixer_param("level", index, ccval)
+            return True
+
+        def _update_pan(self, ccnum, ccval):
+            if self._is_shifted:
+                # Only main chain is handled with SHIFT, ignore the rest
+                if ccnum == self.main_chain_knob:
+                    index = -1
+                else:
+                    return True
+            else:
+                index = (ccnum - KNOB_1) + self.driver.scroll_h
+            self.driver.set_mixer_param("balance", index, ccval)
+            return True
+
+        def _update_control(self, ccnum, ccval):
+            if self._is_shifted:
+                if ccnum == self.main_chain_knob:
+                    index = -1
+                else:
+                    return True
+            else:
+                index = (ccnum - KNOB_1) + self.driver.scroll_h
+            if index == -1:
+                self.driver.nudge_mixer_param("level", index, ccval, fine)
+                return True
+            else:
+                try:
+                    zctrl = self._chain_manager.get_active_chain().zctrls[index]
+                    zctrl.midi_control_change(ccval)
+                    return True
+                except:
+                    return False
+
+        # NOT USED!
+        def ___update_control(self, type, ccnum, ccval, minv, maxv):
             if self._is_shifted:
                 # Only main chain is handled with SHIFT, ignore the rest
                 if ccnum != self.main_chain_knob:

@@ -60,6 +60,7 @@ EV_CONTINUE = 0xFB
 
 # APC Key25 buttons
 BTN_SHIFT = 0x62
+BTN_SUSTAIN = 0x40  # Sends CC#64
 BTN_STOP_ALL_CLIPS = 0x51
 BTN_PLAY = 0x5B
 BTN_RECORD = 0x5D
@@ -300,17 +301,18 @@ RGB_MODE_BLINK_2    = 0x0F  # Show RGB LED secondary colour - blinking 1/24
 # Function/State constants
 FN_VOLUME = 0x01
 FN_PAN = 0x02
-FN_SOLO = 0x03
-FN_MUTE = 0x04
-FN_REC_ARM = 0x05
-FN_SELECT = 0x06
-FN_SCENE = 0x07
-FN_SEQUENCE_MANAGER = 0x08
-FN_COPY_SEQUENCE = 0x09
-FN_MOVE_SEQUENCE = 0x0A
-FN_CLEAR_SEQUENCE = 0x0B
-FN_PLAY_NOTE = 0x0C
-FN_REMOVE_NOTE = 0x0D
+FN_CONTROL = 0x03
+FN_SOLO = 0x04
+FN_MUTE = 0x05
+FN_REC_ARM = 0x06
+FN_SELECT = 0x07
+FN_SCENE = 0x08
+FN_SEQUENCE_MANAGER = 0x09
+FN_COPY_SEQUENCE = 0x0A
+FN_MOVE_SEQUENCE = 0x0B
+FN_CLEAR_SEQUENCE = 0x0C
+FN_PLAY_NOTE = 0x0D
+FN_REMOVE_NOTE = 0x0E
 FN_REMOVE_PATTERN = 0x0F
 FN_SELECT_PATTERN = 0x10
 FN_CLEAR_PATTERN = 0x11
@@ -561,7 +563,8 @@ class DeviceHandler(ModeHandlerBase):
             zynpot = CCNUM_ZYNPOT.get(ccnum, None)
             if zynpot is not None:
                 self._state_manager.send_cuia("ZYNPOT", [zynpot, delta])
-        return True
+                return True
+        return False
 
     def on_media_change(self, media, kind, state):
         flags = self._is_playing if kind == "player" else self._is_recording
@@ -580,8 +583,11 @@ class MixerHandler(ModeHandlerBase):
         self.driver = driver
         self._leds = leds
         self._is_shifted = False
+        self._is_mained = False
+        self._mained_consumed = False
         self._knobs_function = FN_VOLUME
         self._track_buttons_function = FN_SELECT
+        self._btn_timer = ButtonTimer(self._handle_timed_button)
 
         active_chain = self._chain_manager.get_active_chain()
         self._active_chain = active_chain.chain_id if active_chain else 0
@@ -601,6 +607,7 @@ class MixerHandler(ModeHandlerBase):
             btn = {
                 FN_VOLUME: BTN_KNOB_CTRL_VOLUME,
                 FN_PAN: BTN_KNOB_CTRL_PAN,
+                FN_CONTROL: BTN_KNOB_CTRL_SEND,
             }[self._knobs_function]
             self._leds.led_on(btn)
 
@@ -659,12 +666,20 @@ class MixerHandler(ModeHandlerBase):
     def note_on(self, note, velocity, shifted_override=None):
         self._on_shifted_override(shifted_override)
 
+        if note == BTN_STOP_ALL_CLIPS:
+            self._is_mained = True
+            self._mained_consumed = False
+            self._btn_timer.is_pressed(note, time.time())
+            return True
+
         # If SHIFT is pressed, handle alternative functions
         if self._is_shifted:
             if note == BTN_KNOB_CTRL_VOLUME:
                 self._knobs_function = FN_VOLUME
             elif note == BTN_KNOB_CTRL_PAN:
                 self._knobs_function = FN_PAN
+            elif note == BTN_KNOB_CTRL_SEND:
+                self._knobs_function = FN_CONTROL
             elif note == BTN_SOFT_KEY_MUTE:
                 self._track_buttons_function = FN_MUTE
             elif note == BTN_SOFT_KEY_SOLO:
@@ -677,8 +692,6 @@ class MixerHandler(ModeHandlerBase):
                 self.driver.scroll_h = 0
             elif note == BTN_RIGHT:
                 self.driver.scroll_h = 8
-            elif note == BTN_STOP_ALL_CLIPS:
-                self._stop_all_sounds()
             elif note == BTN_PLAY:
                 self._run_track_button_function_on_idx(-1, FN_MUTE)
             elif note == BTN_SOFT_KEY_SELECT:
@@ -711,11 +724,32 @@ class MixerHandler(ModeHandlerBase):
             if BTN_TRACK_1 <= note <= BTN_TRACK_8:
                 return self._run_track_button_function(note)
 
+    def note_off(self, note, velocity, shifted_override=None):
+        self._on_shifted_override(shifted_override)
+        if self._is_mained and note == BTN_STOP_ALL_CLIPS:
+            self._is_mained = False
+            if not self._mained_consumed:
+                if self._is_shifted:
+                    self._stop_all_sounds()
+                else:
+                    self._btn_timer.is_released(note)
+        return True
+
+    def _handle_timed_button(self, btn, ptype):
+        if btn == BTN_STOP_ALL_CLIPS:
+            if ptype == CONST.PT_LONG:
+                self._stop_all_sounds()
+            else:
+                in_all_scenes = ptype == CONST.PT_BOLD
+                self.driver._padmatrix_handler._stop_all_seqs(in_all_scenes)
+
     def cc_change(self, ccnum, ccval):
         if self._knobs_function == FN_VOLUME:
             return self._update_volume(ccnum, ccval)
-        if self._knobs_function == FN_PAN:
+        elif self._knobs_function == FN_PAN:
             return self._update_pan(ccnum, ccval)
+        elif self._knobs_function == FN_CONTROL:
+            return self._update_control(ccnum, ccval)
 
     def update_strip(self, pos, symbol, value):
         if {"mute": FN_MUTE, "solo": FN_SOLO}.get(symbol) != self._track_buttons_function:
@@ -750,36 +784,72 @@ class MixerHandler(ModeHandlerBase):
             self.driver.update_seq_state(phrase, zynseq.PHRASE_CHANNEL)
 
     def _update_volume(self, ccnum, ccval):
-        return self._update_control("level", ccnum, ccval, 0, 100)
-
-    def _update_pan(self, ccnum, ccval):
-        return self._update_control("balance", ccnum, ccval, -100, 100)
-
-    def _update_control(self, type, ccnum, ccval, minv, maxv):
-        if self._is_shifted:
+        if self._is_mained:
+            self._mained_consumed = True
+            self._btn_timer.cancel(BTN_STOP_ALL_CLIPS)
             # Only main chain is handled with SHIFT, ignore the rest
-            if ccnum != self.main_chain_knob:
-                return True
-            else:
+            if ccnum == self.main_chain_knob:
                 index = -1
+            else:
+                return True
         else:
             index = (ccnum - KNOB_1) + self.driver.scroll_h
-            chain = self._chain_manager.get_chain_by_index(index)
-            if chain is None or chain.chain_id == 0:
-                return True
-            #mixer_chan = chain.mixer_chan
-
-        if type == "level" or type == "balance":
-            value = self.driver.get_mixer_param(type, index)
+        if self._is_shifted:
+            fine = True
         else:
-            return False
-
-        # NOTE: knobs are encoders, not pots (so ccval is relative)
-        value *= 100
-        value += ccval if ccval < 64 else ccval - 128
-        value = max(minv, min(value, maxv))
-        self.driver.set_mixer_param(type, index, value / 100)
+            fine = False
+        if ccval >= 64:
+            ccval -= 128
+        self.driver.nudge_mixer_param("level", index, ccval, fine)
         return True
+
+    def _update_pan(self, ccnum, ccval):
+        if self._is_mained:
+            self._mained_consumed = True
+            self._btn_timer.cancel(BTN_STOP_ALL_CLIPS)
+            # Only main chain is handled with SHIFT, ignore the rest
+            if ccnum == self.main_chain_knob:
+                index = -1
+            else:
+                return True
+        else:
+            index = (ccnum - KNOB_1) + self.driver.scroll_h
+        if self._is_shifted:
+            fine = True
+        else:
+            fine = False
+        if ccval >= 64:
+            ccval -= 128
+        self.driver.nudge_mixer_param("balance", index, ccval, fine)
+        return True
+
+    def _update_control(self, ccnum, ccval):
+        if self._is_mained:
+            self._mained_consumed = True
+            self._btn_timer.cancel(BTN_STOP_ALL_CLIPS)
+            # Only main chain is handled with SHIFT, ignore the rest
+            if ccnum == self.main_chain_knob:
+                index = -1
+            else:
+                return True
+        else:
+            index = (ccnum - KNOB_1)
+        if self._is_shifted:
+            fine = True
+        else:
+            fine = False
+        if ccval >= 64:
+            ccval -= 128
+        if index == -1:
+            self.driver.nudge_mixer_param("level", index, ccval, fine)
+            return True
+        else:
+            try:
+                zctrl = self._chain_manager.get_active_chain().zctrls[index]
+                zctrl.nudge(ccval, fine=fine)
+                return True
+            except Exception as e:
+                return False
 
     def _run_track_button_function(self, note):
         index = (note - BTN_TRACK_1) + self.driver.scroll_h
@@ -841,7 +911,6 @@ class PadMatrixHandler(ModeHandlerBase):
         self._is_record_pressed = False
         self._track_btn_pressed = None
         self._playing_seqs = set()
-        self._btn_timer = ButtonTimer(self._handle_timed_button)
         self._pattern_template = None
         self.driver = driver
 
@@ -980,16 +1049,6 @@ class PadMatrixHandler(ModeHandlerBase):
 
         self._refresh_tool_buttons()
 
-    def note_on(self, note, velocity, shifted_override=None):
-        self._on_shifted_override(shifted_override)
-        if not self._is_shifted:
-            if note == BTN_STOP_ALL_CLIPS:
-                self._btn_timer.is_pressed(note, time.time())
-
-    def note_off(self, note, shifted_override=None):
-        if note == BTN_STOP_ALL_CLIPS:
-            self._btn_timer.is_released(note)
-
     def pad_press(self, pad):
         note = pad
         pos = self.driver.scroll_h + note % 8
@@ -1032,24 +1091,23 @@ class PadMatrixHandler(ModeHandlerBase):
         if idx >= len(self._pads):
             return
         btn = self._pads[idx]
-
         seq = (phrase, chan)
 
-        is_empty = all(
-            self._zynseq.is_pattern_empty(pattern)
-            for pattern in self._get_sequence_patterns(phrase, chan))
+        is_empty = all(self._zynseq.is_pattern_empty(pattern) for pattern in self._get_sequence_patterns(phrase, chan))
+        if is_empty:
+            color = COLOR.COLOR_BLACK
+        else:
+            color = zynthian_gui_config.LAUNCHER_COLOUR[chan][self.driver.apc_color_variant]
 
-        color = zynthian_gui_config.LAUNCHER_COLOUR[chan][self.driver.apc_color_variant]
-
-        # If seqman is enabled, update according to it's function
+        # If seqman is enabled, update according to its function
         if self._seqman_func is not None:
-            led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+            #led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+            led_mode = LED_BRIGHT_100
             if (self._seqman_func in (FN_COPY_SEQUENCE, FN_MOVE_SEQUENCE)
                     and self._seqman_src_seq is not None):
                 src_scene, src_seq = self._seqman_src_seq
                 if src_scene == self._zynseq.scene and src_seq == seq:
                     led_mode = LED_BLINKING_24
-            self._leds.led_on(btn, color, led_mode)
         # Otherwise, update according to sequence state
         else:
             if self._recording_seq == seq:
@@ -1060,9 +1118,11 @@ class PadMatrixHandler(ModeHandlerBase):
             elif state in (zynseq.SEQ_STOPPING, zynseq.SEQ_STARTING):
                 led_mode = LED_PULSING_2
             else:
-                led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+                #led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+                led_mode = LED_BRIGHT_100
                 self._playing_seqs.discard(seq)
-            self._leds.led_on(btn, color, led_mode)
+
+        self._leds.led_on(btn, color, led_mode)
 
         if refresh:
             self._refresh_tool_buttons()
@@ -1076,14 +1136,6 @@ class PadMatrixHandler(ModeHandlerBase):
         if col >= self._zynseq.col_in_bank or row >= self._zynseq.col_in_bank:
             return None
         return col * self._zynseq.col_in_bank + row
-
-    def _handle_timed_button(self, btn, ptype):
-        if btn == BTN_STOP_ALL_CLIPS:
-            if ptype == CONST.PT_LONG:
-                self._stop_all_sounds()
-            else:
-                in_all_scenes = ptype == CONST.PT_BOLD
-                self._stop_all_seqs(in_all_scenes)
 
     def _seqman_handle_pad_press(self, seq):
         if self._seqman_func is None:
@@ -1127,11 +1179,6 @@ class PadMatrixHandler(ModeHandlerBase):
     def _change_scene(self, offset):
         zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, message=f"Scenes currently unsupported")
         return
-        # scenes are moot right now
-        scene = min(64, max(1, self._zynseq.scene + offset))
-        if scene != self._zynseq.scene:
-            self._zynseq.libseq.setScene(scene)
-            self._state_manager.send_cuia("SCREEN_ZYNPAD")
 
     def update_pad(self, row, col, pad_info):
         if col < self._cols:
@@ -1160,20 +1207,19 @@ class PadMatrixHandler(ModeHandlerBase):
             led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
             patterns = self._get_sequence_patterns(phrase, group)
             if (group < 16):
-                is_empty = all(
-                     self._zynseq.is_pattern_empty(pattern)
-                         for pattern in patterns)
+                is_empty = all(self._zynseq.is_pattern_empty(pattern) for pattern in patterns)
             else:
                 is_empty = pad_info["empty"]
-            if repeat == 0:
-                led_colour = 0 # Off
+            if repeat == 0 or is_empty:
+                led_colour = COLORS.COLOR_BLACK
                 led_mode = RGB_MODE_PRIMARY
             elif state == zynseq.SEQ_STOPPED:
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 if group == 32:
                     self._leds.led_off(note)
                     return
-                led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+                #led_mode = self.BRIGHT_OFF if is_empty else LED_BRIGHT_100
+                led_mode = LED_BRIGHT_100
             elif state == zynseq.SEQ_PLAYING:
                 led_colour = zynthian_gui_config.LAUNCHER_COLOUR[group][self.driver.apc_color_variant]
                 led_mode = RGB_MODE_PULSE_2
@@ -1198,9 +1244,7 @@ class PadMatrixHandler(ModeHandlerBase):
         mode = (state >> 8) & 0xFF
         group = (state >> 16) & 0xFF
         state &= 0xFF
-        self.update_seq_state(
-            chan=seq[1], phrase=seq[0], state=state, mode=mode,
-            refresh=refresh)
+        self.update_seq_state(chan=seq[1], phrase=seq[0], state=state, mode=mode, refresh=refresh)
 
     def _refresh_tool_buttons(self):
         # Switch on seqman active function
@@ -2997,12 +3041,12 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 # Change global mode here
                 if note == BTN_KNOB_CTRL_DEVICE:
                     self._current_handler = self._device_handler
-                elif note in [BTN_KNOB_CTRL_PAN, BTN_KNOB_CTRL_VOLUME]:
+                elif note in [BTN_KNOB_CTRL_PAN, BTN_KNOB_CTRL_VOLUME, BTN_KNOB_CTRL_SEND]:
                     self._current_handler = self._mixer_handler
                     super().refresh()
                     # self._padmatrix_handler.refresh()
-                elif note == BTN_KNOB_CTRL_SEND:
-                    self._current_handler = self._stepseq_handler
+                #elif note == BTN_KNOB_CTRL_SEND:
+                #    self._current_handler = self._stepseq_handler
 
                 if old_handler != self._current_handler:
                     old_handler.set_active(False)
@@ -3060,8 +3104,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                         return self._padmatrix_handler.on_toggle_play()
                     self._padmatrix_handler.note_on(
                         note, vel, self._is_shifted)
-                elif (BTN_SOFT_KEY_START <= note <= BTN_SOFT_KEY_END
-                      and not self._is_shifted):
+                elif BTN_SOFT_KEY_START <= note <= BTN_SOFT_KEY_END and not self._is_shifted:
                     row = note - BTN_SOFT_KEY_START
                     return self._padmatrix_handler.on_toggle_play_row(row)
                 elif BTN_TRACK_1 <= note <= BTN_TRACK_8:
@@ -3074,9 +3117,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                     else:
                         self._padmatrix_handler.refresh()
                     return True
-                elif note == BTN_STOP_ALL_CLIPS:
-                    self._padmatrix_handler.note_on(
-                        note, vel, self._is_shifted)
 
             return self._current_handler.note_on(note, vel, self._is_shifted)
 
@@ -3093,8 +3133,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 elif BTN_TRACK_1 <= note <= BTN_TRACK_8:
                     track = note - BTN_TRACK_1
                     self._padmatrix_handler.on_track_changed(track, False)
-                elif note == BTN_STOP_ALL_CLIPS:
-                    self._padmatrix_handler.note_off(note, self._is_shifted)
 
             return self._current_handler.note_off(note, self._is_shifted)
 

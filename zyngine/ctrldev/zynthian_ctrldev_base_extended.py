@@ -185,6 +185,10 @@ class ButtonTimer(Thread):
             elapsed = time.time() - ts
             self._run_callback(btn, elapsed)
 
+    def cancel(self, btn):
+        with self._lock:
+            self._pressed.pop(btn, None)
+
     def run(self):
         while True:
             # TODO: This looks like it will never end!
