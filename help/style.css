@@ -1,11 +1,11 @@
-body {
+body.help_ui {
 	background: #000000;
 	color: #ffffff;
 	font-size: 150%;
 	margin-bottom: 2em;
 }
 
-a {
+.help_ui a {
 	color: #8080ff;
 	text-decoration: none;
 }
@@ -24,49 +24,53 @@ header.global_header a {
 	color: #0000C0;
 }
 
-ul.index li a {
+.help_ui ul.index li a {
 	font-size: 110%;
 }
 
-title {
+.help_ui title {
 	color: #ffffff;
 	font-size: 180%;
 }
 
-h1 {
+.help_ui h1 {
 	color: #ffffff;
 	font-size: 180%;
 	margin-top: 0.8em;
 	margin-bottom: 0.3em;
 }
 
-h2 {
+.help_ui h2 {
 	color: #ffffff;
 	font-size: 150%;
 	margin-top: 0.8em;
 	margin-bottom: 0.3em;
 }
 
-ul {
+.help_ui ul {
 	margin-left: 0.3em;
 	padding-left: 0px;
 }
-li {
+.help_ui li {
 	margin-left: 0px;
 	padding-left: 0.5em;
 }
 
-img.full {
+.help_ui img.full {
 	width: 100%;
 }
 
-.note-block {
+.help_ui .note-block {
 	margin: 1em auto;
 	padding: 1em 1em;
 	background-color: #9020c0;
 	border-left: 0.3em solid #aaaaaa;
 }
 
-div.clear {
+.help_ui div.clear {
 	clear: both;
+}
+
+div.knob_action {
+	color: #ffffff;
 }

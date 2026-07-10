@@ -412,7 +412,7 @@ class zynthian_gui_help(HtmlFrame):
   <meta charset="utf-8">
   <link rel="stylesheet" href="{ui_dir}/help/style.css">
  </head>
- <body>
+ <body class="help_ui">
   <h1>Help Index</h1>
    <ul class="index">
 """
