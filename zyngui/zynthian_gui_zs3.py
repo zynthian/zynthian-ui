@@ -141,6 +141,20 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             self.show_menu()
             return True
 
+    def switch(self, swi, t='S'):
+        if swi == 2 and t == 'S':
+            self.toggle_midi_learn()
+            return True
+        return False
+
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 2 and t == 'S':
+            self.toggle_midi_learn()
+            return True
+        return False
+
     def show_menu(self):
         try:
             zs3_index = self.list_data[self.index][0]
@@ -165,6 +179,12 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     def disable_midi_learn(self):
         self.zyngui.state_manager.disable_learn_pc()
         self.hide_waiting_label()
+
+    def toggle_midi_learn(self):
+        if self.zyngui.state_manager.midi_learn_state:
+            self.disable_midi_learn()
+        else:
+            self.enable_midi_learn()
 
     def back_action(self):
         self.zyngui.state_manager.disable_learn_pc()
