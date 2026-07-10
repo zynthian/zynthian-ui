@@ -178,9 +178,17 @@ standalone_engine_info = {
 }
 
 rpi5_plugins = [
-    "http://theusualsuspects.lv2.Osirus",
-    "http://theusualsuspects.lv2.OsTIrus"
+    "http://theusualsuspects.lv2/Osirus",
+    "http://theusualsuspects.lv2/OsTIrus",
+    "http://theusualsuspects.lv2/Vavra",
+    "http://theusualsuspects.lv2/Xenia",
+    "http://theusualsuspects.lv2/JE8086"
 ]
+
+try:
+    rbpi_version_number = int(os.environ.get('RBPI_VERSION_NUMBER', '4'))
+except:
+    rbpi_version_number = 4
 
 ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
@@ -251,6 +259,12 @@ def load_engines():
     # Regenerate config file if it doesn't exist or is an older version
     if not os.path.exists(ENGINE_CONFIG_FILE) or 'AE' in engines and "ID" not in engines['AE']:
         generate_engines_config_file(reset_rankings=1)
+
+    # Remove not supported engines
+    for key in list(engines.keys()):
+        if rbpi_version_number < 5 and engines[key]['URL'] in rpi5_plugins:
+            logging.debug(f"Removing {key} from engine list.")
+            engines.pop(key, None)
 
     get_engines_by_type()
     return engines
@@ -474,11 +488,6 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
     """
     global engines, engines_mtime
     genengines = {}
-
-    try:
-        rbpi_version_number = int(os.environ.get('RBPI_VERSION_NUMBER', '4'))
-    except:
-        rbpi_version_number = 4
 
     hash = hashlib.new('sha1')
     start = int(round(time.time()))
