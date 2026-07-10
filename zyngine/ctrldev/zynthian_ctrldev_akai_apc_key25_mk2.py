@@ -327,6 +327,9 @@ class FeedbackLEDs:
         self._state = {}
         self._timer = RunTimer()
 
+    def __del__(self):
+        self._timer.end()
+
     def all_off(self):
         self.control_leds_off()
         self.pad_leds_off()
@@ -483,6 +486,10 @@ class DeviceHandler(ModeHandlerBase):
         self._refresh_timer = RefreshTimer()
         self.cuia_queue = state_manager.cuia_queue
 
+    def __del__(self):
+        self._btn_timer.end()
+        self._refresh_timer.end()
+
     def set_active(self, active):
         super().set_active(active)
         # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
@@ -591,6 +598,9 @@ class MixerHandler(ModeHandlerBase):
 
         active_chain = self._chain_manager.get_active_chain()
         self._active_chain = active_chain.chain_id if active_chain else 0
+
+    def __del__(self):
+        self._btn_timer.end()
 
     def set_active(self, active):
         super().set_active(active)
@@ -1430,7 +1440,7 @@ class StepSyncProvider(mp.Process):
         self._tick_counter = 0
 
         # Create a new thread to read steps and call sync callback
-        StepSyncConsumer(self._steps, step_callback)
+        self.consumer = StepSyncConsumer(self._steps, step_callback)
 
         # IPC methods
         self.enable = partial(self._enqueue_cmd, "enable", True)
@@ -1439,7 +1449,20 @@ class StepSyncProvider(mp.Process):
         self.set_steps_per_beat = partial(self._enqueue_cmd, "spb")
 
         self.daemon = True
+        self.running = True
         self.start()
+
+    def end(self):
+        if self._jack_client:
+            self._jack_client.deactivate()
+            self._jack_client.close()
+            self._jack_client = None
+        self.consumer.end()
+        self.running = False
+        self.stop()
+        self._commands.close()
+        self._steps.close()
+
 
     def _init(self):
         """NOTE: This _init() is called inside the new process."""
@@ -1456,8 +1479,7 @@ class StepSyncProvider(mp.Process):
         self._jack_client.set_process_callback(self._process)
 
         # Process incoming messages
-        while True:
-            # TODO: This looks like it will never end!
+        while self.running:
             cmd = self._commands.get()
             if cmd[0] == "stop":
                 break
@@ -1484,11 +1506,7 @@ class StepSyncProvider(mp.Process):
         self._commands.put([cmd] + list(args))
 
     def _on_interrupt(self, signum, frame):
-        if self._jack_client:
-            self._jack_client.deactivate()
-            self._jack_client.close()
-            self._jack_client = None
-        self.stop()
+        self.end()
 
     # Jack events processor
     def _process(self, nframes):
@@ -1518,14 +1536,17 @@ class StepSyncConsumer(Thread):
         self._callback = callback
 
         self.daemon = True
+        self.running = True
         self.start()
 
+    def end(self):
+        self.running = False
+        self._events.close()
+
     def run(self):
-        while True:
-            # TODO: This looks like it will never end!
+        while self.running:
             ev = self._events.get()
             self._callback(ev)
-
 
 # --------------------------------------------------------------------------
 # Class to hold instrument pads for StepSeq (a.k.a. note-pads)
@@ -1810,6 +1831,9 @@ class StepSeqHandler(ModeHandlerBase):
         self._notes_playing = {}
         self._pressed_pads = {}
         self._pressed_pads_action = None
+
+    def __del__(self):
+        self._clock.end()
 
     def set_state(self, state):
         state = state.get("stepseq")
@@ -2934,19 +2958,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     StepSeqHandler = StepSeqHandler
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self._leds = self.FeedbackLEDs(idev_out)
-        self._device_handler = self.DeviceHandler(state_manager, self._leds, self.COLOR_SET)
-        self._mixer_handler = self.MixerHandler(state_manager, self, self._leds)
-        self._padmatrix_handler = self.PadMatrixHandler(state_manager, self, self._leds)
-        self._stepseq_handler = self.StepSeqHandler(state_manager, self._leds, idev_in)
-        # If detected V5/Z2 hardware, initial mode => mixer+padmatrix
-        if zynthian_gui_config.check_wiring_layout(("V5", "Z2")):
-            self._current_handler = self._mixer_handler
-        # else, initial mode = device
-        else:
-            self._current_handler = self._device_handler
+        super().__init__(state_manager, idev_in, idev_out)
 
-        self._is_shifted = False
+        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
+        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
         self._signals = [
             (zynsigman.S_GUI,
@@ -2971,12 +2986,18 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 partial(self._on_media_change_state, media="midi", kind="recorder")),
         ]
 
-        # NOTE: init will call refresh(), so _current_handler must be ready!
-        super().__init__(state_manager, idev_in, idev_out)
-
-        # Since super().__init__() sets self.cols and self.rows both to 0, we have to do that now.
-        self.cols = 8  # Quantity of columns of controllers, usually mapped to chains
-        self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
+        self._is_shifted = False
+        self._leds = self.FeedbackLEDs(idev_out)
+        self._device_handler = self.DeviceHandler(state_manager, self._leds, self.COLOR_SET)
+        self._mixer_handler = self.MixerHandler(state_manager, self, self._leds)
+        self._padmatrix_handler = self.PadMatrixHandler(state_manager, self, self._leds)
+        self._stepseq_handler = self.StepSeqHandler(state_manager, self._leds, idev_in)
+        # If detected V5/Z2 hardware, initial mode => mixer+padmatrix
+        if zynthian_gui_config.check_wiring_layout(("V5", "Z2")):
+            self._current_handler = self._mixer_handler
+        # else, initial mode = device
+        else:
+            self._current_handler = self._device_handler
 
         self._current_handler.set_active(True)
 
@@ -3012,7 +3033,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
     def midi_event(self, ev):
         if self._on_midi_event(ev):
-            while True:
+            while self.enabled:
                 # Iterate until queue is empty
                 action = self._current_handler.pop_action_request()
                 if not action:

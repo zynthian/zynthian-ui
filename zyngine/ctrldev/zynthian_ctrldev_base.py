@@ -103,6 +103,7 @@ class zynthian_ctrldev_base:
         self.scroll_mode = None
         self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
         self.set_scroll_mode(SCROLL_MODE_DISABLED)
+        self.enabled = True
 
     @classmethod
     def get_driver_name(cls):
@@ -161,6 +162,7 @@ class zynthian_ctrldev_base:
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
         self.end_midiproc()
+        self.enabled = False
 
     def init_midiproc(self):
         """Spawn midiproc task using multiprocessing API"""
@@ -515,10 +517,10 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     dev_zynmixer = True		# Can act as a zynmixer trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
+        super().__init__(state_manager, idev_in, idev_out)
         self.zynmixer = state_manager.zynmixer_chan
         self.zynmixer_bus = state_manager.zynmixer_bus
         self.scroll_h = 0
-        super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         super().init()
