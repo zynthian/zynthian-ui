@@ -612,11 +612,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 if self._shift:
                     self.state_manager.send_cuia("TOGGLE_SCREEN", ("tempo",))
                 else:
-                    if self.zynseq.zctrl_metro_mode.value:
-                        met = 0
-                    else:
-                        met = 2
-                    self.zynseq.zctrl_metro_mode.set_value(met)
+                    self.toggle_metronome()
             elif note == BTN_NUDGE_DOWN:
                 self.zynseq.nudge_tempo(-0.1)
             elif note == BTN_NUDGE_UP:
