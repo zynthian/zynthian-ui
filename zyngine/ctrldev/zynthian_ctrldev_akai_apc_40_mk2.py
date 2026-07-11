@@ -502,6 +502,12 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     self.chain_manager.midi_control_change(self.idev, 0, cc, val)
                 zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
                                       izmip=self.idev, chan=0, num=cc, val=val)
+            elif cc == CC_CROSS_FADER:
+                # crossfade between last 2 chains (could use mixbuses)
+                if self.chain_manager.get_pinned_count() > 2:
+                    mix = val / 127
+                    self.set_mixer_param("level", -2, mix)
+                    self.set_mixer_param("level", -3, 1-mix)
 
             elif cc == CC_CROSS_FADER:
                 # Crossfade AB mix-groups
