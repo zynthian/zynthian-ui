@@ -548,11 +548,11 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         """Set a mixer parameter value
 
         param - Symbol name of the parameter
-        pos - Chain display position (-1 for main chain)
+        pos - Chain display position (-1 for main chain, -x to count from right)
         value - Parameter value
         """
 
-        if pos < 0:
+        if pos == -1:
             chain = self.chain_manager.chains[0]
         else:
             chain = self.get_filtered_chain_by_index(pos)

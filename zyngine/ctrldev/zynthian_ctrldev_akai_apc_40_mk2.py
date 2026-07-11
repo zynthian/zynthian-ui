@@ -492,6 +492,12 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     self.chain_manager.midi_control_change(self.idev, 0, cc, val)
                 zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
                                       izmip=self.idev, chan=0, num=cc, val=val)
+            elif cc == CC_CROSS_FADER:
+                # crossfade between last 2 chains (could use mixbuses)
+                if self.chain_manager.get_pinned_count() > 2:
+                    mix = val / 127
+                    self.set_mixer_param("level", -2, mix)
+                    self.set_mixer_param("level", -3, 1-mix)
 
         elif evtype == 8:
             # Note off
@@ -606,7 +612,11 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 if self._shift:
                     self.state_manager.send_cuia("TOGGLE_SCREEN", ("tempo",))
                 else:
-                    self.toggle_metronome()
+                    if self.zynseq.zctrl_metro_mode.value:
+                        met = 0
+                    else:
+                        met = 2
+                    self.zynseq.zctrl_metro_mode.set_value(met)
             elif note == BTN_NUDGE_DOWN:
                 self.zynseq.nudge_tempo(-0.1)
             elif note == BTN_NUDGE_UP:
