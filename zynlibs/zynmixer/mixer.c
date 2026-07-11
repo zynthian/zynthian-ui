@@ -54,7 +54,11 @@ uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
 uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
 #ifndef MIXBUS
-float g_xfader      = 0.0; // Global Cross Fader value for AB mixing
+double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
+float g_xf_gain_A    = 0.0; // Crossfade A gain
+float g_reqxf_gain_A = 0.0; // Requsted vrossfade A gain
+float g_xf_gain_B    = 1.0; // Crossfade B gain
+float g_reqxf_gain_B = 1.0; // Requested crossfade B gain
 #endif
 jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
 jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
@@ -230,13 +234,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             memset(g_fxSends[send]->bufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
         }
     }
-    // Calculate Constant-Power CrossFader gains
-    double angle = g_xfader * M_PI_2;
-    float xf_gain_A = cos(angle);
-    float xf_gain_B = sin(angle);
-    // Linear CrossFader gains
-    //float xf_gain_A = 1.0 - g_xfader;
-    //float xf_gain_B = g_xfader;
 #endif
 
     // Process each channel in reverse order (so that main mixbus is last)
@@ -279,6 +276,23 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     reqLevelB = strip->reqlevel;
                 strip->level   = strip->reqlevel;
                 strip->balance = strip->reqbalance;
+ 
+ #ifndef MIXBUS
+                // AB mixing (Cross-Fader)
+                if (strip->ABMixGroup == 1) {
+                    reqLevelA *= g_reqxf_gain_A;
+                    reqLevelB *= g_reqxf_gain_A;
+                    curLevelA *= g_xf_gain_A;
+                    curLevelB *= g_xf_gain_A;
+                }
+                else if (strip->ABMixGroup == 2) {
+                    reqLevelA *= g_reqxf_gain_B;
+                    reqLevelB *= g_reqxf_gain_B;
+                    curLevelA *= g_xf_gain_B;
+                    curLevelB *= g_xf_gain_B;
+                }
+#endif
+
             }
 
             // Calculate the step change for each leg to apply on each sample in buffer for fade between last and this period's level
@@ -343,18 +357,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 fpreFaderSampleB = fSampleB;
                 fSampleA *= curLevelA;
                 fSampleB *= curLevelB;
-
-#ifndef MIXBUS
-                // AB mixing (Cross-Fader)
-                if (strip->ABMixGroup == 1) {
-                    fSampleA *= xf_gain_A;
-                    fSampleB *= xf_gain_A;
-                }
-                else if (strip->ABMixGroup == 2) {
-                    fSampleA *= xf_gain_B;
-                    fSampleB *= xf_gain_B;
-                }
-#endif
 
                 // Check for error
                 if (isinf(fSampleA))
@@ -445,7 +447,12 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         }
     }
 
-if (g_nDampingCount == 0)
+#ifndef MIXBUS
+    g_xf_gain_A = g_reqxf_gain_A;
+    g_xf_gain_B = g_reqxf_gain_B;
+#endif
+
+    if (g_nDampingCount == 0)
         g_nDampingCount = g_nDampingPeriod;
     else
         --g_nDampingCount;
@@ -769,7 +776,18 @@ uint8_t getGlobalSolo() {
 #ifndef MIXBUS
 
 void setGlobalXFader(float val) {
-    g_xfader = val;
+    if (val < 0.0f)
+        g_xfader = 0.0f;
+    else if (val > 1.0f)
+        g_xfader = 1.0f;
+    else
+        g_xfader = val;
+    // Calculate Constant-Power CrossFader gains
+    g_reqxf_gain_A = cos(M_PI_2 * g_xfader);
+    g_reqxf_gain_B = sin(M_PI_2 * g_xfader);
+    // Linear CrossFader gains
+    //g_reqxf_gain_A = 1.0f - g_xfader;
+    //g_reqxf_gain_B = g_xfader;
 }
 
 float getGlobalXFader() {
