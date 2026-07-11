@@ -34,6 +34,10 @@ typedef struct {
     uint8_t mono;
 } dpm_struct;
 
+#define XFADE_NONE     0
+#define XFADE_A        1
+#define XFADE_B        2
+
 //-----------------------------------------------------------------------------
 // Library Initialization
 //-----------------------------------------------------------------------------
@@ -125,6 +129,32 @@ void clearSolo();
     @retval uint8_t Quantity of channels with solo asserted
 */
 uint8_t getGlobalSolo();
+
+#ifndef MIXBUS
+
+/** @brief  Get global CrossFader
+ *  @param  val Global CrossFader value. 0 = 100% A. 1 = 100% B. 0.5 = 50% AB mix.
+ */
+void setGlobalXFader(float val);
+
+/** @brief  Get global CrossFader
+ *    @retval uint8_t Global CrossFader value
+ */
+float getGlobalXFader();
+
+/** @brief  Set channel AB mix-group (CrossFader group)
+ *   @param  channel Index of channel
+ *   @param  ab (0: None, 1: A, 2: B)
+ */
+void setABMixGroup(uint8_t channel, uint8_t ab);
+
+/** @brief  Get channel AB mix-group (CrossFader group)
+ *   @param  channel Index of channel
+ *   @retval uint8_t Channel AB mix-group (0: None, 1: A, 2: B)
+ */
+uint8_t getABMixGroup(uint8_t channel);
+
+#endif
 
 /** @brief  Set channel mono state
  *   @param  channel Index of channel

@@ -42,6 +42,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         ['gain', ['gain', 'level', 'balance', 'mute']],
         ['toggles', ['solo', 'mono', 'phase', 'ms']],
         ['recorder', ['record']],
+        ['A/B mix', ['ab_mixgroup']],
     ]
 
     # Function to initialize library
@@ -141,6 +142,16 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value': 0,
                     'processor': processor,
                     'labels': ['off', 'on']
+                }),
+                'ab_mixgroup': zynthian_controller(self, 'ab_mixgroup', {
+                    'name': "A/B",
+                    'short_name': "A/B mix",
+                    'is_integer': True,
+                    'value_max': 2,
+                    'value_default': 0,
+                    'value': processor.zynmixer.get_ab_mixgroup(processor.mixer_chan),
+                    'processor': processor,
+                    'labels': ['none', 'A', 'B']
                 })
             }
             if processor.chain.chain_id == 0:
@@ -175,6 +186,14 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value': processor.zynmixer.get_solo(1),
                     'processor': processor,
                     'labels': ['off', 'on']
+                }),
+                'global_xfader': zynthian_controller(self, 'global_xfader', {
+                    'is_integer': False,
+                    'value_max': 1.0,
+                    'value_min': 0.0,
+                    'value_default': 0.0,
+                    'value': processor.zynmixer.get_global_xfader(),
+                    'processor': processor,
                 })}
         return processor.controllers_dict
 
@@ -201,6 +220,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     ['gain', ['gain', 'level', 'balance', 'mute']],
                     ['toggles', ['solo', 'mono', 'phase', 'ms']],
                     ['recorder', ['record']],
+                    ['cross-fader', ['global_xfader']],
                     ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']]
                 ]
         else:
@@ -237,6 +257,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 self.state_manager.zynmixer_bus.set_solo(0, glob_solo)
             elif zctrl.symbol.startswith("aux "):
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol[4:]}')(1, zctrl.value)
+            elif zctrl.symbol.startswith("global_"):
+                getattr(self.state_manager.zynmixer_chan, f'set_{zctrl.symbol}')(zctrl.value)
             else:
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
         except Exception as e:

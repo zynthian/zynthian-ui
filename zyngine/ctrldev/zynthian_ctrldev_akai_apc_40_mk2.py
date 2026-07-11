@@ -55,7 +55,7 @@ LED_DEVICE_ON       = 0x3E  # Device on/off LED (Tracks: MIDI channel 0-8. 0=off
 LED_DEVICE_LOCK     = 0x3F  # Device lock LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_DEVICE_VIEW     = 0x40  # Clip/dev. view LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
 LED_DETAIL_VIEW     = 0x41  # Detail view LED (Tracks: MIDI channel 0-8. 0=off, 1-127=on)
-LED_CROSSOVER_AB    = 0x42  # (Track: MIDI channel 0-7. 0=off, 1=Yellow, 2-127=Orange) NO LED ON DEVICE!
+LED_AB              = 0x42  # AB Mixgroup (Track: MIDI channel 0-7. 0=off, 1=Yellow, 2-127=Orange)
 LED_MASTER          = 0x50  # Master LED (0=off, 1-127=on)
 LED_SCENE_LAUNCH_1  = 0x52  # Launch scene 1 RGB LED
 LED_SCENE_LAUNCH_2  = 0x53  # Launch scene 2 RGB LED
@@ -264,6 +264,15 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_RECORD_ARM, value)
             except TypeError:
                 pass
+        elif symbol == "ab_mixgroup":
+            if mixbus and chan == 0:
+                return  # No control for main mixbus
+            try:
+                pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
+                if 0 <= pos < self.cols:
+                    lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_AB, value)
+            except TypeError:
+                pass
 
     def on_active_chain(self, active_chain_id=None):
         if active_chain_id is None:
@@ -292,7 +301,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 continue
             proc = self.chain_manager.chains[chain_id].zynmixer_proc
             if proc:
-                for symbol in ("mute", "solo", "record"):
+                for symbol in ("mute", "solo", "record", "ab_mixgroup"):
                     mixbus = proc.eng_code == "MR"
                     value = proc.controllers_dict[symbol].value
                     self.update_mixer_strip(pos, symbol, value, mixbus)
@@ -300,6 +309,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 lib_zyncore.dev_send_note_on(self.idev_out, col, LED_SOLO, 0)
                 lib_zyncore.dev_send_note_on(self.idev_out, col, LED_ACTIVATOR, 0)
                 lib_zyncore.dev_send_note_on(self.idev_out, col, LED_RECORD_ARM, 0)
+                lib_zyncore.dev_send_note_on(self.idev_out, col, LED_AB, 0)
         #self.set_enc_mode(self.enc_mode)
 
     def on_audio_rec(self, state):
@@ -493,6 +503,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
                                       izmip=self.idev, chan=0, num=cc, val=val)
 
+            elif cc == CC_CROSS_FADER:
+                # Crossfade AB mix-groups
+                self.set_mixer_param("global_xfader", -1, val / 127)
+
         elif evtype == 8:
             # Note off
             note = ev[1]
@@ -576,6 +590,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             elif note == LED_RECORD_ARM:
                 pos = self.scroll_h + chan
                 self.toggle_mixer_param("record", pos)
+            elif note == LED_AB:
+                pos = self.scroll_h + chan
+                self.toggle_mixer_param("ab_mixgroup", pos)
             elif note == LED_CLIP_STOP:
                 pos = self.scroll_h + chan
                 midi_chan = self.get_filtered_midi_chan_by_index(pos)

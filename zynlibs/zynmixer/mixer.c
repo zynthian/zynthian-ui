@@ -43,18 +43,21 @@
 #define MAX_OSC_CLIENTS 5
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-char g_oscbuffer[1024];  // Used to send OSC messages
-char g_oscpath[64];      //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/channel/xx/fader
-int g_oscfd = -1;        // File descriptor for OSC socket
-int g_bOsc  = 0;         // True if OSC client subscribed
-pthread_t g_eventThread; // ID of low priority event thread
-int g_sendEvents = 1;    // Set to 0 to exit event thread
-uint8_t g_sendCount = 0; // Quantity of effect sends
-uint8_t g_lastStrip = 1; // Highest index of any strips (one-based)
-uint8_t g_lastSend  = 1; // Highest index of any send (one-based)
-uint8_t g_solo      = 0; // Quantity of channels with solo asserted
-jack_port_t* g_soloPortA; // Pointer to solo trunk port A
-jack_port_t* g_soloPortB; // Pointer to solo trunk port B
+char g_oscbuffer[1024];    // Used to send OSC messages
+char g_oscpath[64];        //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/channel/xx/fader
+int g_oscfd = -1;          // File descriptor for OSC socket
+int g_bOsc  = 0;           // True if OSC client subscribed
+pthread_t g_eventThread;   // ID of low priority event thread
+int g_sendEvents = 1;      // Set to 0 to exit event thread
+uint8_t g_sendCount = 0;   // Quantity of effect sends
+uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
+uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
+uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
+#ifndef MIXBUS
+float g_xfader      = 0.0; // Global Cross Fader value for AB mixing
+#endif
+jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
+jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
 
 // Structure describing a channel strip
 struct channel_strip {
@@ -81,6 +84,9 @@ struct channel_strip {
     uint8_t solo;          // 1 if solo
     uint8_t ms;            // 1 if MS decoding
     uint8_t phase;         // 1 if channel B phase reversed
+#ifndef MIXBUS
+    uint8_t ABMixGroup;    // AB mix-group: 0 => None, 1 => A, 2 => B
+#endif
     uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
     uint8_t normalise;     // 1 if channel normalised to main output
     uint8_t inRouted;      // 1 if source routed to channel
@@ -224,6 +230,13 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             memset(g_fxSends[send]->bufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
         }
     }
+    // Calculate Constant-Power CrossFader gains
+    double angle = g_xfader * M_PI_2;
+    float xf_gain_A = cos(angle);
+    float xf_gain_B = sin(angle);
+    // Linear CrossFader gains
+    //float xf_gain_A = 1.0 - g_xfader;
+    //float xf_gain_B = g_xfader;
 #endif
 
     // Process each channel in reverse order (so that main mixbus is last)
@@ -330,6 +343,18 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 fpreFaderSampleB = fSampleB;
                 fSampleA *= curLevelA;
                 fSampleB *= curLevelB;
+
+#ifndef MIXBUS
+                // AB mixing (Cross-Fader)
+                if (strip->ABMixGroup == 1) {
+                    fSampleA *= xf_gain_A;
+                    fSampleB *= xf_gain_A;
+                }
+                else if (strip->ABMixGroup == 2) {
+                    fSampleA *= xf_gain_B;
+                    fSampleB *= xf_gain_B;
+                }
+#endif
 
                 // Check for error
                 if (isinf(fSampleA))
@@ -741,6 +766,31 @@ uint8_t getGlobalSolo() {
     return g_solo;
 }
 
+#ifndef MIXBUS
+
+void setGlobalXFader(float val) {
+    g_xfader = val;
+}
+
+float getGlobalXFader() {
+    return g_xfader;
+}
+
+void setABMixGroup(uint8_t channel, uint8_t ab) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return;
+    if (ab > 2) ab = 2;
+    g_channelStrips[channel]->ABMixGroup = ab;
+}
+
+uint8_t getABMixGroup(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return 0;
+    return g_channelStrips[channel]->ABMixGroup;
+}
+
+#endif
+
 void setPhase(uint8_t channel, uint8_t phase) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
@@ -979,6 +1029,9 @@ int8_t addStrip() {
         strip->solo       = 0;
         strip->ms         = 0;
         strip->phase      = 0;
+        #ifndef MIXBUS
+        strip->ABMixGroup = 0;
+        #endif
         strip->normalise  = 0;
         strip->inRouted   = 0;
         strip->outRouted  = 0;

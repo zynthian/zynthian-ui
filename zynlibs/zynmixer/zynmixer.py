@@ -23,8 +23,9 @@
 #
 # ********************************************************************
 
-import ctypes
 import math
+import ctypes
+import logging
 
 from zyngine.zynthian_signal_manager import zynsigman
 
@@ -71,8 +72,7 @@ class ZynMixer():
         self.lib_zynmixer.getGain.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getGain.restype = ctypes.c_float
 
-        self.lib_zynmixer.setBalance.argtypes = [
-            ctypes.c_uint8, ctypes.c_float]
+        self.lib_zynmixer.setBalance.argtypes = [ctypes.c_uint8, ctypes.c_float]
         self.lib_zynmixer.getBalance.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getBalance.restype = ctypes.c_float
 
@@ -88,6 +88,13 @@ class ZynMixer():
         self.lib_zynmixer.setMono.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getMono.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getMono.restype = ctypes.c_uint8
+
+        if not self.mixbus:
+            self.lib_zynmixer.setGlobalXFader.argtypes = [ctypes.c_float]
+            self.lib_zynmixer.getGlobalXFader.restype = ctypes.c_float
+            self.lib_zynmixer.setABMixGroup.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+            self.lib_zynmixer.getABMixGroup.argtypes = [ctypes.c_uint8]
+            self.lib_zynmixer.getABMixGroup.restype = ctypes.c_uint8
 
         self.lib_zynmixer.setPhase.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getPhase.argtypes = [ctypes.c_uint8]
@@ -115,8 +122,7 @@ class ZynMixer():
         self.lib_zynmixer.getDpm.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getDpm.restype = ctypes.c_float
 
-        self.lib_zynmixer.getDpmHold.argtypes = [
-            ctypes.c_uint8, ctypes.c_uint8]
+        self.lib_zynmixer.getDpmHold.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getDpmHold.restype = ctypes.c_float
 
         self.lib_zynmixer.updateDpmStates.argtypes = [ctypes.POINTER(DPM), ctypes.c_uint8]
@@ -445,6 +451,36 @@ class ZynMixer():
 
     def get_global_solo(self):
         return self.lib_zynmixer.getGlobalSolo()
+
+    def set_global_xfader(self, val):
+        if not self.mixbus:
+            self.lib_zynmixer.setGlobalXFader(val)
+            zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                        chan=0, symbol="global_xfader", value=val, mixbus=self.mixbus)
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+
+    def get_global_xfader(self):
+        if not self.mixbus:
+            return self.lib_zynmixer.getGlobalXFader()
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+            return 0.0
+
+    def set_ab_mixgroup(self, channel, abmix):
+        if not self.mixbus:
+            self.lib_zynmixer.setABMixGroup(channel, abmix)
+            zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                        chan=channel, symbol="ab_mixgroup", value=abmix, mixbus=self.mixbus)
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+
+    def get_ab_mixgroup(self, channel):
+        if not self.mixbus:
+            return self.lib_zynmixer.getABMixGroup(channel)
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+            return 0
 
     def set_phase(self, channel, phase):
         """
