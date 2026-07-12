@@ -469,10 +469,10 @@ class zynthian_gui_launcher_pad():
             midi_chan = 32
         if midi_chan is None or midi_chan > 32:
             return
-        self.gui_mixer.edit_clip()
+        self.gui_mixer.edit_pad()
 
     def on_clip_long_press(self):
-        self.gui_mixer.edit_clip()
+        self.gui_mixer.edit_pad()
 
 
 # ------------------------------------------------------------------------------
@@ -2142,18 +2142,23 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.zyngui.show_screen("pattern_editor")
         return True
 
-    def edit_clip(self):
-        if self.highlighted_strip.chain.chain_id == 0:
+    def edit_audio_clip(self, chain, phrase):
+        cl_proc = chain.get_processors()[0]
+        chain.set_current_processor(cl_proc)
+        cl_proc.engine.set_phrase(cl_proc, phrase)
+        self.zyngui.chain_control(chain.chain_id)
+        cl_proc.engine.auto_request_file()
+        return True
+
+    def edit_pad(self):
+        chain = self.chain_manager.get_active_chain()
+        #chain = self.highlighted_strip.chain
+        if chain.chain_id == 0:
             self.item_menu()
             return True
-        chain = self.highlighted_strip.chain
         if type(chain.midi_chan) is int and chain.midi_chan < zynseq.PHRASE_CHANNEL:
             if chain.midi_chan > 15:
-                cl_proc = chain.get_processors()[0]
-                chain.set_current_processor(cl_proc)
-                cl_proc.engine.set_phrase(cl_proc, self.zynseq.phrase)
-                self.zyngui.chain_control(chain.chain_id)
-                return True
+                return self.edit_audio_clip(chain, self.zynseq.phrase)
             else:
                 return self.edit_pattern()
 
@@ -2248,7 +2253,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 self.zyngui.chain_control()
         elif type == "B":
             if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 32 and self.zynseq.phrase < self.zynseq.phrases:
-                self.edit_clip()
+                self.edit_pad()
             else:
                 self.item_menu()
         else:

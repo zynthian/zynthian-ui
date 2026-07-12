@@ -373,6 +373,22 @@ class zynthian_engine_clippy(zynthian_engine):
                 processor.preset_name = ""
                 processor.init_ctrl_screens(force_refresh=True)
 
+    def request_file(self):
+        try:
+            note = self.selected_phrase + 1
+            self.selected_proc.controllers_dict[f"file {note}"].nudge(1)
+        except Exception as e:
+            logging.error(e)
+
+    def auto_request_file(self):
+        try:
+            note = self.selected_phrase + 1
+            file_zctrl = self.selected_proc.controllers_dict[f"file {note}"]
+            if not file_zctrl.value:
+                file_zctrl.nudge(1)
+        except Exception as e:
+            logging.error(e)
+
     # ---------------------------------------------------------------
     # Callbacks to re-warp sample file when needed (on-the-fly)
     # ---------------------------------------------------------------

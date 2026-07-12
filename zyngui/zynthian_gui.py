@@ -1635,7 +1635,7 @@ class zynthian_gui:
 
     def cuia_screen_pattern_editor(self, params=None):
         if self.current_screen == "launcher":
-            success = self.screens['launcher'].edit_clip()
+            success = self.screens['launcher'].edit_pad()
         else:
             success = False
         if not success:
@@ -1760,7 +1760,9 @@ class zynthian_gui:
         else:
             curproc = self.get_current_processor()
             if curproc:
-                if self.current_screen == 'preset':
+                if self.current_screen == 'chain_control' and curproc.eng_code == "CL":
+                    curproc.engine.request_file()
+                elif self.current_screen == 'preset':
                     if not self.screens['preset'].browse_back():
                         bank_list = curproc.get_bank_list()
                         if len(bank_list) > 1:

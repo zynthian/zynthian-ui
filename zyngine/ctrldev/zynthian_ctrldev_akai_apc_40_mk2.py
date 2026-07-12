@@ -556,7 +556,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 if self._shift:
                     self.chain_manager.set_active_chain_by_id(chain.chain_id)
                     self.zynseq.select_phrase(phrase)
-                    self.state_manager.send_cuia("SCREEN_PATTERN_EDITOR")
+                    zynthian_gui_config.zyngui.screens["mixer"].edit_pad()
                 # Toggle Play/Stop PAD
                 else:
                     self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
