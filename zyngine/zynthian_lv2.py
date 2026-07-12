@@ -35,8 +35,8 @@ import hashlib
 import logging
 import urllib.parse
 import shutil
-import subprocess
 import platform
+from subprocess import run, Popen, STDOUT, PIPE
 from rdflib import Graph, Namespace, RDF
 
 from enum import Enum
@@ -401,7 +401,7 @@ def add_engine(path, enable=True, force=False):
                 # Validate plugin
                 for file in os.listdir(src):
                     if file.endswith(".so"):
-                        result = subprocess.run(["file", f"{src}/{file}"], capture_output=True, text=True)
+                        result = run(["file", f"{src}/{file}"], capture_output=True, text=True)
                         if platform.machine() not in result.stdout.strip():
                             return f"LV2 plugin is for a different platform (expecting {platform.machine()})"
                         if platform.machine() not in result.stdout.strip():
@@ -1201,6 +1201,62 @@ def get_plugin_ports(plugin_url):
     return ports_info
 
 
+def test_lv2_plugin(plugin_info):
+    logging.info(f"Testing '{plugin_info['NAME']}' <{plugin_info['URL']}> ...")
+    # Start jalv instance
+    try:
+        #command = ["jalv", "-s", plugin_info['URL']]
+        command = ["jalv", plugin_info['URL']]
+        command_env = os.environ.copy()
+        if plugin_info['NAME'].endswith("v1"):
+            command_env['DISPLAY'] = ":0"
+            #logging.warning(f"\tOmitting test!!")
+            #return False
+        else:
+            command_env['DISPLAY'] = "X"
+        command_prompt = ">"
+        proc = Popen(command, env=command_env, shell=False, text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+    except Exception as e:
+        logging.error(f"\tCan't start jalv => {e}")
+        return False
+
+    # Read lines until prompt
+    try:
+        res = ""
+        while proc.returncode is None:
+            line = proc.stdout.readline().strip()
+            if line == command_prompt:
+                break
+            elif line:
+                res += line
+                if "error: Failed to instantiate plugin" in line:
+                    logging.error(line)
+                    return False
+                elif "aborted" in line.lower():
+                    logging.error(line)
+                    return False
+                elif "segmentation fault" in line.lower():
+                    logging.error(line)
+                    return False
+    except Exception as e:
+        logging.error(f"\tCan't parse prompt => {e}")
+        return False
+
+    # End plugin
+    try:
+        proc.stdin.writelines(["\n"])
+    except Exception as e:
+        logging.error(f"\tException while ending jalv => {e}")
+    proc.terminate()
+    try:
+        proc.communicate(timeout=5)
+    except Exception as e:
+        logging.warning(f"\tCan't terminate jalv. Killing it! => {e}")
+        proc.kill()
+        return False
+
+    return True
+
 # ------------------------------------------------------------------------------
 # Main program
 # ------------------------------------------------------------------------------
@@ -1247,6 +1303,18 @@ if __name__ == '__main__':
         elif sys.argv[1] == "all":
             generate_engines_config_file(refresh=False)
             generate_all_presets_cache(False)
+
+        elif sys.argv[1] == "test_lv2_plugins":
+            if len(sys.argv) > 3:
+                info = {
+                    'URL': sys.argv[2],
+                    'NAME': sys.argv[3]
+                }
+                test_lv2_plugin(info)
+            else:
+                for key, info in engines.items():
+                    if 'URL' in info and info['URL']:
+                        test_lv2_plugin(info)
 
     else:
         generate_engines_config_file(refresh=False)

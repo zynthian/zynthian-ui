@@ -366,12 +366,12 @@ class zynthian_engine_jalv(zynthian_engine):
                 self.proc.terminate()
                 try:
                     self.proc.communicate(timeout=5)
-                except:
+                except Exception as e:
                     logging.warning(f"Jalv engine '{self.name}' can't be terminated. Killing it! => {e}")
                     self.proc.kill()
                 self.proc = None
-            except Exception as err:
-                logging.error(f"Can't stop engine {self.name} => {err}")
+            except Exception as e:
+                logging.error(f"Can't stop engine {self.name} => {e}")
 
     def proc_cmd(self, cmd):
         #a = datetime.now()
