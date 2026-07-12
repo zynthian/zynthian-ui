@@ -142,8 +142,10 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value': 0,
                     'processor': processor,
                     'labels': ['off', 'on']
-                }),
-                'ab_mixgroup': zynthian_controller(self, 'ab_mixgroup', {
+                })
+            }
+            if processor.eng_code == "MI":
+                processor.controllers_dict['ab_mixgroup'] = zynthian_controller(self, 'ab_mixgroup', {
                     'name': "A/B",
                     'short_name': "A/B mix",
                     'is_integer': True,
@@ -153,8 +155,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'processor': processor,
                     'labels': ['none', 'A', 'B']
                 })
-            }
-            if processor.chain.chain_id == 0:
+            elif processor.chain.chain_id == 0:
                 processor.controllers_dict |= {
                     'aux level': zynthian_controller(self, 'aux level', {
                     'is_integer': False,
@@ -192,7 +193,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value_max': 1.0,
                     'value_min': 0.0,
                     'value_default': 0.0,
-                    'value': processor.zynmixer.get_global_xfader(),
+                    'value': self.state_manager.zynmixer_chan.get_global_xfader(),
                     'processor': processor,
                 })}
         return processor.controllers_dict
