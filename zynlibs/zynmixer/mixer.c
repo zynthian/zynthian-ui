@@ -56,9 +56,9 @@ uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
 #ifndef MIXBUS
 double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
 float g_xf_gain_A    = 0.0; // Crossfade A gain
-float g_reqxf_gain_A = 0.0; // Requsted vrossfade A gain
+float g_reqxf_gain_A = 1.0; // Requsted vrossfade A gain
 float g_xf_gain_B    = 1.0; // Crossfade B gain
-float g_reqxf_gain_B = 1.0; // Requested crossfade B gain
+float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
 #endif
 jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
 jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
