@@ -1,6 +1,4 @@
-
-import time
-
+from time import monotonic
 from zyngine.ctrldev.zynthian_ctrldev_akai_apc_key25_mk2 import zynthian_ctrldev_akai_apc_key25_mk2, NotePad, \
     MAX_STUTTER_VELFX, MAX_STUTTER_SPEED, \
     KNOB_1, KNOB_2, KNOB_3, KNOB_4, KNOB_5, KNOB_6, KNOB_7, KNOB_8, \
@@ -269,7 +267,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return False
 
             ctrlid = f'{type}{chain_id}'
-            now = time.perf_counter()
+            now = monotonic()
             then = self._knobmoves.get(ctrlid)
             within_time = ((then is not None) and ((now - then) < 0.2))
             cval = ccval / 127
@@ -447,7 +445,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 max = 420
                 val = min + (cval * (max - min))
                 ctrlid = 'tempo'
-                now = time.perf_counter()
+                now = monotonic()
                 then = self._knobmoves.get(ctrlid)
                 within_time = ((then is not None) and ((now - then) < 0.2))
 
@@ -470,7 +468,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     max = 1
                     val = min + (cval * (max - min))
                     ctrlid = f'level{mixer_chan}'
-                    now = time.perf_counter()
+                    now = monotonic()
                     then = self._knobmoves.get(ctrlid)
                     within_time = ((then is not None) and ((now - then) < 0.2))
 
