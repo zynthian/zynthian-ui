@@ -591,7 +591,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.toggle_mixer_param("record", pos)
             elif note == LED_AB:
                 pos = self.scroll_h + chan
-                self.toggle_mixer_param("ab_mixgroup", pos)
+                if self._shift:
+                    self.set_mixer_param("ab_mixgroup", pos, 0)
+                else:
+                    self.toggle_mixer_param("ab_mixgroup", pos)
             elif note == LED_CLIP_STOP:
                 pos = self.scroll_h + chan
                 midi_chan = self.get_filtered_midi_chan_by_index(pos)
