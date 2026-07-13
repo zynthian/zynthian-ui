@@ -206,6 +206,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
         def __init__(self, state_manager, driver, leds: zynthian_ctrldev_akai_apc_key25_mk2.FeedbackLEDs):
             self._knobmoves = {}
+            self._driver = driver
             super().__init__(state_manager, driver, leds)
 
 
@@ -218,7 +219,18 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return True
             else:
                 index = (ccnum - KNOB_1) + self.driver.scroll_h
-            self.driver.set_mixer_param("level", index, ccval)
+
+            if index == -1:
+                chain = self._chain_manager.chains[0]
+            else:
+                chain = self._driver.get_filtered_chain_by_index(index)
+
+            if chain and chain.zynmixer_proc:
+                try:
+                    zctrl = chain.zynmixer_proc.controllers_dict["level"]
+                    zctrl.midi_control_change(ccval)
+                finally:
+                    pass
             return True
 
         def _update_pan(self, ccnum, ccval):
@@ -230,7 +242,18 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return True
             else:
                 index = (ccnum - KNOB_1) + self.driver.scroll_h
-            self.driver.set_mixer_param("balance", index, ccval)
+
+            if index == -1:
+                chain = self._chain_manager.chains[0]
+            else:
+                chain = self._driver.get_filtered_chain_by_index(index)
+
+            if chain and chain.zynmixer_proc:
+                try:
+                    zctrl = chain.zynmixer_proc.controllers_dict["balance"]
+                    zctrl.midi_control_change(ccval)
+                finally:
+                    pass
             return True
 
         def _update_control(self, ccnum, ccval):
@@ -242,11 +265,14 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             else:
                 index = (ccnum - KNOB_1) + self.driver.scroll_h
             if index == -1:
-                self.driver.nudge_mixer_param("level", index, ccval, fine)
+                chain = self._chain_manager.chains[0]
+                zctrl = chain.zynmixer_proc.controllers_dict["level"]
+                zctrl.midi_control_change(ccval)
                 return True
             else:
                 try:
-                    zctrl = self._chain_manager.get_active_chain().zctrls[index]
+                    chain = self._chain_manager.get_active_chain()
+                    zctrl = chain.zctrls[index]
                     zctrl.midi_control_change(ccval)
                     return True
                 except:
