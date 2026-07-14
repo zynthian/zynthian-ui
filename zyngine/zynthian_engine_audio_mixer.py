@@ -42,7 +42,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         ['gain', ['gain', 'level', 'balance', 'mute']],
         ['toggles', ['solo', 'mono', 'phase', 'ms']],
         ['recorder', ['record']],
-        ['A/B mix', ['ab_mixgroup']],
+        ['A/B mix', ['ab_mixgroup', 'pfl']],
     ]
 
     # Function to initialize library
@@ -99,6 +99,16 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value_max': 1,
                     'value_default': 0,
                     'value': processor.zynmixer.get_solo(processor.mixer_chan),
+                    'processor': processor,
+                    'labels': ['off', 'on']
+                }),
+                'pfl': zynthian_controller(self, 'pfl', {
+                    'name': "S",
+                    'short_name': "pfl",
+                    'is_toggle': True,
+                    'value_max': 1,
+                    'value_default': 0,
+                    'value': processor.zynmixer.get_pfl(processor.mixer_chan),
                     'processor': processor,
                     'labels': ['off', 'on']
                 }),
@@ -221,7 +231,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     ['gain', ['gain', 'level', 'balance', 'mute']],
                     ['toggles', ['solo', 'mono', 'phase', 'ms']],
                     ['recorder', ['record']],
-                    ['cross-fader', ['global_xfader']],
+                    ['cross-fader', ['global_xfader', 'pfl']],
                     ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']]
                 ]
         else:

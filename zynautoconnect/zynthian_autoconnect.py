@@ -1105,6 +1105,18 @@ def audio_autoconnect():
         required_routes[f"zynmixer_bus:solo_a"].add("zynmixer_chan:solo_a")
         required_routes[f"zynmixer_bus:solo_b"].add("zynmixer_chan:solo_b")
 
+        # Connect PFL
+        required_routes[f"zynmixer_bus:pfl_a"].add("zynmixer_chan:pfl_a")
+        required_routes[f"zynmixer_bus:pfl_b"].add("zynmixer_chan:pfl_b")
+        try:
+            outs = zynthian_gui_config.pfl_output.split("+")
+            if len(outs) == 1:
+                outs.append(outs[0])
+            required_routes[all_audio_dst[int(outs[0])-1].name].add("zynmixer_bus:output_01a")
+            required_routes[all_audio_dst[int(outs[1])-1].name].add("zynmixer_bus:output_01b")
+        except:
+            pass
+
         # Connect global audio player to aux
         if state_manager.audio_player and state_manager.audio_player.jackname:
             ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)

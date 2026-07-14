@@ -615,7 +615,7 @@ enable_dpm = get_env_int('ZYNTHIAN_DPM', 1)
 hotplug_audio_enabled = get_env_int('ZYNTHIAN_HOTPLUG_AUDIO', 0)
 disabled_audio_in = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN', "").split(',')
 disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'headphones,b1,b2').split(',')
-
+pfl_output = os.environ.get('ZYNTHIAN_PFL_OUTPUT', "None")
 
 # ------------------------------------------------------------------------------
 # Text To Speech Options

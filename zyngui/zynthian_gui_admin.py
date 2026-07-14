@@ -166,6 +166,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((None, 0, "> AUDIO"))
 
         self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
+        self.list_data.append((self.pfl, 0, f"PFL Routing ({zynthian_gui_config.pfl_output})", ["Select which output to route prefade listen.", None]))
         self.list_data.append((self.show_tts, 0, "ZynVoice (text to speech)", ["Show the user interface text to speech accessibility options", None]))
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
@@ -400,6 +401,28 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def audio_levels(self, t='S'):
         logging.info("Audio Levels")
         self.zyngui.show_screen("alsa_mixer")
+
+    def pfl(self, t='S'):
+        logging.info("PFL routing")
+        port_count = len(zynautoconnect.get_hw_audio_dst_ports())
+        labels = ["None"]
+        for i in range(0, port_count, 2):
+            labels.append(f"{i+1}")
+            labels.append(f"{i+2}")
+            labels.append(f"{i+1}+{i+2}")
+        self.enable_param_editor(self, "PFL Output",
+                {'labels': labels, 'value': zynthian_gui_config.pfl_output},
+                self.pfl_cb)
+
+    def pfl_cb(self, value):
+        label = self.param_editor_zctrl.get_value2label(value)
+        logging.warning(f"{value} {label}")
+        zynthian_gui_config.pfl_output = label
+        zynconf.save_config({
+            "ZYNTHIAN_PFL_OUTPUT": zynthian_gui_config.pfl_output
+        })
+        zynautoconnect.request_audio_connect(True)
+        self.update_list()
 
     def show_tts(self, t='S'):
         logging.info("Text To Speech")

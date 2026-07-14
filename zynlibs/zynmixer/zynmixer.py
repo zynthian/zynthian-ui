@@ -412,9 +412,6 @@ class ZynMixer():
         zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="solo", value=solo, mixbus=self.mixbus)
 
-    # Function to get solo for a channel
-    # channel: Index of channel
-    # returns: Solo state (True if solod)
     def get_solo(self, channel):
         """
         Gets the solo state of a mixer strip
@@ -451,6 +448,61 @@ class ZynMixer():
 
     def get_global_solo(self):
         return self.lib_zynmixer.getGlobalSolo()
+
+    def set_pfl(self, channel, pfl):
+        """
+        Sets the PFL of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+        pfl : bool
+            True to PFL, False to unPFL
+        """
+
+        if channel is None:
+            return
+        self.lib_zynmixer.setPfl(channel, pfl)
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                       chan=channel, symbol="pfl", value=pfl, mixbus=self.mixbus)
+
+    def get_pfl(self, channel):
+        """
+        Gets the PFL state of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+
+        Returns
+        -------
+        bool
+            True if PFL enabled, False if disabled
+        """
+
+        if channel is None:
+            return
+        return self.lib_zynmixer.getPfl(channel)
+
+    def toggle_pfl(self, channel):
+        """
+        Toggle the PFL state of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of of the mixer strip
+        """
+
+        self.lib_zynmixer.togglePfl(channel)
+
+    def clear_pfl(self):
+        self.lib_zynmixer.clearPfl()
+
+    def get_global_pfl(self):
+        return self.lib_zynmixer.getGlobalPfl()
 
     def set_global_xfader(self, val):
         if not self.mixbus:
