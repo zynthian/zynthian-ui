@@ -237,6 +237,15 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, pos + 48, int((value + 1.0) * 63))
                 except:
                     pass
+        elif symbol == "pfl":
+            if mixbus and chan == 0:
+                return  # No control for main mixbus
+            try:
+                pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
+                if 0 <= pos < self.cols:
+                    lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
+            except TypeError:
+                pass
         elif symbol == "solo":
             if mixbus and chan == 0:
                 return  # No control for main mixbus
@@ -301,7 +310,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 continue
             proc = self.chain_manager.chains[chain_id].zynmixer_proc
             if proc:
-                for symbol in ("mute", "solo", "record", "ab_mixgroup"):
+                for symbol in ("mute", "pfl", "solo", "record", "ab_mixgroup"):
                     mixbus = proc.eng_code == "MR"
                     value = proc.controllers_dict[symbol].value
                     self.update_mixer_strip(pos, symbol, value, mixbus)
@@ -582,7 +591,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             # Track flag buttons
             elif note == LED_SOLO:
                 pos = self.scroll_h + chan
-                self.toggle_mixer_param("solo", pos)
+                if self._shift:
+                    self.toggle_mixer_param("solo", pos)
+                else:
+                    self.toggle_mixer_param("pfl", pos)
             elif note == LED_ACTIVATOR:
                 pos = self.scroll_h + chan
                 self.toggle_mixer_param("mute", pos)
