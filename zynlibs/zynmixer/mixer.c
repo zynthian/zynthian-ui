@@ -60,11 +60,14 @@ float g_xf_gain_A    = 0.0; // Crossfade A gain
 float g_reqxf_gain_A = 1.0; // Requested crossfade A gain
 float g_xf_gain_B    = 1.0; // Crossfade B gain
 float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
+#else
+jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
+jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
 #endif
 jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
 jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
-jack_port_t* g_pflPortA;   // Pointer to PFL trunk port A
-jack_port_t* g_pflPortB;   // Pointer to PFL trunk port B
+jack_port_t* g_pflOutPortA;// Pointer to PFL output port A
+jack_port_t* g_pflOutPortB;// Pointer to PFL output port B
 
 // Structure describing a channel strip
 struct channel_strip {
@@ -197,7 +200,7 @@ void* eventThreadFn(void* param) {
 }
 
 static int onJackProcess(jack_nframes_t frames, void* args) {
-    jack_default_audio_sample_t *pPflA, *pPflB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
+    jack_default_audio_sample_t *pPflInA, *pPflInB, *pPflOutA, *pPflOutB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
     unsigned int frame;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM, fpreFaderSampleA, fpreFaderSampleB;
 
@@ -215,8 +218,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         pSoloA = jack_port_get_buffer(g_soloPortA, frames);
         pSoloB = jack_port_get_buffer(g_soloPortB, frames);
     }
-    pPflA = jack_port_get_buffer(g_pflPortA, frames);
-    pPflB = jack_port_get_buffer(g_pflPortB, frames);
+    pPflOutA = jack_port_get_buffer(g_pflOutPortA, frames);
+    pPflOutB = jack_port_get_buffer(g_pflOutPortB, frames);
 
 #ifdef MIXBUS
     // Clear the mixbus output buffers to allow them to be directly populated with effects return normalisd frames.
@@ -227,8 +230,12 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         memcpy(g_soloBufferA, pSoloA, frames * sizeof(jack_default_audio_sample_t));
         memcpy(g_soloBufferB, pSoloB, frames * sizeof(jack_default_audio_sample_t));
     }
-    memcpy(g_pflBufferA, pPflA, frames * sizeof(jack_default_audio_sample_t));
-    memcpy(g_pflBufferB, pPflB, frames * sizeof(jack_default_audio_sample_t));
+
+    // Populate PFL output buffers from trunk
+    pPflInA = jack_port_get_buffer(g_pflInPortA, frames);
+    pPflInB = jack_port_get_buffer(g_pflInPortB, frames);
+    memcpy(pPflOutA, pPflInA, frames * sizeof(jack_default_audio_sample_t));
+    memcpy(pPflOutB, pPflInB, frames * sizeof(jack_default_audio_sample_t));
 
 #else
     // Clear solo send buffers
@@ -238,10 +245,9 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         g_soloBufferA = pSoloA; // We will populate the trunk directly
         g_soloBufferB = pSoloB;
     }
-    memset(pPflA, 0.0, frames * sizeof(jack_default_audio_sample_t));
-    memset(pPflB, 0.0, frames * sizeof(jack_default_audio_sample_t));
-    g_pflBufferA = pPflA; // We will populate the trunk directly
-    g_pflBufferB = pPflB;
+    // Clear PFL buffers
+    memset(pPflOutA, 0.0, frames * sizeof(jack_default_audio_sample_t));
+    memset(pPflOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
     // Clear send buffers.
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
         if (g_fxSends[send]) {
@@ -393,8 +399,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     g_soloBufferB[frame] += fSampleB;
                 }
                 if (strip->pfl) {
-                    g_pflBufferA[frame] += fpreFaderSampleA;
-                    g_pflBufferB[frame] += fpreFaderSampleB;
+                    pPflOutA[frame] += fpreFaderSampleA;
+                    pPflOutB[frame] += fpreFaderSampleB;
                 }
 #ifdef MIXBUS
                 // Add frames to main mixbus normalise buffer
@@ -469,14 +475,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
 #ifndef MIXBUS
     g_xf_gain_A = g_reqxf_gain_A;
     g_xf_gain_B = g_reqxf_gain_B;
-#else
-    // Populate monitoring output (output_01)
-    pChanOutA = jack_port_get_buffer(g_channelStrips[1]->outPortA, frames);
-    pChanOutB = jack_port_get_buffer(g_channelStrips[1]->outPortB, frames);
-    for (frame = 0; frame < frames; ++frame) {
-        pChanOutA[frame] = pPflA[frame];
-        pChanOutB[frame] = pPflB[frame];
-    }
 #endif
 
     if (g_nDampingCount == 0)
@@ -542,10 +540,6 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
     free(g_soloBufferB);
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
     g_soloBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    free(g_pflBufferA);
-    free(g_pflBufferB);
-    g_pflBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    g_pflBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
 #ifdef MIXBUS
     free(g_mainNormaliseBufferA);
     free(g_mainNormaliseBufferB);
@@ -554,6 +548,7 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
 #else
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         if (g_fxSends[chan]) {
+            //!@todo Do not cache jack_port_get_buffer
             g_fxSends[chan]->bufferA = jack_port_get_buffer(g_fxSends[chan]->outPortA, g_buffersize);
             g_fxSends[chan]->bufferB = jack_port_get_buffer(g_fxSends[chan]->outPortB, g_buffersize);
         }
@@ -597,43 +592,59 @@ int init() {
     fprintf(stderr, "libzynmixer: Registering as '%s'.\n", jack_get_client_name(g_pJackClient));
 #endif
 
-    // Solo ports
+    int ports_ok = 0;
+   // Solo ports
 #ifdef MIXBUS
     unsigned long solo_port_flags = JackPortIsInput;
 #else
     unsigned long solo_port_flags = JackPortIsOutput;
 #endif
-    if (!(g_soloPortA = jack_port_register(g_jackClient, "solo_a", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0))) {
-        fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_a");
-        return -1;
-    }
-    if (!(g_soloPortB = jack_port_register(g_jackClient, "solo_b", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0))) {
-        fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_b");
-        jack_port_unregister(g_jackClient, g_soloPortA);
-        return -1;
-    }
+    ports_ok |= !(g_soloPortA = jack_port_register(g_jackClient, "solo_a", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0));
+    ports_ok |= !(g_soloPortB = jack_port_register(g_jackClient, "solo_b", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0));
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
     g_soloBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
 
-    // PFL ports
-#ifdef MIXBUS
-    unsigned long pfl_port_flags = JackPortIsInput;
-#else
-    unsigned long pfl_port_flags = JackPortIsOutput;
-#endif
-    if (!(g_pflPortA = jack_port_register(g_jackClient, "pfl_a", JACK_DEFAULT_AUDIO_TYPE, pfl_port_flags, 0))) {
-        fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_a");
-        return -1;
-    }
-    if (!(g_pflPortB = jack_port_register(g_jackClient, "pfl_b", JACK_DEFAULT_AUDIO_TYPE, pfl_port_flags, 0))) {
-        fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_b");
-        jack_port_unregister(g_jackClient, g_pflPortA);
-        return -1;
-    }
-    g_pflBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    g_pflBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
+    ports_ok |= !(g_pflOutPortA = jack_port_register(g_jackClient, "pfl_out_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
+    ports_ok |= !(g_pflOutPortB = jack_port_register(g_jackClient, "pfl_out_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
 
 #ifdef MIXBUS
+    // PFL ports
+    ports_ok |= !(g_pflInPortA = jack_port_register(g_jackClient, "pfl_in_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0));
+    ports_ok |= !(g_pflInPortB = jack_port_register(g_jackClient, "pfl_in_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0));
+#endif
+
+    // Check all ports have been created
+    if (ports_ok) {
+        if(g_soloPortA)
+            jack_port_unregister(g_jackClient, g_soloPortA);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_a");
+        if(g_soloPortB)
+            jack_port_unregister(g_jackClient, g_soloPortB);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_b");
+        if(g_pflOutPortA)
+            jack_port_unregister(g_jackClient, g_pflOutPortA);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_out_a");
+        if(g_pflOutPortB)
+            jack_port_unregister(g_jackClient, g_pflOutPortB);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_out_b");
+#ifdef MIXBUS
+        if(g_pflInPortA)
+            jack_port_unregister(g_jackClient, g_pflInPortA);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_in_a");
+        if(g_pflInPortB)
+            jack_port_unregister(g_jackClient, g_pflInPortB);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_in_b");
+#endif
+        return -1;
+    }
+
+    #ifdef MIXBUS
     int8_t id = addStrip(); // Main mixbus
     id = addStrip(); // Aux mixbus
     setLevel(id, 1.0); // Default unity gain for aux bus
@@ -696,8 +707,6 @@ void end() {
     // Release dynamically created resources
     free(g_soloBufferA);
     free(g_soloBufferB);
-    free(g_pflBufferA);
-    free(g_pflBufferB);
 #ifdef MIXBUS
     free(g_mainNormaliseBufferA);
     free(g_mainNormaliseBufferB);
@@ -1222,6 +1231,7 @@ int8_t addSend() {
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
+            //!@todo Do not cache jack_port_get_buffer
             psend->bufferA = jack_port_get_buffer(psend->outPortA, g_buffersize);
             psend->bufferB = jack_port_get_buffer(psend->outPortB, g_buffersize);
             psend->level = 1.0;
