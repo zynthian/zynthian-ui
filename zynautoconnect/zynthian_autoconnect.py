@@ -1106,14 +1106,15 @@ def audio_autoconnect():
         required_routes[f"zynmixer_bus:solo_b"].add("zynmixer_chan:solo_b")
 
         # Connect PFL
-        required_routes[f"zynmixer_bus:pfl_a"].add("zynmixer_chan:pfl_a")
-        required_routes[f"zynmixer_bus:pfl_b"].add("zynmixer_chan:pfl_b")
+        required_routes[f"zynmixer_bus:pfl_in_a"].add("zynmixer_chan:pfl_out_a")
+        required_routes[f"zynmixer_bus:pfl_in_b"].add("zynmixer_chan:pfl_out_b")
         try:
             outs = zynthian_gui_config.pfl_output.split("+")
             if len(outs) == 1:
                 outs.append(outs[0])
-            required_routes[all_audio_dst[int(outs[0])-1].name].add("zynmixer_bus:output_01a")
-            required_routes[all_audio_dst[int(outs[1])-1].name].add("zynmixer_bus:output_01b")
+            hw_ports = get_hw_audio_dst_ports()
+            required_routes[hw_ports[int(outs[0])-1].name].add("zynmixer_bus:pfl_out_a")
+            required_routes[hw_ports[int(outs[1])-1].name].add("zynmixer_bus:pfl_out_b")
         except:
             pass
 

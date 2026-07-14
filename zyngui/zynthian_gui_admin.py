@@ -416,7 +416,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
     def pfl_cb(self, value):
         label = self.param_editor_zctrl.get_value2label(value)
-        logging.warning(f"{value} {label}")
         zynthian_gui_config.pfl_output = label
         zynconf.save_config({
             "ZYNTHIAN_PFL_OUTPUT": zynthian_gui_config.pfl_output
