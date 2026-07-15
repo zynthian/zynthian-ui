@@ -60,8 +60,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
         ['voice limit', '/part$i/Pvoicelimit', 0, 60],
         ['drum mode', '/part$i/Pdrummode', 'off', 'off|on'],
-        ['assign mode', '/part$i/polyType', 'poly',
-         [['poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3]]],
+        ['assign mode', '/part$i/polyType', 'poly', [['poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3]]],
 
         # ['portamento on/off', 65, 'off', 'off|on'],
         ['portamento enable', '/part$i/ctl/portamento.portamento', 'off', 'off|on'],

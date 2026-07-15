@@ -46,9 +46,9 @@ class zynthian_engine_sfz(zynthian_engine):
         ['volume', 7, 96],
         ['pan', 10, 64],
         #['modulation wheel', 1, 0],
-        # ['breath', 2, 127],
+        #['breath', 2, 127],
 
-        ['expression', 11, 127],
+        #['expression', 11, 127],
         #['legato', 68, 'off', ['off', 'on']],
 
         #['portamento on/off', 65, 'off', ['off', 'on']],
@@ -64,7 +64,7 @@ class zynthian_engine_sfz(zynthian_engine):
 
     # Controller Screens
     default_ctrl_screens = [
-        ['main', ['volume', 'pan', 'expression']],
+        ['main', ['volume', 'pan']],
         #['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']],
         #['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
     ]
