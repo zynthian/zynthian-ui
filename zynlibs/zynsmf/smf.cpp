@@ -5,6 +5,7 @@
 
 #include <cstring> //provides strcmp, memset
 #include <stdio.h> //provides printf
+#include <endian.h> //provides be16toh & Co.
 
 #define MAX_TRACKS 16 // Maximum quantity of tracks automatically created
 #define DPRINTF(fmt, args...)                                                                                                                                  \
@@ -24,7 +25,7 @@ int Smf::fileWrite8(uint8_t nValue, FILE* pFile) {
 
 uint8_t Smf::fileRead8(FILE* pFile) {
     uint8_t nResult = 0;
-    fread(&nResult, 1, 1, pFile);
+    if (fread(&nResult, 1, 1, pFile) != 1) { return 0; }
     return nResult;
 }
 
@@ -36,12 +37,8 @@ int Smf::fileWrite16(uint16_t nValue, FILE* pFile) {
 
 uint16_t Smf::fileRead16(FILE* pFile) {
     uint16_t nResult = 0;
-    for (int i = 1; i >= 0; --i) {
-        uint8_t nValue;
-        fread(&nValue, 1, 1, pFile);
-        nResult |= nValue << (i * 8);
-    }
-    return nResult;
+    if (fread(&nResult, sizeof(uint16_t), 1, pFile) != 1) { return 0; }
+    return be16toh(nResult);
 }
 
 int Smf::fileWrite32(uint32_t nValue, FILE* pFile) {
@@ -52,12 +49,8 @@ int Smf::fileWrite32(uint32_t nValue, FILE* pFile) {
 
 uint32_t Smf::fileRead32(FILE* pFile) {
     uint32_t nResult = 0;
-    for (int i = 3; i >= 0; --i) {
-        uint8_t nValue;
-        fread(&nValue, 1, 1, pFile);
-        nResult |= nValue << (i * 8);
-    }
-    return nResult;
+    if (fread(&nResult, sizeof(uint32_t), 1, pFile) != 1) { return 0; }
+    return be32toh(nResult);
 }
 
 int Smf::fileWriteVar(uint32_t nValue, FILE* pFile) {
@@ -190,7 +183,10 @@ bool Smf::load(char* sFilename) {
                     nMetaType      = fileRead8(pFile);
                     nMessageLength = fileReadVar(pFile);
                     pData          = new uint8_t[nMessageLength + 1];
-                    fread(pData, nMessageLength, 1, pFile);
+                    if (fread(pData, nMessageLength, 1, pFile) != 1) {
+                        fprintf(stderr, "Short read of meta event\n");
+                        return false;
+                    }
                     pEvent = new Event(nPosition, EVENT_TYPE_META, nMetaType, nMessageLength, pData);
                     pTrack->addEvent(pEvent);
                     if (nMetaType == 0x51)
@@ -227,7 +223,10 @@ bool Smf::load(char* sFilename) {
                     } else {
                         DPRINTF("Escape sequence %u bytes\n", nMessageLength);
                         pData = new uint8_t[nMessageLength];
-                        fread(pData, nMessageLength, 1, pFile);
+                        if (fread(pData, nMessageLength, 1, pFile) != 1) {
+                            fprintf(stderr, "Short read of escape sequence\n");
+                            return false;
+                        }
                         pEvent = new Event(nPosition, EVENT_TYPE_ESCAPE, 0, nMessageLength, pData);
                         pTrack->addEvent(pEvent);
                         nRunningStatus = 0;
@@ -245,14 +244,20 @@ bool Smf::load(char* sFilename) {
                     case 0xE0: // Pitchbend
                         // MIDI commands with 2 parameters
                         pData = new uint8_t[2];
-                        fread(pData, 1, 2, pFile);
+                        if (fread(pData, 1, 2, pFile) != 1) {
+                            fprintf(stderr, "Short read of pitchbend\n");
+                            return false;
+                        }
                         pEvent = new Event(nPosition, EVENT_TYPE_MIDI, nStatus, 2, pData);
                         pTrack->addEvent(pEvent);
                         break;
                     case 0xC0: // Program Change
                     case 0xD0: // Channel Pressure
                         pData = new uint8_t;
-                        fread(pData, 1, 1, pFile);
+                        if (fread(pData, 1, 1, pFile) != 1) {
+                            fprintf(stderr, "Error reading channel pressure\n");
+                            return false;
+                        }
                         pEvent = new Event(nPosition, EVENT_TYPE_MIDI, nStatus, 1, pData);
                         pTrack->addEvent(pEvent);
                         break;
