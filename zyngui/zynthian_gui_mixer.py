@@ -2390,6 +2390,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 return True
         return False
 
+    def cuia_back(self, params):
+        if params and params[0] == 'B':
+            self.zyngui.show_screen("chain_manager")
+            return True
+        return False
+
     def setup_zynpots(self):
         if zynthian_gui_config.num_zynpots > 3:
             npots = len(self.ctrl_order)
