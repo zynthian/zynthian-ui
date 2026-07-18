@@ -101,7 +101,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         self.bank_config = {}
 
-        self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 \
+        self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=128 \
 -o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' \
 -o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 \
 -o synth.reverb.active=0".format(self.jackname, self.jackname)
