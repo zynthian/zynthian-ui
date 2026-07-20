@@ -262,7 +262,7 @@ def load_engines():
 
     # Remove not supported engines
     for key in list(engines.keys()):
-        if rbpi_version_number < 5 and engines[key]['URL'] in rpi5_plugins:
+        if rbpi_version_number < 5 and 'URL' in engines[key] and engines[key]['URL'] in rpi5_plugins:
             logging.debug(f"Removing {key} from engine list.")
             engines.pop(key, None)
 
