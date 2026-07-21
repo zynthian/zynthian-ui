@@ -40,7 +40,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
         self.title = "Main Menu"
 
     def build_view(self):
-        if zynthian_gui_config.check_wiring_layout(("V5", "Z2")):
+        if zynthian_gui_config.check_wiring_layout(("V5", "Z2") or zynthian_gui_config.screen_width < 480):
             self.columns = 3
             self.config = [{
                 "title": "Add\nChain",

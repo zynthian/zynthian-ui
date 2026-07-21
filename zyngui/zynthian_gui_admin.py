@@ -787,7 +787,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             {"icon": "cancel.png", "title": "Cancel", "action": self.zyngui.close_screen},
             {"icon": "poweroff.png", "title": "Shutdown", "action": self.power_off_confirmed},
             {"icon": "reboot.png", "title": "Reboot", "action": self.reboot_confirmed}
-        ])
+        ], cols=3)
         self.zyngui.show_screen("grid_sel")
 
     def reboot_confirmed(self, params=None):
