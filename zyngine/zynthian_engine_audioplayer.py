@@ -237,6 +237,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
             processor.preset_info = None
             return None
 
+        # Check that audio file exists and it's valid...
+        if not os.path.isfile(preset[0]) or zynaudioplayer.get_file_duration(preset[0]) <= 0:
+            processor.preset_index = 0
+            processor.preset_name = None
+            processor.preset_info = None
+            return None
+
         if zynaudioplayer.get_filename(processor.handle) == preset[0] and \
            zynaudioplayer.get_file_duration(preset[0]) == zynaudioplayer.get_duration(processor.handle):
             return False
@@ -406,14 +413,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
             return False
 
     def load_latest(self, processor):
-
         bank_dirs = [self.root_bank_dirs[0][1] + "/capture"]
         bank_dirs += zynconf.get_external_storage_dirs(zynthian_engine.ex_data_dir)
-
         wav_fpaths = []
         for bank_dir in bank_dirs:
             wav_fpaths += glob(f"{bank_dir}/*.wav")
-
         if len(wav_fpaths) > 0:
             latest_fpath = max(wav_fpaths, key=os.path.getctime)
             bank_fpath = os.path.dirname(latest_fpath)
