@@ -970,8 +970,11 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         except:
             logging.error(f"Wrong clipboard index => {i}")
             return
+        if dst_pattern is None:
+            dst_pattern = self.pattern
         # Don't paste from None or over itself
-        if paste is None or paste[2] == self.pattern:
+        if paste is None or paste[2] == dst_pattern:
+            logging.warning(f"Can't paste => {paste}")
             return
         # Overwriting an empty pattern doesn't need confirmation
         #if self.zynseq.libseq.getLastStep() == -1:
@@ -985,17 +988,19 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     # Function to actually copy pattern
     def do_paste_pattern(self, params):
-        i = params[0]
         dst_pattern = params[1]
+        if dst_pattern is None:
+            logging.error("No destiny where paste to!")
+            return
+        i = params[0]
         try:
             paste = self.clipboard[i]
         except:
             logging.error(f"Wrong clipboard index => {i}")
             return
-        if dst_pattern is None:
-            dst_pattern = self.pattern
         # Don't paste from None or over itself
         if paste is None or paste[2] == dst_pattern:
+            logging.warning(f"Can't paste => {paste}")
             return
         # Paste from clipboard to current pattern
         self.zynseq.libseq.copyPattern(paste[2], dst_pattern)
