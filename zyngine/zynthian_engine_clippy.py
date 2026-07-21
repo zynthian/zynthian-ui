@@ -237,13 +237,16 @@ class zynthian_engine_clippy(zynthian_engine):
         """
 
         #self.libclippy.insertClip(proc_to.midi_chan - 16, phrase_to)
-        for symbol in zctrl_symbols:
-            try:
-                from_zctrl = proc_from.controllers_dict[f"{symbol} {phrase_from + 1}"]
-                to_zctrl = proc_to.controllers_dict[f"{symbol} {phrase_to + 1}"]
-                to_zctrl.set_value(from_zctrl.value)
-            except:
-                pass
+
+        if self.set_state_pre_note(proc_to, phrase_to + 1):
+            for symbol in zctrl_symbols:
+                try:
+                    from_zctrl = proc_from.controllers_dict[f"{symbol} {phrase_from + 1}"]
+                    to_zctrl = proc_to.controllers_dict[f"{symbol} {phrase_to + 1}"]
+                    to_zctrl.set_value(from_zctrl.value)
+                except:
+                    pass
+            self.set_state_post_note(proc_to, phrase_to + 1)
 
     # ---------------------------------------------------------------
     # Sample loading, cropping & warping
@@ -708,35 +711,46 @@ class zynthian_engine_clippy(zynthian_engine):
         note = 1
         while True:
             # Iterate until note exceeds quantity of clips (controllers)
-            try:
-                crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
-                crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
-                zoom_zctrl = processor.controllers_dict[f"zoom {note}"]
-            except:
+            if not self.set_state_pre_note(processor, note):
                 break
-            crop_start_options = {"value": 0, "value_max": MAX_FRAMES}
-            crop_end_options =  {"value": MAX_FRAMES, "value_max": MAX_FRAMES}
-            crop_start_zctrl.set_options(crop_start_options)
-            crop_end_zctrl.set_options(crop_end_options)
-            zoom_options = {
-                "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
-                "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
-            }
-            zoom_zctrl.set_options(zoom_options)
             note += 1
+
+    def set_state_pre_note(self, processor, note):
+        # Iterate until note exceeds quantity of clips (controllers)
+        try:
+            crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
+            crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
+            zoom_zctrl = processor.controllers_dict[f"zoom {note}"]
+        except:
+            return False
+        crop_start_options = {"value": 0, "value_max": MAX_FRAMES}
+        crop_end_options =  {"value": MAX_FRAMES, "value_max": MAX_FRAMES}
+        crop_start_zctrl.set_options(crop_start_options)
+        crop_end_zctrl.set_options(crop_end_options)
+        zoom_options = {
+            "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
+            "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
+        }
+        zoom_zctrl.set_options(zoom_options)
+        return True
 
     def set_state_post(self, processor):
         note = 1
         while True:
             # Iterate until note exceeds quantity of clips (file controllers)
-            try:
-                file_zctrl = processor.controllers_dict[f"file {note}"]
-            except:
+            if not self.set_state_post_note(processor, note):
                 break
-            phrase = note - 1
-            self.set_file(processor, phrase, autoreset=False)
             note += 1
         self.last_tempo_change = self.zynseq.libseq.getTempo()
+
+    def set_state_post_note(self, processor, note):
+        try:
+            file_zctrl = processor.controllers_dict[f"file {note}"]
+        except:
+            return False
+        phrase = note - 1
+        self.set_file(processor, phrase, autoreset=False)
+        return True
 
     # ---------------------------------------------------------------------------
     # Processor Management

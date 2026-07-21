@@ -2290,7 +2290,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
         except:
             logging.error(f"Wrong clipboard index => {i}")
 
-
     # Function to check if can paste clipboard[i] to selected cell
     # Return:
     #  None => Can't paste. Cell types doesn't match.

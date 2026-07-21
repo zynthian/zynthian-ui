@@ -299,6 +299,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 a_data = self.sf.read(block_size, always_2d=True)
                 if len(a_data) == 0:
                     break
+                offset2 = len(a_data)
             else:
                 offset1 = x * frames_per_pixel
                 offset2 = offset1 + frames_per_pixel
@@ -415,13 +416,24 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                         beats_per_bar = self.zyngui.state_manager.zynseq.get_sequence_param(self.clip_info[0], self.clip_info[1], zynseq.PHRASE_CHANNEL, "bpb")
                         if beats_per_bar < 1:
                             beats_per_bar = self.zyngui.state_manager.zynseq.bpb
-                        for i in range(1, self.beats):
-                            x = x1 + i * (x2 - x1) // self.beats
-                            if i % beats_per_bar == 0:
-                                dash = None
+                        dx = (x2 - x1) // self.beats
+                        if dx > 4:
+                            if dx < 16:
+                                n = self.beats // beats_per_bar
+                                plot_beats = False
                             else:
-                                dash = (2, 2)
-                            self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=dash, tags="beat_markers")
+                                n = self.beats
+                                plot_beats = True
+                            for i in range(1, n):
+                                x = x1 + i * (x2 - x1) // n
+                                if plot_beats:
+                                    if i % beats_per_bar == 0:
+                                        dash = None
+                                    else:
+                                        dash = (2, 2)
+                                else:
+                                    dash = None
+                                self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=dash, tags="beat_markers")
                         #self.widget_canvas.tag_raise("beat_markers")
                 # Playing cursor (implemented for clippy)
                 if self.clip_info:
