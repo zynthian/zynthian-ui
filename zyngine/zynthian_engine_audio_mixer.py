@@ -103,7 +103,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'pfl': zynthian_controller(self, 'pfl', {
-                    'name': "S",
+                    'name': "PFL",
                     'short_name': "pfl",
                     'is_toggle': True,
                     'value_max': 1,

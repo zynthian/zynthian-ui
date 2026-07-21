@@ -128,6 +128,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         gtrans = lib_zyncore.get_global_transpose()
         if gtrans > 0:
             display_val = f"+{gtrans}"
+        elif gtrans == 0:
+            display_val = "None"
         else:
             display_val = f"{gtrans}"
         self.list_data.append((self.edit_global_transpose, 0, f"Global Transpose ({display_val})",
@@ -159,7 +161,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         #self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
         self.list_data.append((self.pfl, 0, f"PFL Output ({zynthian_gui_config.pfl_output})", ["Select which output to route pre-fader listen.", None]))
-        self.list_data.append((self.show_tts, 0, "ZynVoice (TTS)", ["Text to speech accessibility options", None]))
+        self.list_data.append((self.show_tts, 0, "ZynVoice", ["Text to speech accessibility options", None]))
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
                 self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",
@@ -206,7 +208,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["Quantity of chains shown in mixer", None]))
         self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
                                ["Quantity of launchers shown in mixer", None]))
-        self.list_data.append((self.mixer_toggle, 0, f"Toggle Control ({zynthian_gui_config.mixer_toggle})",
+        self.list_data.append((self.mixer_toggle, 0, f"Mixer Toggle Control ({zynthian_gui_config.mixer_toggle})",
                                ["The toggle control to show at top of each mixer channel", None]))
         if zynthian_gui_config.preset_preload:
             self.list_data.append((self.toggle_preset_preload, 0, "\u2612 Preset Preload",
@@ -511,7 +513,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
     def mixer_toggle(self):
         self.enable_param_editor(self, "Toggle Control",
-                                 {'labels': ['solo', 'mono', 'phase', 'ms', 'record'], 'value': zynthian_gui_config.mixer_toggle},
+                                 {'labels': ['solo', 'pfl', 'mono', 'phase', 'ms', 'record'], 'value': zynthian_gui_config.mixer_toggle},
                                  self.mixer_toggle_cb)
 
     def toggle_snapshot_mixer_settings(self):
