@@ -206,7 +206,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     pass
 
-
     def nudge_phrase(self, phrase, forward):
         """ Move a phrase forward or backward by one position
         Args:
@@ -227,6 +226,24 @@ class zynthian_engine_clippy(zynthian_engine):
                     processor.controllers_dict[f"{symbol} {phrase + 2}"].symbol = f"{symbol} {phrase2 + 1}"
             except:
                 pass # Ignore unpopulated phrases
+
+    def copy_clip(self, proc_from, phrase_from, proc_to, phrase_to):
+        """ Copy a clip
+        Args:
+            proc_from: Clip process to copy from
+            phrase_from: Index of phrase to copy from
+            proc_to: Clip process to copy to
+            phrase_to: Index of phrase to copy to
+        """
+
+        #self.libclippy.insertClip(proc_to.midi_chan - 16, phrase_to)
+        for symbol in zctrl_symbols:
+            try:
+                from_zctrl = proc_from.controllers_dict[f"{symbol} {phrase_from + 1}"]
+                to_zctrl = proc_to.controllers_dict[f"{symbol} {phrase_to + 1}"]
+                to_zctrl.set_value(from_zctrl.value)
+            except:
+                pass
 
     # ---------------------------------------------------------------
     # Sample loading, cropping & warping
@@ -388,6 +405,14 @@ class zynthian_engine_clippy(zynthian_engine):
                 file_zctrl.nudge(1)
         except Exception as e:
             logging.error(e)
+
+    def is_clip_busy(self, proc, phrase):
+        try:
+            if proc.controllers_dict[f"file {phrase + 1}"].value:
+                return True
+        except Exception as e:
+            logging.error(e)
+        return False
 
     # ---------------------------------------------------------------
     # Callbacks to re-warp sample file when needed (on-the-fly)

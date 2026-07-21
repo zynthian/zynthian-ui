@@ -1170,9 +1170,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.right_canvas.bind("<Button-4>", self.on_wheel)
         self.right_canvas.bind("<Button-5>", self.on_wheel)
 
+        # Configure ALT mode layout depending on hardware
         self.pated = None
-        self.clipboard = None
-        self.wsleds_i_clipboard = None
+        self.clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste, shared by all pated instances.
+        if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
+            self.switch_i_clipboard = [11, 15]
+            self.wsleds_i_clipboard = [10, 11]
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+            self.switch_i_clipboard = [10, 11]
+            self.wsleds_i_clipboard = [10, 11]
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
+            self.switch_i_clipboard = None
+            self.wsleds_i_clipboard = None
+        else:
+            self.switch_i_clipboard = None
+            self.wsleds_i_clipboard = None
 
         self.update_layout()
         self.tts_title = "Mixer"
@@ -1423,11 +1435,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
             zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh_launchers)
 
-        # Setup pattern editor and clipboard functionality
+        # Setup pattern editor reference
         self.pated = self.zyngui.screens["pattern_editor"]
-        self.clipboard = self.pated.clipboard
-        self.wsleds_i_clipboard = self.pated.wsleds_i_clipboard
-        self.switch_i_clipboard = self.pated.switch_i_clipboard
 
         return True
 
@@ -2245,8 +2254,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case "loop_count":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followRepeat", zctrl.value)
 
+
     # --------------------------------------------------------------------------
-    # Physical UI Control Management: Pots & switches
+    # Copy/Paste functionality
     # --------------------------------------------------------------------------
 
     def get_selected_pattern(self):
@@ -2256,6 +2266,89 @@ class zynthian_gui_mixer(zynthian_gui_base):
            and self.highlighted_strip.chain.midi_chan < 16:
             return self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0)
         return None
+
+    def get_selected_clippy_proc(self):
+        chain = self.chain_manager.get_active_chain()
+        if type(chain.midi_chan) is int and 15 < chain.midi_chan <  zynseq.PHRASE_CHANNEL:
+            return chain.get_processors()[0]
+        return None
+
+    # Function to copy selected launcher's cell to clipboard[i]
+    def copy_to_clipboard(self, i=0):
+        pattern = self.get_selected_pattern()
+        if pattern:
+            src_info = ("PAT", self.zynseq.phrase, self.highlighted_strip.chan, pattern)
+        else:
+            clippy_proc = self.get_selected_clippy_proc()
+            if clippy_proc:
+                src_info = ("CLP", self.zynseq.phrase, self.highlighted_strip.chan, clippy_proc)
+            else:
+                logging.warning(f"Selected cell can't be copied to clipboard!")
+                return
+        try:
+            self.clipboard[i] = src_info
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+
+
+    # Function to check if can paste clipboard[i] to selected cell
+    # Return:
+    #  None => Can't paste. Cell types doesn't match.
+    #  False => Can't paste. Can't copy on itself
+    #  True => Can paste.
+    def can_paste_from_clipboard(self, i=0):
+        try:
+            src_info = self.clipboard[i]
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+            return None
+        if src_info[0] == "PAT":
+            pattern = self.get_selected_pattern()
+            if not pattern:
+                return None
+            if pattern == src_info[3]:
+                return False
+            return True
+        elif src_info[0] == "CLP":
+            clippy_proc = self.get_selected_clippy_proc()
+            if not clippy_proc:
+                return None
+            if clippy_proc == src_info[3] and self.zynseq.phrase == src_info[1]:
+                return False
+            return True
+
+    # Function to paste clipboard[i] to selected cell
+    def paste_from_clipboard(self, i=0):
+        try:
+            src_info = self.clipboard[i]
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+            return
+        if src_info[0] == "PAT":
+            pattern = self.get_selected_pattern()
+            if pattern and pattern != src_info[3]:
+                self.pated.paste_pattern(src_info, pattern)
+        elif src_info[0] == "CLP":
+            clippy_proc = self.get_selected_clippy_proc()
+            if not clippy_proc or (clippy_proc == src_info[3] and self.zynseq.phrase == src_info[1]):
+                return
+            if clippy_proc.engine.is_clip_busy(clippy_proc, self.zynseq.phrase):
+                self.zyngui.show_confirm(f"Overwrite this audio clip?", self.do_copy_clippy, [src_info, clippy_proc])
+            else:
+                self.do_copy_clippy([src_info, clippy_proc])
+
+    # Function to actually copy pattern
+    def do_copy_clippy(self, params):
+        try:
+            src_info = params[0]
+            clippy_proc = params[1]
+            clippy_proc.engine.copy_clip(src_info[3], src_info[1], clippy_proc, self.zynseq.phrase)
+        except Exception as e:
+            logging.error(e)
+
+    # --------------------------------------------------------------------------
+    # Physical UI Control Management: Pots & switches
+    # --------------------------------------------------------------------------
 
     def switch_select(self, type='S'):
         """ Function to handle SELECT button press
@@ -2344,20 +2437,15 @@ class zynthian_gui_mixer(zynthian_gui_base):
         # ALT mode => Use F1-F2 as copy/paste buttons
         if self.launcher_mode and self.alt_mode\
            and self.switch_i_clipboard and swi in self.switch_i_clipboard:
-            # Currently only pattern clips! => TODO Extend to audio clips!
-            pattern = self.get_selected_pattern()
-            if pattern :
-                index = self.switch_i_clipboard.index(swi)
-                if t == "S":
-                    self.pated.paste_pattern(index, pattern)
-                    self.zynseq.refresh_state()
-                    self.refresh_launchers()
-                    return True
-                elif t == "B":
-                    src_info = [self.zynseq.phrase, self.highlighted_strip.chan, pattern]
-                    self.pated.copy_pattern(index, src_info)
-                    return True
-
+            index = self.switch_i_clipboard.index(swi)
+            if t == "S":
+                self.paste_from_clipboard(index)
+                self.zynseq.refresh_state()
+                self.refresh_launchers()
+                return True
+            elif t == "B":
+                self.copy_to_clipboard(index)
+                return True
         return False
 
     def cuia_v5_zynpot_switch(self, params):
@@ -2560,18 +2648,19 @@ class zynthian_gui_mixer(zynthian_gui_base):
         # CTRL button
         wsl.set_led(leds[15], wsl.wscolor_active2)
 
-        # Copy/paste buttons => Only available for pattern clips
+        # Copy/paste buttons
         if self.launcher_mode and self.wsleds_i_clipboard:
-            pattern = self.get_selected_pattern()
-            if pattern:
-                for i, wsli in enumerate(self.wsleds_i_clipboard):
-                    if self.clipboard[i] is not None:
-                        if self.clipboard[i][2] == pattern:
-                            wsl.blink(leds[wsli], wsl.wscolor_red)
-                        else:
-                            wsl.blink(leds[wsli], wsl.wscolor_active2)
-                    else:
-                        wsl.set_led(leds[wsli], wsl.wscolor_active2)
+            for i, wsli in enumerate(self.wsleds_i_clipboard):
+                if self.clipboard[i] is None:
+                    wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                else:
+                    cpfc = self.can_paste_from_clipboard(i)
+                    if cpfc is None:
+                        wsl.blink(leds[wsli], wsl.wscolor_red)
+                    elif cpfc == False:
+                        wsl.blink(leds[wsli], wsl.wscolor_active2)
+                    elif cpfc == True:
+                        wsl.blink(leds[wsli], wsl.wscolor_active)
 
     def tts_info(self, params=None):
         if not self.zyngui.tts:
