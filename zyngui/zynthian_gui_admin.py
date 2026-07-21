@@ -721,12 +721,12 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.zyngui.show_info("TEST AUDIO")
         # self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
         self.killable_start_command(
-            [f"mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -ao jack {self.data_dir}/audio/test.mp3"])
+            [f"mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -ao jack {self.data_dir}/files/Audio/Oya.mp3"])
         zynautoconnect.request_audio_connect()
 
     def test_midi(self):
         logging.info("TESTING MIDI")
-        self.state_manager.toggle_midi_playback(f"{self.data_dir}/mid/test.mid")
+        self.state_manager.toggle_midi_playback(f"{self.data_dir}/files/Midi/roland_take5.mid")
         self.zyngui.show_screen("midi_recorder")
 
     def control_test(self, t='S'):

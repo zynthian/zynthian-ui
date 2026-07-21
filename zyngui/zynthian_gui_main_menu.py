@@ -55,11 +55,11 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "icon": "delete.png",
                 "action": self.clean
             }, {
-                "title": "MIDI\nIN",
+                "title": "MIDI\nInput",
                 "icon": "midi_input.png",
                 "action": self.zyngui.midi_in_config
             }, {
-                "title": "MIDI\nOUT",
+                "title": "MIDI\nOutput",
                 "icon": "midi_output.png",
                 "action": self.zyngui.midi_in_config
             }, {
