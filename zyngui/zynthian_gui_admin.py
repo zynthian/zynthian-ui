@@ -128,6 +128,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         gtrans = lib_zyncore.get_global_transpose()
         if gtrans > 0:
             display_val = f"+{gtrans}"
+        elif gtrans == 0:
+            display_val = "None"
         else:
             display_val = f"{gtrans}"
         self.list_data.append((self.edit_global_transpose, 0, f"Global Transpose ({display_val})",
