@@ -391,7 +391,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libseq.updateSequenceInfo()
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
             if phrase == self.selected_phrase:
-                self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
+                self._ctrl_screens = [["Clip", [f"file {note}", f"mode {note}", "record"]]]
                 processor.preset_name = ""
                 processor.init_ctrl_screens(force_refresh=True)
 
