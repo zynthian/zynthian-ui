@@ -239,6 +239,7 @@ class zynthian_engine_clippy(zynthian_engine):
         #self.libclippy.insertClip(proc_to.midi_chan - 16, phrase_to)
 
         if self.set_state_pre_note(proc_to, phrase_to + 1):
+            proc_to.set_state_flag = True
             for symbol in zctrl_symbols:
                 try:
                     from_zctrl = proc_from.controllers_dict[f"{symbol} {phrase_from + 1}"]
@@ -247,6 +248,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     pass
             self.set_state_post_note(proc_to, phrase_to + 1)
+            proc_to.set_state_flag = False
 
     # ---------------------------------------------------------------
     # Sample loading, cropping & warping
