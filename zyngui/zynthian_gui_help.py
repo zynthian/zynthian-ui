@@ -147,8 +147,8 @@ class zynthian_gui_help(HtmlFrame):
 
     def set_html(self, html):
         self.loading_overlay.place(relwidth=1, relheight=1) # Avoid showing until fully rendered
-        self.path = ""
-        self.load_html(html, base_url=f"file://{self.ui_dir}/help/")
+        self.path = f"{self.ui_dir}/help"
+        self.load_html(html, base_url=f"file://{self.path}/")
         self.history = []
         self.links = []
         self.link = None

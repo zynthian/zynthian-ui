@@ -242,7 +242,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
  <head>
   <link rel="stylesheet" href="style_details.css">
  </head>
- <body>
+ <body class="help_ui">
  <div class="details_container">
   <h1>{eng_info['NAME']}</h1>
   <div class="engine_path">{path}</div>
