@@ -326,17 +326,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
     def select_action(self, i, t='S'):
         if t == 'S':
             action = self.list_data[i][0]
-            if action == "MIDI Channel":
-                self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_all=True)
-                self.zyngui.show_screen('midi_chan')
-                return
-            elif action == "MIDI CC":
-                self.zyngui.screens['midi_cc'].set_chain(self.chain)
-                self.zyngui.show_screen('midi_cc')
-                return
-            elif action == "Note Range & Transpose":
-                self.zyngui.screens['midi_key_range'].config(self.chain)
-                self.zyngui.show_screen('midi_key_range')
             wait = 2  # Delay after starting service to allow jack ports to update
             if action == "stop_jacknetumpd":
                 self.zyngui.state_manager.stop_netump(wait=wait)
@@ -364,30 +353,43 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
             elif self.chain:
-                if action == "audio2midi":
+                if action == "MIDI Channel":
+                    self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_all=True)
+                    self.zyngui.show_screen('midi_chan')
+                    return
+                elif action == "MIDI CC":
+                    self.zyngui.screens['midi_cc'].set_chain(self.chain)
+                    self.zyngui.show_screen('midi_cc')
+                    return
+                elif action == "Note Range & Transpose":
+                    self.zyngui.screens['midi_key_range'].config(self.chain)
+                    self.zyngui.show_screen('midi_key_range')
+                    return
+                elif action == "audio2midi":
                     self.chain.toggle_midi_in(self.list_data[i][1])
                 else:
+                    # Change mode
                     idev = self.list_data[i][1]
                     if self.midi_input:
                         if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                             return
-                        lib_zyncore.zmop_set_route_from(
-                            self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
+                        lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
                     else:
                         try:
                             if idev is not None:
-                                dev_id = zynautoconnect.get_midi_out_dev(
-                                    idev).aliases[0]
+                                dev_id = zynautoconnect.get_midi_out_dev(idev).aliases[0]
                                 self.chain.toggle_midi_out(dev_id)
                             elif isinstance(action, int):
                                 self.chain.toggle_midi_out(action)
                         except Exception as e:
                             logging.error(e)
-                self.update_list()
-
-        # Change mode
+            else:
+                self.show_options()
+                return
         elif t == 'B':
             self.show_options()
+            return
+        self.update_list()
 
     def set_mode(self, input):
         self.midi_input = input
