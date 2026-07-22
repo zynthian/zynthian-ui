@@ -120,7 +120,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 self._ctrl_screens = [
                     ["Clip", [f"file {note}", f"gain {note}", "record"]],
                     ["Crop", [f"crop_start {note}", f"crop_end {note}", f"beats {note}", f"zoom {note}"]],
-                    ["Options", [f"warp {note}", f"beat_slice {note}", f"mode {note}"]]
+                    ["Options", [f"warp {note}", f"beat_slice {note}", f"mode "]]
                 ]
                 # Set monitor values (for widget)
                 for symbol in ["zoom", "crop_start", "crop_end", "warp", "beats", "gain"]:
@@ -128,11 +128,11 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Set processor name for display
                 processor.preset_name = file_path.split("/")[-1]
             else:
-                self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
+                self._ctrl_screens = [["Clip", [f"file {note}", f"mode {note}", "record"]]]
                 self.monitors_dict = {}
                 processor.preset_name = ""
         except:
-            self._ctrl_screens = [["Clip", ["file"]]]
+            self._ctrl_screens = [["Clip", [f"file {note}", f"mode {note}", "record"]]]
             self.monitors_dict = {}
             processor.preset_name = ""
         processor.init_ctrl_screens(force_refresh=True)
@@ -386,7 +386,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
         else:
             self.libseq.setPlayState(self.zynseq.scene, phrase, processor.midi_chan, zynseq.SEQ_STOPPED)
-            self.set_mode(phrase, processor.midi_chan, 0) # Disable if no clip loaded
+            #self.set_mode(phrase, processor.midi_chan, 0) # Disable if no clip loaded
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
             self.libseq.updateSequenceInfo()
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
@@ -540,7 +540,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
                     "value_min": 0,
                     "value_max": 25,
-                    "value": 0
+                    "value": 1
                 }),
             f"gain {note}": zynthian_controller(self, f"gain {note}", {
                     "name": "gain (dB)",
@@ -781,8 +781,7 @@ class zynthian_engine_clippy(zynthian_engine):
         for phrase in range(self.zynseq.phrases):
             note = phrase + 1
             self.add_controllers(processor, note)
-            self.set_mode(phrase, processor.midi_chan, 0)
-            #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
+            self.set_mode(phrase, processor.midi_chan, 1)
         self.set_phrase(processor, self.zynseq.phrase)
 
     def remove_processor(self, processor):
