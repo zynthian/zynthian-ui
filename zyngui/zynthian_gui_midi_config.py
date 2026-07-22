@@ -136,7 +136,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
         def get_info(text="", has_options=True):
             if has_options:
-                actions_info = "Bold select for options.\n"
+                if self.chain:
+                    actions_info = "Bold select for options.\n"
+                else:
+                    actions_info = "Select for options.\n"
             else:
                 actions_info = ""
             mode_info = ""
