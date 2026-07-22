@@ -120,7 +120,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 self._ctrl_screens = [
                     ["Clip", [f"file {note}", f"gain {note}", "record"]],
                     ["Crop", [f"crop_start {note}", f"crop_end {note}", f"beats {note}", f"zoom {note}"]],
-                    ["Options", [f"warp {note}", f"beat_slice {note}", f"mode "]]
+                    ["Options", [f"warp {note}", f"beat_slice {note}", f"mode {note}"]]
                 ]
                 # Set monitor values (for widget)
                 for symbol in ["zoom", "crop_start", "crop_end", "warp", "beats", "gain"]:
