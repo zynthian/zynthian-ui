@@ -2054,10 +2054,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.build_launchers()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Clone phrase"):
+            self.state_manager.start_busy("clone_phrase", "Cloning phrase...")
             self.zynseq.duplicate_phrase(self.zynseq.scene, params)
             self.zynseq.phrase += 1
             self.build_launchers()
             self.moving_phrase = True
+            self.state_manager.end_busy("clone_phrase")
             self.zyngui.show_screen("launcher")
         elif option.startswith("Delete phrase"):
             self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
