@@ -178,7 +178,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "title": "Stop Audio\nRecording" if self.state_manager.audio_recorder.status else "Start Audio\nRecording",
                 "action": self.toggle_audio_record
             }, {
-                "icon": "file_audio.png",
+                "icon": "folder_audio.png",
                 "title": "Audio\nPlayer",
                 "action": self.zyngui.cuia_audio_file_list
             }, {
@@ -186,7 +186,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "title": "Stop MIDI\nRecording" if self.state_manager.status_midi_recorder else "Start MIDI\nRecording",
                 "action": self.toggle_midi_record
             }, {
-                "icon": "file_midi.png",
+                "icon": "folder_midi.png",
                 "title": "MIDI\nPlayer",
                 "action": self.zyngui.cuia_screen_midi_recorder
             }

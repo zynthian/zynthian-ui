@@ -160,8 +160,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((None, 0, "> AUDIO"))
 
         #self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
-        self.list_data.append((self.pfl, 0, f"PFL Output ({zynthian_gui_config.pfl_output})", ["Select which output to route pre-fader listen.", None]))
-        self.list_data.append((self.show_tts, 0, "ZynVoice", ["Text to speech accessibility options", None]))
+        self.list_data.append((self.pfl, 0, f"PFL Output ({zynthian_gui_config.pfl_output})", ["Select the audio output device for pre-fader listening.", "headphones.png"]))
+        self.list_data.append((self.show_tts, 0, "ZynVoice", ["Text to speech accessibility options", "audio_options.png"]))
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
                 self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",
@@ -171,7 +171,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                        ["RBPi onboard headphone output (Lo-Fi) is disabled", "headphones.png"]))
 
         self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio",
-                               ["Configure USB audio hotplug.\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always remain connected and not a device used for ZynVoice.", "audio_options.png"]))
+                               ["Configure hotplug USB audio interfaces.\nWhen enabled, USB audio interfaces will be detected and available. The main audio interface, that must always remain connected, is not included, nor the interface used for ZynVoice.", "audio_options.png"]))
 
         if zynthian_gui_config.snapshot_mixer_settings:
             self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots",
@@ -198,18 +198,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.wifi_index = len(self.list_data) - 1
         if zynconf.is_service_active("vncserver0"):
             self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server",
-                                   ["Display of zynthian UI and processors' native GUI via VNC enabled.\nThis uses more CPU. It is advised to disable during performance.", "network.png"]))
+                                   ["Display zynthian UI and processors' native GUI via VNC.\n This uses more CPU. It is advised to disable during performance.", "network.png"]))
         else:
             self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server",
-                                   ["Display of zynthian UI and processors' native GUI via VNC disabled.", "network.png"]))
+                                   ["Display zynthian UI and processors' native GUI via VNC.\n This uses more CPU. It is advised to disable during performance.", "network.png"]))
 
         self.list_data.append((None, 0, "> USER INTERFACE"))
         self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
-                               ["Quantity of chains shown in mixer", None]))
+                               ["Quantity of chains shown in mixer", "settings.png"]))
         self.list_data.append((self.visible_launchers, 0, f"Visible Launchers ({zynthian_gui_config.visible_launchers})",
-                               ["Quantity of launchers shown in mixer", None]))
+                               ["Quantity of launchers shown in mixer", "settings.png"]))
         self.list_data.append((self.mixer_toggle, 0, f"Mixer Toggle Control ({zynthian_gui_config.mixer_toggle})",
-                               ["The toggle control to show at top of each mixer channel", None]))
+                               ["The toggle control to show at top of each mixer channel", "settings.png"]))
         if zynthian_gui_config.preset_preload:
             self.list_data.append((self.toggle_preset_preload, 0, "\u2612 Preset Preload",
                                    ["Pre-load presets while browsing the list", "settings.png"]))
@@ -225,7 +225,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 case _:
                     touch_navigation_option = "None"
             self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}",
-                                   ["Select touch interface mode.\n\nFor touch-only devices with 5\" screen or less, select touch-widgets.\nFor large touch screen, select V5...\nFor full hardware device, e.g. V5, select None", "settings.png"]))
+                                   ["Enable touch-screen V5 buttons.", "settings.png"]))
         #if self.zyngui.capture_log_fname:
         #    self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Capture Workflow", ["End workflow capture session", "capture.png"]))
         #else:
@@ -249,7 +249,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                    ["Control Voltage configuration.", "settings.png"]))
         if self.state_manager.update_available:
             self.list_data.append((self.update_software, 0, "Update Software",
-                                   ["Updates firmware and software from Internet.\n\nThis option is only shown when updates are availale, indicated by the \u21bb icon in the topbar.\nDo not poweroff during update which may take several minutes.", "update.png"]))
+                                   ["Updates software from Internet.\n\nThis option is only shown when updates are availale (\u21bb icon in the topbar).\nDon't poweroff while updating!", "update.png"]))
         # self.list_data.append((self.update_system, 0, "Update Operating System"))
         if zynthian_gui_config.control_test_enabled:
             self.list_data.append((self.control_test, 0, "Test control HW",

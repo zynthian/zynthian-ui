@@ -60,13 +60,13 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
                     title = "\u2612 Bypass"
                 else:
                     title = "\u2610 Bypass"
-                self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", None]))
+                self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", "bypass.png"]))
 
         # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator") and self.processor.chain is not None:
             if self.processor.chain.get_processor_count(self.processor.type) > 1:
                 self.list_data.append((self.start_move, None, "Move",
-                                       ["Move processor position within chain.\n\nUse knob 3 to nudge along chain, moving between parallel and serial positioning. Use knob 4 to move to another chain.", None]))
+                                       ["Move processor position within chain.\n\nUse knob 3 to nudge along chain, moving between parallel and serial positioning. Use knob 4 to move to another chain.", "move_up_down.png"]))
 
         # Replace and Remove processor
         if self.processor.eng_code not in ("MI", "MR"):
@@ -74,40 +74,37 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
                 eng_options = self.processor.engine.get_options()
                 if eng_options['replace']:
                     self.list_data.append((self.replace, None, f"Replace {self.processor.name}",
-                                           ["Replace this processor with another of simlar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", None]))
+                                           ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
             else:
                 self.list_data.append((self.replace, None, "Replace",
-                                           ["Replace this processor with another of simlar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", None]))
+                                           ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
 
-            if self.processor.type == "MIDI Tool" or self.processor.type == "Audio Effect":
-                self.list_data.append((self.processor_remove, None, "Remove",
-                                       ["Remove this processor from the chain.", None]))
+            if self.processor.type in ("MIDI Tool", "Audio Effect"):
+                self.list_data.append((self.processor_remove, None, "Remove", ["Remove this processor from the chain.", "delete.png"]))
 
         #if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
         #    self.list_data.append((self.preset_list, None, "Presets"))
 
         if self.processor.type == "MIDI Synth":
             self.list_data.append((self.randomize, None, "Randomize parameters",
-                                   ["Change all processor parameters to random values.\n\nThis is truely random so may produce undesirable effect, but can undo randomization.", None]))
+                                   ["Change all processor parameters to random values.\n\nThis is truely random so may produce undesirable effect, but can undo randomization.", "dice.png"]))
             if self.last_random:
-                self.list_data.append((self.undo_randomize, None, "Undo Randomize",
-                                       ["Undo the last parameter randomization.", None]))
+                self.list_data.append((self.undo_randomize, None, "Undo Randomize", ["Undo the last parameter randomization.", "back.png"]))
 
         self.list_data.append((self.midi_clean, None, "Clean MIDI-learn",
-                               ["Remove CC bindings from all parameters in this processor.", None]))
+                               ["Remove CC bindings from all parameters in this processor.", "delete_presets.png"]))
         #self.list_data.append((self.control_view, None, "Control View"))
         # Processor info
-        self.list_data.append((self.show_details, None, "Info",
-                               ["Show information about this processor.", None]))
+        self.list_data.append((self.show_details, None, "Info", ["Show information about this processor.", "info.png"]))
 
         self.list_data.append((None, None, "> Add to chain"))
         pos = "series" if self.processor.type in ["MIDI Synth", "MIDI Tool"] or self.processor.eng_code in ["MI", "MX"] else "parallel"
         if self.processor.type in ("MIDI Synth", "MIDI Tool"):
             self.list_data.append((self.add_midi_processor, None, "Insert MIDI Processor",
-                                   [f"Insert a new MIDI processor in the chain in {pos} with this processor.", None]))
+                                   [f"Insert a new MIDI processor in the chain in {pos} with this processor.", "midi_processor.png"]))
         if self.processor.type in ("MIDI Synth", "Audio Effect", "Audio Generator"):
             self.list_data.append((self.add_audio_processor, None, "Insert Audio Processor",
-                                   [f"Insert a new audio processor in the chain in {pos} with this processor.", None]))
+                                   [f"Insert a new audio processor in the chain in {pos} with this processor.", "audio_processor.png"]))
 
         super().fill_list()
 
