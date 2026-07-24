@@ -1,4 +1,4 @@
-import time
+from time import monotonic
 
 from zyncoder.zyncore import lib_zyncore
 
@@ -293,7 +293,7 @@ class zynthian_ctrldev_akai_apc_key25_sooperlooper(zynthian_ctrldev_akai_apc_key
             value_range = abs(value_max - value_min)
             value = value_min + val * value_range
             ctrlid = f'{ctrl}{loopnum}'
-            now = time.perf_counter()
+            now = monotonic()
             then = self._knobmoves.get(ctrlid)
             if ((then is not None) and ((now - then) < 0.2)) or (abs(value - curval) < (abs(value_max - value_min) * 0.01)):
                 new_value = value_min + val * value_range
