@@ -2492,6 +2492,25 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[i], 0)
             lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[npots - 1], 1)
 
+    def zynpot_abs(self, i, val):
+        # Knob#1 sets selected chain's level
+        if i == 0:
+            if self.highlighted_strip is not None:
+                self.highlighted_strip.set_volume(val)
+
+        # Knob#2 sets selected chain's balance/pan
+        elif i == 1:
+            if self.highlighted_strip is not None:
+                self.highlighted_strip.set_balance((val * 2) - 1)
+
+        # Knob#3 set main mixbus level
+        elif i == 2:
+            self.chain_strips[-1].set_volume(val)
+
+        # Knob#4 sets main mixbus balance
+        elif i == 3:
+            self.chain_strips[-1].set_balance((val * 2) - 1)
+
     def zynpot_cb(self, i, dval):
         """ Function to handle zynpot callback
         """
