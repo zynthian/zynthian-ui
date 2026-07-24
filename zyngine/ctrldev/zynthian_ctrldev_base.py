@@ -564,6 +564,25 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
             except:
                 logging.warning(f"Failed to set {param} to {value}")
 
+    def set_mixer_param_cc(self, param, pos, ccval):
+        """Set a mixer parameter value using a MIDI CC value
+
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain, -x to count from right)
+        ccval - MIDI CC value (0-127) that must be mapped to mixer param range
+        """
+
+        if pos == -1:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.get_filtered_chain_by_index(pos)
+        if chain and chain.zynmixer_proc:
+            try:
+                zctrl = chain.zynmixer_proc.controllers_dict[param]
+                zctrl.midi_control_change(ccval)
+            except:
+                logging.warning(f"Failed to set {param} value from MIDI CC value {ccval}")
+
     def nudge_mixer_param(self, param, pos, value, fine=False):
         """Set a mixer parameter value
 
