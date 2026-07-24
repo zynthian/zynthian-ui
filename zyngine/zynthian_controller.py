@@ -585,6 +585,7 @@ class zynthian_controller:
 
         except Exception as e:
             logging.error(e)
+            return 0
 
     def get_ctrl_midi_val(self):
         try:

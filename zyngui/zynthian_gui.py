@@ -1549,7 +1549,10 @@ class zynthian_gui:
 
     # Back action
     def cuia_back(self, params=None):
-        self.back_screen()
+        if params and params[0] == 'B':
+            self.show_screen_reset('root')
+        else:
+            self.back_screen()
 
     # Select action => it receives type of action: S, B, L
     def cuia_select_action(self, params=None):
@@ -1740,7 +1743,7 @@ class zynthian_gui:
         if callable(show_menu_func):
             show_menu_func()
             return
-        self.show_screen("chain_manager")
+        self.show_screen("main_menu")
 
     def cuia_bank_preset(self, params=None):
         if self.is_shown_alsa_mixer():

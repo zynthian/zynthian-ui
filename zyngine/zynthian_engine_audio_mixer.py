@@ -39,10 +39,10 @@ class zynthian_engine_audio_mixer(zynthian_engine):
 
     # Controller Screens
     _ctrl_screens = [
-        ['gain', ['gain', 'level', 'balance', 'mute']],
-        ['toggles', ['solo', 'mono', 'phase', 'ms']],
+        ['lavel', ['gain', 'level', 'balance']],
+        ['toggles', ['mute', 'solo', 'pfl', 'ab_mixgroup']],
+        ['signal', ['mono', 'phase', 'ms']],
         ['recorder', ['record']],
-        ['A/B mix', ['ab_mixgroup', 'pfl']],
     ]
 
     # Function to initialize library
@@ -103,7 +103,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'pfl': zynthian_controller(self, 'pfl', {
-                    'name': "S",
+                    'name': "PFL",
                     'short_name': "pfl",
                     'is_toggle': True,
                     'value_max': 1,
@@ -219,8 +219,9 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 send = self.state_manager.zynmixer_chan.add_send()
                 processor.name = f"Aux Mixbus {send}"
                 self._ctrl_screens = [
-                    ['gain', ['gain', 'level', 'balance', 'mute']],
-                    ['toggles', ['solo', 'mono', 'phase', 'ms']],
+                    ['level', ['gain', 'level', 'balance']],
+                    ['toggles', ['mute', 'solo', 'pfl']],     # TODO => 'ab_mixgroup'
+                    ['signal', ['mono', 'phase', 'ms']],
                     ['recorder', ['record']]
                 ]
             else:
@@ -228,11 +229,11 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 processor.mixer_chan = 0
                 processor.name = "Main Mixbus"
                 self._ctrl_screens = [
-                    ['gain', ['gain', 'level', 'balance', 'mute']],
-                    ['toggles', ['solo', 'mono', 'phase', 'ms']],
-                    ['recorder', ['record']],
-                    ['cross-fader', ['global_xfader', 'pfl']],
-                    ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']]
+                    ['level', ['gain', 'level', 'balance','global_xfader']],
+                    ['toggles', ['mute', 'solo', 'pfl']],
+                    ['signal', ['mono', 'phase', 'ms']],
+                    ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']],
+                    ['recorder', ['record']]
                 ]
         else:
             # Normal audio mixer strip

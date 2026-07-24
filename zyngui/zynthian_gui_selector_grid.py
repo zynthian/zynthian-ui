@@ -77,6 +77,10 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
     def update_layout(self):
         super().update_layout()
+        self.update_geometry()
+        self._draw_nodes()
+
+    def update_geometry(self):
         # Formula 2 * (x // y) ensures even values which helps with spacing and dividers
         self.SPACING = 2 * (self.width // (self.columns * 20))
         self.BLOCK_WIDTH = 2 * ((self.width - self.SPACING) // (self.columns * 2)) - self.SPACING
@@ -85,7 +89,6 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.font = (zynthian_gui_config.font_family, int(0.06 * self.BLOCK_WIDTH))
         icon_h = self.BLOCK_HEIGHT - int(0.5 * self.SPACING)
         self.icon_size = (icon_h, icon_h)
-        self._draw_nodes()
 
     def build_view(self):
         self._draw_nodes()
@@ -98,7 +101,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             if self.zyngui.tts:
                 self.zyngui.tts.announce(self.config[self.selected_node]["title"], False, False, False)
 
-    def setup(self, title, config, cols=None, select=0):
+    def setup(self, title, config, cols=3, select=0):
         """
         Configure the buttons
         Args:
@@ -107,12 +110,14 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             cols: Quantity of columns (Optional. Default: 3)
             select: Button to select (Optional. Default: 0)
         """
-
-        self.title = self.tts_title = title
-        self.config = config
         if cols:
             self.columns = cols
-        self.set_title(title)
+        else:
+            self.columns = 3
+        self.update_geometry()
+        self.title = self.tts_title = title
+        self.set_title(self.title)
+        self.config = config
         self.selected_node = select
 
     def get_icon(self, icon_fname=None):

@@ -76,15 +76,15 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
         if midi_proc_count > 0:
             self.list_data.append((self.remove_all_midifx, None, "Remove all MIDI-FX",
-                                   ["Remove all MIDI-FX processors from this chain.", "delete_processors.png"]))
+                                   ["Remove all MIDI-FX processors from this chain.", "delete_midi_processors.png"]))
 
-        if audio_proc_count > 1:
+        if audio_proc_count > 0:
             self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
                                    ["Remove all audio-FX processors from this chain.", "delete_audio_processors.png"]))
 
         if self.chain.get_processor_count():
             self.list_data.append((self.clear_midi_learn, None, "Clean MIDI Learn",
-                                   ["Remove CC bindings from all parameters of all processors in this chain.", "midi_learn.png"]))
+                                   ["Remove CC bindings from all parameters of all processors in this chain.", "delete_presets.png"]))
 
         self.list_data.append((None, None, "> Chain"))
 

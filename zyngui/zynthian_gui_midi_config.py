@@ -134,32 +134,54 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 mode_str += " "
             return mode_str
 
+        def get_info(text="", has_options=True):
+            if has_options:
+                if self.chain:
+                    actions_info = "Bold select for options.\n"
+                else:
+                    actions_info = "Select for options.\n"
+            else:
+                actions_info = ""
+            mode_info = ""
+            if self.midi_input:
+                if not self.chain:
+                    actions_info += "Push #3 for MIDI OUT.\n"
+                if has_options:
+                    mode_info += f"ICONS KEY:\n"
+                    mode_info += f"{ZMIP_ICON_MODE_ACTIVE} Active mode\n"
+                    mode_info += f"{ZMIP_ICON_MODE_MULTI} Multitimbral mode\n"
+                    mode_info += f"{ZMIP_ICON_SEQ_EXCL} Sequencer capture\n"
+                    mode_info += f"{ZMIP_ICON_MIDI_CLOCK} MIDI Clock\n"
+                    #mode_info += f"{ZMIP_ICON_MIDI_SYS} System non-RT\n"
+                    #mode_info += f"{ZMIP_ICON_MIDI_SYS_RT} System RT\n"
+                    mode_info += f"{ZMIP_ICON_CTRLDEV_DRIVER} Driver loaded\n"
+            else:
+                if not self.chain:
+                    actions_info += "Push #3 for MIDI IN.\n"
+            info = ""
+            if text:
+                info += text + "\n"
+            if mode_info:
+                if info:
+                    info += "\n"
+                info += mode_info
+            return info + "\n" + actions_info
+
         def append_port(idev):
             """Add a port to list"""
             if self.midi_input:
                 port = zynautoconnect.devices_in[idev]
                 mode = get_mode_str(idev)
-                input_mode_info = f"\n\nICONS KEY:\n"
-                input_mode_info += f"{ZMIP_ICON_MODE_ACTIVE} Active mode\n"
-                input_mode_info += f"{ZMIP_ICON_MODE_MULTI} Multitimbral mode\n"
-                input_mode_info += f"{ZMIP_ICON_SEQ_EXCL} Sequencer capture\n"
-                input_mode_info += f"{ZMIP_ICON_MIDI_CLOCK} MIDI Clock\n"
-                #input_mode_info += f"{ZMIP_ICON_MIDI_SYS} System non-RT\n"
-                #input_mode_info += f"{ZMIP_ICON_MIDI_SYS_RT} System RT\n"
-                input_mode_info += f"{ZMIP_ICON_CTRLDEV_DRIVER} Driver loaded"
+
                 if self.chain is None:
-                    self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}",
-                                           [f"Has option menu'.{input_mode_info}", "midi_input.png"]))
+                    self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}", [get_info(), "midi_input.png"]))
                 elif not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
-                    self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}",
-                                           [f"Captured by driver.\n\nHas option menu.{input_mode_info}", "midi_input.png"]))
+                    self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}", [get_info("Captured by driver."), "midi_input.png"]))
                 else:
                     if lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev):
-                        self.list_data.append((port.aliases[0], idev, f"\u2612 {mode}{port.aliases[1]}",
-                                               [f"Connected to chain.\n\nHas option menu.{input_mode_info}", "midi_input.png"]))
+                        self.list_data.append((port.aliases[0], idev, f"\u2612 {mode}{port.aliases[1]}", [get_info("Connected to chain."), "midi_input.png"]))
                     else:
-                        self.list_data.append((port.aliases[0], idev, f"\u2610 {mode}{port.aliases[1]}",
-                                               [f"Disconnected from chain.\n\nHas option menu.{input_mode_info}", "midi_input.png"]))
+                        self.list_data.append((port.aliases[0], idev, f"\u2610 {mode}{port.aliases[1]}", [get_info("Disconnected from chain."), "midi_input.png"]))
             else:
                 port = zynautoconnect.devices_out[idev]
                 if port.aliases[0] in zynautoconnect.get_midi_clock_output_ports():
@@ -167,14 +189,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 else:
                     name = port.aliases[1]
                 if self.chain is None:
-                    self.list_data.append((port.aliases[0], idev, name,
-                                           [f"Has option menu'.", "midi_output.png"]))
+                    self.list_data.append((port.aliases[0], idev, name, [get_info(), "midi_output.png"]))
                 elif port.aliases[0] in self.chain.midi_out:
-                    self.list_data.append((port.aliases[0], idev, f"\u2612 {name}",
-                                           [f"Connected to chain.\n\nHas option menu.", "midi_output.png"]))
+                    self.list_data.append((port.aliases[0], idev, f"\u2612 {name}", [get_info("Connected to chain."), "midi_output.png"]))
                 else:
-                    self.list_data.append((port.aliases[0], idev, f"\u2610 {name}",
-                                           [f"Disconnected to chain.\n\nHas option menu.", "midi_output.png"]))
+                    self.list_data.append((port.aliases[0], idev, f"\u2610 {name}", [get_info("Disconnected to chain."), "midi_output.png"]))
 
         def append_service(service, name, help_info="", icon="midi_logo.png"):
             try:
@@ -183,9 +202,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 idev = None
             if zynconf.is_service_active(service):
                 mode = get_mode_str(idev)
-                self.list_data.append((f"stop_{service}", idev, f"\u2612 {mode}{name}", [f"Disable {help_info}", icon]))
+                self.list_data.append((f"stop_{service}", idev, f"\u2612 {mode}{name}", [get_info(f"Disable {help_info}", False), icon]))
             else:
-                self.list_data.append((f"start_{service}", idev, f"\u2610 {name}", [f"Enable {help_info}", icon]))
+                self.list_data.append((f"start_{service}", idev, f"\u2610 {name}", [get_info(f"Enable {help_info}", False), icon]))
 
         def atoi(text):
             return int(text) if text.isdigit() else text
@@ -223,12 +242,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             midi_chan = self.chain.midi_chan + 1
             if midi_chan > 16:
                 midi_chan = "ALL"
-            self.list_data.append(("MIDI Channel", None, f"MIDI Channel ({midi_chan})",
-                                   [f"Select the MIDI channel this chain receives.", "midi_settings.png"]))
-            self.list_data.append(("Note Range & Transpose", None, "Note Range & Transpose",
-                                   [f"Configure note range and transpose.", "note_range.png"]))
+            self.list_data.append(("MIDI Channel", None, f"MIDI Channel ({midi_chan})", [get_info("Select the MIDI channel this chain receives.", False), "midi_settings.png"]))
+            self.list_data.append(("Note Range & Transpose", None, "Note Range & Transpose", [get_info("Configure note range and transpose.", False), "note_range.png"]))
             self.list_data.append(("MIDI CC", None, "MIDI CC",
-                                   [f"Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
+                                   [get_info("Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", False),
+                                    "midi_settings.png"]))
 
         self.list_data.append((None, None, "Internal Devices"))
         nint = len(self.list_data)
@@ -288,9 +306,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             self.list_data.append((None, None, "> Audio to MIDI"))
             for name, title in a2m_ports:
                 if name in self.chain.midi_in:
-                    self.list_data.append(("audio2midi", name, f"\u2612 {title}", ["Connected from chain.", "midi_audio.png"]))
+                    self.list_data.append(("audio2midi", name, f"\u2612 {title}", [get_info("Connected from chain.", False), "midi_audio.png"]))
                 else:
-                    self.list_data.append(("audio2midi", name, f"\u2610 {title}", ["Disconnected from chain.", "midi_audio.png"]))
+                    self.list_data.append(("audio2midi", name, f"\u2610 {title}", [get_info("Disconnected from chain.", False), "midi_audio.png"]))
 
         if not self.midi_input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
@@ -302,28 +320,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     else:
                         prefix = ""
                     if chain_id in self.chain.midi_out:
-                        self.list_data.append((chain_id, None, f"\u2612 {prefix}{chain.get_name()}",
-                                              ["Connected to chain.", "midi_output.png"]))
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix}{chain.get_name()}", [get_info("Connected to chain.", False), "midi_output.png"]))
                     else:
-                        self.list_data.append((chain_id, None, f"\u2610 {prefix}{chain.get_name()}",
-                                              ["Disconnected from chain.", "midi_output.png"]))
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix}{chain.get_name()}", [get_info("Disconnected from chain.", False), "midi_output.png"]))
 
         super().fill_list()
 
     def select_action(self, i, t='S'):
         if t == 'S':
             action = self.list_data[i][0]
-            if action == "MIDI Channel":
-                self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_all=True)
-                self.zyngui.show_screen('midi_chan')
-                return
-            elif action == "MIDI CC":
-                self.zyngui.screens['midi_cc'].set_chain(self.chain)
-                self.zyngui.show_screen('midi_cc')
-                return
-            elif action == "Note Range & Transpose":
-                self.zyngui.screens['midi_key_range'].config(self.chain)
-                self.zyngui.show_screen('midi_key_range')
             wait = 2  # Delay after starting service to allow jack ports to update
             if action == "stop_jacknetumpd":
                 self.zyngui.state_manager.stop_netump(wait=wait)
@@ -351,30 +356,74 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
             elif self.chain:
-                if action == "audio2midi":
+                if action == "MIDI Channel":
+                    self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_all=True)
+                    self.zyngui.show_screen('midi_chan')
+                    return
+                elif action == "MIDI CC":
+                    self.zyngui.screens['midi_cc'].set_chain(self.chain)
+                    self.zyngui.show_screen('midi_cc')
+                    return
+                elif action == "Note Range & Transpose":
+                    self.zyngui.screens['midi_key_range'].config(self.chain)
+                    self.zyngui.show_screen('midi_key_range')
+                    return
+                elif action == "audio2midi":
                     self.chain.toggle_midi_in(self.list_data[i][1])
                 else:
+                    # Change mode
                     idev = self.list_data[i][1]
                     if self.midi_input:
                         if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                             return
-                        lib_zyncore.zmop_set_route_from(
-                            self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
+                        lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
                     else:
                         try:
                             if idev is not None:
-                                dev_id = zynautoconnect.get_midi_out_dev(
-                                    idev).aliases[0]
+                                dev_id = zynautoconnect.get_midi_out_dev(idev).aliases[0]
                                 self.chain.toggle_midi_out(dev_id)
                             elif isinstance(action, int):
                                 self.chain.toggle_midi_out(action)
                         except Exception as e:
                             logging.error(e)
-                self.update_list()
-
-        # Change mode
+            else:
+                self.show_options()
+                return
         elif t == 'B':
             self.show_options()
+            return
+        self.update_list()
+
+    def set_mode(self, input):
+        self.midi_input = input
+        if self.shown:
+            self.set_select_path()
+            self.update_list()
+
+    def set_mode_input(self):
+        self.set_mode(True)
+
+    def set_mode_output(self):
+        self.set_mode(False)
+
+    def toggle_mode(self):
+        self.set_mode(not self.midi_input)
+
+    def switch(self, i, t):
+        if not self.chain:
+            if i == 2 and t == 'S':
+                self.toggle_mode()
+                return True
+        return False
+
+    def cuia_v5_zynpot_switch(self, params):
+        if not self.chain:
+            i = params[0]
+            t = params[1].upper()
+            if i == 2 and t == 'S':
+                self.toggle_mode()
+                return True
+        return False
 
     def show_menu(self):
         if self.shown:

@@ -238,8 +238,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
 
-    clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste, shared by all pated instances.
-
     # Function to initialise class
     def __init__(self):
         super().__init__()
@@ -380,24 +378,20 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.velocity_canvas.grid(column=0, row=1)
 
         # Configure ALT mode layout depending on hardware
+        # Clipboard imported from launcher (see build_view())
+        self.launcher = None
+        self.switch_i_clipboard = None
+        self.wsleds_i_clipboard = None
         if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
-            self.switch_i_clipboard = [11, 15]
-            self.wsleds_i_clipboard = [10, 11]
             self.switch_i_block = 19
             self.wsled_i_block = 12
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
-            self.switch_i_clipboard = [10, 11]
-            self.wsleds_i_clipboard = [10, 11]
             self.switch_i_block = 12
             self.wsled_i_block = 12
         elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
-            self.switch_i_clipboard = None
-            self.wsleds_i_clipboard = None
             self.switch_i_block = 6
             self.wsled_i_block = None
         else:
-            self.switch_i_clipboard = None
-            self.wsleds_i_clipboard = None
             self.switch_i_block = None
             self.wsled_i_block = None
 
@@ -475,6 +469,13 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
         self.toggle_midi_record(self.midi_record)
         self.redraw_pending = 4
+
+        # Setup launcher's clipboard functionality
+        self.launcher = self.zyngui.screens["launcher"]
+        self.clipboard = self.launcher.clipboard
+        self.wsleds_i_clipboard = self.launcher.wsleds_i_clipboard
+        self.switch_i_clipboard = self.launcher.switch_i_clipboard
+
         return True
 
     # Function to hide GUI
@@ -955,50 +956,48 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.zynseq.libseq.sendMidiCommand(0xB0 | self.channel, 123, 0)  # All notes off
 
     # Function to copy current pattern to clipboard
-    def copy_pattern(self, i=0, src_info=None):
-        if src_info is None or len(src_info) != 3:
-            src_info = [self.phrase, self.sequence, self.pattern]
+    def copy_pattern(self, i=0):
         try:
-            self.clipboard[i] = (src_info[0], src_info[1], src_info[2])
+            self.clipboard[i] = ("PAT", self.phrase, self.sequence, self.pattern)
         except:
             logging.error(f"Wrong clipboard index => {i}")
 
     # Function to paste pattern from clipboard
-    def paste_pattern(self, i=0, dst_pattern=None):
-        try:
-            paste = self.clipboard[i]
-        except:
-            logging.error(f"Wrong clipboard index => {i}")
-            return
-        # Don't paste from None or over itself
-        if paste is None or paste[2] == self.pattern:
-            return
+    def paste_pattern(self, patinfo, dst_pattern=None):
+        if dst_pattern is None:
+            dst_pattern = self.pattern
+        if dst_pattern is None:
+            logging.error("No destiny where paste to!")
+            return False
+        if isinstance(patinfo, int):
+            patinfo = self.clipboard[patinfo]
+        # Don't paste from None
+        if patinfo is None:
+            logging.warning(f"Nothing to paste")
+            return False
+        # Don't paste over itself
+        if patinfo[3] == dst_pattern:
+            logging.warning(f"Can't paste => {patinfo}")
+            return False
         # Overwriting an empty pattern doesn't need confirmation
         #if self.zynseq.libseq.getLastStep() == -1:
         if self.zynseq.libseq.isPatternEmpty(dst_pattern):
-            self.do_paste_pattern([i, dst_pattern])
+            self.do_paste_pattern([patinfo, dst_pattern])
         # Overwriting a busy pattern does need confirmation!
         else:
-            name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[0], paste[1])
+            name = self.zynseq.get_sequence_name(self.zynseq.scene, patinfo[1], patinfo[2])
             self.zyngui.show_confirm(f"Overwrite this pattern with content from {name}?",
-                                     self.do_paste_pattern, [i, dst_pattern])
+                                     self.do_paste_pattern, [patinfo, dst_pattern])
+        return True
 
     # Function to actually copy pattern
     def do_paste_pattern(self, params):
-        i = params[0]
-        dst_pattern = params[1]
         try:
-            paste = self.clipboard[i]
-        except:
-            logging.error(f"Wrong clipboard index => {i}")
-            return
-        if dst_pattern is None:
-            dst_pattern = self.pattern
-        # Don't paste from None or over itself
-        if paste is None or paste[2] == dst_pattern:
-            return
-        # Paste from clipboard to current pattern
-        self.zynseq.libseq.copyPattern(paste[2], dst_pattern)
+            patinfo = params[0]
+            dst_pattern = params[1]
+            self.zynseq.libseq.copyPattern(patinfo[3], dst_pattern)
+        except Exception as e:
+            logging.error(e)
         if self.shown:
             self.load_pattern(dst_pattern)
 
@@ -2099,13 +2098,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             if self.wsleds_i_clipboard:
                 # Copy/paste buttons
                 for i, wsli in enumerate(self.wsleds_i_clipboard):
-                    if self.clipboard[i] is not None:
-                        if self.clipboard[i][2] == self.pattern:
-                            wsl.blink(leds[wsli], wsl.wscolor_red)
-                        else:
-                            wsl.blink(leds[wsli], wsl.wscolor_active2)
-                    else:
+                    if self.clipboard[i] is None:
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                    else:
+                        cpfc = self.launcher.can_paste_from_clipboard(i)
+                        if cpfc is None:
+                            wsl.blink(leds[wsli], wsl.wscolor_red)
+                        elif cpfc == False:
+                            wsl.blink(leds[wsli], wsl.wscolor_active2)
+                        elif cpfc == True:
+                            wsl.blink(leds[wsli], wsl.wscolor_active)
 
         # F3 => Block Selection
         if self.wsled_i_block is not None:

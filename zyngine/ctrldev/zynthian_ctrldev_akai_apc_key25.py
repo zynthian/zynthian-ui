@@ -206,7 +206,6 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             self._knobmoves = {}
             super().__init__(state_manager, driver, leds)
 
-
         def _update_volume(self, ccnum, ccval):
             if self._is_shifted:
                 # Only main chain is handled with SHIFT, ignore the rest
@@ -216,7 +215,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return True
             else:
                 index = (ccnum - KNOB_1) + self.driver.scroll_h
-            self.driver.set_mixer_param("level", index, ccval)
+            self.driver.set_mixer_param_cc("level", index, ccval)
             return True
 
         def _update_pan(self, ccnum, ccval):
@@ -228,7 +227,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return True
             else:
                 index = (ccnum - KNOB_1) + self.driver.scroll_h
-            self.driver.set_mixer_param("balance", index, ccval)
+            self.driver.set_mixer_param_cc("balance", index, ccval)
             return True
 
         def _update_control(self, ccnum, ccval):
@@ -240,7 +239,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             else:
                 index = (ccnum - KNOB_1) + self.driver.scroll_h
             if index == -1:
-                self.driver.nudge_mixer_param("level", index, ccval, fine)
+                self.driver.set_mixer_param_cc("level", index, ccval)
                 return True
             else:
                 try:
@@ -249,49 +248,6 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return True
                 except:
                     return False
-
-        # NOT USED!
-        def ___update_control(self, type, ccnum, ccval, minv, maxv):
-            if self._is_shifted:
-                # Only main chain is handled with SHIFT, ignore the rest
-                if ccnum != self.main_chain_knob:
-                    return False
-                else:
-                    index = -1
-                    chain_id = 255
-            else:
-                index = (ccnum - KNOB_1) + self._chains_bank * 8
-                chain = self._chain_manager.get_chain_by_index(index)
-                chsin_id = chain.chain_id
-                if chain is None or chain.chain_id == 0:
-                    return False
-
-            ctrlid = f'{type}{chain_id}'
-            now = monotonic()
-            then = self._knobmoves.get(ctrlid)
-            within_time = ((then is not None) and ((now - then) < 0.2))
-            cval = ccval / 127
-
-            if type == "level":
-                val = cval
-                old_value = self.driver.get_mixer_param(type, index)
-                if within_time or abs(val - old_value) < 0.01:
-                    self._knobmoves[ctrlid] = now
-                    self.driver.set_mixer_param(type, index, max(0, min(1, val)))
-                    return True
-                else:
-                    return False
-            elif type == "balance":
-                val = -1 + cval * 2
-                old_value = self.driver.get_mixer_param(type, index)
-                if within_time or abs(val - old_value) < (1 - -1) * 0.01:
-                    self._knobmoves[ctrlid] = now
-                    self.driver.set_mixer_param(type, index, max(-1, min(1, val)))
-                    return True
-                else:
-                    return False
-            else:
-                return False
         
     class PadMatrixHandler(zynthian_ctrldev_akai_apc_key25_mk2.PadMatrixHandler):
             BRIGHT_OFF = LED_BRIGHT_10

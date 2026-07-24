@@ -128,11 +128,11 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Set processor name for display
                 processor.preset_name = file_path.split("/")[-1]
             else:
-                self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
+                self._ctrl_screens = [["Clip", [f"file {note}", f"mode {note}", "record"]]]
                 self.monitors_dict = {}
                 processor.preset_name = ""
         except:
-            self._ctrl_screens = [["Clip", ["file"]]]
+            self._ctrl_screens = [["Clip", [f"file {note}", f"mode {note}", "record"]]]
             self.monitors_dict = {}
             processor.preset_name = ""
         processor.init_ctrl_screens(force_refresh=True)
@@ -206,7 +206,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 except:
                     pass
 
-
     def nudge_phrase(self, phrase, forward):
         """ Move a phrase forward or backward by one position
         Args:
@@ -227,6 +226,29 @@ class zynthian_engine_clippy(zynthian_engine):
                     processor.controllers_dict[f"{symbol} {phrase + 2}"].symbol = f"{symbol} {phrase2 + 1}"
             except:
                 pass # Ignore unpopulated phrases
+
+    def copy_clip(self, proc_from, phrase_from, proc_to, phrase_to):
+        """ Copy a clip
+        Args:
+            proc_from: Clip process to copy from
+            phrase_from: Index of phrase to copy from
+            proc_to: Clip process to copy to
+            phrase_to: Index of phrase to copy to
+        """
+
+        #self.libclippy.insertClip(proc_to.midi_chan - 16, phrase_to)
+
+        if self.set_state_pre_note(proc_to, phrase_to + 1):
+            proc_to.set_state_flag = True
+            for symbol in zctrl_symbols:
+                try:
+                    from_zctrl = proc_from.controllers_dict[f"{symbol} {phrase_from + 1}"]
+                    to_zctrl = proc_to.controllers_dict[f"{symbol} {phrase_to + 1}"]
+                    to_zctrl.set_value(from_zctrl.value)
+                except:
+                    pass
+            self.set_state_post_note(proc_to, phrase_to + 1)
+            proc_to.set_state_flag = False
 
     # ---------------------------------------------------------------
     # Sample loading, cropping & warping
@@ -364,12 +386,12 @@ class zynthian_engine_clippy(zynthian_engine):
                 logging.error(f"Can't setup sequencer for clip {note} => {e}")
         else:
             self.libseq.setPlayState(self.zynseq.scene, phrase, processor.midi_chan, zynseq.SEQ_STOPPED)
-            self.set_mode(phrase, processor.midi_chan, 0) # Disable if no clip loaded
+            #self.set_mode(phrase, processor.midi_chan, 0) # Disable if no clip loaded
             self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "name", "")
             self.libseq.updateSequenceInfo()
             self.libclippy.unloadClip(processor.midi_chan - 16, note)
             if phrase == self.selected_phrase:
-                self._ctrl_screens = [["Clip", [f"file {note}", "record"]]]
+                self._ctrl_screens = [["Clip", [f"file {note}", f"mode {note}", "record"]]]
                 processor.preset_name = ""
                 processor.init_ctrl_screens(force_refresh=True)
 
@@ -388,6 +410,14 @@ class zynthian_engine_clippy(zynthian_engine):
                 file_zctrl.nudge(1)
         except Exception as e:
             logging.error(e)
+
+    def is_clip_busy(self, proc, phrase):
+        try:
+            if proc.controllers_dict[f"file {phrase + 1}"].value:
+                return True
+        except Exception as e:
+            logging.error(e)
+        return False
 
     # ---------------------------------------------------------------
     # Callbacks to re-warp sample file when needed (on-the-fly)
@@ -510,7 +540,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
                     "value_min": 0,
                     "value_max": 25,
-                    "value": 0
+                    "value": 1
                 }),
             f"gain {note}": zynthian_controller(self, f"gain {note}", {
                     "name": "gain (dB)",
@@ -683,35 +713,46 @@ class zynthian_engine_clippy(zynthian_engine):
         note = 1
         while True:
             # Iterate until note exceeds quantity of clips (controllers)
-            try:
-                crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
-                crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
-                zoom_zctrl = processor.controllers_dict[f"zoom {note}"]
-            except:
+            if not self.set_state_pre_note(processor, note):
                 break
-            crop_start_options = {"value": 0, "value_max": MAX_FRAMES}
-            crop_end_options =  {"value": MAX_FRAMES, "value_max": MAX_FRAMES}
-            crop_start_zctrl.set_options(crop_start_options)
-            crop_end_zctrl.set_options(crop_end_options)
-            zoom_options = {
-                "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
-                "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
-            }
-            zoom_zctrl.set_options(zoom_options)
             note += 1
+
+    def set_state_pre_note(self, processor, note):
+        # Iterate until note exceeds quantity of clips (controllers)
+        try:
+            crop_start_zctrl = processor.controllers_dict[f"crop_start {note}"]
+            crop_end_zctrl = processor.controllers_dict[f"crop_end {note}"]
+            zoom_zctrl = processor.controllers_dict[f"zoom {note}"]
+        except:
+            return False
+        crop_start_options = {"value": 0, "value_max": MAX_FRAMES}
+        crop_end_options =  {"value": MAX_FRAMES, "value_max": MAX_FRAMES}
+        crop_start_zctrl.set_options(crop_start_options)
+        crop_end_zctrl.set_options(crop_end_options)
+        zoom_options = {
+            "ticks": [1, 2, 4, 8, 16, 32, 64, 128, 256],
+            "labels": ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
+        }
+        zoom_zctrl.set_options(zoom_options)
+        return True
 
     def set_state_post(self, processor):
         note = 1
         while True:
             # Iterate until note exceeds quantity of clips (file controllers)
-            try:
-                file_zctrl = processor.controllers_dict[f"file {note}"]
-            except:
+            if not self.set_state_post_note(processor, note):
                 break
-            phrase = note - 1
-            self.set_file(processor, phrase, autoreset=False)
             note += 1
         self.last_tempo_change = self.zynseq.libseq.getTempo()
+
+    def set_state_post_note(self, processor, note):
+        try:
+            file_zctrl = processor.controllers_dict[f"file {note}"]
+        except:
+            return False
+        phrase = note - 1
+        self.set_file(processor, phrase, autoreset=False)
+        return True
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -740,8 +781,7 @@ class zynthian_engine_clippy(zynthian_engine):
         for phrase in range(self.zynseq.phrases):
             note = phrase + 1
             self.add_controllers(processor, note)
-            self.set_mode(phrase, processor.midi_chan, 0)
-            #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, processor.midi_chan, "repeat", 0)
+            self.set_mode(phrase, processor.midi_chan, 1)
         self.set_phrase(processor, self.zynseq.phrase)
 
     def remove_processor(self, processor):
