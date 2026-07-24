@@ -237,8 +237,9 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     }
                     break;
                 case PLAYING: {
+                    uint32_t clip_length = pSequence->getLength();
                     uint32_t nPos = pSequence->getPlayPosition() + 1;
-                    if (nPos >= pSequence->getLength()) {
+                    if (bSync and clip_length and nPos >= clip_length) {
                         nPos = 0;
                         uint8_t nCount = pSequence->getPlayed() + 1;
                         uint8_t nRepeat = pSequence->getRepeat();
@@ -246,7 +247,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                         if (nRepeat == 255 || nCount < nRepeat ) {
                             pSequence->setPlayed(nCount);
                             pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}}));
-                            //pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}));
+                            //pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}}));
                         }
                         // End of repeats...
                         else {
@@ -352,7 +353,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             }
         }
 
-        // Stopped sequence
+        // Stopped sequence => Reset progress and remove from the list. Don't increase counter!
         if (nPlayState == STOPPED || nPlayState == CHILD_PLAYING) {
             if (nGroup < 33)
                 m_aGroupProgress[nGroup] = 0;
@@ -360,6 +361,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             // Stop clippy if no other clippy sequences in same group are running
             if (bIsClippy && nPlayState == STOPPED) {
                 bool bStopClippy = true;
+                // TODO => Is this needed?
                 for (auto seq: m_vPlayingSequences) {
                     if (seq != pSequence && seq->getGroup() == nGroup) {
                         bStopClippy = false;
@@ -367,10 +369,12 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     }
                 }
                 if (bStopClippy) {
-                    // Send clippy stop event
-                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nGroup), 0, 1}}));
+                    // Send clippy stop event => Note 0 stops playing
+                    uint8_t nChannel = nGroup - 16;
+                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), 0, 1}}));
                 }
             }
+
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
             continue;
         }

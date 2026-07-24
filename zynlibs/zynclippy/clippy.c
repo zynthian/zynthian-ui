@@ -177,12 +177,23 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                             // Set starting clip
                             uint8_t clip_id = event.buffer[1] - 1;
                             if (clip_id < MAX_CLIPS) {
-                                player->starting_clip = player->clips[clip_id];
-                                player->starting_clip_id = clip_id;
-                                player->start_frame = event.time;
-                                player->beat = 0;
+                                // If the clip is not null
+                                if (player->clips[clip_id]) {
+                                    player->starting_clip = player->clips[clip_id];
+                                    player->starting_clip_id = clip_id;
+                                    player->start_frame = event.time;
+                                    player->beat = 0;
+                                    player->state = STATE_PLAYING;
+                                }
+                                // else if the clip is NULL => STOP
+                                else {
+                                    if (player->state == STATE_PLAYING) {
+                                        player->state = STATE_STOPPING;
+                                    } else {
+                                        player->state == STATE_READY;
+                                    }
+                                }
                             }
-                            player->state = STATE_PLAYING;
                         }
                     }
                     break;
