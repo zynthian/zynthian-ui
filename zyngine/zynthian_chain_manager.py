@@ -1624,8 +1624,8 @@ class zynthian_chain_manager:
             else:
                 self.absolute_midi_cc_binding[key] = [zctrl]
 
-        # ZynStep mapping => MIDI chains only
-        if map_zynstep and zctrl.processor and zctrl.processor.midi_chan is not None:
+        # ZynStep mapping => MIDI chains only, excluding chains listening to "ALL MIDI CHANNELS"
+        if map_zynstep and zctrl.processor and zctrl.processor.midi_chan is not None and zctrl.processor.midi_chan < 16:
             key = (ZMIP_STEP_INDEX << 16) | (zctrl.processor.midi_chan << 8) | midi_cc
             if key in self.absolute_midi_cc_binding:
                 if zctrl not in self.absolute_midi_cc_binding[key]:
