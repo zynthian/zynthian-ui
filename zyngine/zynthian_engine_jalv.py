@@ -232,6 +232,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
             logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 
+            self.minimize_native_gui = False
             if self.config_remote_display(): #and self.native_gui:
                 if self.native_gui == "UI":
                     self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
@@ -243,6 +244,8 @@ class zynthian_engine_jalv(zynthian_engine):
                         jalv_bin = "jalv.gtk3"
                     else:  # elif self.native_gui=="X11UI":
                         jalv_bin = "jalv.gtk3"
+                        if not self.native_gui:
+                            self.minimize_native_gui = True
                     self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
             else:
                 self.command = ["jalv", "-n", self.jackname, self.plugin_url]
@@ -318,6 +321,10 @@ class zynthian_engine_jalv(zynthian_engine):
                         self.jackname = line[11:].strip()
                         logging.debug("Jack Name => {}".format(self.jackname))
                         break
+
+            # Minimize native GUI window for auto-generated GUIs
+            if self.minimize_native_gui:
+                check_output("xdotool windowminimize $(xdotool getactivewindow)", shell=True, env=self.command_env)
 
         # Get bank & presets info
         self.load_preset_info()
@@ -764,14 +771,11 @@ class zynthian_engine_jalv(zynthian_engine):
             #logging.debug(f"Controller {symbol} group => {info['group_symbol']}")
 
             try:
-                # Detect native bypass/enable toggle => TODO Detect LV2 designation!!
-                if self.type == "Audio Effect" and symbol.lower() in ("bypass", "enable"):
+                if not info['is_bypass'] and self.type == "Audio Effect" and symbol.lower() in ("bypass", "enable"):
+                    # Detect a native bypass/enable toggle that is not designated as it should
                     info['is_bypass'] = True
-                    # Deduce bypass logic?? => Seems to be not needed!!
-                    info['bypass_value'] = 0
-                else:
-                    info['is_bypass'] = False
-                    info['bypass_value'] = 0
+                    # Deduce bypass logic => Assume default (initial) state is NOT bypassed
+                    info['bypass_value'] = int(not info['value'])
 
                 display_priority = info['display_priority']
                 if info['group_display_priority'] > 0:
@@ -1255,7 +1259,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
         bmre1 = re.compile(r"<{}>".format(preset_fname))
         bmre2 = re.compile(r"(.*)a pset:Preset ;")
-        brre = re.compile("([\s]+rdfs:label[\s]+\").*(\" )")
+        brre = re.compile(r"([\s]+rdfs:label[\s]+\").*(\" )")
 
         renamed = False
         for i, p in enumerate(man_parts):

@@ -952,16 +952,30 @@ def get_plugin_ports(plugin_url):
 
             # Parameter Desgination => http://lv2plug.in/ns/lv2core#designation
             designation = str(control.get(world.ns.lv2.designation))
+
             # Detect Envelope designation
             envelope = None
-            for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
-                    envelope = env_param
+            if designation:
+                for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
+                        envelope = env_param
+                        designation = None
+
             # Detect Filter designation
             filter = None
-            for flt_param in ["cutoffFrequency", "resonance"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
-                    filter = flt_param
+            if designation:
+                for flt_param in ["cutoffFrequency", "resonance"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
+                        filter = flt_param
+                        designation = None
+
+            is_bypass = False
+            bypass_value = 0
+            if designation:
+                if designation == f"http://lv2plug.in/ns/lv2core#enabled":
+                    is_bypass = True
+                    bypass_value = 0
+                    designation = None
 
             not_on_gui = control.has_property(world.ns.portprops.notOnGUI)
             display_priority = control.get(world.ns.lv2.displayPriority)
@@ -1028,13 +1042,6 @@ def get_plugin_ports(plugin_url):
             except:
                 vdef = vmin
 
-            if  symbol == "BYPASS" and plugin_url.startswith("http://guitarix"):
-                # Invert bypass for guitarix effects
-                is_toggled = True
-                vmin = 1
-                vmax = 0
-                vdef = 0
-
             ports_info[i] = {
                 'index': i,
                 'symbol': symbol,
@@ -1059,6 +1066,8 @@ def get_plugin_ports(plugin_url):
                 'path_preload': False,
                 'envelope': envelope,
                 'filter': filter,
+                'is_bypass': is_bypass,
+                'bypass_value': bypass_value,
                 'not_on_gui': not_on_gui,
                 'display_priority': display_priority,
                 'scale_points': sp
@@ -1091,6 +1100,8 @@ def get_plugin_ports(plugin_url):
             path_preload = True
             envelope = None
             filter = None
+            is_bypass = False
+            bypass_value = 0
             sp = []
         else:
             vdef = get_node_value(world.get(control, world.ns.lv2.default, None))
@@ -1108,16 +1119,30 @@ def get_plugin_ports(plugin_url):
 
             # Parameter Desgination => http://lv2plug.in/ns/lv2core#designation
             designation = str(world.get(control, world.ns.lv2.designation, None))
+
             # Detect Envelope designation
             envelope = None
-            for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
-                    envelope = env_param
+            if designation:
+                for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
+                        envelope = env_param
+                        designation = None
+
             # Detect Filter designation
             filter = None
-            for flt_param in ["cutoffFrequency", "resonance"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
-                    filter = flt_param
+            if designation:
+                for flt_param in ["cutoffFrequency", "resonance"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
+                        filter = flt_param
+                        designation = None
+
+            is_bypass = False
+            bypass_value = 0
+            if designation:
+                if designation == f"http://lv2plug.in/ns/lv2core#enabled":
+                    is_bypass = True
+                    bypass_value = 0
+                    designation = None
 
             sp = []
             for p in world.find_nodes(control, world.ns.lv2.scalePoint, None):
@@ -1192,6 +1217,8 @@ def get_plugin_ports(plugin_url):
             'path_preload': path_preload,
             'envelope': envelope,
             'filter': filter,
+            'is_bypass': is_bypass,
+            'bypass_value': bypass_value,
             'not_on_gui': not_on_gui,
             'display_priority': display_priority,
             'scale_points': sp
