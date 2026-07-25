@@ -489,7 +489,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 self.set_mixer_param("level", pos, val / 127.0)
             elif cc == CC_CUE_LEVEL:
                 dval = relative_to_signed(val)
-                self.nudge_mixer_param("pfl level", -1, dval, fine=self._shift)
+                self.nudge_mixer_param("pfl_level", -1, dval, fine=self._shift)
             elif cc == CC_TEMPO:
                 dval = relative_to_signed(val)
                 if self._shift:
