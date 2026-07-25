@@ -95,6 +95,9 @@ class ZynMixer():
             self.lib_zynmixer.setABMixGroup.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
             self.lib_zynmixer.getABMixGroup.argtypes = [ctypes.c_uint8]
             self.lib_zynmixer.getABMixGroup.restype = ctypes.c_uint8
+        else:
+            self.lib_zynmixer.setPflLevel.argtypes = [ctypes.c_float]
+            self.lib_zynmixer.getPflLevel.restype = ctypes.c_float
 
         self.lib_zynmixer.setPhase.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getPhase.argtypes = [ctypes.c_uint8]
@@ -500,6 +503,24 @@ class ZynMixer():
 
     def clear_pfl(self):
         self.lib_zynmixer.clearPfl()
+
+    def set_pfl_level(self, level):
+        """ Set the volumne level of PFL output
+        Args:
+        level: Normalised volume level factor
+        """
+
+        if self.mixbus:
+            self.lib_zynmixer.setPflLevel(level)
+
+    def get_pfl_level(self):
+        """ Get the volumne level of PFL output
+        Returns: Normalised volume level factor
+        """
+
+        if self.mixbus:
+            return self.lib_zynmixer.getPflLevel()
+        return 0
 
     def get_global_pfl(self):
         return self.lib_zynmixer.getGlobalPfl()

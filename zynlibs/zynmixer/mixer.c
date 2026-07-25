@@ -63,6 +63,7 @@ float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
 #else
 jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
 jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
+float g_pflLevel     = 1.0; // PFL volumne level
 #endif
 jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
 jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
@@ -407,6 +408,11 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 if (strip->normalise) {
                     g_mainNormaliseBufferA[frame] += fSampleA;
                     g_mainNormaliseBufferB[frame] += fSampleB;
+                }
+                // Set PFL output level
+                if (chan == 0) {
+                    pPflOutA[frame] *= g_pflLevel;
+                    pPflOutB[frame] *= g_pflLevel;
                 }
 #else
                 // Add fx send output frames only for input channels
@@ -910,7 +916,14 @@ uint8_t getABMixGroup(uint8_t channel) {
         return 0;
     return g_channelStrips[channel]->ABMixGroup;
 }
+#else
+void setPflLevel(float level) {
+    g_pflLevel = level;
+}
 
+float getPflLevel() {
+    return g_pflLevel;
+}
 #endif
 
 void setPhase(uint8_t channel, uint8_t phase) {
