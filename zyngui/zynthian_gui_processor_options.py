@@ -109,13 +109,16 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         super().fill_list()
 
     def build_view(self):
-        if self.processor != self.zyngui.get_current_processor():
-            self.processor = self.zyngui.get_current_processor()
+        curproc = self.zyngui.get_current_processor()
+        if curproc.id < 0:
+            return False
+        if self.processor != curproc:
+            self.processor = curproc
             self.last_random = {}
         super().build_view()
-        zynsigman.register_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
         if self.index >= len(self.list_data):
             self.index = len(self.list_data) - 1
+        zynsigman.register_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, self.bypass_cb)
         return True
 
     def hide(self):
@@ -143,26 +146,22 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         if proc_type is None:
             proc_type = self.processor.type
         try:
-            chain_idx, row, column = self.zyngui.screens["chain_manager"].selected_node
-            node = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]
-            proc = node["proc"]
-            if proc.type == "MIDI Synth":
+            if self.processor.type == "MIDI Synth":
                 if proc_type == "Audio Effect":
                     slot = -1
                 else:
                     slot = None
             else:
-                slot = self.zyngui.screens["chain_manager"].nodes[chain_idx][row][column]["slot"]
+                slot = self.processor.get_chain_slot() + 1
         except:
             slot = None
         self.zyngui.modify_chain({
-            "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
+            "chain_id": self.processor.chain.chain_id,
             "type": proc_type,
             "midi_thru": self.processor.midi_chan is not None,
             "audio_thru": proc_type == "Audio Effect",
             "slot": slot
         })
-        self.processor = self.zyngui.get_current_processor()
 
     def add_midi_processor(self):
         self.add_processor("MIDI Tool")
@@ -174,7 +173,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)
 
     def do_remove(self, unused=None):
-        self.zyngui.chain_manager.remove_processor(self.zyngui.chain_manager.active_chain.chain_id, self.processor)
+        self.chain_manager.remove_processor(self.processor.chain.chain_id, self.processor)
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
         self.processor = None
@@ -186,7 +185,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
     def midi_clean(self):
         if self.processor:
             self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.processor.name}?",
-                                     self.zyngui.chain_manager.clean_midi_learn, self.processor)
+                                     self.chain_manager.clean_midi_learn, self.processor)
 
     def control_view(self):
         self.zyngui.chain_control(hmode=self.zyngui.SCREEN_HMODE_REPLACE)
@@ -195,7 +194,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
     def replace(self):
         self.zyngui.modify_chain({
-            "chain_id": self.zyngui.chain_manager.active_chain.chain_id,
+            "chain_id": self.processor.chain.chain_id,
             "processor": self.processor,
             "type": self.processor.type
         })

@@ -150,6 +150,12 @@ class zynthian_processor:
         for zctrl in self.controllers_dict.values():
             zctrl.reset_value()
 
+    def get_chain_slot(self):
+        try:
+            return self.chain.get_slot(self)
+        except:
+            return None
+
     # ---------------------------------------------------------------------------
     # MIDI autolearn CC controllers
     # ---------------------------------------------------------------------------

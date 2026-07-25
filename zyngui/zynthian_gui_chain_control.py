@@ -100,8 +100,8 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def toggle_chain(self):
         self.show_chain(not self.chain_shown)
 
-    def refresh_chain(self):
-        self.chain_canvas.build_graph()
+    def refresh_chain(self, proc=None):
+        self.chain_canvas.build_graph(proc)
 
     def reset(self):
         self.set_chain(reset=True)
@@ -109,7 +109,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def build_view(self):
         self.chain_canvas.build_view()
         if self.chain_shown:
-            self.refresh_chain()
+            self.refresh_chain(self.zyngui.current_processor)
         if not self.subscreen.shown:
             self.subscreen.build_view()
             self.subscreen.show()

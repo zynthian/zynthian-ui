@@ -636,14 +636,16 @@ class zynthian_chain:
                 # Invalid slot so append to end of chain
                 slots.append([processor])
             else:
+                # Insert processor in the specified position (slot)
+                slots.insert(slot, [processor])
                 # If mixer slot, insert before
-                try:
-                    if slots[slot][0].eng_code in ("MI", "MR"):
-                        slots.insert(slot, [])
-                except:
-                    pass
+                #try:
+                #    if slots[slot][0].eng_code in ("MI", "MR"):
+                #        slots.insert(slot, [])
+                #except:
+                #    pass
                 # Add parallel processor to existing slot
-                slots[slot].append(processor)
+                #slots[slot].append(processor)
 
         processor.set_chain(self)
         if processor.engine:

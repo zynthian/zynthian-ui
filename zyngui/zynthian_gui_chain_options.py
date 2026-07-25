@@ -178,10 +178,28 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         else:
             self.zyngui.show_screen_reset('chain_manager')
 
-    # FX-Chain management
+
+    def add_processor(self, proc_type):
+        if proc_type == "Audio Effect":
+            # Try inserting just before mixer processor (pre-fader)
+            try:
+                slot = self.chain.zynmixer_proc.get_chain_slot()
+            except:
+                slot = None
+        else:
+            slot = None
+        self.zyngui.modify_chain({
+            "chain_id": self.chain.chain_id,
+            "type": proc_type,
+            "midi_thru": self.chain.midi_chan is not None,
+            "audio_thru": proc_type == "Audio Effect",
+            "slot": slot
+        })
+
+    # Audio-FX Chain management
 
     def audiofx_add(self):
-        self.zyngui.modify_chain({"type": "Audio Effect", "chain_id": self.chain.chain_id})
+        self.add_processor("Audio Effect")
 
     def remove_all_audiofx(self):
         self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?",
@@ -196,10 +214,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.build_view()
         self.show()
 
-    # MIDI-Chain management
+    # MIDI-FX Chain management
 
     def midifx_add(self):
-        self.zyngui.modify_chain({"type": "MIDI Tool", "chain_id": self.chain.chain_id})
+        self.add_processor("MIDI Tool")
+
 
     def remove_all_midifx(self):
         self.zyngui.show_confirm("Do you really want to remove all MIDI effects from this chain?",
