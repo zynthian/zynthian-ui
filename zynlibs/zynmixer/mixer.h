@@ -154,6 +154,15 @@ void setABMixGroup(uint8_t channel, uint8_t ab);
  */
 uint8_t getABMixGroup(uint8_t channel);
 
+/** @brief  Set PFL volume level
+    @param  level PFL volume level
+ */
+ void setPflLevel(float level);
+
+ /** @brief Get PFL volume level
+    @retval float PFL volume level
+ */
+ float getPflLevel();
 #endif
 
 /** @brief  Set channel mono state

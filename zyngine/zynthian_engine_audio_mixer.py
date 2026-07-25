@@ -205,6 +205,14 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value_default': 0.0,
                     'value': self.state_manager.zynmixer_chan.get_global_xfader(),
                     'processor': processor,
+                }),
+                'pfl level': zynthian_controller(self, 'pfl_level', {
+                    'is_integet': False,
+                    'value_max': 1.0,
+                    'value_min': 0.0,
+                    'value_default': 1.0,
+                    'value': processor.zynmixer.get_pfl_level(),
+                    'processor': processor
                 })}
         return processor.controllers_dict
 
@@ -233,7 +241,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     ['toggles', ['mute', 'solo', 'pfl']],
                     ['signal', ['mono', 'phase', 'ms']],
                     ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']],
-                    ['recorder', ['record']]
+                    ['recorder', ['record']],
+                    ['misc', ['pfl level']]
                 ]
         else:
             # Normal audio mixer strip
@@ -271,6 +280,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol[4:]}')(1, zctrl.value)
             elif zctrl.symbol.startswith("global_"):
                 getattr(self.state_manager.zynmixer_chan, f'set_{zctrl.symbol}')(zctrl.value)
+            elif zctrl.symbol == "pfl_level":
+                zctrl.processor.zynmixer.set_pfl_level(zctrl.value)
             else:
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
         except Exception as e:
