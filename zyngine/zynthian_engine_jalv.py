@@ -322,17 +322,18 @@ class zynthian_engine_jalv(zynthian_engine):
                         logging.debug("Jack Name => {}".format(self.jackname))
                         break
 
-                # Minimize native GUI window for auto-generated GUIs
-                if self.minimize_native_gui:
-                    try:
-                        res = check_output("xdotool windowminimize $(xdotool getactivewindow)", shell=True, env=self.command_env, stdout=PIPE, stderr=STDOUT)
-                    except:
-                        pass
-
         # Get bank & presets info
         self.load_preset_info()
 
         self.reset()
+
+        # Minimize native GUI window for auto-generated GUIs
+        if self.minimize_native_gui:
+            try:
+                check_output("xdotool windowminimize $(xdotool getactivewindow)", shell=True, env=self.command_env, stdout=PIPE, stderr=STDOUT)
+            except:
+                pass
+
 
     def load_preset_info(self):
         self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
