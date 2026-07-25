@@ -232,7 +232,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
             logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 
-            if self.config_remote_display() and self.native_gui:
+            if self.config_remote_display(): #and self.native_gui:
                 if self.native_gui == "UI":
                     self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
                 else:
