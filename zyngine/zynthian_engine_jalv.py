@@ -218,6 +218,7 @@ class zynthian_engine_jalv(zynthian_engine):
             self.ignore_not_on_gui = False
 
         self.native_gui = False
+        self.minimize_native_gui = False
         if 'UI' in self.eng_info:
             if self.plugin_url in self.broken_ui:
                 self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
@@ -232,7 +233,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
             logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 
-            self.minimize_native_gui = False
             if self.config_remote_display(): #and self.native_gui:
                 if self.native_gui == "UI":
                     self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
@@ -322,9 +322,12 @@ class zynthian_engine_jalv(zynthian_engine):
                         logging.debug("Jack Name => {}".format(self.jackname))
                         break
 
-            # Minimize native GUI window for auto-generated GUIs
-            if self.minimize_native_gui:
-                check_output("xdotool windowminimize $(xdotool getactivewindow)", shell=True, env=self.command_env)
+                # Minimize native GUI window for auto-generated GUIs
+                if self.minimize_native_gui:
+                    try:
+                        res = check_output("xdotool windowminimize $(xdotool getactivewindow)", shell=True, env=self.command_env, stdout=PIPE, stderr=STDOUT)
+                    except:
+                        pass
 
         # Get bank & presets info
         self.load_preset_info()
