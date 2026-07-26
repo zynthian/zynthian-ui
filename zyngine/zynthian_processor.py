@@ -803,7 +803,7 @@ class zynthian_processor:
             try:
                 name = os.path.splitext(os.path.basename(fpath))[0].strip()
                 if name:
-                    name = re.sub("^\d*_*", '', name)
+                    name = re.sub(r"^\d*_*", '', name)
                     keymap.append({
                         "note": base_note + i,
                         "name": name,
@@ -966,6 +966,10 @@ class zynthian_processor:
                         zctrl._configure()
                 except Exception as e:
                     logging.warning(f"Invalid controller for processor {self.get_basepath()}: {e}")
+
+        # Set current screen index
+        if "current_screen_index" in state:
+            self.current_screen_index = state["current_screen_index"]
 
         self.set_state_flag = False
         try:

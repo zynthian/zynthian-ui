@@ -63,6 +63,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.screen_name = None
         self.screen_type = None
         self.screen_title = None
+        self.n_screens_chain_ctrls = 0
 
         super().__init__(selcap="Control Page", loading_anim=False, tiny_ctrls=False, parent=parent, topbar=topbar)
 
@@ -169,6 +170,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         curproc = self.zyngui.get_current_processor()
         self.configure_processors(curproc)
 
+        self.n_screens_chain_ctrls = 0
         if not self.processors:
             self.list_data.append((None, None, "NO PROCESSORS!"))
         else:
@@ -191,7 +193,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                             i += 1
                     if len(page_zctrls) > 0:
                         self.list_data.append((f"CHAIN_{j}", -1, f"Controllers {j + 1}", self.processors[0], j, page_zctrls))
+                        j += 1
                         i += 1
+                    self.n_screens_chain_ctrls = j
             # Processor Controllers
             for processor in self.processors:
                 j = 0
@@ -390,14 +394,15 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.set_current_processor(self.screen_info[3])
             except Exception as e:
                 logging.warning(f"Failed to set current processor {e}")
+            curproc = self.get_current_processor()
 
             # Get controllers for the current screen
             # Chain controllers
             if self.screen_info[1] == -1:
+                curproc.set_current_screen_index(self.screen_info[4] - self.n_screens_chain_ctrls - 1)
                 self.zcontrollers = self.screen_info[5]
             # Processor controllers
             else:
-                curproc = self.get_current_processor()
                 curproc.set_current_screen_index(self.screen_info[4])
                 self.zcontrollers = curproc.get_ctrl_screen(self.screen_title)
                 # Show the widget for the current processor (NOT for chain controllers pages!)
