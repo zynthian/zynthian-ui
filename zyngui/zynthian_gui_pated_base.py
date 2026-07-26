@@ -384,16 +384,24 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.wsleds_i_clipboard = None
         if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
             self.switch_i_block = 19
+            self.switch_i_cc_editor = 23
             self.wsled_i_block = 12
+            self.wsled_i_cc_editor = 13
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
             self.switch_i_block = 12
+            self.switch_i_cc_editor = 13
             self.wsled_i_block = 12
+            self.wsled_i_cc_editor = 13
         elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
             self.switch_i_block = 6
+            self.switch_i_cc_editor = 7
             self.wsled_i_block = None
+            self.wsled_i_cc_editor = None
         else:
             self.switch_i_block = None
             self.wsled_i_block = None
+            self.wsled_i_block = None
+            self.wsled_i_cc_editor = None
 
     # Function to get name of this view
     def get_name(self):
@@ -1941,6 +1949,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 return False
 
         # Configured F button for block selection workflow
+        elif i == self.switch_i_cc_editor:
+            return self.cuia_v5_zynpot_switch([0, st])
+
+        # Configured F button for block selection workflow
         elif i == self.switch_i_block:
             return self.cuia_v5_zynpot_switch([2, st])
 
@@ -2109,7 +2121,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                         elif cpfc == True:
                             wsl.blink(leds[wsli], wsl.wscolor_active)
 
-        # F3 => Block Selection
+        # Block Selection  (F3 in V5, S3 in V4)
         if self.wsled_i_block is not None:
             if self.edit_mode == EDIT_MODE_BLOCK:
                 if self.block_copied:
@@ -2118,6 +2130,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                     wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active2)
             else:
                 wsl.set_led(leds[self.wsled_i_block], wsl.wscolor_active2)
+
+        # Block Selection (F4 in V5, S4 in V4)
+        if self.wsled_i_cc_editor is not None:
+            wsl.set_led(leds[self.wsled_i_cc_editor], wsl.wscolor_active2)
 
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
