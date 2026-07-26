@@ -111,7 +111,7 @@ class zynthian_gui_base(tkinter.Frame):
             self.main_mute = 0
 
             # Status Area Parameters
-            self.status_l = int(self.topbar_width * 0.25)
+            self.status_l = int(self.topbar_width * 0.27)
             self.status_h = self.topbar_height
             self.status_rh = max(2, int(self.status_h / 4))
             self.status_fs = int(0.36 * self.status_h)
