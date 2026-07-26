@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Novation Launchkey Mini MK4 37"
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #                         Jorge Razon <jrazon@gmail.com>
 #
@@ -38,13 +38,11 @@
 # - Transport controls (Play, Record, Stop) with shift modifiers
 #******************************************************************************
 from time import sleep, time
-from threading import Timer
 import logging
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
-from zynlibs.zynseq import zynseq
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -55,7 +53,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
 
     dev_ids = ["Launchkey Mini MK4 37 IN 2"]  # In DAW mode, everything comes through IN 2 (like MK3)
     driver_name = "Launchkey Mini MK4 37"
-    driver_description = "Interface Novation Launchkey Mini Mk4 with Zynthian"
+    driver_description = "Launcher Interface for Novation Launchkey Mini Mk4"
     unroute_from_chains = True  # Prevent automatic routing, we'll handle keyboard notes explicitly
 
     PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
@@ -87,9 +85,9 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         self.update_pad_leds()
         
         # Register callbacks for real-time updates using zynsigman
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.update_pad_leds)
-        zynsigman.register_queued(zynsigman.S_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.update_pad_leds)
+        zynsigman.register_queued(zynsigman.S_MIXER, zynsigman.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_screen_change)
 
     def refresh(self):
@@ -113,9 +111,9 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
 
     def end(self):
         # Unregister signal callbacks
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.update_pad_leds)
-        zynsigman.unregister(zynsigman.S_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.update_pad_leds)
+        zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_screen_change)
         super().end()
         # Disable DAW mode on launchkey

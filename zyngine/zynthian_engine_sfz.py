@@ -46,9 +46,9 @@ class zynthian_engine_sfz(zynthian_engine):
         ['volume', 7, 96],
         ['pan', 10, 64],
         #['modulation wheel', 1, 0],
-        # ['breath', 2, 127],
+        #['breath', 2, 127],
 
-        ['expression', 11, 127],
+        #['expression', 11, 127],
         #['legato', 68, 'off', ['off', 'on']],
 
         #['portamento on/off', 65, 'off', ['off', 'on']],
@@ -64,7 +64,7 @@ class zynthian_engine_sfz(zynthian_engine):
 
     # Controller Screens
     default_ctrl_screens = [
-        ['main', ['volume', 'pan', 'expression']],
+        ['main', ['volume', 'pan']],
         #['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']],
         #['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
     ]
@@ -75,6 +75,7 @@ class zynthian_engine_sfz(zynthian_engine):
 
     def __init__(self, state_manager=None):
        super().__init__(state_manager)
+       self.keymap = None
        self.custom_ctrls = []
        self.custom_ctrl_screens = []
 
@@ -131,10 +132,10 @@ class zynthian_engine_sfz(zynthian_engine):
             return False
 
         cc_config = {}
-        pat1 = re.compile("\sset_cc(\d+)=(\d+)", re.MULTILINE)
-        pat2 = re.compile("\sset_hdcc(\d+)=([\d\.]+)", re.MULTILINE)
-        pat3 = re.compile("^label_cc(\d+)=([^\/\n]+)$", re.MULTILINE)
-        pat4 = re.compile("cc\d+", re.IGNORECASE)
+        pat1 = re.compile(r"\sset_cc(\d+)=(\d+)", re.MULTILINE)
+        pat2 = re.compile(r"\sset_hdcc(\d+)=([\d\.]+)", re.MULTILINE)
+        pat3 = re.compile(r"^label_cc(\d+)=([^\/\n]+)$", re.MULTILINE)
+        pat4 = re.compile(r"cc\d+", re.IGNORECASE)
         for m in pat1.finditer(sfz):
             try:
                 cc_config[int(m[1])] = ["", int(m[2])]
@@ -201,9 +202,18 @@ class zynthian_engine_sfz(zynthian_engine):
                             config["controllers"][scr_name][ctrl_name] = ctrl_data
                 else:
                     config["controllers"][scr_name] = scr_data
+            # Keymap config
+            if "keymap" not in config and "keymap" in cconfig:
+                config["keymap"] = cconfig["keymap"]
 
         if not config:
             return False
+
+        # Get keymap config
+        try:
+            self.keymap = config["keymap"]
+        except:
+            self.keymap = None
 
         # Generate controller & screen list
         try:

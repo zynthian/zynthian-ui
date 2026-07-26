@@ -35,8 +35,8 @@ import hashlib
 import logging
 import urllib.parse
 import shutil
-import subprocess
 import platform
+from subprocess import run, Popen, STDOUT, PIPE
 from rdflib import Graph, Namespace, RDF
 
 from enum import Enum
@@ -178,9 +178,17 @@ standalone_engine_info = {
 }
 
 rpi5_plugins = [
-    "http://theusualsuspects.lv2.Osirus",
-    "http://theusualsuspects.lv2.OsTIrus"
+    "http://theusualsuspects.lv2/Osirus",
+    "http://theusualsuspects.lv2/OsTIrus",
+    "http://theusualsuspects.lv2/Vavra",
+    "http://theusualsuspects.lv2/Xenia",
+    "http://theusualsuspects.lv2/JE8086"
 ]
+
+try:
+    rbpi_version_number = int(os.environ.get('RBPI_VERSION_NUMBER', '4'))
+except:
+    rbpi_version_number = 4
 
 ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
@@ -251,6 +259,12 @@ def load_engines():
     # Regenerate config file if it doesn't exist or is an older version
     if not os.path.exists(ENGINE_CONFIG_FILE) or 'AE' in engines and "ID" not in engines['AE']:
         generate_engines_config_file(reset_rankings=1)
+
+    # Remove not supported engines
+    for key in list(engines.keys()):
+        if rbpi_version_number < 5 and 'URL' in engines[key] and engines[key]['URL'] in rpi5_plugins:
+            logging.debug(f"Removing {key} from engine list.")
+            engines.pop(key, None)
 
     get_engines_by_type()
     return engines
@@ -387,7 +401,7 @@ def add_engine(path, enable=True, force=False):
                 # Validate plugin
                 for file in os.listdir(src):
                     if file.endswith(".so"):
-                        result = subprocess.run(["file", f"{src}/{file}"], capture_output=True, text=True)
+                        result = run(["file", f"{src}/{file}"], capture_output=True, text=True)
                         if platform.machine() not in result.stdout.strip():
                             return f"LV2 plugin is for a different platform (expecting {platform.machine()})"
                         if platform.machine() not in result.stdout.strip():
@@ -474,11 +488,6 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
     """
     global engines, engines_mtime
     genengines = {}
-
-    try:
-        rbpi_version_number = int(os.environ.get('RBPI_VERSION_NUMBER', '4'))
-    except:
-        rbpi_version_number = 4
 
     hash = hashlib.new('sha1')
     start = int(round(time.time()))
@@ -943,16 +952,30 @@ def get_plugin_ports(plugin_url):
 
             # Parameter Desgination => http://lv2plug.in/ns/lv2core#designation
             designation = str(control.get(world.ns.lv2.designation))
+
             # Detect Envelope designation
             envelope = None
-            for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
-                    envelope = env_param
+            if designation:
+                for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
+                        envelope = env_param
+                        designation = None
+
             # Detect Filter designation
             filter = None
-            for flt_param in ["cutoffFrequency", "resonance"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
-                    filter = flt_param
+            if designation:
+                for flt_param in ["cutoffFrequency", "resonance"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
+                        filter = flt_param
+                        designation = None
+
+            is_bypass = False
+            bypass_value = 0
+            if designation:
+                if designation == f"http://lv2plug.in/ns/lv2core#enabled":
+                    is_bypass = True
+                    bypass_value = 0
+                    designation = None
 
             not_on_gui = control.has_property(world.ns.portprops.notOnGUI)
             display_priority = control.get(world.ns.lv2.displayPriority)
@@ -1019,13 +1042,6 @@ def get_plugin_ports(plugin_url):
             except:
                 vdef = vmin
 
-            if  symbol == "BYPASS" and plugin_url.startswith("http://guitarix"):
-                # Invert bypass for guitarix effects
-                is_toggled = True
-                vmin = 1
-                vmax = 0
-                vdef = 0
-
             ports_info[i] = {
                 'index': i,
                 'symbol': symbol,
@@ -1050,6 +1066,8 @@ def get_plugin_ports(plugin_url):
                 'path_preload': False,
                 'envelope': envelope,
                 'filter': filter,
+                'is_bypass': is_bypass,
+                'bypass_value': bypass_value,
                 'not_on_gui': not_on_gui,
                 'display_priority': display_priority,
                 'scale_points': sp
@@ -1082,6 +1100,8 @@ def get_plugin_ports(plugin_url):
             path_preload = True
             envelope = None
             filter = None
+            is_bypass = False
+            bypass_value = 0
             sp = []
         else:
             vdef = get_node_value(world.get(control, world.ns.lv2.default, None))
@@ -1099,16 +1119,30 @@ def get_plugin_ports(plugin_url):
 
             # Parameter Desgination => http://lv2plug.in/ns/lv2core#designation
             designation = str(world.get(control, world.ns.lv2.designation, None))
+
             # Detect Envelope designation
             envelope = None
-            for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
-                    envelope = env_param
+            if designation:
+                for env_param in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{env_param}":
+                        envelope = env_param
+                        designation = None
+
             # Detect Filter designation
             filter = None
-            for flt_param in ["cutoffFrequency", "resonance"]:
-                if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
-                    filter = flt_param
+            if designation:
+                for flt_param in ["cutoffFrequency", "resonance"]:
+                    if designation == f"http://lv2plug.in/ns/ext/parameters#{flt_param}":
+                        filter = flt_param
+                        designation = None
+
+            is_bypass = False
+            bypass_value = 0
+            if designation:
+                if designation == f"http://lv2plug.in/ns/lv2core#enabled":
+                    is_bypass = True
+                    bypass_value = 0
+                    designation = None
 
             sp = []
             for p in world.find_nodes(control, world.ns.lv2.scalePoint, None):
@@ -1183,6 +1217,8 @@ def get_plugin_ports(plugin_url):
             'path_preload': path_preload,
             'envelope': envelope,
             'filter': filter,
+            'is_bypass': is_bypass,
+            'bypass_value': bypass_value,
             'not_on_gui': not_on_gui,
             'display_priority': display_priority,
             'scale_points': sp
@@ -1191,6 +1227,62 @@ def get_plugin_ports(plugin_url):
 
     return ports_info
 
+
+def test_lv2_plugin(plugin_info):
+    logging.info(f"Testing '{plugin_info['NAME']}' <{plugin_info['URL']}> ...")
+    # Start jalv instance
+    try:
+        #command = ["jalv", "-s", plugin_info['URL']]
+        command = ["jalv", plugin_info['URL']]
+        command_env = os.environ.copy()
+        if plugin_info['NAME'].endswith("v1"):
+            command_env['DISPLAY'] = ":0"
+            #logging.warning(f"\tOmitting test!!")
+            #return False
+        else:
+            command_env['DISPLAY'] = "X"
+        command_prompt = ">"
+        proc = Popen(command, env=command_env, shell=False, text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+    except Exception as e:
+        logging.error(f"\tCan't start jalv => {e}")
+        return False
+
+    # Read lines until prompt
+    try:
+        res = ""
+        while proc.returncode is None:
+            line = proc.stdout.readline().strip()
+            if line == command_prompt:
+                break
+            elif line:
+                res += line
+                if "error: Failed to instantiate plugin" in line:
+                    logging.error(line)
+                    return False
+                elif "aborted" in line.lower():
+                    logging.error(line)
+                    return False
+                elif "segmentation fault" in line.lower():
+                    logging.error(line)
+                    return False
+    except Exception as e:
+        logging.error(f"\tCan't parse prompt => {e}")
+        return False
+
+    # End plugin
+    try:
+        proc.stdin.writelines(["\n"])
+    except Exception as e:
+        logging.error(f"\tException while ending jalv => {e}")
+    proc.terminate()
+    try:
+        proc.communicate(timeout=5)
+    except Exception as e:
+        logging.warning(f"\tCan't terminate jalv. Killing it! => {e}")
+        proc.kill()
+        return False
+
+    return True
 
 # ------------------------------------------------------------------------------
 # Main program
@@ -1238,6 +1330,18 @@ if __name__ == '__main__':
         elif sys.argv[1] == "all":
             generate_engines_config_file(refresh=False)
             generate_all_presets_cache(False)
+
+        elif sys.argv[1] == "test_lv2_plugins":
+            if len(sys.argv) > 3:
+                info = {
+                    'URL': sys.argv[2],
+                    'NAME': sys.argv[3]
+                }
+                test_lv2_plugin(info)
+            else:
+                for key, info in engines.items():
+                    if 'URL' in info and info['URL']:
+                        test_lv2_plugin(info)
 
     else:
         generate_engines_config_file(refresh=False)

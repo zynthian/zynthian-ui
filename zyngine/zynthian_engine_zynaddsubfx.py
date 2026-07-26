@@ -60,8 +60,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
         ['voice limit', '/part$i/Pvoicelimit', 0, 60],
         ['drum mode', '/part$i/Pdrummode', 'off', 'off|on'],
-        ['assign mode', '/part$i/polyType', 'poly',
-         [['poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3]]],
+        ['assign mode', '/part$i/polyType', 'poly', [['poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3]]],
 
         # ['portamento on/off', 65, 'off', 'off|on'],
         ['portamento enable', '/part$i/ctl/portamento.portamento', 'off', 'off|on'],
@@ -200,10 +199,14 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
     def set_midi_chan(self, processor):
         if self.osc_server and processor.part_i is not None:
-            lib_zyncore.zmop_set_midi_chan_trans(
-                processor.chain.zmop_index,
-                processor.get_midi_chan(),
-                processor.part_i)
+            midi_chan = processor.get_midi_chan()
+            if 0 <= midi_chan < 16:
+                lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
+                                                    midi_chan,
+                                                    processor.part_i)
+            elif midi_chan == 0xffff:
+                lib_zyncore.zmop_set_midi_chan_all_trans(processor.chain.zmop_index,
+                                                    processor.part_i)
 
     # ----------------------------------------------------------------------------
     # Preset Managament

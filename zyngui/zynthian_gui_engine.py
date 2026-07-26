@@ -236,11 +236,23 @@ class zynthian_gui_engine(zynthian_gui_selector):
             path = eng_info["TYPE"]
         if self.engine_cats:
             path = path + "/" + eng_info["CAT"]
-        text = f"{eng_info['NAME']}\n\n{path}\n"
-        text += "Quality: " + "★" * eng_info["QUALITY"] + "\n"
-        text += "Complexity: " + "⚈" * eng_info["COMPLEX"] + "\n\n"
-        text += eng_info["DESCR"]
-        self.zyngui.show_info(text)
+        if eng_info:
+            description = eng_info["DESCR"].replace("\n", "</p>\n<p>")
+            html = f"""<html>
+ <head>
+  <link rel="stylesheet" href="style_details.css">
+ </head>
+ <body class="help_ui">
+ <div class="details_container">
+  <h1>{eng_info['NAME']}</h1>
+  <div class="engine_path">{path}</div>
+  <div class="quality">Quality: <span class="stars">{"★" * eng_info["QUALITY"]}</span></div>
+  <div class="complexity">Complexity: <span class="stars">{"⚈" * eng_info["COMPLEX"]}</span></div>
+  <p class="description">{description}</p>
+ </body>
+</html>
+"""
+            self.zyngui.screens['help'].set_html(html)
 
     def get_engines_by_cat(self):
         self.chain_manager.get_engine_info()
@@ -382,7 +394,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
             return True
         return False
 
-    def set_selector(self, zs_hidden=False):
+    def set_selector(self, zs_hidden=True):
         super().set_selector(zs_hidden)
         self.zselector.zctrl.engine = self
         if self.zsel2:
@@ -421,6 +433,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.update_list()
         # Update header breadcrumb
         self.set_select_path()
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
 
     def zynpot_cb(self, i, dval):
         if not self.shown:
@@ -487,5 +501,20 @@ class zynthian_gui_engine(zynthian_gui_selector):
         if self.engine_cats:
             path = path + "/" + self.engine_cats[self.cat_index]
         self.select_path.set(path)
+
+    # --------------------------------------------------------------------------
+    # ZynVoice TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        if not self.zyngui.tts:
+            return
+        eng_info = self.get_info()
+        self.zyngui.tts.announce(f"View: Engine")
+        self.zyngui.tts.announce(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
+        self.zyngui.tts.announce(f"Engine: {self.list_data[self.index][2]}", False, False, False)
+        complex = ["No", "Minimal", "Low", "Medium", "High", "Maximum"][eng_info["COMPLEX"]]
+        self.zyngui.tts.announce(f"{eng_info['QUALITY']} stars. {complex} complexity. {eng_info['DESCR']}", False, False, False)
+        self.zyngui.tts.announce(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
 # ------------------------------------------------------------------------------

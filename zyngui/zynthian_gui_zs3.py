@@ -5,7 +5,7 @@
 #
 # Zynthian GUI ZS3 screen
 #
-# Copyright (C) 2018-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2018-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -62,9 +62,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     def build_view(self):
         if super().build_view():
             zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_SAVE_ZS3, self.cb_save_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             return True
         else:
             return False
@@ -73,18 +73,18 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         if self.shown:
             self.disable_midi_learn()
             zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.unregister(
-                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_SAVE_ZS3, self.cb_save_zs3)
+                zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             super().hide()
 
     def fill_list(self):
         self.list_data = []
-        self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3", ["Save current state as new ZS3.", "zs3_new.png"]))
+        self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3", ["Save current state as a new ZS3.", "zs3_new.png"]))
         idx = 2
         try:
             self.list_data.append(
-                ("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Default state", ["Load default state (zs3-0).", "zs3_default.png"]))
+                ("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Default state", ["Load default ZS3 state.\n\nBold select to show ZS3 options.", "zs3_default.png"]))
             idx += 1
         except:
             pass
@@ -106,7 +106,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                         title = f"{state['title']} -> CH#{int(parts[0]) + 1}:PRG#{parts[1]}"
                 else:
                     title = f"{state['title']} ({id})"
-            self.list_data.append((id, state, title))
+            self.list_data.append((id, state, title, ["Load ZS3.\n\nBold select to show ZS3 options.", None]))
             if id == self.zyngui.state_manager.last_zs3_id:
                 self.index = idx
             idx += 1
@@ -128,19 +128,32 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def select_action(self, i, t='S'):
         zs3_index = self.list_data[i][0]
-        if zs3_index == "SAVE_ZS3":
+        if t == 'S':
             self.zyngui.state_manager.disable_learn_pc()
-            self.zyngui.state_manager.save_zs3()
-            return True
-        else:
-            if t == 'S':
-                self.zyngui.state_manager.disable_learn_pc()
+            if zs3_index == "SAVE_ZS3":
+                self.zyngui.state_manager.save_zs3()
+                return True
+            else:
                 self.zyngui.state_manager.load_zs3(zs3_index)
                 self.zyngui.close_screen()
                 return True
-            elif t == 'B':
-                self.show_menu()
-                return True
+        elif t == 'B':
+            self.show_menu()
+            return True
+
+    def switch(self, swi, t='S'):
+        if swi == 2 and t == 'S':
+            self.toggle_midi_learn()
+            return True
+        return False
+
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 2 and t == 'S':
+            self.toggle_midi_learn()
+            return True
+        return False
 
     def show_menu(self):
         try:
@@ -167,11 +180,20 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         self.zyngui.state_manager.disable_learn_pc()
         self.hide_waiting_label()
 
+    def toggle_midi_learn(self):
+        if self.zyngui.state_manager.midi_learn_state:
+            self.disable_midi_learn()
+        else:
+            self.enable_midi_learn()
+
     def back_action(self):
         self.zyngui.state_manager.disable_learn_pc()
         return False
 
     def set_select_path(self):
         self.select_path.set("ZS3 (SubSnapShots)")
+
+    def get_alt_mode(self):
+        return self.alt_mode
 
 # -------------------------------------------------------------------------------

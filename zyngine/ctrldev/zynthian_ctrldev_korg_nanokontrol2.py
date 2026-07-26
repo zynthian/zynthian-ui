@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Korg nanoKontrol-2"
 #
-# Copyright (C) 2024-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2024-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -24,13 +24,11 @@
 # ******************************************************************************
 
 import logging
-from time import sleep
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 # --------------------------------------------------------------------------
 # Korg nanoKontrol-2 Integration
@@ -80,6 +78,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         data = bytearray()
         pos = 0
         while True:
+            # Iterate until pos exceeds midi sysex length
             bitsbyte = midi[pos]
             for i in range(0, 7):
                 b7 = (bitsbyte >> i) & 0x1
@@ -96,6 +95,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         midi = bytearray()
         pos = 0
         while True:
+            # Iterate until pos exceeds sysex data length
             bitsbyte = 0x0
             for i in range(0, 7):
                 bitsbyte |= (data[pos + i] >> 7) << i
@@ -138,19 +138,19 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         # Enable LED control
         self.set_mode_led_external()
         # Register signals
-        zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
-        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
+        zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
         super().init()
 
     def end(self):
         super().end()
         # Unregister signals
-        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.state_manager.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
-        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
+        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.refresh_audio_transport)
+        zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.refresh_audio_transport)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, self.refresh_midi_transport)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.refresh_midi_transport)
 
     def refresh_audio_transport(self, **kwargs):
         if self.shift:

@@ -55,12 +55,11 @@ CONFIG_ROOT = "/zynthian/zynthian-data/zynseq"
 DRAG_SENSIBILITY = 1.5
 SAVE_SNAPSHOT_DELAY = 10
 
-EDIT_MODE_NONE = 0  # Edit mode disabled
-EDIT_MODE_SINGLE = 1  # Edit mode enabled for selected note
-EDIT_MODE_MULTI = 2  # Edit mode enabled for a selection of notes (or ALL)
-EDIT_MODE_ZOOM = 3  # Zoom mode
+EDIT_MODE_NONE = 0     # Edit mode disabled
+EDIT_MODE_BLOCK = 1    # Block edit mode
+EDIT_MODE_SINGLE = 2   # Edit mode enabled for selected note
+EDIT_MODE_MULTI = 3    # Edit mode enabled for a selection of notes (or ALL)
 EDIT_MODE_HISTORY = 4  # Edit history mode (undo/redo)
-EDIT_MODE_BLOCK = 5  # Block edit mode
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
@@ -69,6 +68,165 @@ QUANTIZATION_DIVISORS = [0, 1, 2, 3, 4, 6, 8]
 QUANTIZATION_LABELS = ["DISABLED", "1 step", "1/2 step", "1/3 step", "1/4 step", "1/6 step", "1/8 step"]
 # List of available MIDI channels
 INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
+
+# List of GM instruments
+GM_INSTRUMENTS = {
+    # Piano
+    0: "Acoustic Grand Piano",
+    1: "Bright Acoustic Piano",
+    2: "Electric Grand Piano",
+    3: "Honky-tonk Piano",
+    4: "Electric Piano 1",
+    5: "Electric Piano 2",
+    6: "Harpsichord",
+    7: "Clavinet",
+    # Chromatic Percussion:
+    9: "Celesta",
+    10: "Glockenspiel",
+    11: "Music Box",
+    12: "Vibraphone",
+    13: "Marimba",
+    14: "Xylophone",
+    15: "Tubular Bells",
+    16: "Dulcimer",
+    # Organ:
+    17: "Drawbar Organ",
+    18: "Percussive Organ",
+    19: "Rock Organ",
+    20: "Church Organ",
+    21: "Reed Organ",
+    22: "Accordion",
+    23: "Harmonica",
+    24: "Tango Accordion",
+    # Guitar:
+    25: "Acoustic Guitar (nylon)",
+    26: "Acoustic Guitar (steel)",
+    27: "Electric Guitar (jazz)",
+    28: "Electric Guitar (clean)",
+    29: "Electric Guitar (muted)",
+    30: "Overdriven Guitar",
+    31: "Distortion Guitar",
+    32: "Guitar harmonics",
+    # Bass:
+    33: "Acoustic Bass",
+    34: "Electric Bass (finger)",
+    35: "Electric Bass (pick)",
+    36: "Fretless Bass",
+    37: "Slap Bass 1",
+    38: "Slap Bass 2",
+    39: "Synth Bass 1",
+    40: "Synth Bass 2",
+    # Strings:
+    41: "Violin",
+    42: "Viola",
+    43: "Cello",
+    44: "Contrabass",
+    45: "Tremolo Strings",
+    46: "Pizzicato Strings",
+    47: "Orchestral Harp",
+    48: "Timpani",
+    49: "String Ensemble 1",
+    50: "String Ensemble 2",
+    51: "Synth Strings 1",
+    52: "Synth Strings 2",
+    53: "Choir Aahs",
+    54: "Voice Oohs",
+    55: "Synth Voice",
+    56: "Orchestra Hit",
+    # Brass:
+    57: "Trumpet",
+    58: "Trombone",
+    59: "Tuba",
+    60: "Muted Trumpet",
+    61: "French Horn",
+    62: "Brass Section",
+    63: "Synth Brass 1",
+    64: "Synth Brass 2",
+    # Reed:
+    65: "Soprano Sax",
+    66: "Alto Sax",
+    67: "Tenor Sax",
+    68: "Baritone Sax",
+    69: "Oboe",
+    70: "English Horn",
+    71: "Bassoon",
+    72: "Clarinet",
+    # Pipe:
+    73: "Piccolo",
+    74: "Flute",
+    75: "Recorder",
+    76: "Pan Flute",
+    77: "Blown Bottle",
+    78: "Shakuhachi",
+    79: "Whistle",
+    80: "Ocarina",
+    # Synth Lead:
+    81: "Lead 1 (square)",
+    82: "Lead 2 (sawtooth)",
+    83: "Lead 3 (calliope)",
+    84: "Lead 4 (chiff)",
+    85: "Lead 5 (charang)",
+    86: "Lead 6 (voice)",
+    87: "Lead 7 (fifths)",
+    88: "Lead 8 (bass + lead)",
+    # Synth Pad:
+    89: "Pad 1 (new age)",
+    90: "Pad 2 (warm)",
+    91: "Pad 3 (polysynth)",
+    92: "Pad 4 (choir)",
+    93: "Pad 5 (bowed)",
+    94: "Pad 6 (metallic)",
+    95: "Pad 7 (halo)",
+    96: "Pad 8 (sweep)",
+    # Synth Effects:
+    97: "FX 1 (rain)",
+    98: "FX 2 (soundtrack)",
+    99: "FX 3 (crystal)",
+    100: "FX 4 (atmosphere)",
+    101: "FX 5 (brightness)",
+    102: "FX 6 (goblins)",
+    103: "FX 7 (echoes)",
+    104: "FX 8 (sci-fi)",
+    # Ethnic:
+    105: "Sitar",
+    106: "Banjo",
+    107: "Shamisen",
+    108: "Koto",
+    109: "Kalimba",
+    110: "Bag pipe",
+    111: "Fiddle",
+    112: "Shanai",
+    # Percussive:
+    113: "Tinkle Bell",
+    114: "Agogo",
+    115: "Steel Drums",
+    116: "Woodblock",
+    117: "Taiko Drum",
+    118: "Melodic Tom",
+    119: "Synth Drum",
+    # Sound effects:
+    120: "Reverse Cymbal",
+    121: "Guitar Fret Noise",
+    122: "Breath Noise",
+    123: "Seashore",
+    124: "Bird Tweet",
+    125: "Telephone Ring",
+    126: "Helicopter",
+    127: "Applause",
+    128: "Gunshot"
+}
+
+GM2_DRUMKITS = {
+    0: "Standard Kit",
+    8: "Room Kit",
+    16: "Power Kit",
+    24: "Electronic Kit",
+    25: "TR-808 Kit",
+    32: "Jazz Kit",
+    40: "Brush Kit",
+    48: "Orchestra Kit",
+    56: "Sound FX Kit"
+}
 
 # ------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern Editor Base GUI Class
@@ -83,11 +241,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     # Function to initialise class
     def __init__(self):
         super().__init__()
-        self.zynseq_dpath = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/zynseq"
-        self.patterns_dpath = self.zynseq_dpath + "/patterns"
-        self.my_zynseq_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/zynseq"
-        self.my_patterns_dpath = self.my_zynseq_dpath + "/patterns"
-        self.my_captures_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+        self.my_data_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+        self.my_patterns_dpath =  self.my_data_dpath + "/files/Patterns"
+        self.my_capture_dpath = self.my_data_dpath + "/capture"
+        self.my_smf_dpath = self.my_data_dpath + "/files/Midi/patterns"
 
         self.state_manager = self.zyngui.state_manager
         self.zynseq = self.state_manager.zynseq
@@ -97,13 +254,13 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.title = "Pattern 0"
         self.alt_mode = False
         self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
-        self.clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste.
         self.phrase = 0  # Phrase where pattern is used
         self.pattern = 0  # Pattern to edit
         self.sequence = 0  # Sequence used for pattern editor sequence player
         self.channel = 0
         self.seq_info = {}  # Launcher sequence info - None to use phrase 0xffff, sequence 0
         self.last_menu_options = {}  # Last menu options (indexes) saved for each pattern. May be dirty, but we want good UX ;-)
+        self.last_smf_import = {}  # Same for import SMF
 
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
@@ -122,7 +279,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.block_copied = None         # Coordinates of copied block (list of lists)
         self.block_dstep = None          # Horizontal offset of block block when moving around
         self.block_drow = None           # Horizontal offset of block block when moving around
-        self.selected_events = None      # List of indexes of selected events
+        self.selected_events = None      # Dictionary of selected events indexed by step/note key
 
         # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
         self.redraw_pending = 4
@@ -221,22 +378,34 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.velocity_canvas.grid(column=0, row=1)
 
         # Configure ALT mode layout depending on hardware
-        if zynthian_gui_config.check_wiring_layout(["V5"]):
-            self.switch_i_clipboard = [11, 15, 19, 23]
-            self.wsleds_i_clipboard = [10, 11, 12, 13]
+        # Clipboard imported from launcher (see build_view())
+        self.launcher = None
+        self.switch_i_clipboard = None
+        self.wsleds_i_clipboard = None
+        if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
+            self.switch_i_block = 19
+            self.switch_i_cc_editor = 23
+            self.wsled_i_block = 12
+            self.wsled_i_cc_editor = 13
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
-            self.switch_i_clipboard = [10, 11, 12, 13]
-            self.wsleds_i_clipboard = [10, 11, 12, 13]
-        elif zynthian_gui_config.check_kit_version(["V4"]):
-            self.switch_i_clipboard = None
-            self.wsleds_i_clipboard = None
+            self.switch_i_block = 12
+            self.switch_i_cc_editor = 13
+            self.wsled_i_block = 12
+            self.wsled_i_cc_editor = 13
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
+            self.switch_i_block = 6
+            self.switch_i_cc_editor = 7
+            self.wsled_i_block = None
+            self.wsled_i_cc_editor = None
         else:
-            self.switch_i_clipboard = None
-            self.wsleds_i_clipboard = None
+            self.switch_i_block = None
+            self.wsled_i_block = None
+            self.wsled_i_block = None
+            self.wsled_i_cc_editor = None
 
     # Function to get name of this view
     def get_name(self):
-        return "pattern editor base"
+        return "pated base"
 
     # Function to set up behaviour of encoders
     def setup_zynpots(self):
@@ -281,19 +450,17 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         color_bg = zynthian_gui_config.color_panel_tx
         if mode == EDIT_MODE_SINGLE:
             #self.set_title("Note Parameters", color_fg, color_bg)
-            pass
+            self.set_edit_title()
         elif mode == EDIT_MODE_MULTI:
             #self.set_title("Note Parameters ALL", color_fg, color_bg)
-            pass
-        elif self.edit_mode == EDIT_MODE_ZOOM:
-            self.set_title("Grid zoom", color_fg, color_bg)
+            self.set_edit_title()
         elif self.edit_mode == EDIT_MODE_HISTORY:
             self.set_title("Undo/Redo", color_fg, color_bg)
         elif self.edit_mode == EDIT_MODE_BLOCK:
             if self.block_copied:
                 self.set_title("Paste", color_fg, color_bg)
             else:
-                self.set_title("Cut/Copy/Select", color_fg, color_bg)
+                self.set_title("Select Block", color_fg, color_bg)
                 self.start_select_block()
         else:
             self.set_title()
@@ -302,22 +469,21 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def build_view(self):
         self.zynseq.libseq.selectSequence(self.zynseq.scene, self.phrase, self.sequence)
         # Temporarily set sequence to loop - do not update cache which is used to restore configured state on hide
-        self.zynseq.libseq.setSequenceFollowAction(self.zynseq.scene, self.phrase, self.sequence, zynseq.FOLLOW_ACTION_RELATIVE)
-        self.zynseq.libseq.setSequenceFollowParam(self.zynseq.scene, self.phrase, self.sequence, 0)
+        self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, 255)
 
         self.setup_zynpots()
         if not self.param_editor_zctrl:
             self.set_title()
 
-        # Set active the first chain with pattern's MIDI chan
-        try:
-            chain_id = self.zyngui.chain_manager.get_chain_ids_by_midi_chan(self.channel)[0]
-            self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
-        except:
-            logging.error(f"Couldn't set active chain to channel {self.channel}.")
-
         self.toggle_midi_record(self.midi_record)
         self.redraw_pending = 4
+
+        # Setup launcher's clipboard functionality
+        self.launcher = self.zyngui.screens["launcher"]
+        self.clipboard = self.launcher.clipboard
+        self.wsleds_i_clipboard = self.launcher.wsleds_i_clipboard
+        self.switch_i_clipboard = self.launcher.switch_i_clipboard
+
         return True
 
     # Function to hide GUI
@@ -330,9 +496,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.zynseq.libseq.setPatternZoom(self.zoom)
         if self.seq_info:
             # Restore sequence (was changed to looping mode for pattern editing)
-            #self.update_squence_params(["followAction", "followParam", "repeat"])
-            self.zynseq.libseq.setSequenceFollowAction(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["followAction"])
-            self.zynseq.libseq.setSequenceFollowParam(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["followParam"])
             self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, self.seq_info["repeat"])
         else:
             self.stop_playback()
@@ -379,18 +542,14 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             options = {}
             name = self.seq_info["name"]
             repeat = self.seq_info["repeat"]
-            follow_action = self.seq_info["followAction"]
-            follow_param = self.seq_info["followParam"]
             # TODO: Configure start and stop modes
             if repeat > 0:
-                if follow_action == zynseq.FOLLOW_ACTION_RELATIVE:
-                    if follow_param == 0:
-                        options["Play mode (LOOP)"] = "Playmode"
+                if repeat == 255:
+                    options["Play mode (LOOP)"] = "Playmode"
+                elif repeat == 1:
+                    options["Play mode (ONESHOT)"] = "Playmode"
                 else:
-                    if repeat == 1:
-                        options["Play mode (ONESHOT)"] = "Playmode"
-                    else:
-                        options[f"Play mode (PLAY {repeat} TIMES)"] = "Playmode"
+                    options[f"Play mode (PLAY {repeat} TIMES)"] = "Playmode"
             else:
                 options["Play mode (DISABLED)"] = "Playmode"
             program_change = self.zynseq.libseq.getProgramChange(0)
@@ -404,12 +563,11 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             menu_options['_SEQUENCE'] = options
         # Pattern Options
         options = {}
-        # TODO This must be improved!!
-        if zynthian_gui_config.touch_navigation:
-            if self.get_name() == "pattern editor":
-                options['\u2610 CC editor'] = 'CC editor'
+        if zynthian_gui_config.touch_navigation or zynthian_gui_config.layout["name"] == "V4":
+            if self.get_name() == "pated note":
+                options['Edit CC'] = 'Toggle Editor'
             else:
-                options['\u2612 CC editor'] = 'CC editor'
+                options['Edit Notes'] = 'Toggle Editor'
         options[f"Length ({self.get_pattern_length()})"] = 'Length'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         qn = self.zynseq.libseq.getQuantizeNotes()
@@ -437,6 +595,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                     options[f"Paste {name} from clipboard#{i+1}"] = ('Paste pattern', i)
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
+        options['Import from SMF'] = 'Import from SMF'
         options['Export to SMF'] = 'Export to SMF'
         options['Clear pattern ALL'] = 'Clear pattern ALL'
         menu_options['EDIT'] = options
@@ -487,7 +646,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                                                         'value_default': 1, 'value': self.zoom})
             case 'Tempo':
                 self.zyngui.show_screen('tempo')
-            case 'CC editor':
+            case 'Toggle Editor':
                 self.zyngui.toggle_pated()
             case 'Length':
                 labels = []
@@ -525,14 +684,19 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             case 'Paste pattern':
                 self.paste_pattern(params[1])
             case 'Load pattern':
-                self.zyngui.screens['option'].config_file_list("Load pattern",
-                                                               [self.patterns_dpath, self.my_patterns_dpath],
-                                                               "*.zpat", self.load_pattern_file)
-                self.zyngui.show_screen('option')
+                self.zyngui.screens["file_selector"].config(self.load_pattern_file, fexts=["zpat"])
+                self.zyngui.show_screen("file_selector")
             case 'Save pattern':
-                self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
+                self.zyngui.show_keyboard(self.save_pattern_file, "pattern_{}".format(self.pattern))
+            case 'Import from SMF':
+                try:
+                    fpath = self.last_smf_import[self.pattern]
+                except:
+                    fpath = None
+                self.zyngui.screens["file_selector"].config(self.analyze_smf, fexts=["mid"], path=fpath)
+                self.zyngui.show_screen("file_selector")
             case 'Export to SMF':
-                self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
+                self.zyngui.show_keyboard(self.export_smf, "pattern_{}".format(self.pattern))
             case 'Clear pattern ALL':
                 self.clear_pattern_all()
 
@@ -541,12 +705,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 labels = ["DISABLED", "LOOP", "ONESHOT"]
                 for i in range(2, 25):
                     labels.append(f"PLAY {i} TIMES")
-                follow_action = self.seq_info["followAction"]
-                follow_param = self.seq_info["followParam"]
                 repeat = self.seq_info["repeat"]
                 if repeat == 0:
                     value = 0  # disabled
-                elif follow_action == zynseq.FOLLOW_ACTION_RELATIVE and follow_param == 0:
+                elif repeat == 255:
                     value = 1
                 else:
                     value = 1 + repeat
@@ -639,16 +801,20 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.phrase = self.zynseq.phrase
             self.sequence = self.chain_manager.active_chain.midi_chan
             self.channel = self.chain_manager.active_chain.midi_chan
-            try:
-                self.bpb = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["bpb"]
-            except:
-                self.bpb = 0
-            if self.bpb == 0:
-                self.bpb = self.zynseq.bpb
+        except:
+            self.phrase = 0
+            self.sequence = 0
+            self.channel = 0
+        try:
+            self.bpb = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["bpb"]
+        except:
+            self.bpb = 0
+        if self.bpb == 0:
+            self.bpb = self.zynseq.bpb
+        try:
             self.seq_info = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][self.phrase]["sequences"][self.sequence]
         except Exception as e:
-            logging.warning(f"Unable to refresh sequence info for pattern: {e}")
-            self.channel = 0
+            logging.error(f"Unable to refresh sequence info for pattern: {e}")
             self.seq_info = {}
 
     def update_sequence_params(self, params):
@@ -663,29 +829,23 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # Update the cache only so that we can assert on hide
         # Disable
         if value == 0:
-            #self.seq_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
-            #self.seq_info["followParam"] = 0
             self.seq_info["repeat"] = 0
         # Loop
         elif value == 1:
-            self.seq_info["followAction"] = zynseq.FOLLOW_ACTION_RELATIVE
-            self.seq_info["followParam"] = 0
-            self.seq_info["repeat"] = 1
+            self.seq_info["repeat"] = 255
         # Oneshot/Repeat
         else:
-            self.seq_info["followAction"] = zynseq.FOLLOW_ACTION_NONE
-            self.seq_info["followParam"] = 0
             self.seq_info["repeat"] = value - 1
 
     def enable_sequence(self):
         if self.seq_info["repeat"] == 0:
             self.assert_playmode(1)
-            self.update_sequence_params(["followAction", "followParam", "repeat"])
+            self.update_sequence_params(["repeat"])
 
     def disable_sequence(self):
         if self.seq_info["repeat"] > 0:
             self.assert_playmode(0)
-            self.update_sequence_params(["followAction", "followParam", "repeat"])
+            self.update_sequence_params(["repeat"])
 
     def rename_sequence(self, name):
         self.zynseq.set_sequence_param(self.zynseq.scene, self.phrase, self.sequence, "name", name)
@@ -733,7 +893,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def do_save_pattern_file(self, fpath):
         self.zynseq.save_pattern(self.pattern, fpath)
 
-    def load_pattern_file(self, fname, fpath):
+    def load_pattern_file(self, fpath):
         if not self.zynseq.is_pattern_empty(self.pattern):
             self.zyngui.show_confirm(f"Do you want to overwrite pattern '{self.pattern}'?",
                                      self.do_load_pattern_file, fpath)
@@ -742,8 +902,13 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     def do_load_pattern_file(self, fpath):
         self.zynseq.load_pattern(self.pattern, fpath)
+        self.load_pattern(self.pattern)
+        # I don't understand why this is needed when steps/beat has changed
+        n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
+        self.zynseq.libseq.setBeatsInPattern(self.pattern, n_beats)
+        # Reset pattern snapshots => No undo/redo after loading pattern!!
+        self.zynseq.libseq.resetPatternSnapshots()
         self.changed = False
-        self.redraw_pending = 4
 
     # If changed, save snapshot:
     #  + right now, if now=True
@@ -801,45 +966,233 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     # Function to copy current pattern to clipboard
     def copy_pattern(self, i=0):
         try:
-            self.clipboard[i] = (self.phrase, self.sequence, self.pattern)
+            self.clipboard[i] = ("PAT", self.phrase, self.sequence, self.pattern)
         except:
             logging.error(f"Wrong clipboard index => {i}")
 
     # Function to paste pattern from clipboard
-    def paste_pattern(self, i=0):
-        try:
-            paste = self.clipboard[i]
-        except:
-            logging.error(f"Wrong clipboard index => {i}")
-            return
-        # Don't paste from None or over itself
-        if paste is None or paste[2] == self.pattern:
-            return
+    def paste_pattern(self, patinfo, dst_pattern=None):
+        if dst_pattern is None:
+            dst_pattern = self.pattern
+        if dst_pattern is None:
+            logging.error("No destiny where paste to!")
+            return False
+        if isinstance(patinfo, int):
+            patinfo = self.clipboard[patinfo]
+        # Don't paste from None
+        if patinfo is None:
+            logging.warning(f"Nothing to paste")
+            return False
+        # Don't paste over itself
+        if patinfo[3] == dst_pattern:
+            logging.warning(f"Can't paste => {patinfo}")
+            return False
         # Overwriting an empty pattern doesn't need confirmation
-        if self.zynseq.libseq.getLastStep() == -1:
-            self.do_paste_pattern(i)
+        #if self.zynseq.libseq.getLastStep() == -1:
+        if self.zynseq.libseq.isPatternEmpty(dst_pattern):
+            self.do_paste_pattern([patinfo, dst_pattern])
         # Overwriting a busy pattern does need confirmation!
         else:
-            name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[0], paste[1])
+            name = self.zynseq.get_sequence_name(self.zynseq.scene, patinfo[1], patinfo[2])
             self.zyngui.show_confirm(f"Overwrite this pattern with content from {name}?",
-                                     self.do_paste_pattern, i)
+                                     self.do_paste_pattern, [patinfo, dst_pattern])
+        return True
 
     # Function to actually copy pattern
-    def do_paste_pattern(self, i=0):
+    def do_paste_pattern(self, params):
         try:
-            paste = self.clipboard[i]
+            patinfo = params[0]
+            dst_pattern = params[1]
+            self.zynseq.libseq.copyPattern(patinfo[3], dst_pattern)
+        except Exception as e:
+            logging.error(e)
+        if self.shown:
+            self.load_pattern(dst_pattern)
+
+    def analyze_smf(self, fpath):
+        # Create SMF object and load file
+        smf = zynsmf.libsmf.addSmf()
+        if not zynsmf.load(smf, fpath):
+            logging.error(f"Failed to load SMF file '{fpath}'")
+            return
+        event_count = zynsmf.libsmf.getEvents(smf, -1)
+        if event_count == 0:
+            logging.warning(f"Empty SMF file '{fpath}'")
+            return
+        logging.debug(f"Loaded SMF file ({event_count} events)")
+
+        ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
+        ticks_per_bar = self.bpb * ticks_per_beat
+        start_time = end_time = None
+
+        # Analyze channels
+        event_index = 0
+        midi_chan_info = [[0, None] for i in range(16)]       # [n_events, program] for each MIDI channel
+        zynsmf.libsmf.setPosition(smf, 0)
+        while zynsmf.libsmf.getEvent(smf, True):
+            event_index += 1
+            evtype = zynsmf.libsmf.getEventType()
+            # MIDI event
+            if evtype == 0x01:
+                evstatus = zynsmf.libsmf.getEventStatus();
+                evcode = (evstatus & 0xf0) >> 4
+                evchan = evstatus & 0x0f
+                evtime = zynsmf.libsmf.getEventTime()
+                #logging.debug(f"\tEvent {event_index} => 0x{evstatus:02X}: 0x{evcode:X}, {evchan}")
+                if evcode in (0x8, 0x9, 0xB):
+                    # Count number of note-on events for each MIDI channel
+                    midi_chan_info[evchan][0] += 1
+                    # Look for first event time
+                    if start_time is None:
+                        start_bar = evtime // ticks_per_bar
+                        start_time = start_bar * self.bpb * ticks_per_beat
+                        logging.debug(f"\tStart at bar {start_bar} => {start_time} ticks.")
+                elif evcode == 0xC:                                         # Get last program change message for each MIDI channel
+                #elif evcode == 0xC and midi_chan_info[evchan][1] is None:  # Get first program change message for each MIDI channel
+                    midi_chan_info[evchan][1] = zynsmf.libsmf.getEventValue1()
+                # Get last event time
+                if start_time is not None and evcode in (0x8, 0x9):
+                    end_time = evtime
+
+        # Calculate number of bars
+        dtime = end_time - start_time
+        n_bars = dtime // ticks_per_bar
+        if (dtime % ticks_per_bar) / dtime > 0.1:
+            n_bars += 1
+
+        logging.info(f"SMF channel info => {midi_chan_info}")
+        options = {}
+        for chan, chan_info in enumerate(midi_chan_info):
+            if chan_info[0] > 0:
+                if chan == 9:
+                    program_name = "Drums & Perc"
+                    if chan_info[1] is not None:
+                        try:
+                            program_name += f" ({GM2_DRUMKITS[chan_info[1]]})"
+                        except:
+                            pass
+                elif chan_info[1] is not None:
+                    program_name = GM_INSTRUMENTS[chan_info[1]]
+                else:
+                    program_name = "???"
+                options[f"CH {chan + 1}: {program_name}"] = f"{fpath}#{chan}"
+        if len(options) > 1:
+            self.zyngui.screens['option'].config("SMF Channels", options, self.import_smf_cb)
+            self.zyngui.show_screen("option", hmode=self.zyngui.SCREEN_HMODE_NONE)
+        elif len(options) == 1:
+            opt = list(options.items())[0]
+            self.import_smf_cb(opt[0], opt[1], n_bars)
+
+    def import_smf_cb(self, chan_name, fpath, n_bars=None):
+        # Parse file path and channel from received parameter
+        try:
+            parts = fpath.split("#")
+            fpath = parts[0]
+            self.last_smf_import[self.pattern] = fpath
+            midi_chan = int(parts[1])
+            logging.debug(f"{chan_name} => {fpath}, CH#{midi_chan} ({n_bars} bars)")
         except:
-            logging.error(f"Wrong clipboard index => {i}")
+            logging.error(f"Error while importing SMF => {fpath}")
             return
-        # Don't paste from None or over itself
-        if paste is None or paste[2] == self.pattern:
+
+        # Create SMF object and load file
+        smf = zynsmf.libsmf.addSmf()
+        if not zynsmf.load(smf, fpath):
+            logging.error(f"Failed to load SMF file '{fpath}'")
             return
-        # Paste from clipboard to current pattern
-        self.zynseq.libseq.copyPattern(paste[2], self.pattern)
-        self.load_pattern(self.pattern)
+        event_count = zynsmf.libsmf.getEvents(smf, -1)
+        if event_count == 0:
+            logging.warning(f"Empty SMF file '{fpath}'")
+            return
+
+        # Change pattern length if needed
+        if n_bars and n_bars != self.zynseq.libseq.getBeatsInPattern(self.pattern) / self.bpb:
+            self.set_beats_in_pattern(min(n_bars, 16) * self.bpb)
+        else:
+            # If length not changed, ensure we can undo/redo
+            self.save_pattern_snapshot(now=True, force=False)
+        # TODO => Make undo/redo to work across changes of pattern length
+
+        # Clear pattern
+        self.zynseq.libseq.clearNotes()
+
+        # Calculate timing parameters
+        ticks_per_beat = zynsmf.libsmf.getTicksPerQuarterNote(smf)
+        ticks_per_bar = self.bpb * ticks_per_beat
+        ticks_per_step = ticks_per_beat / self.n_steps_beat
+        beats_in_pattern = self.n_steps / self.n_steps_beat    # self.zynseq.bpb
+        ticks_in_pattern = ticks_per_beat * beats_in_pattern
+        logging.debug(f"Loaded SMF file ({event_count} events) => {ticks_per_beat} ticks/beat")
+
+        # Do import
+        start_time = None
+        event_index = 0
+        # Array of [time, velocity] indicating time that note on event received for matching note off and deriving duration
+        note_on_info = [None] * 127
+        zynsmf.libsmf.setPosition(smf, 0)
+        while zynsmf.libsmf.getEvent(smf, True):
+            event_index += 1
+            evtype = zynsmf.libsmf.getEventType()
+            # MIDI event
+            if evtype == 0x01:
+                evstatus = zynsmf.libsmf.getEventStatus();
+                evchan = evstatus & 0x0f
+                # Filter MIDI channel
+                if evchan == midi_chan:
+                    evcode = (evstatus & 0xf0) >> 4
+                    evtime = zynsmf.libsmf.getEventTime()
+                    #logging.debug(f"\tEvent {event_index} => 0x{evcode:X} at {evtime}")
+                    if start_time is not None and evtime > (start_time + ticks_in_pattern):
+                        logging.debug(f"\tReached end of pattern at {evtime - start_time}!")
+                        break
+                    if evcode in (0x8, 0x9, 0xB):
+                        # Calculate start time (first event)
+                        if start_time is None:
+                            start_bar = evtime // ticks_per_bar
+                            start_time = start_bar * self.bpb * ticks_per_beat
+                            logging.debug(f"\tStart at bar {start_bar} => {start_time} ticks.")
+                        if evcode == 0xB:
+                            ccnum = zynsmf.libsmf.getEventValue1()
+                            ccval = zynsmf.libsmf.getEventValue2()
+                            step = int((evtime - start_time) / ticks_per_step)
+                            self.zynseq.libseq.addControl(step, ccnum, ccval, ccval, 1, 0)
+                        else:
+                            note = zynsmf.libsmf.getEventValue1()
+                            velo = zynsmf.libsmf.getEventValue2()
+                            if evcode == 0x9 and velo:
+                                #logging.debug(f"\tNote-on at {evtime} => {note}, {velo}")
+                                # Register Note-On
+                                note_on_info[note] = [evtime, velo]
+                            else:
+                                #logging.debug(f"\tNote-off at {evtime} => {note}, {velo}")
+                                ninfo = note_on_info[note]
+                                if ninfo:
+                                    # Add note to pattern
+                                    fstep = (ninfo[0] - start_time) / ticks_per_step
+                                    step = int(fstep)
+                                    duration = (evtime - ninfo[0]) / ticks_per_step
+                                    offset = fstep - step
+                                    self.zynseq.libseq.addNote(step, note, ninfo[1], duration, offset)
+                                    logging.debug(f"\tAdd Note {note}, {ninfo[1]} => {step} + {offset}, {duration}")
+                                    note_on_info[note] = None
+        # TODO Off pending notes?
+        # Save state for undo/redo
+        self.save_pattern_snapshot(now=True, force=True)
+        # Clean SMF object
+        zynsmf.libsmf.removeSmf(smf)
+        # Refresh view
+        self.redraw_pending = 4
+
+    def export_smf(self, fname):
+        fpath = f"{self.my_smf_dpath}/{fname}.mid"
+        if os.path.exists(fpath):
+            self.zyngui.show_confirm(f"Do you want to overwrite SMF file '{fname}'?",
+                                     self.do_export_smf, fpath)
+        else:
+            self.do_export_smf(fpath)
 
     # Function to export pattern to SMF
-    def export_smf(self, fname):
+    def do_export_smf(self, fpath):
         smf = zynsmf.libsmf.addSmf()
         tempo = self.zynseq.libseq.getTempo()
         zynsmf.libsmf.addTempo(smf, 0, tempo)
@@ -854,7 +1207,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 velocity = self.zynseq.libseq.getNoteVelocity(step, note)
                 zynsmf.libsmf.addNote(smf, 0, time, duration, self.channel, note, velocity)
         zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.n_steps * ticks_per_step))
-        zynsmf.save(smf, "{}/{}.mid".format(self.my_captures_dpath, fname))
+        zynsmf.save(smf, fpath)
 
     # Function to add program change at start of pattern
     def add_program_change(self, value):
@@ -1327,6 +1680,27 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # Plot
         self.plot_select_block()
 
+    def select_block_all(self):
+        # Get all events indexed by "step/note"" key
+        self.selected_events = self.zynseq.get_pattern_selection(self.pattern, 0, self.n_steps, 0, 127)
+        # Get row range
+        row_min = 127
+        row_max = 0
+        for ev_key in self.selected_events:
+            note = ev_key // zynseq.MAX_STEPS_PATTERN
+            row = self.get_row_from_note(note)
+            if row > row_max:
+                row_max = row
+            if row < row_min:
+                row_min = row
+        # Select minimum vertical area containing all notes
+        self.block_cell_start = [0, row_max]
+        self.block_cell_end = [self.n_steps - 1, row_min]
+        # Plot
+        self.plot_select_block()
+        # Highlight selected notes color
+        self.redraw_pending = 3
+
     def hide_selected_block(self):
         if self.rect_selected_block:
             self.grid_canvas.delete(self.rect_selected_block)
@@ -1359,6 +1733,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # if cutting => save snapshot
         if cut:
             self.save_pattern_snapshot(True, False)
+            self.selected_events = None
+            self.changed = True
         # Copy/Cut subpattern to clipboard
         n = self.zynseq.libseq.copyPatternBuffer(self.pattern,
                                                  self.block_cell_start[0], self.block_cell_end[0],
@@ -1377,27 +1753,31 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.set_edit_mode(EDIT_MODE_BLOCK)
         self.hide_selected_block()
         self.draw_cp_events()
-        # if cutting => redraw pattern notes
+        # Redraw pattern notes
         if cut:
-            self.changed = True
             self.redraw_pending = 3
 
     def select_block_events(self):
         self._end_block_selection()
-        # Get indexes of selected events
+        # Get selected events indexed by "step/note"" key
         self.selected_events = self.zynseq.get_pattern_selection(self.pattern,
-                                                                 self.block_cell_start[0], self.block_cell_end[0],
-                                                                 self.get_evnum_from_row(self.block_cell_start[1]),
-                                                                 self.get_evnum_from_row(self.block_cell_end[1]))
-        # If selection is empty => end select mode
-        if not self.selected_events:
-            self.end_select_block()
-            return
-        # Enter EDIT_MODE_MULTI and replot to highlight selected events
+                                           self.block_cell_start[0], self.block_cell_end[0],
+                                           self.get_evnum_from_row(self.block_cell_start[1]),
+                                           self.get_evnum_from_row(self.block_cell_end[1]))
+
         #logging.debug(f"SELECTED EVENTS => {self.selected_events}")
-        self.set_edit_mode(EDIT_MODE_MULTI)
-        #self.hide_selected_block()
-        #self.hide_selected_cell()
+
+        # If selection is empty => end select mode
+        #if not self.selected_events:
+        #    self.end_select_block()
+        #    return
+
+        # Replot to highlight selected events
+        self.redraw_pending = 3
+
+    def select_all_events(self):
+        # Get all events indexed by "step/note"" key
+        self.selected_events = self.zynseq.get_pattern_selection(self.pattern, 0, self.n_steps, 0, 127)
         self.redraw_pending = 3
 
     def move_block(self, dstep, drow):
@@ -1485,9 +1865,9 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         #if super().zynpot_cb(i, dval):
         #    return True
         if i == self.ctrl_order[1]:
-            if self.edit_mode == EDIT_MODE_NONE:
-                self.set_grid_zoom(self.zoom + dval)
-                return True
+            #if self.edit_mode == EDIT_MODE_NONE:
+            self.set_grid_zoom(self.zoom + dval)
+            return True
         elif i == self.ctrl_order[2]:
             if self.edit_mode == EDIT_MODE_BLOCK:
                 if self.block_copied:
@@ -1499,10 +1879,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 self.select_cell(None, self.selected_cell[1] - dval)
                 return True
         elif i == self.ctrl_order[3]:
-            if self.edit_mode == EDIT_MODE_ZOOM:
-                self.set_grid_zoom(self.zoom + dval)
-                return True
-            elif self.edit_mode == EDIT_MODE_HISTORY:
+            if self.edit_mode == EDIT_MODE_HISTORY:
                 if dval > 0:
                     self.redo_pattern()
                 else:
@@ -1535,18 +1912,25 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 self.set_edit_mode(EDIT_MODE_NONE)
         elif st == "B":
             if self.edit_mode == EDIT_MODE_NONE:
-                self.set_edit_mode(EDIT_MODE_SINGLE)
-            elif self.edit_mode == EDIT_MODE_SINGLE:
-                self.set_edit_mode(EDIT_MODE_MULTI)
+                if self.selected_events:
+                    self.set_edit_mode(EDIT_MODE_MULTI)
+                else:
+                    self.set_edit_mode(EDIT_MODE_SINGLE)
             elif self.edit_mode == EDIT_MODE_BLOCK:
                 if not self.block_copied:
                     self.select_block_events()
+                if self.selected_events:
+                    self.set_edit_mode(EDIT_MODE_MULTI)
+                else:
+                    self.set_edit_mode(EDIT_MODE_NONE)
 
     # Function to handle switch press
     #   i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
     #   st: Press type [S=Short, B=Bold, L=Long]
     #   returns True if action fully handled or False if parent action should be triggered
     def switch(self, i, st):
+        logging.debug(f"SWITCH {i} == {self.switch_i_block}")
+
         if i == 0 and st == "S":
             self.show_menu()
             return True
@@ -1563,7 +1947,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 return True
             elif st == "P":
                 return False
-        # ALT mode => Use F1-F4 as copy/paste buttons
+
+        # Configured F button for block selection workflow
+        elif i == self.switch_i_cc_editor:
+            return self.cuia_v5_zynpot_switch([0, st])
+
+        # Configured F button for block selection workflow
+        elif i == self.switch_i_block:
+            return self.cuia_v5_zynpot_switch([2, st])
+
+        # ALT mode => Use configured F buttons as copy/paste buttons
         elif self.alt_mode and self.switch_i_clipboard is not None and i in self.switch_i_clipboard:
             index = self.switch_i_clipboard.index(i)
             if st == "S":
@@ -1582,23 +1975,26 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 self.zyngui.toggle_pated()
                 return True
         elif i == 1:
-            if t == 'S' or t == 'B':
+            if t == 'S':
                 self.reset_grid_zoom()
                 return True
+            elif t == 'B':
+                self.menu_cb("Length", "Length")
         elif i == 2:
             if t == 'S':
-                if self.edit_mode == EDIT_MODE_BLOCK:
+                if self.edit_mode == EDIT_MODE_NONE:
+                    self.set_edit_mode(EDIT_MODE_BLOCK)
+                    return True
+                elif self.edit_mode == EDIT_MODE_BLOCK:
                     if not self.block_copied:
                         self.copy_block(cut=True)
                     return True
-                elif self.edit_mode == EDIT_MODE_NONE:
-                    self.set_edit_mode(EDIT_MODE_BLOCK)
-                    return True
             elif t == 'B':
-                if self.param_editor_zctrl:
-                    self.disable_param_editor()
-                else:
-                    self.menu_cb("Length", "Length")
+                #self.select_all_events()
+                #self.set_edit_mode(EDIT_MODE_MULTI)
+                if self.edit_mode == EDIT_MODE_NONE:
+                    self.set_edit_mode(EDIT_MODE_BLOCK)
+                self.select_block_all()
                 return True
         return False
 
@@ -1625,14 +2021,14 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     # Function to handle CUIA ARROW_RIGHT
     def arrow_right(self):
-        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             self.redo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], 1)
 
     # Function to handle CUIA ARROW_LEFT
     def arrow_left(self):
-        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             self.undo_pattern()
         else:
             self.zynpot_cb(self.ctrl_order[3], -1)
@@ -1641,10 +2037,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def arrow_up(self):
         if super().arrow_up():
             return
-        elif self.edit_mode:
-            self.zynpot_cb(self.ctrl_order[2], 1)
-        elif self.alt_mode:
+        elif (self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY:
             self.redo_pattern_all()
+        elif self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
+            self.zynpot_cb(self.ctrl_order[2], 1)
         else:
             self.zynpot_cb(self.ctrl_order[2], -1)
 
@@ -1652,16 +2048,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def arrow_down(self):
         if super().arrow_down():
             return
-        elif self.edit_mode:
-            self.zynpot_cb(self.ctrl_order[2], -1)
-        elif self.alt_mode:
+        elif (self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY:
             self.undo_pattern_all()
+        elif self.edit_mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
+            self.zynpot_cb(self.ctrl_order[2], -1)
         else:
             self.zynpot_cb(self.ctrl_order[2], 1)
 
     def start_playback(self):
         # Set to start of pattern - work around for timebase issue in library.
-        self.zynseq.libseq.setSequencePlayPosition(self.phrase, self.sequence, 0)
+        self.zynseq.libseq.setSequencePlayPosition(self.zynseq.scene, self.phrase, self.sequence, 0)
         self.zynseq.libseq.setPlayState(self.zynseq.scene, self.phrase, self.sequence, zynseq.SEQ_STARTING)
 
     def stop_playback(self):
@@ -1683,10 +2079,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def get_alt_mode(self):
         return self.alt_mode
 
-    def cuia_toggle_alt_mode(self, params=None):
-        self.alt_mode = not self.alt_mode
-        return True
-
     def cuia_toggle_record(self, params=None):
         self.toggle_midi_record()
         return True
@@ -1700,16 +2092,17 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         return True
 
     def cuia_copy(self, params=None):
-        self.copy_pattern(params[0])
+        self.copy_pattern(int(params[0]))
         return True
 
     def cuia_paste(self, params=None):
-        self.paste_pattern(params[0])
+        self.paste_pattern(int(params[0]))
         return True
 
     def update_wsleds(self, leds):
         wsl = self.zyngui.wsleds
 
+        # ALT mode
         if self.alt_mode:
             # ALT button
             wsl.set_led(leds[0], wsl.wscolor_active2)
@@ -1717,13 +2110,31 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             if self.wsleds_i_clipboard:
                 # Copy/paste buttons
                 for i, wsli in enumerate(self.wsleds_i_clipboard):
-                    if self.clipboard[i] is not None:
-                        if self.clipboard[i][2] == self.pattern:
-                            wsl.blink(leds[wsli], wsl.wscolor_red)
-                        else:
-                            wsl.blink(leds[wsli], wsl.wscolor_active2)
-                    else:
+                    if self.clipboard[i] is None:
                         wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                    else:
+                        cpfc = self.launcher.can_paste_from_clipboard(i)
+                        if cpfc is None:
+                            wsl.blink(leds[wsli], wsl.wscolor_red)
+                        elif cpfc == False:
+                            wsl.blink(leds[wsli], wsl.wscolor_active2)
+                        elif cpfc == True:
+                            wsl.blink(leds[wsli], wsl.wscolor_active)
+
+        # Block Selection  (F3 in V5, S3 in V4)
+        if self.wsled_i_block is not None:
+            if self.edit_mode == EDIT_MODE_BLOCK:
+                if self.block_copied:
+                    wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active)
+                else:
+                    wsl.blink(leds[self.wsled_i_block], wsl.wscolor_active2)
+            else:
+                wsl.set_led(leds[self.wsled_i_block], wsl.wscolor_active2)
+
+        # Block Selection (F4 in V5, S4 in V4)
+        if self.wsled_i_cc_editor is not None:
+            wsl.set_led(leds[self.wsled_i_cc_editor], wsl.wscolor_active2)
+
         # REC button:
         if self.zynseq.libseq.isMidiRecord():
             wsl.set_led(leds[1], wsl.wscolor_red)
@@ -1744,7 +2155,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         elif pb_status == zynseq.SEQ_STOPPED:
             wsl.set_led(leds[3], wsl.wscolor_active2)
         # Arrow buttons
-        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode in (EDIT_MODE_NONE, EDIT_MODE_BLOCK)) or self.edit_mode == EDIT_MODE_HISTORY):
+        if not self.param_editor_zctrl and ((self.alt_mode and self.edit_mode == EDIT_MODE_NONE) or self.edit_mode == EDIT_MODE_HISTORY):
             wsl.set_led(leds[4], wsl.wscolor_active2)
             wsl.set_led(leds[5], wsl.wscolor_active2)
             wsl.set_led(leds[6], wsl.wscolor_active2)

@@ -23,11 +23,11 @@
 # ******************************************************************************
 
 import os
-import liblo
 import queue
 import shutil
 import logging
 import oyaml as yaml
+import pyliblo3 as liblo
 from time import sleep
 from os.path import isfile, join
 

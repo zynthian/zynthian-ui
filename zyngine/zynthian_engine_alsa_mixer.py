@@ -227,7 +227,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
                 except:
                     ctrl_array = False
                 while True:
-                    # Iterate through all elements of array
+                    # Iterate through all elements of array until idx exceeds array size
                     try:
                         mixer_ctrl = alsaaudio.Mixer(ctrl_name, idx, -1, device)
                         switch_cap = mixer_ctrl.switchcap()  # May be arbitrary switch, not necessarily mute

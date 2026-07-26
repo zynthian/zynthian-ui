@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Midi-Channel Selector Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -29,7 +29,7 @@ from datetime import datetime
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 import zynautoconnect
 
 # ------------------------------------------------------------------------------
@@ -37,12 +37,13 @@ import zynautoconnect
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_midi_chan(zynthian_gui_selector):
+class zynthian_gui_midi_chan(zynthian_gui_selector_info):
 
     def __init__(self):
-        super().__init__('Channel', True)
+        super().__init__('Channel', zsel_hidden=True, default_icon="midi_logo.png")
         self.chan_list = list(range(16))
         self.set_mode('ADD')
+        self.tts_title = "MIDI Channel"
 
     def set_mode(self, mode, chan=None, chan_all=False):
         self.mode = mode
@@ -65,10 +66,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
         if self.chan_all:
             if self.midi_chan == 0xffff:
                 self.list_data.append(
-                    ("ALL", 0xffff, "\u2612 ALL MIDI CHANNELS"))
+                    ("ALL", 0xffff, "\u2612 ALL MIDI CHANNELS", ["Multitimbral or unfiltered control of the engine.", None]))
             else:
                 self.list_data.append(
-                    ("ALL", 0xffff, "\u2610 ALL MIDI CHANNELS"))
+                    ("ALL", 0xffff, "\u2610 ALL MIDI CHANNELS", ["Multitimbral or unfiltered control of the engine.", None]))
 
         for i in range(16):
             if i == zynthian_gui_config.master_midi_channel:
@@ -89,7 +90,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
                 elif num_chains > 0:
                     used_mark = chr(0x2672 + num_chains)
             self.list_data.append(
-                (str(i + 1), i, f"{check_mark} {used_mark} MIDI CHANNEL {i + 1}"))
+                (str(i + 1), i, f"{check_mark} {used_mark} MIDI CHANNEL {i + 1}", [f"MIDI channel that will control this engine.\n\n{chr(0x267A)} prefix indicates the MIDI channel is already use by another chain.", None]))
 
         super().fill_list()
 

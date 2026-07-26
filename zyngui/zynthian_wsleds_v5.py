@@ -51,50 +51,51 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 
     def update_wsleds(self):
         curscreen = self.zyngui.get_current_screen()
-        curscreen_obj = self.zyngui.get_current_screen_obj()
+        workflow = self.zyngui.get_current_workflow()
+        alt_mode = self.zyngui.get_alt_mode()
 
         # Menu / Admin
-        if self.zyngui.is_current_screen_menu():
-            self.wsleds[0] = self.wscolor_active
-        elif self.zyngui.is_current_screen_admin():
+        if workflow == "admin":
             self.wsleds[0] = self.wscolor_active2
+        elif workflow in ("menu", "chain_manager"):
+            self.wsleds[0] = self.wscolor_active
         else:
             self.wsleds[0] = self.wscolor_default
 
         # Audio Mixer / ALSA Mixer
-        if curscreen == "mixer":
-            self.wsleds[1] = self.wscolor_active
-        elif curscreen == "alsa_mixer":
+        if workflow == "alsa_mixer":
             self.wsleds[1] = self.wscolor_active2
+        elif curscreen == "mixer":
+            self.wsleds[1] = self.wscolor_active
         else:
             self.wsleds[1] = self.wscolor_default
 
         # Control / Preset Screen:
-        if curscreen in ("chain", "control", "audio_player"):
-            self.wsleds[2] = self.wscolor_active
-        elif curscreen in ("preset", "bank"):
+        if workflow == "bank_preset":
             self.wsleds[2] = self.wscolor_active2
+        elif workflow in ("chain_control", "audio_player"):
+            self.wsleds[2] = self.wscolor_active
         else:
             self.wsleds[2] = self.wscolor_default
 
         # ZS3 / Snapshot:
-        if curscreen == "zs3":
-            self.wsleds[3] = self.wscolor_active
-        elif curscreen == "snapshot":
+        if workflow == "snapshot":
             self.wsleds[3] = self.wscolor_active2
+        elif workflow == "zs3":
+            self.wsleds[3] = self.wscolor_active
         else:
             self.wsleds[3] = self.wscolor_default
 
         # Zynseq: Launcher /Pattern Editor
-        if curscreen == "launcher":
-            self.wsleds[5] = self.wscolor_active
-        elif curscreen in ("pattern_editor", "pated_cc"):
+        if workflow == "pated":
             self.wsleds[5] = self.wscolor_active2
+        elif curscreen == "launcher":
+            self.wsleds[5] = self.wscolor_active
         else:
             self.wsleds[5] = self.wscolor_default
 
         # Tempo Screen
-        if curscreen == "tempo":
+        if workflow == "tempo":
             self.wsleds[6] = self.wscolor_active
         elif self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() > 0:
             self.blink(6, self.wscolor_active)
@@ -102,14 +103,13 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
             self.wsleds[6] = self.wscolor_default
 
         # ALT button:
-        if self.zyngui.alt_mode:
+        if alt_mode:
             self.wsleds[7] = self.wscolor_alt
         else:
             self.wsleds[7] = self.wscolor_default
 
-        if self.zyngui.alt_mode and curscreen != "midi_recorder":
-            self.zyngui.screens["midi_recorder"].update_wsleds(
-                self.custom_wsleds)
+        if alt_mode and curscreen != "midi_recorder":
+            self.zyngui.screens["midi_recorder"].update_wsleds(self.custom_wsleds)
         else:
             # REC Button
             if self.zyngui.state_manager.audio_recorder.rec_proc:
@@ -137,7 +137,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         self.wsleds[18] = self.wscolor_yellow
 
         # F1-F4 buttons
-        if self.zyngui.alt_mode:
+        if alt_mode:
             wscolor_fx = self.wscolor_alt
         else:
             wscolor_fx = self.wscolor_default
@@ -146,15 +146,11 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         self.wsleds[12] = wscolor_fx
         self.wsleds[19] = wscolor_fx
 
-        # Call current screen's update_wsleds() function to update the customizable LEDs
-        update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
-        if callable(update_wsleds_func):
-            update_wsleds_func(self.custom_wsleds)
-
-        # Refresh LED strip
-        try:
-            self.zyngui.screens[curscreen].update_wsleds()
-        except:
-            pass
+        curscreen_obj = self.zyngui.get_current_screen_obj()
+        if curscreen_obj:
+            # Call current screen's update_wsleds() function to update the customizable LEDs
+            update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
+            if callable(update_wsleds_func):
+                update_wsleds_func(self.custom_wsleds)
 
 # ------------------------------------------------------------------------------

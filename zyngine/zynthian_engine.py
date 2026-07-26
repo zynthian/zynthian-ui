@@ -27,10 +27,10 @@ import re
 import json
 import glob
 import copy
-import liblo
 import logging
 import pexpect
 import fnmatch
+import pyliblo3 as liblo
 from time import sleep
 
 import zynconf
@@ -166,6 +166,7 @@ class zynthian_engine(zynthian_basic_engine):
     def __init__(self, state_manager=None):
         super().__init__()
         self.state_manager = state_manager
+        self.chain_manager = state_manager.chain_manager
 
         self.custom_gui_fpath = None
 
@@ -218,6 +219,9 @@ class zynthian_engine(zynthian_basic_engine):
 
     def get_monitors_dict(self):
         return self.monitors_dict
+
+    def reset_monitors(self):
+        self.monitors_dict = {}
 
     # ---------------------------------------------------------------------------
     # OSC Management
@@ -454,8 +458,7 @@ class zynthian_engine(zynthian_basic_engine):
             zynautoconnect.remove_sidechain_ports(processor.jackname)
             processor.jackname = None
         except Exception as e:
-            logging.error(
-                f"Processor {processor.get_name()} not found in engine's processors list => {e}")
+            logging.error(f"Processor {processor.get_name()} not found in engine's processors list => {e}")
 
     def get_free_parts(self):
         free_parts = list(range(0, 16))

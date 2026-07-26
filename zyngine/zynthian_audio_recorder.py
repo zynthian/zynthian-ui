@@ -5,7 +5,7 @@
 #
 # Zynthian Audio Recorder Class
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
@@ -39,10 +39,6 @@ from zyngui import zynthian_gui_config
 
 
 class zynthian_audio_recorder:
-
-    # Subsignals are defined inside each module. Here we define audio_recorder subsignals:
-    SS_AUDIO_RECORDER_STATE = 1
-    SS_AUDIO_RECORDER_ARM = 2
 
     capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
     ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
@@ -104,7 +100,7 @@ class zynthian_audio_recorder:
             return False
 
         self.status = True
-        zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=True)
+        zynsigman.send(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, state=True)
 
         # Should this be implemented using signals?
         if processor:
@@ -123,7 +119,7 @@ class zynthian_audio_recorder:
                 return False
 
             self.status = False
-            zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
+            zynsigman.send(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, state=False)
 
             # Should this be implemented using signals? => YES!!
             if player is None:

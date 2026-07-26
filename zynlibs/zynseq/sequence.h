@@ -273,9 +273,9 @@ class Sequence {
     */
     uint8_t getRepeat();
 
-    /** @brief  Update the duration of a phrase launcher set to auto follow mode
+    /** @brief  Update the duration of a phrase launcher set to auto mode
     */
-    void updateAutoFollow();
+    void updatePhraseLength();
 
     /** @brief  Set times played
         @param  played Value to set played count
@@ -320,14 +320,14 @@ class Sequence {
     TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
     size_t m_nCurrentTrack = 0;                 // Index of track currently being queried for events
     uint32_t m_nPosition = 0;                   // Play position in clock cycles
-    uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
+    uint32_t m_nLength = 0;                     // Length of sequence/phrase in clock cycles => longest track or longest child sequence
     float m_fTempo = 0.0;                       // Tempo (0.0 for none) - Only used by phrases
     uint8_t m_nTimeSig = 0;                     // Time signature in ticks per bar (0 for none, PPQN_INTERNAL ticks per beat) - Only used by phrases
     uint8_t m_nState = STOPPED;                 // Play state of sequence
     uint8_t m_nMode = MODE_END_SYNC;            // Bitwise flags: stop mode (bits 0..1), start mode (bit 2)
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence. 0 to disable, 255 for auto follow time 
-    uint32_t m_nAutoFollow = 0;                 // Calculated duration (pulses) before auto follow action - Only used by phrases
+    uint8_t m_nRepeat = 0;                      // Step Sequences => Quantity of times to play sequence. 0 to disable. 255 to loop endless.
+                                                // Phrase Seqeences => Number of bars to play before followAction. 255 to play for nLength clocks.
     uint8_t m_nCount = 0;                       // Quantity of times sequence has played
     uint8_t m_nPhrase = 0xff;                   // Index of phrase this sequence belongs - 0xff for none
     bool m_bChanged = false;                    // True if sequence content changed

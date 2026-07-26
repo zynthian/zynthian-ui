@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Manager Class
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #                         Oscar Acena <oscaracena@gmail.com>
 #
@@ -36,7 +36,6 @@ mp.set_start_method('fork')
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
-from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 from zynlibs.zynseq import zynseq
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -64,6 +63,7 @@ class zynthian_ctrldev_base:
     # Alternately specific MIDI channels can be unrouted by specifying a bitwise mask,
     # For instance, use "0b0000000000001111" to unroute MIDI channels 0 to 3.
     unroute_from_chains = True
+    need_wsled_state = False
 
     driver_name = None
     driver_description = None
@@ -103,6 +103,7 @@ class zynthian_ctrldev_base:
         self.scroll_mode = None
         self.scroll_bank_mode = False  # TODO: Implement ctrl scrolls by whole banks of cols/rows
         self.set_scroll_mode(SCROLL_MODE_DISABLED)
+        self.enabled = True
 
     @classmethod
     def get_driver_name(cls):
@@ -135,14 +136,14 @@ class zynthian_ctrldev_base:
         self.refresh()
 
         # Register for chain add/remove
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.refresh)
         # Register for snapshot loading
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
         # Register for GUI changes
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
     def end(self):
@@ -150,17 +151,18 @@ class zynthian_ctrldev_base:
         It *SHOULD* be implemented by child class"""
 
         # Unregister from snapshot loading
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from processor tree changes
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_ADD_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.refresh)
         # Unregister from GUI changes
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
 
         self.end_midiproc()
+        self.enabled = False
 
     def init_midiproc(self):
         """Spawn midiproc task using multiprocessing API"""
@@ -391,17 +393,17 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
     def init(self):
         super().init()
         # Register for zynseq updates
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.update_seq_state)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh)
         # Register phrase change
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
 
     def end(self):
         # Unregister from zynseq updates
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.update_seq_state)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh)
         # Unregister phrase change
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.on_active_phrase)
         # Light off
         self.light_off()
         super().end()
@@ -515,19 +517,19 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     dev_zynmixer = True		# Can act as a zynmixer trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
+        super().__init__(state_manager, idev_in, idev_out)
         self.zynmixer = state_manager.zynmixer_chan
         self.zynmixer_bus = state_manager.zynmixer_bus
         self.scroll_h = 0
-        super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         super().init()
         # Register for audio mixer changes
-        zynsigman.register_queued(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
+        zynsigman.register_queued(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
 
     def end(self):
         # Unregister for audio mixer changes
-        zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
+        zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
         self.light_off()
         super().end()
 
@@ -546,11 +548,11 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         """Set a mixer parameter value
 
         param - Symbol name of the parameter
-        pos - Chain display position (-1 for main chain)
+        pos - Chain display position (-1 for main chain, -x to count from right)
         value - Parameter value
         """
 
-        if pos < 0:
+        if pos == -1:
             chain = self.chain_manager.chains[0]
         else:
             chain = self.get_filtered_chain_by_index(pos)
@@ -562,7 +564,26 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
             except:
                 logging.warning(f"Failed to set {param} to {value}")
 
-    def nudge_mixer_param(self, param, pos, value):
+    def set_mixer_param_cc(self, param, pos, ccval):
+        """Set a mixer parameter value using a MIDI CC value
+
+        param - Symbol name of the parameter
+        pos - Chain display position (-1 for main chain, -x to count from right)
+        ccval - MIDI CC value (0-127) that must be mapped to mixer param range
+        """
+
+        if pos == -1:
+            chain = self.chain_manager.chains[0]
+        else:
+            chain = self.get_filtered_chain_by_index(pos)
+        if chain and chain.zynmixer_proc:
+            try:
+                zctrl = chain.zynmixer_proc.controllers_dict[param]
+                zctrl.midi_control_change(ccval)
+            except:
+                logging.warning(f"Failed to set {param} value from MIDI CC value {ccval}")
+
+    def nudge_mixer_param(self, param, pos, value, fine=False):
         """Set a mixer parameter value
 
         param - Symbol name of the parameter
@@ -577,7 +598,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         if chain and chain.zynmixer_proc:
             try:
                 zctrl = chain.zynmixer_proc.controllers_dict[param]
-                zctrl.nudge(value)
+                zctrl.nudge(value, fine=fine)
             except:
                 logging.warning(f"Failed to nudge {param} by {value}")
 

@@ -24,8 +24,8 @@
 # ******************************************************************************
 
 import sys
-import liblo
 import logging
+import pyliblo3 as liblo
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config

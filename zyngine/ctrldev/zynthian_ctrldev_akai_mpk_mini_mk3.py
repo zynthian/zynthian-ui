@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Akai MPK mini mk3"
 #
-# Copyright (C) 2024 Oscar Aceña <oscaracena@gmail.com>
+# Copyright (C) 2024-2026 Oscar Aceña <oscaracena@gmail.com>
 #
 # ******************************************************************************
 #

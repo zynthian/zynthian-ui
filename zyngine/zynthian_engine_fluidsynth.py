@@ -52,7 +52,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         ['modulation wheel', 1, 0],
         ['volume', 7, 96],
         ['pan', 10, 64],
-        ['expression', 11, 127],
+        #['expression', 11, 127],
 
         ['legato', 68, 'off', ['off', 'on']],
         ['breath', 2, 127],
@@ -71,8 +71,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
     # Controller Screens
     default_ctrl_screens = [
-        ['main', ['volume', 'pan', 'modulation wheel', 'expression']],
-        ['toggles', ['legato', 'breath']],
+        ['main', ['volume', 'pan', 'modulation wheel', 'breath']],
+        ['toggles', ['legato']],
         ['portamento', ['portamento on/off', 'portamento control',
                         'portamento time-coarse', 'portamento time-fine']],
         ['envelope/filter', ['env. attack', 'env. release',
@@ -101,7 +101,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         self.bank_config = {}
 
-        self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 \
+        self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=128 \
 -o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' \
 -o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 \
 -o synth.reverb.active=0".format(self.jackname, self.jackname)
@@ -161,8 +161,14 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
     def set_midi_chan(self, processor):
         if processor.part_i is not None:
-            lib_zyncore.zmop_set_midi_chan_trans(
-                processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
+            midi_chan = processor.get_midi_chan()
+            if 0 <= midi_chan < 16:
+                lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
+                                                    midi_chan,
+                                                    processor.part_i)
+            elif midi_chan == 0xffff:
+                lib_zyncore.zmop_set_midi_chan_all_trans(processor.chain.zmop_index,
+                                                    processor.part_i)
 
     # ---------------------------------------------------------------------------
     # Bank Management

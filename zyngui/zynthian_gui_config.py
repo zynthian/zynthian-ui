@@ -575,10 +575,20 @@ if wiring_layout == "TOUCH_ONLY" and not touch_navigation:
 # Configure switch actions for touch only configuration so it works with touch-keypad
 if touch_navigation:
     logging.debug(f"TOUCH NAVIGATION = {touch_navigation}")
-    if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
+    wiring_layout_custom_profile = os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "")
+    if not wiring_layout_custom_profile.lower().startswith("v5"):
         config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
         zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
-        os.environ["ZYNTHIAN_WIRING_SWITCHES"] = ",".join(36 * ["-1"])
+        # Modify zynswitches wiring configuration to work with V5 keypad
+        zynswitches_pins = os.environ.get('ZYNTHIAN_WIRING_SWITCHES', "").split(",")
+        if len(zynswitches_pins) >= 4:
+            if gui_layout == "Z2":
+                zynswitches_pins = 24 * ["-1"] + zynswitches_pins[0:8]
+            else:
+                zynswitches_pins = zynswitches_pins[0:4] + 24 * ["-1"] + zynswitches_pins[4:8]
+        else:
+            zynswitches_pins = 32 * ["-1"]
+        os.environ["ZYNTHIAN_WIRING_SWITCHES"] = ",".join(zynswitches_pins)
 
 # ------------------------------------------------------------------------------
 # UI Options
@@ -592,7 +602,9 @@ visible_launchers = get_env_int('ZYNTHIAN_UI_VISIBLE_LAUNCHERS', 8)
 ctrl_graph = get_env_int('ZYNTHIAN_UI_CTRL_GRAPH', 1)
 control_test_enabled = get_env_int('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0)
 power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
+audio_power_threshold = get_env_int('ZYNTHIAN_UI_AUDIO_POWER_THRESHOLD', -40)
 preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
+mixer_toggle = os.environ.get('ZYNTHIAN_UI_MIXER_TOGGLE', "record")
 
 # ------------------------------------------------------------------------------
 # Audio Options
@@ -603,6 +615,17 @@ enable_dpm = get_env_int('ZYNTHIAN_DPM', 1)
 hotplug_audio_enabled = get_env_int('ZYNTHIAN_HOTPLUG_AUDIO', 0)
 disabled_audio_in = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN', "").split(',')
 disabled_audio_out = os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT', 'headphones,b1,b2').split(',')
+pfl_output = os.environ.get('ZYNTHIAN_PFL_OUTPUT', "None")
+
+# ------------------------------------------------------------------------------
+# Text To Speech Options
+# ------------------------------------------------------------------------------
+
+tts_enabled = get_env_int('ZYNTHIAN_TTS_ENABLED', 0)
+tts_voice = os.environ.get('ZYNTHIAN_TTS_VOICE', "cmu_us_slt.flitevox")
+tts_speed = float(os.environ.get('ZYNTHIAN_TTS_SPEED', "1.0"))
+tts_soundcard = os.environ.get('ZYNTHIAN_TTS_SOUNDCARD', "")
+tts_volume = get_env_int('ZYNTHIAN_TTS_VOLUME', 80)
 
 # ------------------------------------------------------------------------------
 # Networking Options
@@ -637,47 +660,47 @@ PAD_COLOUR_STOPPED = '#E0E0E0'
 PAD_COLOUR_PHRASE = '#707070'
 LAUNCHER_COLOUR = [
     # MIDI Channels 1..16 (offset 0..15)
-    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #1:blue
-    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #2:yellow
-    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #3:magenta
-    {"rgb": "#23C497", "launchpad": 33,  "apc": 33},  #4:lime green
-    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60},  #5:orange
-    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80},  #6:deep purple
-    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57},  #7:hot pink
-    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37},  #8:cyan
-    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1},   #9:grey
-    {"rgb": "#C9A869", "launchpad": 125, "apc": 127}, #10:light brown
-    {"rgb": "#7BC783", "launchpad": 19,  "apc": 16},  #11:turquise
-    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4},   #12:pink
-    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69},  #13:light purple
-    {"rgb": "#4CFFB7", "launchpad": 24,  "apc": 20},  #14:green-blue
-    {"rgb": "#3F94A2", "launchpad": 42,  "apc": 65},  #15:teal
-    {"rgb": "#F5B169", "launchpad": 126, "apc": 10},  #16:light orange
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45, "apc_mk1": 3},  #1:blue
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13, "apc_mk1": 1},  #2:yellow
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53, "apc_mk1": 2},  #3:magenta
+    {"rgb": "#23C497", "launchpad": 33,  "apc": 33, "apc_mk1": 3},  #4:lime green
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60, "apc_mk1": 1},  #5:orange
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80, "apc_mk1": 2},  #6:deep purple
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57, "apc_mk1": 3},  #7:hot pink
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37, "apc_mk1": 1},  #8:cyan
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1, "apc_mk1": 2},   #9:grey
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 127, "apc_mk1": 3}, #10:light brown
+    {"rgb": "#7BC783", "launchpad": 19,  "apc": 16, "apc_mk1": 1},  #11:turquise
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4, "apc_mk1": 2},   #12:pink
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69, "apc_mk1": 3},  #13:light purple
+    {"rgb": "#4CFFB7", "launchpad": 24,  "apc": 20, "apc_mk1": 1},  #14:green-blue
+    {"rgb": "#3F94A2", "launchpad": 42,  "apc": 65, "apc_mk1": 2},  #15:teal
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 10, "apc_mk1": 3},  #16:light orange
     # Clip launchers 1..16 (offset 16..31)
-    {"rgb": "#F5B169", "launchpad": 126, "apc": 10},  #17:light orange
-    {"rgb": "#3F94A2", "launchpad": 42,  "apc": 65},  #18:teal
-    {"rgb": "#4CFFB7", "launchpad": 24,  "apc": 20},  #19:green-blue
-    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69},  #20:light purple
-    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4},   #21:pink
-    {"rgb": "#7BC783", "launchpad": 19,  "apc": 16},  #22:turquise
-    {"rgb": "#C9A869", "launchpad": 125, "apc": 127}, #23:light brown
-    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1},   #24:grey
-    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37},  #25:cyan
-    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57},  #26:hot pink
-    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80},  #27:deep purple
-    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60},  #28:orange
-    {"rgb": "#23C497", "launchpad": 33,  "apc": 33},  #29:lime green
-    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #30:magenta
-    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13},  #31:yellow
-    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45},  #32:blue
+    {"rgb": "#F5B169", "launchpad": 126, "apc": 10, "apc_mk1": 1},  #17:light orange
+    {"rgb": "#3F94A2", "launchpad": 42,  "apc": 65, "apc_mk1": 2},  #18:teal
+    {"rgb": "#4CFFB7", "launchpad": 24,  "apc": 20, "apc_mk1": 3},  #19:green-blue
+    {"rgb": "#CA92d4", "launchpad": 70,  "apc": 69, "apc_mk1": 1},  #20:light purple
+    {"rgb": "#EB8895", "launchpad": 4,   "apc": 4, "apc_mk1": 2},   #21:pink
+    {"rgb": "#7BC783", "launchpad": 19,  "apc": 16, "apc_mk1": 3},  #22:turquise
+    {"rgb": "#C9A869", "launchpad": 125, "apc": 127, "apc_mk1": 1}, #23:light brown
+    {"rgb": "#D2C7D4", "launchpad": 2,   "apc": 1, "apc_mk1": 2},   #24:grey
+    {"rgb": "#2DB7CE", "launchpad": 37,  "apc": 37, "apc_mk1": 3},  #25:cyan
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 57, "apc_mk1": 1},  #26:hot pink
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 80, "apc_mk1": 2},  #27:deep purple
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 60, "apc_mk1": 3},  #28:orange
+    {"rgb": "#23C497", "launchpad": 33,  "apc": 33, "apc_mk1": 1},  #29:lime green
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53, "apc_mk1": 2},  #30:magenta
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 13, "apc_mk1": 3},  #31:yellow
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 45, "apc_mk1": 1},  #32:blue
     # Main / phrase launchers (offset 32)
-    {"rgb": "#707070", "launchpad": 1,   "apc": 1}    #33:grey
+    {"rgb": "#707070", "launchpad": 1,   "apc": 1, "apc_mk1": 1}    #33:grey
 ]
 #TODO: Choose clip launcher colours (currently just reversed 1-16)
 
-LAUNCHER_PLAYING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
-LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87} #green
-LAUNCHER_STOPPING_COLOUR = {"rgb": "#D00000", "launchpad": 5, "apc": 72} #red
+LAUNCHER_PLAYING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87, "apc_mk1": 3} #green
+LAUNCHER_STARTING_COLOUR = {"rgb": "#009000", "launchpad": 21, "apc": 87, "apc_mk1": 3} #green
+LAUNCHER_STOPPING_COLOUR = {"rgb": "#D00000", "launchpad": 5, "apc": 72, "apc_mk1": 1} #red
 
 def get_color_relux(hex_color):
     if len(hex_color) != 7:
@@ -864,9 +887,9 @@ if "zynthian_main.py" in sys.argv[0]:
 
         # Attach static methods to root frame
         # => Grid a GUI frame in the root grid MAIN area
-        root_frame.grid_main = lambda frame: frame.grid(row=1, column=1, sticky='NSWE')
+        root_frame.grid_main = lambda frame: frame.grid(row=1, column=1, sticky='NEWS')
         # => Grid a GUI frame in the root grid RIGHT area
-        root_frame.grid_right = lambda frame: frame.grid(row=1, column=2, sticky='NSWE')
+        root_frame.grid_right = lambda frame: frame.grid(row=1, column=2, sticky='NEWS')
 
         # ------------------------------------------------------------------------------
         # Setup touch keypad
@@ -897,7 +920,7 @@ if "zynthian_main.py" in sys.argv[0]:
         fh2 = int(fh * fw2 / fw)
         nframes = 0
         while pil_frame:
-            pil_frame2 = pil_frame.resize((fw2, fh2), Image.ANTIALIAS)
+            pil_frame2 = pil_frame.resize((fw2, fh2), Image.LANCZOS)
             # convert PIL image object to Tkinter PhotoImage object
             loading_imgs.append(ImageTk.PhotoImage(pil_frame2))
             nframes += 1

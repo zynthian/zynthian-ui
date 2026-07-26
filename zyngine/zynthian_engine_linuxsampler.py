@@ -208,8 +208,14 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
 
     def set_midi_chan(self, processor):
         if processor.ls_chan_info:
-            lib_zyncore.zmop_set_midi_chan_trans(
-                processor.chain.zmop_index, processor.get_midi_chan(), processor.ls_chan_info['midi_chan'])
+            midi_chan = processor.get_midi_chan()
+            if 0 <= midi_chan < 16:
+                lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
+                                                    midi_chan,
+                                                    processor.ls_chan_info['midi_chan'])
+            elif midi_chan == 0xffff:
+                lib_zyncore.zmop_set_midi_chan_all_trans(processor.chain.zmop_index,
+                                                    processor.ls_chan_info['midi_chan'])
 
     # ---------------------------------------------------------------------------
     # Bank Management

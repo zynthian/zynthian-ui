@@ -43,18 +43,32 @@
 #define MAX_OSC_CLIENTS 5
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-char g_oscbuffer[1024];  // Used to send OSC messages
-char g_oscpath[64];      //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/channel/xx/fader
-int g_oscfd = -1;        // File descriptor for OSC socket
-int g_bOsc  = 0;         // True if OSC client subscribed
-pthread_t g_eventThread; // ID of low priority event thread
-int g_sendEvents = 1;    // Set to 0 to exit event thread
-uint8_t g_sendCount = 0; // Quantity of effect sends
-uint8_t g_lastStrip = 1; // Highest index of any strips (one-based)
-uint8_t g_lastSend  = 1; // Highest index of any send (one-based)
-uint8_t g_solo      = 0; // Quantity of channels with solo asserted
-jack_port_t* g_soloPortA; // Pointer to solo trunk port A
-jack_port_t* g_soloPortB; // Pointer to solo trunk port B
+char g_oscbuffer[1024];    // Used to send OSC messages
+char g_oscpath[64];        //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/channel/xx/fader
+int g_oscfd = -1;          // File descriptor for OSC socket
+int g_bOsc  = 0;           // True if OSC client subscribed
+pthread_t g_eventThread;   // ID of low priority event thread
+int g_sendEvents = 1;      // Set to 0 to exit event thread
+uint8_t g_sendCount = 0;   // Quantity of effect sends
+uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
+uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
+uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
+uint8_t g_pfl       = 0;   // Quantity of channels with PFL asserted
+#ifndef MIXBUS
+double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
+float g_xf_gain_A    = 0.0; // Crossfade A gain
+float g_reqxf_gain_A = 1.0; // Requested crossfade A gain
+float g_xf_gain_B    = 1.0; // Crossfade B gain
+float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
+#else
+jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
+jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
+float g_pflLevel     = 1.0; // PFL volumne level
+#endif
+jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
+jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
+jack_port_t* g_pflOutPortA;// Pointer to PFL output port A
+jack_port_t* g_pflOutPortB;// Pointer to PFL output port B
 
 // Structure describing a channel strip
 struct channel_strip {
@@ -62,6 +76,7 @@ struct channel_strip {
     jack_port_t* inPortB;  // Jack input port B
     jack_port_t* outPortA; // Jack output port A
     jack_port_t* outPortB; // Jack output port B
+    float gain;            // Current gain 0..10
     float level;           // Current fader level 0..1
     float reqlevel;        // Requested fader level 0..1
     float balance;         // Current balance -1..+1
@@ -80,6 +95,10 @@ struct channel_strip {
     uint8_t solo;          // 1 if solo
     uint8_t ms;            // 1 if MS decoding
     uint8_t phase;         // 1 if channel B phase reversed
+    uint8_t pfl;           // 1 if PFL
+#ifndef MIXBUS
+    uint8_t ABMixGroup;    // AB mix-group: 0 => None, 1 => A, 2 => B
+#endif
     uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
     uint8_t normalise;     // 1 if channel normalised to main output
     uint8_t inRouted;      // 1 if source routed to channel
@@ -110,6 +129,8 @@ jack_nframes_t g_samplerate                     = 48000; // Jack samplerate used
 jack_nframes_t g_buffersize                     = 1024;  // Jack buffer size used to calculate damping factor
 jack_default_audio_sample_t* g_soloBufferA    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_soloBufferB    = NULL;  // Ponter to buffer used for solo bus
+jack_default_audio_sample_t* g_pflBufferA    = NULL;  // Ponter to buffer used for PFL bus
+jack_default_audio_sample_t* g_pflBufferB    = NULL;  // Ponter to buffer used for PFL bus
 #ifdef MIXBUS
 jack_default_audio_sample_t* g_mainNormaliseBufferA    = NULL;  // Ponter to main output normalised buffer used for normalising effects sends to main mixbus
 jack_default_audio_sample_t* g_mainNormaliseBufferB    = NULL;  // Ponter to main output normalised buffer used for normalising effects sends to main mixbus
@@ -180,26 +201,29 @@ void* eventThreadFn(void* param) {
 }
 
 static int onJackProcess(jack_nframes_t frames, void* args) {
-    jack_default_audio_sample_t *pSoloA, *pSoloB, *pInA, *pInB, *pOutA, *pOutB, *pChanOutA, *pChanOutB, *pMainOutA, *pMainOutB;
+    jack_default_audio_sample_t *pPflInA, *pPflInB, *pPflOutA, *pPflOutB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
     unsigned int frame;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM, fpreFaderSampleA, fpreFaderSampleB;
 
     pthread_mutex_lock(&mutex);
 
-/*  Solo
+/*  Solo / PFL
     The chain mixer has a pair of buffers (A/B) that are cleared at start of period, then populated with samples of any inputs that are solo.
     These buffers are pushed to its solo ouptut ports.
     The mixbus mixer has a pair of buffers (A/B) that are populated from its solo input ports, then summed with samples of any inputs that are solo. (Avoid chan 0.)
     These buffers are pushed to the solo monitor outputs (default is main outputs).
+    PFL is treated similarly
 */
 
     if (g_solo) {
         pSoloA = jack_port_get_buffer(g_soloPortA, frames);
         pSoloB = jack_port_get_buffer(g_soloPortB, frames);
     }
+    pPflOutA = jack_port_get_buffer(g_pflOutPortA, frames);
+    pPflOutB = jack_port_get_buffer(g_pflOutPortB, frames);
 
 #ifdef MIXBUS
-    // Clear the main mixbus output buffers to allow them to be directly populated with effects return normalisd frames.
+    // Clear the mixbus output buffers to allow them to be directly populated with effects return normalisd frames.
     memset(g_mainNormaliseBufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
     memset(g_mainNormaliseBufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
     // Populate solo buffers from trunk
@@ -207,6 +231,12 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         memcpy(g_soloBufferA, pSoloA, frames * sizeof(jack_default_audio_sample_t));
         memcpy(g_soloBufferB, pSoloB, frames * sizeof(jack_default_audio_sample_t));
     }
+
+    // Populate PFL output buffers from trunk
+    pPflInA = jack_port_get_buffer(g_pflInPortA, frames);
+    pPflInB = jack_port_get_buffer(g_pflInPortB, frames);
+    memcpy(pPflOutA, pPflInA, frames * sizeof(jack_default_audio_sample_t));
+    memcpy(pPflOutB, pPflInB, frames * sizeof(jack_default_audio_sample_t));
 
 #else
     // Clear solo send buffers
@@ -216,6 +246,9 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
         g_soloBufferA = pSoloA; // We will populate the trunk directly
         g_soloBufferB = pSoloB;
     }
+    // Clear PFL buffers
+    memset(pPflOutA, 0.0, frames * sizeof(jack_default_audio_sample_t));
+    memset(pPflOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
     // Clear send buffers.
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
         if (g_fxSends[send]) {
@@ -265,6 +298,23 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     reqLevelB = strip->reqlevel;
                 strip->level   = strip->reqlevel;
                 strip->balance = strip->reqbalance;
+ 
+ #ifndef MIXBUS
+                // AB mixing (Cross-Fader)
+                if (strip->ABMixGroup == 1) {
+                    reqLevelA *= g_reqxf_gain_A;
+                    reqLevelB *= g_reqxf_gain_A;
+                    curLevelA *= g_xf_gain_A;
+                    curLevelB *= g_xf_gain_A;
+                }
+                else if (strip->ABMixGroup == 2) {
+                    reqLevelA *= g_reqxf_gain_B;
+                    reqLevelB *= g_reqxf_gain_B;
+                    curLevelA *= g_xf_gain_B;
+                    curLevelB *= g_xf_gain_B;
+                }
+#endif
+
             }
 
             // Calculate the step change for each leg to apply on each sample in buffer for fade between last and this period's level
@@ -303,6 +353,10 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 fSampleA = pInA[frame];
                 fSampleB = pInB[frame];
 #endif
+                // Handle gain
+                fSampleA *= strip->gain;
+                fSampleB *= strip->gain;
+
                 // Handle channel phase reverse
                 if (strip->phase)
                     fSampleB = -fSampleB;
@@ -345,11 +399,20 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     g_soloBufferA[frame] += fSampleA;
                     g_soloBufferB[frame] += fSampleB;
                 }
+                if (strip->pfl) {
+                    pPflOutA[frame] += fpreFaderSampleA;
+                    pPflOutB[frame] += fpreFaderSampleB;
+                }
 #ifdef MIXBUS
                 // Add frames to main mixbus normalise buffer
                 if (strip->normalise) {
                     g_mainNormaliseBufferA[frame] += fSampleA;
                     g_mainNormaliseBufferB[frame] += fSampleB;
+                }
+                // Set PFL output level
+                if (chan == 0) {
+                    pPflOutA[frame] *= g_pflLevel;
+                    pPflOutB[frame] *= g_pflLevel;
                 }
 #else
                 // Add fx send output frames only for input channels
@@ -398,15 +461,29 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->dpmA *= g_fDpmDecay;
                 strip->dpmB *= g_fDpmDecay;
             }
-        } else if (strip->enable_dpm) {
-            strip->dpmA  = 0.0f;
-            strip->dpmB  = 0.0f;
-            strip->holdA = 0.0f;
-            strip->holdB = 0.0f;
+        } else {
+            if (strip->enable_dpm) {
+                strip->dpmA  = 0.0f;
+                strip->dpmB  = 0.0f;
+                strip->holdA = 0.0f;
+                strip->holdB = 0.0f;
+            }
+            if (strip->outRouted) {
+                // Silence channel outputs
+                pChanOutA = jack_port_get_buffer(strip->outPortA, frames);
+                pChanOutB = jack_port_get_buffer(strip->outPortB, frames);
+                memset(pChanOutA, 0.0, frames * sizeof(jack_default_audio_sample_t));
+                memset(pChanOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
+            }
         }
     }
 
-if (g_nDampingCount == 0)
+#ifndef MIXBUS
+    g_xf_gain_A = g_reqxf_gain_A;
+    g_xf_gain_B = g_reqxf_gain_B;
+#endif
+
+    if (g_nDampingCount == 0)
         g_nDampingCount = g_nDampingPeriod;
     else
         --g_nDampingCount;
@@ -477,6 +554,7 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
 #else
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         if (g_fxSends[chan]) {
+            //!@todo Do not cache jack_port_get_buffer
             g_fxSends[chan]->bufferA = jack_port_get_buffer(g_fxSends[chan]->outPortA, g_buffersize);
             g_fxSends[chan]->bufferB = jack_port_get_buffer(g_fxSends[chan]->outPortB, g_buffersize);
         }
@@ -520,25 +598,59 @@ int init() {
     fprintf(stderr, "libzynmixer: Registering as '%s'.\n", jack_get_client_name(g_pJackClient));
 #endif
 
-    // Solo ports
+    int ports_ok = 0;
+   // Solo ports
 #ifdef MIXBUS
     unsigned long solo_port_flags = JackPortIsInput;
 #else
     unsigned long solo_port_flags = JackPortIsOutput;
 #endif
-    if (!(g_soloPortA = jack_port_register(g_jackClient, "solo_a", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0))) {
-        fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_a");
-        return -1;
-    }
-    if (!(g_soloPortB = jack_port_register(g_jackClient, "solo_b", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0))) {
-        fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_b");
-        jack_port_unregister(g_jackClient, g_soloPortA);
-        return -1;
-    }
+    ports_ok |= !(g_soloPortA = jack_port_register(g_jackClient, "solo_a", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0));
+    ports_ok |= !(g_soloPortB = jack_port_register(g_jackClient, "solo_b", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0));
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
     g_soloBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
 
+    ports_ok |= !(g_pflOutPortA = jack_port_register(g_jackClient, "pfl_out_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
+    ports_ok |= !(g_pflOutPortB = jack_port_register(g_jackClient, "pfl_out_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
+
 #ifdef MIXBUS
+    // PFL ports
+    ports_ok |= !(g_pflInPortA = jack_port_register(g_jackClient, "pfl_in_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0));
+    ports_ok |= !(g_pflInPortB = jack_port_register(g_jackClient, "pfl_in_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0));
+#endif
+
+    // Check all ports have been created
+    if (ports_ok) {
+        if(g_soloPortA)
+            jack_port_unregister(g_jackClient, g_soloPortA);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_a");
+        if(g_soloPortB)
+            jack_port_unregister(g_jackClient, g_soloPortB);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "solo_b");
+        if(g_pflOutPortA)
+            jack_port_unregister(g_jackClient, g_pflOutPortA);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_out_a");
+        if(g_pflOutPortB)
+            jack_port_unregister(g_jackClient, g_pflOutPortB);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_out_b");
+#ifdef MIXBUS
+        if(g_pflInPortA)
+            jack_port_unregister(g_jackClient, g_pflInPortA);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_in_a");
+        if(g_pflInPortB)
+            jack_port_unregister(g_jackClient, g_pflInPortB);
+        else
+            fprintf(stderr, "libzynmixer: Cannot register %s\n", "pfl_in_b");
+#endif
+        return -1;
+    }
+
+    #ifdef MIXBUS
     int8_t id = addStrip(); // Main mixbus
     id = addStrip(); // Aux mixbus
     setLevel(id, 1.0); // Default unity gain for aux bus
@@ -612,6 +724,20 @@ void end() {
 #endif
     }
     fprintf(stderr, "zynmixer ended\n");
+}
+
+void setGain(uint8_t channel, float gain) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || gain < 0.0f)
+        return;
+    g_channelStrips[channel]->gain = gain;
+    sprintf(g_oscpath, "/mixer/channel/%d/gain", channel);
+    sendOscFloat(g_oscpath, gain);
+}
+
+float getGain(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return 0.0f;
+    return g_channelStrips[channel]->gain;
 }
 
 void setLevel(uint8_t channel, float level) {
@@ -712,6 +838,93 @@ void clearSolo() {
 uint8_t getGlobalSolo() {
     return g_solo;
 }
+
+void setPfl(uint8_t channel, uint8_t pfl) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return;
+    pfl = pfl?1:0;
+    if (g_channelStrips[channel]->pfl == pfl)
+        return;
+    g_channelStrips[channel]->pfl = pfl;
+    if (pfl)
+        ++g_pfl;
+    else
+        --g_pfl;
+    sprintf(g_oscpath, "/mixer/channel/%d/pfl", channel);
+    sendOscInt(g_oscpath, pfl);
+}
+
+uint8_t getPfl(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return 0;
+    return g_channelStrips[channel]->pfl;
+}
+
+void togglePFL(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return;
+    uint8_t pfl;
+    pfl = g_channelStrips[channel]->mute;
+    if (pfl)
+        setPfl(channel, 0);
+    else
+        setPfl(channel, 1);
+}
+
+void clearPfl() {
+    for (uint8_t channel = 0; channel < MAX_CHANNELS; ++channel) {
+        if (g_channelStrips[channel])
+            g_channelStrips[channel]->pfl = 0;
+    }
+    g_pfl = 0;
+}
+
+uint8_t getGlobalPfl() {
+    return g_pfl;
+}
+
+#ifndef MIXBUS
+
+void setGlobalXFader(float val) {
+    if (val < 0.0f)
+        g_xfader = 0.0f;
+    else if (val > 1.0f)
+        g_xfader = 1.0f;
+    else
+        g_xfader = val;
+    // Calculate Constant-Power CrossFader gains
+    g_reqxf_gain_A = cos(M_PI_2 * g_xfader);
+    g_reqxf_gain_B = sin(M_PI_2 * g_xfader);
+    // Linear CrossFader gains
+    //g_reqxf_gain_A = 1.0f - g_xfader;
+    //g_reqxf_gain_B = g_xfader;
+}
+
+float getGlobalXFader() {
+    return g_xfader;
+}
+
+void setABMixGroup(uint8_t channel, uint8_t ab) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return;
+    if (ab > 2) ab = 2;
+    g_channelStrips[channel]->ABMixGroup = ab;
+}
+
+uint8_t getABMixGroup(uint8_t channel) {
+    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+        return 0;
+    return g_channelStrips[channel]->ABMixGroup;
+}
+#else
+void setPflLevel(float level) {
+    g_pflLevel = level;
+}
+
+float getPflLevel() {
+    return g_pflLevel;
+}
+#endif
 
 void setPhase(uint8_t channel, uint8_t phase) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
@@ -833,6 +1046,7 @@ void toggleMS(uint8_t channel) {
 }
 
 void reset(uint8_t channel) {
+    setGain(channel, 1.0);
     setLevel(channel, 0.8);
     setBalance(channel, 0.0);
     setMute(channel, 0);
@@ -940,6 +1154,7 @@ int8_t addStrip() {
             free(strip);
             return -1;
         }
+        strip->gain       = 1.0;
         strip->level      = 0.0;
         strip->reqlevel   = 0.8;
         strip->balance    = 0.0;
@@ -947,8 +1162,12 @@ int8_t addStrip() {
         strip->mute       = 0;
         strip->mono       = 0;
         strip->solo       = 0;
+        strip->pfl        = 0;
         strip->ms         = 0;
         strip->phase      = 0;
+        #ifndef MIXBUS
+        strip->ABMixGroup = 0;
+        #endif
         strip->normalise  = 0;
         strip->inRouted   = 0;
         strip->outRouted  = 0;
@@ -1025,6 +1244,7 @@ int8_t addSend() {
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
+            //!@todo Do not cache jack_port_get_buffer
             psend->bufferA = jack_port_get_buffer(psend->outPortA, g_buffersize);
             psend->bufferB = jack_port_get_buffer(psend->outPortB, g_buffersize);
             psend->level = 1.0;
@@ -1087,6 +1307,7 @@ int addOscClient(const char* client) {
         fprintf(stderr, "libzynmixer: Added OSC client %d: %s\n", i, client);
         for (int chan = 0; chan < MAX_CHANNELS; ++chan) {
             setBalance(chan, getBalance(chan));
+            setGain(chan, getGain(chan));
             setLevel(chan, getLevel(chan));
             setMono(chan, getMono(chan));
             setMute(chan, getMute(chan));

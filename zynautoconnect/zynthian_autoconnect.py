@@ -1105,6 +1105,19 @@ def audio_autoconnect():
         required_routes[f"zynmixer_bus:solo_a"].add("zynmixer_chan:solo_a")
         required_routes[f"zynmixer_bus:solo_b"].add("zynmixer_chan:solo_b")
 
+        # Connect PFL
+        required_routes[f"zynmixer_bus:pfl_in_a"].add("zynmixer_chan:pfl_out_a")
+        required_routes[f"zynmixer_bus:pfl_in_b"].add("zynmixer_chan:pfl_out_b")
+        try:
+            outs = zynthian_gui_config.pfl_output.split("+")
+            if len(outs) == 1:
+                outs.append(outs[0])
+            hw_ports = get_hw_audio_dst_ports()
+            required_routes[hw_ports[int(outs[0])-1].name].add("zynmixer_bus:pfl_out_a")
+            required_routes[hw_ports[int(outs[1])-1].name].add("zynmixer_bus:pfl_out_b")
+        except:
+            pass
+
         # Connect global audio player to aux
         if state_manager.audio_player and state_manager.audio_player.jackname:
             ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
@@ -1193,17 +1206,18 @@ def update_hw_audio_ports():
     dirty = False
     if zynthian_gui_config.hotplug_audio_enabled:
         # Add new devices
-        for device in get_alsa_hotplug_audio_devices(False):
-            if device not in zynthian_gui_config.disabled_audio_in:
-                dirty |= start_alsa_in(device)
-        for device in get_alsa_hotplug_audio_devices(True):
+        for device in get_alsa_audio_devices(True, "hotplug"):
             if device not in zynthian_gui_config.disabled_audio_out:
                 dirty |= start_alsa_out(device)
+        for device in get_alsa_audio_devices(False, "hotplug"):
+            if device not in zynthian_gui_config.disabled_audio_in:
+                dirty |= start_alsa_in(device)
 
         # Remove disconnected devices
         for device in list(alsa_audio_srcs):
             try:
                 while True:
+                    # Flush all messages or remove device
                     proc = alsa_audio_srcs[device]
                     line = proc.readline()
                     if line.startswith("err"):
@@ -1218,6 +1232,7 @@ def update_hw_audio_ports():
         for device in list(alsa_audio_dests):
             try:
                 while True:
+                    # Flush all messages or remove device
                     proc = alsa_audio_dests[device]
                     line = proc.readline()
                     if line.startswith("err"):
@@ -1280,17 +1295,22 @@ def enable_audio_output_device(device, enable=True):
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT": ",".join(zynthian_gui_config.disabled_audio_out)}, True)
 
 
-def get_alsa_hotplug_audio_devices(playback=True):
+def get_alsa_audio_devices(playback, filter):
     devices = []
     for card in alsaaudio.pcms(alsaaudio.PCM_PLAYBACK if playback else alsaaudio.PCM_CAPTURE):
         if card == jack_audio_device:
             continue
         if card.startswith("hw:"):
             device = card[8:card.find(",")]
-            if device != "Dummy" and device != jack_audio_device:
-                devices.append(device)
+            if device == "Dummy" or device == jack_audio_device:
+                continue
+            if playback:
+                if filter == "hotplug" and zynthian_gui_config.tts_enabled and device == zynthian_gui_config.tts_soundcard:
+                    continue
+                elif filter == "tts" and zynthian_gui_config.hotplug_audio_enabled and device not in zynthian_gui_config.disabled_audio_out:
+                    continue
+            devices.append(device)
     return devices
-
 
 def start_alsa_in(device):
     global alsa_audio_srcs
@@ -1349,9 +1369,9 @@ def stop_alsa_out(device):
 
 
 def stop_all_alsa_in_out():
-    for device in get_alsa_hotplug_audio_devices(False):
+    for device in get_alsa_audio_devices(False, "hotplug"):
         stop_alsa_in(device)
-    for device in get_alsa_hotplug_audio_devices(True):
+    for device in get_alsa_audio_devices(True, "hotplug"):
         stop_alsa_out(device)
 
 
@@ -1408,7 +1428,7 @@ def build_midi_port_name(port):
         if ep_name:
             ep_name = ep_name[0].decode("utf-8")
             return f"NET:ump_{port.name[19:]}/{ep_name}", ep_name
-        return f"NET:ump_{port.name[19:]}", "NetUMP"
+        return f"NET:ump_{port.name[19:]}", "Network MIDI 2.0"
     elif port.name.startswith("jackrtpmidid:rtpmidi_"):
         return f"NET:rtp_{port.name[21:]}", "RTP MIDI"
     elif port.name.startswith("QmidiNet:"):

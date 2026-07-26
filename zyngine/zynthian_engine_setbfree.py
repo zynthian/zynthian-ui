@@ -47,20 +47,23 @@ class zynthian_engine_setbfree(zynthian_engine):
     # Banks
     # ---------------------------------------------------------------------------
 
+    manual_info = ["Select up to 2 keyboards & a pedal board as linked chains or a single chain with manuals split across a single keyboard.", "note_range.png"]
     bank_manuals_list = [
-        ['Upper', 0, 'Upper', '_', {'manuals': [True, False, False], 'keyranges': None, 'transpose': None}],
-        ['Upper + Lower', 1, 'Upper + Lower', '_', {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}],
-        ['Upper + Pedals', 2, 'Upper + Pedals', '_', {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}],
-        ['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}],
-        ['Split Lower/Upper', 4, 'Split Lower/Upper', '_', {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}],  # 56
-        ['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}],  # 58
-        ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}],  # 57
+        ['Upper', 0, 'Upper', '_', {'manuals': [True, False, False], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Upper + Lower', 1, 'Upper + Lower', '_', {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Upper + Pedals', 2, 'Upper + Pedals', '_', {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}, manual_info],
+        ['Split Lower/Upper', 4, 'Split Lower/Upper', '_', {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}, manual_info],  # 56
+        ['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}, manual_info],  # 58
+        ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}, manual_info],  # 57
     ]
 
+    tonewheel_info = ["Tonewheels usually create sine waves but you may customise the waveform here. This is a variation from the traditional tonewheel.", "audio.png"]
     bank_twmodels_list = [
-        ['Sin', 0, 'Sine', '_'],
-        ['Sqr', 1, 'Square', '_'],
-        ['Tri', 2, 'Triangle', '_']
+        ['Sin', 0, 'Sine (Hammond)', '_', tonewheel_info],
+        ['Sqr', 1, 'Square (Combo)', '_', tonewheel_info],
+        ['Tri', 2, 'Triangle (Combo)', '_', tonewheel_info],
+        ['Saw', 2, 'Sawtooth (Combo)', '_', tonewheel_info]
     ]
 
     tonewheel_config = {
@@ -72,14 +75,25 @@ class zynthian_engine_setbfree(zynthian_engine):
 			osc.harmonic.7=0.142857142857
 			osc.harmonic.9=0.111111111111
 			osc.harmonic.11=0.090909090909""",
-
         "Tri": """
 			osc.harmonic.1=1.0
-			osc.harmonic.3=0.111111111111
+			osc.harmonic.3=-0.111111111111
 			osc.harmonic.5=0.04
-			osc.harmonic.7=0.02040816326530612
+			osc.harmonic.7=-0.02040816326530612
 			osc.harmonic.9=0.012345679012345678
-			osc.harmonic.11=0.008264462809917356"""
+			osc.harmonic.11=-0.008264462809917356""",
+        "Saw": """
+			osc.harmonic.1=1.0
+            osc.harmonic.2=-0.5
+			osc.harmonic.3=0.33
+			osc.harmonic.4=-0.25
+			osc.harmonic.5=0.2
+			osc.harmonic.6=-0.16666666666667
+			osc.harmonic.7=0.142857143
+            osc.harmonic.8=-0.125
+			osc.harmonic.9=0.11111111111111
+            osc.harmonic.10=-0.1
+			osc.harmonic.11=0.909090909091"""
     }
 
     # ---------------------------------------------------------------------------
@@ -262,6 +276,7 @@ class zynthian_engine_setbfree(zynthian_engine):
         self.processors[i].set_bank(0, False)
 
         # Extra manual processors: lower & pedals
+        restoring_from_state = False
         for j, manual in enumerate(["Lower", "Pedals"]):
             if self.manuals_config[j + 1]:
                 i += 1
@@ -286,7 +301,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                         processor.part_i = mchan
                         chain.insert_processor(processor)
                         chain_manager.processors[proc_id] = processor
-                        self.processors.append(processor)
+                        #self.processors.append(processor)
                         # Configure processor
                         # self.set_midi_chan(self.processors[i]) # Called when inserting processor in chain
                         self.processors[i].refresh_controllers()
@@ -298,6 +313,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                     except Exception as e:
                         logging.error(f"{manual} manual processor can't be added! => {e}")
                 else:
+                    restoring_from_state = True
                     chain_id = self.processors[i].chain_id
                     chain = chain_manager.get_chain(chain_id)
                     self.processors[i].part_i = mchan
@@ -320,9 +336,10 @@ class zynthian_engine_setbfree(zynthian_engine):
         zynautoconnect.request_audio_connect()
 
         # Load preset list for each manual and load preset 0
-        for processor in self.processors:
-            processor.load_preset_list()
-            processor.set_preset(0)
+        if not restoring_from_state:
+            for processor in self.processors:
+                processor.load_preset_list()
+                processor.set_preset(0)
 
         # Select first chain so that preset selection is on "Upper" manual
         chain_manager.set_active_chain_by_id(self.processors[0].chain_id)

@@ -58,6 +58,7 @@ EDIT_PARAM_PLAY_CHANCE = 7  # Edit note play chance
 EDIT_PARAM_STUT_FREQ = 8    # Edit note stutter frequency
 EDIT_PARAM_STUT_CHANCE = 9  # Edit note stutter chance
 EDIT_PARAM_LAST = 9         # Index of last parameter
+EDIT_PARAM_LAST_MULTI = 1   # Index of last multi-edit parameter
 
 STUT_VFX_OPTIONS = (
     "FLAT",
@@ -107,6 +108,7 @@ STUT_FREQ_OPTIONS = (
 )
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+NOTE_PORNOUNCE = ["C", "C Sharp", "D", "D Sharp", "E", "F", "F Sharp", "G", "G Sharp", "A", "A Sharp", "B"]
 SCALES = {
     "major": [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23],
     "minor": [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22]
@@ -200,10 +202,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.drag_duration = False  # True indicates drag will adjust duration
 
         super().__init__()
+        self.tts_title = "Pattern editor: Notes"
 
     # Function to get name of this view
     def get_name(self):
-        return "pattern editor"
+        return "pated note"
 
     def get_title(self):
         title = super().get_title()
@@ -866,16 +869,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         evdata = zynseq.event_data()
         index = 0
         while True:
+            # Iterate until no more event data
             res = self.zynseq.libseq.getEventDataAt(index, evdata)
             if res < 0:
                 break
+            index += 1
             #logging.debug(f"DRAWING EVENT AT {index} => {evdata.position}, {evdata.command}")
             if evdata.command == zynseq.MIDI_NOTE_ON:
-                if self.selected_events and index in self.selected_events:
+                if self.selected_events and evdata.get_key() in self.selected_events:
                     self.draw_event(evdata, EVENT_DRAW_SEL)
                 else:
                     self.draw_event(evdata, EVENT_DRAW_NORMAL)
-            index += 1
 
     # Draw all note events in the copy/paste buffer
     def draw_cp_events(self):
@@ -884,6 +888,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             evdata = zynseq.event_data()
             index = 0
             while True:
+                # Iterate until no more event data
                 res = self.zynseq.libseq.getBufferEventDataAt(index, evdata)
                 if res < 0:
                     break
@@ -1047,7 +1052,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             if index >= 0:
                 evdata = zynseq.event_data()
                 self.zynseq.libseq.getEventDataAt(index, evdata)
-                if self.selected_events and index in self.selected_events:
+                if self.selected_events and evdata.get_key() in self.selected_events:
                     mode = EVENT_DRAW_SEL
                 else:
                     mode = EVENT_DRAW_NORMAL
@@ -1159,8 +1164,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def pianoroll_note_on(self, note):
         # Highlight the note key
         row = self.get_row_from_note(note)
-        if row is not None:
-            self.pianoroll_set_row(row, "#40FF40")
+        if row is None:
+            # Note not present in current keymap (can happen with external pads /
+            # custom note layouts). Ignore instead of touching uninitialized rows.
+            return
+        self.pianoroll_set_row(row, "#40FF40")
 
         # Re-center vertically if note is off the view area
         if not self.keymap_offset <= row < self.keymap_offset + self.view_rows:
@@ -1206,6 +1214,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             step = self.n_steps - 1
         else:
             step = int(step)
+        step_changed = step != self.selected_cell[0]
+        note_changed = note != self.selected_cell[1]
         # Skip hidden (overlapping) cells
         for previous in range(step - 1, -1, -1):
             prev_duration = ceil(self.zynseq.libseq.getNoteDuration(previous, note))
@@ -1260,6 +1270,20 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
         self.grid_canvas.tag_raise(self.rect_selected_cell)
+        if step_changed:
+            tts_step = f"Step {step + 1}"
+        else:
+            tts_step = ""
+        if note_changed:
+            try:
+                tts_name = f"{NOTE_PORNOUNCE[note%12]}{note//12-1}"
+                tts_name = self.keymap[row]["name"]
+            except:
+                pass
+        else:
+            tts_name = ""
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"{tts_step} {tts_name}")
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block
@@ -1423,7 +1447,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def midi_note_on(self, note):
         self.pianoroll_note_on(note)
         if self.zynseq.libseq.isMidiRecord():
-            self.rows_pending.put_nowait(note)
+            row = self.get_row_from_note(note)
+            if row is not None:
+                self.rows_pending.put_nowait(row)
 
     def midi_note_off(self, note):
         self.pianoroll_note_off(note)
@@ -1432,7 +1458,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.save_pattern_snapshot(now=True, force=True)
             else:
                 self.changed = True
-            self.rows_pending.put_nowait(note)
+            row = self.get_row_from_note(note)
+            if row is not None:
+                self.rows_pending.put_nowait(row)
 
     def set_edit_title(self):
         color_fg = zynthian_gui_config.color_header_bg
@@ -1553,9 +1581,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             elif self.edit_mode == EDIT_MODE_MULTI:
                 if self.edit_param == EDIT_PARAM_DUR:
                     if self.selected_events:
-                        self.zynseq.libseq.changeDurationList(dval * 0.1, zynseq.event_indexes_buffer, len(self.selected_events))
-                    else:
-                        self.zynseq.libseq.changeDurationAll(dval * 0.1)
+                        self.zynseq.libseq.changeDurationList(dval * 0.1, zynseq.event_key_buffer, len(self.selected_events))
+                    #else:
+                    #    self.zynseq.libseq.changeDurationAll(dval * 0.1)
                     self.redraw_pending = 3
                     return True
 
@@ -1710,15 +1738,15 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             elif self.edit_mode == EDIT_MODE_MULTI:
                 if self.edit_param == EDIT_PARAM_DUR:
                     if self.selected_events:
-                        self.zynseq.libseq.changeDurationList(dval, zynseq.event_indexes_buffer, len(self.selected_events))
-                    else:
-                        self.zynseq.libseq.changeDurationAll(dval)
+                        self.zynseq.libseq.changeDurationList(dval, zynseq.event_key_buffer, len(self.selected_events))
+                    #else:
+                    #    self.zynseq.libseq.changeDurationAll(dval)
                     self.redraw_pending = 3
                 elif self.edit_param == EDIT_PARAM_VEL:
                     if self.selected_events:
-                        self.zynseq.libseq.changeVelocityList(dval, zynseq.event_indexes_buffer, len(self.selected_events))
-                    else:
-                        self.zynseq.libseq.changeVelocityAll(dval)
+                        self.zynseq.libseq.changeVelocityList(dval, zynseq.event_key_buffer, len(self.selected_events))
+                    #else:
+                    #    self.zynseq.libseq.changeVelocityAll(dval)
                     self.redraw_pending = 3
                 return True
 
@@ -1727,8 +1755,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.edit_param += dval
                 if self.edit_param < 0:
                     self.edit_param = 0
-                if self.edit_param > EDIT_PARAM_LAST:
-                    self.edit_param = EDIT_PARAM_LAST
+                if self.edit_mode == EDIT_MODE_SINGLE:
+                    if self.edit_param > EDIT_PARAM_LAST:
+                        self.edit_param = EDIT_PARAM_LAST
+                elif self.edit_mode == EDIT_MODE_MULTI:
+                    if self.edit_param > EDIT_PARAM_LAST_MULTI:
+                        self.edit_param = EDIT_PARAM_LAST_MULTI
                 self.set_edit_title()
                 return True
 

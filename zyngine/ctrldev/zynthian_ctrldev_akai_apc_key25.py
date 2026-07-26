@@ -1,20 +1,25 @@
-import time
-from zyngine.ctrldev.zynthian_ctrldev_akai_apc_key25_mk2 import \
-    zynthian_ctrldev_akai_apc_key25_mk2, NotePad, KNOB_1, KNOB_LAYER, KNOB_2, KNOB_SNAPSHOT, KNOB_3, \
-KNOB_4,\
-KNOB_5, KNOB_BACK,\
-KNOB_6, KNOB_SELECT,\
-KNOB_7,\
-KNOB_8, \
-MAX_STUTTER_DURATION, \
-MAX_STUTTER_COUNT, \
-LED_BRIGHT_10, \
-LED_BRIGHT_100, \
-EV_NOTE_OFF, \
-EV_NOTE_ON, \
-EV_CC, \
-BTN_PAD_END, \
-LED_PULSING_8
+from time import monotonic
+from zyngine.ctrldev.zynthian_ctrldev_akai_apc_key25_mk2 import zynthian_ctrldev_akai_apc_key25_mk2, NotePad, \
+    MAX_STUTTER_VELFX, MAX_STUTTER_SPEED, \
+    KNOB_1, KNOB_2, KNOB_3, KNOB_4, KNOB_5, KNOB_6, KNOB_7, KNOB_8, \
+    KNOB_ZYN_1, KNOB_ZYN_2, KNOB_ZYN_3, KNOB_ZYN_4, \
+    CCNUM_ZYNPOT, NOTE_ZYNSWITCH, ZYNSWITCH_NOTE, \
+    LED_BRIGHT_10, LED_BRIGHT_100, LED_PULSING_8, \
+    EV_NOTE_OFF, EV_NOTE_ON, EV_CC, \
+    BTN_PAD_START, BTN_PAD_END, \
+    BTN_OPT_ADMIN, BTN_MIX_LEVEL, BTN_CTRL_PRESET, BTN_ZS3_SHOT, BTN_ALT, BTN_PAD_STEP, BTN_METRONOME, BTN_F1, \
+    BTN_PAD_RECORD,\
+    BTN_PAD_STOP,\
+    BTN_PAD_PLAY,\
+    BTN_F2,\
+    BTN_F3,\
+    BTN_SEL_YES,\
+    BTN_PAD_UP,\
+    BTN_BACK_NO,\
+    BTN_PAD_LEFT,\
+    BTN_PAD_DOWN,\
+    BTN_PAD_RIGHT,\
+    BTN_F4
 
 from zyncoder.zyncore import lib_zyncore
 
@@ -22,7 +27,7 @@ from zyncoder.zyncore import lib_zyncore
 class COLORS:
     COLOR_BLACK = 0x00
     COLOR_DARK_GREY = 0x01
-    COLOR_GREEN = COLOR_STATE_1 = COLOR_PLAYING = COLOR_ALT_OFF = COLOR_FN = 0x01
+    COLOR_GREEN = COLOR_INSERT_CHAIN = COLOR_STATE_1 = COLOR_PLAYING = COLOR_ALT_OFF = COLOR_FN = 0x01
     COLOR_BLUE = 0x25
     COLOR_AQUA = 0x21
     COLOR_BLUE_DARK = 0x2D
@@ -57,7 +62,7 @@ class COLORS:
     COLOR_PINK = 0x39
     COLOR_PINK_LIGHT = 0x52
     COLOR_PINK_WARM = 0x38
-    COLOR_YELLOW = COLOR_STATE_0 = 0x05 # 0x0D
+    COLOR_YELLOW = COLOR_STATE_0 = COLOR_LOCAL_ALT_ON = 0x05 # 0x0D
     COLOR_LIME = 0x4B
     COLOR_LIME_DARK = 0x11
     COLOR_GREEN_YELLOW = 0x4A
@@ -66,7 +71,8 @@ class COLORS:
 class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
     dev_ids = ["APC Key 25 MIDI 1", "APC Key 25 IN 1"]
-    driver_name = 'AKAI APC Key25'
+    driver_name = 'Full Zynthian Integration for AKAI APC Key25'
+    apc_color_variant = 'apc_mk1'
     unroute_from_chains = 0b1111111111111101
     on_notes = {}
 
@@ -101,98 +107,149 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
         COLS = 8
         ROWS = 4
+        WSCOLORS_DICT = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_GREEN,
+            "G": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_PURPLE,
+            "T": COLORS.COLOR_BLUE_LIGHT
+        }
+        ZYNSWITCH_SCREEN_COLORS = WSCOLORS_DICT
+        ZYNSWITCH_CONFIRM_COLORS = {
+            "G": COLORS.COLOR_GREEN,
+            "R": COLORS.COLOR_RED
+        }
+
+        ZYNSWITCH_FN_COLORS = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_RED,
+            "T": COLORS.COLOR_GREEN
+        }
+
+        ZYNSWITCH_TRANSPORT_COLORS = {
+            "0": None,
+            "B": None,
+            "G": COLORS.COLOR_GREEN,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_RED,
+            "T": COLORS.COLOR_GREEN
+        }
+
+        ZYNSWITCH_ARROW_COLORS = {
+            "0": COLORS.COLOR_BLACK,
+            "B": COLORS.COLOR_YELLOW,
+            "G": COLORS.COLOR_YELLOW,
+            "R": COLORS.COLOR_RED,
+            "O": COLORS.COLOR_RED,
+            "Y": COLORS.COLOR_YELLOW,
+            "P": COLORS.COLOR_RED,
+            "T": COLORS.COLOR_GREEN
+        }
+
+        ZYNSWITCH_NOTES_AND_COLORS = {
+            4:    [BTN_OPT_ADMIN, ZYNSWITCH_SCREEN_COLORS],
+            5:    [BTN_MIX_LEVEL, ZYNSWITCH_SCREEN_COLORS],
+            6:    [BTN_CTRL_PRESET, ZYNSWITCH_SCREEN_COLORS],
+            7:    [BTN_ZS3_SHOT, ZYNSWITCH_SCREEN_COLORS],
+
+            8:    [BTN_ALT, ZYNSWITCH_SCREEN_COLORS],
+            9:    [BTN_PAD_STEP, ZYNSWITCH_SCREEN_COLORS],
+            10:   [BTN_METRONOME, ZYNSWITCH_SCREEN_COLORS],
+            11:   [BTN_F1, ZYNSWITCH_FN_COLORS],
+
+            12:    [BTN_PAD_RECORD, ZYNSWITCH_TRANSPORT_COLORS],
+            13:    [BTN_PAD_STOP,  ZYNSWITCH_TRANSPORT_COLORS],
+            14:    [BTN_PAD_PLAY, ZYNSWITCH_TRANSPORT_COLORS],
+            15:    [BTN_F2, ZYNSWITCH_FN_COLORS],
+
+            16:    [BTN_F3, ZYNSWITCH_FN_COLORS],
+            17:    [BTN_SEL_YES, ZYNSWITCH_CONFIRM_COLORS],
+            18:    [BTN_PAD_UP, ZYNSWITCH_ARROW_COLORS],
+            19:    [BTN_BACK_NO, ZYNSWITCH_CONFIRM_COLORS],
+
+            20:    [BTN_PAD_LEFT, ZYNSWITCH_ARROW_COLORS],
+            21:    [BTN_PAD_DOWN, ZYNSWITCH_ARROW_COLORS],
+            22:    [BTN_PAD_RIGHT, ZYNSWITCH_ARROW_COLORS],
+            23:    [BTN_F4, ZYNSWITCH_FN_COLORS]
+
+        }
 
         def cc_change(self, ccnum, ccval):
-
-            zynpot = {
-                KNOB_LAYER: 0,
-                KNOB_BACK: 1,
-                KNOB_SNAPSHOT: 2,
-                KNOB_SELECT: 3
-            }.get(ccnum, None)
-            if zynpot is None:
-                return
-
-            self._state_manager.send_cuia("ZYNPOT_ABS", [zynpot, ccval / 127])
+            zynpot = CCNUM_ZYNPOT.get(ccnum, None)
+            if zynpot is not None:
+                self._state_manager.send_cuia("ZYNPOT_ABS", [zynpot, ccval / 127])
 
         def note_on(self, note, velocity, shifted_override=None):
             if note < 4:
                 self._state_manager.send_cuia("ZYNPOT", [note, -10])
             elif self.COLS <= note < self.COLS*1+4:
-                self._state_manager.send_cuia("ZYNPOT", [note-self.COLS, -1])
+                self._state_manager.send_cuia("ZYNPOT", [note - self.COLS, -1])
             elif self.COLS*2 <= note < self.COLS*2+4:
-                self._state_manager.send_cuia("ZYNPOT", [note-self.COLS*2, +1])
+                self._state_manager.send_cuia("ZYNPOT", [note - self.COLS*2, +1])
             elif self.COLS*3 <= note < self.COLS*3+4:
-                self._state_manager.send_cuia("ZYNPOT", [note-self.COLS*3, +10])
+                self._state_manager.send_cuia("ZYNPOT", [note - self.COLS*3, +10])
             else:
                 super().note_on(note, velocity, shifted_override)
 
     class MixerHandler(zynthian_ctrldev_akai_apc_key25_mk2.MixerHandler):
 
-        def __init__(self, state_manager,  leds: zynthian_ctrldev_akai_apc_key25_mk2.FeedbackLEDs):
+        def __init__(self, state_manager, driver, leds: zynthian_ctrldev_akai_apc_key25_mk2.FeedbackLEDs):
             self._knobmoves = {}
-            super().__init__(state_manager, leds)
+            super().__init__(state_manager, driver, leds)
 
-        def _update_control(self, type, ccnum, ccval, minv, maxv):
+        def _update_volume(self, ccnum, ccval):
             if self._is_shifted:
                 # Only main chain is handled with SHIFT, ignore the rest
-                if ccnum != self.main_chain_knob:
-                    return False
-                mixer_chan = 255
-            else:
-                index = (ccnum - KNOB_1) + self._chains_bank * 8
-                chain = self._chain_manager.get_chain_by_index(index)
-                if chain is None or chain.chain_id == 0:
-                    return False
-                mixer_chan = chain.mixer_chan
-
-            ctrlid = f'{type}{mixer_chan}'
-            now = time.perf_counter()
-            then = self._knobmoves.get(ctrlid)
-            within_time = ((then is not None) and ((now - then) < 0.2))
-            cval = ccval / 127
-
-            if type == "level":
-                val = cval
-                old_value = self._zynmixer.get_level(mixer_chan)
-                if within_time or abs(val - old_value) < 0.01:
-                    self._zynmixer.set_level(mixer_chan, max(0, min(1, val)))
-                    self._knobmoves[ctrlid] = now
-                    return True
+                if ccnum == self.main_chain_knob:
+                    index = -1
                 else:
-                    return False
-            elif type == "balance":
-                val = -1 + cval * 2
-                old_value = self._zynmixer.get_balance(mixer_chan)
-                if within_time or abs(val - old_value) < (1 - -1) * 0.01:
-                    self._knobmoves[ctrlid] = now
-                    self._zynmixer.set_balance(mixer_chan, max(-1, min(1, val)))
                     return True
-                else:
-                    return False
             else:
-                return False
+                index = (ccnum - KNOB_1) + self.driver.scroll_h
+            self.driver.set_mixer_param_cc("level", index, ccval)
+            return True
+
+        def _update_pan(self, ccnum, ccval):
+            if self._is_shifted:
+                # Only main chain is handled with SHIFT, ignore the rest
+                if ccnum == self.main_chain_knob:
+                    index = -1
+                else:
+                    return True
+            else:
+                index = (ccnum - KNOB_1) + self.driver.scroll_h
+            self.driver.set_mixer_param_cc("balance", index, ccval)
+            return True
+
+        def _update_control(self, ccnum, ccval):
+            if self._is_shifted:
+                if ccnum == self.main_chain_knob:
+                    index = -1
+                else:
+                    return True
+            else:
+                index = (ccnum - KNOB_1) + self.driver.scroll_h
+            if index == -1:
+                self.driver.set_mixer_param_cc("level", index, ccval)
+                return True
+            else:
+                try:
+                    zctrl = self._chain_manager.get_active_chain().zctrls[index]
+                    zctrl.midi_control_change(ccval)
+                    return True
+                except:
+                    return False
         
     class PadMatrixHandler(zynthian_ctrldev_akai_apc_key25_mk2.PadMatrixHandler):
-            # Just make a pattern...
-            GROUP_COLORS = [
-                0x03,
-                0x05,
-                0x01,
-                0x03,
-                0x05,
-                0x01,
-                0x03,
-                0x05,
-                0x01,
-                0x03,
-                0x05,
-                0x01,
-                0x03,
-                0x05,
-                0x01,
-                0x03,
-            ]
             BRIGHT_OFF = LED_BRIGHT_10
 
     class StepSeqHandler(zynthian_ctrldev_akai_apc_key25_mk2.StepSeqHandler):
@@ -252,24 +309,22 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             self._leds.led_on(self._pads[step], self.COLOR_VELOCITY, int((velocity * 6) / 127))
             self._play_step(step)
 
-        def _update_step_stutter_count(self, step, count):
+        def _update_step_stutter_speed(self, step, speed):
             if self._selected_note is None:
                 return
 
             note = self._selected_note.note
-            # count = self._libseq.getStutterCount(step, note) + delta
-            count = min(MAX_STUTTER_COUNT, max(0, count))
-            self._libseq.setStutterCount(step, note, count)
+            speed = min(MAX_STUTTER_SPEED, max(0, speed))
+            self._libseq.setNoteStutterSpeed(step, note, speed)
             self._play_step(step)
 
-        def _update_step_stutter_duration(self, step, duration):
+        def _update_step_stutter_velfx(self, step, duration):
             if self._selected_note is None:
                 return
 
             note = self._selected_note.note
-            # duration = self._libseq.getStutterDur(step, note) + delta
-            duration = min(MAX_STUTTER_DURATION, max(1, duration))
-            self._libseq.setStutterDur(step, note, duration)
+            velfx = min(MAX_STUTTER_VELFX, max(1, velfx))
+            self._libseq.setNoteStutterVelfx(step, note, velfx)
             self._play_step(step)
 
         def _update_note_pad_duration(self, pad, note_spec, duration):
@@ -289,14 +344,14 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             if is_selected:
                 self._leds.delayed("led_on", 1000, pad, color, LED_PULSING_8)
 
-        def _update_note_pad_stutter_count(self, pad, note_spec, stutter_count):
-            note_spec.stutter_count = \
-                min(MAX_STUTTER_COUNT, max(0, stutter_count))
+        def _update_note_pad_stutter_speed(self, pad, note_spec, stutter_speed):
+            note_spec.stutter_speed = \
+                min(MAX_STUTTER_SPEED, max(0, stutter_speed))
             self._play_note_pad(pad)
 
-        def _update_note_pad_stutter_duration(self, pad, note_spec, stutter_duration):
-            note_spec.stutter_duration = \
-                min(MAX_STUTTER_DURATION, max(0, stutter_duration))
+        def _update_note_pad_stutter_velfx(self, pad, note_spec, stutter_velfx):
+            note_spec.stutter_velfx = \
+                min(MAX_STUTTER_VELFX, max(0, stutter_velfx))
             self._play_note_pad(pad)
 
 
@@ -309,14 +364,14 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 adjust_pad_func = {
                     KNOB_1: self._update_note_pad_duration,
                     KNOB_2: self._update_note_pad_velocity,
-                    KNOB_3: self._update_note_pad_stutter_count,
-                    KNOB_4: self._update_note_pad_stutter_duration,
+                    KNOB_3: self._update_note_pad_stutter_speed,
+                    KNOB_4: self._update_note_pad_stutter_velfx,
                 }.get(ccnum)
                 adjust_step_func = {
                     KNOB_1: self._update_step_duration,
                     KNOB_2: self._update_step_velocity,
-                    KNOB_3: self._update_step_stutter_count,
-                    KNOB_4: self._update_step_stutter_duration,
+                    KNOB_3: self._update_step_stutter_speed,
+                    KNOB_4: self._update_step_stutter_velfx,
                 }.get(ccnum)
 
                 step_pads = self._pads[:self._used_pads]
@@ -346,7 +401,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 max = 420
                 val = min + (cval * (max - min))
                 ctrlid = 'tempo'
-                now = time.perf_counter()
+                now = monotonic()
                 then = self._knobmoves.get(ctrlid)
                 within_time = ((then is not None) and ((now - then) < 0.2))
 
@@ -369,7 +424,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     max = 1
                     val = min + (cval * (max - min))
                     ctrlid = f'level{mixer_chan}'
-                    now = time.perf_counter()
+                    now = monotonic()
                     then = self._knobmoves.get(ctrlid)
                     within_time = ((then is not None) and ((now - then) < 0.2))
 

@@ -45,6 +45,7 @@ from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 
 class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
+    system_dir_sdc = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/files/Midi"
     capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
     user_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/files/Midi"
     ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
@@ -54,22 +55,22 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         self.playing = False
         self.smf_timer = None  # 1s timer used to check end of SMF playback
 
-        super().__init__('MIDI file', default_icon="file_midi.png", tiny_ctrls=True)
-
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+        super().__init__('MIDI file', default_icon="file_midi.png", tiny_ctrls=False)
 
         # Secondary controller
-        self.mpl_zctrl = zynthian_controller(self, "midi_play_loop",
-                                             {'name': "Loop", 'short_name': "Loop",
+        self.mpl_zctrl = zynthian_controller(self, "midi_play_loop", {'name': "Loop", 'short_name': "Loop",
                                               "is_toggle": True, "ticks": [0, 1], "labels": ["off", "on"],
                                               'value': zynthian_gui_config.midi_play_loop})
-        self.zgui_ctrl2 = zynthian_gui_controller(2, self.main_frame, self.mpl_zctrl, False,
+        self.zgui_ctrl2 = zynthian_gui_controller(2, self.main_frame, self.mpl_zctrl, hidden=False,
                                                  orientation=self.layout['ctrl_orientation'])
-        self.zgui_ctrl2.grid(
-            row=self.layout['ctrl_pos'][2][0],
-            column=self.layout['ctrl_pos'][2][1],
-            sticky='news', pady=(0, 1)
-        )
+        self.zgui_ctrl2.grid(row=self.layout['ctrl_pos'][2][0],
+                            column=self.layout['ctrl_pos'][2][1],
+                            sticky='news', pady=(0, 1))
+
+    def grid_info_canvas(self):
+        self.main_frame.rowconfigure(0, weight=0)
+        self.main_frame.rowconfigure(1, weight=0)
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news", padx=(2,2), pady=(2,2))
 
     def refresh_status(self):
         super().refresh_status()
@@ -102,15 +103,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
                 self.list_data.append([None, 0, header_title])
                 for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):
                     title = f"{finfo['title']} ({finfo['fduration']})"
-                    self.list_data.append([finfo['fpath'], i, title, ["Select to play MIDI file.\nBold to show more options.", None]])
+                    self.list_data.append([finfo['fpath'], i, title, ["Select to play.\nBold to show options.", None]])
                     i += 1
+
+        # External storage
+        for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+            fill_from_source(exd, f"USB> {os.path.basename(exd)} MIDI Tracks")
 
         # Internal storage
         fill_from_source(self.capture_dir_sdc, "SD> Captured MIDI Tracks")
         fill_from_source(self.user_dir_sdc, "SD> User MIDI Tracks")
-        # External storage
-        for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-            fill_from_source(exd, f"USB> {os.path.basename(exd)} MIDI Tracks")
+        fill_from_source(self.system_dir_sdc, "SD> System MIDI Tracks")
         super().fill_list()
 
     def get_filelist(self, src_dir):
@@ -177,10 +180,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         if self.list_data:
             if self.zyngui.state_manager.status_midi_recorder:
                 self.list_data[0] = (("STOP_RECORDING", 0,
-                                     "■ Stop MIDI Recording", ["Toggle recording to MIDI file.", "midi_recorder.png"]))
+                                     "■ Stop MIDI Recording", ["Stop MIDI recording.", "midi_recorder.png"]))
             else:
                 self.list_data[0] = (("START_RECORDING", 0,
-                                     "⬤ Start MIDI Recording", ["Toggle recording to MIDI file", "midi_recorder.png"]))
+                                     "⬤ Start MIDI Recording", ["Start MIDI recording.", "midi_recorder.png"]))
             if fill:
                 self.listbox.delete(0)
                 self.listbox.insert(0, self.list_data[0][2])

@@ -137,9 +137,9 @@ Pattern* Pattern::getPatternSelection(uint32_t step1, uint32_t step2, uint8_t no
     return res;
 }
 
-// Get indexes of note events in a time & note range, upto the specified limit => ev_indexes
+// Get keys (step+note) of note events in a time & note range, upto the specified limit => ev_keys
 // Returns the number of event indexes copied into ev_indexes.
-uint32_t Pattern::getPatternSelectionIndexes(uint32_t* ev_indexes, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
+uint32_t Pattern::getPatternSelectionKeys(uint32_t* ev_keys, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
     uint32_t nsteps = getSteps();
 
     // Check range of offset parameters
@@ -157,7 +157,7 @@ uint32_t Pattern::getPatternSelectionIndexes(uint32_t* ev_indexes, uint32_t limi
             ev->m_nValue1start < note1 || ev->m_nValue1start > note2) {
             continue;
         }
-        ev_indexes[i++] = std::distance(m_vEvents.begin(), it);
+        ev_keys[i++] = ev->m_nValue1start * MAX_STEPS_PATTERN + ev->m_nPosition;
         if (i >= limit) break;
     }
     return i;
@@ -774,17 +774,22 @@ void Pattern::changeVelocityAll(int value) {
     }
 }
 
-void Pattern::changeVelocityList(float value, uint32_t* evi_list, uint32_t n) {
+void Pattern::changeVelocityList(float value, uint32_t* ev_key_list, uint32_t n) {
     for (uint32_t j = 0; j < n; ++j) {
-        StepEvent* ev = m_vEvents[evi_list[j]];
-        if (ev->getCommand() != MIDI_NOTE_ON)
-            continue;
-        int vel = ev->getValue2start() + value;
-        if (vel > 127)
-            vel = 127;
-        if (vel < 1)
-            vel = 1;
-        ev->setValue2start(vel);
+        uint8_t num = ev_key_list[j] / MAX_STEPS_PATTERN;
+        uint32_t step = ev_key_list[j] % MAX_STEPS_PATTERN;
+        int32_t index = getNoteIndex(step, num);
+        if (index >= 0) {
+            StepEvent* ev = m_vEvents[index];
+            if (ev->getCommand() != MIDI_NOTE_ON)
+                continue;
+            int vel = ev->getValue2start() + value;
+            if (vel > 127)
+                vel = 127;
+            if (vel < 1)
+                vel = 1;
+            ev->setValue2start(vel);
+        }
     }
 }
 
@@ -793,25 +798,26 @@ void Pattern::changeDurationAll(float value) {
         if (ev->getCommand() != MIDI_NOTE_ON)
             continue;
         float duration = ev->getDuration() + value;
-        if (duration <= 0)
-            return;         // Don't allow jump larger than current value
         if (duration < 0.1) //!@todo How short should we allow duration change?
             duration = 0.1;
         ev->setDuration(duration);
     }
 }
 
-void Pattern::changeDurationList(float value, uint32_t* evi_list, uint32_t n) {
+void Pattern::changeDurationList(float value, uint32_t* ev_key_list, uint32_t n) {
     for (uint32_t j = 0; j < n; ++j) {
-        StepEvent* ev = m_vEvents[evi_list[j]];
-        if (ev->getCommand() != MIDI_NOTE_ON)
-            continue;
-        float duration = ev->getDuration() + value;
-        if (duration <= 0)
-            return;         // Don't allow jump larger than current value
-        if (duration < 0.1) //!@todo How short should we allow duration change?
-            duration = 0.1;
-        ev->setDuration(duration);
+        uint8_t num = ev_key_list[j] / MAX_STEPS_PATTERN;
+        uint32_t step = ev_key_list[j] % MAX_STEPS_PATTERN;
+        int32_t index = getNoteIndex(step, num);
+        if (index >= 0) {
+            StepEvent* ev = m_vEvents[index];
+            if (ev->getCommand() != MIDI_NOTE_ON)
+                continue;
+            float duration = ev->getDuration() + value;
+            if (duration < 0.1) //!@todo How short should we allow duration change?
+                duration = 0.1;
+            ev->setDuration(duration);
+        }
     }
 }
 

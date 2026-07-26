@@ -44,8 +44,8 @@ class zynthian_gui_selector(zynthian_gui_base):
     swipe_roll_scale = [1, 0, 1, 1, 2, 2, 2, 4,
                         4, 4, 4, 4]  # 1, 0, 1, 0, 1, 0, 1, 0,
 
-    def __init__(self, selcap='Select', wide=False, loading_anim=True, tiny_ctrls=True):
-        super().__init__()
+    def __init__(self, selcap='Select', wide=False, loading_anim=True, tiny_ctrls=True, parent=None, topbar=None):
+        super().__init__(parent, topbar)
 
         # If the children class has not defined a custom GUI layout, use the default from config
         if not hasattr(self, 'layout'):
@@ -66,6 +66,7 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.listbox_motion_last_dy = 0
         self.swiping = False
         self.last_release_ts = 0
+        self.last_tts = ""
 
         # ListBox
         self.lb_bg = zynthian_gui_config.color_panel_bg
@@ -83,15 +84,10 @@ class zynthian_gui_selector(zynthian_gui_base):
             selectmode=tkinter.SINGLE)
 
         # Configure layout
-        if tiny_ctrls:
-            if self.layout['rows'] == 2:
-                self.main_frame.rowconfigure(0, weight=0)
-                self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
-            elif self.layout['rows'] == 4:
-                self.main_frame.rowconfigure(0, weight=0)
-                self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
-                self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
-                self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
+        self.tiny_ctrls = tiny_ctrls
+        if self.tiny_ctrls:
+            for i in range(self.layout['rows']):
+                self.main_frame.rowconfigure(i, weight=1)
         else:
             for i in range(self.layout['rows']):
                 self.main_frame.rowconfigure(i, weight=1, uniform='ctrl_row')
@@ -137,7 +133,7 @@ class zynthian_gui_selector(zynthian_gui_base):
                 highlightthickness=0,
                 bg=zynthian_gui_config.color_bg)
             # Position at top of column containing selector
-            self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+            self.grid_loading_canvas()
             self.loading_push_ts = None
             self.loading_canvas.bind("<Button-1>", self.cb_loading_push)
             self.loading_canvas.bind("<ButtonRelease-1>", self.cb_loading_release)
@@ -158,9 +154,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 
         self.show_sidebar(True)
 
+    def grid_loading_canvas(self):
+        self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+
     def update_layout(self):
         super().update_layout()
-        ctrl_width = self.width * self.layout['ctrl_width'] * self.sidebar_shown
+        ctrl_width = zynthian_gui_config.screen_width * self.layout['ctrl_width'] * self.sidebar_shown
         #if self.layout['columns'] == 2:
         if self.wide:
             lb_width = int(self.width - ctrl_width)
@@ -171,7 +170,9 @@ class zynthian_gui_selector(zynthian_gui_base):
         ctrl_width = int(ctrl_width)
         self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lb_width, weight=lb_weight)
         self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=ctrl_width, weight=self.sidebar_shown)
-
+        if self.tiny_ctrls:
+            ctrl_height = self.height // (2 * self.layout['rows'])
+            self.main_frame.rowconfigure(self.layout['rows'] - 1, minsize=ctrl_height)
         if self.loading_canvas:
             self.loading_canvas.configure(height=int(0.5 * self.height))
 
@@ -180,6 +181,11 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.set_selector()
         self.set_select_path()
         return True
+
+    def show(self):
+        super().show()
+        if self.zyngui.tts and len(self.list_data) > 0:
+            self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -250,11 +256,11 @@ class zynthian_gui_selector(zynthian_gui_base):
         if not self.zselector_hidden:
             self.zselector.grid(row=self.layout['ctrl_pos'][3][0], column=self.layout['ctrl_pos'][3][1], sticky="news")
 
-    def plot_zctrls(self):
+    def plot_zctrls(self, force=False):
         self.swipe_update()
         if self.zselector_hidden:
             return
-        if self.zselector.zctrl.is_dirty:
+        if self.zselector.zctrl.is_dirty or force:
             self.zselector.calculate_plot_values()
             self.zselector.plot_value()
             self.zselector.zctrl.is_dirty = False
@@ -291,12 +297,24 @@ class zynthian_gui_selector(zynthian_gui_base):
         return index
 
     def select_listbox(self, index, see=True):
-        if index < 0:
+        if index <= 0:
             index = 0
+            tts = ". Start of list"
         elif index >= len(self.list_data):
             index = len(self.list_data) - 1
-        index = self.skip_separators(index)
-        self._select_listbox(index, see=see)
+            tts = ". End of list"
+        else:
+            tts = ""
+        new_index = self.skip_separators(index)
+        no_div = new_index == index
+        self._select_listbox(new_index, see=see)
+        if self.shown and self.zyngui.tts:
+            tts_text = self.list_data[new_index][2] + tts
+            if self.last_tts == tts_text:
+                return
+            self.last_tts = tts_text
+            self.zyngui.tts.announce(tts_text, no_div, no_div, no_div)
+            self.zyngui.tts.announce(f"{self.index + 1} of {len(self.list_data)}", False, False, False)
 
     def _select_listbox(self, index, see=True):
         # Set selection
@@ -336,19 +354,27 @@ class zynthian_gui_selector(zynthian_gui_base):
                 for i in range(index, len(self.list_data)):
                     if self.list_data[i][0] is not None:
                         return i
+                    elif self.zyngui.tts:
+                        self.zyngui.tts.announce(f"Divider: {self.list_data[i][2]}")
                 # No entries down list so let's search back up
                 for i in range(index, -1, -1):
                     if self.list_data[i][0] is not None:
                         return i
+                    elif self.zyngui.tts:
+                        self.zyngui.tts.announce(f"Divider: {self.list_data[i][2]}")
             else:
                 # Request is lower than current entry so try to move up list
                 for i in range(index, -1, -1):
                     if self.list_data[i][0] is not None:
                         return i
+                    elif self.zyngui.tts:
+                        self.zyngui.tts.announce(f"Divider: {self.list_data[i][2]}")
                 # No entries up list so let's search back down
                 for i in range(index, len(self.list_data)):
                     if self.list_data[i][0] is not None:
                         return i
+                    elif self.zyngui.tts:
+                        self.zyngui.tts.announce(f"Divider: {self.list_data[i][2]}")
             return None  # No valid entries in the listbox - must all be titles
         return index
 
@@ -392,6 +418,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             self.select(index)
         else:
             self.select(self.get_cursel())
+        #if self.zyngui.tts:
+        #    self.zyngui.tts._tts.beep(0.12, 900)
         self.select_action(self.index, t)
 
     # Function to handle select switch press
@@ -405,6 +433,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def select_action(self, index, t='S'):
         pass
+
+    def cuia_v5_zynpot_switch(self, params):
+        return False
 
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!)
@@ -507,4 +538,18 @@ class zynthian_gui_selector(zynthian_gui_base):
             elif dts >= zynthian_gui_config.zynswitch_long_seconds:
                 self.zyngui.zynswitch_defered('L', 2)
             """
+
+    def get_help_fpath(self):
+        if self.param_editor_zctrl:
+            return "parameter_editor.html"
+        return "selector.html"
+
+    # --------------------------------------------------------------------------
+    # ZynVoice TTS
+    # --------------------------------------------------------------------------
+
+    def tts_info(self):
+        super().tts_info()
+        self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+
 # ------------------------------------------------------------------------------

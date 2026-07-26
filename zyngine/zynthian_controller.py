@@ -4,7 +4,7 @@
 #
 # zynthian controller
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -23,14 +23,13 @@
 # ******************************************************************************
 
 import math
-import liblo
 import logging
+import pyliblo3 as liblo
 from time import monotonic
 from threading import Timer
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ----------------------------------------------------------------------------
@@ -86,6 +85,8 @@ class zynthian_controller:
         self.is_trigger = False  # True if control is one-shot trigger
         self.is_integer = True  # True if control is Integer
         self.is_logarithmic = False  # True if control uses logarithmic scale
+        self.is_bypass = False  # True for the processor's bypass controller, if any. Shouldn't be more than one by processor.
+        self.bypass_value = 0   # Value that bypass the processor
         if full:
             self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
             self.path_file_types = None  # List of supported file types
@@ -214,6 +215,11 @@ class zynthian_controller:
             self.envelope = options['envelope']
         if 'filter' in options and options['filter'] is not None:
             self.filter = options['filter']
+        if 'is_bypass' in options:
+            self.is_bypass = options['is_bypass']
+        if 'bypass_value' in options:
+            self.bypass_value = options['bypass_value']
+
         self._configure()
 
     def _configure(self):
@@ -519,6 +525,10 @@ class zynthian_controller:
             except Exception as e:
                 logging.warning(f"Can't send value change feedback for {self.symbol} => {e}")
 
+        if self.is_bypass:
+            zynsigman.send_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, zctrl=self)
+
+
     def send_midi_cc(self, mval=None):
         if mval is None:
             mval = self.get_ctrl_midi_val()
@@ -562,6 +572,8 @@ class zynthian_controller:
         if i is not None:
             return self.labels[i]
         else:
+            if type(val) is float:
+                return f"{val:.3f}"
             return val
 
     def get_label2value(self, label):
@@ -573,6 +585,7 @@ class zynthian_controller:
 
         except Exception as e:
             logging.error(e)
+            return 0
 
     def get_ctrl_midi_val(self):
         try:

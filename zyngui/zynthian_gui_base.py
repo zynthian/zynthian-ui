@@ -47,26 +47,31 @@ class zynthian_gui_base(tkinter.Frame):
     def __init__(self, parent=None, topbar=None):
         if parent:
             self.parent = parent
+            self.parent_frame = parent.main_frame
         else:
-            self.parent = zynthian_gui_config.root_frame
-        tkinter.Frame.__init__(self, self.parent)
+            self.parent = None
+            self.parent_frame = zynthian_gui_config.root_frame
+
+        tkinter.Frame.__init__(self, self.parent_frame)
         self.grid_propagate(False)
         self.shown = False
         self.sidebar_shown = True
         self.title = ""
+        self.tts_title = self.__class__.__name__[13:].replace("_", " ")
 
         self.zyngui = zynthian_gui_config.zyngui
         self.state_manager = self.zyngui.state_manager
         self.chain_manager = self.zyngui.chain_manager
+        self.alt_mode = False
 
         # Setup topbar, autodetecting from parent object
         if topbar is not None:
             self.topbar_allowed = topbar
         else:
-            if self.parent == zynthian_gui_config.root_frame:
-                self.topbar_allowed = True
-            else:
+            if self.parent:
                 self.topbar_allowed = False
+            else:
+                self.topbar_allowed = True
 
         # Geometry vars
         if self.topbar_allowed:
@@ -78,13 +83,16 @@ class zynthian_gui_base(tkinter.Frame):
             self.topbar_height = 0
             self.main_row= 0
 
-        if self.parent == zynthian_gui_config.root_frame:
-            self.width = zynthian_gui_config.screen_width
-            self.height = zynthian_gui_config.screen_height - self.topbar_height
-        else:
+        if self.parent:
             self.width = 1
             self.height = 1
-
+            # Use parent's Breadcrumb
+            self.select_path = self.parent.select_path
+        else:
+            self.width = zynthian_gui_config.screen_width
+            self.height = zynthian_gui_config.screen_height - self.topbar_height
+            # Breadcrumb path
+            self.select_path = tkinter.StringVar()
 
         # Configure columns
         self.columnconfigure(0, weight=1)
@@ -93,7 +101,7 @@ class zynthian_gui_base(tkinter.Frame):
         # Main Frame
         self.main_frame = tkinter.Frame(self, bg=zynthian_gui_config.color_bg)
         self.main_frame.grid_propagate(False)
-        self.main_frame.grid(row=self.main_row, sticky='news')
+        self.main_frame.grid(row=self.main_row, sticky='NEWS')
 
         # Parameter editor
         self.param_editor_zctrl = None
@@ -103,7 +111,7 @@ class zynthian_gui_base(tkinter.Frame):
             self.main_mute = 0
 
             # Status Area Parameters
-            self.status_l = int(self.topbar_width * 0.25)
+            self.status_l = int(self.topbar_width * 0.27)
             self.status_h = self.topbar_height
             self.status_rh = max(2, int(self.status_h / 4))
             self.status_fs = int(0.36 * self.status_h)
@@ -149,7 +157,6 @@ class zynthian_gui_base(tkinter.Frame):
             col += 1
 
             # Topbar's Select Path
-            self.select_path = tkinter.StringVar()
             self.select_path.trace(tkinter.W, self.cb_select_path)
             self.label_select_path = tkinter.Label(self.title_canvas,
                                                 font=zynthian_gui_config.font_topbar,
@@ -195,13 +202,13 @@ class zynthian_gui_base(tkinter.Frame):
     # Function to update display, e.g. after geometry changes
     # Override if required
     def update_layout(self):
-        if self.parent == zynthian_gui_config.root_frame:
-            self.width = zynthian_gui_config.screen_width
-            self.height = zynthian_gui_config.screen_height - self.topbar_height
-        else:
+        if self.parent:
             self.width = self.winfo_width()
             self.height = self.winfo_height() - self.topbar_height
-        logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
+        else:
+            self.width = zynthian_gui_config.screen_width
+            self.height = zynthian_gui_config.screen_height - self.topbar_height
+        #logging.debug(f"[{self.__class__.__module__}] => WIDTH={self.width}, HEIGHT={self.height}")
         # TODO Resize topbar elements
 
     # Draw screen ready to display (like double buffer) - Override in subclass
@@ -211,9 +218,11 @@ class zynthian_gui_base(tkinter.Frame):
     # Show the view
     def show(self):
         if not self.shown:
-            self.parent.grid_main(self)
+            self.parent_frame.grid_main(self)
             self.shown = True
             self.refresh_status()
+            if self.tts_title and self.zyngui.tts:
+                self.zyngui.tts.announce(f"View: {self.tts_title}", replace=True, interrupt=True)
         self.main_frame.focus()
 
     # Hide the view
@@ -230,7 +239,7 @@ class zynthian_gui_base(tkinter.Frame):
         if self.topbar_allowed:
             if show:
                 self.topbar_height = zynthian_gui_config.topbar_height
-                self.tb_frame.grid(row=0, sticky="ew")
+                self.tb_frame.grid(row=0, sticky="EW")
             else:
                 self.topbar_height = 0
                 self.tb_frame.grid_remove()
@@ -525,9 +534,24 @@ class zynthian_gui_base(tkinter.Frame):
     def set_select_path(self):
         pass
 
+    def tts_info(self):
+        """ Narrate view status - override to provide more context"""
+        if self.tts_title and self.zyngui.tts:
+            self.zyngui.tts.announce(f"View: {self.tts_title}", replace=True, interrupt=True)
+
     # --------------------------------------------------------------------------
-    # Zynpot Callbacks (rotaries!) & CUIA
+    # CUIA and Zynpot Callbacks (rotaries!)
     # --------------------------------------------------------------------------
+
+    # By default, screens have no ALT mode.
+    # To implement ALT mode, child classes have to redefine get_alt_mode() returning self.alt_mode
+    def get_alt_mode(self):
+        #return self.alt_mode
+        return False
+
+    def cuia_toggle_alt_mode(self, params=None):
+        self.alt_mode = not self.alt_mode
+        return True
 
     def arrow_up(self, nudge=1):
         """ Function to handle CUIA ARROW_UP
@@ -541,6 +565,18 @@ class zynthian_gui_base(tkinter.Frame):
         """
         if self.param_editor_zctrl:
             self.zynpot_cb(zynthian_gui_config.layout['ctrl_order'][3], nudge)
+            return True
+
+    def zynpot_cb(self, i, val):
+        if self.param_editor_zctrl:
+            ctrl_order = zynthian_gui_config.layout['ctrl_order']
+            if i == ctrl_order[3]:
+                value = self.param_editor_zctrl.value_min + val * (self.param_editor_zctrl.value_range)
+                # TODO: Implement pickup
+                self.param_editor_zctrl.set_value(value)
+            else:
+                return True
+            self.update_param_editor()
             return True
 
     def zynpot_cb(self, i, dval):
@@ -612,7 +648,9 @@ class zynthian_gui_base(tkinter.Frame):
             self.format_print = "{}: {}"
 
         self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
-        self.update_param_editor()
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Enabled param editor")
+        self.update_param_editor(True)
         self.update_layout()
 
     # Function to disable paramter editor
@@ -627,14 +665,24 @@ class zynthian_gui_base(tkinter.Frame):
             self.update_layout()
         except:
             pass
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Disabled param editor")
 
     # Function to display label in parameter editor
-    def update_param_editor(self):
+    def update_param_editor(self, first_show=False):
         if self.param_editor_zctrl:
             if self.param_editor_zctrl.labels:
-                self.select_path.set(f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}")
+                value = self.param_editor_zctrl.get_value2label()
+                text = f"{self.param_editor_zctrl.name}: {value}"
             else:
-                self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+                value = self.param_editor_zctrl.value
+                text = self.format_print.format(self.param_editor_zctrl.name, value)
+            self.select_path.set(text)
+            if self.zyngui.tts:
+                if first_show:
+                    self.zyngui.tts.announce(text, False, False, False)
+                else:
+                    self.zyngui.tts.announce(str(value))
 
     # --------------------------------------------------------------------------
     # MIDI learning

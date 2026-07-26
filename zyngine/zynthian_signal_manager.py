@@ -4,7 +4,7 @@
 #
 # zynthian signal manager
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ****************************************************************************
 #
@@ -34,6 +34,10 @@ from threading import Thread
 
 class zynthian_signal_manager:
 
+    #-------------------------------------------------------------------------
+    # Signal id
+    #-------------------------------------------------------------------------
+
     S_ALL = 0  # Clients registering for this signal, will receive all signals
     S_STATE_MAN = 1
     S_CHAIN_MAN = 2
@@ -50,13 +54,24 @@ class zynthian_signal_manager:
     S_TRANSPORT = 13
     S_PROCESSOR = 14
 
-    SS_CUIA_REFRESH = 0
-    SS_CUIA_MIDI_EVENT = 1
+    #-------------------------------------------------------------------------
+    # Signal sub-id (owned by each corresponding class)
+    #-------------------------------------------------------------------------
 
+    # Processors
     SS_PROCESSOR_CTRL_SCREENS = 0
     SS_PROCESSOR_BYPASS = 1
 
-    #TODO: These are duplicates of definitions within zyngui!!!
+    # State manager
+    SS_LOAD_SNAPSHOT = 1
+    SS_MIDI_PLAYER_STATE = 2
+    SS_MIDI_RECORDER_STATE = 3
+    SS_LOAD_ZS3 = 4
+    SS_SAVE_ZS3 = 5
+    SS_ALL_NOTES_OFF = 6
+    SS_BUSY = 7
+
+    # zyngui
     SS_GUI_SHOW_SCREEN = 0
     SS_GUI_SHOW_SIDEBAR = 1
     SS_GUI_CONTROL_MODE = 2
@@ -72,6 +87,35 @@ class zynthian_signal_manager:
     SS_MIDI_NOTE_ON = 3
     SS_MIDI_NOTE_OFF = 4
     SS_MIDI_SYSEX = 5
+
+    # Chain manager
+    SS_SET_ACTIVE_CHAIN = 1
+    SS_MOVE_CHAIN = 2
+    SS_ADD_CHAIN = 3
+    SS_REMOVE_CHAIN = 4
+    SS_REMOVE_ALL_CHAINS = 5
+    SS_RENAME_CHAIN = 6
+    SS_ADD_PROCESSOR = 7
+    SS_REMOVE_PROCESSOR = 8
+
+    # Sequencer
+    SS_SEQ_PLAY_STATE = 1
+    SS_SEQ_STATE = 2 # Change in overal state (model)
+    SS_SEQ_PROGRESS = 3
+    SS_SEQ_SELECT_PHRASE = 4
+    SS_SEQ_TEMPO = 5
+    SS_SEQ_TIMESIG = 6
+    SS_SEQ_METRO = 7
+
+    # Mixer
+    SS_ZYNMIXER_SET_VALUE = 1
+
+    # Audio player
+    SS_AUDIO_PLAYER_STATE = 1
+
+    # Audio recorder
+    SS_AUDIO_RECORDER_STATE = 1
+    SS_AUDIO_RECORDER_ARM = 2
 
     last_signal = 14
     last_subsignal = 10

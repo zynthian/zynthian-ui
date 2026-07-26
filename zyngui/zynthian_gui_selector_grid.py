@@ -77,6 +77,10 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
     def update_layout(self):
         super().update_layout()
+        self.update_geometry()
+        self._draw_nodes()
+
+    def update_geometry(self):
         # Formula 2 * (x // y) ensures even values which helps with spacing and dividers
         self.SPACING = 2 * (self.width // (self.columns * 20))
         self.BLOCK_WIDTH = 2 * ((self.width - self.SPACING) // (self.columns * 2)) - self.SPACING
@@ -85,14 +89,19 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.font = (zynthian_gui_config.font_family, int(0.06 * self.BLOCK_WIDTH))
         icon_h = self.BLOCK_HEIGHT - int(0.5 * self.SPACING)
         self.icon_size = (icon_h, icon_h)
-        self._draw_nodes()
 
     def build_view(self):
         self._draw_nodes()
         self.set_select_path()
         return True
 
-    def setup(self, title, config, cols=None, select=0):
+    def show(self):
+        if not self.shown:
+            super().show()
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(self.config[self.selected_node]["title"], False, False, False)
+
+    def setup(self, title, config, cols=3, select=0):
         """
         Configure the buttons
         Args:
@@ -101,12 +110,14 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             cols: Quantity of columns (Optional. Default: 3)
             select: Button to select (Optional. Default: 0)
         """
-
-        self.title = title
-        self.config = config
         if cols:
             self.columns = cols
-        self.set_title(title)
+        else:
+            self.columns = 3
+        self.update_geometry()
+        self.title = self.tts_title = title
+        self.set_title(self.title)
+        self.config = config
         self.selected_node = select
 
     def get_icon(self, icon_fname=None):
@@ -133,18 +144,20 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         y = self.SPACING
         for idx, node in enumerate(self.config):
             if node:
+                fill = "#666666" if node["action"] else "#444444"
                 self.canvas.create_rectangle(x, y, x + self.BLOCK_WIDTH, y + self.BLOCK_HEIGHT,
-                fill="#666666",
-                outline="#666666",
-                tags=("node", f"node_{idx}"))
+                    fill=fill,
+                    outline=fill,
+                    tags=("node", f"node_{idx}"))
                 if "icon" in node:
                     img = self.get_icon(node["icon"])
                     if img:
                         self.canvas.create_image(x, y + self.BLOCK_HEIGHT // 2, image=img, anchor="w")
+                fill = "#ffffff" if node["action"] else "#aaaaaa"
                 self.canvas.create_text(
                     x + 2 * self.BLOCK_WIDTH // 3, y + self.BLOCK_HEIGHT // 2,
                     text=node["title"],
-                    fill="white",
+                    fill=fill,
                     font=self.font,
                     width=self.BLOCK_WIDTH // 2,
                     justify=tkinter.CENTER
@@ -170,6 +183,8 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.canvas.itemconfig("node", outline="")
         node_tag = f"node_{self.selected_node}"
         self.canvas.itemconfig(node_tag, outline="yellow", width=2)
+        if self.shown and self.zyngui.tts:
+            self.zyngui.tts.announce(self.config[self.selected_node]["title"])
 
         #Scroll the canvas to ensure the selected node is visible.
         # Get node's coords
@@ -202,52 +217,36 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         Handle arrow left action.
         """
 
-        idx = self.selected_node - 1
-        while idx >= 0 and self.config[idx] is None:
-            idx -= 1
-        if idx >= 0:
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(-1)
 
     def arrow_right(self):
         """
         Handle arrow right action.
         """
 
-        idx = self.selected_node + 1
-        while idx < len(self.config) and self.config[idx] is None:
-            idx += 1
-        if idx < len(self.config):
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(1)
 
     def arrow_up(self):
         """ Handle arrow up action """
 
         if super().arrow_up():
             return True
-        idx = self.selected_node - self.columns
-        while idx >= 0 and self.config[idx] is None:
-            idx -= self.columns
-        if idx >= 0:
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(-self.columns)
 
     def arrow_down(self):
         """ Handle arrow down action """
 
         if super().arrow_down():
             return
-        idx = self.selected_node + self.columns
-        while idx < len(self.config) and self.config[idx] is None:
-            idx += self.columns
-        if idx < len(self.config):
-            self.selected_node = idx
-            self._draw_selection()
+        self.select_offset(self.columns)
 
     def select_offset(self, dval):
         idx = self.selected_node + dval
-        if idx < 0 or idx >= len(self.config):
+        # Skip empty items
+        while 0 < idx < len(self.config) and self.config[idx] is None:
+            idx += dval
+        idx = min(len(self.config) - 1, max(0, idx))
+        if self.config[idx] is None:
             return
         self.selected_node = idx
         self._draw_selection()
@@ -271,10 +270,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             self.select_offset(dval)
             return True
         elif i == 2:
-            if dval > 0:
-                self.arrow_down()
-            elif dval < 0:
-                self.arrow_up()
+            self.select_offset(dval * self.columns)
 
     def on_press(self, event):
         """
@@ -374,3 +370,5 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
     def set_select_path(self):
         self.select_path.set(self.title)
 
+    def get_help_fpath(self):
+        return "selector_grid.html"

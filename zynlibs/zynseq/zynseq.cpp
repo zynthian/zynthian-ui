@@ -146,6 +146,7 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
 
 // Handle timebase change
 void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPeriod, jack_position_t* pPosition, int bUpdate, void* pArgs) {
+    if (bUpdate) return;
     pPosition->bar = g_nBar;
     pPosition->beat = g_nBeat;
     pPosition->tick = g_nTick;
@@ -154,6 +155,20 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
     pPosition->beats_per_bar = g_nBeatsPerBar;
     pPosition->ticks_per_beat = PPQN_INTERNAL;
     pPosition->valid = JackPositionBBT;
+}
+
+void updateJackPosition() {
+    jack_position_t position;
+    jack_position_t *pPosition = &position;
+    pPosition->bar = g_nBar;
+    pPosition->beat = g_nBeat;
+    pPosition->tick = g_nTick;
+    pPosition->bar_start_tick = g_nBarStartTick;
+    pPosition->beats_per_minute = g_dTempo;
+    pPosition->beats_per_bar = g_nBeatsPerBar;
+    pPosition->ticks_per_beat = PPQN_INTERNAL;
+    pPosition->valid = JackPositionBBT;
+    jack_transport_reposition(g_pJackClient, pPosition);
 }
 
 /*  Process jack period
@@ -178,10 +193,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     static jack_nframes_t nLastNow32 = 0;
     static uint64_t nLastExtClockFrame = 0; // Frames since jack epoch of last external clock
     static double dNextIntClockFrame = 0.0; // Frames since jack epoch of next internal clock
-    static uint32_t nExtClk = 0; // Count of external clocks in this beat (wrap at PPQN)
     static uint32_t nTickTime = 0; // Quantity of elapsed ticks since tick epoch that next event will be processed
     static uint32_t nBeatsPerBar = g_nBeatsPerBar; // Sequencer's live beats per bar, updated from g_nBeatsPerBar on bar boundary
-    static int64_t nNextBeatTime = 0; // Tick time of next beat
+    static uint32_t nNextBeatTime = 0; // Tick time of next beat
     static bool bRolling = g_bTransportRolling; // Transport rolling bars, updates g_bTranportRolling on next bar
 
     // Populate 64-bit monotonic frame clock (to avoid 24 hour overflow)
@@ -189,6 +203,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     if (nNow32 < nLastNow32)
         nNow += 0x100000000ULL;
     nNow = (nNow & 0xFFFFFFFF00000000ULL) | nNow32;
+    nLastNow32 = nNow32;
 
     // Metronome audio output buffer
     jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
@@ -232,14 +247,15 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nLastExtClockFrame = nNow + midiEvent.time;
                 uint32_t nTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
                 int32_t nTickDelta = nTicksBeforeClk - nExpectedTicksBeforeClk;
-                nNextBeatTime += nTickDelta;
+                // Ensure not negative result (uint32)
+                if (nTickDelta >= 0 || nNextBeatTime >= -nTickDelta)
+                    nNextBeatTime += nTickDelta;
                 break;
             }
             case MIDI_START: {
                 // Rx start on clock port so restart any playing sequences - this may cause disruption to playback - as expected
                 g_nBar = 1;
                 g_nBeat = 1;
-                nExtClk = 0;
                 g_nBarStartTick = 0;
                 fprintf(stderr, "START\n");
                 break;
@@ -1032,28 +1048,29 @@ const char* convertToJson(const char* filename) {
                         case 1:
                             // ONESHOT
                             jSeq["mode"] = MODE_END_IMMEDIATE;
+                            jSeq["repeat"] = 1;
                             break;
                         case 2:
                             // LOOP
-                            jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
-                            jSeq["followParam"] = 0;
+                            jSeq["repeat"] = 255;
                             break;
                         case 3:
                             // ONESHOTALL
+                            jSeq["repeat"] = 1;
                             break;
                         case 4:
                             // LOOPALL
-                            jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
-                            jSeq["followParam"] = 0;
+                            jSeq["repeat"] = 255;
                             break;
                         case 5:
                             // ONESHOTSYNC
                             jSeq["mode"] = MODE_END_SYNC;
+                            jSeq["repeat"] = 1;
                             break;
                         case 6:
                             // LOOPSYNC
-                            jSeq["followAction"] = FOLLOW_ACTION_RELATIVE;
-                            jSeq["followParam"] = 0;
+                            jSeq["mode"] = MODE_END_SYNC;
+                            jSeq["repeat"] = 255;
                             break;
                 }
                 uint8_t nGroup = fileRead8u(pFile);
@@ -1178,8 +1195,8 @@ void setPattern(uint32_t id, const char* patn_state) {
     pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
     for (auto& jEvent: jPattern["events"]) {
         uint32_t nStep = jEvent[0];
-        float fDuration = jEvent[1];
-        float fOffset = jEvent[2];
+        float fOffset = jEvent[1];
+        float fDuration = jEvent[2];
         uint8_t nCommand = jEvent[3];
         uint8_t nValue1start = jEvent[4];
         uint8_t nValue2start = jEvent[6];
@@ -1188,11 +1205,18 @@ void setPattern(uint32_t id, const char* patn_state) {
         pEvent->setValue2end(jEvent[7]);
         pEvent->setStutterSpeed(jEvent[8]);
         pEvent->setStutterVelfx(jEvent[9]);
-        pEvent->setStutterRamp(jEvent[10]);
-        pEvent->setPlayChance(float(jEvent[11]) / 100);
-        pEvent->setPlayFreq(jEvent[12]);
-        pEvent->setStutterChance(float(jEvent[13]) / 100);
-        pEvent->setStutterFreq(jEvent[14]);
+        // Legacy format
+        if (jEvent.size() == 11) {
+            pEvent->setPlayChance(float(jEvent[10]) / 100);
+        }
+        // Extended parameters: stutter speed-ramp, play freq, stutter chance, stutter freq
+        else {
+            pEvent->setStutterRamp(jEvent[10]);
+            pEvent->setPlayChance(float(jEvent[11]) / 100);
+            pEvent->setPlayFreq(jEvent[12]);
+            pEvent->setStutterChance(float(jEvent[13]) / 100);
+            pEvent->setStutterFreq(jEvent[14]);
+        }
     }
 }
 
@@ -1316,13 +1340,21 @@ bool setState(const char* state) {
                         pSequence->setPlayMode(jSeq.value("mode", 1));
                         pSequence->setGroup(jSeq.value("group", 0)); //!@todo Set default group to MIDI channel
                         pSequence->setName(jSeq.value("name", ""));
-                        pSequence->setRepeat(jSeq.value("repeat", 1));
 
+                        // Backward compatibility =>
+                        // Older vangelis sequences used FOLLOW_ACTION_RELATIVE for endless loop.
+                        // Currently, endless loop is flagged with repeat=255
+                        if (jSeq.value("followAction", FOLLOW_ACTION_NONE) != FOLLOW_ACTION_NONE) {
+                            pSequence->setRepeat(255);
+                        }
+                        else {
+                            pSequence->setRepeat(jSeq.value("repeat", 1));
+                        }
                         // Store the follow configuration to apply after all sequences have been created
                         std::array<int16_t, 6> followAction;
                         followAction[0] = nPhrase;
                         followAction[1] = nSeq;
-                        followAction[2] = jSeq.value("followAction", FOLLOW_ACTION_NONE);
+                        followAction[2] = FOLLOW_ACTION_NONE;
                         followAction[3] = jSeq.value("followParam", 0);
                         followAction[4] = jSeq.value("playFlags", 0);
                         followAction[5] = jSeq.value("followRepeat", 0);
@@ -1546,8 +1578,10 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 if (checkBlock(pFile, nBlockSize, 8))
                     continue;
             }
-            jPattern["beats"] = fileRead32u(pFile);
-            jPattern["steps"] = fileRead16u(pFile);
+            uint32_t beats = fileRead32(pFile);
+            uint16_t spb = fileRead16(pFile);
+            jPattern["steps"] = beats * spb;
+            jPattern["beats"] = beats;
             jPattern["scale"] = fileRead8u(pFile);
             jPattern["tonic"] = fileRead8u(pFile);
             if (nVersion > 4) {
@@ -2227,10 +2261,10 @@ void changeVelocityAll(int value) {
     }
 }
 
-void changeVelocityList(float value, uint32_t* evi_list, uint32_t n) {
+void changeVelocityList(float value, uint32_t* ev_key_list, uint32_t n) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeVelocityList(value, evi_list, n);
+        g_pPattern->changeVelocityList(value, ev_key_list, n);
         g_bDirty = true;
     }
 }
@@ -2243,10 +2277,10 @@ void changeDurationAll(float value) {
     }
 }
 
-void changeDurationList(float value, uint32_t* evi_list, uint32_t n) {
+void changeDurationList(float value, uint32_t* ev_key_list, uint32_t n) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
-        g_pPattern->changeDurationList(value, evi_list, n);
+        g_pPattern->changeDurationList(value, ev_key_list, n);
         g_bDirty = true;
     }
 }
@@ -2320,10 +2354,10 @@ uint32_t copyPatternBuffer(uint32_t pattern, uint32_t step1, uint32_t step2, uin
     return 0;
 }
 
-uint32_t getPatternSelectionIndexes(uint32_t pattern, uint32_t* ev_indexes, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
+uint32_t getPatternSelectionKeys(uint32_t pattern, uint32_t* ev_keys, uint32_t limit, uint32_t step1, uint32_t step2, uint8_t note1, uint8_t note2) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern) {
-        return pPattern->getPatternSelectionIndexes(ev_indexes, limit, step1, step2, note1, note2);
+        return pPattern->getPatternSelectionKeys(ev_keys, limit, step1, step2, note1, note2);
     }
     return 0;
 }
@@ -2554,25 +2588,28 @@ void togglePlayState(uint8_t scene, uint8_t phrase, uint8_t sequence) {
     }
     uint8_t nState = pSequence->getPlayState();
     switch (nState) {
-    case STOPPED:
-        nState = STARTING;
-        break;
-    case STARTING:
-        nState = STOPPED;
-        break;
-    case PLAYING:
-        nState = STOPPING_SYNC;
-        break;
-    case STOPPING:
-    case STOPPING_SYNC:
-        nState = PLAYING;
-        break;
-    case CHILD_PLAYING:
-        nState = CHILD_STOPPING;
-        break;
-    case CHILD_STOPPING:
-        nState = STARTING;
-        break;
+        case STOPPED:
+            nState = STARTING;
+            break;
+        case STARTING:
+            nState = STOPPED;
+            break;
+        case PLAYING:
+            if (pSequence->isPhraseLauncher())
+                nState = CHILD_STOPPING;
+            else
+                nState = STOPPING_SYNC;
+            break;
+        case STOPPING:
+        case STOPPING_SYNC:
+            nState = PLAYING;
+            break;
+        case CHILD_PLAYING:
+            nState = CHILD_STOPPING;
+            break;
+        case CHILD_STOPPING:
+            nState = STARTING;
+            break;
     }
     setPlayState(scene, phrase, sequence, nState);
 }
@@ -2969,6 +3006,7 @@ void setTempo(double tempo) {
         g_dTempo = tempo;
         updateClockTiming();
         g_seqMan.setTempo(tempo);
+        updateJackPosition();
         //DPRINTF("Tempo set to: %f FramesPerClock: %u\n", g_dTempo, g_dFramesPerTick);
     }
 }

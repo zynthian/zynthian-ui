@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for audio player
 #
-# Copyright (C) 2021-2024 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -32,7 +32,6 @@ from subprocess import check_output, STDOUT
 import zynconf
 from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 from zynlibs.zynaudioplayer import *
 
@@ -42,9 +41,6 @@ from zynlibs.zynaudioplayer import *
 
 
 class zynthian_engine_audioplayer(zynthian_engine):
-
-    # Subsignals are defined inside each module. Here we define audio_recorder subsignals:
-    SS_AUDIO_PLAYER_STATE = 1
 
     # ---------------------------------------------------------------------------
     # Config variables
@@ -91,14 +87,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
     def start(self):
         if zynaudioplayer.init():
             self.jackname = zynaudioplayer.get_jack_client_name()
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
         else:
             raise Exception("Can't start zynaudioplayer!")
 
     def stop(self):
         try:
             zynaudioplayer.stop()
-            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
         except Exception as e:
             logging.error("Failed to close audio player: %s", e)
 
@@ -236,6 +232,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
             processor.preset_subdir_info = copy.copy(preset)
             processor.preset_subdir_info[1] = processor.preset_index
             processor.preset_subdir_info[3] = back_subdir_info
+            processor.preset_index = 0
+            processor.preset_name = None
+            processor.preset_info = None
+            return None
+
+        # Check that audio file exists and it's valid...
+        if not os.path.isfile(preset[0]) or zynaudioplayer.get_file_duration(preset[0]) <= 0:
             processor.preset_index = 0
             processor.preset_name = None
             processor.preset_info = None
@@ -410,14 +413,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
             return False
 
     def load_latest(self, processor):
-
         bank_dirs = [self.root_bank_dirs[0][1] + "/capture"]
         bank_dirs += zynconf.get_external_storage_dirs(zynthian_engine.ex_data_dir)
-
         wav_fpaths = []
         for bank_dir in bank_dirs:
             wav_fpaths += glob(f"{bank_dir}/*.wav")
-
         if len(wav_fpaths) > 0:
             latest_fpath = max(wav_fpaths, key=os.path.getctime)
             bank_fpath = os.path.dirname(latest_fpath)
@@ -483,7 +483,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                             ctrl_dict['transport'].set_value("stopped", False)
                             processor.status = ""
                         zynsigman.send(
-                            zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
+                            zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
                     elif id == 2:
                         ctrl_dict['position'].set_value(value, False)
                     elif id == 3:

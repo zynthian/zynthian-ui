@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Bluetooth config Class
 #
-# Copyright (C) 2024 Fernando Moyano <jofemodo@zynthian.org>
-#                    Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2024-2026 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 #
@@ -79,7 +79,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector_info):
                 return
             for ctrl in sorted(self.ble_controllers.keys()):
                 chk = "\u2612" if self.ble_controllers[ctrl]["enabled"] else "\u2610"
-                self.list_data.append(("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}", ["Enable/disable bluetooth controller.\n\nOnly one controller can be enabled at once. It is advised to use a USB Bluetooth adapter because the Raspberry Pi onboard adapter has poor range.", "bluetooth.png"]))
+                self.list_data.append(("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}", ["Toggle bluetooth controller enable. Bold select to rename.\n\nOnly one controller can be enabled. It is advised to use a USB Bluetooth adapter because the Raspberry Pi onboard adapter has poor range.", "bluetooth.png"]))
             self.list_data.append((None, None, "Devices"))
             for addr, data in self.ble_devices.items():
                 # [name, paired, trusted, connected, is_midi]
@@ -90,7 +90,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector_info):
                 if data[3]:
                     title += "\uf293 "
                 title += data[0]
-                self.list_data.append((f"BLE:{addr}", addr, title, ["Enable/disable this bluetooth device.\n\nEnabling a device will pair it with zynthian. This state will be remembered.", "bluetooth.png"]))
+                self.list_data.append((f"BLE:{addr}", addr, title, ["Toggle this bluetooth device enable. Bold select to forget device. \n\nEnabling a device will pair it with zynthian. This state will be remembered.", "bluetooth.png"]))
         else:
             self.list_data.append(("start_bluetooth", None, "\u2610 Enable Bluetooth", ["Bluetooth is disabled.\n\nSelect to enable bluetooth.", "bluetooth.png"]))
 

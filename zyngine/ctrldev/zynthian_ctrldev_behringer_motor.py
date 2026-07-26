@@ -7,7 +7,7 @@
 # Stage control for setBfree and pianoteq
 # Mode enforcer implemented as a python jack client.
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -154,18 +154,18 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
     def init(self):
         super().init()
         # Register for processor tree changes
-        zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_PROCESSOR, self.refresh)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_PROCESSOR, self.refresh)
 
     def end(self):
         self.reset_feedback()
         # Unregister from processor tree changes
-        zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_CHAIN, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_ALL_CHAINS, self.refresh)
-        zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_REMOVE_PROCESSOR, self.refresh)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
+        zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_PROCESSOR, self.refresh)
         super().end()
 
     def refresh(self):

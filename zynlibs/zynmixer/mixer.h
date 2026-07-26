@@ -34,6 +34,10 @@ typedef struct {
     uint8_t mono;
 } dpm_struct;
 
+#define XFADE_NONE     0
+#define XFADE_A        1
+#define XFADE_B        2
+
 //-----------------------------------------------------------------------------
 // Library Initialization
 //-----------------------------------------------------------------------------
@@ -47,27 +51,39 @@ int init() __attribute__((constructor));
  */
 void end();
 
+/** @brief  Set channel gain
+ *   @param  channel Index of channel
+ *   @param  level Channel gain (Normalised: 0=-inf, 1.0=0dB, 2.0=+6dB, etc.)
+ */
+void setGain(uint8_t channel, float gain);
+
+/** @brief  Get channel gain
+ *   @param  channel Index of channel
+ *   @retval float Channel gain (Normalised: 0=-inf, 1.0=0dB, 2.0=+6dB, etc.)
+ */
+float getGain(uint8_t channel);
+
 /** @brief  Set channel level
  *   @param  channel Index of channel
- *   @param  level Channel level (0..1)
+ *   @param  level Channel level (Normalised: 0=-inf, 1.0=0dB)
  */
 void setLevel(uint8_t channel, float level);
 
 /** @brief  Get channel level
  *   @param  channel Index of channel
- *   @retval float Channel level (0..1)
+ *   @retval float Channel level (Normalised: 0=-inf, 1.0=0dB)
  */
 float getLevel(uint8_t channel);
 
 /** @brief  Set channel balance
  *   @param  channel Index of channel
- *   @param  pan Channel pan (-1..1)
+ *   @param  pan Channel pan (Normalised: -1.0=full left, 1.0=full right)
  */
 void setBalance(uint8_t channel, float pan);
 
 /** @brief  Get channel balance
  *   @param  channel Index of channel
- *   @retval float Channel pan (-1..1)
+ *   @retval float Channel pan (Normalised: -1.0=full left, 1.0=full right)
  */
 float getBalance(uint8_t channel);
 
@@ -114,6 +130,41 @@ void clearSolo();
 */
 uint8_t getGlobalSolo();
 
+#ifndef MIXBUS
+
+/** @brief  Get global CrossFader
+ *  @param  val Global CrossFader value. 0 = 100% A. 1 = 100% B. 0.5 = 50% AB mix.
+ */
+void setGlobalXFader(float val);
+
+/** @brief  Get global CrossFader
+ *    @retval uint8_t Global CrossFader value
+ */
+float getGlobalXFader();
+
+/** @brief  Set channel AB mix-group (CrossFader group)
+ *   @param  channel Index of channel
+ *   @param  ab (0: None, 1: A, 2: B)
+ */
+void setABMixGroup(uint8_t channel, uint8_t ab);
+
+/** @brief  Get channel AB mix-group (CrossFader group)
+ *   @param  channel Index of channel
+ *   @retval uint8_t Channel AB mix-group (0: None, 1: A, 2: B)
+ */
+uint8_t getABMixGroup(uint8_t channel);
+
+/** @brief  Set PFL volume level
+    @param  level PFL volume level
+ */
+ void setPflLevel(float level);
+
+ /** @brief Get PFL volume level
+    @retval float PFL volume level
+ */
+ float getPflLevel();
+#endif
+
 /** @brief  Set channel mono state
  *   @param  channel Index of channel
  *   @param  mono (0: Stereo, 1: Mono)
@@ -122,7 +173,7 @@ void setMono(uint8_t channel, uint8_t mono);
 
 /** @brief  Get channel mono state
  *   @param  channel Index of channel
- *   @retval uint8_t Channel mono state (0: Stereo, 1: mono)
+ *   @retval uint8_t Channel mono state (0: Stereo, 1: Mono)
  */
 uint8_t getMono(uint8_t channel);
 
@@ -150,13 +201,13 @@ void toggleMS(uint8_t channel);
 
 /** @brief  Set channel phase state
  *   @param  channel Index of channel
- *   @param  phase (0: in phase, 1: phase reversed)
+ *   @param  phase (0: Normal, 1: Phase reversed)
  */
 void setPhase(uint8_t channel, uint8_t phase);
 
 /** @brief  Get channel phase state
  *   @param  channel Index of channel
- *   @retval uint8_t Channel phase state (0: in phase, 1: phase reversed)
+ *   @retval uint8_t Channel phase state (0: Normal, 1: Phase reversed)
  */
 uint8_t getPhase(uint8_t channel);
 
@@ -168,28 +219,28 @@ void togglePhase(uint8_t channel);
 /** @brief  Set channel send mode
  *   @param  channel Index of channel
  *   @param  send Index of send
- *   @param  mode (0: post-fader, 1: pre-fader)
+ *   @param  mode (0: Post-fader, 1: Pre-fader)
  */
 void setSendMode(uint8_t channel, uint8_t send, uint8_t mode);
 
 /** @brief  Get channel send mode
  *   @param  channel Index of channel
  *   @param  send Index of send
- *   @retval uint8_t Channel send mode (0: pre-fader, 1: post-fader, 2: post-pan)
+ *   @retval uint8_t Channel send mode (0: Pre-fader, 1: Post-fader, 2: Post-pan)
  */
 uint8_t getSendMode(uint8_t channel, uint8_t send);
 
 /** @brief  Set channel fx send level
  *   @param  channel Index of channel
  *   @param  send Index of fx send
- *   @param  level Channel level (0..1)
+ *   @param  level Channel level (Normalised: 0=-inf, 1.0=0dB)
  */
 void setSend(uint8_t channel, uint8_t send, float level);
 
 /** @brief  Get channel fx send level
  *   @param  channel Index of channel
  *   @param  send Index of fx send
- *   @retval float Channel send level
+ *   @retval float Channel send level (Normalised: 0=-inf, 1.0=0dB)
  */
 float getSend(uint8_t channel, uint8_t send);
 

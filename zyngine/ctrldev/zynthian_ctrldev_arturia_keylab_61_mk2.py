@@ -5,6 +5,8 @@
 #
 # Zynthian Control Device Driver for "Arturia Keylab 61 Mk2"
 #
+# Copyright (C) 2026 Fernando Moyano <jofemodo@zynthian.org>
+#
 # ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
@@ -21,26 +23,14 @@
 #
 # ******************************************************************************
 
-import jack
-import time
-import signal
 import logging
-from bisect import bisect
-from copy import deepcopy
-import multiprocessing as mp
-from functools import partial
-from threading import Thread, RLock, Event
 
 from zyngine import zynthian_state_manager
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad, SCROLL_MODE_GUI_SEL
-from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
-from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
 
 from collections import namedtuple
 
@@ -187,7 +177,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
     def init(self):
         super().init()
         self._enter_daw_mode()
-        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.update_metronome)
+        zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.update_metronome)
         self._send_display_sysex("Zynthian", "Connected")
 
     def _enter_daw_mode(self):
@@ -205,7 +195,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
 
     def end(self):
         super().end()
-        zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_METRO, self.update_metronome)
+        zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.update_metronome)
         #zynthian_ctrldev_zynpad.end(self)
 
     def refresh(self):

@@ -58,10 +58,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
     def fill_list(self):
         self.list_data = []
         if self.zs3_id == "zs3-0":
-            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state overwritting this ZS3.", "zs3_overwrite.png"]))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
         else:
-            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Configure data to restore from this ZS3.", "zs3_settings.png"]))
-            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state overwritting this ZS3.", "zs3_overwrite.png"]))
+            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Select which elements will be restored from this ZS3.", "zs3_settings.png"]))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
             self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_delete, 4, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
 
@@ -115,7 +115,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             logging.error(f"Bad ZS3 id ({self.zs3_id}).")
             return
 
-        options = {"Toggle All Mixer": ""}
+        options = {"Toggle All Mixer": ["",["Toggle the selection of all audio mixer parameters that will be restored.", None]]}
         mixer_list = []
 
         for idx, chain_id in enumerate(self.zyngui.chain_manager.chains):
@@ -131,10 +131,11 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     restore = state["chains"][chain_id]["restore"]
                 except:
                     restore = True
+                info = "Toggle whether chain parameters will be restored.\n\nBold SELECT to toggle all."
                 if restore:
-                    options[f"\u2612 {label}"] = f"chains_{chain_id}"
+                    options[f"\u2612 {label}"] = [f"chains_{chain_id}", [info, None]]
                 else:
-                    options[f"\u2610 {label}"] = f"chains_{chain_id}"
+                    options[f"\u2610 {label}"] = [f"chains_{chain_id}", [info, None]]
             else:
                 options[label] = None
             for proc in chain.get_processors():
@@ -148,11 +149,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                         mixer_list.append(str(proc.id))
                     else:
                         label = f"{proc.name} ({proc.id})"
+                    info = "Toggle whether processor parameters will be restored..\n\nBold SELECT to toggle all."
                     if restore:
-                        options[f"\u2612   ⤷{label}"] = f"processors_{proc.id}"
+                        options[f"\u2612   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
                     else:
-                        options[f"\u2610   ⤷{label}"] = f"processors_{proc.id}"
-        options["Toggle All Mixer"] = ",".join(mixer_list)
+                        options[f"\u2610   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
+        options["Toggle All Mixer"][0] = ",".join(mixer_list)
+        prefix = "\u2612" if state.get("restore_midi_learn", False) else "\u2610"
+        options[f"{prefix} MIDI learn"] = ["midi_learn", ["Toggle whether MIDI learn (CC binding) is restored.", None]]
+
         return options
 
     def zs3_restoring_options_select_cb(self, label, param, ct):
@@ -160,6 +165,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             ids = param.split(",")
             for id in ids:
                 self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "processors", id)
+            return
+        elif param == "midi_learn":
+            self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "midi_learn")
             return
         type, id = param.split("_")
         if ct == "S":
@@ -171,9 +179,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                 logging.error("Bad ZS3 ID ({}).".format(self.zs3_id))
                 return
             # Invert selection (toggle all elements in list)
-            for chain_id in list(state["chains"]) + list(state["processors"]):
-                self.zyngui.state_manager.toggle_zs3_chain_restore_flag(
-                    self.zs3_id, chain_id)
+            for chain_id in list(state["chains"]):
+                self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "chains", chain_id)
+            for proc_id in list(state["processors"]):
+                self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "processors", proc_id)
 
     def zs3_rename(self):
         title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)

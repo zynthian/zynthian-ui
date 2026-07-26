@@ -70,6 +70,7 @@ ZynthianState = {
         "zs3-0": {  # ZS3 state when snapshot saved
             "title": "Last state",  # ZS3 title
             "active_chain": "1", # Optional active chain id (overides base value)
+            "restore_midi_learn": False, # Optional restore midi CC binding (Default: False)
             "processors": {  # Dictionary of processor settings
                 "1": {  # Processor id:1
                     "restore": True, # Optional False to omit from processor parameters from restore (Default: True)

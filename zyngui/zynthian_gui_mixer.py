@@ -28,8 +28,8 @@
 import tkinter
 import logging
 #import traceback
+from time import sleep
 from math import log10
-from time import monotonic
 from threading import Timer
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from os.path import basename, splitext
@@ -38,13 +38,10 @@ from os.path import basename, splitext
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import *
-from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
-from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
 logging.getLogger('PIL').setLevel(logging.WARNING)
 
@@ -56,6 +53,15 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 
 LOOP_INFO_WIDTH = 0.2
 DRAG_THRESHOLD = 5
+SPEAKER_ICON = "\uf028"
+MICROPHONE_ICON = "\uf130"
+QUAVER_ICON = "\u266b"
+SLIDERS_ICON = "\uf1de"
+
+CHANNEL_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'
+                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Γ', 'Δ', 'Λ', 'Π', 'Σ', 'Ω']
+                 # 'Θ', 'Ξ', 'Φ', 'Ψ',
+
 
 class zynthian_gui_launcher_pad():
 
@@ -209,7 +215,6 @@ class zynthian_gui_launcher_pad():
     def draw(self):
         """ Update the launcher button elements"""
 
-        mode_image = None
         mode_text = ""
         timesig_text = ""
         tempo_text = ""
@@ -227,9 +232,13 @@ class zynthian_gui_launcher_pad():
             name = state_seq["name"]
             # If not asigned name => generate default name on-the-fly
             if not name:
-                name = chr(ord('A') + self.phrase)
-                if self.chain.chain_id > 0:
-                    name += str(self.chain.midi_chan + 1)  # QUESTION: It MIDI chan same than group?
+                if self.chain.chain_id == 0:
+                    # Main chain
+                    name = f"{self.phrase + 1}"
+                else:
+                    # QUESTION: Is MIDI chan same as group? ANSWER: Only until arranger is reinstated. => Understood! ;-)
+                    name = f"{CHANNEL_CHARS[self.chain.midi_chan]}{self.phrase + 1}"
+
 
             disabled = state_seq["repeat"] == 0
             empty = False
@@ -274,19 +283,12 @@ class zynthian_gui_launcher_pad():
                         empty = True
                         timesig = "1"
 
-                match state_seq["followAction"]:
-                    case zynseq.FOLLOW_ACTION_NONE:
-                        if state_seq["repeat"] <= 1:
-                            mode_text = "↦"
-                        elif state_seq["repeat"] > 1:
-                            mode_text = "x" + str(state_seq["repeat"])
-                    case zynseq.FOLLOW_ACTION_RELATIVE:
-                        if state_seq["followParam"] == 0:
-                            mode_text = "↻"
-                        else:
-                            mode_text = "→"
-                    case _:
-                        mode_text = "→"
+                if state_seq["repeat"] == 1:
+                    mode_text = "↦"
+                elif state_seq["repeat"] == 255:
+                    mode_text = "↻"
+                elif state_seq["repeat"] > 1:
+                    mode_text = "x" + str(state_seq["repeat"])
 
                 # Launcher background color
                 if empty:
@@ -416,10 +418,14 @@ class zynthian_gui_launcher_pad():
             color_mode = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             color_text = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
             color_state = zynthian_gui_config.PAD_COLOUR_STATE_DISABLED
-            state_text = "?"
+            state_text = ""
 
         self.canvas.itemconfig(self.pad, fill=color)
-        self.canvas.itemconfig(self.title, text=title, fill=color_text)
+        if len(title) > 3:
+            font_title = self.gui_mixer.font_clip_title_small
+        else:
+            font_title = self.gui_mixer.font_clip_title
+        self.canvas.itemconfig(self.title, text=title, fill=color_text, font=font_title)
         self.canvas.itemconfig(self.play_state, text=state_text, fill=color_state)
         if self.chain.chain_id:
             # Chain sequence launcher
@@ -464,10 +470,10 @@ class zynthian_gui_launcher_pad():
             midi_chan = 32
         if midi_chan is None or midi_chan > 32:
             return
-        self.gui_mixer.edit_clip()
+        self.gui_mixer.edit_pad()
 
     def on_clip_long_press(self):
-        self.gui_mixer.edit_clip()
+        self.gui_mixer.edit_pad()
 
 
 # ------------------------------------------------------------------------------
@@ -480,7 +486,7 @@ class zynthian_gui_mixer_strip():
 
     bg_images = {} # Dict of background images, indexed by (width, length)
 
-    def __init__(self, parent, canvas, x, width, height, chain):
+    def __init__(self, parent, canvas, x, width, height, chain, mode):
         logging.getLogger('PIL').setLevel(logging.WARNING)
         """ Initialise mixer strip object
         args:
@@ -498,10 +504,12 @@ class zynthian_gui_mixer_strip():
         self.state_manager = self.zyngui.state_manager
         self.chain_manager = self.zyngui.chain_manager
         self.zynseq = self.state_manager.zynseq
+        self.launcher_mode = mode
         self.x = x
         self.width = width
         self.height = height
         self.over_id = None
+        self.pending_draw_fader_text = False
 
         self.chain = chain
         if self.chain.chain_id == 0:
@@ -513,7 +521,7 @@ class zynthian_gui_mixer_strip():
         self.legend_height = self.gui_mixer.legend_height
         self.balance_height = self.gui_mixer.balance_height
         self.balance_width = (self.width - 2) / 2 # Width of each half of the balance indicator
-        self.solo_y = parent.solo_y
+        self.toggle_y = parent.toggle_y
         self.mute_y = parent.mute_y
         self.balance_y = parent.balance_y
         self.fader_y = parent.fader_y
@@ -545,16 +553,14 @@ class zynthian_gui_mixer_strip():
         id = self.chain.chain_id
 
         # Block background to hide scrolling launchers, etc.
-        self.audio_bg = self.canvas.create_rectangle(x, self.solo_y, x + self.width, parent.launcher_y, fill=self.gui_mixer.button_bgcol, width=0)
+        self.audio_bg = self.canvas.create_rectangle(x, self.toggle_y, x + self.width, parent.launcher_y, fill=self.gui_mixer.button_bgcol, width=0)
         # Fader background defines height of fader
         self.fader_bg = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_bg_color, width=0, tags=("fader", f"fader_{id}"))
         # Audio mixer elements
         if self.chain.zynmixer_proc:
-            # Solo button
-            self.solo = self.canvas.create_rectangle(x, self.solo_y, x + self.width, self.mute_y, fill=self.gui_mixer.button_bgcol, width=0,
-                                                tags=(f"solo_{id}",))
-            self.solo_text = self.canvas.create_text(x + self.width / 2, self.solo_y + self.button_height * 0.5, text="S", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font,
-                                                tags=(f"solo_{id}",))
+            # Toggle 1 button
+            self.toggle = self.canvas.create_rectangle(x, self.toggle_y, x + self.width, self.mute_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"toggle_{id}",))
+            self.toggle_text = self.canvas.create_text(x + self.width / 2, self.toggle_y + self.button_height * 0.5, text="S", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"toggle_{id}",))
 
             # Mute button
             self.mute = self.canvas.create_rectangle(x, self.mute_y, x + self.width, self.balance_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"mute_{id}",))
@@ -572,12 +578,21 @@ class zynthian_gui_mixer_strip():
                 dpm_tags = ("dpm")
             else:
                 dpm_tags = ("dpm_0")
-            self.dpm_bg = self.canvas.create_rectangle(self.dpm_scale_x0, self.dpm_y0, x + self.width , self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
-            self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_width, self.dpm_length))
+
+            if self.launcher_mode:
+                self.dpm_bg = self.canvas.create_rectangle(self.dpm_a_x0, 0, self.x + self.width, self.balance_y, width=0, fill=self.gui_mixer.fader_bg_color)
+                self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, 0, self.dpm_width, self.balance_y, tags=dpm_tags, main=chain.chain_id==0)
+                self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, 0, self.dpm_width, self.balance_y, tags=dpm_tags, main=chain.chain_id==0)
+                dpm_xstate = tkinter.HIDDEN
+            else:
+                self.dpm_bg = self.canvas.create_rectangle(self.dpm_scale_x0, self.dpm_y0, x + self.width , self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
+                self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
+                self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
+                dpm_xstate = tkinter.NORMAL
+
+            self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_width, self.dpm_length), state=dpm_xstate)
             if self.chain.chain_id == 0:
-                self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", parent.loop_info_width, self.dpm_length))
-            self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
-            self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
+                self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", parent.loop_info_width, self.dpm_length), state=dpm_xstate)
 
         # Chain title
         self.fader_text = self.canvas.create_text(x, self.legend_y - 2, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
@@ -637,12 +652,13 @@ class zynthian_gui_mixer_strip():
         self.canvas.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
         self.canvas.tag_bind(f"balance_{id}", "<Button-5>", self.on_balance_wheel_down)
         self.canvas.tag_bind(f"mute_{id}", "<ButtonRelease-1>", self.on_mute_release)
-        self.canvas.tag_bind(f"solo_{id}", "<ButtonRelease-1>", self.on_solo_release)
+        self.canvas.tag_bind(f"toggle_{id}", "<ButtonRelease-1>", self.on_toggle_release)
         self.canvas.tag_bind(f"legend_strip_{id}", "<ButtonRelease-1>", self.on_strip_release)
 
         self.draw_control()
 
     def set_launcher_mode(self, mode):
+        self.launcher_mode = mode
         try:
             if mode:
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, 0, self.x + self.width, self.balance_y)
@@ -651,7 +667,7 @@ class zynthian_gui_mixer_strip():
                 self.canvas.itemconfig(self.dpm_scale, state=tkinter.HIDDEN)
                 if self.chain.chain_id == 0:
                     self.canvas.itemconfig(self.dpm_labels, state=tkinter.HIDDEN)
-                #self.canvas.coords(self.solo, self.x, self.solo_y, self.dpm_a_x0, self.mute_y)
+                #self.canvas.coords(self.toggle, self.x, self.toggle_y, self.dpm_a_x0, self.mute_y)
                 #self.canvas.coords(self.mute, self.x, self.mute_y, self.dpm_a_x0, self.balance_y)
             else:
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
@@ -660,8 +676,11 @@ class zynthian_gui_mixer_strip():
                 self.canvas.itemconfig(self.dpm_scale, state=tkinter.NORMAL)
                 if self.chain.chain_id == 0:
                     self.canvas.itemconfig(self.dpm_labels, state=tkinter.NORMAL)
-                #self.canvas.coords(self.solo, self.x, self.solo_y, self.x + self.width, self.mute_y)
+                #self.canvas.coords(self.toggle, self.x, self.toggle_y, self.x + self.width, self.mute_y)
                 #self.canvas.coords(self.mute, self.x, self.mute_y, self.x + self.width, self.balance_y)
+                if self.pending_draw_fader_text:
+                    self.pending_draw_fader_text = False
+                    self.draw_fader_text()
         except:
             pass # meters not yet created?
 
@@ -769,22 +788,22 @@ class zynthian_gui_mixer_strip():
         x1 = self.x + int(progress * self.width / 100)
         self.canvas.coords(self.clip_progress, self.x, self.gui_mixer.legend_y, x1, self.gui_mixer.legend_y + 4)
 
-    def draw_solo(self):
+    def draw_toggle(self):
         txcolor = self.gui_mixer.button_txcol
         font = self.gui_mixer.font
-        text = "S"
-        if self.chain.zynmixer_proc.eng_code == "MR" and self.chain.chain_id == 0:
+        text = self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle].name
+        if zynthian_gui_config.mixer_toggle == "solo" and self.chain.zynmixer_proc.eng_code == "MR" and self.chain.chain_id == 0:
             # Main mixbus so use the global solo state
-            solo = self.state_manager.zynmixer_bus.get_global_solo() > 0
+            toggle_val = self.state_manager.zynmixer_bus.get_global_solo() > 0
         else:
-            solo = self.chain.zynmixer_proc.controllers_dict["solo"].value
-        if solo:
-            bgcolor = self.gui_mixer.solo_color
+            toggle_val = self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle].value
+        if toggle_val:
+            bgcolor = self.gui_mixer.toggle_color
         else:
             bgcolor = self.gui_mixer.button_bgcol
 
-        self.canvas.itemconfig(self.solo, fill=bgcolor)
-        self.canvas.itemconfig(self.solo_text, text=text, font=font, fill=txcolor)
+        self.canvas.itemconfig(self.toggle, fill=bgcolor)
+        self.canvas.itemconfig(self.toggle_text, text=text, font=font, fill=txcolor)
 
     def draw_mute(self):
         txcolor = self.gui_mixer.button_txcol
@@ -794,7 +813,7 @@ class zynthian_gui_mixer_strip():
             text = "\uf32f"
         else:
             bgcolor = self.gui_mixer.button_bgcol
-            text = "\uf028"
+            text = SPEAKER_ICON
 
         self.canvas.itemconfig(self.mute, fill=bgcolor)
         self.canvas.itemconfig(self.mute_text, text=text, font=font, fill=txcolor)
@@ -809,17 +828,20 @@ class zynthian_gui_mixer_strip():
         if control is None:
             # Draw the common elements used by all strips
             if self.chain.chain_id == 0:
-                self.canvas.itemconfig(self.legend_strip_txt, text="Main", font=self.gui_mixer.font)
+                strip_txt = "Main"
             else:
-                if self.chain.is_generator():
-                    font = self.gui_mixer.font_icons
-                    strip_txt = "\uf028"  # Speaker icon
-                elif self.chain.is_midi():
-                    font = self.gui_mixer.font
-                    if self.chain.audio_thru:
-                        strip_txt = "\uf130♫"   # Add microphone icon for MIDI+Audio chains
+                if self.gui_mixer.moving_chain and self.chain == self.chain_manager.active_chain:
+                    strip_txt = f"⇦⇨"
+                elif self.chain.is_generator():
+                    if self.chain.midi_chan is not None and 15 < self.chain.midi_chan < 32:
+                        strip_txt = f"{SPEAKER_ICON} {CHANNEL_CHARS[self.chain.midi_chan]}"
                     else:
-                        strip_txt = "♫ "
+                        strip_txt = SPEAKER_ICON
+                elif self.chain.is_midi():
+                    if self.chain.audio_thru:
+                        strip_txt = f"{MICROPHONE_ICON}{QUAVER_ICON}"   # Add microphone icon for MIDI+Audio chains
+                    else:
+                        strip_txt = f"{QUAVER_ICON} "
                     if 0 <= self.chain.midi_chan < 16:
                         strip_txt += f"{self.chain.midi_chan + 1}"
                     elif self.chain.midi_chan == 0xffff:
@@ -827,24 +849,29 @@ class zynthian_gui_mixer_strip():
                     else:
                         strip_txt += f"Err"
                 elif self.chain.is_audio():
-                    font = self.gui_mixer.font_icons
                     if self.chain.zynmixer_proc.eng_code == "MI":
-                        strip_txt = "\uf130"  # Microphone icon
+                        strip_txt = MICROPHONE_ICON
                     else:
-                        strip_txt = "\uf1de"  # Sliders
+                        strip_txt = SLIDERS_ICON
+                        try:
+                            strip_txt = f"{SLIDERS_ICON} {int(self.chain.title.split(' ')[-1])}"
+                        except:
+                            strip_txt = SLIDERS_ICON
                 else:
-                    font = self.gui_mixer.font_icons
                     strip_txt = ""
                     # procs = self.chain.get_processor_count() - 1
-                self.canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
-            self.draw_fader_text()
+            self.canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.gui_mixer.font)
+            if not self.launcher_mode:
+                self.draw_fader_text()
+            else:
+                self.pending_draw_fader_text = True
 
         if self.chain.zynmixer_proc:
             if control in [None, 'level']:
                 self.draw_level()
 
-            if control in [None, 'solo']:
-                self.draw_solo()
+            if control in [None, zynthian_gui_config.mixer_toggle]:
+                self.draw_toggle()
 
             if control in [None, 'mute']:
                 self.draw_mute()
@@ -935,12 +962,12 @@ class zynthian_gui_mixer_strip():
         if self.chain.zynmixer_proc:
             self.chain.zynmixer_proc.controllers_dict['mute'].set_value(value)
 
-    def set_solo(self, value):
-        """ Function to set solo
-        value: Solo value (True/False)
+    def set_toggle(self, value):
+        """ Function to set toggle 1 control
+        value: Togle 1 control value (True/False)
         """
         if self.chain.zynmixer_proc:
-            self.chain.zynmixer_proc.controllers_dict['solo'].set_value(value)
+            self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle].set_value(value)
 
     def toggle_mute(self):
         """ Function to toggle mute
@@ -948,11 +975,11 @@ class zynthian_gui_mixer_strip():
         if self.chain.zynmixer_proc:
             self.set_mute(int(not self.chain.zynmixer_proc.controllers_dict['mute'].value))
 
-    def toggle_solo(self):
-        """ Function to toggle solo
+    def toggle_toggle(self):
+        """ Function to toggle the toggle 1 control
         """
         if self.chain.zynmixer_proc:
-            self.set_solo(int(not self.chain.zynmixer_proc.controllers_dict['solo'].value))
+            self.set_toggle(int(not self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle].value))
 
     # --------------------------------------------------------------------------
     # Mixer UI event management
@@ -1053,11 +1080,11 @@ class zynthian_gui_mixer_strip():
         """
         self.toggle_mute()
 
-    def on_solo_release(self, event):
-        """ Function to handle solo button release
+    def on_toggle_release(self, event):
+        """ Function to handle toggle 1 button release
         event: Mouse event
         """
-        self.toggle_solo()
+        self.toggle_toggle()
 
 
 # ------------------------------------------------------------------------------
@@ -1105,10 +1132,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self._left_chain = 0 # Index of chain currently displayed at left of view
 
         self.alt_mode = False
-        self.launcher_mode = self.zyngui.alt_mode
+        self.launcher_mode = False
+        self.pending_build_launchers = False
 
         self.chan2strip = {} # Map of audio strips, indexed by [is_mixbus, mixer_channel]
         self.highlighted_strip = None  # Highligted mixer strip object
+        self.moving_chain = False  # True if moving a chain left/right
         self.moving_phrase = False # True if moving a launcher phrase up/down
 
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
@@ -1141,7 +1170,24 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.right_canvas.bind("<Button-4>", self.on_wheel)
         self.right_canvas.bind("<Button-5>", self.on_wheel)
 
+        # Configure ALT mode layout depending on hardware
+        self.pated = None
+        self.clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste, shared by all pated instances.
+        if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
+            self.switch_i_clipboard = [11, 15]
+            self.wsleds_i_clipboard = [10, 11]
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+            self.switch_i_clipboard = [10, 11]
+            self.wsleds_i_clipboard = [10, 11]
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
+            self.switch_i_clipboard = None
+            self.wsleds_i_clipboard = None
+        else:
+            self.switch_i_clipboard = None
+            self.wsleds_i_clipboard = None
+
         self.update_layout()
+        self.tts_title = "Mixer"
 
     def cb_rename_chain(self, chain_id, title):
         for strip in self.chain_strips:
@@ -1183,8 +1229,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.button_height = int(self.height * 0.07)
         self.legend_height = int(self.height * 0.08)
         self.balance_height = int(self.height * 0.03)
-        self.solo_y = 0
-        self.mute_y = self.solo_y + self.button_height
+        self.toggle_y = 0
+        self.mute_y = self.toggle_y + self.button_height
         self.balance_y = self.mute_y + self.button_height
         self.fader_y = self.balance_y + self.balance_height
         self.launcher_y = self.fader_y + self.balance_height
@@ -1207,13 +1253,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.high_color = "#CCCCCC"  # yellow
         self.rec_color = "#CC0000"  # red
         self.mute_color = "#CC0000"
-        self.solo_color = "#D0D000"
+        self.toggle_color = "#D0D000"
         self.mono_color = "#B0B0B0"
         font_size = min(int(0.5 * self.legend_height), int(0.25 * self.width))
         self.font = (zynthian_gui_config.font_family, font_size)
         self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
         self.font_clip_state = (zynthian_gui_config.font_family, int(0.6 * font_size))
-        self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
+        self.font_clip_title = (zynthian_gui_config.font_family, int(0.8 * font_size))
+        self.font_clip_title_small = ("sans-serif", int(0.65 * font_size))
         self.font_timebase = (zynthian_gui_config.font_family, int(0.5 * font_size))
         self.font_icons = ("forkawesome", int(1.2 * font_size))
 
@@ -1277,17 +1324,18 @@ class zynthian_gui_mixer(zynthian_gui_base):
             else:
                 width = self.strip_width
             # Create the strip objects
-            strip = zynthian_gui_mixer_strip(self, canvas, x0, width, self.height, chain)
+            strip = zynthian_gui_mixer_strip(self, canvas, x0, width, self.height, chain, self.launcher_mode)
             x0 += self.strip_width
             self.chain_strips.append(strip)
             # Add to optimisation map
             if chain.zynmixer_proc:
                 self.chan2strip[chain.zynmixer_proc.eng_code=="MR", chain.zynmixer_proc.mixer_chan] = self.chain_strips[idx]
 
-        self.build_launchers()
+        #self.build_launchers()
+        self.pending_build_launchers=True
         self.state_changed = False
         self.left_canvas.configure(scrollregion=(0, 0, self.chain_manager.get_pinned_pos() * self.strip_width, self.height))
-        self.refresh_launchers()
+        #self.refresh_launchers()
         self.refresh_mixer_controls()
         self.set_launcher_mode()
 
@@ -1310,9 +1358,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.refresh_launchers()
 
     def refresh_launchers(self):
-        if self.state_changed:
-            return # Avoid refreshing controls whilst rebuilding state
-        if not self.launcher_mode:
+        # Avoid refreshing controls whilst rebuilding state
+        if self.state_changed or not self.launcher_mode:
+            return
+        if self.pending_build_launchers:
+            self.pending_build_launchers=False
+            self.build_launchers()
             return
         for strip in self.chain_strips:
             for launcher in strip.launchers:
@@ -1368,21 +1419,24 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         if not self.shown:
             self.set_tempo()
-            zynsigman.register(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.register(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
             zynsigman.register_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.load_zs3_cb)
-            zynsigman.register_queued(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
-            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
-            zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.load_zs3_cb)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_RENAME_CHAIN, self.cb_rename_chain)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
+            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
+            zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.set_tempo)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, self.set_bpb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh_launchers)
+
+        # Setup pattern editor reference
+        self.pated = self.zyngui.screens["pattern_editor"]
 
         return True
 
@@ -1393,21 +1447,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
             if not self.zyngui.osc_clients:
                 self.zyngui.state_manager.zynmixer_chan.enable_dpm(False)
                 self.zyngui.state_manager.zynmixer_bus.enable_dpm(False)
-            zynsigman.unregister(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_control)
+            zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_control)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.midi_cc_cb)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.midi_pc_cb)
-            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_ZS3, self.load_zs3_cb)
-            zynsigman.unregister(zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
-            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
-            zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_RENAME_CHAIN, self.cb_rename_chain)
-            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
-            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.state_manager.audio_recorder.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
-            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TEMPO, self.set_tempo)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_TIMESIG, self.set_bpb)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_STATE, self.refresh_launchers)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.load_zs3_cb)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_ALL_NOTES_OFF, self.all_notes_off_cb)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
+            zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_RENAME_CHAIN, self.cb_rename_chain)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
+            zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_ARM, self.audio_recorder_arm_cb)
+            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, self.highlight_launcher)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TEMPO, self.set_tempo)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, self.set_bpb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_PLAY_STATE, self.launcher_play_state_cb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_STATE, self.refresh_launchers)
             super().hide()
 
     def set_tempo(self, tempo=None):
@@ -1489,7 +1543,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             strip = None
         if not strip or not strip.chain or strip.chain.zynmixer_proc.mixer_chan is None:
             return
-        if symbol == "solo" and strip.chain.chain_id == 0:
+        if symbol == zynthian_gui_config.mixer_toggle and strip.chain.chain_id == 0:
             for s in self.chain_strips:
                 self.pending_refresh_queue.add((s, symbol))
         else:
@@ -1497,13 +1551,18 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if symbol == "level":
             #value = strip.zctrls["level"].value
             if value > 0:
-                level_db = 20 * log10(value)
-                self.set_title(f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
+                level_db = f"{20 * log10(value):.2f}dB"
             else:
-                self.set_title(f"Volume: -∞dB ({strip.chain.get_description(1)})", None, None, 1)
+                level_db = "-∞"
+            self.set_title(f"Volume: {level_db} ({strip.chain.get_description(1)})", None, None, 1)
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"Fader: {level_db}")
         elif symbol == "balance":
+            bal = f"{int(value * 100):+}%"
             #strip.gui_mixer.set_title(f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
-            strip.gui_mixer.set_title(f"Balance: {int(value * 100):+}% ({strip.chain.get_name()})", None, None, 1)
+            strip.gui_mixer.set_title(f"Balance: {bal} ({strip.chain.get_name()})", None, None, 1)
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"Balance: {bal}")
 
     def update_control_rec(self, state):
         """ Function to handle audio recorder status
@@ -1612,22 +1671,13 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def topbar_short_touch_action(self):
         self.toggle_launcher_mode()
 
-    def toggle_menu(self):
-        if self.shown:
-            # Chain options selected
-            self.zyngui.screens['chain_manager'].select_chain_options_node()
-            self.zyngui.toggle_screen("chain_manager")
-        elif self.zyngui.get_current_screen() == "option":
-            self.zyngui.close_screen()
-
     def item_menu(self):
         if self.launcher_mode and self.zynseq.phrase < self.zynseq.phrases:
             # Launcher Options
             self.phrase_menu()
         else:
-            # Current processor selected
-            self.zyngui.screens['chain_manager'].select_node(proc=self.chain_manager.active_chain.current_processor)
-            self.zyngui.show_screen('chain_manager')
+            self.zyngui.chain_control()
+            self.zyngui.screens['chain_control'].select_subscreen("chain_options", show_chain=True)
 
     # --------------------------------------------------------------------------
     # Selection and scrolling
@@ -1845,9 +1895,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
         else:
             self.launcher_mode = launcher_mode
 
-        for strip in self.chain_strips:
-            strip.set_launcher_mode(launcher_mode)
-
         if self.launcher_mode:
             self.refresh_launchers()
             self.left_canvas.itemconfig("fader", state=tkinter.HIDDEN)
@@ -1859,6 +1906,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.left_canvas.itemconfig("launcher_show", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("launcher_show", state=tkinter.NORMAL)
             self.highlight_launcher()
+            if self.shown:
+                self.zyngui.current_screen = "launcher"
+            self.tts_title = "Launcher"
         else:
             self.left_canvas.itemconfig("fader", state=tkinter.NORMAL)
             self.right_canvas.itemconfig("fader", state=tkinter.NORMAL)
@@ -1866,7 +1916,16 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.right_canvas.itemconfig("fader_horizontal", state=tkinter.HIDDEN)
             self.left_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
             self.right_canvas.itemconfig("launcher_show", state=tkinter.HIDDEN)
+            if self.shown:
+                self.zyngui.current_screen = "mixer"
+            self.tts_title = "Mixer"
+
+        for strip in self.chain_strips:
+            strip.set_launcher_mode(launcher_mode)
+
         zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_LAUNCHER_MODE, mode=launcher_mode)
+        if self.shown and self.zyngui.tts:
+            self.zyngui.tts.announce(f"View: {self.tts_title}")
 
     def toggle_launcher_mode(self):
         self.set_launcher_mode(not self.launcher_mode)
@@ -1955,7 +2014,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def get_phrase_title(self, phrase):
         title = self.zynseq.state["scenes"][self.zynseq.scene]["phrases"][phrase]["name"]
         if not title:
-            title = chr(ord('A') + phrase)
+            title = f"Phrase {phrase + 1}"
         return title
 
     def get_follow_info(self, phrase):
@@ -1975,10 +2034,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 title = f"{self.get_phrase_title(phrase)} (NEXT)"
             case _:
                 title = f"{self.get_phrase_title(phrase)} ({offset:+})"
-                if offset < 0:
-                    title = "LOOP from " + title
-                elif offset > 1:
-                    title = "JUMP to " + title
+        if offset < 0:
+            title = "LOOP from " + title
+        elif offset > 1:
+            title = "JUMP to " + title
 
         return (offset, title)
 
@@ -1995,10 +2054,12 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.build_launchers()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Clone phrase"):
+            self.state_manager.start_busy("clone_phrase", "Cloning phrase...")
             self.zynseq.duplicate_phrase(self.zynseq.scene, params)
             self.zynseq.phrase += 1
             self.build_launchers()
             self.moving_phrase = True
+            self.state_manager.end_busy("clone_phrase")
             self.zyngui.show_screen("launcher")
         elif option.startswith("Delete phrase"):
             self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
@@ -2112,23 +2173,29 @@ class zynthian_gui_mixer(zynthian_gui_base):
         logging.warning(dy)
 
     def edit_pattern(self):
-        pated = self.zyngui.screens['pattern_editor']
-        pated.refresh_sequence_info()
-        pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
+        self.pated.refresh_sequence_info()
+        self.pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
         #pated.enable_sequence()
         self.zyngui.show_screen("pattern_editor")
         return True
 
-    def edit_clip(self):
-        if self.highlighted_strip.chain.chain_id == 0:
+    def edit_audio_clip(self, chain, phrase):
+        cl_proc = chain.get_processors()[0]
+        chain.set_current_processor(cl_proc)
+        cl_proc.engine.set_phrase(cl_proc, phrase)
+        self.zyngui.chain_control(chain.chain_id)
+        cl_proc.engine.auto_request_file()
+        return True
+
+    def edit_pad(self):
+        chain = self.chain_manager.get_active_chain()
+        #chain = self.highlighted_strip.chain
+        if chain.chain_id == 0:
             self.item_menu()
             return True
-        if type(self.highlighted_strip.chain.midi_chan) is int and self.highlighted_strip.chain.midi_chan < zynseq.PHRASE_CHANNEL:
-            if self.highlighted_strip.chain.midi_chan > 15:
-                proc = self.highlighted_strip.chain.get_processors()[0]
-                proc.engine.set_phrase(proc, self.zynseq.phrase)
-                self.zyngui.chain_control(self.highlighted_strip.chain.chain_id, proc)
-                return True
+        if type(chain.midi_chan) is int and chain.midi_chan < zynseq.PHRASE_CHANNEL:
+            if chain.midi_chan > 15:
+                return self.edit_audio_clip(chain, self.zynseq.phrase)
             else:
                 return self.edit_pattern()
 
@@ -2155,15 +2222,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case "tempo":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL, "tempo", zctrl.value)
                 if "CL" in self.chain_manager.zyngines:
-                    # Warp clips in this phrase to match tempo
-                    clippy_engine = self.chain_manager.zyngines["CL"]
-                    note = phrase + 1
-                    for processor in clippy_engine.processors:
-                        try:
-                            if processor.controllers_dict[f"warp {note}"].get_value():
-                                clippy_engine.set_file(processor, note, phrase=phrase)
-                        except:
-                            continue
+                    # Warp clips in this phrase to match tempo ...
+                    self.zyngui.state_manager.start_busy("clippy_rewarp_phrase", "Re-warping audio clips...")
+                    self.chain_manager.zyngines["CL"].rewarp_phrase(phrase)
+                    self.zyngui.state_manager.end_busy("clippy_rewarp_phrase")
             case "bpb":
                 #self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "bpb", zctrl.value)
                 self.zynseq.libseq.setPhraseBPB(self.zynseq.scene, phrase, zctrl.value)
@@ -2194,6 +2256,97 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case "loop_count":
                 self.zynseq.set_sequence_param(self.zynseq.scene, phrase, chan, "followRepeat", zctrl.value)
 
+
+    # --------------------------------------------------------------------------
+    # Copy/Paste functionality
+    # --------------------------------------------------------------------------
+
+    def get_selected_pattern(self):
+        if self.zynseq.phrase < self.zynseq.phrases and self.highlighted_strip\
+           and self.highlighted_strip.chain.chain_id > 0\
+           and type(self.highlighted_strip.chain.midi_chan) is int\
+           and self.highlighted_strip.chain.midi_chan < 16:
+            return self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0)
+        return None
+
+    def get_selected_clippy_proc(self):
+        chain = self.chain_manager.get_active_chain()
+        if type(chain.midi_chan) is int and 15 < chain.midi_chan <  zynseq.PHRASE_CHANNEL:
+            return chain.get_processors()[0]
+        return None
+
+    # Function to copy selected launcher's cell to clipboard[i]
+    def copy_to_clipboard(self, i=0):
+        pattern = self.get_selected_pattern()
+        if pattern:
+            src_info = ("PAT", self.zynseq.phrase, self.highlighted_strip.chan, pattern)
+        else:
+            clippy_proc = self.get_selected_clippy_proc()
+            if clippy_proc:
+                src_info = ("CLP", self.zynseq.phrase, self.highlighted_strip.chan, clippy_proc)
+            else:
+                logging.warning(f"Selected cell can't be copied to clipboard!")
+                return
+        try:
+            self.clipboard[i] = src_info
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+
+    # Function to check if can paste clipboard[i] to selected cell
+    # Return:
+    #  None => Can't paste. Cell types doesn't match.
+    #  False => Can't paste. Can't copy on itself
+    #  True => Can paste.
+    def can_paste_from_clipboard(self, i=0):
+        try:
+            src_info = self.clipboard[i]
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+            return None
+        if src_info[0] == "PAT":
+            pattern = self.get_selected_pattern()
+            if not pattern:
+                return None
+            if pattern == src_info[3]:
+                return False
+            return True
+        elif src_info[0] == "CLP":
+            clippy_proc = self.get_selected_clippy_proc()
+            if not clippy_proc:
+                return None
+            if clippy_proc == src_info[3] and self.zynseq.phrase == src_info[1]:
+                return False
+            return True
+
+    # Function to paste clipboard[i] to selected cell
+    def paste_from_clipboard(self, i=0):
+        try:
+            src_info = self.clipboard[i]
+        except:
+            logging.error(f"Wrong clipboard index => {i}")
+            return
+        if src_info[0] == "PAT":
+            pattern = self.get_selected_pattern()
+            if pattern and pattern != src_info[3]:
+                self.pated.paste_pattern(src_info, pattern)
+        elif src_info[0] == "CLP":
+            clippy_proc = self.get_selected_clippy_proc()
+            if not clippy_proc or (clippy_proc == src_info[3] and self.zynseq.phrase == src_info[1]):
+                return
+            if clippy_proc.engine.is_clip_busy(clippy_proc, self.zynseq.phrase):
+                self.zyngui.show_confirm(f"Overwrite this audio clip?", self.do_copy_clippy, [src_info, clippy_proc])
+            else:
+                self.do_copy_clippy([src_info, clippy_proc])
+
+    # Function to actually copy pattern
+    def do_copy_clippy(self, params):
+        try:
+            src_info = params[0]
+            clippy_proc = params[1]
+            clippy_proc.engine.copy_clip(src_info[3], src_info[1], clippy_proc, self.zynseq.phrase)
+        except Exception as e:
+            logging.error(e)
+
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches
     # --------------------------------------------------------------------------
@@ -2208,6 +2361,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if super().switch_select(type):
             return True
         elif type == "S":
+            if self.moving_chain:
+                self.end_moving_chain()
+                return True
             if self.moving_phrase:
                 self.end_moving_phrase()
                 return True
@@ -2220,7 +2376,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 self.zyngui.chain_control()
         elif type == "B":
             if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 32 and self.zynseq.phrase < self.zynseq.phrases:
-                self.edit_clip()
+                self.edit_pad()
             else:
                 self.item_menu()
         else:
@@ -2233,11 +2389,17 @@ class zynthian_gui_mixer(zynthian_gui_base):
         returns True if event is managed, False if it's not
         """
 
+        if self.moving_chain:
+            self.end_moving_chain()
+            return True
         if self.moving_phrase:
             self.end_moving_phrase()
             return True
         elif self.param_editor_zctrl:
             self.disable_param_editor()
+            return True
+        else:
+            self.toggle_launcher_mode()
             return True
 
     def switch(self, swi, t):
@@ -2248,43 +2410,78 @@ class zynthian_gui_mixer(zynthian_gui_base):
         returns True if action fully handled or False if parent action should be triggered
         """
 
-        if swi == 0:
+        match swi:
+            case 0:
+                if t == "S":
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_toggle()
+                    return True
+                elif t == "B":
+                    self.zyngui.show_screen("chain_manager")
+                    return True
+            case 1:
+                if t == "B":
+                    self.zyngui.show_screen("main_menu")
+                    return True
+            case 2:
+                if t == "S":
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_mute()
+                    return True
+                elif t == "B":
+                    if self.launcher_mode:
+                        self.zyngui.show_screen("tempo")
+                        return True
+            case 3:
+                return self.switch_select(t)
+
+        # ALT mode => Use F1-F2 as copy/paste buttons
+        if self.launcher_mode and self.alt_mode\
+           and self.switch_i_clipboard and swi in self.switch_i_clipboard:
+            index = self.switch_i_clipboard.index(swi)
             if t == "S":
-                if self.highlighted_strip is not None:
-                    self.highlighted_strip.toggle_solo()
-                return True
-        elif swi == 1:
-            if t == "S":
-                if self.highlighted_strip is not None and not self.back_action():
-                    self.highlighted_strip.toggle_mute()
+                self.paste_from_clipboard(index)
+                self.zynseq.refresh_state()
+                self.refresh_launchers()
                 return True
             elif t == "B":
-                self.toggle_launcher_mode()
+                self.copy_to_clipboard(index)
                 return True
-        elif swi == 2:
-            if t == "S":
-                if self.launcher_mode:
-                    self.zyngui.show_screen("tempo")
-                else:
-                    self.zyngui.screens["chain_options"].insert_chain()
-                return True
-        elif swi == 3:
-            return self.switch_select(t)
-
         return False
 
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
-        if t == 'S':
-            if i == 2:
-                self.zyngui.screens["chain_options"].insert_chain()
-            else:
-                self.zyngui.zynswitch_short(i)
-            return True
-        # Bold knob#2 => chain options
-        elif t == 'B' and i == 2:
-            self.zyngui.show_screen("chain_options")
+        match i:
+            case 0:
+                if t == 'S':
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_toggle()
+                    return True
+                elif t =='B':
+                    self.zyngui.chain_control()
+                    self.zyngui.screens["chain_control"].subscreen.select_mixer_processor(1)
+                    return True
+            case 1:
+                if t == 'S':
+                    if self.highlighted_strip is not None:
+                        self.highlighted_strip.toggle_mute()
+                    return True
+            case 2:
+                if t == 'S':
+                    self.zyngui.cuia_add_chain()
+                    return True
+                elif t == 'B':
+                    self.moving_chain = True
+                    self.build_mixer()
+            case 3:
+                self.switch_select(t)
+                return True
+        return False
+
+    def cuia_back(self, params):
+        if params and params[0] == 'B':
+            self.zyngui.show_screen("chain_manager")
             return True
         return False
 
@@ -2295,6 +2492,25 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[i], 0)
             lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[npots - 1], 1)
 
+    def zynpot_abs(self, i, val):
+        # Knob#1 sets selected chain's level
+        if i == 0:
+            if self.highlighted_strip is not None:
+                self.highlighted_strip.set_volume(val)
+
+        # Knob#2 sets selected chain's balance/pan
+        elif i == 1:
+            if self.highlighted_strip is not None:
+                self.highlighted_strip.set_balance((val * 2) - 1)
+
+        # Knob#3 set main mixbus level
+        elif i == 2:
+            self.chain_strips[-1].set_volume(val)
+
+        # Knob#4 sets main mixbus balance
+        elif i == 3:
+            self.chain_strips[-1].set_balance((val * 2) - 1)
+
     def zynpot_cb(self, i, dval):
         """ Function to handle zynpot callback
         """
@@ -2303,6 +2519,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         # Handle parameter editor
         if super().zynpot_cb(i, dval):
+            return
+
+        # Launcher's vertical cursor move (across phrases)
+        elif self.launcher_mode and i == zynthian_gui_config.layout["ctrl_order"][2]:
+            if dval < 0:
+                self.arrow_up(-dval)
+            else:
+                self.arrow_down(-dval)
             return
 
         # Knob#1 adjusts selected chain's level
@@ -2317,17 +2541,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         # Knob#3 adjusts main mixbus level
         elif i == 2:
-            if self.launcher_mode:
-                if dval < 0:
-                    self.arrow_up(-dval)
-                else:
-                    self.arrow_down(-dval)
-            else:
-                self.chain_strips[-1].nudge_volume(dval)
+            self.chain_strips[-1].nudge_volume(dval)
 
         # Knob#4 moves chain selection
         elif i == 3:
-            if self.moving_phrase:
+            if self.moving_chain:
+                self.zyngui.chain_manager.nudge_chain(dval)
+                self.build_mixer()
+            elif self.launcher_mode and self.moving_phrase:
                 if dval < 0:
                     self.arrow_up(-dval)
                 elif dval > 0:
@@ -2338,12 +2559,20 @@ class zynthian_gui_mixer(zynthian_gui_base):
     def arrow_left(self):
         """ Function to handle CUIA ARROW_LEFT
         """
-        self.chain_manager.previous_chain()
+        if self.moving_chain:
+            self.zyngui.chain_manager.nudge_chain(-1)
+            self.build_mixer()
+        else:
+            self.zyngui.chain_manager.previous_chain()
 
     def arrow_right(self):
         """ Function to handle CUIA ARROW_RIGHT
         """
-        self.chain_manager.next_chain()
+        if self.moving_chain:
+            self.zyngui.chain_manager.nudge_chain(1)
+            self.build_mixer()
+        else:
+            self.zyngui.chain_manager.next_chain()
 
     def arrow_up(self, nudge=1):
         """ Function to handle CUIA ARROW_UP
@@ -2403,6 +2632,11 @@ class zynthian_gui_mixer(zynthian_gui_base):
             return
         self.zynseq.select_phrase(phrase)
 
+    def end_moving_chain(self):
+        self.moving_chain = False
+        self.strip_drag_start = None
+        self.build_mixer()
+
     def end_moving_phrase(self):
         self.moving_phrase = False
         self.strip_drag_start = None
@@ -2412,11 +2646,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
     def get_alt_mode(self):
         return self.alt_mode
-
-    def cuia_toggle_alt_mode(self, params=None):
-        self.alt_mode = not self.alt_mode
-        self.zyngui.set_global_alt_mode(self.alt_mode)
-        return True
 
     def cuia_chain_control(self, params=None):
         if self.alt_mode:
@@ -2438,5 +2667,49 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         # CTRL button
         wsl.set_led(leds[15], wsl.wscolor_active2)
+
+        # Copy/paste buttons
+        if self.launcher_mode and self.wsleds_i_clipboard:
+            for i, wsli in enumerate(self.wsleds_i_clipboard):
+                if self.clipboard[i] is None:
+                    wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                else:
+                    cpfc = self.can_paste_from_clipboard(i)
+                    if cpfc is None:
+                        wsl.blink(leds[wsli], wsl.wscolor_red)
+                    elif cpfc == False:
+                        wsl.blink(leds[wsli], wsl.wscolor_active2)
+                    elif cpfc == True:
+                        wsl.blink(leds[wsli], wsl.wscolor_active)
+
+    def tts_info(self, params=None):
+        if not self.zyngui.tts:
+            return
+        self.zyngui.tts.announce(f"View: {self.tts_title}", replace="True", interrupt=True)
+        chain = self.chain_manager.active_chain
+        if chain:
+            if chain.chain_id:
+                idx = self.chain_manager.get_chain_index(chain.chain_id) + 1
+                self.zyngui.tts.announce(f"Chain {idx}.", False, False, False)
+            else:
+                self.zyngui.tts.announce(f"Main chain.", False, False, False)
+            if self.launcher_mode:
+                self.zyngui.tts.announce(f"Phrase: {self.zynseq.phrase + 1}.", False, False, False)
+            self.zyngui.tts.announce(f"Title: {chain.get_title()}.", False, False, False)
+            if chain.is_midi():
+                if chain.midi_chan < 16:
+                    self.zyngui.tts.announce(f"MIDI channel: {chain.midi_chan + 1}", False, False, False)
+                else:
+                    self.zyngui.tts.announce(f"MIDI channel: ALL", False, False, False)
+            if chain.is_synth():
+                self.zyngui.tts.announce("Synth chain.", False, False, False)
+            elif chain.is_generator():
+                self.zyngui.tts.announce("Generator chain.", False, False, False)
+            elif chain.is_special():
+                self.zyngui.tts.announce("Special chain.", False, False, False)
+            elif chain.is_mixbus():
+                self.zyngui.tts.announce("Mixbus chain.", False, False, False)
+            elif chain.is_audio():
+                self.zyngui.tts.announce("Audio chain.", False, False, False)
 
 # --------------------------------------------------------------------------

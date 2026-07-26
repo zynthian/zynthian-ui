@@ -51,18 +51,19 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 
     def update_wsleds(self):
         curscreen = self.zyngui.get_current_screen()
-        curscreen_obj = self.zyngui.get_current_screen_obj()
+        workflow = self.zyngui.get_current_workflow()
+        alt_mode = self.zyngui.get_alt_mode()
 
         # Menu
-        if self.zyngui.is_current_screen_menu():
-            self.wsleds[0] = self.wscolor_active
-        elif self.zyngui.is_current_screen_admin():
+        if workflow == "admin":
             self.wsleds[0] = self.wscolor_active2
+        elif workflow in ("menu", "chain_manager"):
+            self.wsleds[0] = self.wscolor_active
         else:
             self.wsleds[0] = self.wscolor_default
 
         # Active Chain
-        if self.zyngui.alt_mode:
+        if alt_mode:
             wscolor_light = self.wscolor_alt
         else:
             wscolor_light = self.wscolor_default
@@ -74,7 +75,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             else:
                 if self.zyngui.chain_manager.active_chain.chain_id == chain_id:
                     # => Light active chain
-                    if curscreen == "control":
+                    if workflow == "chain_control":
                         self.wsleds[i + 1] = self.wscolor_active
                     else:
                         if self.zyngui.chain_manager.get_processor_count(chain_id):
@@ -85,7 +86,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
                     self.wsleds[i + 1] = wscolor_light
 
         # MODE button => MIDI LEARN
-        if self.zyngui.state_manager.get_midi_learn_zctrl() or curscreen == "zs3":
+        if self.zyngui.state_manager.get_midi_learn_zctrl() or workflow == "zs3":
             self.wsleds[7] = self.wscolor_yellow
         elif self.zyngui.state_manager.midi_learn_zctrl:
             self.wsleds[7] = self.wscolor_active
@@ -95,15 +96,15 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         # Zynseq: Launcher / Pattern Editor
         if curscreen == "launcher":
             self.wsleds[8] = self.wscolor_active
-        elif curscreen in ("pattern_editor", "pated_cc"):
+        elif workflow == "pated":
             self.wsleds[8] = self.wscolor_active2
         else:
             self.wsleds[8] = self.wscolor_default
 
         # Control / Preset / Bank Screens:
-        if curscreen in ("chain", "control", "audio_player"):
+        if workflow in ("chain_control", "audio_player"):
             self.wsleds[9] = self.wscolor_active
-        elif curscreen in ("preset", "bank"):
+        elif workflow == "bank_preset":
             if self.zyngui.get_current_processor().get_show_fav_presets():
                 self.blink(9, self.wscolor_active2)
             else:
@@ -112,9 +113,9 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             self.wsleds[9] = self.wscolor_default
 
         # ZS3 / Snapshot screens:
-        if curscreen == "zs3":
+        if workflow == "zs3":
             self.wsleds[10] = self.wscolor_active
-        elif curscreen == "snapshot":
+        elif workflow == "snapshot":
             self.wsleds[10] = self.wscolor_active2
         else:
             self.wsleds[10] = self.wscolor_default
@@ -126,12 +127,12 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         self.wsleds[12] = self.wscolor_default
 
         # ALT button:
-        if self.zyngui.alt_mode:
+        if alt_mode:
             self.wsleds[13] = self.wscolor_alt
         else:
             self.wsleds[13] = self.wscolor_default
 
-        if self.zyngui.alt_mode and curscreen != "midi_recorder":
+        if alt_mode and curscreen != "midi_recorder":
             self.zyngui.screens["midi_recorder"].update_wsleds(self.wsleds)
         else:
             # REC Button
@@ -148,7 +149,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
                 self.wsleds[15] = self.wscolor_default
 
         # Tempo Screen
-        if curscreen == "tempo":
+        if workflow == "tempo":
             self.wsleds[16] = self.wscolor_active
         elif self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() > 0:
             self.blink(16, self.wscolor_active)
@@ -170,19 +171,16 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
         # Audio Mixer / ALSA Mixer
         if curscreen == "mixer":
             self.wsleds[24] = self.wscolor_active
-        elif curscreen == "alsa_mixer":
+        elif workflow == "alsa_mixer":
             self.wsleds[24] = self.wscolor_active2
         else:
             self.wsleds[24] = self.wscolor_default
 
-        # Call current screen's update_wsleds() function to update the customizable LEDs
-        update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
-        if callable(update_wsleds_func):
-            update_wsleds_func(self.custom_wsleds)
-
-        try:
-            self.zyngui.screens[curscreen].update_wsleds()
-        except:
-            pass
+        curscreen_obj = self.zyngui.get_current_screen_obj()
+        if curscreen_obj:
+            # Call current screen's update_wsleds() function to update the customizable LEDs
+            update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
+            if callable(update_wsleds_func):
+                update_wsleds_func(self.custom_wsleds)
 
 # ------------------------------------------------------------------------------

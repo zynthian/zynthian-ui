@@ -28,6 +28,8 @@
 #pragma once
 #include <cstdint>
 
+#define MAX_STEPS_PATTERN (256 * 12 * 96) // Maximum number of steps in a pattern
+
 #define DEFAULT_TEMPO 120.0 // March time (120 BPM)
 #define DEFAULT_BPB 4  // Default time signature (Beats Per Bar)
 #define PHRASE_CHANNEL 32 // Phrase launcher channel

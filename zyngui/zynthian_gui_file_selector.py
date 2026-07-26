@@ -25,11 +25,13 @@
 
 import os
 import logging
+import oyaml as yaml
 
 # Zynthian specific modules
 from zyngine.zynthian_engine import zynthian_engine
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+
 
 # ------------------------------------------------------------------------------
 # Zynthian File Selector GUI Class
@@ -38,24 +40,29 @@ from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 class zynthian_gui_file_selector(zynthian_gui_selector_info):
 
+    collections_dpath = zynthian_engine.my_data_dir + "/collections/"
+
     fext2dirname = {
         "aidax": [["Neural Models"], "file_model.png"],
         "aidadspmodel": [["Neural Models"], "file_model.png"],
         "nam": [["Neural Models"], "file_model.png"],
         "nammodel": [["Neural Models"], "file_model.png"],
         "json": [["Neural Models"], "file_model.png"],
-        "wav": [["IRs", "Samples", "Audio", "Capture"], "file_audio.png"],
+        "wav": [["IRs", "Samples", "Audio"], "file_audio.png"],
         "flac": [["IRs", "Samples", "Audio"], "file_audio.png"],
         "aiff": [["IRs", "Samples", "Audio"], "file_audio.png"],
-        "ogg": [["Samples", "Audio", "Capture"], "file_audio.png"],
+        "ogg": [["Samples", "Audio"], "file_audio.png"],
         "mp3": [["Samples", "Audio"], "file_audio.png"],
-        "scl": [["Tuning"], "file.png"]
+        "mid": [["Midi"], "file_midi.png"],
+        "scl": [["Tuning"], "file.png"],
+        "zpat": [["Patterns"], "file_midi.png"],
     }
 
     def __init__(self):
         self.cb_func = None
         self.root_dirs = []
         self.fexts = []
+        self.collection_info = {}
         self.path = None
         self.dirpath = None
         self.init_path = None
@@ -63,7 +70,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         self.preload = False
         self.preload_timer_id = None
         self.preload_timer_ms = 200
-        super().__init__('File', default_icon="folder.png")
+        super().__init__('File', default_icon="folder.png", zsel_hidden=True)
 
     @classmethod
     def get_root_dirnames(cls, fexts):
@@ -103,6 +110,72 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 return True
         return False
 
+    def get_collection_icon(self, dpath):
+        for de in os.scandir(dpath + "/Art"):
+            if de.is_file() and os.path.splitext(de.name)[-1] in (".jpg", ".png"):
+                return de.path
+
+    def get_collection_info(self, path):
+        if path and path.startswith(self.collections_dpath):
+            try:
+                dname = path[len(self.collections_dpath):].split("/")[0]
+                return self.collection_info[dname]
+            except:
+                return None
+
+    def load_collection_info(self, dname):
+        dpath = self.collections_dpath + "/" + dname
+        try:
+            fh = open(f"{dpath}/info.yml", "r")
+        except:
+            logging.info(f"No yaml info file for collection '{dpath}'")
+            self.default_collection_info(dname)
+            return False
+        try:
+            yml = fh.read()
+            #logging.info(f"Loading yaml info file for collection '{dpath}' =>\n{yml}")
+            info = yaml.load(yml, Loader=yaml.SafeLoader)
+            info["icon"] = dpath + "/" + info["icon"]
+            self.collection_info[dname] = info
+            return True
+        except Exception as e:
+            logging.error(f"Bad yaml info file for collection '{dpath}' => {e}")
+            self.default_collection_info(dname)
+            return False
+
+    def default_collection_info(self, dname):
+        dpath = self.collections_dpath + "/" + dname
+        self.collection_info[dname] = {
+            "title": dname,
+            "icon": self.get_collection_icon(dpath),
+            "author": "Unknown",
+            "license": "Unknown",
+            "description": ""
+        }
+
+    def show_details(self, path=None):
+        if not path:
+            path = self.list_data[self.index][0]
+        info = self.get_collection_info(path)
+        if info:
+            description = info["description"].replace("\n", "</p>\n<p>")
+            html = f"""<html>
+ <head>
+  <link rel="stylesheet" href="style_details.css">
+ </head>
+ <body>
+ <div class="details_container">
+  <img class="icon" src="{info['icon']}">
+  <h1>{info['title']}</h1>
+  <div class="author"><b>Author:</b> {info["author"]}</div>
+  <div class="license"><b>License:</b> {info["license"]}</div>
+  <p class="description">{description}</p>
+ </body>
+</html>
+"""
+            self.path = path
+            self.zyngui.screens['help'].set_html(html)
+
     def config(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):
         self.list_data = []
         self.root_dirs = []
@@ -125,8 +198,16 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         # Config root dirs
         if dirnames is None:
             dirnames = self.get_root_dirnames(self.fexts)
+        # User files
         for dirname in dirnames:
             self.root_dirs.append((f"User {dirname}", zynthian_engine.my_data_dir + "/files/" + dirname))
+        # Collections
+        for de in os.scandir(zynthian_engine.my_data_dir + "/collections"):
+            if de.is_dir():
+                self.load_collection_info(de.name)
+                for dirname in dirnames:
+                    self.root_dirs.append((f"{de.name} {dirname}", de.path + "/" + dirname))
+        # System files
         for dirname in dirnames:
             self.root_dirs.append((f"System {dirname}", zynthian_engine.data_dir + "/files/" + dirname))
         if self.dirpath and not self.is_confined_to_root_dirs(self.dirpath):
@@ -152,7 +233,20 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         # Add info and find selected index
         self.index = 0
         for i, item in enumerate(self.list_data):
-            if len(item) == 6:
+            if not item[0]:
+                continue
+            if item[0] == self.path:
+                self.index = i
+            colinfo = self.get_collection_info(item[0])
+            if colinfo:
+                text = "\n"
+                if colinfo['author']:
+                    text += "Author: " + colinfo['author'] + "\n"
+                if colinfo['license']:
+                    text += "License: " + colinfo['license'] + "\n"
+                text += "\n" + colinfo['description']
+                item.append([text, colinfo['icon']])
+            elif len(item) == 6:
                 try:
                     fticon = self.fext2dirname[item[5]][1]
                 except:
@@ -161,9 +255,27 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 item.append(["", fticon])
             else:
                 item.append(["Folder", "folder.png"])
-            if item[0] == self.path:
-                self.index = i
         super().fill_list()
+
+    def update_list(self):
+        if self.shown:
+            self.fill_list()
+            self.set_selector()
+            self.set_select_path()
+            self.select()
+
+    def switch(self, i, t):
+        if i == 2 and t == 'S':
+            self.show_details()
+            return True
+
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 2 and t == 'S':
+            self.show_details()
+            return True
+        return False
 
     def select_action(self, i, t='S'):
         if self.list_data and i < len(self.list_data):
@@ -172,13 +284,12 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.path = path
                 self.dirpath = self.get_dirpath(path)
                 self.update_list()
-                self.set_select_path()
             elif os.path.isfile(path):
                 self.path = path
                 self.sel_path = path
                 self.init_path = path
-                self.cb_func(path)
                 self.zyngui.close_screen()
+                self.cb_func(path)
             else:
                 self.zyngui.close_screen()
 
@@ -189,7 +300,6 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.path = self.dirpath
                 self.dirpath = parts[0]
                 self.update_list()
-                self.set_select_path()
                 return True
         return False
 
@@ -209,9 +319,6 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
             if os.path.isfile(path):
                 self.sel_path = path
                 self.cb_func(path)
-
-    def set_selector(self, zs_hidden=False):
-        super().set_selector(zs_hidden)
 
     def set_select_path(self):
         if self.dirpath:

@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynmixer library
 #
-# Copyright (C) 2019-2024 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2019-2026 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #
@@ -29,7 +29,6 @@ import logging
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
-from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 
 # -------------------------------------------------------------------------------
 # zynmixer channel strip engine
@@ -40,8 +39,10 @@ class zynthian_engine_audio_mixer(zynthian_engine):
 
     # Controller Screens
     _ctrl_screens = [
-        ['main', ['level', 'balance', 'mute', 'solo']],
-        ['options', ['mono', 'phase', 'ms', 'record']]
+        ['lavel', ['gain', 'level', 'balance']],
+        ['toggles', ['mute', 'solo', 'pfl', 'ab_mixgroup']],
+        ['signal', ['mono', 'phase', 'ms']],
+        ['recorder', ['record']],
     ]
 
     # Function to initialize library
@@ -51,7 +52,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         self.name = "Mixer"
         self.nickname = "MI"
         self.MAX_NUM_CHANNELS = 0
-        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, state_manager.audio_recorder.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
 
     def start(self):
         pass
@@ -59,6 +60,15 @@ class zynthian_engine_audio_mixer(zynthian_engine):
     def get_controllers_dict(self, processor):
         if not processor.controllers_dict:
             processor.controllers_dict = {
+                'gain': zynthian_controller(self, 'gain', {
+                    'is_integer': True,
+                    'value_min': -40,
+                    'value_max': 40,
+                    'value_default': 0,
+                    'labels': ["0dB" if x==0 else f"{x:+d}dB" for x in range(-40, 41)],
+                    'value': processor.zynmixer.get_gain(processor.mixer_chan),
+                    'processor': processor
+                }),
                 'level': zynthian_controller(self, 'level', {
                     'is_integer': False,
                     'value_max': 1.0,
@@ -83,6 +93,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'solo': zynthian_controller(self, 'solo', {
+                    'name': "S",
+                    'short_name': "solo",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -90,7 +102,19 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'processor': processor,
                     'labels': ['off', 'on']
                 }),
+                'pfl': zynthian_controller(self, 'pfl', {
+                    'name': "PFL",
+                    'short_name': "pfl",
+                    'is_toggle': True,
+                    'value_max': 1,
+                    'value_default': 0,
+                    'value': processor.zynmixer.get_pfl(processor.mixer_chan),
+                    'processor': processor,
+                    'labels': ['off', 'on']
+                }),
                 'mono': zynthian_controller(self, 'mono', {
+                    'name': "M",
+                    'short_name': "mono",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -99,6 +123,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'ms': zynthian_controller(self, 'ms', {
+                    'name': "MS",
+                    'short_name': "M+S",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -108,6 +134,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'name': "M+S"
                 }),
                 'phase': zynthian_controller(self, 'phase', {
+                    'name': "Ø",
+                    'short_name': "phase",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -116,6 +144,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'record': zynthian_controller(self, 'record', {
+                    'name': "R",
+                    'short_name': "record",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -124,16 +154,29 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 })
             }
-            if processor.chain.chain_id == 0:
+            if processor.eng_code == "MI":
+                processor.controllers_dict['ab_mixgroup'] = zynthian_controller(self, 'ab_mixgroup', {
+                    'name': "A/B",
+                    'short_name': "A/B mix",
+                    'is_integer': True,
+                    'value_max': 2,
+                    'value_default': 0,
+                    'value': processor.zynmixer.get_ab_mixgroup(processor.mixer_chan),
+                    'processor': processor,
+                    'labels': ['none', 'A', 'B']
+                })
+            elif processor.chain.chain_id == 0:
                 processor.controllers_dict |= {
-                    'aux level': zynthian_controller(self, 'aux level', {
+                'aux_level': zynthian_controller(self, 'aux_level', {
+                    'name': "aux level",
                     'is_integer': False,
                     'value_max': 1.0,
                     'value_default': 0.8,
                     'value': processor.zynmixer.get_level(1),
                     'processor': processor
                 }),
-                'aux balance': zynthian_controller(self, 'aux balance', {
+                'aux_balance': zynthian_controller(self, 'aux_balance', {
+                    'name': "aux balance",
                     'is_integer': False,
                     'value_min': -1.0,
                     'value_max': 1.0,
@@ -141,7 +184,8 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value': processor.zynmixer.get_balance(1),
                     'processor': processor
                 }),
-                'aux mute': zynthian_controller(self, 'aux mute', {
+                'aux_mute': zynthian_controller(self, 'aux_mute', {
+                    'name': "aux mute",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
@@ -149,13 +193,32 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'processor': processor,
                     'labels': ['off', 'on']
                 }),
-                'aux solo': zynthian_controller(self, 'aux solo', {
+                'aux_solo': zynthian_controller(self, 'aux_solo', {
+                    'name': "aux solo",
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
                     'value': processor.zynmixer.get_solo(1),
                     'processor': processor,
                     'labels': ['off', 'on']
+                }),
+                'global_xfader': zynthian_controller(self, 'global_xfader', {
+                    'name': "Crossfader A/B",
+                    'is_integer': False,
+                    'value_max': 1.0,
+                    'value_min': 0.0,
+                    'value_default': 0.0,
+                    'value': self.state_manager.zynmixer_chan.get_global_xfader(),
+                    'processor': processor,
+                }),
+                'pfl_level': zynthian_controller(self, 'pfl_level', {
+                    'name': "PFL Level",
+                    'is_integet': False,
+                    'value_max': 1.0,
+                    'value_min': 0.0,
+                    'value_default': 1.0,
+                    'value': processor.zynmixer.get_pfl_level(),
+                    'processor': processor
                 })}
         return processor.controllers_dict
 
@@ -168,17 +231,24 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 # Aux Mixbus
                 processor.mixer_chan = self.state_manager.zynmixer_bus.add_strip()
                 send = self.state_manager.zynmixer_chan.add_send()
-                if processor.mixer_chan != send:
-                    logging.warning("Aux Mixbus index mismatch")
-                processor.name = f"Aux Mixbus {self.state_manager.zynmixer_chan.get_send_count()}"
+                processor.name = f"Aux Mixbus {send}"
+                self._ctrl_screens = [
+                    ['level', ['gain', 'level', 'balance']],
+                    ['toggles', ['mute', 'solo', 'pfl']],     # TODO => 'ab_mixgroup'
+                    ['signal', ['mono', 'phase', 'ms']],
+                    ['recorder', ['record']]
+                ]
             else:
                 # Main mixbus
                 processor.mixer_chan = 0
                 processor.name = "Main Mixbus"
                 self._ctrl_screens = [
-                    ['main', ['level', 'balance', 'mute', 'solo']],
-                    ['options', ['mono', 'phase', 'ms', 'record']],
-                    ['aux', ['aux level', 'aux balance', 'aux mute', 'aux solo']]
+                    ['level', ['gain', 'level', 'balance']],
+                    ['toggles', ['mute', 'solo', 'pfl']],
+                    ['signal', ['mono', 'phase', 'ms']],
+                    ['global', ['global_xfader', 'pfl_level']],
+                    ['aux', ['aux_level', 'aux_balance', 'aux_mute', 'aux_solo']],
+                    ['recorder', ['record']]
                 ]
         else:
             # Normal audio mixer strip
@@ -207,13 +277,17 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     for chain in self.state_manager.chain_manager.chains.values():
                         if chain.zynmixer_proc:
                             chain.zynmixer_proc.controllers_dict["solo"].set_value(0)
-                    zctrl.processor.controllers_dict["aux solo"].set_value(0)
+                    zctrl.processor.controllers_dict["aux_solo"].set_value(0)
                 else:
                     getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
                 glob_solo = self.state_manager.zynmixer_chan.get_global_solo()
                 self.state_manager.zynmixer_bus.set_solo(0, glob_solo)
-            elif zctrl.symbol.startswith("aux "):
+            elif zctrl.symbol.startswith("aux_"):
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol[4:]}')(1, zctrl.value)
+            elif zctrl.symbol.startswith("global_"):
+                getattr(self.state_manager.zynmixer_chan, f'set_{zctrl.symbol}')(zctrl.value)
+            elif zctrl.symbol == "pfl_level":
+                zctrl.processor.zynmixer.set_pfl_level(zctrl.value)
             else:
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(zctrl.processor.mixer_chan, zctrl.value)
         except Exception as e:

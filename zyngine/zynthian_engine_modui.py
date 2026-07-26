@@ -346,6 +346,7 @@ class zynthian_engine_modui(zynthian_engine):
         error_counter = 0
         self.enable_midi_devices()
         while True:
+            # TODO: This looks like it will never end!!!
             try:
                 received = self.websocket.recv()
                 logging.debug("WS >> %s" % received)

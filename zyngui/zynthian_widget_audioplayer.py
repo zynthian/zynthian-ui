@@ -340,6 +340,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
         self.cue_points = []
         i = 0
         while True:
+            # Iterate until exceed quantity of cues in player
             pos = zynaudioplayer.get_cue_point_position(self.processor.handle, i)
             if pos < 0.0:
                 break
@@ -731,15 +732,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
     # -------------------------------------------------------------------------
 
     def cuia_stop(self, param=None):
-        if self.zyngui.alt_mode:
-            return False
         zynaudioplayer.stop_playback(self.processor.handle)
         zynaudioplayer.set_position(self.processor.handle, 0.0)
         return True
 
     def cuia_toggle_play(self, param=None):
-        if self.zyngui.alt_mode:
-            return False
         if zynaudioplayer.get_playback_state(self.processor.handle):
             zynaudioplayer.stop_playback(self.processor.handle)
         else:
@@ -747,8 +744,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
         return True
 
     def update_wsleds(self, leds):
-        if self.zyngui.alt_mode:
-            return
         wsl = self.zyngui.wsleds
         if self.processor.handle == self.zyngui.state_manager.audio_player.handle:
             color_default = wsl.wscolor_default

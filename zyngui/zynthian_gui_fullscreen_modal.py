@@ -52,6 +52,7 @@ class zynthian_gui_fullscreen_modal(tkinter.Frame):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
         self.shown = False
+        self.alt_mode = False
 
     def on_size(self, event=None):
         self.width = zynthian_gui_config.display_width
@@ -70,3 +71,17 @@ class zynthian_gui_fullscreen_modal(tkinter.Frame):
             self.place(x=0, y=0)
             self.tkraise()
             self.shown = True
+
+    # --------------------------------------------------------------------------
+    # CUIA
+    # --------------------------------------------------------------------------
+
+    # By default, fullscreen modals have no ALT mode.
+    # To implement ALT mode, child classes have to redefine get_alt_mode() returning self.alt_mode
+    def get_alt_mode(self):
+        #return self.alt_mode
+        return False
+
+    def cuia_toggle_alt_mode(self, params=None):
+        self.alt_mode = not self.alt_mode
+        return True

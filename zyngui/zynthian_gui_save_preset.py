@@ -86,8 +86,7 @@ class zynthian_gui_save_preset():
                 create_bank_urid = self.processor.engine.get_user_bank_urid(self.save_preset_create_bank_name)
                 self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
             if self.processor.engine.preset_exists(self.save_preset_bank_info, preset_name):
-                self.zyngui.show_confirm(f"Do you want to overwrite preset '{preset_name}'?",
-                                        self.do_save_preset, preset_name)
+                self.zyngui.show_confirm(f"Do you want to overwrite preset '{preset_name}'?", self.do_save_preset, preset_name)
             else:
                 self.do_save_preset(preset_name)
 
@@ -96,14 +95,15 @@ class zynthian_gui_save_preset():
         self.zyngui.state_manager.start_busy("Save Preset", f"Saving preset {preset_name}")
 
         try:
+            # If must create new bank, do it!
+            if self.save_preset_create_bank_name:
+                self.processor.engine.create_user_bank(self.save_preset_create_bank_name)
+                logging.info(f"Created new bank '{self.save_preset_create_bank_name}' => {self.save_preset_bank_info[0]}")
+
             # Save preset
             preset_uri = self.processor.engine.save_preset(self.save_preset_bank_info, preset_name)
 
             if preset_uri:
-                # If must create new bank, do it!
-                if self.save_preset_create_bank_name:
-                    self.processor.engine.create_user_bank(self.save_preset_create_bank_name)
-                    logging.info(f"Created new bank '{self.save_preset_create_bank_name}' => {self.save_preset_bank_info[0]}")
                 if self.save_preset_bank_info:
                     self.processor.set_bank_by_id(self.save_preset_bank_info[0])
                 self.processor.load_preset_list()
@@ -117,6 +117,7 @@ class zynthian_gui_save_preset():
 
         self.save_preset_create_bank_name = None
         self.zyngui.state_manager.end_busy("Save Preset")
+        self.zyngui.close_screen()
         self.zyngui.close_screen()
 
 # ------------------------------------------------------------------------------

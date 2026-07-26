@@ -40,6 +40,8 @@ class zynthian_wsleds_base:
 
     def __init__(self, zyngui):
         self.zyngui = zyngui
+        self.state_manager = self.zyngui.state_manager
+        self.ctrldev_manager = self.state_manager.ctrldev_manager
 
         # LED strip variables
         self.spi_board = None
@@ -70,6 +72,7 @@ class zynthian_wsleds_base:
         self.wscolor_alt = self.wscolor_purple
         self.wscolor_active = self.wscolor_green
         self.wscolor_active2 = self.wscolor_orange
+        self.wscolor_active3 = self.wscolor_blue_light
         self.wscolor_admin = self.wscolor_red
         self.wscolor_low = self.create_color(0, 100, 0)
         # Color Codes
@@ -80,7 +83,8 @@ class zynthian_wsleds_base:
             str(self.wscolor_red): "R",
             str(self.wscolor_orange): "O",
             str(self.wscolor_yellow): "Y",
-            str(self.wscolor_purple): "P"
+            str(self.wscolor_purple): "P",
+            str(self.wscolor_blue_light): "T"
         }
 
     def create_color(self, r, g, b):
@@ -190,7 +194,7 @@ class zynthian_wsleds_base:
                 logging.exception(traceback.format_exc())
             self.wsleds.show()
 
-            if self.zyngui.capture_log:
+            if self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state():
                 try:
                     wsled_state = []
                     for i in range(self.num_leds):
@@ -202,10 +206,11 @@ class zynthian_wsleds_base:
                     wsled_state = ",".join(wsled_state)
                     if wsled_state != self.last_wsled_state:
                         self.last_wsled_state = wsled_state
-                        self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
-                        # logging.debug(f"Capturing LED state log => {wsled_state}")
+                        if self.zyngui.capture_log:
+                            self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
+                            # logging.debug(f"Capturing LED state log => {wsled_state}")
                 except Exception as e:
-                    logging.error(f"Capturing LED state log => {e}")
+                    logging.error(f"Generating LED state string => {e}")
 
         self.blink_count += 1
 

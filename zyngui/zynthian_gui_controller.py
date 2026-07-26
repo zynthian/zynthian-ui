@@ -173,10 +173,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 
             self.midi_bind = self.create_text(
                 0, 0,
-                width=int(4*0.9*zynthian_gui_config.font_size),
                 anchor=tkinter.S,
                 justify=tkinter.CENTER,
-                font=(zynthian_gui_config.font_family, int(0.7*zynthian_gui_config.font_size)),
+                font=(zynthian_gui_config.font_family, int(0.6 * zynthian_gui_config.font_size)),
                 tags='gui')
 
             # Bind canvas events
@@ -271,7 +270,8 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.coords(self.graph_pickup, x1 + arc_width, y1 + arc_width, x2 - arc_width, y2 - arc_width)
             self.itemconfigure(self.graph_pickup, width=arc_width)
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, round(hh * zynthian_gui_config.font_size / 160)))
+
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
         self.coords(self.midi_bind, x0, hh - 2)
 
     # Handle resize of rectangle graph
@@ -297,7 +297,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.coords(self.graph, (x1, y1, x2, y2))
             self.coords(self.graph_pickup, (x1, y1, x2, y2))
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, round(hh * zynthian_gui_config.font_size / 160)))
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
         self.coords(self.midi_bind, ww // 2, hh - 2)
 
     # Handle resize of triangle graph
@@ -327,7 +327,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.coords(self.graph, (x1, y1, x2, y1, x2, y2))
             self.coords(self.graph_pickup, (x1, y1, x2, y1, x2, y2))
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, round(hh * zynthian_gui_config.font_size / 160)))
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
         self.coords(self.midi_bind, ww // 2, hh - 2)
 
     def show(self):
@@ -546,7 +546,8 @@ class zynthian_gui_controller(tkinter.Canvas):
                 #self.erase_midi_bind()
                 self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
             elif preselection is not None or self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
-                if self.zyngui.screens["control"].get_midi_learn() > 1:
+                # TODO THIS IS SUPER UGLY!!!!
+                if self.zyngui.screens["chain_control"].subscreens["control"].get_midi_learn() > 1:
                     self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
                 else:
                     self.plot_midi_bind("??#??", zynthian_gui_config.color_hl)
@@ -579,6 +580,11 @@ class zynthian_gui_controller(tkinter.Canvas):
     def set_text(self, obj_id, title, max_width, max_height, camel=True):
         if max_width < 10:
             return
+
+        title = str(title).strip().replace("_", " ")
+        if camel:
+            title = camel_split_re.sub(' ', title)
+
         fskey = f"{max_width}x{max_height}x{camel}"
         fs = get_cached_font_size(title, fskey)
         if fs:
@@ -586,9 +592,6 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(obj_id, text=title, font=font)
             return
 
-        title = str(title).strip()
-        if camel:
-            title = camel_split_re.sub(' ', title)
 
         fs = int(1.0 * zynthian_gui_config.font_size)
         font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
@@ -603,6 +606,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
         # Reduce text font size until it fits vertically
         while True:
+            # Iterate until text height is less than max height or min size
             self.itemconfigure(obj_id, text=title, font=font)
             bbox = self.bbox(obj_id)
             if bbox is None or bbox[3] - bbox[1] <= max_height:
@@ -648,7 +652,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 
         # Split long labels and take longest word
         if self.zctrl.labels and len(val_text) > 10:
-            val_text = max(val_text.split(), key=len)
+            words = textwrap.wrap(val_text, 10, break_long_words=False)
+            if len(words) > 1:
+                val_text = max(words, key=len) + "..."
 
         max_fs = int(1.15 * zynthian_gui_config.font_size)
         # Optimization: Start from an estimated size and decide if increase or reduce size
@@ -754,7 +760,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                 self.zyngui.zynpot_pr_state[self.index] += 1
                 fine = True
             else:
-                fine = self.zyngui.alt_mode
+                fine = self.zyngui.get_alt_mode()
             #logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
             return self.zctrl.nudge(dval, fine=fine)
         else:
@@ -764,7 +770,7 @@ class zynthian_gui_controller(tkinter.Canvas):
     def nudge(self, dval, fine=False):
         if self.preselection is not None:
             self.zyngui.screens["control"].zctrl_touch(self.preselection)
-        elif self.enabled and self.zctrl:
+        elif self.zctrl:
             return self.zctrl.nudge(dval, fine=fine)
         else:
             return False
@@ -789,7 +795,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         else:
             return # Long press already handled
         if self.active_motion_axis == 0:
-            if self.canvas_push_event and self.enabled and self.zctrl:
+            if self.canvas_push_event and self.zctrl:
                 dts = (event.time - self.canvas_push_event.time) / 1000
                 self.canvas_push_event = None
                 #logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
@@ -838,9 +844,9 @@ class zynthian_gui_controller(tkinter.Canvas):
                         # Y-axis drag active
                         if abs(dy) >= self.pixels_per_div:
                             if self.zctrl.range_reversed:
-                                self.nudge(-dy // self.pixels_per_div, self.zyngui.alt_mode)
+                                self.nudge(-dy // self.pixels_per_div, self.zyngui.get_alt_mode())
                             else:
-                                self.nudge(dy // self.pixels_per_div, self.zyngui.alt_mode)
+                                self.nudge(dy // self.pixels_per_div, self.zyngui.get_alt_mode())
                             self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
                     elif self.active_motion_axis == -1:
                         # X-axis drag active

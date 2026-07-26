@@ -6,7 +6,7 @@
 # Zynthian Control Device Driver for Akai MPK mini MK3
 # A mode enforcer implemented as a python jack client.
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #

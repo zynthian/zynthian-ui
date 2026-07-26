@@ -59,10 +59,15 @@ class RunTimer(Thread):
         self._actions = {}
 
         self.daemon = True
+        self.running = True
         self.start()
 
     def __contains__(self, b):
         return b in self._actions
+
+    def end(self):
+        self.running = False
+        self._awake.set()
 
     def add(self, name, timeout, callback, *args, **kwargs):
         with self._lock:
@@ -81,7 +86,7 @@ class RunTimer(Thread):
             self._actions.pop(name, None)
 
     def run(self):
-        while True:
+        while self.running:
             if not self._actions:
                 self._awake.wait()
             self._awake.clear()
@@ -136,7 +141,7 @@ class IntervalTimer(RunTimer):
             action[1] = timeout
 
     def run(self):
-        while True:
+        while self.running:
             if not self._actions:
                 self._awake.wait()
             self._awake.clear()
@@ -158,7 +163,7 @@ class IntervalTimer(RunTimer):
 
 
 # --------------------------------------------------------------------------
-# A handy timer for triggering short/bold/long push actions
+# A handy timer for triggering short/bold/long press actions
 # --------------------------------------------------------------------------
 class ButtonTimer(Thread):
     def __init__(self, callback):
@@ -169,7 +174,12 @@ class ButtonTimer(Thread):
         self._pressed = {}
 
         self.daemon = True
+        self.running = True
         self.start()
+
+    def end(self):
+        self.running = False
+        self._awake.set()
 
     def is_pressed(self, btn, ts):
         with self._lock:
@@ -183,8 +193,12 @@ class ButtonTimer(Thread):
             elapsed = time.time() - ts
             self._run_callback(btn, elapsed)
 
+    def cancel(self, btn):
+        with self._lock:
+            self._pressed.pop(btn, None)
+
     def run(self):
-        while True:
+        while self.running:
             with self._lock:
                 expired, elapsed = self._get_expired()
             if expired is not None:
@@ -275,6 +289,10 @@ class ModeHandlerBase:
         self._is_shifted = False
         self._is_active = False
 
+    def __del__(self):
+        if self._timer:
+            self._timer.end()
+
     @property
     def name(self):
         return self.__class__.__name__
@@ -355,21 +373,21 @@ class ModeHandlerBase:
         )
 
     # FIXME: Could this (or part of this) be in libseq?
-    def _get_sequence_patterns(self, phrase, seq, create=False):
-        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, seq)
+    def _get_sequence_patterns(self, phrase, midi_chan, create=False):
+        seq_len = self._libseq.getSequenceLength(self._zynseq.scene, phrase, midi_chan)
         pattern = -1
         retval = []
 
         if seq_len == 0:
             if create:
                 pattern = self._libseq.createPattern()
-                self._libseq.addPattern(self._zynseq.scene, phrase, seq, 0, 0, pattern)
+                self._libseq.addPattern(self._zynseq.scene, phrase, midi_chan, 0, 0, pattern)
                 retval.append(pattern)
             return retval
 
-        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, seq)
+        n_tracks = self._libseq.getTracksInSequence(self._zynseq.scene, phrase, midi_chan)
         for track in range(n_tracks):
-            retval.extend(self._get_patterns_in_track(self._zynseq.scene, phrase, seq, track))
+            retval.extend(self._get_patterns_in_track(phrase, midi_chan, track))
         return retval
 
     # FIXME: Could this be in libseq?
@@ -407,12 +425,12 @@ class ModeHandlerBase:
     # FIXME: Could this be in libseq?
     def _set_note_duration(self, step, note, duration):
         velocity = self._libseq.getNoteVelocity(step, note)
-        stutt_count = self._libseq.getStutterCount(step, note)
-        stutt_duration = self._libseq.getStutterDur(step, note)
+        stutt_speed = self._libseq.getNoteStutterSpeed(step, note)
+        stutt_velfx = self._libseq.getNoteStutterVelfx(step, note)
         self._libseq.removeNote(step, note)
         self._libseq.addNote(step, note, velocity, duration, 0)
-        self._libseq.setStutterCount(step, note, stutt_count)
-        self._libseq.setStutterDur(step, note, stutt_duration)
+        self._libseq.setNoteStutterSpeed(step, note, stutt_speed)
+        self._libseq.setNoteStutterVelfx(step, note, stutt_velfx)
 
     def _show_screen_briefly(self, screen, cuia, timeout):
         # Only created when/if needed

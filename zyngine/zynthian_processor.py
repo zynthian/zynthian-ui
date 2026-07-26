@@ -4,7 +4,7 @@
 #
 # zynthian processor
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 # Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -28,15 +28,13 @@ import re
 import copy
 import logging
 import traceback
+from time import sleep
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import *
 
 class zynthian_processor:
-
-    SS_PROCESSOR_CTRL_SCREENS = 0
 
     # ---------------------------------------------------------------------------
     # Data dirs
@@ -88,13 +86,14 @@ class zynthian_processor:
         self.preset_info = None
         self.preset_subdir_info = None
         self.preset_bank_index = None
-        self.preset_loaded = None
+        self.preset_ctrl_vals = {}
 
         self.preload_index = None
         self.preload_name = None
         self.preload_info = None
 
         self.controllers_dict = {}  # Map of zctrls indexed by symbol
+        self.bypass_zctrl = None    # Bypass zctrl, if any
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.auto_save_bank = False
@@ -151,6 +150,12 @@ class zynthian_processor:
     def reset(self):
         for zctrl in self.controllers_dict.values():
             zctrl.reset_value()
+
+    def get_chain_slot(self):
+        try:
+            return self.chain.get_slot(self)
+        except:
+            return None
 
     # ---------------------------------------------------------------------------
     # MIDI autolearn CC controllers
@@ -332,7 +337,7 @@ class zynthian_processor:
         elif self.bank_info:
             for preset in self.engine.get_preset_list(self.bank_info, self):
                 if self.engine.is_preset_fav(preset):
-                    preset[2] = "❤" + preset[2]
+                    preset[2] = "❤ " + preset[2]
                 preset_list.append(preset)
         else:
             return
@@ -373,7 +378,7 @@ class zynthian_processor:
 
         # Remove favorite marker char
         if preset_name[0] == '❤':
-            preset_name = preset_name[1:]
+            preset_name = preset_name[2:]
 
         # Check if preset is in favorites pseudo-bank and set real bank if needed
         if preset_id in self.engine.preset_favs:
@@ -403,6 +408,7 @@ class zynthian_processor:
         self.preload_index = None
         self.preload_name = None
         self.preload_info = None
+        self.preset_ctrl_vals = {}
 
         if set_engine:
             if set_engine_needed:
@@ -425,12 +431,12 @@ class zynthian_processor:
         TODO:Optimize search!!
         """
         if preset_name[0] == '❤':
-            preset_name = preset_name[1:]
+            preset_name = preset_name[2:]
         for i in range(len(self.preset_list)):
             name_i = self.preset_list[i][2]
             try:
                 if name_i[0] == '❤':
-                    name_i = name_i[1:]
+                    name_i = name_i[2:]
                 if preset_name == name_i:
                     return self.set_preset(i, set_engine, force_set_engine)
             except:
@@ -473,9 +479,11 @@ class zynthian_processor:
         Preloading request engine to temporarily load a preset
         """
         # Avoid preload on engines that take excessive time to load presets
-        if self.engine.nickname in ['PD', 'MD']:
+        if self.engine.nickname in ['PD', 'MD', 'SL']:
             return True
         if preset_index < len(self.preset_list):
+            for symbol, zctrl in self.controllers_dict.items():
+                self.preset_ctrl_vals[symbol] = zctrl.value
             if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
                 self.preload_index = preset_index
                 self.preload_name = self.preset_list[preset_index][2]
@@ -489,6 +497,7 @@ class zynthian_processor:
     def restore_preset(self):
         """Restore preset after temporary preload"""
 
+        retval = False
         if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info, self.preset_info):
             if self.preset_bank_index is not None and self.bank_index != self.preset_bank_index:
                 self.set_bank(self.preset_bank_index, False)
@@ -497,8 +506,13 @@ class zynthian_processor:
             self.preload_info = None
             logging.info(f"Restore Preset: {self.preset_name} ({self.preset_index})")
             self.engine.set_preset(self, self.preset_info)
-            return True
-        return False
+            retval = True
+        if self.preset_ctrl_vals:
+            sleep(0.2) # TODO: Clumsy wait for preset to load
+            for symbol, value in self.preset_ctrl_vals.items():
+                self.controllers_dict[symbol].set_value(value)
+            self.preset_ctrl_vals = {}
+        return retval
 
     def get_preset_name(self):
         """Get current preset name"""
@@ -581,6 +595,18 @@ class zynthian_processor:
             self.engine.get_controllers_dict(self, params)
         else:
             self.engine.get_controllers_dict(self)
+
+        # Set bypass zctrl
+        try:
+            self.bypass_zctrl = self.engine.bypass_zctrl
+        except:
+            self.bypass_zctrl = None
+            # Take first bypass zctrl => It shouldn't be more than one!!'
+            for zctrl in self.controllers_dict.values():
+                if zctrl.is_bypass:
+                    self.bypass_zctrl = zctrl
+                    break
+
         self.init_ctrl_screens()
 
     def init_ctrl_screens(self, force_refresh=False):
@@ -716,6 +742,34 @@ class zynthian_processor:
         return zctrls
 
     # ---------------------------------------------------------------------------
+    # Bypass management
+    # ---------------------------------------------------------------------------
+
+    # Return the processor's bypass zctrl, if any
+    def get_bypass_zctrl(self):
+        return self.bypass_zctrl
+
+    # Return True if the processor is bypassed
+    def is_bypassed(self):
+        if self.bypass_zctrl:
+            if self.bypass_zctrl.bypass_value:
+                return bool(self.bypass_zctrl.value)
+            else:
+                return not bool(self.bypass_zctrl.value)
+        return False
+
+    # Set the bypass
+    def set_bypass(self, bypass):
+        if self.bypass_zctrl:
+            if bypass:
+                self.bypass_zctrl.set_value(self.bypass_zctrl.bypass_value)
+            else:
+                self.bypass_zctrl.set_value(int(not self.bypass_zctrl.bypass_value))
+
+    def toggle_bypass(self):
+        self.set_bypass(not self.is_bypassed())
+
+    # ---------------------------------------------------------------------------
     # Keymap management
     # ---------------------------------------------------------------------------
 
@@ -725,6 +779,8 @@ class zynthian_processor:
             logging.debug(f"KEYMAP PLUGIN NAME => {self.engine.plugin_name}")
             if self.engine.plugin_name == "Fabla":
                 return "Fabla - " + self.preset_name
+        elif self.engine.nickname in ("SF", "LS") and self.engine.keymap:
+            return "SFZ - " + self.preset_name
         return None
 
     # Returns keymap if possible
@@ -732,6 +788,8 @@ class zynthian_processor:
         if self.engine.name.startswith("Jalv/"):
             if self.engine.plugin_name == "Fabla":
                 return self.get_keymap_fabla()
+        elif self.engine.nickname in ("SF", "LS") and self.engine.keymap:
+            return self.engine.keymap
         return None
 
     def get_keymap_fabla(self):
@@ -745,7 +803,7 @@ class zynthian_processor:
             try:
                 name = os.path.splitext(os.path.basename(fpath))[0].strip()
                 if name:
-                    name = re.sub("^\d*_*", '', name)
+                    name = re.sub(r"^\d*_*", '', name)
                     keymap.append({
                         "note": base_note + i,
                         "name": name,
@@ -909,6 +967,10 @@ class zynthian_processor:
                 except Exception as e:
                     logging.warning(f"Invalid controller for processor {self.get_basepath()}: {e}")
 
+        # Set current screen index
+        if "current_screen_index" in state:
+            self.current_screen_index = state["current_screen_index"]
+
         self.set_state_flag = False
         try:
             self.engine.set_state_post(self)
@@ -947,10 +1009,7 @@ class zynthian_processor:
     def get_basepath(self):
         """Get base path string"""
 
-        if self.engine:
-            path = self.engine.get_path(self)
-        else:
-            path = "NONE"
+        path = self.name
         if isinstance(self.midi_chan, int):
             if 0 <= self.midi_chan < 16:
                 path = f"{self.midi_chan + 1}#{path}"

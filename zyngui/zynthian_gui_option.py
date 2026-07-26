@@ -49,6 +49,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
 
     def config(self, title, options, cb_select, close_on_select=True, click_type=False, index=None):
         reset_index = False
+        self.tts_title = title
         if title != self.title:
             self.title = title
             reset_index = True
@@ -94,8 +95,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
                         if os.path.isfile(fpath):
                             self.options[fbase] = fpath
                 except Exception as err:
-                    logging.warning(
-                        "Can't get file list for {}/{}: {}".format(dpath, fpat, err))
+                    logging.warning("Can't get file list for {}/{}: {}".format(dpath, fpat, err))
 
     def fill_list(self):
         i = 0
@@ -104,7 +104,7 @@ class zynthian_gui_option(zynthian_gui_selector_info):
             self.options = self.options_cb()
         for k, v in self.options.items():
             if isinstance(v, list):
-                self.list_data.append((v[0], i, k, v[1]))
+                self.list_data.append((v[0], i, k, *v[1:]))
             else:
                 self.list_data.append((v, i, k))
             i += 1

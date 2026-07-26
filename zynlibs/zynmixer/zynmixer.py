@@ -23,15 +23,18 @@
 #
 # ********************************************************************
 
+import math
 import ctypes
+import logging
+
 from zyngine.zynthian_signal_manager import zynsigman
 
 # -------------------------------------------------------------------------------
 # Zynmixer Library Wrapper and processor
 # -------------------------------------------------------------------------------
 
-# Subsignals are defined inside each module. Here we define audio_mixer subsignals:
-SS_ZYNMIXER_SET_VALUE = 1
+MIN_GAIN = -120.0
+MAX_GAIN = 40.0
 
 class DPM(ctypes.Structure):
     _fields_ = [
@@ -65,8 +68,11 @@ class ZynMixer():
         self.lib_zynmixer.getLevel.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getLevel.restype = ctypes.c_float
 
-        self.lib_zynmixer.setBalance.argtypes = [
-            ctypes.c_uint8, ctypes.c_float]
+        self.lib_zynmixer.setGain.argtypes = [ctypes.c_uint8, ctypes.c_float]
+        self.lib_zynmixer.getGain.argtypes = [ctypes.c_uint8]
+        self.lib_zynmixer.getGain.restype = ctypes.c_float
+
+        self.lib_zynmixer.setBalance.argtypes = [ctypes.c_uint8, ctypes.c_float]
         self.lib_zynmixer.getBalance.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getBalance.restype = ctypes.c_float
 
@@ -82,6 +88,16 @@ class ZynMixer():
         self.lib_zynmixer.setMono.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getMono.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getMono.restype = ctypes.c_uint8
+
+        if not self.mixbus:
+            self.lib_zynmixer.setGlobalXFader.argtypes = [ctypes.c_float]
+            self.lib_zynmixer.getGlobalXFader.restype = ctypes.c_float
+            self.lib_zynmixer.setABMixGroup.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+            self.lib_zynmixer.getABMixGroup.argtypes = [ctypes.c_uint8]
+            self.lib_zynmixer.getABMixGroup.restype = ctypes.c_uint8
+        else:
+            self.lib_zynmixer.setPflLevel.argtypes = [ctypes.c_float]
+            self.lib_zynmixer.getPflLevel.restype = ctypes.c_float
 
         self.lib_zynmixer.setPhase.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getPhase.argtypes = [ctypes.c_uint8]
@@ -109,8 +125,7 @@ class ZynMixer():
         self.lib_zynmixer.getDpm.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getDpm.restype = ctypes.c_float
 
-        self.lib_zynmixer.getDpmHold.argtypes = [
-            ctypes.c_uint8, ctypes.c_uint8]
+        self.lib_zynmixer.getDpmHold.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getDpmHold.restype = ctypes.c_float
 
         self.lib_zynmixer.updateDpmStates.argtypes = [ctypes.POINTER(DPM), ctypes.c_uint8]
@@ -119,6 +134,31 @@ class ZynMixer():
 
         self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
         self.dpm = (DPM * self.MAX_NUM_CHANNELS)()
+
+    def norm_to_db(self, value: float):
+        """ Convert linear normalized range to dB range.
+        Args:
+            value: Linear normalized value
+        Returns:
+            Value in dB (0.0 maps to MIN_GAIN not -inf)
+        """
+
+        if value <= 0.0:
+            return MIN_GAIN
+        db = 20.0 * math.log10(value)
+        return max(db, MIN_GAIN)
+
+    def db_to_norm(self, db: float):
+        """ Convert dB to linear normalized range
+        Args:
+            db: Value in dB
+        Returns:
+            Normalised value, e.g. 0dB == 1.0.
+        """
+
+        if db <= MIN_GAIN:
+            return 0.0
+        return 10.0 ** (db / 20.0)
 
     def add_strip(self):
         """
@@ -192,6 +232,46 @@ class ZynMixer():
 
         return self.lib_zynmixer.getSendCount()
 
+    def set_gain(self, channel, gain):
+        """
+        Sets the gain of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+        level : float
+            Value of gain in +/-dB
+        """
+
+        if channel is None:
+            return
+        gain = self.db_to_norm(gain)
+        self.lib_zynmixer.setGain(channel, ctypes.c_float(gain))
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                       chan=channel, symbol="gain", value=gain, mixbus=self.mixbus)
+
+    def get_gain(self, channel):
+        """
+        Gets the gain of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+
+        Returns
+        -------
+        float
+            Gain in +/-dB
+        """
+
+        if channel is None:
+            return
+
+        gain = self.lib_zynmixer.getGain(channel)
+        return self.norm_to_db(gain)
+
     def set_level(self, channel, level):
         """
         Sets the fader level of a mixer strip
@@ -207,7 +287,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setLevel(channel, ctypes.c_float(level))
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="level", value=level, mixbus=self.mixbus)
 
     def get_level(self, channel):
@@ -244,7 +324,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setBalance(channel, balance)
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="balance", value=balance, mixbus=self.mixbus)
 
     def get_balance(self, channel):
@@ -280,7 +360,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setMute(channel, mute)
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="mute", value=mute, mixbus=self.mixbus)
 
     # Function to get mute for a channel
@@ -332,12 +412,9 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setSolo(channel, solo)
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="solo", value=solo, mixbus=self.mixbus)
 
-    # Function to get solo for a channel
-    # channel: Index of channel
-    # returns: Solo state (True if solod)
     def get_solo(self, channel):
         """
         Gets the solo state of a mixer strip
@@ -375,6 +452,109 @@ class ZynMixer():
     def get_global_solo(self):
         return self.lib_zynmixer.getGlobalSolo()
 
+    def set_pfl(self, channel, pfl):
+        """
+        Sets the PFL of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+        pfl : bool
+            True to PFL, False to unPFL
+        """
+
+        if channel is None:
+            return
+        self.lib_zynmixer.setPfl(channel, pfl)
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                       chan=channel, symbol="pfl", value=pfl, mixbus=self.mixbus)
+
+    def get_pfl(self, channel):
+        """
+        Gets the PFL state of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of the mixer strip
+
+        Returns
+        -------
+        bool
+            True if PFL enabled, False if disabled
+        """
+
+        if channel is None:
+            return
+        return self.lib_zynmixer.getPfl(channel)
+
+    def toggle_pfl(self, channel):
+        """
+        Toggle the PFL state of a mixer strip
+
+        Parameters
+        ----------
+        channel : int
+            Index of of the mixer strip
+        """
+
+        self.lib_zynmixer.togglePfl(channel)
+
+    def clear_pfl(self):
+        self.lib_zynmixer.clearPfl()
+
+    def set_pfl_level(self, level):
+        """ Set the volumne level of PFL output
+        Args:
+        level: Normalised volume level factor
+        """
+
+        if self.mixbus:
+            self.lib_zynmixer.setPflLevel(level)
+
+    def get_pfl_level(self):
+        """ Get the volumne level of PFL output
+        Returns: Normalised volume level factor
+        """
+
+        if self.mixbus:
+            return self.lib_zynmixer.getPflLevel()
+        return 0
+
+    def get_global_pfl(self):
+        return self.lib_zynmixer.getGlobalPfl()
+
+    def set_global_xfader(self, val):
+        if not self.mixbus:
+            self.lib_zynmixer.setGlobalXFader(val)
+            zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                        chan=0, symbol="global_xfader", value=val, mixbus=self.mixbus)
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+
+    def get_global_xfader(self):
+        if not self.mixbus:
+            return self.lib_zynmixer.getGlobalXFader()
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+            return 0.0
+
+    def set_ab_mixgroup(self, channel, abmix):
+        if not self.mixbus:
+            self.lib_zynmixer.setABMixGroup(channel, abmix)
+            zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                        chan=channel, symbol="ab_mixgroup", value=abmix, mixbus=self.mixbus)
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+
+    def get_ab_mixgroup(self, channel):
+        if not self.mixbus:
+            return self.lib_zynmixer.getABMixGroup(channel)
+        else:
+            logging.warning("Function not implemented in MixBuses!")
+            return 0
+
     def set_phase(self, channel, phase):
         """
         Sets the phase reverse of a mixer strip
@@ -390,7 +570,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setPhase(channel, phase)
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="phase", value=phase, mixbus=self.mixbus)
 
     def get_phase(self, channel):
@@ -428,7 +608,7 @@ class ZynMixer():
 
     def set_record(self, channel, record):
         # State handled entirely by zctrl
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
             chan=channel, symbol="record", value=record, mixbus=self.mixbus)
 
     def set_send_mode(self, channel, send, mode):
@@ -448,7 +628,7 @@ class ZynMixer():
         if channel is None or 0 >= mode > 1:
             return
         self.lib_zynmixer.setSendMode(channel, send, mode)
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="send_mode", value=mode, mixbus=self.mixbus)
 
     def get_send_mode(self, channel, send):
@@ -487,7 +667,7 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setMono(channel, mono)
-        zynsigman.send(zynsigman.S_MIXER, SS_ZYNMIXER_SET_VALUE,
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="mono", value=mono, mixbus=self.mixbus)
 
     def get_mono(self, channel):
@@ -563,6 +743,8 @@ class ZynMixer():
         if channel is None:
             return
         self.lib_zynmixer.setMS(channel, enable)
+        zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
+                       chan=channel, symbol="ms", value=enable, mixbus=self.mixbus)
 
     def get_ms(self, channel):
         """
