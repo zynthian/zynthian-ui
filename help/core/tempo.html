@@ -1,0 +1,24 @@
+<html>
+ <head>
+  <link rel="stylesheet" href="../style.css">
+ </head>
+
+ <body class="help_ui">
+ <h1>Tempo View</h1>
+    <p>The tempo view provides control of zynthian's timebase used for sequencing, arpeggiators, etc.</p>
+    <p>The BPM control sets the internal tempo between the values of 10 and 420 BPM. Push and rotate to adjust in 0.1 BPM steps. This control is available if using internal clock.</p>
+    <p> If external clock is used, the BPM control changes to be a clock divider. By default it expects a 24 PPQN input which is what MIDI clock uses but may be adjusted to support other external clock rates in the range 1 to 48 PPQN. The internal clock runs at 1920 PPQN and uses a phase locked loop to derive this high resolution clock from the slow input clock. To use an external clock, select "MIDI Clock Source" for a MIDI input in the <a href="chain_midi_input.html">MIDI Input</a> view.</p>
+    <p>The Metronome Mode control configures the zynthian's metronome. It has these values:
+      <ul>
+         <li>OFF: Metronome is disabled.</li>
+         <li>AUTO: Metronome will sound when there is a sequence playing and stop at the end of the bar after the last sequence stops.</li>
+         <li>ON: Metronome plays continuously.</li>
+         <li>INTRO: Metronome plays until a sequence starts. You may use this as a count-in when you don't want or need the metronome to play during performance.</li>
+         <li>NO ACCENT: Metronome plays continually but with without an accent on the first beat of each bar. This acts more like a traditional metronome used purely for tempo and not timebase.</li>
+         <li>SILENT: Metronome runs but does not make any sound. This can be useful to cause the transport to run when there are no sequences running. Some plugins may benefit from this.</li>
+      </ul>
+      There is a control to adjust the metronome volume level.</p>
+    <p>There is a large display of the tempo which may be tapped to set the tempo. Similarly, the tempo button may be tapped to set tempo.</p>
+    <div class="note-block">Note: The metronome feeds the main chain, via its auxiliary mix feed which allows individual control of level, balance, etc. The global audio player shares this aux mix.</div>
+ </body>
+</html>

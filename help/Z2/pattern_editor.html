@@ -1,0 +1,79 @@
+<html>
+ <head>
+  <link rel="stylesheet" href="style.css">
+ </head>
+
+ <body class="help_ui">
+ <div class="knobs_action_container">
+  <div class="knob_action knob_action_1">
+   <div class="action rotate">---</div>
+   <div class="action short_press">CC editor</div>
+   <div class="action bold_press">CC editor</div>
+  </div>
+  <div class="knob_action knob_action_2">
+   <div class="action rotate">zoom in/out</div>
+   <div class="action short_press">zoom reset</div>
+   <div class="action bold_press">pattern length</div>
+  </div>
+  <div class="knob_action knob_action_3">
+   <div class="action rotate">vertical move</div>
+   <div class="action short_press">block select</div>
+   <div class="action bold_press">block select</div>
+  </div>
+  <div class="knob_action knob_action_4">
+   <div class="action rotate">horizontal move</div>
+   <div class="action short_press">add/remove note</div>
+   <div class="action bold_press">edit note</div>
+  </div>
+ </div>
+
+ <div class="left_container">
+  <h1>Pattern Note Editor</h1>
+  <p>The pattern note editor allows to add/remove notes in a pattern and modify the note parameters. The contextual menu (OPT) allows modifying all the pattern parameters.</p>
+  <p>The PLAY/STOP buttons can be used to play/stop the pattern. The REC button allows enabling live-recording to capture MIDI events in real-time.
+  <p>The ALT mode allows accessing special functionality like undo/redo, block operations, copy/paste patterns.</p>
+ </div>
+ <div class="full_container">
+  <h2>Basic Operation</h2>
+  <p><b>Rotate knobs 3 &amp; 4</b> to move the cursor vertical or horizontally. With ALT mode disabled, arrow buttons can be used for this too.</p>
+  <p><b>Short-push knob 4</b> to add/remove notes. <b>Bold-push knob 4</b> to edit note parameters. Alternately, SEL button can be used for this too.</p>
+  <p><b>Rotate knob 2</b> to adjust the zoom in and out. <b>Short-push knob 2</b> to reset zoom to the default value.</p>
+  <p><b>Short-push knob 3</b> to enter block selection. The block operation workflow is explained in detail in the section below.</p>
+  <p><b>Short-push OPT button</b> to open the pattern options menu that allows modifying all pattern parameters. To quickly change the pattern length you can <b>bold-push knob 2</b>.</p>
+  <p>Finally, <b>short-push knob 1</b> to swap the note &amp; CC editors.
+
+  <h2>Recording Patterns</h2>
+  <p><b>Push REC button</b> to enable MIDI recording. While record is armed, the REC button will light with red color.</p>
+  <h3>Step by Step Capture</h3>
+  <p>If the pattern is not playing (stopped), note events will be captured in the cursor position, moving the cursor to the next step. You can use the sustain pedal to advance step by step.
+  <h3>Live Capture</h3>
+  <p>If the pattern is playing, note and CC events are captured in real time. They are recorded at the exact time they are captured, without quantization. If desired, quantization can be applied  to replaying (see pattern options menu). While live capturing, history is saved on each pattern loop if new notes were captured.</p>
+
+  <h2>Undo/Redo</h2>
+  <p>In ALT mode, you can use the arrow keys to undo/redo:</p>
+  <ul>
+   <li><b>LEFT:</b> Undo last edit operation.</li>
+   <li><b>RIGHT:</b> Redo last undone operation.</li>
+   <li><b>DOWN:</b> Undo ALL.</li>
+   <li><b>UP:</b>Redo ALL.</li>
+  </ul>
+  <p>While record is armed (REC button lighting in red), bold-push BACK button to enter history navigation mode. Then you can rotate knob 4 to move along the history. Push BACK to exit.</p>
+  <p>Note that although the number of history steps is unlimited, history is not saved in the state and will be lost when loading the snapshot again.</p>
+
+  <h2>Note Parameters</h2>
+  <p></p>
+
+  <h2>Block Operations</h2>
+  <p></p>
+
+  <h2>Pattern Options</h2>
+  <p></p>
+
+  <h2>Pattern Copy/Paste</h2>
+  <p></p>
+
+ </div>
+
+ <div class="clear"></div>
+ </body>
+</html>

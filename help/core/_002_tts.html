@@ -1,0 +1,37 @@
+<html>
+ <head>
+  <link rel="stylesheet" href="../style.css">
+ </head>
+
+ <body class="help_ui">
+  <h1>ZynVoice Text-To-Speech</h1>
+  <p>Zynthian has a rich, text-to-speech user interface called, ZynVoice that allows full control using the hardware buttons and knobs with audible cues for guidance. Navigation and operation is assisted by spoken announcements and tones. ZynVoice uses an extra audio interface or soundcard to provide an audio output separate to the main output. This gives a clean audio for production with ZynVoice announcements feeding the user's personal monitoring.</p>
+  <h1>Getting Started</h1>
+  <p>Add an audio device for ZynVoice to use, for example: plug in a USB soundcard. This does not need to be an expensive, hi-fidelity device. A $2 device has been found to be sufficient.</p>
+  <p>
+   You should remember the following terms that are used throughout the help system:
+   <ul>
+   <li>Press: means to briefly press and release a button.</li>
+   <li>Bold press: means to press a button for about 1.5 seconds and then release.</li>
+   <li>Long press: means to press and hold a button for at least 2 seconds.</li>
+   </ul>
+  </p>
+  <p>The F4 button is assigned as the ZynVoice button. On a zynthian V5, this button is at the bottom right of the 20 button keypad. On a zynthian V4 it is at the right of the centre 4 buttons. By default, ZynVoice is disabled but it is very simple to enable with a long press of the ZynVoice button.  This action toggles ZynVoice between enabled and disabled. When you enable ZynVoice you should hear an announcement saying, ZynVoice enabled. Similarly when you disable ZynVoice you should hear an announcement saying, ZynVoice disabled.</p>
+  <p>When ZynVoice is enabled, you will hear announcements as you navigate the user interface and perform actions, for example: as you enter a view its name will be announced so that you have an indication of where you are in the navigation tree. When you move through lists, each list item is announced.</p>
+  <p>There is a short delay of about 0.2 seconds before each announcement. Announcements may be queued if necessary but are mostly interrupted by the most recent, for example: moving through a list may skip intermediate items.</p>
+  <p>The ZynVoice button may be used to stop the current announcements. If ZynVoice is silent, the ZynVoice button will trigger a context announcement. By default this is the name of the current view but may also include some context for that view, for example: it may tell you the highlighted entry in a list. A long press of the ZynVoice button will toggle ZynVoice enable.</p>
+  <p>As well as spoken announcements, ZynVoice will pulse a short tone every second whilst the user interface is busy, for example: when loading a snapshot. The end of the busy period is indicated with a longer, higher pitched tone.</p>
+  <p>ZynVoice can be configured from an entry in the admin menu. Configuration includes:
+   <ul>
+    <li>Enable ZynVoice</li>
+    <li>Voice name</li>
+    <li>Speed</li>
+    <li>Volume</li>
+    <li>Soundcard output</li>
+   </ul>
+  <p>Bold press the ALT button to access the help view. ZynVoice will start to read out the help information for the current view. Knob 3 assists the help reader. Pressing knob 3 will toggle pause, stopping playback or resuming from the start of the current sentence. Rotating knob 3 will select the previous or next sentence. Bold pressing knob 3  will announce the actions for the knobs in this view, including their rotation, press, and bold press actions. The Navigator button may be used to stop or restart from the beginning of the page. Press knob 4 to toggle hyperlink mode. Rotate knob 4 to select a link then press knob 4 to follow the link. Press back to exit link mode. The first link on each page is to an index of all available help pages. If there are no other links on the page, pressing knob 4 will immediately access the index.</p>
+  <p>Some views are lists of options with additional information available for each entry. By default, only the title of the list entry is announced. Pressing the ZynVoice button may read out this extra information. There may not be dedicated help pages for these views as they are fairly self-explanatory.</p>
+  <p>If an action requires confirmation, the confirmation message will be announced and the SELECT or BACK buttons can be used to confirm or cancel. On confirmation only, there will be a short tone.</p>
+  <div class="clear"></div>
+ </body>
+</html>

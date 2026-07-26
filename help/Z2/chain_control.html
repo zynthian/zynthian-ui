@@ -1,0 +1,94 @@
+<html>
+ <head>
+  <link rel="stylesheet" href="style.css">
+ </head>
+
+ <body class="help_ui">
+  <div class="knobs_action_container">
+   <div class="knob_action knob_action_1">
+    <div class="knob_title">param 1</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+   <div class="knob_action knob_action_2">
+    <div class="knob_title">param 2</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+   <div class="knob_action knob_action_3">
+    <div class="knob_title">param 3</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+   <div class="knob_action knob_action_4">
+    <div class="knob_title">param 4</div>
+    <div class="action rotate">value</div>
+    <div class="action short_press">midi learn</div>
+    <div class="action bold_press">options</div>
+   </div>
+  </div>
+
+  <div class="left_container">
+   <h1>Chain Control View</h1>
+   <div id="zynproc-info"></div>
+   <p>The chain control view provides access to the parameters of the processors in the active chain. You can:</p>
+   <ul>
+    <li>Modify the value of processor parameters by <b>rotating the knobs</b>.</li>
+    <li>MIDI learn parameters by <b>short pressing the knobs</b></li>
+    <li>Configure parameter control options by <b>bold pressing the knobs</b>.</li>
+   </ul>
+   <p>Processor parameters are grouped in pages with up to 4 parameters per page. Select pages
+   using the UP / DOWN buttons. The list contains the control pages for all processors in the chain.</p>
+   <p>To move faster across the pages, enter <a href="chain_config.html">select mode</a> with:
+   <ul>
+    <li><b>short press SELECT</b></li> or
+    <li><b>short press OPT</b></li>
+   </ul>
+   <p>Note that <b>select mode</b> is also known as the <b>chain config</b> view.</p>
+  </div>
+
+   <div class="full_container">
+   <h2>MIDI Learn</h2>
+   <p>You can bind any parameter to knobs, faders and CC-pads on your external MIDI controllers.
+   There are 2 different MIDI learn modes:</p>
+  <ul>
+   <li><b>Chain Learn:</b> Binding is only to the selected chain. You can
+   bind the same knob to one or several parameters in the same or different chains. Only the
+   selected chain will react to the MIDI CC message.</li>
+   <li><b>Global Learn:</b> The bind is global. You can bind the same knob
+   to one or several parameters in the same or different chains. All of them will react, no
+   matter the selected chain.</li>
+  </ul>
+  The MIDI learn procedure is:
+    <ul>
+    <li><b>short press</b> the knob associated with the parameter you want to learn. A green indication
+    <span style="color: #70FF70">??#??</span> will be displayed indicating the parameter is in <b>chain learning mode</b>.</li>
+    <li>if required, short press again to enter <b>global learning mode</b>. The indication will change to yellow:
+    <span style="color: yellow">??#??</span>.</li>
+    <li><b>move a knob/fader</b> or <b>tap a CC-pad</b> on your external MIDI controller. The binding is complete and the
+    indication now shows then MIDI channel and CC number in white.</li>
+   </ul>
+
+   <h2>Parameter control options</h2>
+   <p><b>Bold press any knob</b> to access the controller options for the associated parameter:</p>
+   <ul>
+    <li><b>Chain Controller:</b> When checked, the parameter is added to the chain controller pages,
+    at the beginning of the page list. This feature acts as a kind of "favorite parameters" for the chain.</li>
+    <li><b>X-Y touchpad:</b> When numeric parameters have been selected for X and Y axis, "Show Touchpad"
+    option is available and you can X-Y control both parameters at once using your finger "a la chaos-pad".</li>
+    <li><b>Absolute/Relative Mode:</b> Allows to configure incremental knobs (encoders).</li>
+    <li><b>CC Value Range:</b> Configure how MIDI CC values are mapped to the associated parameter.</li>
+    <li><b>Chain Learn:</b> Start Chain MIDI learn for the parameter.</li>
+    <li><b>Global Learn:</b> Start Global MIDI learn for the parameter.</li>
+    <li><b>Zynstep CC:</b> Choose the CC number used by the sequencer to automate the parameter.</li>
+    <li><b>Unlearn:</b> Unlearn the parameter.</li>
+    <li><b>Unlearn all controls:</b> Unlearn all parameters in the processor.</li>
+   </ul>
+  </div>
+
+  <div class="clear"></div>
+ </body>
+</html>
