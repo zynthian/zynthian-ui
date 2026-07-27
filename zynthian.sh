@@ -174,8 +174,12 @@ load_config_env
 #sleep 10
 #exit
 
+#fbenabled = "$(systemctl is-enabled first_boot)"
+#echo -e "Zynthian UI: STARTING...($fbenabled)" >> /root/first_boot.log
+
 if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
 	is_first_boot=1
+	echo -e "Zynthian UI: Detected first boot..." >> /root/first_boot.log
 else
 	is_first_boot=0
 fi
@@ -186,6 +190,7 @@ fi
 
 if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg" ]]; then
 	if [[ "$is_first_boot" == "1" ]]; then
+		echo -e "Zynthian UI: Regenerating splash images..." >> /root/first_boot.log
 		$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh >> /root/first_boot.log
 	else
 		$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
@@ -233,6 +238,9 @@ fi
 
 if [[ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]]; then
 	splash_zynthian_message "Building zyncore. Please wait..."
+	if [[ "$is_first_boot" == "1" ]]; then
+		echo -e "Zynthian UI: Rebuilding zyncoder library ..." >> /root/first_boot.log
+	fi
 	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
 
@@ -241,10 +249,13 @@ fi
 #------------------------------------------------------------------------------
 
 if [[ "$is_first_boot" == "1" ]]; then
-	echo "Running first boot..."
 	splash_zynthian_message "Configuring your zynthian. Time to relax before the waves..."
+	msg="Awaiting the first boot process to end..."
+	echo $msg
+	echo -e "Zynthian UI: $msg" >> /root/first_boot.log
 	sleep 1800
 	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply..."
+	echo -e "Zynthian UI: First boot process takes too long..." >> /root/first_boot.log
 	sleep 3600000
 	exit
 fi
