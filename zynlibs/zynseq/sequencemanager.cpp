@@ -239,11 +239,12 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                 case PLAYING: {
                     uint32_t clip_length = pSequence->getLength();
                     uint32_t nPos = pSequence->getPlayPosition() + 1;
-                    if (clip_length and nPos >= clip_length) {
+                    // On beat, test if clip reached end ...
+                    if (bBeat && clip_length && nPos >= clip_length) {
                         nPos = 0;
                         uint8_t nCount = pSequence->getPlayed() + 1;
                         uint8_t nRepeat = pSequence->getRepeat();
-                        // Looping or still don't reached number of repeats => Triggering repeat
+                        // Endless looping or still don't reached number of repeats => Triggering repeat
                         if (nRepeat == 255 || nCount < nRepeat ) {
                             pSequence->setPlayed(nCount);
                             pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}}));
