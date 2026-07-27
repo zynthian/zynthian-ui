@@ -658,39 +658,46 @@ class zynthian_engine_clippy(zynthian_engine):
                 case "mode":
                     self.set_mode(phrase, proc.midi_chan, zctrl.value)
                 case "crop_start":
-                    beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
                     zctrl_crop_end = proc.controllers_dict[f"crop_end {note}"]
                     if zctrl_crop_end.value - zctrl.value < zctrl.nudge_factor:
                         zctrl.value = zctrl_crop_end.value - zctrl.nudge_factor
                     if not proc.set_state_flag:
+                        beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
                         if beat_slice:
                             beats = round((zctrl_crop_end.value - zctrl.value) / zctrl.nudge_factor)
                             zctrl.value = zctrl_crop_end.value - beats * zctrl.nudge_factor
                             proc.controllers_dict[f"beats {note}"].set_value(beats)
-                        else:
-                            self.start_reload_timer(proc, phrase)
+                        self.start_reload_timer(proc, phrase)
                     self.monitors_dict["crop_start"] = zctrl.value
                 case "crop_end":
-                    beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
                     zctrl_crop_start = proc.controllers_dict[f"crop_start {note}"]
                     if zctrl.value - zctrl_crop_start.value < zctrl.nudge_factor:
                         zctrl.value = zctrl_crop_start.value + zctrl.nudge_factor
                     if not proc.set_state_flag:
+                        beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
                         if beat_slice:
                             beats = round((zctrl.value - zctrl_crop_start.value) / zctrl.nudge_factor)
                             zctrl.value = zctrl_crop_start.value + beats * zctrl.nudge_factor
                             proc.controllers_dict[f"beats {note}"].set_value(beats)
-                        else:
-                            self.start_reload_timer(proc, phrase)
+                        self.start_reload_timer(proc, phrase)
                     self.monitors_dict["crop_end"] = zctrl.value
                 case "beats":
-                    zctrl_warp = proc.controllers_dict[f"warp {note}"]
                     self.monitors_dict["beats"] = zctrl.value
+                    zctrl_warp = proc.controllers_dict[f"warp {note}"]
+                    beat_slice = proc.controllers_dict[f"beat_slice {note}"].value
+                    if not proc.set_state_flag and beat_slice:
+                        # Adjust crop end point to match new number of beats
+                        zctrl_crop_start = proc.controllers_dict[f"crop_start {note}"]
+                        zctrl_crop_end = proc.controllers_dict[f"crop_end {note}"]
+                        zctrl_crop_end.set_value(zctrl_crop_start.value + zctrl.value * zctrl_crop_end.nudge_factor)
+                        self.start_reload_timer(proc, phrase)
+                        return
                     if zctrl_warp.value == 0:
                         self.libseq.setSequenceLength(self.zynseq.scene, phrase, proc.midi_chan, zctrl.value * self.zynseq.PPQN)
                         self.libseq.updateSequenceInfo()
                     else:
                         self.start_reload_timer(proc, phrase)
+
                 case "gain":
                     try:
                         self.libclippy.setGain(proc.midi_chan - 16, phrase, ctypes.c_float(zctrl.value))
