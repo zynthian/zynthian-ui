@@ -354,42 +354,45 @@ class zynthian_tts:
     def _worker(self):
         count = 0
         while self._stop_event and not self._stop_event.is_set():
-            with self._cond:
-                while self.paused or self.line >= len(self._queue) and not self._stop_event.is_set():
-                    self._cond.wait(timeout=0.1)
+            if self.soundcard:
+                with self._cond:
+                    while self.paused or self.line >= len(self._queue) and not self._stop_event.is_set():
+                        self._cond.wait(timeout=0.1)
+                        with self._lock:
+                            self.playing = False
+                        if self.busy:
+                            count += 1
+                            if count > 20:
+                                count = 0
+                                self._do_beep((0.2, 440, 0.5))
+                    if self._stop_event.is_set():
+                        break
+
+                while not self.playing:
                     with self._lock:
+                        self.playing = True
+                    sleep(0.4) # Debounce to avoid rapid message interruption
+
+                with self._cond:
+                    if self.pending_beep:
+                        self._do_beep(self.pending_beep)
+                    try:
+                        text = self._queue[self.line]
+                        self.line += 1
+                    except:
+                        text = ""
                         self.playing = False
-                    if self.busy:
-                        count += 1
-                        if count > 20:
-                            count = 0
-                            self._do_beep((0.2, 440, 0.5))
-                if self._stop_event.is_set():
-                    break
 
-            while not self.playing:
-                with self._lock:
-                    self.playing = True
-                sleep(0.4) # Debounce to avoid rapid message interruption
-
-            with self._cond:
-                if self.pending_beep:
-                    self._do_beep(self.pending_beep)
                 try:
-                    text = self._queue[self.line]
-                    self.line += 1
-                except:
-                    text = ""
-                    self.playing = False
-
-            try:
-                with self._lock:
-                    self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard})
-                self._process.wait()
-            except Exception as e:
-                logging.error(e)
-            finally:
-                pass
+                    with self._lock:
+                        self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard})
+                    self._process.wait()
+                except Exception as e:
+                    logging.debug(e)
+                finally:
+                    pass
+            else:
+                sleep(0.6)
 
         if self.announce_disable:
             try:
@@ -397,7 +400,7 @@ class zynthian_tts:
                     self._process = subprocess.Popen(self._build_command("ZynVoice disabled"), env={"ALSA_CARD": self.soundcard})
                 self._process.wait()
             except Exception as e:
-                logging.error(e)
+                logging.debug(e)
 
     def set_volume(self, volume=None):
         """ Attempt to set the volume of the soundcard
