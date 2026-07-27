@@ -28,7 +28,6 @@ import re
 import copy
 import logging
 import traceback
-from time import sleep
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -86,11 +85,11 @@ class zynthian_processor:
         self.preset_info = None
         self.preset_subdir_info = None
         self.preset_bank_index = None
-        self.preset_ctrl_vals = {}
 
         self.preload_index = None
         self.preload_name = None
         self.preload_info = None
+        self.preload_state = None # State before preload
 
         self.controllers_dict = {}  # Map of zctrls indexed by symbol
         self.bypass_zctrl = None    # Bypass zctrl, if any
@@ -408,7 +407,7 @@ class zynthian_processor:
         self.preload_index = None
         self.preload_name = None
         self.preload_info = None
-        self.preset_ctrl_vals = {}
+        self.preload_state = None
 
         if set_engine:
             if set_engine_needed:
@@ -482,8 +481,8 @@ class zynthian_processor:
         if self.engine.nickname in ['PD', 'MD', 'SL']:
             return True
         if preset_index < len(self.preset_list):
-            for symbol, zctrl in self.controllers_dict.items():
-                self.preset_ctrl_vals[symbol] = zctrl.value
+            if self.preload_state is None:
+                self.preload_state = self.get_state()
             if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
                 self.preload_index = preset_index
                 self.preload_name = self.preset_list[preset_index][2]
@@ -497,22 +496,15 @@ class zynthian_processor:
     def restore_preset(self):
         """Restore preset after temporary preload"""
 
-        retval = False
-        if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info, self.preset_info):
-            if self.preset_bank_index is not None and self.bank_index != self.preset_bank_index:
-                self.set_bank(self.preset_bank_index, False)
+        if self.preload_state:
+            self.set_state(self.preload_state)
             self.preload_index = None
             self.preload_name = None
             self.preload_info = None
+            self.preload_state = None
             logging.info(f"Restore Preset: {self.preset_name} ({self.preset_index})")
-            self.engine.set_preset(self, self.preset_info)
-            retval = True
-        if self.preset_ctrl_vals:
-            sleep(0.2) # TODO: Clumsy wait for preset to load
-            for symbol, value in self.preset_ctrl_vals.items():
-                self.controllers_dict[symbol].set_value(value)
-            self.preset_ctrl_vals = {}
-        return retval
+            return True
+        return False
 
     def get_preset_name(self):
         """Get current preset name"""
