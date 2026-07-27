@@ -239,7 +239,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                 case PLAYING: {
                     uint32_t clip_length = pSequence->getLength();
                     uint32_t nPos = pSequence->getPlayPosition() + 1;
-                    if (bSync and clip_length and nPos >= clip_length) {
+                    if (clip_length and nPos >= clip_length) {
                         nPos = 0;
                         uint8_t nCount = pSequence->getPlayed() + 1;
                         uint8_t nRepeat = pSequence->getRepeat();
