@@ -199,7 +199,7 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
         processor.refresh_controllers()
 
     def remove_processor(self, processor):
-        # self.ls_unset_channel(processor)
+        self.ls_unset_channel(processor)
         super().remove_processor(processor)
 
     # ---------------------------------------------------------------------------
