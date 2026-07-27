@@ -110,7 +110,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
     def build_view(self):
         curproc = self.zyngui.get_current_processor()
-        if curproc.id < 0:
+        if curproc.id < -1:
             return False
         if self.processor != curproc:
             self.processor = curproc
