@@ -348,7 +348,7 @@ class zynthian_tts:
             # Send waveform to soundcard
             pcm.write(samples)
         except Exception as e:
-            logging.error(f"TTS failed to send tone to soundcard - {e}")
+            logging.warning(f"TTS failed to send tone to soundcard - {e}")
         self.pending_beep = None
 
     def _worker(self):
