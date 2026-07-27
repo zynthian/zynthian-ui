@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Main Menu Grid Class
 #
-# Copyright (C) 2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2025-2026 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -61,7 +61,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
             }, {
                 "title": "MIDI\nOutput",
                 "icon": "midi_output.png",
-                "action": self.zyngui.midi_in_config
+                "action": self.zyngui.midi_out_config
             }, {
                 "title": "Recorder",
                 "icon": "recorder.png",
