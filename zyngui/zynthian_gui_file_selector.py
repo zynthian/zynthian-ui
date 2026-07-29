@@ -40,7 +40,7 @@ from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 class zynthian_gui_file_selector(zynthian_gui_selector_info):
 
-    collections_dpath = zynthian_engine.my_data_dir + "/collections/"
+    collections_dpath = zynthian_engine.data_dir + "/collections/"
 
     fext2dirname = {
         "aidax": [["Neural Models"], "file_model.png"],
@@ -163,7 +163,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
  <head>
   <link rel="stylesheet" href="style_details.css">
  </head>
- <body>
+ <body class="help_ui">
  <div class="details_container">
   <img class="icon" src="{info['icon']}">
   <h1>{info['title']}</h1>
@@ -202,7 +202,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         for dirname in dirnames:
             self.root_dirs.append((f"User {dirname}", zynthian_engine.my_data_dir + "/files/" + dirname))
         # Collections
-        for de in os.scandir(zynthian_engine.my_data_dir + "/collections"):
+        for de in os.scandir(self.collections_dpath):
             if de.is_dir():
                 self.load_collection_info(de.name)
                 for dirname in dirnames:
