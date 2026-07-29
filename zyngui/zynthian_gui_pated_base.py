@@ -588,11 +588,12 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             options['Grid zoom'] = 'Grid zoom'
         if self.seq_info:
             name = self.zynseq.get_sequence_name(self.zynseq.scene, self.phrase, self.sequence)
-            options[f"Copy this ({name}) to clipboard#1"] = ('Copy pattern', 0)
+            options[f"Copy this ({name}) to clipboard #1"] = ('Copy pattern', 0)
+            options[f"Copy this ({name}) to clipboard #2"] = ('Copy pattern', 1)
             for i, paste in enumerate(self.clipboard):
-                if paste is not None and paste[2] != self.pattern:
-                    name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[0], paste[1])
-                    options[f"Paste {name} from clipboard#{i+1}"] = ('Paste pattern', i)
+                if paste is not None and paste[0] == "PAT" and paste[3] != self.pattern:
+                    name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[1], paste[2])
+                    options[f"Paste {name} from clipboard #{i + 1}"] = ('Paste pattern', i)
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
         options['Import from SMF'] = 'Import from SMF'

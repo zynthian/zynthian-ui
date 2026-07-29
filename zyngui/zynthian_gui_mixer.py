@@ -58,11 +58,6 @@ MICROPHONE_ICON = "\uf130"
 QUAVER_ICON = "\u266b"
 SLIDERS_ICON = "\uf1de"
 
-CHANNEL_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'
-                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Γ', 'Δ', 'Λ', 'Π', 'Σ', 'Ω']
-                 # 'Θ', 'Ξ', 'Φ', 'Ψ',
-
-
 class zynthian_gui_launcher_pad():
 
     def __init__(self, parent, canvas, x, y, width, height, chain, phrase):
@@ -237,7 +232,7 @@ class zynthian_gui_launcher_pad():
                     name = f"{self.phrase + 1}"
                 else:
                     # QUESTION: Is MIDI chan same as group? ANSWER: Only until arranger is reinstated. => Understood! ;-)
-                    name = f"{CHANNEL_CHARS[self.chain.midi_chan]}{self.phrase + 1}"
+                    name = f"{zynseq.CHANNEL_CHARS[self.chain.midi_chan]}{self.phrase + 1}"
 
 
             disabled = state_seq["repeat"] == 0
@@ -834,7 +829,7 @@ class zynthian_gui_mixer_strip():
                     strip_txt = f"⇦⇨"
                 elif self.chain.is_generator():
                     if self.chain.midi_chan is not None and 15 < self.chain.midi_chan < 32:
-                        strip_txt = f"{SPEAKER_ICON} {CHANNEL_CHARS[self.chain.midi_chan]}"
+                        strip_txt = f"{SPEAKER_ICON} {zynseq.CHANNEL_CHARS[self.chain.midi_chan]}"
                     else:
                         strip_txt = SPEAKER_ICON
                 elif self.chain.is_midi():

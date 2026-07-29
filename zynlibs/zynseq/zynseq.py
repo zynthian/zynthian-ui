@@ -107,6 +107,10 @@ SEQ_MAX_COLUMNS = 8
 LAUNCHER_COLS = 33          # Quantity of launcher columns (16 MIDI channels 16 Clippy + phrase launchers)
 PHRASE_CHANNEL = 32
 
+CHANNEL_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'
+                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Γ', 'Δ', 'Λ', 'Π', 'Σ', 'Ω']
+                 # 'Θ', 'Ξ', 'Φ', 'Ψ',
+
 PATTERN_PARAMS = [
     "step", # Step within pattern
     "duration", # Duration of event
@@ -350,13 +354,10 @@ class zynseq(zynthian_engine):
     # Get sequence name
     # Returns: Sequence name (maximum 16 characters)
     def get_sequence_name(self, scene, phrase, sequence):
-        if self.libseq:
-            name = self.libseq.getSequenceName(scene, phrase, sequence).decode("utf-8")
-            if not name:
-                name = f"{chr(ord('A') + phrase)}{sequence + 1}"
-            return name
-        else:
-            return f"{sequence}"
+        name = self.libseq.getSequenceName(scene, phrase, sequence).decode("utf-8")
+        if not name:
+            name = f"{CHANNEL_CHARS[sequence]}{phrase + 1}"
+        return name
 
     # -------------------------------------------------------------------
     # Phrase Management
