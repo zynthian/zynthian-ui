@@ -617,7 +617,7 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
         pPhrase->m_aChildSequences[chan] = pSequence;
         setFollowAction(scene, pSequence, FOLLOW_ACTION_RELATIVE, 0, 0, 0); // Loop
         if (m_bEnabled[chan])
-            pSequence->setRepeat(1);
+            pSequence->setRepeat(255);
     }
     // Extend loop if required
     for (uint8_t p = phrase; p < m_vScenes[m_nScene].size(); ++p) {
