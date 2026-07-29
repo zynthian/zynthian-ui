@@ -122,7 +122,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
             bg=zynthian_gui_config.color_bg)
         self.info_canvas.bind('<ButtonRelease-1>', self.cb_info_press)
         # Position at top of column containing selector
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=4, sticky="news")
 
         # Marker for category page
         # self.cat_marker_greyline = self.info_canvas.create_rectangle(0, 2, 0.25 * self.width, 4, fill=zynthian_gui_config.color_off)
@@ -165,7 +165,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
             anchor=tkinter.NW,
             justify=tkinter.CENTER,
             width=info_width,
-            text="⚈⚈⚈⚈⚈",
+            #text="⚈⚈⚈⚈⚈",
+            text="⚙️⚙️⚙️⚙️⚙️",
             font=(zynthian_gui_config.font_family, star_fs),
             fill=color_star_off,
             tags="stars")
@@ -224,7 +225,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         eng_info = self.get_info()
         quality_stars = "★" * eng_info["QUALITY"]
         self.info_canvas.itemconfigure(self.quality_stars_label, text=quality_stars)
-        complexity_stars = "⚈" * eng_info["COMPLEX"]
+        complexity_stars = "⚙️" * eng_info["COMPLEX"]
         self.info_canvas.itemconfigure(self.complexity_stars_label, text=complexity_stars)
         self.info_canvas.itemconfigure(self.description_label, text=eng_info["DESCR"])
 
@@ -247,7 +248,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
   <h1>{eng_info['NAME']}</h1>
   <div class="engine_path">{path}</div>
   <div class="quality">Quality: <span class="stars">{"★" * eng_info["QUALITY"]}</span></div>
-  <div class="complexity">Complexity: <span class="stars">{"⚈" * eng_info["COMPLEX"]}</span></div>
+  <div class="complexity">Complexity: <span class="stars">{"⚙️" * eng_info["COMPLEX"]}</span></div>
   <p class="description">{description}</p>
  </body>
 </html>
