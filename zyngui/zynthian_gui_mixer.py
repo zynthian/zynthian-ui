@@ -580,12 +580,12 @@ class zynthian_gui_mixer_strip():
                 self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, 0, self.dpm_width, self.balance_y, tags=dpm_tags, main=chain.chain_id==0)
                 dpm_xstate = tkinter.HIDDEN
             else:
-                self.dpm_bg = self.canvas.create_rectangle(self.dpm_scale_x0, self.dpm_y0, x + self.width , self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
+                self.dpm_bg = self.canvas.create_rectangle(self.dpm_a_x0, self.dpm_y0, x + self.width , self.dpm_y0 + self.dpm_length, width=0, fill=self.gui_mixer.fader_bg_color)
                 self.dpm_a = zynthian_gui_dpm(self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
                 self.dpm_b = zynthian_gui_dpm(self.canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length, tags=dpm_tags, main=chain.chain_id==0)
                 dpm_xstate = tkinter.NORMAL
 
-            self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_width, self.dpm_length), state=dpm_xstate)
+            self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_scale_width, self.dpm_length), state=dpm_xstate)
             if self.chain.chain_id == 0:
                 self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", parent.loop_info_width, self.dpm_length), state=dpm_xstate)
 
