@@ -241,7 +241,7 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
             exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
             for sd in glob.glob(preset_dpath + "/*"):
                 if os.path.isdir(sd):
-                    cmd = f"find '{sd}' -maxdepth 2 -type f -name '*.sfz'"
+                    cmd = f"find '{sd}' -maxdepth 1 -type f -name '*.sfz'"
                     output = check_output(cmd, shell=True).decode('utf8')
                     flist = list(filter(None, output.split('\n')))
                     for f in flist:
