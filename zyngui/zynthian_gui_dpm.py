@@ -24,8 +24,9 @@
 #
 # ******************************************************************************
 
-from tkinter import NORMAL, HIDDEN
+import logging
 from PIL import Image, ImageTk
+from tkinter import NORMAL, HIDDEN
 
 from zyngui.zynthian_gui_config import color_panel_bg
 
@@ -183,48 +184,40 @@ class zynthian_gui_dpm():
                 self.parent.itemconfig(self.bg_image, state=NORMAL)
                 self.parent.itemconfig(self.bg_mono, state=HIDDEN)
 
+        k_dpm = max(0.0, max(dpm, self.lowdB) / self.lowdB)
+        k_hold = max(0.0, max(hold, self.lowdB) / self.lowdB)
+
         if self.vertical:
-            y1 = int(self.y0 + self.height * max(dpm, self.lowdB) / self.lowdB)
+            y1 = int(self.y0 + self.height * k_dpm)
             self.parent.coords(self.overlay, (self.x0, self.y0, self.x1, y1))
-            y1 = int(self.y0 + self.height *
-                     max(hold, self.lowdB) / self.lowdB)
-            self.parent.coords(
-                self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
+            y1 = int(self.y0 + self.height * k_hold)
+            self.parent.coords(self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
             if y1 <= self.y_over:
                 self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
             elif y1 <= self.y_high:
                 self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
             elif y1 < self.y_low:
                 if self.mono:
-                    self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill=self.mono_color)
+                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_color)
                 else:
-                    self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill=self.low_hold_color)
+                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.low_hold_color)
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
         else:
-            x0 = int(self.width - self.width *
-                     max(dpm, self.lowdB) / self.lowdB)
+            x0 = int(self.width - self.width * k_dpm)
             self.parent.coords(self.overlay, (x0, self.y0, self.x1, self.y1))
-            x0 = int(self.width - self.width *
-                     max(hold, self.lowdB) / self.lowdB)
-            self.parent.coords(
-                self.hold, (x0, self.y0, x0 + self.hold_thickness, self.y1))
+            x0 = int(self.width - self.width * k_hold)
+            self.parent.coords(self.hold, (x0, self.y0, x0 + self.hold_thickness, self.y1))
             if x0 > self.x_over:
-                self.parent.itemconfig(
-                    self.hold, state=NORMAL, fill=self.over_hold_color)
+                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
             elif x0 > self.x_high:
-                self.parent.itemconfig(
-                    self.hold, state=NORMAL, fill=self.high_hold_color)
+                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
             elif x0 > self.x_low:
                 if self.mono:
-                    self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill=self.mono_hold_color)
+                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_hold_color)
                 else:
-                    self.parent.itemconfig(
-                        self.hold, state=NORMAL, fill=self.low_hold_color)
+                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.low_hold_color)
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
