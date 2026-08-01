@@ -284,6 +284,8 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
         // Step or phrase sequence
         else if (nPlayState != STOPPED && nPlayState != CHILD_PLAYING) {
             uint8_t nEventType = pSequence->clock(nTime, bSync, m_nTimeSig);
+            // Update PlayState variable value after processing clock
+            nPlayState = pSequence->getPlayState();
 
             if (nEventType & CLOCK_TRIG_MIDI) {
                 // A step event so iterate all step events starting on this tick
@@ -375,7 +377,6 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), 0, 1}}));
                 }
             }
-
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);
             continue;
         }
@@ -394,7 +395,6 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
         nResult |= (pSequence->getPlayState() & 0x3);
         ++nSequence;
     }
-
     return nResult;
 }
 
