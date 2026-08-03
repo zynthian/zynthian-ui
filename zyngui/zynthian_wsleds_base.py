@@ -55,7 +55,7 @@ class zynthian_wsleds_base:
         self.pulse_step = 0
         self.brightness = 1
 
-        self.wsled_state_enabled = False
+        self.wsled_state_enabled = True
         self.last_wsled_state = ""
 
         self.setup_colors()

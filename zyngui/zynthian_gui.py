@@ -274,7 +274,7 @@ class zynthian_gui:
     # ---------------------------------------------------------------------------
 
     def init_wsleds(self):
-        # Initialize physical LED controller (master)
+        # Initialize physical LED controller as master LED controller
         if zynthian_gui_config.check_wiring_layout(["V5"]):
             from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
             self.wsleds = zynthian_wsleds_v5(self)
@@ -290,15 +290,14 @@ class zynthian_gui:
         if zynthian_gui_config.touch_keypad:
             from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
             wsleds_v5touch = zynthian_wsleds_v5touch(self)
-            wsleds_v5touch.start()
             if self.wsleds:
+                wsleds_v5touch.disable_wsled_state()
+                wsleds_v5touch.start()
                 self.wsleds_v5touch = wsleds_v5touch
             else:
+                wsleds_v5touch.start()
                 self.wsleds = wsleds_v5touch
-
-        # Enable LED state tracking for the "master" LED controller
-        if self.wsleds:
-            self.wsleds.enable_wsled_state()
+                self.wsleds_v5touch = None
 
     # ---------------------------------------------------------------------------
     # Wiring Layout Init & Config
