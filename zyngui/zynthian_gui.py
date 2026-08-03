@@ -184,6 +184,7 @@ class zynthian_gui:
 
         # Init LEDs
         self.wsleds = None
+        self.wsleds_v5touch = None
         self.init_wsleds()
 
         # Init multitouch driver
@@ -273,11 +274,8 @@ class zynthian_gui:
     # ---------------------------------------------------------------------------
 
     def init_wsleds(self):
-        if zynthian_gui_config.touch_keypad:
-            from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
-            self.wsleds = zynthian_wsleds_v5touch(self)
-            self.wsleds.start()
-        elif zynthian_gui_config.check_wiring_layout(["V5"]):
+        # Initialize physical LED controller (master)
+        if zynthian_gui_config.check_wiring_layout(["V5"]):
             from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
             self.wsleds = zynthian_wsleds_v5(self)
             self.wsleds.start()
@@ -285,6 +283,22 @@ class zynthian_gui:
             from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
             self.wsleds = zynthian_wsleds_z2(self)
             self.wsleds.start()
+        else:
+            self.wsleds = None
+
+        # Initialize virtual touch keyboard LED controller
+        if zynthian_gui_config.touch_keypad:
+            from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
+            wsleds_v5touch = zynthian_wsleds_v5touch(self)
+            wsleds_v5touch.start()
+            if self.wsleds:
+                self.wsleds_v5touch = wsleds_v5touch
+            else:
+                self.wsleds = wsleds_v5touch
+
+        # Enable LED state tracking for the "master" LED controller
+        if self.wsleds:
+            self.wsleds.enable_wsled_state()
 
     # ---------------------------------------------------------------------------
     # Wiring Layout Init & Config
@@ -2631,6 +2645,8 @@ class zynthian_gui:
                 self.refresh_status()
                 if self.wsleds:
                     self.wsleds.update()
+                if self.wsleds_v5touch:
+                    self.wsleds_v5touch.update()
                 sleep(0.2)
 
     def refresh_status(self):
@@ -2825,6 +2841,8 @@ class zynthian_gui:
         # Light-off LEDs
         if self.wsleds:
             self.wsleds.end()
+        if self.wsleds_v5touch:
+            self.wsleds_v5touch.end()
 
         # Stop Multitouch driver
         self.multitouch.stop()

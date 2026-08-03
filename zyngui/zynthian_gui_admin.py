@@ -216,16 +216,15 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         else:
             self.list_data.append((self.toggle_preset_preload, 0, "\u2610 Preset Preload",
                                    ["Do not pre-load preset for while browsing the list", "settings.png"]))
-        if not zynthian_gui_config.wiring_layout.startswith("V5"):
-            match zynthian_gui_config.touch_navigation:
-                case "v5_keypad_left":
-                    touch_navigation_option = "V5 keypad at Left"
-                case "v5_keypad_right":
-                    touch_navigation_option = "V5 keypad at right"
-                case _:
-                    touch_navigation_option = "None"
-            self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}",
-                                   ["Enable touch-screen V5 buttons.", "settings.png"]))
+        #if not zynthian_gui_config.wiring_layout.startswith("V5"):
+        match zynthian_gui_config.touch_navigation:
+            case "v5_keypad_left":
+                touch_navigation_option = "V5 keypad at Left"
+            case "v5_keypad_right":
+                touch_navigation_option = "V5 keypad at right"
+            case _:
+                touch_navigation_option = "None"
+        self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}", ["Enable touch-screen V5 buttons.", "settings.png"]))
         #if self.zyngui.capture_log_fname:
         #    self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Capture Workflow", ["End workflow capture session", "capture.png"]))
         #else:

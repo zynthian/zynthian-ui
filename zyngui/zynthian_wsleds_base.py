@@ -53,8 +53,11 @@ class zynthian_wsleds_base:
         self.blink_count = 0
         self.blink_state = False
         self.pulse_step = 0
-        self.last_wsled_state = ""
         self.brightness = 1
+
+        self.wsled_state_enabled = False
+        self.last_wsled_state = ""
+
         self.setup_colors()
 
     def setup_colors(self):
@@ -194,7 +197,7 @@ class zynthian_wsleds_base:
                 logging.exception(traceback.format_exc())
             self.wsleds.show()
 
-            if self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state():
+            if self.wsled_state_enabled and (self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state()):
                 try:
                     wsled_state = []
                     for i in range(self.num_leds):
@@ -215,6 +218,13 @@ class zynthian_wsleds_base:
         self.blink_count += 1
 
     def reset_last_state(self):
+        self.last_wsled_state = ""
+
+    def enable_wsled_state(self):
+        self.wsled_state_enabled = True
+
+    def disable_wsled_state(self):
+        self.wsled_state_enabled = False
         self.last_wsled_state = ""
 
     def update_wsleds(self):
