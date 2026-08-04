@@ -29,26 +29,19 @@
 #include <stdlib.h>  //provides exit
 #include <string.h>  // provides memset
 #include <unistd.h>  // provides sleep
+#include <stdatomic.h> // provides atomic (thread safe) access to variables
 
 #include "mixer.h"
-
-#include "tinyosc.h" // provides OSC
-#include <arpa/inet.h> // provides inet_pton
 
 // #define DEBUG
 
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 99
 #endif
-#define MAX_OSC_CLIENTS 5
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-char g_oscbuffer[1024];    // Used to send OSC messages
-char g_oscpath[64];        //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/channel/xx/fader
-int g_oscfd = -1;          // File descriptor for OSC socket
-int g_bOsc  = 0;           // True if OSC client subscribed
 pthread_t g_eventThread;   // ID of low priority event thread
-int g_sendEvents = 1;      // Set to 0 to exit event thread
+int g_nRunning = 1;        // Set to 0 to exit event thread
 uint8_t g_sendCount = 0;   // Quantity of effect sends
 uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
@@ -70,40 +63,43 @@ jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
 jack_port_t* g_pflOutPortA;// Pointer to PFL output port A
 jack_port_t* g_pflOutPortB;// Pointer to PFL output port B
 
+_Atomic jack_nframes_t g_nCleanFrame = 0; // frames since jack epockh to trigger channel cleanup (0 for none)
+_Atomic jack_nframes_t g_nNextFrame = 0; // Frames since jack epoch
+
 // Structure describing a channel strip
 struct channel_strip {
     jack_port_t* inPortA;  // Jack input port A
     jack_port_t* inPortB;  // Jack input port B
     jack_port_t* outPortA; // Jack output port A
     jack_port_t* outPortB; // Jack output port B
-    float gain;            // Current gain 0..10
-    float level;           // Current fader level 0..1
-    float reqlevel;        // Requested fader level 0..1
-    float balance;         // Current balance -1..+1
-    float reqbalance;      // Requested balance -1..+1
-    float send[MAX_CHANNELS]; // Current fx send levels
-    float dpmA;            // Current peak programme A-leg
-    float dpmB;            // Current peak programme B-leg
-    float holdA;           // Current peak hold level A-leg
-    float holdB;           // Current peak hold level B-leg
-    float dpmAlast;        // Last peak programme A-leg
-    float dpmBlast;        // Last peak programme B-leg
-    float holdAlast;       // Last peak hold level A-leg
-    float holdBlast;       // Last peak hold level B-leg
-    uint8_t mute;          // 1 if muted
-    uint8_t mono;          // 1 if mono
-    uint8_t solo;          // 1 if solo
-    uint8_t ms;            // 1 if MS decoding
-    uint8_t phase;         // 1 if channel B phase reversed
-    uint8_t pfl;           // 1 if PFL
+    _Atomic float gain;            // Current gain 0..10
+    _Atomic float level;           // Current fader level 0..1
+    _Atomic float reqlevel;        // Requested fader level 0..1
+    _Atomic float balance;         // Current balance -1..+1
+    _Atomic float reqbalance;      // Requested balance -1..+1
+    _Atomic float send[MAX_CHANNELS]; // Current fx send levels
+    _Atomic float dpmA;            // Current peak programme A-leg
+    _Atomic float dpmB;            // Current peak programme B-leg
+    _Atomic float holdA;           // Current peak hold level A-leg
+    _Atomic float holdB;           // Current peak hold level B-leg
+    _Atomic float dpmAlast;        // Last peak programme A-leg
+    _Atomic float dpmBlast;        // Last peak programme B-leg
+    _Atomic float holdAlast;       // Last peak hold level A-leg
+    _Atomic float holdBlast;       // Last peak hold level B-leg
+    _Atomic uint8_t mute;          // 1 if muted
+    _Atomic uint8_t mono;          // 1 if mono
+    _Atomic uint8_t solo;          // 1 if solo
+    _Atomic uint8_t ms;            // 1 if MS decoding
+    _Atomic uint8_t phase;         // 1 if channel B phase reversed
+    _Atomic uint8_t pfl;           // 1 if PFL
 #ifndef MIXBUS
-    uint8_t ABMixGroup;    // AB mix-group: 0 => None, 1 => A, 2 => B
+    _Atomic uint8_t ABMixGroup;    // AB mix-group: 0 => None, 1 => A, 2 => B
 #endif
-    uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
-    uint8_t normalise;     // 1 if channel normalised to main output
-    uint8_t inRouted;      // 1 if source routed to channel
-    uint8_t outRouted;     // 1 if output routed
-    uint8_t enable_dpm;    // 1 to enable calculation of peak meter
+    _Atomic uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
+    _Atomic uint8_t normalise;     // 1 if channel normalised to main output
+    _Atomic uint8_t inRouted;      // 1 if source routed to channel
+    _Atomic uint8_t outRouted;     // 1 if output routed
+    _Atomic uint8_t enable_dpm;    // 1 to enable calculation of peak meter
 };
 
 struct fx_send {
@@ -111,20 +107,20 @@ struct fx_send {
     jack_port_t* outPortB; // Jack output port B
     jack_default_audio_sample_t* bufferA; // Holds audio samples
     jack_default_audio_sample_t* bufferB; // Holds audio samples
-    float level;           // Current fader level 0..1
+    _Atomic float level;           // Current fader level 0..1
 };
 
 jack_client_t* g_jackClient;
-struct channel_strip* g_channelStrips[MAX_CHANNELS];
+_Atomic(struct channel_strip*) g_channelStrips[MAX_CHANNELS];
+_Atomic(struct channel_strip*) g_channelStripsRemoved[MAX_CHANNELS]; // Pointers to removed channel strips
 #ifndef MIXBUS
-struct fx_send* g_fxSends[MAX_CHANNELS];
+_Atomic(struct fx_send*) g_fxSends[MAX_CHANNELS];
+_Atomic(struct fx_send*) g_fxSendsRemoved[MAX_CHANNELS]; // Pointers to removed sends
 #endif
-unsigned int g_nDampingCount  = 0;
-unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
-unsigned int g_nHoldCount     = 0;
-float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
-struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
-char g_oscdpm[20];
+_Atomic unsigned int g_nDampingCount  = 0;
+_Atomic unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
+_Atomic unsigned int g_nHoldCount     = 0;
+_Atomic float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
 jack_nframes_t g_samplerate                     = 48000; // Jack samplerate used to calculate damping factor
 jack_nframes_t g_buffersize                     = 1024;  // Jack buffer size used to calculate damping factor
 jack_default_audio_sample_t* g_soloBufferA    = NULL;  // Ponter to buffer used for solo bus
@@ -146,55 +142,40 @@ static float convertToDBFS(float raw) {
     return fValue;
 }
 
-void sendOscFloat(const char* path, float value) {
-    if (g_oscfd == -1)
-        return;
-    for (int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if (g_oscClient[i].sin_addr.s_addr == 0)
-            continue;
-        int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "f", value);
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr*)&g_oscClient[i], sizeof(g_oscClient[i]));
-    }
+void _doRemoveStrip(uint8_t chan) {
+    struct channel_strip* pstrip = g_channelStripsRemoved[chan];
+    jack_port_unregister(g_jackClient, pstrip->inPortA);
+    jack_port_unregister(g_jackClient, pstrip->inPortB);
+    jack_port_unregister(g_jackClient, pstrip->outPortA);
+    jack_port_unregister(g_jackClient, pstrip->outPortB);
+    free(pstrip);
+    g_channelStripsRemoved[chan] = NULL;
 }
 
-void sendOscInt(const char* path, int value) {
-    if (g_oscfd == -1)
-        return;
-    for (int i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if (g_oscClient[i].sin_addr.s_addr == 0)
-            continue;
-        int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "i", value);
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr*)&g_oscClient[i], sizeof(g_oscClient[i]));
-    }
+#ifndef MIXBUS
+void _doRemoveSend(uint8_t send) {
+    struct fx_send* pstrip = g_fxSendsRemoved[send];
+    jack_port_unregister(g_jackClient, pstrip->outPortA);
+    jack_port_unregister(g_jackClient, pstrip->outPortB);
+    free(pstrip);
+    g_channelStripsRemoved[send] = NULL;
 }
+#endif
 
 void* eventThreadFn(void* param) {
-    while (g_sendEvents) {
-        if (g_bOsc) {
-            for (unsigned int chan = 0; chan < MAX_CHANNELS; ++chan) {
-                if (g_channelStrips[chan]) {
-                    if ((int)(100000 * g_channelStrips[chan]->dpmAlast) != (int)(100000 * g_channelStrips[chan]->dpmA)) {
-                        sprintf(g_oscdpm, "/mixer/channel/%d/dpma", chan);
-                        sendOscFloat(g_oscdpm, convertToDBFS(g_channelStrips[chan]->dpmA));
-                        g_channelStrips[chan]->dpmAlast = g_channelStrips[chan]->dpmA;
-                    }
-                    if ((int)(100000 * g_channelStrips[chan]->dpmBlast) != (int)(100000 * g_channelStrips[chan]->dpmB)) {
-                        sprintf(g_oscdpm, "/mixer/channel/%d/dpmb", chan);
-                        sendOscFloat(g_oscdpm, convertToDBFS(g_channelStrips[chan]->dpmB));
-                        g_channelStrips[chan]->dpmBlast = g_channelStrips[chan]->dpmB;
-                    }
-                    if ((int)(100000 * g_channelStrips[chan]->holdAlast) != (int)(100000 * g_channelStrips[chan]->holdA)) {
-                        sprintf(g_oscdpm, "/mixer/channel/%d/holda", chan);
-                        sendOscFloat(g_oscdpm, convertToDBFS(g_channelStrips[chan]->holdA));
-                        g_channelStrips[chan]->holdAlast = g_channelStrips[chan]->holdA;
-                    }
-                    if ((int)(100000 * g_channelStrips[chan]->holdBlast) != (int)(100000 * g_channelStrips[chan]->holdB)) {
-                        sprintf(g_oscdpm, "/mixer/channel/%d/holdb", chan);
-                        sendOscFloat(g_oscdpm, convertToDBFS(g_channelStrips[chan]->holdB));
-                        g_channelStrips[chan]->holdBlast = g_channelStrips[chan]->holdB;
-                    }
-                }
+    while (g_nRunning) {
+        if (g_nCleanFrame && g_nNextFrame > g_nCleanFrame) {
+            pthread_mutex_lock(&mutex);
+            for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
+                if (g_channelStripsRemoved[chan])
+                    _doRemoveStrip(chan);
+#ifndef MIXBUS
+                if (g_fxSendsRemoved[chan])
+                    _doRemoveSend(chan);
+#endif
             }
+            pthread_mutex_unlock(&mutex);
+            g_nCleanFrame = 0;
         }
         usleep(10000);
     }
@@ -204,8 +185,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     jack_default_audio_sample_t *pPflInA, *pPflInB, *pPflOutA, *pPflOutB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
     unsigned int frame;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM, fpreFaderSampleA, fpreFaderSampleB;
-
-    pthread_mutex_lock(&mutex);
 
 /*  Solo / PFL
     The chain mixer has a pair of buffers (A/B) that are cleared at start of period, then populated with samples of any inputs that are solo.
@@ -261,7 +240,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     // Process each channel in reverse order (so that main mixbus is last)
     uint8_t chan = g_lastStrip;
     while (chan--) {
-        struct channel_strip* strip = g_channelStrips[chan];
+        struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_acquire);
         if (strip == NULL)
             continue;
 
@@ -458,8 +437,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             }
             if (g_nDampingCount == 0) {
                 // Only update damping release each g_nDampingCount cycles
-                strip->dpmA *= g_fDpmDecay;
-                strip->dpmB *= g_fDpmDecay;
+                strip->dpmA = g_fDpmDecay * strip->dpmA;
+                strip->dpmB = g_fDpmDecay * strip->dpmB;
             }
         } else {
             if (strip->enable_dpm) {
@@ -492,13 +471,13 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     else
         --g_nHoldCount;
 
-    pthread_mutex_unlock(&mutex);
+    ++g_nNextFrame;
     return 0;
 }
 
 void print_dpm_info(uint8_t chan) {
     // Debug helper to print current DPM state
-    struct channel_strip* strip = g_channelStrips[chan];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_acquire);
     if (strip)
         fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\nDamping period: %u\n",
             strip->dpmA,
@@ -512,20 +491,19 @@ void print_dpm_info(uint8_t chan) {
 }
 
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
-    pthread_mutex_lock(&mutex);
     for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
-        if (g_channelStrips[chan] == NULL)
+        struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_acquire);
+        if (strip == NULL)
             continue;
-        if (jack_port_connected(g_channelStrips[chan]->inPortA) > 0 || (jack_port_connected(g_channelStrips[chan]->inPortB) > 0))
-            g_channelStrips[chan]->inRouted = 1;
+        if (jack_port_connected(strip->inPortA) > 0 || (jack_port_connected(strip->inPortB) > 0))
+            strip->inRouted = 1;
         else
-            g_channelStrips[chan]->inRouted = 0;
-        if (jack_port_connected(g_channelStrips[chan]->outPortA) > 0 || (jack_port_connected(g_channelStrips[chan]->outPortB) > 0))
-            g_channelStrips[chan]->outRouted = 1;
+            strip->inRouted = 0;
+        if (jack_port_connected(strip->outPortA) > 0 || (jack_port_connected(strip->outPortB) > 0))
+            strip->outRouted = 1;
         else
-            g_channelStrips[chan]->outRouted = 0;
+            strip->outRouted = 0;
     }
-    pthread_mutex_unlock(&mutex);
 }
 
 int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
@@ -541,7 +519,6 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         return 0;
     g_buffersize     = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
-    pthread_mutex_lock(&mutex);
     free(g_soloBufferA);
     free(g_soloBufferB);
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -560,25 +537,17 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         }
     }
 #endif
-    pthread_mutex_unlock(&mutex);
     return 0;
 }
 
 int init() {
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         g_channelStrips[chan] = NULL;
+        g_channelStripsRemoved[chan] = NULL;
 #ifndef MIXBUS
         g_fxSends[chan] = NULL;
+        g_fxSendsRemoved[chan] = NULL;
 #endif
-    }
-
-    // Initialsize OSC
-    g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
-    for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
-        g_oscClient[i].sin_family      = AF_INET;
-        g_oscClient[i].sin_port        = htons(1370);
-        g_oscClient[i].sin_addr.s_addr = 0;
     }
 
     // Register with Jack server
@@ -696,7 +665,7 @@ int init() {
 }
 
 void end() {
-    g_sendEvents = 0;
+    g_nRunning = 0;
     void* status;
     pthread_join(g_eventThread, &status);
 
@@ -719,8 +688,10 @@ void end() {
 #endif
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         free(g_channelStrips[chan]);
+        free(g_channelStripsRemoved[chan]);
 #ifndef MIXBUS
         free(g_fxSends[chan]);
+        free(g_fxSendsRemoved[chan]);
 #endif
     }
     fprintf(stderr, "zynmixer ended\n");
@@ -730,8 +701,6 @@ void setGain(uint8_t channel, float gain) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || gain < 0.0f)
         return;
     g_channelStrips[channel]->gain = gain;
-    sprintf(g_oscpath, "/mixer/channel/%d/gain", channel);
-    sendOscFloat(g_oscpath, gain);
 }
 
 float getGain(uint8_t channel) {
@@ -744,8 +713,6 @@ void setLevel(uint8_t channel, float level) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
     g_channelStrips[channel]->reqlevel = level;
-    sprintf(g_oscpath, "/mixer/channel/%d/fader", channel);
-    sendOscFloat(g_oscpath, level);
 }
 
 float getLevel(uint8_t channel) {
@@ -760,8 +727,6 @@ void setBalance(uint8_t channel, float balance) {
     if (fabs(balance) > 1)
         return;
     g_channelStrips[channel]->reqbalance = balance;
-    sprintf(g_oscpath, "/mixer/channel/%d/balance", channel);
-    sendOscFloat(g_oscpath, balance);
 }
 
 float getBalance(uint8_t channel) {
@@ -774,8 +739,6 @@ void setMute(uint8_t channel, uint8_t mute) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
     g_channelStrips[channel]->mute = mute;
-    sprintf(g_oscpath, "/mixer/channel/%d/mute", channel);
-    sendOscInt(g_oscpath, mute);
 }
 
 uint8_t getMute(uint8_t channel) {
@@ -806,8 +769,6 @@ void setSolo(uint8_t channel, uint8_t solo) {
         ++g_solo;
     else
         --g_solo;
-    sprintf(g_oscpath, "/mixer/channel/%d/solo", channel);
-    sendOscInt(g_oscpath, solo);
 }
 
 uint8_t getSolo(uint8_t channel) {
@@ -850,8 +811,6 @@ void setPfl(uint8_t channel, uint8_t pfl) {
         ++g_pfl;
     else
         --g_pfl;
-    sprintf(g_oscpath, "/mixer/channel/%d/pfl", channel);
-    sendOscInt(g_oscpath, pfl);
 }
 
 uint8_t getPfl(uint8_t channel) {
@@ -930,8 +889,6 @@ void setPhase(uint8_t channel, uint8_t phase) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
     g_channelStrips[channel]->phase = phase;
-    sprintf(g_oscpath, "/mixer/channel/%d/phase", channel);
-    sendOscInt(g_oscpath, phase);
 }
 
 uint8_t getPhase(uint8_t channel) {
@@ -944,8 +901,6 @@ void setSendMode(uint8_t channel, uint8_t send, uint8_t mode) {
     if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS || g_channelStrips[channel] == NULL || mode > 1)
         return;
     g_channelStrips[channel]->sendMode[send] = mode;
-    sprintf(g_oscpath, "/mixer/channel/%d/sendmode_%d", channel, send);
-    sendOscInt(g_oscpath, mode);
 }
 
 uint8_t getSendMode(uint8_t channel, uint8_t send) {
@@ -967,8 +922,6 @@ void setSend(uint8_t channel, uint8_t send, float level) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || send >= MAX_CHANNELS)
         return;
     g_channelStrips[channel]->send[send] = level;
-    sprintf(g_oscpath, "/mixer/channel/%d/send_%d", channel, send);
-    sendOscFloat(g_oscpath, level);
 }
 
 float getSend(uint8_t channel, uint8_t send) {
@@ -985,8 +938,6 @@ void setNormalise(uint8_t channel, uint8_t enable) {
     if (channel == 0 || channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
     g_channelStrips[channel]->normalise = enable;
-    sprintf(g_oscpath, "/mixer/channel/%d/normalise", channel);
-    sendOscInt(g_oscpath, enable);
 }
 
 uint8_t getNormalise(uint8_t channel) {
@@ -1003,8 +954,6 @@ void setMono(uint8_t channel, uint8_t mono) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
     g_channelStrips[channel]->mono = (mono != 0);
-    sprintf(g_oscpath, "/mixer/channel/%d/mono", channel);
-    sendOscInt(g_oscpath, mono);
 }
 
 uint8_t getMono(uint8_t channel) {
@@ -1026,8 +975,6 @@ void setMS(uint8_t channel, uint8_t enable) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
     g_channelStrips[channel]->ms = enable != 0;
-    sprintf(g_oscpath, "/mixer/channel/%d/ms", channel);
-    sendOscInt(g_oscpath, enable);
 }
 
 uint8_t getMS(uint8_t channel) {
@@ -1116,7 +1063,7 @@ void enableDpm(uint8_t enable) {
 int8_t addStrip() {
     uint8_t chan;
     for (chan = 0; chan < MAX_CHANNELS; ++chan) {
-        if (g_channelStrips[chan])
+        if (g_channelStrips[chan] || g_channelStripsRemoved[chan])
             continue;
         struct channel_strip* strip = malloc(sizeof(struct channel_strip));
         if (strip == NULL) {
@@ -1182,9 +1129,7 @@ int8_t addStrip() {
         strip->dpmBlast  = 100.0f;
         strip->holdAlast = 100.0f;
         strip->holdBlast = 100.0f;
-        pthread_mutex_lock(&mutex);
-        g_channelStrips[chan] = strip;
-        pthread_mutex_unlock(&mutex);
+        atomic_store(&g_channelStrips[chan], strip);
 
         if (chan >= g_lastStrip)
             g_lastStrip = chan + 1;
@@ -1202,15 +1147,11 @@ int8_t removeStrip(uint8_t chan) {
 #endif
     if (chan >= MAX_CHANNELS || g_channelStrips[chan] == NULL)
         return -1;
-    struct channel_strip* pstrip = g_channelStrips[chan];
     pthread_mutex_lock(&mutex);
-    g_channelStrips[chan] = NULL;
+    g_channelStripsRemoved[chan] = atomic_exchange(&g_channelStrips[chan], NULL);
+    g_nCleanFrame = g_nNextFrame;
     pthread_mutex_unlock(&mutex);
-    jack_port_unregister(g_jackClient, pstrip->inPortA);
-    jack_port_unregister(g_jackClient, pstrip->inPortB);
-    jack_port_unregister(g_jackClient, pstrip->outPortA);
-    jack_port_unregister(g_jackClient, pstrip->outPortB);
-    free(pstrip);
+
     for (uint8_t g_lastStrip = MAX_CHANNELS - 1; g_lastStrip > 0; --g_lastStrip) {
         if (g_channelStrips[g_lastStrip])
             break;
@@ -1223,7 +1164,7 @@ int8_t addSend() {
     fprintf(stderr, "Effects sends not implemented in mixbus\n");
 #else
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
-        if (g_fxSends[send] == NULL) {
+        if (g_fxSends[send] == NULL && g_fxSendsRemoved[send] == NULL) {
             struct fx_send* psend = malloc(sizeof(struct fx_send));
             if (!psend) {
                 fprintf(stderr, "Failed to allocated memory for effect send %d\n", send);
@@ -1270,14 +1211,12 @@ uint8_t removeSend(uint8_t send) {
     send -= 2; // We expose sends at 2-based so need to decrement to access array
     if (send >= MAX_CHANNELS || g_fxSends[send] == NULL)
         return 1;
-    struct fx_send* pstrip = g_fxSends[send];
     pthread_mutex_lock(&mutex);
-    g_fxSends[send] = NULL;
-    --g_sendCount;
+    g_fxSendsRemoved[send] = atomic_exchange(&g_fxSends[send], NULL);
+    g_nCleanFrame = g_nNextFrame;
     pthread_mutex_unlock(&mutex);
-    jack_port_unregister(g_jackClient, pstrip->outPortA);
-    jack_port_unregister(g_jackClient, pstrip->outPortB);
-    free(pstrip);
+    --g_sendCount;
+
     for (g_lastSend = MAX_CHANNELS - 1; g_lastSend > 0; --g_lastSend) {
         if (g_fxSends[g_lastSend])
             break;
@@ -1285,7 +1224,6 @@ uint8_t removeSend(uint8_t send) {
     return 0;
 #endif
 }
-
 
 uint8_t getSendCount() {
     return g_sendCount;
@@ -1295,54 +1233,3 @@ uint8_t getMaxChannels() { return MAX_CHANNELS; }
 
 uint8_t getLastChannel() { return g_lastStrip; }
 
-int addOscClient(const char* client) {
-    for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if (g_oscClient[i].sin_addr.s_addr != 0)
-            continue;
-        if (inet_pton(AF_INET, client, &(g_oscClient[i].sin_addr)) != 1) {
-            g_oscClient[i].sin_addr.s_addr = 0;
-            fprintf(stderr, "libzynmixer: Failed to register client %s\n", client);
-            return -1;
-        }
-        fprintf(stderr, "libzynmixer: Added OSC client %d: %s\n", i, client);
-        for (int chan = 0; chan < MAX_CHANNELS; ++chan) {
-            setBalance(chan, getBalance(chan));
-            setGain(chan, getGain(chan));
-            setLevel(chan, getLevel(chan));
-            setMono(chan, getMono(chan));
-            setMute(chan, getMute(chan));
-            setPhase(chan, getPhase(chan));
-#ifndef MIXBUS
-            for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
-                if (g_fxSends[send]) {
-                    setSend(chan, send, getSend(chan, send));
-                    setSendMode(chan, send, getSendMode(chan, send));
-                }
-            }
-#endif
-            g_channelStrips[chan]->dpmAlast  = 100.0f;
-            g_channelStrips[chan]->dpmBlast  = 100.0f;
-            g_channelStrips[chan]->holdAlast = 100.0f;
-            g_channelStrips[chan]->holdBlast = 100.0f;
-        }
-        g_bOsc = 1;
-        return i;
-    }
-    fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
-    return -1;
-}
-
-void removeOscClient(const char* client) {
-    char pClient[sizeof(struct in_addr)];
-    if (inet_pton(AF_INET, client, pClient) != 1)
-        return;
-    g_bOsc = 0;
-    for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if (memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0) {
-            g_oscClient[i].sin_addr.s_addr = 0;
-            fprintf(stderr, "libzynmixer: Removed OSC client %d: %s\n", i, client);
-        }
-        if (g_oscClient[i].sin_addr.s_addr != 0)
-            g_bOsc = 1;
-    }
-}
