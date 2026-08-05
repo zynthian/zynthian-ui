@@ -233,8 +233,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
         fxSend[send] = g_fxSends[send];
         if (fxSend[send]) {
-            fxSend[send]->bufferA = jack_port_get_buffer(fxSend[send]->outPortA, g_buffersize);
-            fxSend[send]->bufferB = jack_port_get_buffer(fxSend[send]->outPortB, g_buffersize);
+            fxSend[send]->bufferA = jack_port_get_buffer(fxSend[send]->outPortA, frames);
+            fxSend[send]->bufferB = jack_port_get_buffer(fxSend[send]->outPortB, frames);
             memset(fxSend[send]->bufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
             memset(fxSend[send]->bufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
         }
@@ -244,7 +244,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     // Process each channel in reverse order (so that main mixbus is last)
     uint8_t chan = g_lastStrip;
     while (chan--) {
-        struct channel_strip* strip = g_channelStrips[chan];
+        struct channel_strip* strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_relaxed);
         if (strip == NULL)
             continue;
         // Use local vars to reduce expensive atomic loads
@@ -732,7 +732,7 @@ void end() {
 void setGain(uint8_t channel, float gain) {
     if (channel >= MAX_CHANNELS ||  gain < 0.0f)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->gain, gain, memory_order_relaxed);
@@ -741,7 +741,7 @@ void setGain(uint8_t channel, float gain) {
 float getGain(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0.0f;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0.0f;
     return atomic_load_explicit(&strip->gain, memory_order_relaxed);
@@ -750,16 +750,16 @@ float getGain(uint8_t channel) {
 void setLevel(uint8_t channel, float level) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
-    atomic_store_explicit(&strip->level, level, memory_order_relaxed);
+    atomic_store_explicit(&strip->reqlevel, level, memory_order_relaxed);
 }
 
 float getLevel(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0.0f;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0.0f;
     return atomic_load_explicit(&strip->reqlevel, memory_order_relaxed);
@@ -768,18 +768,18 @@ float getLevel(uint8_t channel) {
 void setBalance(uint8_t channel, float balance) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     if (fabs(balance) > 1)
         return;
-    atomic_store_explicit(&strip->balance, balance, memory_order_relaxed);
+    atomic_store_explicit(&strip->reqbalance, balance, memory_order_relaxed);
 }
 
 float getBalance(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0.0f;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0.0f;
     return atomic_load_explicit(&strip->reqbalance, memory_order_relaxed);
@@ -788,7 +788,7 @@ float getBalance(uint8_t channel) {
 void setMute(uint8_t channel, uint8_t mute) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->mute, mute, memory_order_relaxed);
@@ -797,7 +797,7 @@ void setMute(uint8_t channel, uint8_t mute) {
 uint8_t getMute(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->mute, memory_order_relaxed);
@@ -813,7 +813,7 @@ void toggleMute(uint8_t channel) {
 void setSolo(uint8_t channel, uint8_t solo) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     solo = solo?1:0;
@@ -829,7 +829,7 @@ void setSolo(uint8_t channel, uint8_t solo) {
 uint8_t getSolo(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->solo, memory_order_relaxed);
@@ -855,7 +855,7 @@ uint8_t getGlobalSolo() {
 void setPfl(uint8_t channel, uint8_t pfl) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     pfl = pfl?1:0;
@@ -871,7 +871,7 @@ void setPfl(uint8_t channel, uint8_t pfl) {
 uint8_t getPfl(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->pfl, memory_order_relaxed);
@@ -918,7 +918,7 @@ float getGlobalXFader() {
 void setABMixGroup(uint8_t channel, uint8_t ab) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     if (ab > 2) ab = 2;
@@ -929,7 +929,7 @@ void setABMixGroup(uint8_t channel, uint8_t ab) {
 uint8_t getABMixGroup(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->ABMixGroup, memory_order_relaxed);
@@ -947,7 +947,7 @@ float getPflLevel() {
 void setPhase(uint8_t channel, uint8_t phase) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->phase, phase, memory_order_relaxed);
@@ -956,7 +956,7 @@ void setPhase(uint8_t channel, uint8_t phase) {
 uint8_t getPhase(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->phase, memory_order_relaxed);
@@ -965,7 +965,7 @@ uint8_t getPhase(uint8_t channel) {
 void setSendMode(uint8_t channel, uint8_t send, uint8_t mode) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->sendMode[send], mode, memory_order_relaxed);
@@ -974,7 +974,7 @@ void setSendMode(uint8_t channel, uint8_t send, uint8_t mode) {
 uint8_t getSendMode(uint8_t channel, uint8_t send) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->sendMode[send], memory_order_relaxed);
@@ -990,7 +990,7 @@ void togglePhase(uint8_t channel) {
 void setSend(uint8_t channel, uint8_t send, float level) {
     if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->send[send], level, memory_order_relaxed);
@@ -999,7 +999,7 @@ void setSend(uint8_t channel, uint8_t send, float level) {
 float getSend(uint8_t channel, uint8_t send) {
     if (channel >= MAX_CHANNELS)
         return 0.0f;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0.0f;
     return atomic_load_explicit(&strip->phase, memory_order_relaxed);
@@ -1012,7 +1012,7 @@ void setNormalise(uint8_t channel, uint8_t enable) {
 #endif
     if (channel == 0 || channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->normalise, enable, memory_order_relaxed);
@@ -1025,7 +1025,7 @@ uint8_t getNormalise(uint8_t channel) {
 #endif
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->normalise, memory_order_relaxed);
@@ -1034,7 +1034,7 @@ uint8_t getNormalise(uint8_t channel) {
 void setMono(uint8_t channel, uint8_t mono) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->mono, mono != 0, memory_order_relaxed);
@@ -1043,7 +1043,7 @@ void setMono(uint8_t channel, uint8_t mono) {
 uint8_t getMono(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->mono, memory_order_relaxed);
@@ -1059,7 +1059,7 @@ void toggleMono(uint8_t channel) {
 void setMS(uint8_t channel, uint8_t enable) {
     if (channel >= MAX_CHANNELS)
         return;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return;
     atomic_store_explicit(&strip->ms, enable != 0, memory_order_relaxed);
@@ -1068,7 +1068,7 @@ void setMS(uint8_t channel, uint8_t enable) {
 uint8_t getMS(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         return 0;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return 0;
     return atomic_load_explicit(&strip->ms, memory_order_relaxed);
@@ -1097,7 +1097,7 @@ void reset(uint8_t channel) {
 float getDpm(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS)
         return -200.0f;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return -200.0f;
     if (leg)
@@ -1108,7 +1108,7 @@ float getDpm(uint8_t channel, uint8_t leg) {
 float getDpmHold(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS)
         return -200.0f;
-    struct channel_strip *strip = g_channelStrips[channel];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
         return -200.0f;
     if (leg)
