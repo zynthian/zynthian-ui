@@ -39,7 +39,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
 
     # Controller Screens
     _ctrl_screens = [
-        ['lavel', ['gain', 'level', 'balance']],
+        ['level', ['gain', 'level', 'balance']],
         ['toggles', ['mute', 'solo', 'pfl', 'ab_mixgroup']],
         ['signal', ['mono', 'phase', 'ms']],
         ['recorder', ['record']],
