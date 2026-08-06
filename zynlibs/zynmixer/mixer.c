@@ -963,7 +963,7 @@ uint8_t getPhase(uint8_t channel) {
 }
 
 void setSendMode(uint8_t channel, uint8_t send, uint8_t mode) {
-    if (channel >= MAX_CHANNELS)
+    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS)
         return;
     struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
@@ -972,7 +972,7 @@ void setSendMode(uint8_t channel, uint8_t send, uint8_t mode) {
 }
 
 uint8_t getSendMode(uint8_t channel, uint8_t send) {
-    if (channel >= MAX_CHANNELS)
+    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS)
         return 0;
     struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
     if (!strip)
@@ -1120,15 +1120,11 @@ void updateDpmStates(dpm_struct* values, uint8_t count) {
     if (count == 0 || count >= MAX_CHANNELS)
         count = MAX_CHANNELS - 1;
     for (uint8_t i = 0; i < count; ++i) {
-        if (i < g_lastStrip) {
-            values[i].a = getDpm(i, 0);
-            values[i].b = getDpm(i, 1);
-            values[i].aHold = getDpmHold(i, 0);
-            values[i].bHold = getDpmHold(i, 1);
-            values[i].mono = getMono(i);
-        } else {
-            memset(values + i, 0, sizeof(dpm_struct));
-        }
+        values[i].a = getDpm(i, 0);
+        values[i].b = getDpm(i, 1);
+        values[i].aHold = getDpmHold(i, 0);
+        values[i].bHold = getDpmHold(i, 1);
+        values[i].mono = getMono(i);
     }
 }
 
@@ -1240,9 +1236,13 @@ int8_t removeStrip(uint8_t chan) {
     g_nCleanFrame = g_nNextFrame;
     pthread_mutex_unlock(&mutex);
 
-    for (g_lastStrip = MAX_CHANNELS - 1; g_lastStrip > 0; --g_lastStrip) {
-        if (g_channelStrips[g_lastStrip])
+    g_lastStrip = 0;
+    uint8_t lastStrip = MAX_CHANNELS;
+    while(--lastStrip > 0) {
+        if (g_channelStrips[g_lastStrip]) {
+            g_lastStrip = lastStrip + 1;
             break;
+        }
     }
     return chan;
 }
@@ -1253,37 +1253,34 @@ int8_t addSend() {
 #else
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
         if (g_fxSends[send] == NULL && g_fxSendsRemoved[send] == NULL) {
-            struct fx_send* psend = malloc(sizeof(struct fx_send));
-            if (!psend) {
+            struct fx_send* pSend = malloc(sizeof(struct fx_send));
+            if (!pSend) {
                 fprintf(stderr, "Failed to allocated memory for effect send %d\n", send);
                 return -1;
             }
             char name[11];
             sprintf(name, "send_%02da", send + 2);
-            if (!(psend->outPortA = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-                free(psend);
-                psend = NULL;
+            if (!(pSend->outPortA = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+                free(pSend);
+                pSend = NULL;
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
             sprintf(name, "send_%02db", send + 2);
-            if (!(psend->outPortB = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-                jack_port_unregister(g_jackClient, psend->outPortA);
-                free(psend);
+            if (!(pSend->outPortB = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+                jack_port_unregister(g_jackClient, pSend->outPortA);
+                free(pSend);
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
-            //!@todo Do not cache jack_port_get_buffer
-            psend->bufferA = jack_port_get_buffer(psend->outPortA, g_buffersize);
-            psend->bufferB = jack_port_get_buffer(psend->outPortB, g_buffersize);
-            psend->level = 1.0;
+            pSend->level = 1.0;
             pthread_mutex_lock(&mutex);
-            g_fxSends[send] = psend;
+            g_fxSends[send] = pSend;
             ++g_sendCount;
             pthread_mutex_unlock(&mutex);
             if (send >= g_lastSend)
                 g_lastSend = send + 1;
-            return send + 1;
+            return send + 2;
         }
     }
     fprintf(stderr, "Exceeded maximum quantity of sends (%d).\n", MAX_CHANNELS);
@@ -1296,6 +1293,8 @@ uint8_t removeSend(uint8_t send) {
     fprintf(stderr, "Effects sends not implemented in mixbus\n");
     return 1;
 #else
+    if (send < 2)
+        return 1;
     send -= 2; // We expose sends at 2-based so need to decrement to access array
     if (send >= MAX_CHANNELS || g_fxSends[send] == NULL)
         return 1;
@@ -1305,9 +1304,13 @@ uint8_t removeSend(uint8_t send) {
     pthread_mutex_unlock(&mutex);
     --g_sendCount;
 
-    for (g_lastSend = MAX_CHANNELS - 1; g_lastSend > 0; --g_lastSend) {
-        if (g_fxSends[g_lastSend])
+    g_lastSend = 0;
+    uint8_t lastSend = MAX_CHANNELS;
+    while(--lastSend > 0) {
+        if (g_channelStrips[g_lastSend]) {
+            g_lastSend = lastSend + 1;
             break;
+        }
     }
     return 0;
 #endif
