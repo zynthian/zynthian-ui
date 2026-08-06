@@ -2519,17 +2519,9 @@ class zynthian_gui:
             self.zynswitch_read()
             self.osc_receive()
 
-            # Every 4 cycles...
-            if j > 4:
+            # Every 10 cycles...
+            if j > 10:
                 j = 0
-                # Refresh GUI Controllers
-                try:
-                    self.screens[self.current_screen].plot_zctrls()
-                except AttributeError:
-                    pass
-                except Exception as e:
-                    logging.error(e)
-
                 # Power Save Check
                 self.state_manager.power_save_check()
             else:
@@ -2540,6 +2532,23 @@ class zynthian_gui:
 
         # End Thread task
         self.osc_end()
+
+
+    def plot_zctrls_task(self):
+        # Refresh GUI Controllers & Widgets
+        try:
+            self.screens[self.current_screen].plot_zctrls()
+        except AttributeError:
+            pass
+        except Exception as e:
+            logging.error(e)
+
+        if not self.exit_flag:
+            zynthian_gui_config.top.after(32, self.plot_zctrls_task)
+
+    # ------------------------------------------------------------------
+    # Touch event management
+    # ------------------------------------------------------------------
 
     def cb_touch(self, event):
         # logging.debug("CB EVENT TOUCH!!!")
@@ -2885,6 +2894,7 @@ class zynthian_gui:
 
     def start_polling(self):
         self.osc_timeout()
+        self.plot_zctrls_task()
 
     def after(self, msec, func):
         zynthian_gui_config.top.after(msec, func)
