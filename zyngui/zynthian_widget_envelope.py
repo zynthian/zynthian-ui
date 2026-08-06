@@ -131,6 +131,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
             y_fade = self.plot_height - kf * (self.plot_height - y_sustain) / 2
 
         if envelope_values != self.last_envelope_values or self.drag_zctrl:
+            self.last_envelope_values = envelope_values
             y_sustain += self.m_b
             y_fade += self.m_b
             x_release += self.m_l
@@ -186,7 +187,6 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
             coords.append(y0)
             self.envelope_click_ranges.append(x)
             self.widget_canvas.coords(self.envelope_polygon, coords)
-            self.last_envelope_values = envelope_values
             # Highlight dragged section
             if self.drag_zctrl:
                 self.widget_canvas.itemconfig(self.drag_polygon, state="normal")
