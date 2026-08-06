@@ -26,8 +26,11 @@
 #export ZYNTHIAN_LOG_LEVEL=10			# 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
 #export ZYNTHIAN_RAISE_EXCEPTIONS=0
 
+# Disable powersave mode
+powersave_control.sh off
+
 #------------------------------------------------------------------------------
-# Some Functions
+# Function to load config vars and rotate display
 #------------------------------------------------------------------------------
 
 function load_config_env() {
@@ -44,24 +47,68 @@ function load_config_env() {
 	fi
 }
 
-function raw_splash_zynthian() {
-	if [ -c $FRAMEBUFFER ]; then
-		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.raw > $FRAMEBUFFER
-	fi  
+function rotate_display() {
+	xrandr --output DSI-1 --rotate inverted
 }
 
-
-function raw_splash_zynthian_error() {
-	if [ -c $FRAMEBUFFER ]; then
-		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.raw > $FRAMEBUFFER
-	fi  
+function rotate_display_wayland() {
+	wlr-randr --output DSI-1 --transform 180
 }
 
+function hide_cursor() {
+	# This is done from zynthian UI
+	:
+}
+
+function hide_cursor_wayland() {
+	# TODO
+	:
+}
+
+#------------------------------------------------------------------------------
+# Initialize Graphic Environment
+#------------------------------------------------------------------------------
+
+# Load config vars
+load_config_env
+
+# Rotate display
+if [[ "$RBPI_VERSION_NUMBER" = "5" &&  "$DISPLAY_ROTATION" = "Inverted" && "$DISPLAY_NAME" = *"DSI"* ]]; then
+	rotate_display
+fi
+
+# Hide Cursor in Wayland
+if [[ "$ZYNTHIAN_UI_ENABLE_CURSOR" != "1" ]]; then
+	hide_cursor
+fi
+
+#------------------------------------------------------------------------------
+# Functions to manage splash images
+#------------------------------------------------------------------------------
+
+function load_splash() {
+	xloadimage -fullscreen -onroot "$1"
+}
+
+function load_splash_wayland() {
+	# 1. Store the process ID of the current background
+	OLD_BG_PID=$(pidof swaybg)
+
+	# 2. Fire up the new wallpaper seamlessly right on top of it
+	swaybg -i "$1" -m fill &
+
+	# 3. Give the GPU a quick split-second to map the texture
+	sleep 0.15
+
+	# 4. Safely terminate the old instance (preventing resource leaks)
+	if [ ! -z "$OLD_BG_PID" ]; then
+		kill $OLD_BG_PID
+	fi
+}
 
 function splash_zynthian() {
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg
+	load_splash $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg
 }
-
 
 function splash_zynthian_message() {
 	zynthian_message=$1
@@ -73,26 +120,24 @@ function splash_zynthian_message() {
 	img_w=$(identify -format '%w' $img_fpath)
 	img_h=$(identify -format '%h' $img_fpath)
 	if [[ "${#zynthian_message}" > "40" ]]; then
-			font_size=$(expr $img_w / 36)
+		font_size=$(expr $img_w / 36)
 	else
-			font_size=$(expr $img_w / 28)
+		font_size=$(expr $img_w / 28)
 	fi
 	strlen=$(expr ${#zynthian_message} \* $font_size / 2)
 	pos_x=$(expr $img_w / 2 - $strlen / 2)
 	pos_y=$(expr $img_h \* 10 / 100)
 	[[ "$pos_x" > "0" ]] || pos_x=5
-	convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
+	convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" "$img_fpath" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg"
 
 	# Display error image
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
+	load_splash "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg"
 }
-
 
 function splash_zynthian_error() {
 	# Generate an error splash image...
 	splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg"
 }
-
 
 function splash_zynthian_error_exit_ip() {
 	# Grab exit code if set
@@ -137,15 +182,15 @@ function splash_zynthian_error_exit_ip() {
 
 function splash_zynthian_last_message() {
 	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg" ]; then
-		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
+		load_splash "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg"
 	else
-		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg
+		load_splash "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg"
 	fi
 }
 
 function clean_zynthian_last_message() {
 	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg" ]; then
-		rm -f $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
+		rm -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg"
 	fi
 }
 
@@ -163,9 +208,6 @@ function del_last_state() {
 	rm -f $ss_dpath/last_state.zss
 }
 
-powersave_control.sh off
-load_config_env
-
 #------------------------------------------------------------------------------
 # Test splash screen generator
 #------------------------------------------------------------------------------
@@ -174,8 +216,9 @@ load_config_env
 #sleep 10
 #exit
 
-#fbenabled = "$(systemctl is-enabled first_boot)"
-#echo -e "Zynthian UI: STARTING...($fbenabled)" >> /root/first_boot.log
+#------------------------------------------------------------------------------
+# Detect first boot
+#------------------------------------------------------------------------------
 
 if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
 	is_first_boot=1
@@ -185,7 +228,7 @@ else
 fi
 
 #------------------------------------------------------------------------------
-# If needed, generate splash screen images
+# If needed, generates splash screen images
 #------------------------------------------------------------------------------
 
 if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg" ]]; then
@@ -198,7 +241,7 @@ if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg" ]]; then
 fi
 
 #------------------------------------------------------------------------------
-# Run Hardware Test
+# If flag is set => Run Hardware Test + Exit
 #------------------------------------------------------------------------------
 
 if [[ -n "$ZYNTHIAN_HW_TEST" ]]; then
@@ -245,7 +288,10 @@ if [[ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]]; then
 fi
 
 #------------------------------------------------------------------------------
-# Detect first boot
+# if first boot =>
+#    + Show splash
+#    + Wait until first boot process finishes
+#    + Exit
 #------------------------------------------------------------------------------
 
 if [[ "$is_first_boot" == "1" ]]; then
