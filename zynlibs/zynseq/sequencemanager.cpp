@@ -192,7 +192,7 @@ void SequenceManager::updateAllSequenceLengths() {
     }
 }
 
-uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync, bool bBeat) {
+uint8_t SequenceManager::clock(uint32_t nTime, EvSchedule* pSchedule, bool bSync, bool bBeat) {
     /** Get events scheduled for next tick from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
@@ -228,12 +228,12 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     // Start playing clip at bar sync
                     if (bSync) {
                         nPlayState = PLAYING;
-                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 1}}));
+                        pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 1}});
                         pSequence->setPlayState(PLAYING);
                     }
                     // Send beat sync messages to clippy
                     if (bBeat) {
-                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}}));
+                        pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}});
                     }
                     break;
                 case PLAYING: {
@@ -247,8 +247,8 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                         // Endless looping or still don't reached number of repeats => Triggering repeat
                         if (nRepeat == 255 || nCount < nRepeat ) {
                             pSequence->setPlayed(nCount);
-                            pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}}));
-                            //pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}}));
+                            pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 3}});
+                            //pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), nNote, 2}});
                         }
                         // End of repeats...
                         else {
@@ -261,7 +261,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     pSequence->setPlayPosition(nPos);
                     // Send beat sync messages to clippy
                     if (bBeat) {
-                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}}));
+                        pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}});
                     }
                     break;
                 }
@@ -276,7 +276,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                     }
                     // Send beat sync messages to clippy
                     if (bBeat) {
-                        pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}}));
+                        pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_CHAN_PRESSURE | nChannel), beatPos, 0}});
                     }
                     break;
             }
@@ -290,7 +290,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
             if (nEventType & CLOCK_TRIG_MIDI) {
                 // A step event so iterate all step events starting on this tick
                 while (SEQ_EVENT* pEvent = pSequence->getEvent())
-                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(pEvent->time, new SEQ_EVENT(*pEvent)));
+                    pSchedule->map.emplace(pEvent->time, *pEvent);
             }
             if (nEventType & CLOCK_TRIG_TEMPO) {
                 // Tempo change
@@ -317,7 +317,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                             if (nChildGroup > 15) {
                                 uint8_t nChildChan = nChildGroup - 16;
                                 uint8_t nChildNote = pSequence->getPhrase() + 1;
-                                pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChildChan), nChildNote, 1}}));
+                                pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChildChan), nChildNote, 1}});
                             }
                             // Set child sequence to play
                             setPlayState(pChildSeq, PLAYING);
@@ -374,7 +374,7 @@ uint8_t SequenceManager::clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT
                 if (bStopClippy) {
                     // Send clippy stop event => Note 0 stops playing
                     uint8_t nChannel = nGroup - 16;
-                    pSchedule->insert(std::pair<uint32_t, SEQ_EVENT*>(nTime, new SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), 0, 1}}));
+                    pSchedule->map.emplace(nTime, SEQ_EVENT{nTime, 0xfe, MIDI_MESSAGE{uint8_t(MIDI_NOTE_ON | nChannel), 0, 1}});
                 }
             }
             m_vPlayingSequences.erase(m_vPlayingSequences.begin() + nSequence);

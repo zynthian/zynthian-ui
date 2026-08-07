@@ -18,10 +18,42 @@
 */
 
 #pragma once
+
+#include <cstdint>
+#include <map>
+#include <array>
+#include <memory_resource>
+
 #include "pattern.h"
 #include "sequence.h"
 #include "track.h"
-#include <map>
+
+// Event Scheduler => Real-Time Safe!!
+class EvSchedule {
+  private:
+    // We estimate that 100000 events is the maximum number of events scheduled at any given time
+    // The 32 extra bytes is for accounting the multimap metada (double linked list or so)
+    static constexpr size_t MAX_EVENTS = 100000;
+    static constexpr size_t NODE_SIZE = sizeof(uint32_t) + sizeof(SEQ_EVENT) + 32;
+    static constexpr size_t BUFFER_SIZE = MAX_EVENTS * NODE_SIZE;
+
+    // The order of declaration matters for initialization/destruction tracking
+    // We use usync_pool_resource because monotonic_buffer_resource doesn't
+    // manage the dynamic memory deallocation we need for the scheduler
+    std::array<std::byte, BUFFER_SIZE> m_buffer;
+    std::pmr::monotonic_buffer_resource m_upstream;
+    std::pmr::unsynchronized_pool_resource m_pool;
+
+  public:
+    std::pmr::multimap<uint32_t, SEQ_EVENT> map;
+
+    EvSchedule()
+    : m_upstream(m_buffer.data(), m_buffer.size(), std::pmr::null_memory_resource()),
+    m_pool(&m_upstream),
+    map(&m_pool) {}
+
+    // std::pmr::null_memory_resource() avoids silently calling to malloc if we go over the limit. It will fail to insert instead!!
+};
 
 
 /** SequenceManager class provides creation, recall, update and delete of patterns which other modules can subseqnetly use. It manages persistent (disk)
@@ -113,7 +145,7 @@ class SequenceManager {
         @param  bBeat True indicates a beat pulse
         @retval uint8_t Bitwise flag indication sumary of playing sequences. [1: Playing 2:Starting]
     */
-    uint8_t clock(uint32_t nTime, std::multimap<uint32_t, SEQ_EVENT*>* pSchedule, bool bSync, bool bBeat);
+    uint8_t clock(uint32_t nTime, EvSchedule* pSchedule, bool bSync, bool bBeat);
 
     /** @brief  Get pointer to sequence
         @param  scene Index of scene

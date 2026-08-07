@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <cstdint>
 
 #include <jack/jack.h>      // provides JACK interface
 #include <jack/midiport.h>  // provides JACK MIDI interface
@@ -68,7 +69,7 @@ jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
 jack_nframes_t g_nSampleRate = 48000; // Quantity of samples per second
 uint32_t g_nXruns = 0;
 
-std::multimap<uint32_t, SEQ_EVENT*> g_mSchedule;    // Schedule of sequence events (queue for sending), indexed by scheduled play time (ticks since tick epoch)
+EvSchedule g_mSchedule;                             // Schedule of sequence events (queue for sending), indexed by scheduled play time (ticks since tick epoch)
 SequenceManager g_seqMan;                           // Instance of sequence manager
 bool g_naHeldNote[16][128];                         // Array of flags indicating a note has been played on a MIDI channel
 uint8_t g_nScene                    = 0;            // Index of currently selected scene
@@ -468,14 +469,20 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             bSync = true;
             bBeat = true;
             jack_transport_start(g_pJackClient);
-            g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nTickTime, new SEQ_EVENT({nTickTime, 0, MIDI_MESSAGE{MIDI_START, 0, 0}})));
+            g_mSchedule.map.emplace(
+                nTickTime,
+                SEQ_EVENT{nTickTime, 0, MIDI_MESSAGE{MIDI_START, 0, 0}}
+            );
         } else if (g_nTransportState == STOPPING) {
             if (g_nBeat == 1) {
                 g_nTransportState = STOPPED;
                 jack_transport_stop(g_pJackClient);
                 jack_transport_locate(g_pJackClient, 0);
                 g_seqMan.resetFollowRepeat();
-                g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nTickTime, new SEQ_EVENT({nTickTime, 0, MIDI_MESSAGE{MIDI_STOP, 0, 0}})));
+                g_mSchedule.map.emplace(
+                    nTickTime,
+                    SEQ_EVENT{nTickTime, 0, MIDI_MESSAGE{MIDI_STOP, 0, 0}}
+                );
             }
         }
 
@@ -535,7 +542,10 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Send MIDI CLOCK...
         if (nTickTime % (PPQN_INTERNAL / PPQN_MIDI) == 0) {
             // Add a MIDI_CLOCK message to the schedule
-            g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(nTickTime, new SEQ_EVENT({nTickTime, 0, MIDI_MESSAGE{MIDI_CLOCK, 0, 0}})));
+            g_mSchedule.map.emplace(
+                nTickTime,
+                SEQ_EVENT{nTickTime, 0, MIDI_MESSAGE{MIDI_CLOCK, 0, 0}}
+            );
         }
 
 
@@ -569,9 +579,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
     // Process events scheduled to be sent to MIDI output
     size_t nTickIdx = 0;
-    auto it = g_mSchedule.begin();
+    auto it = g_mSchedule.map.begin();
     // Iterate the ticks in this period and events for each tick
-    while (it != g_mSchedule.end() && nTickIdx < vTicks.size()) {
+    while (it != g_mSchedule.map.end() && nTickIdx < vTicks.size()) {
         // it->first is the scheduled tickTime of the event
         if (it->first > nPeriodStartTick + nTickIdx)
             ++nTickIdx;
@@ -579,8 +589,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             // Iterate events scheduled for this tick
             size_t nSize = 1;
             bool bSkip = false;
-            if (it->second->msg.command < 0xF4) {
-                uint8_t nType = it->second->msg.command;
+            if (it->second.msg.command < 0xF4) {
+                uint8_t nType = it->second.msg.command;
                 if (nType < 0xF0)
                     nType &= 0xF0;
                 switch (nType) {
@@ -592,16 +602,16 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     break;
                 case MIDI_CONTROL:
                     // Skip sustain events if recording and sustain is pressed
-                    if (it->second->msg.value1 == 64 && g_nSustainValue > 0)
+                    if (it->second.msg.value1 == 64 && g_nSustainValue > 0)
                         bSkip = true;
                     nSize = 3;
                     break;
                 case MIDI_NOTE_ON:
-                    g_naHeldNote[it->second->msg.command & 0x0f][it->second->msg.value1] = it->second->msg.value2;
+                    g_naHeldNote[it->second.msg.command & 0x0f][it->second.msg.value1] = it->second.msg.value2;
                     nSize = 3;
                     break;
                 case MIDI_NOTE_OFF:
-                    g_naHeldNote[it->second->msg.command & 0x0f][it->second->msg.value1] = 0;
+                    g_naHeldNote[it->second.msg.command & 0x0f][it->second.msg.value1] = 0;
                     nSize = 3;
                     break;
                 default:
@@ -609,27 +619,27 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 }
             }
             jack_nframes_t nFrame = vTicks[nTickIdx];
-            if (it->second->msg.command >= 0xF8 && it->second->msg.command <= 0xFC) {
+            if (it->second.msg.command >= 0xF8 && it->second.msg.command <= 0xFC) {
                 unsigned char* pBuffer = jack_midi_event_reserve(pClockBuffer, nFrame, nSize);
                 if (pBuffer == NULL)
                     break; // Exceeded buffer size (or other issue)
-                pBuffer[0] = it->second->msg.command;
+                pBuffer[0] = it->second.msg.command;
             } else if (!bSkip) {
-               unsigned char* pBuffer = jack_midi_event_reserve(it->second->output == 0xfe ? pClippyBuffer : pOutputBuffer, nFrame, nSize);
+               unsigned char* pBuffer = jack_midi_event_reserve(it->second.output == 0xfe ? pClippyBuffer : pOutputBuffer, nFrame, nSize);
                 if (pBuffer == NULL)
                     break; // Exceeded buffer size (or other issue)
-                pBuffer[0] = it->second->msg.command;
+                pBuffer[0] = it->second.msg.command;
                 if (nSize > 1)
-                    pBuffer[1] = it->second->msg.value1;
+                    pBuffer[1] = it->second.msg.value1;
                 if (nSize > 2)
-                    pBuffer[2] = it->second->msg.value2;
+                    pBuffer[2] = it->second.msg.value2;
                 DPRINTF("Sending MIDI event %x,%x,%x at %llu\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
             }
-            delete it->second;
-            it->second = NULL;
+            //delete it->second;
+            //it->second = NULL;
         ++it;
         }
-        g_mSchedule.erase(g_mSchedule.begin(), it);
+        g_mSchedule.map.erase(g_mSchedule.map.begin(), it);
     }
     g_bMutex = false;
     return 0;
@@ -652,13 +662,6 @@ int onJackXrun(void* pArgs) {
 
 void end() {
     DPRINTF("zynseq exit\n");
-    while (g_bMutex)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    g_bMutex = true;
-    for (auto it : g_mSchedule) {
-        delete it.second;
-    }
-    g_bMutex = false;
     freeState();
 }
 
@@ -1727,7 +1730,10 @@ void sendMidiMsg(MIDI_MESSAGE& msg) {
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     g_bMutex = true;
-    g_mSchedule.insert(std::pair<uint32_t, SEQ_EVENT*>(tick, new SEQ_EVENT({tick, 0, msg})));
+    g_mSchedule.map.emplace(
+        tick,
+        SEQ_EVENT{tick, 0, msg}
+    );
     g_bMutex = false;
 }
 
@@ -2655,7 +2661,7 @@ uint32_t getBeat() {
 
 void stop() {
     g_seqMan.stop();
-    g_mSchedule.clear();
+    g_mSchedule.map.clear();
 }
 
 uint32_t getSequencePlayPosition(uint8_t scene, uint8_t phrase, uint8_t sequence) {
