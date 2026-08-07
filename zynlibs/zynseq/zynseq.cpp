@@ -258,15 +258,15 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 g_nBar = 1;
                 g_nBeat = 1;
                 g_nBarStartTick = 0;
-                fprintf(stderr, "START\n");
+                DPRINTF("START\n");
                 break;
             }
             case MIDI_POSITION: {
                 // Rx song position on clock port - reset to bar boundary, e.g. used by bar clock signal
                 uint16_t pos = midiEvent.buffer[1] + (midiEvent.buffer[2] << 7);
                 if (pos == 0) {
-                    fprintf(stderr, "MIDI SONG POSITION %u\n", pos);
                     g_nBeat = 1;
+                    DPRINTF("MIDI SONG POSITION %u\n", pos);
                 }
                 break;
             }
