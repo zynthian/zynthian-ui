@@ -37,7 +37,8 @@
 #include <stdlib.h>         // provides exit
 #include <thread>           // provides thread for timer
 #include <cmath>            // provides sqrt
-#include <nlohmann/json.hpp> // provides json
+#include <nlohmann/json.hpp>// provides json
+#include <mimalloc.h>       // mimalloc API, mainly to display some stats while debugging
 
 #include "metronome.h"       // metronome wav data
 #include "pattern.h"         // provides pattern objects
@@ -3181,7 +3182,7 @@ void setPhraseBPB(uint8_t scene, uint8_t phrase, uint8_t bpb) {
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
-	g_seqMan.setPhraseTimeSig(scene, phrase, bpb);
+    g_seqMan.setPhraseTimeSig(scene, phrase, bpb);
     g_bMutex = false;
     g_bDirty = true;
 }
@@ -3189,3 +3190,10 @@ void setPhraseBPB(uint8_t scene, uint8_t phrase, uint8_t bpb) {
 uint8_t getPhraseBPB(uint8_t scene, uint8_t phrase) {
 	return g_seqMan.getPhraseTimeSig(scene, phrase);
 }
+
+
+void print_mimalloc_stats() {
+    fprintf(stderr, "\n====================== ZYNSEQ MIMALLOC STATS ====================\n");
+    mi_stats_print(NULL);
+}
+

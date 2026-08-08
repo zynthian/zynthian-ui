@@ -1470,6 +1470,9 @@ void setPhraseBPB(uint8_t scene, uint8_t phrase, uint8_t bpb);
 */
 uint8_t getPhraseBPB(uint8_t scene, uint8_t phrase);
 
+/** @brief  Print mimalloc stats
+ */
+void print_mimalloc_stats();
 
 #ifdef __cplusplus
 }

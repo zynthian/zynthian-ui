@@ -2852,6 +2852,9 @@ class zynthian_gui:
         if self.wsleds_v5touch:
             self.wsleds_v5touch.end()
 
+        # Print mimalloc stats
+        self.state_manager.zynseq.libseq.print_mimalloc_stats()
+
         # Stop Multitouch driver
         self.multitouch.stop()
 
