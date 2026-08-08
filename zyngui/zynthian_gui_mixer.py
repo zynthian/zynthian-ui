@@ -1754,8 +1754,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self._scroll_gen += 1
         gen = self._scroll_gen
         dx = dy = 0
-        steps = 30
-        delay = 10
+        steps = 10
+        delay = 16
 
         def step(i=0):
             if gen != self._scroll_gen:
