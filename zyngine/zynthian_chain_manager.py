@@ -1172,8 +1172,8 @@ class zynthian_chain_manager:
         Returns : True on success
         """
 
-        if chain_id not in self.chains:
-            logging.error(f"Chain {chain_id} doesn't exist!")
+        if chain_id is not None and chain_id not in self.chains:
+            logging.error(f"Chain '{chain_id}' doesn't exist!")
             return False
 
         if not isinstance(processor, zynthian_processor):
