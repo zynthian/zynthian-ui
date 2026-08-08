@@ -1826,19 +1826,48 @@ class zynthian_state_manager:
         if zs3_id:
             return self.load_zs3(zs3_id)
 
+    def get_zs3_ids(self):
+        """Get the ZS3 ids that stepping walks, in order
+
+        Excludes 'zs3-0', which is the state the snapshot was saved in rather
+        than a registration, and which the ZS3 screen already lists apart from
+        the saved ZS3s.
+        Returns : List of ZS3 ids
+        """
+
+        return [zs3_id for zs3_id in self.zs3 if zs3_id != "zs3-0"]
+
     def load_next_zs3(self):
+        """Restore the next ZS3, or the first if none is loaded
+
+        Returns : True on success
+        """
+
+        zs3_ids = self.get_zs3_ids()
         try:
-            index = self.get_last_zs3_index() + 1
-        except:
+            index = zs3_ids.index(self.last_zs3_id) + 1
+        except ValueError:
+            # Nothing loaded, or the default state is loaded => start at the first
+            index = 0
+        if index >= len(zs3_ids):
             return False
-        return self.load_zs3_by_index(index)
+        return self.load_zs3(zs3_ids[index])
 
     def load_prev_zs3(self):
+        """Restore the previous ZS3, or the last if none is loaded
+
+        Returns : True on success
+        """
+
+        zs3_ids = self.get_zs3_ids()
         try:
-            index = self.get_last_zs3_index() - 1
-        except:
+            index = zs3_ids.index(self.last_zs3_id) - 1
+        except ValueError:
+            # Nothing loaded, or the default state is loaded => start at the last
+            index = len(zs3_ids) - 1
+        if index < 0:
             return False
-        return self.load_zs3_by_index(index)
+        return self.load_zs3(zs3_ids[index])
 
     # ------------------------------------------------------------------
     # Jackd Info
