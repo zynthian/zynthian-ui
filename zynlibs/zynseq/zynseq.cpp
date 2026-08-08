@@ -69,8 +69,10 @@ jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
 jack_nframes_t g_nSampleRate = 48000; // Quantity of samples per second
 uint32_t g_nXruns = 0;
 
+std::vector<jack_nframes_t> g_vTicks;               // Vector of internal tick offsets within this jack period => I should be reserved to avoid malloc inside RT thread
 EvSchedule g_mSchedule;                             // Schedule of sequence events (queue for sending), indexed by scheduled play time (ticks since tick epoch)
 SequenceManager g_seqMan;                           // Instance of sequence manager
+
 bool g_naHeldNote[16][128];                         // Array of flags indicating a note has been played on a MIDI channel
 uint8_t g_nScene                    = 0;            // Index of currently selected scene
 Pattern* g_pPattern                 = NULL;         // Pointer to currently edited pattern
@@ -188,6 +190,7 @@ void updateJackPosition() {
 
     Schedule holds events, indexed by their scheduled execution time in frames since jack epoch.
 */
+
 int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     // Transport & Clock
     static uint64_t nNow = 0;
@@ -222,8 +225,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
-
-    std::vector<jack_nframes_t> vTicks; // Vector of internal tick offsets within this jack period
 
     // Process MIDI input
     jack_midi_event_t midiEvent;
@@ -274,8 +275,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     }
 
     // Populate remaining ticks in this period, at current tempo
+   g_vTicks.clear();
     for (; dNextIntClockFrame < nNow + nFrames; dNextIntClockFrame += g_dFramesPerTick) {
-        vTicks.push_back(dNextIntClockFrame - nNow);
+        g_vTicks.push_back(dNextIntClockFrame - nNow);
     }
 
     // Process normal MIDI input (ignore MIDI CLOCK)
@@ -359,7 +361,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         if (fDuration < 1.0)
                             fDuration = 1.0;
 
-                       // Add note to pattern
+                        // Add note to pattern
+                        // TODO Make this RT-safe!! Inserting events in pattern calls malloc!!!
                         g_pPattern->addNote(nStart, nNum1, startEvents[nNum1].velocity, fDuration, fOffset);
                         //fprintf(stderr, "Captured Note %d at %d + %f with duration %f\n", nNum1, nStart, fOffset, fDuration);
                         // Reset note in event buffer
@@ -396,6 +399,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         if (g_nLastStepCC < nStep)
                             g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, nNum1);
                         // Add new CC event
+                        // TODO Make this RT-safe!! Inserting events in pattern calls malloc!!!
                         g_pPattern->addControl(nStep, nNum1, nNum2, nNum2);
                         g_nLastStepCC = nStep;
                         setPatternModified(g_pPattern, true, false);
@@ -419,12 +423,14 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     setPatternModified(g_pPattern, true, false);
                     uint32_t nDuration = getNoteDuration(nStep, nNum1);
                     if (g_nSustainValue > 0)
+                        // TODO Make this RT-safe!! Inserting events in pattern calls malloc!!!
                         g_pPattern->addNote(nStep, nNum1, nNum2, nDuration + 1);
                     else {
                         bAdvance = true;
                         if (nDuration)
                             g_pPattern->removeNote(nStep, nNum1);
                         else if (nNum1 != g_nInputRest)
+                            // TODO Make this RT-safe!! Inserting events in pattern calls malloc!!!
                             g_pPattern->addNote(nStep, nNum1, nNum2, 1);
                     }
                 }
@@ -450,7 +456,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     // Process clock ticks in this period
     jack_nframes_t nMetronomeFrame = 0; // Position within this period of next metronome sample
     uint32_t nPeriodStartTick = nTickTime; // Store the first tick of this period
-    for (const auto& nFrame: vTicks) {
+    for (const auto& nFrame: g_vTicks) {
         // Iterate clocks within this jack period to prepare MIDI output schedule events
 
         /* Schedule events in this period
@@ -581,7 +587,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     size_t nTickIdx = 0;
     auto it = g_mSchedule.map.begin();
     // Iterate the ticks in this period and events for each tick
-    while (it != g_mSchedule.map.end() && nTickIdx < vTicks.size()) {
+    while (it != g_mSchedule.map.end() && nTickIdx < g_vTicks.size()) {
         // it->first is the scheduled tickTime of the event
         if (it->first > nPeriodStartTick + nTickIdx)
             ++nTickIdx;
@@ -618,7 +624,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     nSize = 3;
                 }
             }
-            jack_nframes_t nFrame = vTicks[nTickIdx];
+            jack_nframes_t nFrame = g_vTicks[nTickIdx];
             if (it->second.msg.command >= 0xF8 && it->second.msg.command <= 0xFC) {
                 unsigned char* pBuffer = jack_midi_event_reserve(pClockBuffer, nFrame, nSize);
                 if (pBuffer == NULL)
@@ -635,9 +641,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     pBuffer[2] = it->second.msg.value2;
                 DPRINTF("Sending MIDI event %x,%x,%x at %llu\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
             }
-            //delete it->second;
-            //it->second = NULL;
-        ++it;
+            ++it;
         }
         g_mSchedule.map.erase(g_mSchedule.map.begin(), it);
     }
@@ -725,6 +729,9 @@ void init(char* name) {
 
     g_nSampleRate = jack_get_sample_rate(g_pJackClient);
     updateClockTiming();
+
+    // Pre-reserve memory to avoid later malloc calls
+    g_vTicks.reserve(PPQN_INTERNAL);
 
     // Register JACK callbacks
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);

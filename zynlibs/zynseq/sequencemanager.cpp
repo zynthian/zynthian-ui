@@ -27,6 +27,7 @@
 SequenceManager::SequenceManager() {
     for (uint8_t channel = 0; channel < 32; ++ channel)
         m_bEnabled[channel] = false;
+    m_vPlayingSequences.reserve(MAX_PLAYING_SEQUENCES);
     init();
 }
 
