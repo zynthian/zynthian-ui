@@ -1828,16 +1828,16 @@ class zynthian_state_manager:
 
     def load_next_zs3(self):
         try:
-            index = self.get_last_zs3_index() + 1
+            index = (self.get_last_zs3_index() + 1) % len(self.zs3)
         except:
-            return False
+            index = 0
         return self.load_zs3_by_index(index)
 
     def load_prev_zs3(self):
         try:
             index = self.get_last_zs3_index() - 1
         except:
-            return False
+            index = 0
         return self.load_zs3_by_index(index)
 
     # ------------------------------------------------------------------
