@@ -1844,13 +1844,15 @@ class zynthian_state_manager:
         """
 
         zs3_ids = self.get_zs3_ids()
+        if not zs3_ids:
+            return False
         try:
             index = zs3_ids.index(self.last_zs3_id) + 1
         except ValueError:
             # Nothing loaded, or the default state is loaded => start at the first
             index = 0
         if index >= len(zs3_ids):
-            return False
+            index = 0
         return self.load_zs3(zs3_ids[index])
 
     def load_prev_zs3(self):
@@ -1860,13 +1862,15 @@ class zynthian_state_manager:
         """
 
         zs3_ids = self.get_zs3_ids()
+        if not zs3_ids:
+            return False
         try:
             index = zs3_ids.index(self.last_zs3_id) - 1
         except ValueError:
             # Nothing loaded, or the default state is loaded => start at the last
             index = len(zs3_ids) - 1
         if index < 0:
-            return False
+            index = len(zs3_ids) - 1
         return self.load_zs3(zs3_ids[index])
 
     # ------------------------------------------------------------------
