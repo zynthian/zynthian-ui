@@ -1852,7 +1852,8 @@ class zynthian_state_manager:
             # Nothing loaded, or the default state is loaded => start at the first
             index = 0
         if index >= len(zs3_ids):
-            index = 0
+            #index = 0
+            return False
         return self.load_zs3(zs3_ids[index])
 
     def load_prev_zs3(self):
@@ -1870,7 +1871,8 @@ class zynthian_state_manager:
             # Nothing loaded, or the default state is loaded => start at the last
             index = len(zs3_ids) - 1
         if index < 0:
-            index = len(zs3_ids) - 1
+            #index = len(zs3_ids) - 1
+            return False
         return self.load_zs3(zs3_ids[index])
 
     # ------------------------------------------------------------------
