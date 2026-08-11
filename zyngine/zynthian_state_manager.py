@@ -1108,6 +1108,9 @@ class zynthian_state_manager:
             converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
 
+            if load_sequences:
+                self.clean_sequences()
+
             # Load chains
             if load_chains:
                 # Mute output to avoid unwanted noises
