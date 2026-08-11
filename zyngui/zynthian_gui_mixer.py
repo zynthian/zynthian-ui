@@ -171,31 +171,29 @@ class zynthian_gui_launcher_pad():
 
         self.canvas.tag_bind(f"launcher_{chain_id}_{phrase}", '<ButtonRelease-1>', self.on_clip_release)
 
-    def move_to(self, x=None, y=None):
+    def move(self, dx=None, dy=None):
         # Re-calculate geometry
-        if x is not None:
-            self.x = x + self.loop_info_width
-        elif y is not None:
-            self.y = y
+        if dx != 0:
+            self.x += dx
+        elif dy != 0:
+            self.y += dy
         else:
             return
         # Move canvas objects to new coordinates
-        self.canvas.coords(self.pad, self.x, self.y, self.x + self.width - 1, self.y + self.height - 1)
+        self.canvas.move(self.pad, dx, dy)
         if self.chain.chain_id == 0:
-            line_width = int(0.3 * self.loop_info_width)
-            self.canvas.coords(self.loop1_top, x, self.y, x + line_width, self.y + self.height // 2)
-            self.canvas.coords(self.loop1_bottom, x, self.y + self.height // 2, x + line_width, self.y + self.height)
-            self.canvas.coords(self.loop1_text, x, self.y + self.height // 2 - 1)
-            x += self.loop_info_width // 2
-            self.canvas.coords(self.loop2_top, x, self.y, x + line_width, self.y + self.height // 2)
-            self.canvas.coords(self.loop2_bottom, x, self.y + self.height // 2, x + line_width, self.y + self.height)
-            self.canvas.coords(self.loop2_text, x + line_width // 2, self.y + self.height // 2 - 1)
-        self.canvas.coords(self.play_state, self.x + self.width - 3,  self.y - 3)
-        self.canvas.coords(self.title, self.x + self.width // 2, self.y + 0.5 * self.height)
-        self.canvas.coords(self.mode_icon, self.x + 3, self.y + 2)
-        self.canvas.coords(self.mode_text, self.x + 4, self.y - 2)
-        self.canvas.coords(self.timesig, self.x + 4, self.y + self.height)
-        self.canvas.coords(self.tempo, self.x + self.width - 1, self.y + self.height)
+            self.canvas.move(self.loop1_top, dx, dy)
+            self.canvas.move(self.loop1_bottom, dx, dy)
+            self.canvas.move(self.loop1_text, dx, dy)
+            self.canvas.move(self.loop2_top, dx, dy)
+            self.canvas.move(self.loop2_bottom, dx, dy)
+            self.canvas.move(self.loop2_text, dx, dy)
+        self.canvas.move(self.play_state, dx, dy)
+        self.canvas.move(self.title, dx, dy)
+        self.canvas.move(self.mode_icon, dx, dy)
+        self.canvas.move(self.mode_text, dx, dy)
+        self.canvas.move(self.timesig, dx, dy)
+        self.canvas.move(self.tempo, dx, dy)
 
     def highlight(self):
         """ Show selection cursor highlight"""
@@ -711,45 +709,39 @@ class zynthian_gui_mixer_strip():
         except:
             pass # meters not yet created?
 
-    def move_to(self, x):
+    def move(self, dx):
         # Re-calculate geometry variables
-        self.x = x
-        self.centre_x = x + int(self.width * 0.5)
-        self.dpm_b_x0 = x + self.width - self.dpm_width
+        self.x += dx
+        self.centre_x = self.x + int(self.width * 0.5)
+        self.dpm_b_x0 = self.x + self.width - self.dpm_width
         self.dpm_scale_x0 = self.dpm_b_x0 - self.dpm_scale_width
         self.dpm_a_x0 = self.dpm_scale_x0 - self.dpm_width
 
         # Move canvas objects to new coordinates
-        self.canvas.coords(self.audio_bg, x, self.toggle_y, x + self.width, self.gui_mixer.launcher_y)
-        self.canvas.coords(self.fader_bg, x, self.fader_y, x + self.width, self.legend_y)
+        self.canvas.move(self.audio_bg, dx, 0)
+        self.canvas.move(self.fader_bg, dx, 0)
         if self.chain.zynmixer_proc:
-            self.canvas.coords(self.toggle, x, self.toggle_y, x + self.width, self.mute_y)
-            self.canvas.coords(self.toggle_text, x + self.width / 2, self.toggle_y + self.button_height * 0.5)
-            self.canvas.coords(self.mute, x, self.mute_y, x + self.width, self.balance_y)
-            self.canvas.coords(self.mute_text, x + self.width / 2, self.mute_y + self.button_height * 0.5)
-            self.canvas.coords(self.balance_bg, self.x + 1, self.balance_y, self.x + self.width - 1, self.fader_y)
+            self.canvas.move(self.toggle, dx, 0)
+            self.canvas.move(self.toggle_text, dx, 0)
+            self.canvas.move(self.mute, dx, 0)
+            self.canvas.move(self.mute_text, dx, 0)
+            self.canvas.move(self.balance_bg, dx, 0)
             self.draw_level()
             self.draw_balance()
             self.set_launcher_mode(self.launcher_mode)
-        self.canvas.coords(self.fader_text, x, self.legend_y - 2)
-        self.canvas.coords(self.legend_strip_bg, x, self.gui_mixer.legend_y, x + self.width, self.gui_mixer.legend_y + self.legend_height - 2)
-        self.canvas.coords(self.legend_strip_txt, self.centre_x, self.gui_mixer.legend_y + self.legend_height / 2)
-        self.canvas.coords(self.legend_strip_midi_bg, x, self.gui_mixer.legend_y + self.legend_height - 2, x + self.width, self.gui_mixer.legend_y + self.legend_height)
+        self.canvas.move(self.fader_text, dx, 0)
+        self.canvas.move(self.legend_strip_bg, dx, 0)
+        self.canvas.move(self.legend_strip_txt, dx, 0)
+        self.canvas.move(self.legend_strip_midi_bg, dx, 0)
         for col in range(4):
-            self.canvas.coords(self.pedals[col],
-                    int(x + self.width / 5 * col), self.gui_mixer.legend_y + self.legend_height - 4,
-                    int(x + self.width / 5 * (col + 1)), self.gui_mixer.legend_y + self.legend_height
-                )
-        self.canvas.coords(self.midi_indicator,
-            int(x + self.width / 5 * 4), self.gui_mixer.legend_y + self.legend_height - 4,
-            int(x + self.width), self.gui_mixer.legend_y + self.legend_height
-        )
-        self.canvas.coords(self.clip_progress, x, self.gui_mixer.legend_y, x, self.gui_mixer.legend_y + 4)
-        self.canvas.coords(self.record_indicator, x + 2, self.gui_mixer.legend_y + self.gui_mixer.legend_height - 16)
-        self.canvas.coords(self.play_indicator, x + 2, self.gui_mixer.legend_y + self.gui_mixer.legend_height - 2)
+            self.canvas.move(self.pedals[col], dx, 0)
+        self.canvas.move(self.midi_indicator, dx, 0)
+        self.canvas.move(self.clip_progress, dx, 0)
+        self.canvas.move(self.record_indicator, dx, 0)
+        self.canvas.move(self.play_indicator, dx, 0)
 
         for pad in self.launchers:
-            pad.move_to(x)
+            pad.move(dx, 0)
 
     def get_bg_img(self, id, width, height):
         """ Get the tri-colour background image
@@ -2655,10 +2647,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             # Don't swap position with main chain!
             if strip2.chain.chain_id == 0:
                 return
-            x1 = strip1.x
-            x2 = strip2.x
-            strip1.move_to(x2)
-            strip2.move_to(x1)
+            dx = strip2.x - strip1.x
+            strip1.move(dx)
+            strip2.move(-dx)
             self.chain_strips[i1] = strip2
             self.chain_strips[i2] = strip1
             self.zyngui.chain_manager.nudge_chain(d)
