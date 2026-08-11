@@ -1499,6 +1499,8 @@ const char* getState() {
                     jSeq["followAction"] = pSequence->getFollowAction();
                     jSeq["followParam"] = pSequence->getFollowParam();
                     jSeq["state"] = pSequence->getPlayState();
+                    uint32_t seq_n_beats = 0;
+                    uint32_t seq_n_events = 0;
                     for (size_t nTrack = 0; nTrack < pSequence->getTracks(); ++nTrack) {
                         Track* pTrack = pSequence->getTrack(nTrack);
                         if (pTrack) {
@@ -1511,10 +1513,14 @@ const char* getState() {
                                 Pattern* pPattern   = pTrack->getPatternByIndex(nPattern);
                                 uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
                                 jTrack["patns"][sPos] = nPatternId;
+                                seq_n_beats += pPattern->getBeatsInPattern();
+                                seq_n_events += pPattern->getEvents();
                             }
                             jSeq["tracks"].push_back(jTrack);
                         }
                     }
+                    jSeq["nBeats"] = seq_n_beats;
+                    jSeq["nEvents"] = seq_n_events;
                     Timebase* pTimebase = pSequence->getTimebase();
                     if (pTimebase) {
                         json jTimebase;

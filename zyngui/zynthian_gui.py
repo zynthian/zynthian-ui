@@ -653,9 +653,6 @@ class zynthian_gui:
             if screen_obj != exclude_obj:
                 screen_obj.hide()
 
-    def reset_screen_history(self):
-        self.screen_history = []
-
     def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD, params=None):
         self.screen_lock.acquire()
         self.cancel_screen_timer()
@@ -769,6 +766,9 @@ class zynthian_gui:
             last_screen = "root"
         logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
         self.show_screen(last_screen)
+
+    def reset_screen_history(self):
+        self.screen_history = []
 
     def purge_screen_history(self, screen):
         self.screen_history = list(filter(lambda i: i != screen, self.screen_history))
