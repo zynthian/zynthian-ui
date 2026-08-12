@@ -1823,10 +1823,10 @@ class zynthian_gui:
                 self.state_manager.load_zs3(params[0])
 
     def cuia_zs3_next(self, params=None):
-        self.state_manager.load_next_zs3()
+        self.state_manager.load_next_zs3(params)
 
     def cuia_zs3_prev(self, params=None):
-        self.state_manager.load_prev_zs3()
+        self.state_manager.load_prev_zs3(params)
 
     # -------------------------------------------------------------------
     # MIDI Learn CUIAS:
