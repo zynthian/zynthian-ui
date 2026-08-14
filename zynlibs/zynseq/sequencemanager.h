@@ -100,15 +100,15 @@ class SequenceManager {
 
     /** @brief  Get the index of a pattern
         @param  pattern Pointer to pattern
-        @retval uint32_t Index of pattern or -1 if not found
+        @retval int32_t Index of pattern or -1 if not found
     */
-    uint32_t getPatternIndex(Pattern* pattern);
+    int32_t getPatternIndex(Pattern* pattern);
 
     /** @brief  Get next populated pattern after current pattern
         @param  pattern Index of current pattern
-        @retval uint32_t Index of pattern
+        @retval int32_t Index of pattern, -1 if no next
     */
-    uint32_t getNextPattern(uint32_t pattern);
+    int32_t getNextPattern(uint32_t pattern);
 
     /** @brief  Create new pattern
         @param  Number of beats in pattern.

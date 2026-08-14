@@ -91,14 +91,14 @@ Pattern* SequenceManager::getPattern(uint32_t index) {
     return m_mPatterns[index];
 }
 
-uint32_t SequenceManager::getPatternIndex(Pattern* pattern) {
+int32_t SequenceManager::getPatternIndex(Pattern* pattern) {
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
         if (it->second == pattern)
             return it->first;
     return -1; // NOT_FOUND
 }
 
-uint32_t SequenceManager::getNextPattern(uint32_t pattern) {
+int32_t SequenceManager::getNextPattern(uint32_t pattern) {
     auto it = m_mPatterns.find(pattern);
     if (it == m_mPatterns.end() || ++it == m_mPatterns.end())
         return -1;
@@ -334,7 +334,8 @@ uint8_t SequenceManager::clock(uint32_t nTime, EvSchedule* pSchedule, bool bSync
                     int16_t nFollowOffset = pSequence->getFollowParam();
                     if (nFollowOffset) {
                         auto pFollowSequence = pSequence;
-                        for (const auto& safety : m_vScenes[m_nScene]) { // limit iterations to avoid infinite loop
+                        //for (const auto& safety : m_vScenes[m_nScene]) { // limit iterations to avoid infinite loop
+                        for (uint32_t safety=0; safety<m_vScenes[m_nScene].size(); safety++) {
                             // Look for the next automated and playable phrase
                             uint8_t nRepeat = pFollowSequence->getFollowRepeat();
                             if (nRepeat && nFollowOffset < 0 && ++m_nFollowCount + 1 > nRepeat) {
@@ -596,7 +597,7 @@ Sequence* SequenceManager::insertPhrase(uint8_t scene, uint8_t phrase) {
     pPhrase->setGroup(32);
     pPhrase->setRepeat(255);
     pPhrase->setTimeSig(m_nDefaultTimeSig);
-    if (phrase + 1 < vPhrases.size()) {
+    if (uint32_t(phrase + 1) < vPhrases.size()) {
         auto pPrevPhrase = vPhrases[phrase + 1];
         uint8_t nFollowAction = pPrevPhrase->getFollowAction();
         int16_t nFollowParam = pPrevPhrase->getFollowParam();
@@ -720,7 +721,7 @@ void SequenceManager::nudgePhrase(uint8_t scene, uint8_t phrase, bool forward) {
     int nDiff = forward ? 1 : -1;
     int phrase2 = phrase + nDiff;
     auto& vPhrases = m_vScenes[scene];
-    if (phrase >= vPhrases.size() || phrase2 >= vPhrases.size() || phrase2 < 0)
+    if (phrase >= vPhrases.size() || phrase2 >= int(vPhrases.size()) || phrase2 < 0)
         return;
     std::iter_swap(vPhrases.begin() + phrase, vPhrases.begin() + phrase2);
     auto pPhrase = m_vScenes[scene][phrase];
@@ -781,7 +782,7 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
         auto& vPhrases = m_vScenes[scene];
         switch (action) {
             case FOLLOW_ACTION_ABSOLUTE:
-                if (param < 0 || param > vPhrases.size())
+                if (param < 0 || param > int(vPhrases.size()))
                     return false;
                 sequence->setFollowAction(action, param, flags, 0);
                 return true;
@@ -796,7 +797,7 @@ bool SequenceManager::setFollowAction(uint8_t scene, Sequence* sequence, uint8_t
                     for (uint32_t i = 0; i < vPhrases.size(); ++i) {
                         if (vPhrases[i] == sequence) {
                             int16_t offset = param + i;
-                            if (offset >= 0 && offset < vPhrases.size()) {
+                            if (offset >= 0 && offset < int(vPhrases.size())) {
                                 sequence->setFollowAction(action, param, flags, repeat);
                                 return true;
                             } else {

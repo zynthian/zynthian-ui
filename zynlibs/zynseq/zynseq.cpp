@@ -38,7 +38,6 @@
 #include <thread>           // provides thread for timer
 #include <cmath>            // provides sqrt
 #include <nlohmann/json.hpp>// provides json
-#include <mimalloc.h>       // mimalloc API, mainly to display some stats while debugging
 
 #include "metronome.h"       // metronome wav data
 #include "pattern.h"         // provides pattern objects
@@ -54,7 +53,7 @@
 
 // Structure to capture live recorded MIDI events
 struct ev_start {
-    uint32_t start;
+    int64_t start;
     uint8_t velocity;
     float offset;
 };
@@ -141,15 +140,16 @@ void updateClockTiming() {
     g_dFramesPerTick = 60.0 * g_nSampleRate / (g_dTempo * PPQN_INTERNAL);
 }
 
-void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
+void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* /*args*/) {
     if (jack_port_by_id(g_pJackClient, dest) == g_pClockInputPort) {
         setTempo(g_dTempo);
         DPRINTF("%u connections to MIDI clock port\n", jack_port_connected(g_pClockInputPort));
     }
+    DPRINTF("Connection from port %u to port %u => %d\n", source, dest, connect);
 }
 
 // Handle timebase change
-void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPeriod, jack_position_t* pPosition, int bUpdate, void* pArgs) {
+void onJackTimebase(jack_transport_state_t /*nState*/, jack_nframes_t /*nFramesInPeriod*/, jack_position_t* pPosition, int bUpdate, void* /*pArgs*/) {
     if (bUpdate) return;
     pPosition->bar = g_nBar;
     pPosition->beat = g_nBeat;
@@ -192,7 +192,7 @@ void updateJackPosition() {
     Schedule holds events, indexed by their scheduled execution time in frames since jack epoch.
 */
 
-int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
+int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
     // Transport & Clock
     static uint64_t nNow = 0;
     static jack_nframes_t nLastNow32 = 0;
@@ -201,7 +201,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     static uint32_t nTickTime = 0; // Quantity of elapsed ticks since tick epoch that next event will be processed
     static uint32_t nBeatsPerBar = g_nBeatsPerBar; // Sequencer's live beats per bar, updated from g_nBeatsPerBar on bar boundary
     static uint32_t nNextBeatTime = 0; // Tick time of next beat
-    static bool bRolling = g_bTransportRolling; // Transport rolling bars, updates g_bTranportRolling on next bar
+    //static bool bRolling = g_bTransportRolling; // Transport rolling bars, updates g_bTranportRolling on next bar
 
     // Populate 64-bit monotonic frame clock (to avoid 24 hour overflow)
     jack_nframes_t nNow32 = jack_last_frame_time(g_pJackClient);
@@ -250,8 +250,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nLastExtClockFrame = nNow + midiEvent.time;
                 uint32_t nTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
                 int32_t nTickDelta = nTicksBeforeClk - nExpectedTicksBeforeClk;
-                // Ensure not negative result (uint32)
-                if (nTickDelta >= 0 || nNextBeatTime >= -nTickDelta)
+                // Ensure not negative result (uint32_t)
+                if (nTickDelta >= 0 || nNextBeatTime >= uint32_t(-nTickDelta))
                     nNextBeatTime += nTickDelta;
                 break;
             }
@@ -292,16 +292,16 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         switch (midiEvent.buffer[0]) {
             case MIDI_STOP:
                 // Rx stop on any port - stops transport rolling on next bar
-                bRolling = false;
+                //bRolling = false;
                 break;
             case MIDI_START:
                 // Rx start on any port - starts transport rolling on next bar
-                bRolling = true; //!@todo Use bRolling to acutally start rolling
+                //bRolling = true; //!@todo Use bRolling to acutally start rolling
                 //!@todo reset to start of bar
                 break;
             case MIDI_CONTINUE:
                 // Rx continue on any port - starts jack transport on next bar
-                bRolling = true;
+                //bRolling = true;
                 break;
             /*
             case MIDI_POSITION:
@@ -363,7 +363,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                             fDuration = 1.0;
 
                         // Add note to pattern
-                        // TODO Make this RT-safe!! Inserting events in pattern calls malloc!!!
                         g_pPattern->addNote(nStart, nNum1, startEvents[nNum1].velocity, fDuration, fOffset);
                         //fprintf(stderr, "Captured Note %d at %d + %f with duration %f\n", nNum1, nStart, fOffset, fDuration);
                         // Reset note in event buffer
@@ -400,7 +399,6 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         if (g_nLastStepCC < nStep)
                             g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, nNum1);
                         // Add new CC event
-                        // TODO Make this RT-safe!! Inserting events in pattern calls malloc!!!
                         g_pPattern->addControl(nStep, nNum1, nNum2, nNum2);
                         g_nLastStepCC = nStep;
                         setPatternModified(g_pPattern, true, false);
@@ -499,7 +497,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 nNextBeatTime = nTickTime + PPQN_INTERNAL;
                 nMetronomeFrame = nFrame;
                 bBeat = true;
-                DPRINTF("Beat at tick %d, frame %u (%llu)\n", nTickTime, nFrame, nNow + nFrame);
+                DPRINTF("Beat at tick %d, frame %u (%lu)\n", nTickTime, nFrame, nNow + nFrame);
                 if (++g_nBeat > nBeatsPerBar) {
                     // Bar
                     g_nBeat = 1;
@@ -536,7 +534,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 if (g_nPlayingSequences != nPlayingSequences) {
                     g_nPlayingSequences = nPlayingSequences;
                     if (!g_nPlayingSequences) {
-                        DPRINTF("No sequences playing now: %u clock: %u beat: %u tick: %u\n", nNow, nTickTime, g_nBeat, g_nTick);
+                        DPRINTF("No sequences playing now: %lu clock: %u beat: %u tick: %u\n", nNow, nTickTime, g_nBeat, g_nTick);
                         transportStop(TRANSPORT_CLIENT_ZYNSEQ);
                     }
                 }
@@ -558,8 +556,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
         if (bBeat) {
             if (g_nMetronomeMode == METRO_MODE_ON ||
-            g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nTransportState == PLAYING || g_bTransportRolling) ||
-            g_nMetronomeMode == METRO_MODE_INTRO && !(g_nPlayingSequences & 1)) {
+            (g_nMetronomeMode == METRO_MODE_TRANSPORT && (g_nTransportState == PLAYING || g_bTransportRolling)) ||
+            (g_nMetronomeMode == METRO_MODE_INTRO && !(g_nPlayingSequences & 1))) {
                 // Start metronome
                 g_nMetronomePtr = 0;
                 g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
@@ -573,14 +571,12 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     }
 
     // Play metronome sound
-    if (g_nMetronomePtr >= 0) {
-        for (int n = nMetronomeFrame; n < nFrames; ++n) {
-            if (g_nMetronomePtr < g_pMetro->size) {
-                pOutMetronome[n] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
-            } else {
-                g_nMetronomePtr = -1;
-                break;
-            }
+    for (jack_nframes_t n = nMetronomeFrame; n < nFrames; ++n) {
+        if (g_nMetronomePtr < g_pMetro->size) {
+            pOutMetronome[n] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
+        } else {
+            g_nMetronomePtr = -1;
+            break;
         }
     }
 
@@ -640,7 +636,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     pBuffer[1] = it->second.msg.value1;
                 if (nSize > 2)
                     pBuffer[2] = it->second.msg.value2;
-                DPRINTF("Sending MIDI event %x,%x,%x at %llu\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
+                DPRINTF("Sending MIDI event %x,%x,%x at %lu\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
             }
             ++it;
         }
@@ -650,7 +646,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     return 0;
 }
 
-int onJackSampleRateChange(jack_nframes_t nFrames, void* pArgs) {
+int onJackSampleRateChange(jack_nframes_t nFrames, void* /*pArgs*/) {
     DPRINTF("zynseq: Jack sample rate: %u\n", nFrames);
     if (nFrames == 0)
         return 0;
@@ -659,7 +655,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void* pArgs) {
     return 0;
 }
 
-int onJackXrun(void* pArgs) {
+int onJackXrun(void* /*pArgs*/) {
     DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
     // g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
     return 0;
@@ -759,13 +755,13 @@ bool isModified() { return g_bDirty; }
 
 // Write a single signed byte
 int fileWrite8(int8_t value, FILE* pFile) {
-    int nResult = fwrite(&value, 1, 1, pFile);
+    fwrite(&value, 1, 1, pFile);
     return 1;
 }
 
 // Write a single unsigned byte
 int fileWrite8u(uint8_t value, FILE* pFile) {
-    int nResult = fwrite(&value, 1, 1, pFile);
+    fwrite(&value, 1, 1, pFile);
     return 1;
 }
 
@@ -983,7 +979,6 @@ const char* convertToJson(const char* filename) {
                 }
                 json jEvent;
                 jEvent.push_back(fileRead32(pFile)); // step
-                float fDuration, fOffset;
                 if (nVersion > 8) {
                     jEvent.push_back(fileReadBCD(pFile)); // offset
                     jEvent.push_back(fileReadBCD(pFile)); // duration
@@ -1001,7 +996,7 @@ const char* convertToJson(const char* filename) {
                 if (nVersion > 7) {
                     // Read stutter legacy values
                     uint8_t stut_cnt = fileRead8u(pFile);    // Legacy stutter count
-                    uint8_t stut_dur = fileRead8u(pFile);    // Legacy stutter duration
+                    fileRead8u(pFile);                       // Legacy stutter duration => uint8_t stut_dur
                     if (stut_cnt > 0) {                      // Stutter speed calculated from legacy values
                         uint16_t legacy_clocks_step = 24 * patj.value("beats", 4) / patj.value("steps", 16);  // 6 by default (96/16) => 4 steps/beat
                         jEvent.push_back(legacy_clocks_step / stut_cnt);
@@ -1036,8 +1031,8 @@ const char* convertToJson(const char* filename) {
             // Load scenes
             if (checkBlock(pFile, nBlockSize, 6))
                 continue;
-            uint8_t nScene = fileRead8u(pFile) - 1; // Legacy did not save scene (bank) 0
-            fileRead8(pFile); // Padding
+            fileRead8u(pFile);     // Legacy did not save scene (bank) 0 (nScene + 1)
+            fileRead8(pFile);      // Padding
             uint32_t nSequences = fileRead32(pFile);
             nBlockSize -= 6;
             json jScene;
@@ -1048,7 +1043,7 @@ const char* convertToJson(const char* filename) {
                     continue;
                 else if (checkBlock(pFile, nBlockSize, 8))
                     continue;
-                uint8_t nMidiChan; // Used to define which phrase to add sequence to
+                uint8_t nMidiChan=0; // Used to define which phrase to add sequence to
                 json jSeq;
                 bool bAddSeq = false;
                 switch (fileRead8u(pFile)) {
@@ -1424,7 +1419,7 @@ const char* getState() {
     jState["bpb"] = g_nDefaultBpb;
     jState["scene"] = nScene;
     // Iterate through patterns
-    uint32_t nPattern = 0;
+    int32_t nPattern = 0;
     while ((nPattern = g_seqMan.getNextPattern(nPattern)) != -1) {
         Pattern* pPattern = g_seqMan.getPattern(nPattern);
         // Only save patterns with content
@@ -1554,7 +1549,7 @@ void freeState() {
     g_pState = nullptr;
 }
 
-const char* convertPattern(uint32_t nPattern, const char* filename) {
+const char* convertPattern(const char* filename) {
     // Legacy binary format
     uint32_t nVersion = 0;
     FILE* pFile;
@@ -1650,7 +1645,7 @@ const char* convertPattern(uint32_t nPattern, const char* filename) {
                 if (nVersion > 7) {
                     // Read legacy values
                     uint8_t stut_cnt = fileRead8u(pFile);    // Legacy stutter count
-                    uint8_t stut_dur = fileRead8u(pFile);    // Legacy stutter duration
+                    fileRead8u(pFile);                       // Legacy stutter duration (uint8_t stut_dur)
                     if (stut_cnt > 0) {                      // Stutter speed calculated from legacy values
                         uint16_t legacy_clocks_step = 24 * jPattern.value("beats", 4) / jPattern.value("steps", 16);  // 6 by default (96/16) => 4 steps/beat
                         jEvent.push_back(legacy_clocks_step / stut_cnt);
@@ -1977,7 +1972,7 @@ int32_t getEventDataAt(uint32_t index, StepEvent* data){
     if (g_pPattern) {
         StepEvent* ev = g_pPattern->getEventAt(index);
         if (ev) {
-            memcpy(data, ev, sizeof(StepEvent));
+            memcpy((void *)data, ev, sizeof(StepEvent));
             return index;
         }
     }
@@ -1988,7 +1983,7 @@ int32_t getBufferEventDataAt(uint32_t index, StepEvent* data){
     if (g_pPattern) {
         StepEvent* ev = g_pPatternBuffer->getEventAt(index);
         if (ev) {
-            memcpy(data, ev, sizeof(StepEvent));
+            memcpy((void *)data, ev, sizeof(StepEvent));
             return index;
         }
     }
@@ -2646,7 +2641,6 @@ uint32_t getStateChange(uint32_t* states, uint32_t size) {
         return 0;
     uint32_t count = 0;
     uint8_t phrase = 0;
-    uint8_t channel = 0;
     while (Sequence* pPhraseSequence = g_seqMan.getSequence(g_nScene, phrase, PHRASE_CHANNEL)) {
         for (uint8_t channel = 0; channel < 32; ++channel) {
             Sequence* pSequence = pPhraseSequence->m_aChildSequences[channel];
@@ -2977,7 +2971,7 @@ void solo(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t track, bool 
     if (pSequence) {
         Track* pTrack = pSequence->getTrack(track);
         if (pTrack) {
-            pTrack->solo();
+            pTrack->solo(solo);
         }
     }
 }
@@ -3197,9 +3191,12 @@ uint8_t getPhraseBPB(uint8_t scene, uint8_t phrase) {
 	return g_seqMan.getPhraseTimeSig(scene, phrase);
 }
 
+#ifdef HAS_MIMALLOC
+#include <mimalloc.h>       // mimalloc API, mainly to display some stats while debugging
 
 void print_mimalloc_stats() {
     fprintf(stderr, "\n====================== ZYNSEQ MIMALLOC STATS ====================\n");
     mi_stats_print(NULL);
 }
 
+#endif
