@@ -127,7 +127,6 @@ class WaveformCanvas(OpenGLFrame):
             for ch in range(self.channels):
                 y_coords.append(yaxix)
                 yaxix += 2.0 / self.channels
-            logging.debug(f"AXIS Y POS => {y_coords}")
             self.positions[i0:i1:2, 0] = -1
             self.positions[i0+1:i1:2, 0] = 1
             self.positions[i0:i1, 1] = np.repeat(y_coords, 2)
@@ -159,16 +158,11 @@ class WaveformCanvas(OpenGLFrame):
             i1 = i0 + self.n_vertex_waveform
             self.positions[i0:i1, 1] = (2 * np.array(ydata, dtype=np.float32) / self.height) - 1.0
             self.touched = True
-            #np.set_printoptions(threshold=100000)
-            #logging.debug(f"X POS => {self.positions[:, 0]}")
-            #logging.debug(f"Y POS => {self.positions[:, 1]}")
         except Exception as e:
             logging.error(f"Can't set wave data ... => {e}")
 
     def set_beat_markers(self, xdata, coldata):
         try:
-            #logging.debug(f"SETTING MARKERS X:\n{xdata}")
-            #logging.debug(f"SETTING MARKERS COLORS:\n {coldata}")
             i0 = self.channels * 2 + self.n_vertex_waveform
             i1 = i0 + 2 * len(xdata)
             i2 = i0 + self.n_vertex_markers
@@ -203,7 +197,6 @@ class WaveformCanvas(OpenGLFrame):
             self.positions[-4:, 0] = [x1, x1, x2, x2]
             self.positions[-4:, 1] = [-1.0, 1.0, 1.0, -1.0]
             self.positions[-4:, 2] = -1
-            #logging.debug(f"CURSOR POSTIION => {self.positions[-4:]}")
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set cursor position ... => {e}")
@@ -234,8 +227,6 @@ class WaveformCanvas(OpenGLFrame):
             # Clean up bindings for this frame
             self.vbo_colors.unbind()
             self.vbo_positions.unbind()
-
-            #glFlush()
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for audio file selectors
@@ -349,12 +340,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     y0 = self.waveform_height // self.channels
                 else:
                     y0 = self.waveform_height
-                for chan in range(self.channels):
-                    v_offset = chan * y0
-                    #self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=self.bg_color, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
-                    ## fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
-                    #self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags=("waveform", f"zero_{chan}"), state=tkinter.HIDDEN)
-                    #self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
                 self.offset = 0
                 self.auto_offset = 0
                 logging.debug(f"LOADING FILE {self.fpath} => {self.frames} frames")
@@ -529,8 +514,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 f = self.width / self.frames * self.zoom
                 if self.update_markers:
                     # Crop markers
-                    x1 = int(f * (self.crop_start - self.offset))
-                    x2 = int(f * (self.crop_end - self.offset))
+                    x1 = f * (self.crop_start - self.offset)
+                    x2 = f * (self.crop_end - self.offset)
                     self.widget_canvas.set_crop_markers(x1, x2)
                     # Beat markers
                     xdata = []
