@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import os
+
 import logging
 import tkinter
 import soundfile
@@ -32,11 +33,209 @@ from math import modf, pow
 from threading import Thread
 from os.path import basename
 
+import numpy as np
+from OpenGL.GL import *
+from OpenGL.arrays import vbo
+from pyopengltk import OpenGLFrame
+
 # Zynthian specific modules
 from zynlibs.zynseq import zynseq
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
+
+
+def hexcolor_to_opengl(hex_str):
+    """Converts '#RRGGBB' string into an OpenGL list [R, G, B] between 0.0 and 1.0"""
+    # Remove the '#' character if present
+    hex_str = hex_str.lstrip('#')
+
+    # Slice the string into pairs and convert to integers, then divide by 255
+    r = int(hex_str[0:2], 16) / 255.0
+    g = int(hex_str[2:4], 16) / 255.0
+    b = int(hex_str[4:6], 16) / 255.0
+
+    return [r, g, b]
+
+
+class WaveformCanvas(OpenGLFrame):
+
+    def __init__(self, *args, **kwargs):
+        self.channels = 0
+        self.n_vertex = 0
+        self.positions = None
+        self.colors = None
+        self.vbo_positions = None
+        self.vbo_colors = None
+        self.touched = False
+
+        self.bg_color = hexcolor_to_opengl(zynthian_gui_config.color_bg)
+        self.waveform_color1 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_hl, -60))
+        self.waveform_color2 = hexcolor_to_opengl(zynthian_gui_config.color_hl)
+        self.playcur_color = hexcolor_to_opengl(zynthian_gui_config.color_on)
+        self.bg_crop_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 25))
+        #self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_hl)
+        self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_tx)
+        self.axis_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
+
+        super().__init__(*args, **kwargs)
+
+    def initgl(self):
+        """Configures the native fixed-function GPU state."""
+        glClearColor(*self.bg_color, 1.0)
+
+        # Enable needed features
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_COLOR_ARRAY)
+
+        # Enable native depth hardware sorting
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
+
+        # Turn on hardware line smoothing (anti-aliasing)
+        #glEnable(GL_LINE_SMOOTH)
+        #glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+
+        # Enable blending (Required for line smoothing transparency blending)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    def init_vbo(self, nchans):
+        self.width = self.winfo_width()
+        self.height = self.winfo_height()
+        if nchans == 0:
+            return
+        # Num Vertex = lines (axis + waveform + markers) + 2 x crop rects + 1 x cursor rect
+        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 8 + 4
+        if self.positions is None or nchans != self.channels or nv != self.n_vertex:
+            self.channels = nchans
+            self.n_vertex = nv
+            self.n_vertex_waveform = 2 * self.channels * self.width
+            self.n_vertex_markers = 2 * self.width // 16
+            #logging.debug(f"INITIALIZING VERTEX ARRAY => {self.n_vertex}")
+
+            # Create pure Python NumPy arrays for Positions [X, Y, Z] => initialized to 0.0
+            self.positions = np.zeros((self.n_vertex, 3), dtype=np.float32)
+            # Create NumPy array for Colors [R, G, B] => Initialized to black
+            self.colors = np.zeros((self.n_vertex, 3), dtype=np.float32)
+
+            # Axis for each channel...
+            i0 = 0
+            i1 = self.channels * 2
+            y_coords = []
+            yaxix = -1.0 + 1.0 / self.channels
+            for ch in range(self.channels):
+                y_coords.append(yaxix)
+                yaxix += 2.0 / self.channels
+            logging.debug(f"AXIS Y POS => {y_coords}")
+            self.positions[i0:i1:2, 0] = -1
+            self.positions[i0+1:i1:2, 0] = 1
+            self.positions[i0:i1, 1] = np.repeat(y_coords, 2)
+            self.positions[i0:i1, 2] = 0.5
+            self.colors[i0:i1] = self.waveform_color2    #self.axis_color
+
+            # Waveform x coords => Evenly space X across the screen (-1.0 to 1.0) and repeat each point twice per channel
+            i0 = i1
+            i1 += self.n_vertex_waveform
+            x_coords = np.linspace(-1.0, 1.0, self.width, dtype=np.float32)
+            self.positions[i0:i1, 0] = np.repeat(x_coords, 2 * self.channels)
+            self.colors[i0:i1:2] = self.waveform_color1
+            self.colors[i0+1:i1:2] = self.waveform_color2
+
+            # Markers, crop rectangle & cursor colors
+            i0 = i1
+            i1 += self.n_vertex_markers
+            self.colors[i0:i1] = self.bmarker_color
+            self.colors[-12:-4] = self.bg_crop_color
+            self.colors[-4:] = self.playcur_color
+
+            # Instantiate your VBOs inside the valid graphic device bounds
+            self.vbo_positions = vbo.VBO(self.positions, usage='GL_DYNAMIC_DRAW')
+            self.vbo_colors = vbo.VBO(self.colors, usage='GL_DYNAMIC_DRAW')
+
+    def set_wave_data(self, ydata):
+        try:
+            i0 = self.channels * 2
+            i1 = i0 + self.n_vertex_waveform
+            self.positions[i0:i1, 1] = (2 * np.array(ydata, dtype=np.float32) / self.height) - 1.0
+            self.touched = True
+            #np.set_printoptions(threshold=100000)
+            #logging.debug(f"X POS => {self.positions[:, 0]}")
+            #logging.debug(f"Y POS => {self.positions[:, 1]}")
+        except Exception as e:
+            logging.error(f"Can't set wave data ... => {e}")
+
+    def set_beat_markers(self, xdata, coldata):
+        try:
+            #logging.debug(f"SETTING MARKERS X:\n{xdata}")
+            #logging.debug(f"SETTING MARKERS COLORS:\n {coldata}")
+            i0 = self.channels * 2 + self.n_vertex_waveform
+            i1 = i0 + 2 * len(xdata)
+            i2 = i0 + self.n_vertex_markers
+            self.positions[i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
+            self.positions[i0:i1:2, 1] = 1.0
+            self.positions[i0+1:i1:2, 1] = -1.0
+            self.positions[i0:i1:, 2] = -0.75
+            self.positions[i1:i2] = 0
+            colmatrix = np.array(coldata, dtype=np.float32)
+            self.colors[i0:i1] = np.repeat(colmatrix, 2, axis=0)
+            self.touched = True
+        except Exception as e:
+            logging.error(f"Can't set beat markers ... => {e}")
+
+    def set_crop_markers(self, x1, x2):
+        try:
+            x1 = (2 * x1 / self.width) - 1.0
+            x2 = (2 * x2 / self.width) - 1.0
+            self.positions[-12:-4, 0] = [-1.0, -1.0, x1, x1, x2, x2, 1.0, 1.0]
+            self.positions[-12:-4, 1] = [-1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0]
+            self.positions[-12:-4, 2] = 0.5
+            self.touched = True
+        except Exception as e:
+            logging.error(f"Can't set crop markers ... => {e}")
+
+    def set_cursor_pos(self, xpos):
+        try:
+            x = (2 * xpos / self.width) - 1.0
+            w = 2 / self.width
+            x1 = x - w
+            x2 = x + w
+            self.positions[-4:, 0] = [x1, x1, x2, x2]
+            self.positions[-4:, 1] = [-1.0, 1.0, 1.0, -1.0]
+            self.positions[-4:, 2] = -1
+            #logging.debug(f"CURSOR POSTIION => {self.positions[-4:]}")
+            self.touched = True
+        except Exception as e:
+            logging.error(f"Can't set cursor position ... => {e}")
+
+    def redraw(self):
+        if self.vbo_positions is None or self.vbo_colors is None:
+            return
+
+        if self.touched:
+            self.vbo_positions.set_array(self.positions)
+            self.touched = False
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+            # Bind VBOs and point the pipeline to them (None = start at byte 0)
+            self.vbo_positions.bind()
+            glVertexPointer(3, GL_FLOAT, 0, None)
+
+            self.vbo_colors.bind()
+            glColorPointer(3, GL_FLOAT, 0, None)
+
+            # Draw axis, waveform vertical lines and markersout of VRAM in one single batch instruction
+            glDrawArrays(GL_LINES, 0, self.n_vertex - 12)
+
+            # Draw Crop & Cursor Quads
+            glDrawArrays(GL_QUADS, self.n_vertex - 12, 12)
+
+            # Clean up bindings for this frame
+            self.vbo_colors.unbind()
+            self.vbo_positions.unbind()
+
+            #glFlush()
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for audio file selectors
@@ -76,70 +275,20 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.gain = 1
         self.last_progress = 0
 
-        self.bg_color = zynthian_gui_config.color_bg
-        self.waveform_color = zynthian_gui_config.color_info
-        self.playcur_color = zynthian_gui_config.color_on
-        self.bg_crop_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 30)
-        #self.bmarker_color = zynthian_gui_config.color_hl
-        self.bmarker_color = zynthian_gui_config.color_tx
+        self.bmarker_color1 = hexcolor_to_opengl(zynthian_gui_config.color_tx)
+        self.bmarker_color2 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
+
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
-        self.widget_canvas = tkinter.Canvas(self,
+        self.widget_canvas = WaveformCanvas(self,
                                             bd=0,
                                             highlightthickness=0,
                                             relief='flat',
                                             bg=zynthian_gui_config.color_bg)
-        self.widget_canvas.grid(sticky='news')
-
-        self.loading_text = self.widget_canvas.create_text(
-            0, 0,
-            anchor=tkinter.CENTER,
-            font=(zynthian_gui_config.font_family, int(1.5 * zynthian_gui_config.font_size)),
-            justify=tkinter.CENTER,
-            fill=zynthian_gui_config.color_tx_off,
-            text="No file loaded"
-        )
-        self.playing_cursor_line = self.widget_canvas.create_line(
-            0, 0, 0, self.height,
-            fill=self.playcur_color,
-            width=2,
-            tags="overlay"
-        )
-        self.crop_start_rect = self.widget_canvas.create_rectangle(
-            0, 0, 0, self.height,
-            fill=self.bg_crop_color,
-            stipple="gray50",
-            tags="overlay"
-        )
-        self.crop_end_rect = self.widget_canvas.create_rectangle(
-            self.width, 0, self.width, self.height,
-            fill=self.bg_crop_color,
-            stipple="gray50",
-            tags="overlay"
-        )
-        self.info_rect = self.widget_canvas.create_rectangle(
-            0,
-            self.height,
-            self.width,
-            self.height,
-            width=0,
-            fill=zynthian_gui_config.color_panel_bg
-        )
-        self.info_text = self.widget_canvas.create_text(
-            self.width - int(0.5 * zynthian_gui_config.font_size),
-            self.height,
-            anchor=tkinter.SE,
-            justify=tkinter.RIGHT,
-            width=self.width,
-            font=self.font_info,
-            fill=zynthian_gui_config.color_panel_tx,
-            text="",
-            state=tkinter.HIDDEN,
-            tags="overlay"
-        )
         self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
         self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
         self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
+        self.widget_canvas.grid(sticky='news')
 
     def set_processor(self, processor):
         super().set_processor(processor)
@@ -170,27 +319,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     def on_size(self, event):
         if event.width == self.width and event.height == self.height:
             return
-        self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
-        self.widget_canvas.itemconfig("waveform", state=tkinter.HIDDEN)
         super().on_size(event)
-        self.widget_canvas.configure(width=self.width, height=self.height)
-        self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
-        self.widget_canvas.coords(self.info_rect, 0, self.waveform_height, self.width, self.height)
-        self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
-        self.widget_canvas.itemconfig(self.info_text, width=self.width)
-
-        if self.channels:
-            y0 = self.waveform_height // self.channels
-            for chan in range(self.channels):
-                coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
-                if len(coords) > 2:
-                    coords[2] = self.width
-                    self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
-                v_offset = chan * y0
-                self.widget_canvas.coords(f"zero_{chan}", 0, v_offset + y0 // 2, self.width, v_offset + y0 // 2)
-
-        self.waveform_height = self.height - self.font_info.metrics("linespace")
-        self.refresh_waveform = True
+        #self.waveform_height = self.height - self.font_info.metrics("linespace")
+        self.waveform_height = self.height
 
     def on_canvas_press(self, event):
         pass
@@ -206,8 +337,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if self.fpath:
             self.refreshing = True
             try:
-                self.widget_canvas.delete("waveform")
-                self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
                 self.sf = soundfile.SoundFile(self.fpath)
                 self.channels = self.sf.channels
                 self.samplerate = self.sf.samplerate
@@ -222,12 +351,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     y0 = self.waveform_height
                 for chan in range(self.channels):
                     v_offset = chan * y0
-                    self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=self.bg_color, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
-                    # fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
-                    self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags=("waveform", f"zero_{chan}"), state=tkinter.HIDDEN)
-                    self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+                    #self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=self.bg_color, tags=("waveform", f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
+                    ## fill = zynthian_gui_config.LAUNCHER_COLOUR[chan // 2 % 16]["rgb"]
+                    #self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags=("waveform", f"zero_{chan}"), state=tkinter.HIDDEN)
+                    #self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
                 self.offset = 0
                 self.auto_offset = 0
+                logging.debug(f"LOADING FILE {self.fpath} => {self.frames} frames")
                 if self.clip_info:
                     self.get_clippy_values()
                 else:
@@ -235,34 +365,28 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.crop_end = self.frames
             except MemoryError:
                 logging.warning(f"Failed to show waveform - file too large")
-                self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
+                #self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
                 self.sf = None
             except Exception as e:
                 logging.warning(f"Failed to show waveform: {e}")
-                self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+                #self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
                 self.sf = None
             self.refreshing = False
             self.refresh_waveform = True
         else:
-            self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
-            self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
-            self.widget_canvas.delete("beat_markers")
-            self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            #self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.channels = 0
             self.frames = 0
             self.sf = None
 
     def draw_waveform(self, start, length, gain=1.0):
         if self.sf is None:
-            self.widget_canvas.itemconfig(f"waveform", state=tkinter.HIDDEN)
-            self.widget_canvas.itemconfig(f"overlay", state=tkinter.HIDDEN)
-            self.widget_canvas.delete("beat_markers")
-            self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            #self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
             return
 
         length = min(self.frames, length)
         start = min(start, (self.frames - length))
         steps_per_peak = 16
-        data = [[] for i in range(self.channels)]
         large_file = self.frames * self.channels > 24000000
 
         if self.channels:
@@ -289,9 +413,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             # Limit read blocks for larger files
             block_size = min(frames_per_pixel, 1024)
 
-        v1 = [0.0 for i in range(self.channels)]
-        v2 = [0.0 for i in range(self.channels)]
-
+        ydata = [0] * 2 * self.channels * self.width
+        pos = 0
         for x in range(self.width):
             # For each x-axis pixel
             if large_file:
@@ -305,8 +428,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 offset2 = offset1 + frames_per_pixel
             for chan in range(self.channels):
                 # For each audio channel
-                v1[0:] = [0.0] * self.channels
-                v2[0:] = [0.0] * self.channels
+                v1 = [0.0] * self.channels
+                v2 = [0.0] * self.channels
                 frame = offset1
                 while int(frame) < int(offset2):
                     # Find peak audio within block of audio represented by this x-axis pixel
@@ -316,18 +439,17 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     if av > v2[chan]:
                         v2[chan] = av
                     frame += step
-                y1 = int(y_offsets[chan] + v1[chan] * y0)
-                y2 = int(y_offsets[chan] + v2[chan] * y0)
-                data[chan] += [x, y1, x, y2]
+                ymin = y_offsets[chan] + v1[chan] * y0
+                ymax = y_offsets[chan] + v2[chan] * y0
+                if v2[chan] == 0:
+                    ydata[pos] = ymax
+                    ydata[pos + 1] = ymin
+                else:
+                    ydata[pos] = ymin
+                    ydata[pos + 1] = ymax
+                pos += 2
 
-        for chan in range(self.channels):
-            # Plot each point on the graph as series of vertical lines spanning max and min peaks of audio represented by each x-axis pixel
-            self.widget_canvas.coords(f"waveform{chan}", data[chan])
-        self.widget_canvas.itemconfig(f"waveform", state=tkinter.NORMAL)
-        self.widget_canvas.itemconfig(self.loading_text, state=tkinter.HIDDEN)
-        self.widget_canvas.tag_lower(self.loading_text)
-        self.widget_canvas.tag_raise("overlay")
-        self.widget_canvas.itemconfig(f"overlay", state=tkinter.NORMAL)
+        self.widget_canvas.set_wave_data(ydata)
 
     def refresh_gui(self):
         if not self.zctrl:
@@ -384,6 +506,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 waveform_thread.start()
                 return
 
+            self.widget_canvas.init_vbo(self.channels)
+
             if self.refresh_waveform:
                 length = self.frames // self.zoom
                 if self.auto_offset == 1:
@@ -407,10 +531,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     # Crop markers
                     x1 = int(f * (self.crop_start - self.offset))
                     x2 = int(f * (self.crop_end - self.offset))
-                    self.widget_canvas.coords(self.crop_start_rect, 0, 0, x1, h)
-                    self.widget_canvas.coords(self.crop_end_rect, x2, 0, self.width, h)
+                    self.widget_canvas.set_crop_markers(x1, x2)
                     # Beat markers
-                    self.widget_canvas.delete("beat_markers")
+                    xdata = []
+                    coldata = []
                     if self.beats > 0:  #  and self.warp
                         # Get Beats Per Bar
                         beats_per_bar = self.zyngui.state_manager.zynseq.get_sequence_param(self.clip_info[0], self.clip_info[1], zynseq.PHRASE_CHANNEL, "bpb")
@@ -428,13 +552,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 x = x1 + i * (x2 - x1) // n
                                 if plot_beats:
                                     if i % beats_per_bar == 0:
-                                        dash = None
+                                        col = self.bmarker_color1
                                     else:
-                                        dash = (2, 2)
+                                        col = self.bmarker_color2
                                 else:
-                                    dash = None
-                                self.widget_canvas.create_line(x, 0, x, h, fill=self.bmarker_color, dash=dash, tags="beat_markers")
-                        #self.widget_canvas.tag_raise("beat_markers")
+                                    col = self.bmarker_color1
+                                xdata.append(x)
+                                coldata.append(col)
+                        self.widget_canvas.set_beat_markers(xdata, coldata)
                 # Playing cursor (implemented for clippy)
                 if self.clip_info:
                     # Playing cursor
@@ -446,20 +571,20 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     if self.last_progress != progress or self.update_markers:
                         self.last_progress = progress
                         current_frame = self.crop_start + int(progress * (self.crop_end - self.crop_start) / 100) - self.offset
-                        x = int(f * current_frame)
-                        self.widget_canvas.coords(self.playing_cursor_line, x, 0, x, h)
+                        self.widget_canvas.set_cursor_pos(f * current_frame)
                 refresh_info = True
 
             if refresh_info:
                 time = self.duration
                 n = (self.width // self.font_info.measure("x")) - 12
                 fname = (self.fname[:n-3] + '...') if len(self.fname) > n else (self.fname + ' ')
-                self.widget_canvas.itemconfigure(self.info_text, text=f"{fname}[{self.format_time(time)}]", state=tkinter.NORMAL)
+                #self.widget_canvas.itemconfigure(self.info_text, text=f"{fname}[{self.format_time(time)}]", state=tkinter.NORMAL)
 
         except Exception as e:
             # logging.error(e)
             logging.exception(traceback.format_exc())
 
+        self.widget_canvas.tkExpose(None)
         self.update_markers = False
         self.refreshing = False
 
