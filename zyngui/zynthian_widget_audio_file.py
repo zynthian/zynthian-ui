@@ -86,11 +86,10 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
 
         # PI4/PI5 FIX: Bind to the desktop compatibility layer
         # Version 140 corresponds directly to OpenGL 3.1 Desktop
-        self.ctx = moderngl.create_context(require=140)
-
+        #self.ctx = moderngl.create_context(require=140)
         # GLSL 140 SHADERS (Native desktop fallback for Pi 4 & Pi 5)
         # We replace 'in' with 'attribute' for inputs, and 'out' with 'varying' for pipelines
-        vertex_shader = """
+        _vertex_shader = """
             #version 140
 
             attribute vec3 in_position;
@@ -102,7 +101,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
                 v_color = in_color;
             }
         """
-        fragment_shader = """
+        _fragment_shader = """
             #version 140
 
             varying vec3 v_color;
@@ -115,8 +114,8 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             }
         """
 
-        #self.ctx = moderngl.create_context(require=130)
-        _vertex_shader = """
+        self.ctx = moderngl.create_context(require=130)
+        vertex_shader = """
             #version 300 es
             precision mediump float;
 
@@ -130,7 +129,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             }
 
         """
-        _fragment_shader = """
+        fragment_shader = """
             #version 300 es
             precision mediump float;
 
@@ -152,17 +151,28 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         self.prog = self.ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
 
     def on_resize(self, event):
-        self.width = event.width
-        self.height = event.height
+        self.width = self.winfo_width()    #event.width
+        self.height = self.winfo_height()  #event.height
         if self.ctx:
             self.ctx.viewport = (0, 0, self.width, self.height)
-            #self.init_vbo()
 
     def init_vbo(self, nchans=None):
         if nchans is None:
             nchans = self.channels
-        if nchans == 0 or not self.ctx:
+        if not self.ctx:
             return False
+        if nchans == 0:
+            self.channels = 0
+            self.n_vertex = 0
+            self.n_vertex_waveform = 0
+            self.n_vertex_markers = 0
+            self.vbo_data = None
+            if self.vbo:
+                self.vbo.release()
+                self.vbo = None
+            self.vao = None
+            self.touched = True
+            return True
         # Num Vertex = 2 * (Chans * Axis + Chans * Waveform + Beat Markers) + Crop Markers + Cursor
         nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 6
         if self.vbo_data is None or nchans != self.channels or nv != self.n_vertex:
@@ -215,6 +225,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
                 self.prog,
                 [(self.vbo, '3f 3f', 'in_position', 'in_color')],
             )
+            self.touched = True
         return True
 
     def set_wave_data(self, ydata):
@@ -267,37 +278,26 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             logging.error(f"Can't set cursor position ... => {e}")
 
     def redraw(self):
-        if self.ctx is None or self.vbo is None or self.vao is None:
-            return
-
         if self.touched:
-            self.vbo.write(self.vbo_data.tobytes())
+            if self.vbo:
+                self.vbo.write(self.vbo_data.tobytes())
+            self.ctx.clear()
+            if self.vao:
+                # Dibujar líneas
+                self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 18)
+                # Dibujar Quads using native Triangles
+                self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 18, vertices=18)
             self.touched = False
 
-        self.ctx.clear()
-
-        # Dibujar líneas
-        self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 18)
-
-        # Dibujar Quads using native Triangles
-        self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 18, vertices=18)
-
     def force_update(self):
-        if self.ctx is None:
-            return
-
         """Forces a single, immediate frame refresh when animate=False."""
-        # 1. Bind the OpenGL rendering context to this X11 frame container
-        self.tkMakeCurrent()
-
-        # 2. Synchronize current frame width/height restrictions
-        self.ctx.viewport = (0, 0, self.width, self.height)
-
-        # 3. Manually invoke your standard frame drawing logic
-        self.redraw()
-
-        # 4. Force the GPU to flush instructions and swap the front/back buffers
-        self.tkSwapBuffers()
+        if self.touched:
+            # 1. Bind the OpenGL rendering context to this X11 frame container
+            self.tkMakeCurrent()
+            # 2. Manually invoke your standard frame drawing logic
+            self.redraw()
+            # 3. Force the GPU to flush instructions and swap the front/back buffers
+            self.tkSwapBuffers()
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for audio file selectors
@@ -339,8 +339,11 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         self.bmarker_color1 = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.bmarker_color2 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
-
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
+
+        self.rowconfigure(0, weight=1)     # Row 0 (Canvas) expands to fill all remaining space
+        self.rowconfigure(1, weight=0)     # Row 1 (Label) stays locked to its content height
+        self.columnconfigure(0, weight=1)  # Expand fully horizontally
 
         self.widget_canvas = WaveformCanvas(self,
                                             bd=0,
@@ -350,7 +353,18 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
         self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
         self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
-        self.widget_canvas.grid(sticky='news')
+        self.widget_canvas.grid(row=0, column=0, sticky='news')
+
+        self.info_text_var = tkinter.StringVar()
+        self.info_text_var.set("No waveform loaded")
+        self.info_text = tkinter.Label(self,
+                                       textvar=self.info_text_var,
+                                       bg=zynthian_gui_config.color_panel_bg,
+                                       fg=zynthian_gui_config.color_tx,
+                                       font=self.font_info,
+                                       anchor=tkinter.E,
+                                       padx=5, pady=2)
+        self.info_text.grid(row=1, column=0, sticky='news')
 
     def set_processor(self, processor):
         super().set_processor(processor)
@@ -382,8 +396,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if event.width == self.width and event.height == self.height:
             return
         super().on_size(event)
-        #self.waveform_height = self.height - self.font_info.metrics("linespace")
-        self.waveform_height = self.height
 
     def on_canvas_press(self, event):
         pass
@@ -398,6 +410,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         # Run as background thread
         if self.fpath:
             self.refreshing = True
+            self.info_text_var.set("Loading waveform ...")
             try:
                 self.sf = soundfile.SoundFile(self.fpath)
                 self.channels = self.sf.channels
@@ -407,10 +420,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.duration = self.frames / self.samplerate
                 else:
                     self.duration = 0.0
-                if self.channels:
-                    y0 = self.waveform_height // self.channels
-                else:
-                    y0 = self.waveform_height
                 self.offset = 0
                 self.auto_offset = 0
                 logging.debug(f"LOADING FILE {self.fpath} => {self.frames} frames")
@@ -420,24 +429,24 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.crop_start = 0
                     self.crop_end = self.frames
             except MemoryError:
-                logging.warning(f"Failed to show waveform - file too large")
-                #self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
+                logging.warning(f"Failed to display waveform: File too large!")
+                self.info_text_var.set("File too large!")
                 self.sf = None
             except Exception as e:
-                logging.warning(f"Failed to show waveform: {e}")
-                #self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+                logging.warning(f"Failed to display waveform: {e}")
+                self.info_text_var.set("Can't show waveform!")
                 self.sf = None
             self.refreshing = False
             self.refresh_waveform = True
         else:
-            #self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.info_text_var.set("Can't show waveform!")
             self.channels = 0
             self.frames = 0
             self.sf = None
 
     def draw_waveform(self, start, length, gain=1.0):
         if self.sf is None:
-            #self.widget_canvas.itemconfig(self.loading_text, text="No file loaded", state=tkinter.NORMAL)
+            self.info_text_var.set("Can't show waveform!")
             return
 
         length = min(self.frames, length)
@@ -445,6 +454,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         steps_per_peak = 16
         large_file = self.frames * self.channels > 24000000
 
+        self.waveform_height = self.widget_canvas.winfo_height()
         if self.channels:
             y0 = self.waveform_height // self.channels
         else:
@@ -511,7 +521,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if not self.zctrl:
             return
         self.refreshing = True
-
         refresh_info = False
 
         if "zoom" in self.monitors and self.zoom != self.monitors["zoom"]:
@@ -560,9 +569,11 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 self.fname = basename(self.fpath)
                 waveform_thread = Thread(target=self.load_file, name="waveform image")
                 waveform_thread.start()
+                self.refreshing = False
                 return
 
             if not self.widget_canvas.init_vbo(self.channels):
+                self.refreshing = False
                 return
 
             if self.refresh_waveform:
@@ -635,7 +646,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 time = self.duration
                 n = (self.width // self.font_info.measure("x")) - 12
                 fname = (self.fname[:n-3] + '...') if len(self.fname) > n else (self.fname + ' ')
-                #self.widget_canvas.itemconfigure(self.info_text, text=f"{fname}[{self.format_time(time)}]", state=tkinter.NORMAL)
+                self.info_text_var.set(f"{fname}[{self.format_time(time)}]")
 
         except Exception as e:
             # logging.error(e)
