@@ -24,7 +24,6 @@
 # ******************************************************************************
 
 import os
-
 import logging
 import tkinter
 import soundfile
@@ -33,10 +32,9 @@ from math import modf, pow
 from threading import Thread
 from os.path import basename
 
+import moderngl
 import numpy as np
-from OpenGL.GL import *
-from OpenGL.arrays import vbo
-from pyopengltk import OpenGLFrame
+from moderngl_window.context.tk.window import ModernglTkWindow
 
 # Zynthian specific modules
 from zynlibs.zynseq import zynseq
@@ -45,81 +43,141 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
 
-def hexcolor_to_opengl(hex_str):
-    """Converts '#RRGGBB' string into an OpenGL list [R, G, B] between 0.0 and 1.0"""
-    # Remove the '#' character if present
-    hex_str = hex_str.lstrip('#')
 
-    # Slice the string into pairs and convert to integers, then divide by 255
+def hexcolor_to_opengl(hex_str):
+    hex_str = hex_str.lstrip('#')
     r = int(hex_str[0:2], 16) / 255.0
     g = int(hex_str[2:4], 16) / 255.0
     b = int(hex_str[4:6], 16) / 255.0
-
     return [r, g, b]
 
 
-class WaveformCanvas(OpenGLFrame):
+class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficial
 
     def __init__(self, *args, **kwargs):
+        # 1. Forzar/asegurar ciertos nombres de variables que ModernGL-Window espera nativamente
+        self.ctx = None
+        self.prog = None
+        self.vbo = None
+        self.vao = None
+
         self.channels = 0
         self.n_vertex = 0
-        self.positions = None
-        self.colors = None
-        self.vbo_positions = None
-        self.vbo_colors = None
+        self.vbo_data = None
         self.touched = False
 
+        # Configuración de colores
         self.bg_color = hexcolor_to_opengl(zynthian_gui_config.color_bg)
         self.waveform_color1 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_hl, -60))
         self.waveform_color2 = hexcolor_to_opengl(zynthian_gui_config.color_hl)
         self.playcur_color = hexcolor_to_opengl(zynthian_gui_config.color_on)
         self.bg_crop_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 25))
-        #self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_hl)
         self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.axis_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
 
         super().__init__(*args, **kwargs)
+        #self.animate = True
+
+        # 4. Enlazar el evento de redimensionado nativo de Tkinter
+        self.bind("<Configure>", self.on_resize)
 
     def initgl(self):
-        """Configures the native fixed-function GPU state."""
-        glClearColor(*self.bg_color, 1.0)
+        #self.tkMakeCurrent()
 
-        # Enable needed features
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glEnableClientState(GL_COLOR_ARRAY)
+        # PI4/PI5 FIX: Bind to the desktop compatibility layer
+        # Version 140 corresponds directly to OpenGL 3.1 Desktop
+        self.ctx = moderngl.create_context(require=140)
 
-        # Enable native depth hardware sorting
-        glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LESS)
+        # GLSL 140 SHADERS (Native desktop fallback for Pi 4 & Pi 5)
+        # We replace 'in' with 'attribute' for inputs, and 'out' with 'varying' for pipelines
+        vertex_shader = """
+            #version 140
 
-        # Turn on hardware line smoothing (anti-aliasing)
-        #glEnable(GL_LINE_SMOOTH)
-        #glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+            attribute vec3 in_position;
+            attribute vec3 in_color;
+            varying vec3 v_color;
 
-        # Enable blending (Required for line smoothing transparency blending)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            void main() {
+                gl_Position = vec4(in_position, 1.0);
+                v_color = in_color;
+            }
+        """
+        fragment_shader = """
+            #version 140
 
-    def init_vbo(self, nchans):
-        self.width = self.winfo_width()
-        self.height = self.winfo_height()
-        if nchans == 0:
-            return
-        # Num Vertex = lines (axis + waveform + markers) + 2 x crop rects + 1 x cursor rect
-        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 8 + 4
-        if self.positions is None or nchans != self.channels or nv != self.n_vertex:
+            varying vec3 v_color;
+
+            // In GLSL 140, we can use gl_FragColor directly or define a targeted out vec4
+            out vec4 f_color;
+
+            void main() {
+                f_color = vec4(v_color, 1.0);
+            }
+        """
+
+        #self.ctx = moderngl.create_context(require=130)
+        _vertex_shader = """
+            #version 300 es
+            precision mediump float;
+
+            in vec3 in_position;
+            in vec3 in_color;
+            out vec3 v_color;
+
+            void main() {
+                gl_Position = vec4(in_position, 1.0);
+                v_color = in_color;
+            }
+
+        """
+        _fragment_shader = """
+            #version 300 es
+            precision mediump float;
+
+            in vec3 v_color;
+            out vec4 f_color;
+
+            void main() {
+                f_color = vec4(v_color, 1.0);
+            }
+        """
+        self.ctx.clear_color = (*self.bg_color, 1.0)
+        self.ctx.enable(moderngl.DEPTH_TEST)
+        self.ctx.depth_func = '<'
+
+        # Mezcla/Blending para el suavizado
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+
+        self.prog = self.ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
+
+    def on_resize(self, event):
+        self.width = event.width
+        self.height = event.height
+        if self.ctx:
+            self.ctx.viewport = (0, 0, self.width, self.height)
+            #self.init_vbo()
+
+    def init_vbo(self, nchans=None):
+        if nchans is None:
+            nchans = self.channels
+        if nchans == 0 or not self.ctx:
+            return False
+        # Num Vertex = 2 * (Chans * Axis + Chans * Waveform + Beat Markers) + Crop Markers + Cursor
+        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 6
+        if self.vbo_data is None or nchans != self.channels or nv != self.n_vertex:
             self.channels = nchans
             self.n_vertex = nv
             self.n_vertex_waveform = 2 * self.channels * self.width
             self.n_vertex_markers = 2 * self.width // 16
-            #logging.debug(f"INITIALIZING VERTEX ARRAY => {self.n_vertex}")
 
-            # Create pure Python NumPy arrays for Positions [X, Y, Z] => initialized to 0.0
-            self.positions = np.zeros((self.n_vertex, 3), dtype=np.float32)
-            # Create NumPy array for Colors [R, G, B] => Initialized to black
-            self.colors = np.zeros((self.n_vertex, 3), dtype=np.float32)
+            # Vertex data matrix
+            self.vbo_data = np.zeros(self.n_vertex, dtype=[
+                ('pos', 'f4', 3),
+                ('col', 'f4', 3)
+            ])
 
-            # Axis for each channel...
+            # Initialize axis lines data
             i0 = 0
             i1 = self.channels * 2
             y_coords = []
@@ -127,36 +185,43 @@ class WaveformCanvas(OpenGLFrame):
             for ch in range(self.channels):
                 y_coords.append(yaxix)
                 yaxix += 2.0 / self.channels
-            self.positions[i0:i1:2, 0] = -1
-            self.positions[i0+1:i1:2, 0] = 1
-            self.positions[i0:i1, 1] = np.repeat(y_coords, 2)
-            self.positions[i0:i1, 2] = 0.5
-            self.colors[i0:i1] = self.waveform_color2    #self.axis_color
+            self.vbo_data['pos'][i0:i1:2, 0] = -1.0
+            self.vbo_data['pos'][i0+1:i1:2, 0] = 1.0
+            self.vbo_data['pos'][i0:i1, 1] = np.repeat(y_coords, 2)
+            self.vbo_data['pos'][i0:i1, 2] = 0.5
+            self.vbo_data['col'][i0:i1] = self.waveform_color2
 
-            # Waveform x coords => Evenly space X across the screen (-1.0 to 1.0) and repeat each point twice per channel
+            # Initialize waveform X coords
             i0 = i1
             i1 += self.n_vertex_waveform
             x_coords = np.linspace(-1.0, 1.0, self.width, dtype=np.float32)
-            self.positions[i0:i1, 0] = np.repeat(x_coords, 2 * self.channels)
-            self.colors[i0:i1:2] = self.waveform_color1
-            self.colors[i0+1:i1:2] = self.waveform_color2
+            self.vbo_data['pos'][i0:i1, 0] = np.repeat(x_coords, 2 * self.channels)
+            self.vbo_data['col'][i0:i1:2] = self.waveform_color1
+            self.vbo_data['col'][i0+1:i1:2] = self.waveform_color2
 
-            # Markers, crop rectangle & cursor colors
+            # Initialize markers & cursor
             i0 = i1
             i1 += self.n_vertex_markers
-            self.colors[i0:i1] = self.bmarker_color
-            self.colors[-12:-4] = self.bg_crop_color
-            self.colors[-4:] = self.playcur_color
+            self.vbo_data['col'][i0:i1] = self.bmarker_color
+            self.vbo_data['col'][-18:-6] = self.bg_crop_color
+            self.vbo_data['col'][-6:] = self.playcur_color
 
-            # Instantiate your VBOs inside the valid graphic device bounds
-            self.vbo_positions = vbo.VBO(self.positions, usage='GL_DYNAMIC_DRAW')
-            self.vbo_colors = vbo.VBO(self.colors, usage='GL_DYNAMIC_DRAW')
+            # Create VBO & VAO in ModernGL
+            if self.vbo:
+                self.vbo.release()
+
+            self.vbo = self.ctx.buffer(self.vbo_data.tobytes(), dynamic=True)
+            self.vao = self.ctx.vertex_array(
+                self.prog,
+                [(self.vbo, '3f 3f', 'in_position', 'in_color')],
+            )
+        return True
 
     def set_wave_data(self, ydata):
         try:
             i0 = self.channels * 2
             i1 = i0 + self.n_vertex_waveform
-            self.positions[i0:i1, 1] = (2 * np.array(ydata, dtype=np.float32) / self.height) - 1.0
+            self.vbo_data['pos'][i0:i1, 1] = (2 * np.array(ydata, dtype=np.float32) / self.height) - 1.0
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set wave data ... => {e}")
@@ -166,13 +231,13 @@ class WaveformCanvas(OpenGLFrame):
             i0 = self.channels * 2 + self.n_vertex_waveform
             i1 = i0 + 2 * len(xdata)
             i2 = i0 + self.n_vertex_markers
-            self.positions[i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
-            self.positions[i0:i1:2, 1] = 1.0
-            self.positions[i0+1:i1:2, 1] = -1.0
-            self.positions[i0:i1:, 2] = -0.75
-            self.positions[i1:i2] = 0
+            self.vbo_data['pos'][i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
+            self.vbo_data['pos'][i0:i1:2, 1] = 1.0
+            self.vbo_data['pos'][i0+1:i1:2, 1] = -1.0
+            self.vbo_data['pos'][i0:i1:, 2] = -0.75
+            self.vbo_data['pos'][i1:i2] = 0
             colmatrix = np.array(coldata, dtype=np.float32)
-            self.colors[i0:i1] = np.repeat(colmatrix, 2, axis=0)
+            self.vbo_data['col'][i0:i1] = np.repeat(colmatrix, 2, axis=0)
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set beat markers ... => {e}")
@@ -181,9 +246,9 @@ class WaveformCanvas(OpenGLFrame):
         try:
             x1 = (2 * x1 / self.width) - 1.0
             x2 = (2 * x2 / self.width) - 1.0
-            self.positions[-12:-4, 0] = [-1.0, -1.0, x1, x1, x2, x2, 1.0, 1.0]
-            self.positions[-12:-4, 1] = [-1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0]
-            self.positions[-12:-4, 2] = 0.5
+            self.vbo_data['pos'][-18:-6, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-18:-6, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-18:-6, 2] = 0.5
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set crop markers ... => {e}")
@@ -194,39 +259,45 @@ class WaveformCanvas(OpenGLFrame):
             w = 2 / self.width
             x1 = x - w
             x2 = x + w
-            self.positions[-4:, 0] = [x1, x1, x2, x2]
-            self.positions[-4:, 1] = [-1.0, 1.0, 1.0, -1.0]
-            self.positions[-4:, 2] = -1
+            self.vbo_data['pos'][-6:, 0] = np.array([x1, x1, x2, x2, x2, x1], dtype=np.float32)
+            self.vbo_data['pos'][-6:, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-6:, 2] = -1
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set cursor position ... => {e}")
 
     def redraw(self):
-        if self.vbo_positions is None or self.vbo_colors is None:
+        if self.ctx is None or self.vbo is None or self.vao is None:
             return
 
         if self.touched:
-            self.vbo_positions.set_array(self.positions)
+            self.vbo.write(self.vbo_data.tobytes())
             self.touched = False
 
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        self.ctx.clear()
 
-            # Bind VBOs and point the pipeline to them (None = start at byte 0)
-            self.vbo_positions.bind()
-            glVertexPointer(3, GL_FLOAT, 0, None)
+        # Dibujar líneas
+        self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 18)
 
-            self.vbo_colors.bind()
-            glColorPointer(3, GL_FLOAT, 0, None)
+        # Dibujar Quads using native Triangles
+        self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 18, vertices=18)
 
-            # Draw axis, waveform vertical lines and markersout of VRAM in one single batch instruction
-            glDrawArrays(GL_LINES, 0, self.n_vertex - 12)
+    def force_update(self):
+        if self.ctx is None:
+            return
 
-            # Draw Crop & Cursor Quads
-            glDrawArrays(GL_QUADS, self.n_vertex - 12, 12)
+        """Forces a single, immediate frame refresh when animate=False."""
+        # 1. Bind the OpenGL rendering context to this X11 frame container
+        self.tkMakeCurrent()
 
-            # Clean up bindings for this frame
-            self.vbo_colors.unbind()
-            self.vbo_positions.unbind()
+        # 2. Synchronize current frame width/height restrictions
+        self.ctx.viewport = (0, 0, self.width, self.height)
+
+        # 3. Manually invoke your standard frame drawing logic
+        self.redraw()
+
+        # 4. Force the GPU to flush instructions and swap the front/back buffers
+        self.tkSwapBuffers()
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for audio file selectors
@@ -491,7 +562,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 waveform_thread.start()
                 return
 
-            self.widget_canvas.init_vbo(self.channels)
+            if not self.widget_canvas.init_vbo(self.channels):
+                return
 
             if self.refresh_waveform:
                 length = self.frames // self.zoom
@@ -569,9 +641,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             # logging.error(e)
             logging.exception(traceback.format_exc())
 
-        self.widget_canvas.tkExpose(None)
         self.update_markers = False
         self.refreshing = False
+        self.widget_canvas.force_update()
 
     @staticmethod
     def format_time(time):

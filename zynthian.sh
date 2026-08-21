@@ -81,6 +81,10 @@ if [[ "$ZYNTHIAN_UI_ENABLE_CURSOR" != "1" ]]; then
 	hide_cursor
 fi
 
+# This will unleash the MESA library refresh so it's not
+# synced to the display vertical refresh
+#export vblank_mode=0
+
 #------------------------------------------------------------------------------
 # Functions to manage splash images
 #------------------------------------------------------------------------------
