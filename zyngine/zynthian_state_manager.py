@@ -1840,7 +1840,7 @@ class zynthian_state_manager:
 
         return [zs3_id for zs3_id in self.zs3 if zs3_id != "zs3-0"]
 
-    def load_next_zs3(self):
+    def load_next_zs3(self, cycle):
         """Restore the next ZS3, or the first if none is loaded
 
         Returns : True on success
@@ -1855,11 +1855,13 @@ class zynthian_state_manager:
             # Nothing loaded, or the default state is loaded => start at the first
             index = 0
         if index >= len(zs3_ids):
-            #index = 0
-            return False
+            if cycle is not None:
+                index = 0
+            else:
+                return False
         return self.load_zs3(zs3_ids[index])
 
-    def load_prev_zs3(self):
+    def load_prev_zs3(self, cycle):
         """Restore the previous ZS3, or the last if none is loaded
 
         Returns : True on success
@@ -1874,8 +1876,10 @@ class zynthian_state_manager:
             # Nothing loaded, or the default state is loaded => start at the last
             index = len(zs3_ids) - 1
         if index < 0:
-            #index = len(zs3_ids) - 1
-            return False
+            if cycle is not None:
+                index = len(zs3_ids) - 1
+            else:
+                return False
         return self.load_zs3(zs3_ids[index])
 
     # ------------------------------------------------------------------
