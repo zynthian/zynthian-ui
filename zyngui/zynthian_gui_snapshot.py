@@ -174,7 +174,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         if not self.bankless_mode:
             self.list_data.append((self.sm.snapshot_dir, i, ".."))
             i += 1
-
         if self.is_not_empty_snapshot():
             # TODO: Add better validation of populated state, e.g. sequences
             self.list_data.append(("SAVE", i, "Save as new snapshot", ["Save current state as new snapshot", "snapshot_new.png"]))
@@ -188,16 +187,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             if isfile(self.sm.last_state_snapshot_fpath):
                 self.list_data.append((self.sm.last_state_snapshot_fpath, i, "Last State", ["Last state snapshot", "snapshot_default.png"]))
                 i += 1
-
         self.change_index_offset(i)
-
         for fpath in sorted(glob(f"{self.sm.snapshot_dir}/{self.sm.snapshot_bank}/*.zss")):
             if isfile(fpath):
                 title = basename(fpath)[:-4].replace(';', '>', 1).replace(';', '/')
                 self.list_data.append((fpath, i, title))
                 i += 1
                 if fpath == self.sm.last_snapshot_fpath:
-                    self.index = i + 1
+                    if self.bankless_mode:
+                        self.index = i + 1
+                    else:
+                        self.index = i
 
     def fill_list(self):
         self.check_bankless_mode()
