@@ -283,9 +283,9 @@ class zynthian_state_manager:
         self.start_busy("reset state")
         self.stop()
         sleep(0.2)
-        self.clear_busy()  # TODO Is this needed?
         self.start()
         self.end_busy("reset state")
+        #self.clear_busy()  # TODO Is this needed?
 
     def clean(self, chains=True, zynseq=True):
         """Remove Chains & Sequences.
@@ -318,7 +318,6 @@ class zynthian_state_manager:
         self.clean(chains=True, zynseq=True)
         self.last_snapshot_fpath = ""
         self.end_busy("clean all")
-        self.busy.clear()  # Sometimes it's needed, why??
 
     def clean_chains(self):
         """Remove ALL chains while keeping sequences."""
@@ -326,7 +325,6 @@ class zynthian_state_manager:
         self.start_busy("clean chains", "cleaning chains...")
         self.clean(chains=True, zynseq=False)
         self.end_busy("clean chains")
-        self.busy.clear()  # Sometimes it's needed, why??
 
     def clean_sequences(self):
         """Remove ALL sequences while keeping chains."""
@@ -334,7 +332,6 @@ class zynthian_state_manager:
         self.start_busy("clean sequences", "cleaning sequences...")
         self.clean(chains=False, zynseq=True)
         self.end_busy("clean sequences")
-        self.busy.clear()  # Sometimes it's needed, why??
 
     def mute(self, mute=True, wait=0.01):
         self.main_mixbus_proc.controllers_dict["mute"].set_value(mute)
@@ -394,8 +391,7 @@ class zynthian_state_manager:
             self.busy_message = message
         if details:
             self.busy_details = details
-
-        # logging.debug(f"Start busy for {clid}. Message: '{message}', Details: '{details}', Current clients: {self.busy})")
+        #logging.debug(f"Start busy for {clid}. Message: '{message}', Details: '{details}', Current clients: {self.busy})")
 
     def end_busy(self, clid):
         """Remove client from list of busy clients
@@ -413,8 +409,7 @@ class zynthian_state_manager:
             self.busy_success = None
             self.busy_details = None
             zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=False)
-
-        # logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
+        #logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
 
     def clear_busy(self):
         self.busy.clear()
@@ -1237,7 +1232,7 @@ class zynthian_state_manager:
             self.set_busy_error("ERROR: Invalid snapshot", e)
             sleep(2)
 
-        zynautoconnect.request_midi_connect()
+        zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
         # Restore mute state

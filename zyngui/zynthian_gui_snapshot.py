@@ -360,7 +360,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
             self.sm.save_last_state_snapshot()
         self.sm.load_snapshot(fpath, load_sequences=False, merge=merge)
-        self.zyngui.show_screen('root', self.zyngui.SCREEN_HMODE_RESET)
+        self.zyngui.show_screen('mixer', self.zyngui.SCREEN_HMODE_RESET)
 
     def load_snapshot_sequences(self, fpath):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
