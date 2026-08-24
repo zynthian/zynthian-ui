@@ -74,7 +74,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.options['replace'] = False
         self.processor = None  # Last processor edited
 
-        self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
+        #self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
+        self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
 
         self.monitors_dict = {}
         self.start()

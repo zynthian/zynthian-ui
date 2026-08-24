@@ -156,7 +156,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         if self.ctx:
             self.ctx.viewport = (0, 0, self.width, self.height)
 
-    def init_vbo(self, nchans=None):
+    def init_channels(self, nchans=None):
         if nchans is None:
             nchans = self.channels
         if not self.ctx:
@@ -289,7 +289,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
                 self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 18, vertices=18)
             self.touched = False
 
-    def force_update(self):
+    def update(self):
         """Forces a single, immediate frame refresh when animate=False."""
         if self.touched:
             # 1. Bind the OpenGL rendering context to this X11 frame container
@@ -329,13 +329,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.offset = 0  # Frames from start of file that waveform display starts
         self.auto_offset = 0 # 1 to calc offset from crop_start. 2 to calc offest from crop_end.
         self.zoom = 1
-        self.v_zoom = 1
+        self.vzoom = 1
         self.crop_start = 0
         self.crop_end = 0
         self.beats = 0
         self.warp = False
         self.gain = 1
-        self.last_progress = 0
+        self.last_cursor_pos = 0
 
         self.bmarker_color1 = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.bmarker_color2 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
@@ -444,7 +444,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.frames = 0
             self.sf = None
 
-    def draw_waveform(self, start, length, gain=1.0):
+    def draw_waveform(self, start, length, vzoom=1.0):
         if self.sf is None:
             self.info_text_var.set("Can't show waveform!")
             return
@@ -462,7 +462,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         y_offsets = []
         for i in range(self.channels):
             y_offsets.append(y0 * (i + 0.5))
-        y0 = int(pow(1.26, gain) * y0 / 2)
+        y0 = int(vzoom * y0 / 2)
 
         if large_file:
             frames_per_pixel = length // self.width
@@ -499,7 +499,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 frame = offset1
                 while int(frame) < int(offset2):
                     # Find peak audio within block of audio represented by this x-axis pixel
-                    av = a_data[int(frame)][chan] * self.v_zoom
+                    av = a_data[int(frame)][chan]
                     if av < v1[chan]:
                         v1[chan] = av
                     if av > v2[chan]:
@@ -518,61 +518,105 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.set_wave_data(ydata)
 
     def refresh_gui(self):
-        if not self.zctrl:
+        if not self.zctrl and self.processor.eng_code != "AP":
             return
+
         self.refreshing = True
         refresh_info = False
 
-        if "zoom" in self.monitors and self.zoom != self.monitors["zoom"]:
-            self.zoom = self.monitors["zoom"]
+        zoom = offset = crop_start = crop_end = warp = beats = gain = vzoom = cursor_pos = None
+        # Get clippy parameters
+        if self.processor.eng_code == "CL":
+            if "zoom" in self.monitors:
+                zoom = self.monitors["zoom"]
+            if "offset" in self.monitors:
+                offset = self.monitors["offset"]
+            if "crop_start" in self.monitors:
+                crop_start = self.monitors["crop_start"]
+            if "crop_end" in self.monitors:
+                crop_end = self.monitors["crop_end"]
+            if "warp" in self.monitors:
+                warp = self.monitors["warp"]
+            if "beats" in self.monitors:
+                beats = self.monitors["beats"]
+            if "gain" in self.monitors:
+                gain = self.monitors["gain"]
+                vzoom = pow(1.26, gain)       # Calculate vzoom from gain in dB
+            if self.frames and self.clip_info:
+                clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
+                if clip_state == 1:
+                    cursor_pos = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan] / 100.0
+                else:
+                    cursor_pos = 0.0
+        # Get ZynSampler parameters
+        elif self.processor.eng_code == "AP" and self.samplerate:
+            zoom = self.processor.controllers_dict['zoom'].value
+            offset = int(self.samplerate * self.processor.controllers_dict['view offset'].value)
+            #crop_start = int(self.samplerate * self.processor.controllers_dict['loop start'].value)
+            #crop_end = int(self.samplerate * self.processor.controllers_dict['loop end'].value)
+            beats = self.processor.controllers_dict['beats'].value
+            crop_start = int(self.samplerate * self.processor.controllers_dict['crop start'].value)
+            crop_end = int(self.samplerate * self.processor.controllers_dict['crop end'].value)
+            #cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
+            #selected_cue = self.processor.controllers_dict['cue'].value
+            gain = self.processor.controllers_dict['gain'].value    # Linear gain
+            vzoom = gain * self.processor.controllers_dict['amp zoom'].value
+            cursor_pos = self.processor.controllers_dict['position'].value / self.duration
+
+        # Process parameter changes
+        if zoom is not None and zoom != self.zoom:
+            self.zoom = zoom
+            self.refresh_waveform = True
+        if offset is not None and offset != self.offset:
+            self.offset = offset
+            self.refresh_waveform = True
+            self.auto_offset = 0
+        elif self.auto_offset == 0:
+            self.auto_offset = 1
+        if crop_start is not None and crop_start != self.crop_start:
+            self.crop_start = crop_start
+            self.update_markers = True
+            self.refresh_waveform = True
+            if self.auto_offset:
+                self.auto_offset = 1
+        if crop_end is not None and crop_end != self.crop_end:
+            self.crop_end = crop_end
+            self.update_markers = True
+            self.refresh_waveform = True
+            if self.auto_offset:
+                self.auto_offset = 2
+        if warp is not None and warp != self.warp:
+            self.warp = warp
+            self.update_markers = True
+        if beats is not None and beats != self.beats:
+            self.beats = beats
+            self.update_markers = True
+        if gain is not None and gain != self.gain:
+            self.gain = gain
+        if vzoom is not None and vzoom != self.vzoom:
+            self.vzoom = vzoom
             self.refresh_waveform = True
 
-        if "offset" in self.monitors:
-            if self.offset != self.monitors["offset"]:
-                self.offset = self.monitors["offset"]
-                self.refresh_waveform = True
-                self.auto_offset = 0
-        else:
-            if self.auto_offset == 0:
-                self.auto_offset = 1
-
-        if "crop_start" in self.monitors and self.crop_start != self.monitors["crop_start"]:
-                self.crop_start = self.monitors["crop_start"]
-                self.update_markers = True
-                self.refresh_waveform = True
-                if self.auto_offset:
-                    self.auto_offset = 1
-
-        if "crop_end" in self.monitors and self.crop_end != self.monitors["crop_end"]:
-                self.crop_end = self.monitors["crop_end"]
-                self.update_markers = True
-                self.refresh_waveform = True
-                if self.auto_offset:
-                    self.auto_offset = 2
-
-        if "warp" in self.monitors and self.warp != self.monitors["warp"]:
-                self.warp = self.monitors["warp"]
-                self.update_markers = True
-
-        if "beats" in self.monitors and self.beats != self.monitors["beats"]:
-                self.beats = self.monitors["beats"]
-                self.update_markers = True
-
-        if "gain" in self.monitors and self.gain != self.monitors["gain"]:
-                self.gain = self.monitors["gain"]
-                self.refresh_waveform = True
-
         try:
-            if self.zctrl and self.fpath != self.zctrl.value:
-                # Audio file changed so reload waveform from file audio data
-                self.fpath = self.zctrl.value
+            # Path zctrl => Clippy and others
+            if self.zctrl:
+                fpath = self.zctrl.value
+            # Filename in monitors => ZynSampler
+            elif "filename" in self.monitors:
+                fpath = self.monitors["filename"]
+            else:
+                fpath = None
+
+            # Audio file changed so reload waveform from file audio data
+            if fpath and self.fpath != fpath:
+                self.fpath = fpath
                 self.fname = basename(self.fpath)
-                waveform_thread = Thread(target=self.load_file, name="waveform image")
+                waveform_thread = Thread(target=self.load_file, name="load_waveform")
                 waveform_thread.start()
                 self.refreshing = False
                 return
 
-            if not self.widget_canvas.init_vbo(self.channels):
+            if not self.widget_canvas.init_channels(self.channels):
                 self.refreshing = False
                 return
 
@@ -587,7 +631,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 # Ensure whoe waveform can be drawn
                 self.offset = min(self.offset, self.frames - length)
                 self.offset = max(self.offset, 0)
-                self.draw_waveform(self.offset, length, self.gain)
+                self.draw_waveform(self.offset, length, self.vzoom)
                 refresh_info = True
                 self.update_markers = True
                 self.refresh_waveform = False
@@ -605,9 +649,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     coldata = []
                     if self.beats > 0:  #  and self.warp
                         # Get Beats Per Bar
-                        beats_per_bar = self.zyngui.state_manager.zynseq.get_sequence_param(self.clip_info[0], self.clip_info[1], zynseq.PHRASE_CHANNEL, "bpb")
-                        if beats_per_bar < 1:
+                        if self.clip_info:
+                            beats_per_bar = self.zyngui.state_manager.zynseq.get_sequence_param(self.clip_info[0], self.clip_info[1], zynseq.PHRASE_CHANNEL, "bpb")
+                            if beats_per_bar < 1:
+                                beats_per_bar = self.zyngui.state_manager.zynseq.bpb
+                        else:
                             beats_per_bar = self.zyngui.state_manager.zynseq.bpb
+                            #beats_per_bar = 4
                         dx = (x2 - x1) // self.beats
                         if dx > 4:
                             if dx < 16:
@@ -628,18 +676,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 xdata.append(x)
                                 coldata.append(col)
                         self.widget_canvas.set_beat_markers(xdata, coldata)
-                # Playing cursor (implemented for clippy)
-                if self.clip_info:
-                    # Playing cursor
-                    clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
-                    if clip_state == 1:
-                        progress = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan]
-                    else:
-                        progress = 0
-                    if self.last_progress != progress or self.update_markers:
-                        self.last_progress = progress
-                        current_frame = self.crop_start + int(progress * (self.crop_end - self.crop_start) / 100) - self.offset
-                        self.widget_canvas.set_cursor_pos(f * current_frame)
+                # Playing cursor
+                if cursor_pos is not None and (self.last_cursor_pos != cursor_pos or self.update_markers):
+                    self.last_cursor_pos = cursor_pos
+                    current_frame = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start)) - self.offset
+                    self.widget_canvas.set_cursor_pos(f * current_frame)
+
                 refresh_info = True
 
             if refresh_info:
@@ -654,7 +696,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         self.update_markers = False
         self.refreshing = False
-        self.widget_canvas.force_update()
+        self.widget_canvas.update()
 
     @staticmethod
     def format_time(time):
@@ -678,7 +720,17 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.zctrl.set_value(fpath)
 
     # -------------------------------------------------------------------------
-    # CUIA & LEDs methods
+    # ZynSampler integration
+    # -------------------------------------------------------------------------
+
+    def get_monitors(self):
+        if self.processor.eng_code == "AP":
+            self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
+        else:
+            super().get_monitors()
+
+    # -------------------------------------------------------------------------
+    # Clippy integration
     # -------------------------------------------------------------------------
 
     def get_clippy_info(self):
@@ -712,6 +764,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 self.update_markers = True
             except Exception as e:
                 logging.error(f"Can't get clip audio values for clip {self.clip_info} => {e}")
+
+    # -------------------------------------------------------------------------
+    # CUIA & LEDs methods
+    # -------------------------------------------------------------------------
 
     def cuia_toggle_record(self, param=None):
         # Handle transport for clippy
