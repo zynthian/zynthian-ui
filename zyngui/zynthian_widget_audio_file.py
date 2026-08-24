@@ -647,7 +647,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     # Beat markers
                     xdata = []
                     coldata = []
-                    if self.beats > 0:  #  and self.warp
+                    if self.beats > 1:  #  and self.warp
                         # Get Beats Per Bar
                         if self.clip_info:
                             beats_per_bar = self.zyngui.state_manager.zynseq.get_sequence_param(self.clip_info[0], self.clip_info[1], zynseq.PHRASE_CHANNEL, "bpb")
