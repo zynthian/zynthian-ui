@@ -1038,7 +1038,7 @@ class zynthian_gui:
                         self.modify_chain_status["audio_thru"],
                         zmop_index,
                         chain_pos=pos,
-                        fast_refresh=False
+                        fast_refresh=True
                     )
                     if chain_id is None:
                         self.show_screen_reset("root")
