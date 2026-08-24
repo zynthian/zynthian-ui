@@ -242,13 +242,14 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             i0 = self.channels * 2 + self.n_vertex_waveform
             i1 = i0 + 2 * len(xdata)
             i2 = i0 + self.n_vertex_markers
-            self.vbo_data['pos'][i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
-            self.vbo_data['pos'][i0:i1:2, 1] = 1.0
-            self.vbo_data['pos'][i0+1:i1:2, 1] = -1.0
-            self.vbo_data['pos'][i0:i1:, 2] = -0.75
+            if  i1 > i0:
+                self.vbo_data['pos'][i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
+                self.vbo_data['pos'][i0:i1:2, 1] = 1.0
+                self.vbo_data['pos'][i0+1:i1:2, 1] = -1.0
+                self.vbo_data['pos'][i0:i1:, 2] = -0.75
+                colmatrix = np.array(coldata, dtype=np.float32)
+                self.vbo_data['col'][i0:i1] = np.repeat(colmatrix, 2, axis=0)
             self.vbo_data['pos'][i1:i2] = 0
-            colmatrix = np.array(coldata, dtype=np.float32)
-            self.vbo_data['col'][i0:i1] = np.repeat(colmatrix, 2, axis=0)
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set beat markers ... => {e}")
@@ -647,7 +648,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     # Beat markers
                     xdata = []
                     coldata = []
-                    if self.beats > 1:  #  and self.warp
+                    if self.beats > 0:  #  and self.warp
                         # Get Beats Per Bar
                         if self.clip_info:
                             beats_per_bar = self.zyngui.state_manager.zynseq.get_sequence_param(self.clip_info[0], self.clip_info[1], zynseq.PHRASE_CHANNEL, "bpb")
