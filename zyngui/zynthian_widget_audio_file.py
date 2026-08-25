@@ -553,16 +553,22 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         elif self.processor.eng_code == "AP" and self.samplerate:
             zoom = self.processor.controllers_dict['zoom'].value
             offset = int(self.samplerate * self.processor.controllers_dict['view offset'].value)
-            #crop_start = int(self.samplerate * self.processor.controllers_dict['loop start'].value)
-            #crop_end = int(self.samplerate * self.processor.controllers_dict['loop end'].value)
-            beats = self.processor.controllers_dict['beats'].value
-            crop_start = int(self.samplerate * self.processor.controllers_dict['crop start'].value)
-            crop_end = int(self.samplerate * self.processor.controllers_dict['crop end'].value)
+            crop_start = self.processor.controllers_dict['crop start'].value
+            crop_end = self.processor.controllers_dict['crop end'].value
+            #crop_start = self.processor.controllers_dict['loop start'].value
+            #crop_end = self.processor.controllers_dict['loop end'].value
             #cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
             #selected_cue = self.processor.controllers_dict['cue'].value
+            beats = self.processor.controllers_dict['beats'].value
             gain = self.processor.controllers_dict['gain'].value    # Linear gain
             vzoom = gain * self.processor.controllers_dict['amp zoom'].value
-            cursor_pos = self.processor.controllers_dict['position'].value / self.duration
+            dur = crop_end - crop_start
+            if dur > 0:
+                cursor_pos = (self.processor.controllers_dict['position'].value - crop_start) / dur
+            else:
+                cursor_pos = 0
+            crop_start = int(self.samplerate * crop_start)
+            crop_end = int(self.samplerate * crop_end)
 
         # Process parameter changes
         if zoom is not None and zoom != self.zoom:
