@@ -345,6 +345,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.frames = 0  # Quantity of frames in audio
         self.samplerate = None
         self.duration = 0.0
+        self.info = 0
 
         self.refreshing = False # Flag to avoid multiple threads refreshing waveform
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
@@ -760,10 +761,26 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 refresh_info = True
 
             if refresh_info:
-                time = self.duration
+                if "info" in self.monitors:
+                    info = self.monitors["info"]
+                else:
+                    info = 0
+
+                match info:
+                    case 1: # Position
+                        time = self.format_time(self.processor.controllers_dict['position'].value - crop_start / self.samplerate)
+                    case 2: # Remaining
+                        time = self.format_time(crop_end / self.samplerate - self.processor.controllers_dict['position'].value)
+                    case 3: # Samplerate
+                        time = self.samplerate
+                    case 4: # CODEC
+                        time = self.monitors['codec']
+                    case _: # Duration
+                        time = self.format_time((crop_end - crop_start) / self.samplerate)
+
                 n = (self.width // self.font_info.measure("x")) - 12
                 fname = (self.fname[:n-3] + '...') if len(self.fname) > n else (self.fname + ' ')
-                self.info_text_var.set(f"{fname}[{self.format_time(time)}]")
+                self.info_text_var.set(f"{fname}[{time}]")
 
         except Exception as e:
             # logging.error(e)
