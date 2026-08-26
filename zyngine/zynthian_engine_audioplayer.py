@@ -75,7 +75,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.options['replace'] = False
         self.processor = None  # Last processor edited
 
-        #self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
 
         self.monitors_dict = {}
@@ -112,7 +111,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         processor.handle = handle
         self.jackname = zynaudioplayer.get_jack_client_name()
         processor.jackname = f"{self.jackname}:out_{zynaudioplayer.get_index(handle):02d}(a|b)"
-        self.set_midi_chan(processor)
         self.monitors_dict[processor.handle] = {}
         self.monitors_dict[processor.handle]["filename"] = ""
         self.monitors_dict[processor.handle]["info"] = 0
@@ -122,8 +120,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
         self.monitors_dict[processor.handle]['speed'] = 1.0
         processor.refresh_controllers()
-        # QUESTION => No handle when setting zynaudioplayer tempo??
-        zynaudioplayer.set_tempo(self.state_manager.zynseq.get_tempo())
         self.processor = processor
 
     def remove_processor(self, processor):
@@ -134,13 +130,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 self.processor = self.processors[0]
             else:
                 self.processor = None
-
-    # ---------------------------------------------------------------------------
-    # MIDI Channel Management
-    # ---------------------------------------------------------------------------
-
-    def set_midi_chan(self, processor):
-        zynaudioplayer.set_midi_chan(processor.handle, processor.midi_chan)
 
     # ---------------------------------------------------------------------------
     # Bank Management
@@ -185,16 +174,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def get_preset_list(self, bank, processor=None):
-        #presets = [[None, 0, "Presets", None, None]]
-        #presets += self.get_filelist(bank[0], "zap")
-        #if len(presets) == 1:
-        #	presets = []
-        #presets += [[None, 0, "Audio Files", None, None]]
-
-        #file_presets = []
-        #for ext in self.preset_fexts:
-        #    file_presets += self.get_filelist(bank[0], ext)
-
         if os.path.isfile(bank[0]):
             return []
         else:
@@ -256,6 +235,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.monitors_dict[processor.handle]['channels'] = zynaudioplayer.get_channels(processor.handle)
         self.monitors_dict[processor.handle]['samplerate'] = zynaudioplayer.get_samplerate(processor.handle)
         self.monitors_dict[processor.handle]['codec'] = zynaudioplayer.get_codec(processor.handle)
+        self.monitors_dict[processor.handle]["info"] = 0
+
         zynaudioplayer.set_speed(processor.handle, 1.0)
 
         dur = zynaudioplayer.get_duration(processor.handle)
@@ -285,8 +266,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
         default_b = 0
         track_labels = ['mixdown']
         track_values = [-1]
-        zoom_labels = ['x1', 'x2', 'x4']
-        zoom_values = [1, 2, 4]
+        zoom_labels = ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
+        zoom_values = [1, 2, 4, 8, 16, 32, 64, 128, 256]
         if dur:
             channels = zynaudioplayer.get_channels(processor.handle)
             if channels > 2:
@@ -303,12 +284,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 ['speed', ['speed', 'pitch', 'varispeed']],
                 ['config', ['left track', 'right track', 'v-zoom', 'loop']],
                 #['cue markers', ['cue', 'cue pos']],
+                ['misc', ['info']]
             ]
         else:
             self._ctrl_screens = [['main', ['record', 'gain']],
             ]
 
-        midi_notes = []
         self._ctrls = [
             ['gain', None, gain, 2.0],
             ['record', None, record, ['stopped', 'recording']],
@@ -319,7 +300,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             ['crop end', None, dur, dur],
             ['zoom', None, 1, [zoom_labels, zoom_values]],
             #['zoom range', None, 0, ["User", "File", "Crop"]],
-            #['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
+            ['info', None, 0, ["Duration", "Position", "Remaining", "Samplerate", "CODEC"]],
             ['offset', None, 0, dur],
             ['v-zoom', None, 1.0, 4.0],
             #['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
@@ -475,7 +456,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "gain":
             zynaudioplayer.set_gain(handle, zctrl.value)
         elif zctrl.symbol == "loop":
-            zynaudioplayer.enable_loop(handle, zctrl.value)
+            zynaudioplayer.enable_loop(handle, zctrl.value!=0)
         elif zctrl.symbol == "transport":
             if zctrl.value > 63:
                 zynaudioplayer.start_playback(handle)
@@ -529,8 +510,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 zynaudioplayer.set_varispeed(handle, 0.0)
             else:
                 zynaudioplayer.set_varispeed(handle, zctrl.value)
-
+        elif zctrl.symbol == "info":
+            self.monitors_dict[handle]['info'] = zctrl.value
         """
+        elif zctrl.symbol == "cue":
+            if self.processor:
+                self.processor.controllers_dict['cue pos'].set_value(
+                    zynaudioplayer.get_cue_point_position(handle, zctrl.value - 1), False)
+        elif zctrl.symbol == "cue pos":
+            if self.processor:
+                if zynaudioplayer.get_cue_point_count(handle):
+                    zynaudioplayer.set_cue_point_position(
+                        handle, self.processor.controllers_dict['cue'].value - 1, zctrl.value)
         elif zctrl.symbol == "zoom range":
             if self.processor:
                 if zctrl.value == 1:
@@ -550,17 +541,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
                     range = zynaudioplayer.get_loop_end(handle) - start
                     self.processor.controllers_dict['offset'].set_value(start)
                     self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
-        elif zctrl.symbol == "info":
-            self.monitors_dict[handle]['info'] = zctrl.value
-        elif zctrl.symbol == "cue":
-            if self.processor:
-                self.processor.controllers_dict['cue pos'].set_value(
-                    zynaudioplayer.get_cue_point_position(handle, zctrl.value - 1), False)
-        elif zctrl.symbol == "cue pos":
-            if self.processor:
-                if zynaudioplayer.get_cue_point_count(handle):
-                    zynaudioplayer.set_cue_point_position(
-                        handle, self.processor.controllers_dict['cue'].value - 1, zctrl.value)
         """
 
     def num2factor(self, num):

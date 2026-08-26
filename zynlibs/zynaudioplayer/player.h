@@ -1,5 +1,5 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
 */
 
@@ -22,18 +22,8 @@ enum {
     NOTIFY_BUFFER_SIZE      = 8,
     NOTIFY_BUFFER_COUNT     = 9,
     NOTIFY_DEBUG            = 10,
-    NOTIFY_LOOP_START       = 11,
-    NOTIFY_LOOP_END         = 12,
     NOTIFY_CROP_START       = 13,
     NOTIFY_CROP_END         = 14,
-    NOTIFY_SUSTAIN          = 15,
-    NOTIFY_ENV_ATTACK       = 16,
-    NOTIFY_ENV_HOLD         = 17,
-    NOTIFY_ENV_DECAY        = 18,
-    NOTIFY_ENV_SUSTAIN      = 19,
-    NOTIFY_ENV_RELEASE      = 20,
-    NOTIFY_ENV_ATTACK_CURVE = 21,
-    NOTIFY_ENV_DECAY_CURVE  = 22,
     NOTIFY_VARISPEED        = 23
 };
 
@@ -78,24 +68,6 @@ AUDIO_PLAYER* add_player();
  *   @param  player_handle Handle of player provided by add_player()
  */
 void remove_player(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set the MIDI base note
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  base_note MIDI note that will trigger playback at normal speed
- */
-void set_base_note(AUDIO_PLAYER* pPlayer, uint8_t base_note);
-
-/** @brief  Get the MIDI base note
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval uint8_t MIDI note that will trigger playback at normal speed
- */
-uint8_t get_base_note(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set player MIDI channel
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  midi_chan MIDI channel (0..15 or other value to disable MIDI listen)
- */
-void set_midi_chan(AUDIO_PLAYER* pPlayer, uint8_t midi_chan);
 
 /** @brief  Get player index
  *   @param  player_handle Handle of player provided by add_player()
@@ -164,30 +136,6 @@ void enable_loop(AUDIO_PLAYER* pPlayer, uint8_t nLoop);
  *   @retval uint8_t 1 if looping, 0 if one-shot
  */
 uint8_t is_loop(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set start of loop
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  time Start of loop in seconds since start of file
- */
-void set_loop_start_time(AUDIO_PLAYER* pPlayer, float time);
-
-/** @brief  Get start of loop
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval float Start of loop in seconds since start of file
- */
-float get_loop_start_time(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set end of loop
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  time End of loop in seconds since end of file
- */
-void set_loop_end_time(AUDIO_PLAYER* pPlayer, float time);
-
-/** @brief  Get end of loop
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval float End of loop in seconds since end of file
- */
-float get_loop_end_time(AUDIO_PLAYER* pPlayer);
 
 /** @brief  Set start of audio (crop)
  *   @param  player_handle Handle of player provided by add_player()
@@ -362,18 +310,6 @@ int get_track_a(AUDIO_PLAYER* pPlayer);
  */
 int get_track_b(AUDIO_PLAYER* pPlayer);
 
-/** @brief  Set pitchbend range
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  range Range in semitones
- */
-void set_pitchbend_range(AUDIO_PLAYER* pPlayer, uint8_t range);
-
-/** @brief  Get pitchbend range
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval uint8_t Range in semitones
- */
-uint8_t get_pitchbend_range(AUDIO_PLAYER* pPlayer);
-
 /** @brief  Set base speed
  *   @param  player_handle Handle of player provided by add_player()
  *   @param  factor Speed factor (0.25..4.0)
@@ -441,109 +377,6 @@ unsigned int get_buffer_count(AUDIO_PLAYER* pPlayer);
  *   @param time Time difference in seconds
  */
 void set_pos_notify_delta(AUDIO_PLAYER* pPlayer, float time);
-
-/**** Envelope functions ****/
-
-/** @brief  Set envelope attack rate
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  rate Attack rate
- */
-void set_env_attack(AUDIO_PLAYER* pPlayer, float rate);
-
-/** @brief  Get envelope attack rate
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Attack rate
- */
-float get_env_attack(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set envelope hold time
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  hold Time in seconds to hold between attack and decay phases
- */
-void set_env_hold(AUDIO_PLAYER* pPlayer, float hold);
-
-/** @brief  Get envelope hold time
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Time in seconds between attack and decay phases
- */
-float get_env_hold(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set envelope decay rate
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  rate Decay rate
- */
-void set_env_decay(AUDIO_PLAYER* pPlayer, float rate);
-
-/** @brief  Get envelope decay rate
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Decay rate
- */
-float get_env_decay(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set envelope release rate
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  rate Release rate
- */
-void set_env_release(AUDIO_PLAYER* pPlayer, float rate);
-
-/** @brief  Get envelope release rate
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Release rate
- */
-float get_env_release(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set envelope sustain level
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  level Sustain level
- */
-void set_env_sustain(AUDIO_PLAYER* pPlayer, float level);
-
-/** @brief  Get envelope sustain level
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Sustain level
- */
-float get_env_sustain(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set envelope attack target ratio (curve)
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  ratio Target ratio
- */
-void set_env_target_ratio_a(AUDIO_PLAYER* pPlayer, float ratio);
-
-/** @brief  Get envelope attack target ratio (curve)
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Target ratio
- */
-float get_env_target_ratio_a(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set envelope decay / release target ratio (curve)
- *   @param  player_handle Handle of player provided by add_player()
- *   @param  ratio Target ratio
- */
-void set_env_target_ratio_dr(AUDIO_PLAYER* pPlayer, float ratio);
-
-/** @brief  Get envelope decay / release target ratio (curve)
- *   @param  player_handle Handle of player provided by add_player()
- *   @retval <float> Target ratio
- */
-float get_env_target_ratio_dr(AUDIO_PLAYER* pPlayer);
-
-/** @brief Set the quantity of beats in a loop
- *   @param player_handle Handle of player provided by add_player()
- *   @param beats Quantity of beats or 0 for no loop behaviour
- */
-void set_beats(AUDIO_PLAYER* pPlayer, uint8_t beats);
-
-/** @brief Get the quantity of beats in a loop
- *   @param player_handle Handle of player provided by add_player()
- *   @retval uint8_t Quantity of beats
- */
-uint8_t get_beats(AUDIO_PLAYER* pPlayer);
-
-/** @brief  Set tempo for loop play
- *   @param  tempo Tempo in beats per minute
- */
-void set_tempo(float tempo);
 
 /**** Global functions ****/
 
