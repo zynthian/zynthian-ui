@@ -559,7 +559,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             #crop_end = self.processor.controllers_dict['loop end'].value
             #cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
             #selected_cue = self.processor.controllers_dict['cue'].value
-            beats = self.processor.controllers_dict['beats'].value
+            beats = 0
             gain = self.processor.controllers_dict['gain'].value    # Linear gain
             vzoom = gain * self.processor.controllers_dict['amp zoom'].value
             dur = crop_end - crop_start
