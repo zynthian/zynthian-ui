@@ -549,7 +549,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     cursor_pos = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan] / 100.0
                 else:
                     cursor_pos = 0.0
-        # Get ZynSampler parameters
+        # Get AudioPlayer parameters
         elif self.processor.eng_code == "AP" and self.samplerate:
             zoom = self.processor.controllers_dict['zoom'].value
             offset = int(self.samplerate * self.processor.controllers_dict['view offset'].value)
@@ -608,7 +608,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             # Path zctrl => Clippy and others
             if self.zctrl:
                 fpath = self.zctrl.value
-            # Filename in monitors => ZynSampler
+            # Filename in monitors => AudioPlayer
             elif "filename" in self.monitors:
                 fpath = self.monitors["filename"]
             else:
@@ -727,7 +727,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.zctrl.set_value(fpath)
 
     # -------------------------------------------------------------------------
-    # ZynSampler integration
+    # AudioPlayer integration
     # -------------------------------------------------------------------------
 
     def get_monitors(self):

@@ -68,7 +68,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
     def __init__(self, state_manager=None, jackname=None):
         super().__init__(state_manager)
-        self.name = "ZynSampler"
+        self.name = "AudioPlayer"
         self.nickname = "AP"
         self.type = "MIDI Synth"
         self.options['replace'] = False
@@ -274,14 +274,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         else:
             record = 'stopped'
         gain = zynaudioplayer.get_gain(processor.handle)
-        bend_range = zynaudioplayer.get_pitchbend_range(processor.handle)
-        attack = zynaudioplayer.get_attack(processor.handle)
-        hold = zynaudioplayer.get_hold(processor.handle)
-        decay = zynaudioplayer.get_decay(processor.handle)
-        sustain = zynaudioplayer.get_sustain(processor.handle)
-        release = zynaudioplayer.get_release(processor.handle)
-        base_note = zynaudioplayer.get_base_note(processor.handle)
-        beats = zynaudioplayer.get_beats(processor.handle)
         cues = zynaudioplayer.get_cue_point_count(processor.handle)
         if cues:
             cue_min = 1
