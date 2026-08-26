@@ -72,7 +72,8 @@ function hide_cursor() {
 load_config_env
 
 # Rotate display
-if [[ "$RBPI_VERSION_NUMBER" == "5" &&  "$DISPLAY_ROTATION" == "Inverted" && "$DISPLAY_NAME" == *"DSI"* ]]; then
+#if [[ "$RBPI_VERSION_NUMBER" == "5" &&  "$DISPLAY_ROTATION" == "Inverted" && "$DISPLAY_NAME" == *"DSI"* ]]; then
+if [[ "$RBPI_VERSION_NUMBER" == "5" &&  "$DISPLAY_ROTATION" == "Inverted" ]]; then
 	rotate_display
 fi
 
