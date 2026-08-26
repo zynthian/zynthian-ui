@@ -552,7 +552,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         # Get AudioPlayer parameters
         elif self.processor.eng_code == "AP" and self.samplerate:
             zoom = self.processor.controllers_dict['zoom'].value
-            offset = int(self.samplerate * self.processor.controllers_dict['view offset'].value)
+            offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
             crop_start = self.processor.controllers_dict['crop start'].value
             crop_end = self.processor.controllers_dict['crop end'].value
             #crop_start = self.processor.controllers_dict['loop start'].value
@@ -561,7 +561,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             #selected_cue = self.processor.controllers_dict['cue'].value
             beats = 0
             gain = self.processor.controllers_dict['gain'].value    # Linear gain
-            vzoom = gain * self.processor.controllers_dict['amp zoom'].value
+            vzoom = gain * self.processor.controllers_dict['v-zoom'].value
             dur = crop_end - crop_start
             if dur > 0:
                 cursor_pos = (self.processor.controllers_dict['position'].value - crop_start) / dur

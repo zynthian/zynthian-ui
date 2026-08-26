@@ -57,6 +57,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
     root_bank_dirs = [
         ('User Audio', zynthian_engine.my_data_dir + "/files/Audio"),
         ('User Samples', zynthian_engine.my_data_dir + "/files/Samples"),
+        ('System Audio', zynthian_engine.data_dir + "/files/Audio"),
         ('System Samples', zynthian_engine.data_dir + "/files/Samples")
     ]
 
@@ -263,8 +264,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             loop = 'looping'
         else:
             loop = 'one-shot'
-        logging.debug(
-            f"Loading Audio Track '{preset[0]}' in player {processor.handle}")
+        logging.debug(f"Loading Audio Track '{preset[0]}' in player {processor.handle}")
         if zynaudioplayer.get_playback_state(processor.handle):
             transport = 'playing'
         else:
@@ -299,11 +299,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 track_values.append(track)
             self._ctrl_screens = [
                 ['main', ['record', 'transport', 'position', 'gain']],
-                ['edit', ['crop start', 'crop end', 'zoom', 'loop']],
-                ['config', ['left track', 'right track']],
-                ['zoom', ['zoom', 'zoom range', 'amp zoom', 'view offset']],
-                ['misc', ['info', 'cue', 'cue pos']],
-                ['speed', ['speed', 'pitch', 'varispeed']]
+                ['edit', ['crop start', 'crop end', 'zoom', 'offset']],
+                ['speed', ['speed', 'pitch', 'varispeed']],
+                ['config', ['left track', 'right track', 'v-zoom', 'loop']],
+                #['cue markers', ['cue', 'cue pos']],
             ]
         else:
             self._ctrl_screens = [['main', ['record', 'gain']],
@@ -316,22 +315,20 @@ class zynthian_engine_audioplayer(zynthian_engine):
             ['loop', None, loop, ['one-shot', 'looping']],
             ['transport', None, transport, ['stopped', 'playing']],
             ['position', None, 0.0, dur],
-            ['left track', None, default_a, [track_labels, track_values]],
-            ['right track', None, default_b, [track_labels, track_values]],
             ['crop start', None, 0.0, dur],
             ['crop end', None, dur, dur],
             ['zoom', None, 1, [zoom_labels, zoom_values]],
-            ['zoom range', None, 0, ["User", "File", "Crop"]],
-            ['info', None, 1, ["None", "Duration", "Position", "Remaining",
-                               "Loop length", "Samplerate", "CODEC", "Filename"]],
-            ['view offset', None, 0, dur],
-            ['amp zoom', None, 1.0, 4.0],
-            ['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
-            ['cue pos', None, cue_pos, dur],
+            #['zoom range', None, 0, ["User", "File", "Crop"]],
+            #['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
+            ['offset', None, 0, dur],
+            ['v-zoom', None, 1.0, 4.0],
+            #['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
+            #['cue pos', None, cue_pos, dur],
             ['speed', {'value': 0.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],
             ['pitch', {'value': 0.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],
-            # TODO: Offer different varispeed range
-            ['varispeed', {'value': 1.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],
+            ['varispeed', {'value': 1.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],    # TODO: Offer different varispeed range
+            ['left track', None, default_a, [track_labels, track_values]],
+            ['right track', None, default_b, [track_labels, track_values]],
         ]
         zynaudioplayer.set_control_cb(None)
         processor.refresh_controllers()
@@ -450,8 +447,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                         else:
                             ctrl_dict['transport'].set_value("stopped", False)
                             processor.status = ""
-                        zynsigman.send(
-                            zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
+                        zynsigman.send(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
                     elif id == 2:
                         ctrl_dict['position'].set_value(value, False)
                     elif id == 3:
@@ -504,42 +500,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "zoom":
             self.monitors_dict[handle]['zoom'] = zctrl.value
             if self.processor:
-                self.processor.controllers_dict['zoom range'].set_value(0)
+                #self.processor.controllers_dict['zoom range'].set_value(0)
                 pos_zctrl = self.processor.controllers_dict['position']
                 pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
                 self.processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
                 self.processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
-                self.processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
-        elif zctrl.symbol == "zoom range":
-            if self.processor:
-                if zctrl.value == 1:
-                    # Show whole file
-                    self.processor.controllers_dict['zoom'].set_value(1, False)
-                    self.processor.controllers_dict['view offset'].set_value(0)
-                    range = zynaudioplayer.get_duration(handle)
-                elif zctrl.value == 2:
-                    # Show cropped region
-                    start = zynaudioplayer.get_crop_start(handle)
-                    range = zynaudioplayer.get_crop_end(handle) - start
-                    self.processor.controllers_dict['view offset'].set_value(start)
-                    self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
-                elif zctrl.value == 3:
-                    # Show loop region
-                    start = zynaudioplayer.get_loop_start(handle)
-                    range = zynaudioplayer.get_loop_end(handle) - start
-                    self.processor.controllers_dict['view offset'].set_value(start)
-                    self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
-        elif zctrl.symbol == "info":
-            self.monitors_dict[handle]['info'] = zctrl.value
-        elif zctrl.symbol == "cue":
-            if self.processor:
-                self.processor.controllers_dict['cue pos'].set_value(
-                    zynaudioplayer.get_cue_point_position(handle, zctrl.value - 1), False)
-        elif zctrl.symbol == "cue pos":
-            if self.processor:
-                if zynaudioplayer.get_cue_point_count(handle):
-                    zynaudioplayer.set_cue_point_position(
-                        handle, self.processor.controllers_dict['cue'].value - 1, zctrl.value)
+                #self.processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
         elif zctrl.symbol == "speed":
             if abs(zctrl.value) < 0.01:
                 zctrl.value = 0.0
@@ -563,6 +529,39 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 zynaudioplayer.set_varispeed(handle, 0.0)
             else:
                 zynaudioplayer.set_varispeed(handle, zctrl.value)
+
+        """
+        elif zctrl.symbol == "zoom range":
+            if self.processor:
+                if zctrl.value == 1:
+                    # Show whole file
+                    self.processor.controllers_dict['zoom'].set_value(1, False)
+                    self.processor.controllers_dict['offset'].set_value(0)
+                    range = zynaudioplayer.get_duration(handle)
+                elif zctrl.value == 2:
+                    # Show cropped region
+                    start = zynaudioplayer.get_crop_start(handle)
+                    range = zynaudioplayer.get_crop_end(handle) - start
+                    self.processor.controllers_dict['offset'].set_value(start)
+                    self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
+                elif zctrl.value == 3:
+                    # Show loop region
+                    start = zynaudioplayer.get_loop_start(handle)
+                    range = zynaudioplayer.get_loop_end(handle) - start
+                    self.processor.controllers_dict['offset'].set_value(start)
+                    self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
+        elif zctrl.symbol == "info":
+            self.monitors_dict[handle]['info'] = zctrl.value
+        elif zctrl.symbol == "cue":
+            if self.processor:
+                self.processor.controllers_dict['cue pos'].set_value(
+                    zynaudioplayer.get_cue_point_position(handle, zctrl.value - 1), False)
+        elif zctrl.symbol == "cue pos":
+            if self.processor:
+                if zynaudioplayer.get_cue_point_count(handle):
+                    zynaudioplayer.set_cue_point_position(
+                        handle, self.processor.controllers_dict['cue'].value - 1, zctrl.value)
+        """
 
     def num2factor(self, num):
         if abs(num) < 0.01:
