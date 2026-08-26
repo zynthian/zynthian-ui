@@ -1404,14 +1404,14 @@ class zynthian_gui:
 
     def cuia_audio_file_list(self, params=None):
         self.show_screen("audio_player")
-        #return
+        return
+        # Don't ask for a file each time we open the Audio Player
         self.replace_screen('bank')
         n_banks = len(self.state_manager.audio_player.bank_list)
         if n_banks == 1 or self.state_manager.audio_player.bank_name:
             self.screens['bank'].click_listbox()
         elif n_banks == 0:
             self.close_screen()
-            #self.close_screen()
 
     def cuia_start_midi_record(self, params=None):
         self.state_manager.start_midi_record()
