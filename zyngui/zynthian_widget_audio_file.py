@@ -72,6 +72,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         self.waveform_color2 = hexcolor_to_opengl(zynthian_gui_config.color_hl)
         self.playcur_color = hexcolor_to_opengl(zynthian_gui_config.color_on)
         self.bg_crop_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 25))
+        self.lmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_ml)
         self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.axis_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
 
@@ -173,8 +174,8 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.vao = None
             self.touched = True
             return True
-        # Num Vertex = 2 * (Chans * Axis + Chans * Waveform + Beat Markers) + Crop Markers + Cursor
-        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 6
+        # Num Vertex = 2 * (Chans * Axis + Chans * Waveform + Beat Markers) + Crop Markers + Loop Markers + Cursor
+        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 12 + 6
         if self.vbo_data is None or nchans != self.channels or nv != self.n_vertex:
             self.channels = nchans
             self.n_vertex = nv
@@ -213,7 +214,8 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             i0 = i1
             i1 += self.n_vertex_markers
             self.vbo_data['col'][i0:i1] = self.bmarker_color
-            self.vbo_data['col'][-18:-6] = self.bg_crop_color
+            self.vbo_data['col'][-30:-18] = self.bg_crop_color
+            self.vbo_data['col'][-18:-6] = self.lmarker_color
             self.vbo_data['col'][-6:] = self.playcur_color
 
             # Create VBO & VAO in ModernGL
@@ -258,12 +260,33 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         try:
             x1 = (2 * x1 / self.width) - 1.0
             x2 = (2 * x2 / self.width) - 1.0
-            self.vbo_data['pos'][-18:-6, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-18:-6, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-18:-6, 2] = 0.5
+            self.vbo_data['pos'][-30:-18, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-30:-18, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-30:-18, 2] = 0.5
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set crop markers ... => {e}")
+
+    def set_loop_markers(self, x1, x2):
+        try:
+            x1 = (2 * x1 / self.width) - 1.0
+            x2 = (2 * x2 / self.width) - 1.0
+            w = 2 / self.width
+            x11 = x1 - w
+            x22 = x2 + w
+            self.vbo_data['pos'][-18:-6, 0] = np.array([x11, x11, x1, x1, x1, x11, x22, x22, x2, x2, x2, x22], dtype=np.float32)
+            self.vbo_data['pos'][-18:-6, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-18:-6, 2] = -0.5
+            self.touched = True
+        except Exception as e:
+            logging.error(f"Can't set crop markers ... => {e}")
+
+    def reset_loop_markers(self):
+        try:
+            self.vbo_data['pos'][-18:-6] = 0
+            self.touched = True
+        except Exception as e:
+            logging.error(f"Can't reset crop markers ... => {e}")
 
     def set_cursor_pos(self, xpos):
         try:
@@ -285,9 +308,9 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.ctx.clear()
             if self.vao:
                 # Dibujar líneas
-                self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 18)
+                self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 30)
                 # Dibujar Quads using native Triangles
-                self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 18, vertices=18)
+                self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 30, vertices=30)
             self.touched = False
 
     def update(self):
@@ -333,6 +356,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.vzoom = 1
         self.crop_start = 0
         self.crop_end = 0
+        self.loop_markers = False
+        self.loop_start = 0
+        self.loop_end = 0
         self.beats = 0
         self.warp = False
         self.gain = 1
@@ -525,7 +551,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.refreshing = True
         refresh_info = False
 
-        zoom = offset = crop_start = crop_end = warp = beats = gain = vzoom = cursor_pos = None
+        zoom = offset = crop_start = crop_end = loop_start = loop_end = warp = beats = gain = vzoom = cursor_pos = None
         # Get clippy parameters
         if self.processor.eng_code == "CL":
             if "zoom" in self.monitors:
@@ -569,6 +595,26 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 cursor_pos = 0
             crop_start = int(self.samplerate * crop_start)
             crop_end = int(self.samplerate * crop_end)
+        # Get samplv1 parameters
+        elif self.processor.eng_code == "JV/samplv1":
+            zoom = 1
+            offset = 0
+            beats = 0
+            offset_enabled = self.processor.controllers_dict['GEN1_OFFSET'].value
+            if offset_enabled:
+                crop_start = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_1'].value)
+                crop_end = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_2'].value)
+            else:
+                crop_start = 0
+                crop_end = self.frames
+            loop_enabled = self.processor.controllers_dict['GEN1_LOOP'].value
+            if loop_enabled:
+                loop_start = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_1'].value)
+                loop_end = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_2'].value)
+                self.loop_markers = True
+            else:
+                self.loop_markers = False
+            vzoom = 2.0 * self.processor.controllers_dict['OUT1_VOLUME'].value
 
         # Process parameter changes
         if zoom is not None and zoom != self.zoom:
@@ -592,6 +638,20 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.refresh_waveform = True
             if self.auto_offset:
                 self.auto_offset = 2
+        if self.loop_markers:
+            if loop_start is not None and loop_start != self.loop_start:
+                self.loop_start = loop_start
+                self.update_markers = True
+                self.refresh_waveform = True
+                if self.auto_offset:
+                    self.auto_offset = 1
+            if loop_end is not None and loop_end != self.loop_end:
+                self.loop_end = loop_end
+                self.update_markers = True
+                self.refresh_waveform = True
+                if self.auto_offset:
+                    self.auto_offset = 1
+
         if warp is not None and warp != self.warp:
             self.warp = warp
             self.update_markers = True
@@ -651,6 +711,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     x1 = f * (self.crop_start - self.offset)
                     x2 = f * (self.crop_end - self.offset)
                     self.widget_canvas.set_crop_markers(x1, x2)
+                    # Loop markers
+                    if self.loop_markers:
+                        x1 = f * (self.loop_start - self.offset)
+                        x2 = f * (self.loop_end - self.offset)
+                        self.widget_canvas.set_loop_markers(x1, x2)
+                    else:
+                        self.widget_canvas.reset_loop_markers()
+
                     # Beat markers
                     xdata = []
                     coldata = []
