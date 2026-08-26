@@ -88,6 +88,7 @@ class zynthian_engine_jalv(zynthian_engine):
         'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py",
         'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
         'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
+        'http://samplv1.sourceforge.net/lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_audio_file.py"
     }
 
     # For certain plugins its beneficial to set parameters not set
