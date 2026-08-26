@@ -51,7 +51,9 @@ function rotate_display() {
 	if [[ -n "$WAYLAND_DISPLAY" ]]; then
 		wlr-randr --output DSI-1 --transform 180
 	else
-		xrandr --output DSI-1 --rotate inverted
+		display_name=$(xrandr --query | grep -oP '^\S+(?= connected)')
+		echo "Rotating Display $display_name ..."
+		xrandr --output $display_name --rotate inverted
 	fi
 }
 
