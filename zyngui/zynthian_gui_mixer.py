@@ -770,21 +770,22 @@ class zynthian_gui_mixer_strip():
         c_zero = (200, 200, 200)
         c_mid = (200, 200, 0)
         c_high = (240, 0, 0)
-        font = ImageFont.truetype("DejaVuSans.ttf", int(width * 0.6))
-        for db in (-40, -30, -20, -16, -13, -10, -7, -4, -1):
-            y = min(height - 1, height - int(db_to_norm(db) * height))
-            c = c_zero if db == -10 else c_high if db >=-3 else c_mid if db >= -10 else c_low
-            if id == "dpm":
-                if db != -10:
-                    for x in range(width):
-                        pixels[x, y] = c
-            elif id == "dpm_lbl":
-                fill = f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
-                draw = ImageDraw.Draw(img)
-                if db == -10:
-                    draw.text((width, y), "0", fill=fill, font=font, anchor="rm")
-                else:
-                    draw.text((width - 1, y), f"{db+10:+}", fill=fill, font=font, anchor="rm")
+        if width > 7:
+            font = ImageFont.truetype("DejaVuSans.ttf", int(width * 0.6))
+            for db in (-40, -30, -20, -16, -13, -10, -7, -4, -1):
+                y = min(height - 1, height - int(db_to_norm(db) * height))
+                c = c_zero if db == -10 else c_high if db >=-3 else c_mid if db >= -10 else c_low
+                if id == "dpm":
+                    if db != -10:
+                        for x in range(width):
+                            pixels[x, y] = c
+                elif id == "dpm_lbl":
+                    fill = f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
+                    draw = ImageDraw.Draw(img)
+                    if db == -10:
+                        draw.text((width, y), "0", fill=fill, font=font, anchor="rm")
+                    else:
+                        draw.text((width - 1, y), f"{db+10:+}", fill=fill, font=font, anchor="rm")
 
         self.bg_images[key] = ImageTk.PhotoImage(img)
         return self.bg_images[key]

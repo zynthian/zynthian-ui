@@ -4,7 +4,7 @@
  *
  * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019-2024 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2026 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -324,15 +324,3 @@ uint8_t getLastChannel();
  *  @retval uint8_t Quantity of effect sends
  */
 uint8_t getSendCount();
-
-/** @brief  Adds client to list of registered OSC clients
- *   @param  client IP address of client
- *   @retval int Index of client or -1 on failure
- *   @note   Clients get all updates including DPM
- */
-int addOscClient(const char* client);
-
-/** @brief  Removes client from list of registered OSC clients
- *   @param  client IP address of client
- */
-void removeOscClient(const char* client);
