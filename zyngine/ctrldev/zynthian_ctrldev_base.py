@@ -136,8 +136,8 @@ class zynthian_ctrldev_base:
         self.refresh()
 
         # Register for chain add/remove
-        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN, self.refresh)
+        zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.refresh)
         # Register for snapshot loading
@@ -150,13 +150,13 @@ class zynthian_ctrldev_base:
         """End control device: restore initial state, unregister signals, etc
         It *SHOULD* be implemented by child class"""
 
-        # Unregister from snapshot loading
-        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from processor tree changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.refresh)
+        # Unregister from snapshot loading
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
         # Unregister from GUI changes
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.on_active_chain)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_POS, self.on_gui_view_pos)
@@ -282,7 +282,7 @@ class zynthian_ctrldev_base:
         """
 
         self.chain_ids_filtered = self.chain_manager.get_chain_ids_filtered(self.chain_type_filter)
-        logging.debug(f"Filtered Chains {self.chain_type_filter}: {self.chain_ids_filtered}")
+        logging.debug(f"[{self.__class__.__name__}] Filtered Chains {self.chain_type_filter}: {self.chain_ids_filtered}")
 
     def midi_event(self, ev):
         """Device MIDI event handler
@@ -542,7 +542,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         value - Control value
         mixbus - True for mixbus mixer. False for chain mixer. (Default: False)
         """
-        logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
+        logging.debug(f"[{self.__class__.__name__}] Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
 
     def set_mixer_param(self, param, pos, value):
         """Set a mixer parameter value
@@ -562,7 +562,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
                 if zctrl.value != value:
                     zctrl.set_value(value)
             except:
-                logging.warning(f"Failed to set {param} to {value}")
+                logging.warning(f"[{self.__class__.__name__}] Failed to set {param} to {value}")
 
     def set_mixer_param_cc(self, param, pos, ccval):
         """Set a mixer parameter value using a MIDI CC value
@@ -581,7 +581,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
                 zctrl = chain.zynmixer_proc.controllers_dict[param]
                 zctrl.midi_control_change(ccval)
             except:
-                logging.warning(f"Failed to set {param} value from MIDI CC value {ccval}")
+                logging.warning(f"[{self.__class__.__name__}] Failed to set {param} value from MIDI CC value {ccval}")
 
     def nudge_mixer_param(self, param, pos, value, fine=False):
         """Set a mixer parameter value
@@ -600,7 +600,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
                 zctrl = chain.zynmixer_proc.controllers_dict[param]
                 zctrl.nudge(value, fine=fine)
             except:
-                logging.warning(f"Failed to nudge {param} by {value}")
+                logging.warning(f"[{self.__class__.__name__}] Failed to nudge {param} by {value}")
 
     def get_mixer_param(self, param, pos):
         """Get a mixer parameter value
@@ -619,7 +619,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
                 return chain.zynmixer_proc.controllers_dict[param].get_value()
             except:
                 pass
-                #logging.warning(f"Failed to get {param}")
+                #logging.warning(f"[{self.__class__.__name__}] Failed to get {param}")
         return 0
 
     def toggle_mixer_param(self, param, pos):
@@ -638,7 +638,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
                 chain.zynmixer_proc.controllers_dict[param].toggle()
                 return chain.zynmixer_proc.controllers_dict[param].value
             except:
-                logging.warning(f"Failed to toggle {param}")
+                logging.warning(f"[{self.__class__.__name__}] Failed to toggle {param}")
         return 0
 
 

@@ -168,7 +168,7 @@ standalone_engine_info = {
     "BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
     "AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
     "PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
-    "AP": ["ZynSampler", "ZynSampler", "MIDI Synth", "Sampler", True],
+    "AP": ["AudioPlayer", "Audio Player", "Audio Generator", "Other", True],
     "SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Delay", True],
     'SX': ["SysEx", "SysEx Manager", "MIDI Tool", "Other", True],
     'MC': ["MIDI Control", "MIDI Control External", "MIDI Tool", "Other", True],

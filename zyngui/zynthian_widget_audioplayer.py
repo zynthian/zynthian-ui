@@ -403,8 +403,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
         self.update_cue_markers()
 
     def get_monitors(self):
-        self.monitors = self.processor.engine.get_monitors_dict(
-            self.processor.handle)
+        self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
 
     def load_file(self):
         try:

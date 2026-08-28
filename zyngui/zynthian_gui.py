@@ -653,9 +653,6 @@ class zynthian_gui:
             if screen_obj != exclude_obj:
                 screen_obj.hide()
 
-    def reset_screen_history(self):
-        self.screen_history = []
-
     def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD, params=None):
         self.screen_lock.acquire()
         self.cancel_screen_timer()
@@ -769,6 +766,9 @@ class zynthian_gui:
             last_screen = "root"
         logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
         self.show_screen(last_screen)
+
+    def reset_screen_history(self):
+        self.screen_history = []
 
     def purge_screen_history(self, screen):
         self.screen_history = list(filter(lambda i: i != screen, self.screen_history))
@@ -1038,7 +1038,7 @@ class zynthian_gui:
                         self.modify_chain_status["audio_thru"],
                         zmop_index,
                         chain_pos=pos,
-                        fast_refresh=False
+                        fast_refresh=True
                     )
                     if chain_id is None:
                         self.show_screen_reset("root")
@@ -1404,14 +1404,14 @@ class zynthian_gui:
 
     def cuia_audio_file_list(self, params=None):
         self.show_screen("audio_player")
-        #return
+        return
+        # Don't ask for a file each time we open the Audio Player
         self.replace_screen('bank')
         n_banks = len(self.state_manager.audio_player.bank_list)
         if n_banks == 1 or self.state_manager.audio_player.bank_name:
             self.screens['bank'].click_listbox()
         elif n_banks == 0:
             self.close_screen()
-            #self.close_screen()
 
     def cuia_start_midi_record(self, params=None):
         self.state_manager.start_midi_record()
@@ -1823,10 +1823,10 @@ class zynthian_gui:
                 self.state_manager.load_zs3(params[0])
 
     def cuia_zs3_next(self, params=None):
-        self.state_manager.load_next_zs3()
+        self.state_manager.load_next_zs3(params)
 
     def cuia_zs3_prev(self, params=None):
-        self.state_manager.load_prev_zs3()
+        self.state_manager.load_prev_zs3(params)
 
     # -------------------------------------------------------------------
     # MIDI Learn CUIAS:
@@ -2519,17 +2519,9 @@ class zynthian_gui:
             self.zynswitch_read()
             self.osc_receive()
 
-            # Every 4 cycles...
-            if j > 4:
+            # Every 10 cycles...
+            if j > 10:
                 j = 0
-                # Refresh GUI Controllers
-                try:
-                    self.screens[self.current_screen].plot_zctrls()
-                except AttributeError:
-                    pass
-                except Exception as e:
-                    logging.error(e)
-
                 # Power Save Check
                 self.state_manager.power_save_check()
             else:
@@ -2540,6 +2532,23 @@ class zynthian_gui:
 
         # End Thread task
         self.osc_end()
+
+
+    def plot_zctrls_task(self):
+        # Refresh GUI Controllers & Widgets
+        try:
+            self.screens[self.current_screen].plot_zctrls()
+        except AttributeError:
+            pass
+        except Exception as e:
+            logging.error(e)
+
+        if not self.exit_flag:
+            zynthian_gui_config.top.after(32, self.plot_zctrls_task)
+
+    # ------------------------------------------------------------------
+    # Touch event management
+    # ------------------------------------------------------------------
 
     def cb_touch(self, event):
         # logging.debug("CB EVENT TOUCH!!!")
@@ -2843,6 +2852,12 @@ class zynthian_gui:
         if self.wsleds_v5touch:
             self.wsleds_v5touch.end()
 
+        # Print mimalloc stats
+        try:
+            self.state_manager.zynseq.libseq.print_mimalloc_stats()
+        except:
+            pass # Some builds do not include print_mimalloc_stats
+
         # Stop Multitouch driver
         self.multitouch.stop()
 
@@ -2885,6 +2900,7 @@ class zynthian_gui:
 
     def start_polling(self):
         self.osc_timeout()
+        self.plot_zctrls_task()
 
     def after(self, msec, func):
         zynthian_gui_config.top.after(msec, func)

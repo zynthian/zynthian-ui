@@ -187,6 +187,8 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
             zynpot = CCNUM_ZYNPOT.get(ccnum, None)
             if zynpot is not None:
                 self._state_manager.send_cuia("ZYNPOT_ABS", [zynpot, ccval / 127])
+                return True
+            return False
 
         def note_on(self, note, velocity, shifted_override=None):
             if note < 4:

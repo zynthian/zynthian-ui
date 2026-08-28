@@ -251,7 +251,7 @@ class zynseq(zynthian_engine):
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
-            self.libseq.convertPattern.argtypes = [ctypes.c_int32, ctypes.c_char_p]
+            self.libseq.convertPattern.argtypes = [ctypes.c_char_p]
             self.libseq.convertPattern.restype = ctypes.c_char_p
 
             # Sequence functions
@@ -501,7 +501,7 @@ class zynseq(zynthian_engine):
         except:
             try:
                 # Legacy binary file format
-                patn_str = self.libseq.convertPattern(int(patnum), bytes(filename, "utf-8")).decode("utf-8")
+                patn_str = self.libseq.convertPattern(bytes(filename, "utf-8")).decode("utf-8")
                 self.libseq.freeState()
                 patn = loads(patn_str)
             except:

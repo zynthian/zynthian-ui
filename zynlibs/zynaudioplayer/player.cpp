@@ -1,7 +1,6 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
-    Envelope generator based on code by EarLevel Engineering <https://www.earlevel.com/main/2013/06/03/envelope-generators-adsr-code/>
 */
 
 #include "player.h"
@@ -32,7 +31,6 @@ uint8_t g_last_debug        = 0;
 char g_supported_codecs[1024];
 uint8_t g_mutex      = 0;
 uint32_t g_nextIndex = 1;
-float g_tempo        = 2.0; // Tempo in beats per second
 
 struct PlayerVector {
     vector<AUDIO_PLAYER*> players;
@@ -46,9 +44,6 @@ struct PlayerVector {
 static PlayerVector playerVector;
 
 // Declare local functions
-void set_env_gate(AUDIO_PLAYER* pPlayer, uint8_t gate);
-void reset_env(AUDIO_PLAYER* pPlayer);
-float process_env(AUDIO_PLAYER* pPlayer);
 
 #define DPRINTF(fmt, args...)                                                                                                                                  \
     if (g_debug)                                                                                                                                               \
@@ -75,21 +70,6 @@ int is_codec_supported(const char* codec) {
             return 1;
     }
     return 0;
-}
-
-void updateTempo(AUDIO_PLAYER* pPlayer) {
-    getMutex();
-    if (!pPlayer)
-        return;
-    if (pPlayer->beats) {
-        float div = g_tempo * (pPlayer->crop_end_src - pPlayer->crop_start_src);
-        if (div > 0.0)
-            pPlayer->time_ratio = g_samplerate * pPlayer->beats / div;
-    } else {
-        pPlayer->time_ratio = 1.0;
-    }
-    pPlayer->time_ratio_dirty = true;
-    releaseMutex();
 }
 
 char* get_supported_codecs() {
@@ -133,16 +113,6 @@ void send_notifications(AUDIO_PLAYER* pPlayer, int param) {
         if (pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_LOOP, (float)(pPlayer->loop));
     }
-    if ((param == NOTIFY_ALL || param == NOTIFY_LOOP_START) && pPlayer->loop_start != pPlayer->last_loop_start) {
-        pPlayer->last_loop_start = pPlayer->loop_start;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_LOOP_START, get_loop_start_time(pPlayer));
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_LOOP_END) && pPlayer->loop_end != pPlayer->last_loop_end) {
-        pPlayer->last_loop_end = pPlayer->loop_end;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_LOOP_END, get_loop_end_time(pPlayer));
-    }
     if ((param == NOTIFY_ALL || param == NOTIFY_CROP_START) && pPlayer->crop_start != pPlayer->last_crop_start) {
         pPlayer->last_crop_start = pPlayer->crop_start;
         if (pPlayer->cb_fn)
@@ -152,46 +122,6 @@ void send_notifications(AUDIO_PLAYER* pPlayer, int param) {
         pPlayer->last_crop_end = pPlayer->crop_end;
         if (pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_CROP_END, get_crop_end_time(pPlayer));
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_SUSTAIN) && pPlayer->sustain != pPlayer->last_sustain) {
-        pPlayer->last_sustain = pPlayer->sustain;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_SUSTAIN, pPlayer->sustain);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK) && pPlayer->env_attack_rate != pPlayer->last_env_attack_rate) {
-        pPlayer->last_env_attack_rate = pPlayer->env_attack_rate;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_HOLD) && pPlayer->env_hold != pPlayer->last_env_hold) {
-        pPlayer->last_env_hold = pPlayer->env_hold;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_HOLD, float(pPlayer->env_hold) / g_samplerate);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY) && pPlayer->env_decay_rate != pPlayer->last_env_decay_rate) {
-        pPlayer->last_env_decay_rate = pPlayer->env_decay_rate;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_DECAY, pPlayer->env_decay_rate);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_SUSTAIN) && pPlayer->env_sustain_level != pPlayer->last_env_sustain_level) {
-        pPlayer->last_env_sustain_level = pPlayer->env_sustain_level;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_SUSTAIN, pPlayer->env_sustain_level);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_RELEASE) && pPlayer->env_release_rate != pPlayer->last_env_release_rate) {
-        pPlayer->last_env_release_rate = pPlayer->env_release_rate;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_RELEASE, pPlayer->env_release_rate);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK_CURVE) && pPlayer->env_target_ratio_a != pPlayer->last_env_target_ratio_a) {
-        pPlayer->last_env_target_ratio_a = pPlayer->env_target_ratio_a;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_ATTACK_CURVE, pPlayer->env_target_ratio_a);
-    }
-    if ((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY_CURVE) && pPlayer->env_target_ratio_dr != pPlayer->last_env_target_ratio_dr) {
-        pPlayer->last_env_target_ratio_dr = pPlayer->env_target_ratio_dr;
-        if (pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_DECAY_CURVE, pPlayer->env_target_ratio_dr);
     }
     if ((param == NOTIFY_ALL || param == NOTIFY_TRACK_A) && pPlayer->track_a != pPlayer->last_track_a) {
         pPlayer->last_track_a = pPlayer->track_a;
@@ -245,8 +175,6 @@ void* file_thread_fn(void* param) {
                                                          RubberBandStretcher::OptionPitchHighConsistency | RubberBandStretcher::OptionFormantPreserved);
         pPlayer->stretcher->setMaxProcessSize(256);
 
-        pPlayer->loop_start       = 0;
-        pPlayer->loop_end         = pPlayer->sf_info.frames;
         pPlayer->crop_start       = 0;
         pPlayer->crop_end         = pPlayer->sf_info.frames;
         pPlayer->file_read_status = SEEKING;
@@ -274,37 +202,7 @@ void* file_thread_fn(void* param) {
             for (uint32_t i = 0; i < count; ++i)
                 add_cue_point(pPlayer, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
 
-            SF_LOOP_INFO loopInfo;
-            if (sf_command(pFile, SFC_GET_LOOP_INFO, &loopInfo, sizeof(loopInfo)) == SF_TRUE) {
-                fprintf(stderr, "File loop info: Sig:%d/%d, %0.2fBPM, %d beats, Mode: %s, Root key: %d\n", loopInfo.time_sig_num, loopInfo.time_sig_den,
-                        loopInfo.bpm, loopInfo.num_beats, loopModes[loopInfo.loop_mode - 800], loopInfo.root_key);
-                enable_loop(pPlayer, loopInfo.loop_mode == SF_LOOP_FORWARD);
-                set_beats(pPlayer, loopInfo.num_beats);
-            } else {
-                enable_loop(pPlayer, true);
-                set_beats(pPlayer, 0);
-            }
-            SF_INSTRUMENT inst;
-            if (sf_command(pFile, SFC_GET_INSTRUMENT, &inst, sizeof(inst)) == SF_TRUE) {
-                fprintf(stderr, "File instrument info: gain: %d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n", inst.gain,
-                        inst.velocity_lo, inst.velocity_hi, inst.basenote, inst.detune, inst.key_lo, inst.key_hi);
-                pPlayer->gain = pow(10, (float(inst.gain) / 20));
-                for (int i = 0; i < inst.loop_count; ++i) {
-                    fprintf(stderr, "\tLoop %d: mode:%s, start: %d, end:%d, count:%u\n", i, loopModes[inst.loops[i].mode - 800], inst.loops[i].start,
-                            inst.loops[i].end, inst.loops[i].count);
-                }
-                if (inst.basenote >= 0)
-                    pPlayer->base_note = inst.basenote;
-                if (inst.loop_count) {
-                    pPlayer->loop_start     = inst.loops[0].start;
-                    pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-                    pPlayer->loop_end       = inst.loops[0].end;
-                    pPlayer->loop_end_src   = pPlayer->loop_end * pPlayer->src_ratio;
-                }
-            } else {
-                pPlayer->gain      = 1.0;
-                pPlayer->base_note = 60;
-            }
+            pPlayer->gain      = 1.0;
         }
 
         // Initialise samplerate converter
@@ -315,8 +213,6 @@ void* file_thread_fn(void* param) {
         srcData.data_out        = pBufferOut;
         srcData.output_frames   = pPlayer->output_buffer_size;
         pPlayer->frames         = pPlayer->sf_info.frames * pPlayer->src_ratio;
-        pPlayer->loop_end_src   = pPlayer->loop_end * pPlayer->src_ratio;
-        pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
         pPlayer->crop_end_src   = pPlayer->crop_end * pPlayer->src_ratio;
         pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
         int nError;
@@ -339,7 +235,6 @@ void* file_thread_fn(void* param) {
                     pPlayer->file_read_pos = pos;
                 // DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
                 pPlayer->file_read_status = LOADING;
-                pPlayer->looped           = false;
                 releaseMutex();
                 src_reset(pSrcState);
                 nUnusedFrames        = 0;
@@ -349,14 +244,13 @@ void* file_thread_fn(void* param) {
                 // Reached loop end point and need to read from loop marker
                 sf_count_t pos;
                 if (pPlayer->varispeed < 0.0)
-                    pos = sf_seek(pFile, pPlayer->loop_end, SEEK_SET);
+                    pos = sf_seek(pFile, pPlayer->crop_end, SEEK_SET);
                 else
-                    pos = sf_seek(pFile, pPlayer->loop_start, SEEK_SET);
+                    pos = sf_seek(pFile, pPlayer->crop_start, SEEK_SET);
                 getMutex();
                 if (pos >= 0)
                     pPlayer->file_read_pos = pos;
                 pPlayer->file_read_status = LOADING;
-                pPlayer->looped           = true;
                 releaseMutex();
                 src_reset(pSrcState);
                 srcData.end_of_input = 0;
@@ -377,22 +271,22 @@ void* file_thread_fn(void* param) {
                     bool bReverse = (pPlayer->varispeed < 0.0);
                     if (bReverse) {
                         if (pPlayer->loop == 1) {
-                            // Limit read to loop range
-                            if (pPlayer->file_read_pos <= pPlayer->loop_start)
+                            // Limit read to crop range
+                            if (pPlayer->file_read_pos <= pPlayer->crop_start)
                                 nMaxFrames = 0;
-                            else if (pPlayer->file_read_pos - nMaxFrames < pPlayer->loop_start)
-                                nMaxFrames = pPlayer->file_read_pos - pPlayer->loop_start;
+                            else if (pPlayer->file_read_pos - nMaxFrames < pPlayer->crop_start)
+                                nMaxFrames = pPlayer->file_read_pos - pPlayer->crop_start;
                         } else if (pPlayer->file_read_pos - nMaxFrames < pPlayer->crop_start) {
                             // Limit read to crop range
                             nMaxFrames = pPlayer->file_read_pos - pPlayer->crop_start;
                         }
                     } else {
                         if (pPlayer->loop == 1) {
-                            // Limit read to loop range
-                            if (pPlayer->file_read_pos >= pPlayer->loop_end)
+                            // Limit read to crop range
+                            if (pPlayer->file_read_pos >= pPlayer->crop_end)
                                 nMaxFrames = 0;
-                            else if (pPlayer->file_read_pos + nMaxFrames > pPlayer->loop_end)
-                                nMaxFrames = pPlayer->loop_end - pPlayer->file_read_pos;
+                            else if (pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end)
+                                nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
                         } else if (pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end) {
                             // Limit read to crop range
                             nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
@@ -645,30 +539,6 @@ uint8_t save(AUDIO_PLAYER* pPlayer, const char* filename) {
     if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, &cues, cue_size))
         fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
 
-    /* libsndfile does not support SFC_SET_LOOP_INFO riban fork adds but PR not submitted/accepted upstream
-    if (pPlayer->beats) {
-        SF_LOOP_INFO loopInfo;
-        loopInfo.time_sig_num = 4; //!@todo Get time signature
-        loopInfo.time_sig_den = 4;
-        loopInfo.bpm          = g_tempo;
-        loopInfo.num_beats    = pPlayer->beats;
-        loopInfo.loop_mode    = pPlayer->loop ? SF_LOOP_FORWARD : SF_LOOP_NONE;
-        loopInfo.root_key     = pPlayer->base_note;
-        sf_command(outfile, SFC_SET_LOOP_INFO, &loopInfo, sizeof(loopInfo));
-    }
-    */
-
-    // loop points
-    SF_INSTRUMENT inst;
-    inst.basenote = pPlayer->base_note;
-    inst.detune   = 0;
-    inst.gain = (int8_t)log10f(pPlayer->gain) * 20, inst.key_lo = 0, inst.key_hi = 127, inst.velocity_lo = 0, inst.velocity_hi = 127, inst.loop_count = 1;
-    inst.loops[0].mode  = pPlayer->loop ? SF_LOOP_FORWARD : SF_LOOP_NONE;
-    inst.loops[0].start = pPlayer->loop_start;
-    inst.loops[0].end   = pPlayer->loop_end;
-    inst.loops[0].count = 0;
-    sf_command(outfile, SFC_SET_INSTRUMENT, &inst, sizeof(inst));
-
     float buffer[1024 * sfinfo.channels];
     sf_count_t pos    = sf_seek(infile, pPlayer->crop_start, SEEK_SET);
     uint32_t duration = pPlayer->crop_end - pPlayer->crop_start;
@@ -728,59 +598,9 @@ void enable_loop(AUDIO_PLAYER* pPlayer, uint8_t nLoop) {
         return;
     getMutex();
     pPlayer->loop = nLoop;
-    if (nLoop && pPlayer->play_pos_frames > pPlayer->loop_end_src)
-        pPlayer->play_pos_frames = pPlayer->loop_start_src;
     pPlayer->file_read_status = SEEKING;
     releaseMutex();
     send_notifications(pPlayer, NOTIFY_LOOP);
-}
-
-void set_loop_start_time(AUDIO_PLAYER* pPlayer, float time) {
-    if (!pPlayer)
-        return;
-    jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if (frames >= pPlayer->loop_end)
-        frames = pPlayer->loop_end - 1;
-    if (frames < pPlayer->crop_start)
-        frames = pPlayer->crop_start;
-    getMutex();
-    pPlayer->loop_start     = frames;
-    pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-    if (pPlayer->loop == 1 && pPlayer->looped)
-        pPlayer->file_read_status = SEEKING;
-    releaseMutex();
-    pPlayer->last_loop_start = -1;
-    send_notifications(pPlayer, NOTIFY_LOOP_START);
-}
-
-float get_loop_start_time(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer || pPlayer->sf_info.samplerate == 0)
-        return 0.0;
-    return (float)(pPlayer->loop_start) / pPlayer->sf_info.samplerate;
-}
-
-void set_loop_end_time(AUDIO_PLAYER* pPlayer, float time) {
-    if (!pPlayer)
-        return;
-    jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if (frames <= pPlayer->loop_start)
-        frames = pPlayer->loop_start + 1;
-    if (frames > pPlayer->crop_end)
-        frames = pPlayer->crop_end;
-    getMutex();
-    pPlayer->loop_end     = frames;
-    pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    if (pPlayer->loop == 1 && pPlayer->looped)
-        pPlayer->file_read_status = SEEKING;
-    releaseMutex();
-    pPlayer->last_loop_end = -1;
-    send_notifications(pPlayer, NOTIFY_LOOP_END);
-}
-
-float get_loop_end_time(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer || pPlayer->sf_info.samplerate == 0)
-        return 0.0;
-    return (float)(pPlayer->loop_end) / pPlayer->sf_info.samplerate;
 }
 
 uint8_t is_loop(AUDIO_PLAYER* pPlayer) {
@@ -797,10 +617,6 @@ void set_crop_start_time(AUDIO_PLAYER* pPlayer, float time) {
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
     if (frames >= pPlayer->crop_end)
         frames = pPlayer->crop_end - 1;
-    if (frames > pPlayer->loop_end)
-        set_loop_end_time(pPlayer, time);
-    if (frames > pPlayer->loop_start)
-        set_loop_start_time(pPlayer, time);
     getMutex();
     pPlayer->crop_start     = frames;
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
@@ -808,7 +624,6 @@ void set_crop_start_time(AUDIO_PLAYER* pPlayer, float time) {
     if (pPlayer->play_pos_frames < frames)
         set_position(pPlayer, time);
     pPlayer->last_crop_start = -1;
-    updateTempo(pPlayer);
     send_notifications(pPlayer, NOTIFY_CROP_START);
 }
 
@@ -826,10 +641,6 @@ void set_crop_end_time(AUDIO_PLAYER* pPlayer, float time) {
         frames = pPlayer->crop_start + 1;
     if (frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
-    if (frames < pPlayer->loop_end)
-        set_loop_end_time(pPlayer, time);
-    if (frames < pPlayer->loop_start)
-        set_loop_start_time(pPlayer, time);
     getMutex();
     pPlayer->crop_end     = frames;
     pPlayer->crop_end_src = frames * pPlayer->src_ratio;
@@ -844,7 +655,6 @@ void set_crop_end_time(AUDIO_PLAYER* pPlayer, float time) {
         pPlayer->file_read_status = WAITING;
     releaseMutex();
     pPlayer->last_crop_end = -1;
-    updateTempo(pPlayer);
     send_notifications(pPlayer, NOTIFY_CROP_END);
 }
 
@@ -998,325 +808,16 @@ int get_format(AUDIO_PLAYER* pPlayer) {
     return pPlayer->sf_info.format;
 }
 
-float calc_env_coef(float rate, float ratio) { return (rate <= 0) ? 0.0 : exp(-log((1.0 + ratio) / ratio) / rate); }
-
-void set_env_attack(AUDIO_PLAYER* pPlayer, float rate) {
-    if (!pPlayer)
-        return;
-    getMutex();
-    pPlayer->env_attack_rate = rate;
-    pPlayer->env_attack_coef = calc_env_coef(rate * g_samplerate, pPlayer->env_target_ratio_a);
-    pPlayer->env_attack_base = (1.0 + pPlayer->env_target_ratio_a) * (1.0 - pPlayer->env_attack_coef);
-    releaseMutex();
-    send_notifications(pPlayer, NOTIFY_ENV_ATTACK);
-}
-
-float get_env_attack(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return pPlayer->env_attack_rate;
-}
-
-void set_env_hold(AUDIO_PLAYER* pPlayer, float hold) {
-    if (!pPlayer)
-        return;
-    getMutex();
-    pPlayer->env_hold = hold * g_samplerate;
-    releaseMutex();
-}
-
-float get_env_hold(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return float(pPlayer->env_hold) / g_samplerate;
-}
-
-void set_env_decay(AUDIO_PLAYER* pPlayer, float rate) {
-    if (!pPlayer)
-        return;
-    getMutex();
-    pPlayer->env_decay_rate = rate;
-    pPlayer->env_decay_coef = calc_env_coef(rate * g_samplerate, pPlayer->env_target_ratio_dr);
-    pPlayer->env_decay_base = (pPlayer->env_sustain_level - pPlayer->env_target_ratio_dr) * (1.0 - pPlayer->env_decay_coef);
-    releaseMutex();
-    send_notifications(pPlayer, NOTIFY_ENV_DECAY);
-}
-
-float get_env_decay(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return pPlayer->env_decay_rate;
-}
-
-void set_env_release(AUDIO_PLAYER* pPlayer, float rate) {
-    if (!pPlayer)
-        return;
-    getMutex();
-    pPlayer->env_release_rate = rate;
-    pPlayer->env_release_coef = calc_env_coef(rate * g_samplerate, pPlayer->env_target_ratio_dr);
-    pPlayer->env_release_base = -pPlayer->env_target_ratio_dr * (1.0 - pPlayer->env_release_coef);
-    releaseMutex();
-    send_notifications(pPlayer, NOTIFY_ENV_RELEASE);
-}
-
-float get_env_release(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return pPlayer->env_release_rate;
-}
-
-void set_env_sustain(AUDIO_PLAYER* pPlayer, float level) {
-    if (!pPlayer)
-        return;
-    getMutex();
-    pPlayer->env_sustain_level = level;
-    pPlayer->env_decay_base    = (pPlayer->env_sustain_level - pPlayer->env_target_ratio_dr) * (1.0 - pPlayer->env_decay_coef);
-    releaseMutex();
-    send_notifications(pPlayer, NOTIFY_ENV_SUSTAIN);
-}
-
-float get_env_sustain(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return pPlayer->env_sustain_level;
-}
-
-void set_env_target_ratio_a(AUDIO_PLAYER* pPlayer, float ratio) {
-    if (!pPlayer)
-        return;
-    if (ratio < 0.000000001)
-        ratio = 0.000000001; // -180 dB
-    getMutex();
-    pPlayer->env_target_ratio_a = ratio;
-    pPlayer->env_attack_coef    = calc_env_coef(pPlayer->env_attack_rate * g_samplerate, pPlayer->env_target_ratio_a);
-    pPlayer->env_attack_base    = (1.0 + pPlayer->env_target_ratio_a) * (1.0 - pPlayer->env_attack_coef);
-    releaseMutex();
-    send_notifications(pPlayer, NOTIFY_ENV_ATTACK_CURVE);
-}
-
-float get_env_target_ratio_a(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return pPlayer->env_target_ratio_a;
-}
-
-void set_env_target_ratio_dr(AUDIO_PLAYER* pPlayer, float ratio) {
-    if (!pPlayer)
-        return;
-    if (ratio < 0.000000001)
-        ratio = 0.000000001; // -180 dB
-    getMutex();
-    pPlayer->env_target_ratio_dr = ratio;
-    pPlayer->env_decay_coef      = calc_env_coef(pPlayer->env_decay_rate * g_samplerate, pPlayer->env_target_ratio_dr);
-    pPlayer->env_release_coef    = calc_env_coef(pPlayer->env_release_rate * g_samplerate, pPlayer->env_target_ratio_dr);
-    pPlayer->env_decay_base      = (pPlayer->env_sustain_level - pPlayer->env_target_ratio_dr) * (1.0 - pPlayer->env_decay_coef);
-    pPlayer->env_release_base    = -pPlayer->env_target_ratio_dr * (1.0 - pPlayer->env_release_coef);
-    releaseMutex();
-    send_notifications(pPlayer, NOTIFY_ENV_DECAY_CURVE);
-}
-
-float get_env_target_ratio_dr(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0.0;
-    return pPlayer->env_target_ratio_dr;
-}
-
 /*** Private functions not exposed as external C functions (not declared in header) ***/
-
-// Process ADSR envelope
-inline float process_env(AUDIO_PLAYER* pPlayer) {
-    switch (pPlayer->env_state) {
-    case ENV_IDLE:
-        break;
-    case ENV_ATTACK:
-        pPlayer->env_level = pPlayer->env_attack_base + pPlayer->env_level * pPlayer->env_attack_coef;
-        if (pPlayer->env_level >= 1.0) {
-            pPlayer->env_level      = 1.0;
-            pPlayer->env_hold_count = pPlayer->env_hold;
-            pPlayer->env_state      = ENV_HOLD;
-            // fprintf(stderr, "Envelope: HOLD\n");
-        }
-        break;
-    case ENV_HOLD:
-        if (pPlayer->env_hold_count-- == 0) {
-            pPlayer->env_state = ENV_DECAY;
-            // fprintf(stderr, "Envelope: DECAY\n");
-        }
-        break;
-    case ENV_DECAY:
-        pPlayer->env_level = pPlayer->env_decay_base + pPlayer->env_level * pPlayer->env_decay_coef;
-        if (pPlayer->env_level <= pPlayer->env_sustain_level) {
-            pPlayer->env_level = pPlayer->env_sustain_level;
-            pPlayer->env_state = ENV_SUSTAIN;
-            // fprintf(stderr, "Envelope: SUSTAIN\n");
-        }
-        break;
-    case ENV_SUSTAIN:
-        break;
-    case ENV_RELEASE:
-        pPlayer->env_level = pPlayer->env_release_base + pPlayer->env_level * pPlayer->env_release_coef;
-        if (pPlayer->env_level < 0.0000000001) {
-            // Below -200dBfs so let's end this thing
-            pPlayer->env_level = 0.0;
-            pPlayer->env_state = ENV_END;
-            // fprintf(stderr, "Envelope: END\n");
-        }
-    }
-    return pPlayer->env_level;
-}
-
-inline void set_env_gate(AUDIO_PLAYER* pPlayer, uint8_t gate) {
-    DPRINTF("set_env_gate: was: %d req: %d current env phase: %d\n", pPlayer->env_gate, gate, pPlayer->env_state);
-    if (gate) {
-        pPlayer->env_state = ENV_ATTACK;
-        // fprintf(stderr, "Envelope: ATTACK\n");
-    } else if (pPlayer->env_state != ENV_IDLE) {
-        pPlayer->env_state = ENV_RELEASE;
-        // fprintf(stderr, "Envelope: RELEASE\n");
-    }
-    pPlayer->env_gate = gate;
-}
-
-inline void reset_env(AUDIO_PLAYER* pPlayer) {
-    pPlayer->env_state = ENV_IDLE;
-    pPlayer->env_level = 0.0;
-}
 
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void* arg) {
     getMutex();
 
-    // Process MIDI input
-    void* pMidiBuffer = jack_port_get_buffer(g_jack_midi_in, nFrames);
-    jack_midi_event_t midiEvent;
-    jack_nframes_t nCount = jack_midi_get_event_count(pMidiBuffer);
-    for (jack_nframes_t i = 0; i < nCount; i++) {
-        jack_midi_event_get(&midiEvent, pMidiBuffer, i);
-        uint8_t chan = midiEvent.buffer[0] & 0x0F;
-        for (const auto& pPlayer: playerVector.players) {
-            if (!pPlayer->file_open || pPlayer->midi_chan != chan)
-                continue;
-            uint32_t cue_point_play = pPlayer->cue_points.size();
-            uint8_t cmd             = midiEvent.buffer[0] & 0xF0;
-            if (cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
-                // Note off
-                pPlayer->held_notes[midiEvent.buffer[1]] = 0;
-                if (pPlayer->last_note_played == midiEvent.buffer[1]) {
-                    if (pPlayer->loop == 3)
-                        continue; //!@todo This is bluntly ignoring note-off but maybe we want to include envelope
-                    pPlayer->held_note = pPlayer->sustain;
-                    for (uint8_t i = 0; i < 128; ++i) {
-                        if (pPlayer->held_notes[i]) {
-                            // Handle note-off when other key still pressed
-                            pPlayer->last_note_played = i;
-                            pPlayer->stretcher->reset();
-                            if (cue_point_play) {
-                                //!@todo Handle cue play reverse
-                                uint8_t cue = pPlayer->last_note_played - pPlayer->base_note;
-                                if (cue < cue_point_play) {
-                                    pPlayer->play_pos_frames  = pPlayer->cue_points[cue].offset;
-                                    pPlayer->play_state       = STARTING;
-                                    pPlayer->file_read_status = SEEKING;
-                                }
-                            } else {
-                                // legato
-                                pPlayer->pitchshift       = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
-                                pPlayer->time_ratio_dirty = true;
-                            }
-                            pPlayer->held_note = 1;
-                            break;
-                        }
-                    }
-                    if (pPlayer->held_note)
-                        continue;
-                    if (pPlayer->loop < 2 && pPlayer->sustain == 0) {
-                        stop_playback(pPlayer);
-                    }
-                }
-            } else if (cmd == 0x90) {
-                // Note on
-                if (cue_point_play) {
-                    //!@todo Handle cue play reverse
-                    uint8_t cue = midiEvent.buffer[1] - pPlayer->base_note;
-                    if (cue < cue_point_play) {
-                        pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
-                        pPlayer->play_state      = STARTING;
-                    }
-                } else if (pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
-                    if (pPlayer->varispeed < 0.0)
-                        pPlayer->play_pos_frames = pPlayer->crop_end_src;
-                    else
-                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
-                    pPlayer->play_state = STARTING;
-                }
-                pPlayer->last_note_played = midiEvent.buffer[1];
-                if (pPlayer->loop == 3) {
-                    if (pPlayer->held_note) {
-                        pPlayer->held_notes[pPlayer->last_note_played] = 0;
-                        pPlayer->held_note                             = 0;
-                        stop_playback(pPlayer);
-                        DPRINTF("TOGGLE OFF\n");
-                    } else {
-                        pPlayer->held_notes[pPlayer->last_note_played] = 1;
-                        pPlayer->held_note                             = 1;
-                        DPRINTF("TOGGLE ON\n");
-                    }
-                    continue;
-                } else {
-                    pPlayer->held_notes[pPlayer->last_note_played] = 1;
-                    pPlayer->held_note                             = 1;
-                }
-                pPlayer->stretcher->reset();
-                pPlayer->varispeed = pPlayer->play_varispeed;
-                if (!cue_point_play) {
-                    pPlayer->pitchshift       = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
-                    pPlayer->time_ratio_dirty = true;
-                }
-                pPlayer->file_read_status = SEEKING;
-                jack_ringbuffer_reset(pPlayer->ringbuffer_a);
-                jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-            } else if (cmd == 0xE0) {
-                // Pitchbend
-                pPlayer->pitch_bend = pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
-                if (pPlayer->play_state != STOPPED) {
-                    //!@todo Pitchbend is ignored if not playing!
-                    pPlayer->pitchshift       = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
-                    pPlayer->time_ratio_dirty = true;
-                }
-            } else if (cmd == 0xB0) {
-                if (midiEvent.buffer[1] == 64) {
-                    // Sustain pedal
-                    pPlayer->sustain = midiEvent.buffer[2];
-                    if (!pPlayer->sustain) {
-                        pPlayer->held_note = 0;
-                        for (uint8_t i = 0; i < 128; ++i) {
-                            if (pPlayer->held_notes[i]) {
-                                pPlayer->held_note = 1;
-                                break;
-                            }
-                        }
-                        if (!pPlayer->held_note) {
-                            stop_playback(pPlayer);
-                        }
-                    }
-                } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
-                    // All off
-                    for (uint8_t i = 0; i < 128; ++i)
-                        pPlayer->held_notes[i] = 0;
-                    pPlayer->held_note = 0;
-                    stop_playback(pPlayer);
-                    pPlayer->pitchshift       = 1.0;
-                    pPlayer->time_ratio_dirty = true;
-                }
-            }
-        }
-    }
-
     for (const auto& pPlayer: playerVector.players) {
         if (pPlayer->file_open != FILE_OPEN)
             continue;
 
-        uint32_t cue_point_play = pPlayer->cue_points.size();
         size_t r_count          = 0; // Quantity of frames removed from queue, i.e. how far advanced through the audio
         size_t a_count          = 0; // Quantity of frames added to playback (non silent audio)
         auto pOutA              = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
@@ -1361,21 +862,10 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             if (a_count < 0)
                 a_count = 0; // If stretcher gives fault it will respond with -1
             a_count = pPlayer->stretcher->retrieve(output_buffers, a_count);
-            if (pPlayer->held_note != pPlayer->env_gate)
-                set_env_gate(pPlayer, pPlayer->held_note);
             for (size_t offset = 0; offset < a_count; ++offset) {
                 // Set volume / gain / level / envelope
-                if (pPlayer->env_state != ENV_IDLE) {
-                    process_env(pPlayer);
-                    pOutA[offset] *= pPlayer->gain * pPlayer->env_level;
-                    pOutB[offset] *= pPlayer->gain * pPlayer->env_level;
-                } else if (pPlayer->env_state == ENV_END) {
-                    pOutA[offset] = 0.0;
-                    pOutB[offset] = 0.0;
-                } else {
-                    pOutA[offset] *= pPlayer->gain;
-                    pOutB[offset] *= pPlayer->gain;
-                }
+                pOutA[offset] *= pPlayer->gain;
+                pOutB[offset] *= pPlayer->gain;
             }
             // Advance play position based on the raw (SRC'd) frames
             if (bReverse)
@@ -1383,69 +873,42 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             else
                 pPlayer->play_pos_frames += r_count;
 
-            if (cue_point_play) {
-                uint8_t cue = pPlayer->last_note_played - 59;
-                //!@todo Handle cue play reverse
-                if (cue_point_play > cue && pPlayer->play_pos_frames > pPlayer->cue_points[cue].offset || pPlayer->play_pos_frames > pPlayer->crop_end) {
-                    pPlayer->play_pos_frames = pPlayer->cue_points[cue - 1].offset;
-                    pPlayer->env_state       = ENV_RELEASE; //!@todo This looks wrong
-                    if (pPlayer->loop == 1)
-                        pPlayer->file_read_status = SEEKING;
-                    else {
-                        pPlayer->play_state = STOPPING;
+            if (pPlayer->loop == 1) {
+                if (bReverse) {
+                    if (pPlayer->play_pos_frames <= pPlayer->crop_start_src) {
+                        size_t i = pPlayer->crop_start_src - pPlayer->play_pos_frames;
+                        i %= pPlayer->crop_end_src - pPlayer->crop_start_src;
+                        pPlayer->play_pos_frames = pPlayer->crop_end_src - i;
                     }
-                } else if (a_count < nFrames && pPlayer->file_read_status == IDLE) {
-                    // Reached end of file
+                } else {
+                    if (pPlayer->play_pos_frames >= pPlayer->crop_end_src) {
+                        pPlayer->play_pos_frames %= pPlayer->crop_end_src;
+                        pPlayer->play_pos_frames += pPlayer->crop_start_src;
+                    }
+                }
+            } else if (a_count < nFrames && pPlayer->file_read_status == IDLE) {
+                // No more data from file reader, e.g. reached end of file
+                if (bReverse)
+                    pPlayer->play_pos_frames = pPlayer->crop_end_src;
+                else
                     pPlayer->play_pos_frames = pPlayer->crop_start_src;
-                    pPlayer->play_state      = STOPPING;
-                }
+                pPlayer->play_state = STOPPING;
+                DPRINTF("libzynaudioplayer: Short read (%lu) and IDLE so STOPPING\n", a_count);
             } else {
-                if (pPlayer->loop == 1) {
-                    if (bReverse) {
-                        if (pPlayer->play_pos_frames <= pPlayer->loop_start_src) {
-                            size_t i = pPlayer->loop_start_src - pPlayer->play_pos_frames;
-                            i %= pPlayer->loop_end_src - pPlayer->loop_start_src;
-                            pPlayer->play_pos_frames = pPlayer->loop_end_src - i;
-                        }
-                    } else {
-                        if (pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
-                            pPlayer->play_pos_frames %= pPlayer->loop_end_src;
-                            pPlayer->play_pos_frames += pPlayer->loop_start_src;
-                        }
-                    }
-                } else if (a_count < nFrames && pPlayer->file_read_status == IDLE) {
-                    // No more data from file reader, e.g. reached end of file
-                    if (bReverse)
-                        pPlayer->play_pos_frames = pPlayer->crop_end_src;
-                    else
-                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
+                if (bReverse && pPlayer->play_pos_frames <= pPlayer->crop_start_src || !bReverse && pPlayer->play_pos_frames >= pPlayer->crop_end_src)
                     pPlayer->play_state = STOPPING;
-                    pPlayer->env_state  = ENV_IDLE;
-                    DPRINTF("libzynaudioplayer: Short read (%lu) and IDLE so STOPPING\n", a_count);
-                }
             }
         }
 
-        if (pPlayer->env_state == ENV_END)
-            pPlayer->env_state = ENV_IDLE;
         if (pPlayer->play_state == STOPPING) {
             // Soft mute (not perfect for short last period of file but better than nowt). Adds a few ms of delay.
             for (size_t offset = 0; offset < a_count; ++offset) {
                 pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
                 pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
             }
-
-            if (pPlayer->env_state == ENV_IDLE) {
-                pPlayer->play_state       = STOPPED;
-                pPlayer->varispeed        = 0.0;
-                pPlayer->file_read_status = SEEKING;
-
-                // Reset MIDI triggers, e.g. held notes that are no longer valid
-                for (uint8_t i = 0; i < 128; ++i)
-                    pPlayer->held_notes[i] = 0;
-                pPlayer->held_note = 0;
-            }
-
+            pPlayer->play_state       = STOPPED;
+            pPlayer->varispeed        = 0.0;
+            pPlayer->file_read_status = SEEKING;
             DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count,
                     nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
@@ -1453,9 +916,6 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         // Silence remainder of frame
         memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
-        if (pPlayer->env_state != ENV_IDLE)
-            for (int i = 0; i < nFrames - a_count; ++i)
-                process_env(pPlayer);
     }
 
     releaseMutex();
@@ -1481,12 +941,6 @@ bool init_jack() {
         return false;
     }
 
-    // Create MIDI input port
-    if (!(g_jack_midi_in = jack_port_register(g_jack_client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0))) {
-        fprintf(stderr, "libzynaudioplayer error: cannot register MIDI input port\n");
-        return false;
-    }
-
     // Register the callback to process audio and MIDI
     jack_set_process_callback(g_jack_client, on_jack_process, 0);
     jack_set_sample_rate_callback(g_jack_client, on_jack_samplerate, 0);
@@ -1497,8 +951,8 @@ bool init_jack() {
     }
 
     g_samplerate = jack_get_sample_rate(g_jack_client);
-    if (g_samplerate < 10)
-        g_samplerate = 44100;
+    if (g_samplerate < 8000)
+        g_samplerate = 8000;
     return true;
 }
 
@@ -1524,23 +978,11 @@ AUDIO_PLAYER* add_player() {
     if (!pPlayer)
         return nullptr;
     pPlayer->index = g_nextIndex++;
-    pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-    pPlayer->loop_end       = pPlayer->input_buffer_size;
-    pPlayer->loop_end_src   = pPlayer->loop_end * pPlayer->src_ratio;
     pPlayer->crop_start     = 0;
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
     pPlayer->crop_end       = pPlayer->input_buffer_size;
     pPlayer->crop_end_src   = pPlayer->crop_end * pPlayer->src_ratio;
     playerVector.players.push_back(pPlayer);
-
-    set_env_target_ratio_a(pPlayer, 0.3);
-    set_env_target_ratio_dr(pPlayer, 0.0001);
-    set_env_attack(pPlayer, 0.0);
-    set_env_decay(pPlayer, 0.0);
-    set_env_release(pPlayer, 0.0);
-    set_env_sustain(pPlayer, 1.0);
-    set_env_gate(pPlayer, 0);
-    reset_env(pPlayer);
 
     // Create audio output ports
     char port_name[8];
@@ -1575,26 +1017,6 @@ void remove_player(AUDIO_PLAYER* pPlayer) {
         playerVector.players.erase(it);
     if (playerVector.players.size() == 0)
         stop_jack();
-}
-
-void set_base_note(AUDIO_PLAYER* pPlayer, uint8_t base_note) {
-    if (pPlayer && base_note < 128)
-        pPlayer->base_note = base_note;
-}
-
-uint8_t get_base_note(AUDIO_PLAYER* pPlayer) {
-    if (pPlayer)
-        return pPlayer->base_note;
-    return 60;
-}
-
-void set_midi_chan(AUDIO_PLAYER* pPlayer, uint8_t midi_chan) {
-    if (!pPlayer)
-        return;
-    if (midi_chan < 16)
-        pPlayer->midi_chan = midi_chan;
-    else
-        pPlayer->midi_chan = -1;
 }
 
 int get_index(AUDIO_PLAYER* pPlayer) {
@@ -1686,20 +1108,6 @@ int get_track_b(AUDIO_PLAYER* pPlayer) {
     if (!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->track_b;
-}
-
-void set_pitchbend_range(AUDIO_PLAYER* pPlayer, uint8_t range) {
-    if (!pPlayer || range >= 64)
-        return;
-    getMutex();
-    pPlayer->pitch_bend_range = range;
-    releaseMutex();
-}
-
-uint8_t get_pitchbend_range(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0;
-    return pPlayer->pitch_bend_range;
 }
 
 void set_speed(AUDIO_PLAYER* pPlayer, float factor) {
@@ -1795,27 +1203,6 @@ void set_pos_notify_delta(AUDIO_PLAYER* pPlayer, float time) {
         pPlayer->pos_notify_delta = time;
         releaseMutex();
     }
-}
-
-void set_beats(AUDIO_PLAYER* pPlayer, uint8_t beats) {
-    if (pPlayer) {
-        pPlayer->beats = beats;
-        updateTempo(pPlayer);
-    }
-}
-
-uint8_t get_beats(AUDIO_PLAYER* pPlayer) {
-    if (!pPlayer)
-        return 0;
-    return pPlayer->beats;
-}
-
-void set_tempo(float tempo) {
-    if (tempo < 10.0)
-        return;
-    g_tempo = tempo / 60;
-    for (const auto& pPlayer: playerVector.players)
-        updateTempo(pPlayer);
 }
 
 /**** Global functions ***/

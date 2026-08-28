@@ -283,9 +283,9 @@ class zynthian_state_manager:
         self.start_busy("reset state")
         self.stop()
         sleep(0.2)
-        self.clear_busy()  # TODO Is this needed?
         self.start()
         self.end_busy("reset state")
+        #self.clear_busy()  # TODO Is this needed?
 
     def clean(self, chains=True, zynseq=True):
         """Remove Chains & Sequences.
@@ -318,7 +318,6 @@ class zynthian_state_manager:
         self.clean(chains=True, zynseq=True)
         self.last_snapshot_fpath = ""
         self.end_busy("clean all")
-        self.busy.clear()  # Sometimes it's needed, why??
 
     def clean_chains(self):
         """Remove ALL chains while keeping sequences."""
@@ -326,7 +325,6 @@ class zynthian_state_manager:
         self.start_busy("clean chains", "cleaning chains...")
         self.clean(chains=True, zynseq=False)
         self.end_busy("clean chains")
-        self.busy.clear()  # Sometimes it's needed, why??
 
     def clean_sequences(self):
         """Remove ALL sequences while keeping chains."""
@@ -334,7 +332,6 @@ class zynthian_state_manager:
         self.start_busy("clean sequences", "cleaning sequences...")
         self.clean(chains=False, zynseq=True)
         self.end_busy("clean sequences")
-        self.busy.clear()  # Sometimes it's needed, why??
 
     def mute(self, mute=True, wait=0.01):
         self.main_mixbus_proc.controllers_dict["mute"].set_value(mute)
@@ -394,8 +391,7 @@ class zynthian_state_manager:
             self.busy_message = message
         if details:
             self.busy_details = details
-
-        # logging.debug(f"Start busy for {clid}. Message: '{message}', Details: '{details}', Current clients: {self.busy})")
+        #logging.debug(f"Start busy for {clid}. Message: '{message}', Details: '{details}', Current clients: {self.busy})")
 
     def end_busy(self, clid):
         """Remove client from list of busy clients
@@ -413,8 +409,7 @@ class zynthian_state_manager:
             self.busy_success = None
             self.busy_details = None
             zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=False)
-
-        # logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
+        #logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
 
     def clear_busy(self):
         self.busy.clear()
@@ -1108,6 +1103,9 @@ class zynthian_state_manager:
             converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
 
+            if load_sequences:
+                self.clean_sequences()
+
             # Load chains
             if load_chains:
                 # Mute output to avoid unwanted noises
@@ -1234,7 +1232,7 @@ class zynthian_state_manager:
             self.set_busy_error("ERROR: Invalid snapshot", e)
             sleep(2)
 
-        zynautoconnect.request_midi_connect()
+        zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
         # Restore mute state
@@ -1826,19 +1824,58 @@ class zynthian_state_manager:
         if zs3_id:
             return self.load_zs3(zs3_id)
 
-    def load_next_zs3(self):
-        try:
-            index = self.get_last_zs3_index() + 1
-        except:
-            return False
-        return self.load_zs3_by_index(index)
+    def get_zs3_ids(self):
+        """Get the ZS3 ids that stepping walks, in order
 
-    def load_prev_zs3(self):
-        try:
-            index = self.get_last_zs3_index() - 1
-        except:
+        Excludes 'zs3-0', which is the state the snapshot was saved in rather
+        than a registration, and which the ZS3 screen already lists apart from
+        the saved ZS3s.
+        Returns : List of ZS3 ids
+        """
+
+        return [zs3_id for zs3_id in self.zs3 if zs3_id != "zs3-0"]
+
+    def load_next_zs3(self, cycle):
+        """Restore the next ZS3, or the first if none is loaded
+
+        Returns : True on success
+        """
+
+        zs3_ids = self.get_zs3_ids()
+        if not zs3_ids:
             return False
-        return self.load_zs3_by_index(index)
+        try:
+            index = zs3_ids.index(self.last_zs3_id) + 1
+        except ValueError:
+            # Nothing loaded, or the default state is loaded => start at the first
+            index = 0
+        if index >= len(zs3_ids):
+            if cycle is not None:
+                index = 0
+            else:
+                return False
+        return self.load_zs3(zs3_ids[index])
+
+    def load_prev_zs3(self, cycle):
+        """Restore the previous ZS3, or the last if none is loaded
+
+        Returns : True on success
+        """
+
+        zs3_ids = self.get_zs3_ids()
+        if not zs3_ids:
+            return False
+        try:
+            index = zs3_ids.index(self.last_zs3_id) - 1
+        except ValueError:
+            # Nothing loaded, or the default state is loaded => start at the last
+            index = len(zs3_ids) - 1
+        if index < 0:
+            if cycle is not None:
+                index = len(zs3_ids) - 1
+            else:
+                return False
+        return self.load_zs3(zs3_ids[index])
 
     # ------------------------------------------------------------------
     # Jackd Info

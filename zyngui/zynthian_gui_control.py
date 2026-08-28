@@ -245,7 +245,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             elif hasattr(zctrl, "filter"):
                 self.screen_type = "filter"
                 break
-            elif zctrl.is_path and (set(zctrl.path_file_types) & {"wav", "aiff", "flac", "mp3", "ogg"}):
+            elif zctrl.is_path and zctrl.path_file_types and (set(zctrl.path_file_types) & {"wav", "aiff", "flac", "mp3", "ogg"}):
                 self.screen_type = "audio_file"
                 self.widget_zctrl = zctrl
                 break
@@ -265,10 +265,10 @@ class zynthian_gui_control(zynthian_gui_selector):
     def show_widget(self, processor):
         self.purge_widgets()
 
-        if processor.engine.custom_gui_fpath:
-            module_path = processor.engine.custom_gui_fpath
-        elif self.screen_type:  # and not module_path
+        if self.screen_type:
             module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
+        elif processor.engine.custom_gui_fpath:
+            module_path = processor.engine.custom_gui_fpath
         else:
             self.zyngui.after_idle(self.hide_widgets)
             return

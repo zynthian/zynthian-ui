@@ -399,6 +399,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.wsled_i_cc_editor = None
         else:
             self.switch_i_block = None
+            self.switch_i_cc_editor = None
             self.wsled_i_block = None
             self.wsled_i_block = None
             self.wsled_i_cc_editor = None

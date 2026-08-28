@@ -481,13 +481,12 @@ class zynthian_processor:
         if self.engine.nickname in ['PD', 'MD', 'SL']:
             return True
         if preset_index < len(self.preset_list):
-            if self.preload_state is None:
-                self.preload_state = self.get_state()
             if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
+                if self.preload_state is None:
+                    self.preload_state = self.get_state()
                 self.preload_index = preset_index
                 self.preload_name = self.preset_list[preset_index][2]
-                self.preload_info = copy.deepcopy(
-                    self.preset_list[preset_index])
+                self.preload_info = copy.deepcopy(self.preset_list[preset_index])
                 logging.info(f"Preset Preloaded: {self.preload_name} ({preset_index})")
                 self.engine.set_preset(self, self.preload_info, True)
                 return True
@@ -876,7 +875,6 @@ class zynthian_processor:
         """Configure processor from state model dictionary
 
         state : Processor state
-        returns : list of cc learn config: [chain, chan, cc, zctrl]
         """
 
         self.set_state_flag = True
@@ -1088,4 +1086,5 @@ class zynthian_processor:
                 subdir_path = preset_subdir_path
         return subdir_path
 
-        # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+

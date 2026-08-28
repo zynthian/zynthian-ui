@@ -124,11 +124,10 @@ bool setState(const char* state);
 bool load(const char* filename);
 
 /** @brief  Convert a legacy pattern from binary file
-    @param  nPattern Pattern number
     @param  filename Full path and filename
     @retval char* JSON representation of pattern as c-string or null on error
 */
-const char* convertPattern(uint32_t nPattern, const char* filename);
+const char* convertPattern(const char* filename);
 
 /** @brief  Save sequences and patterns to file
     @param  filename Full path and filename
@@ -1470,6 +1469,11 @@ void setPhraseBPB(uint8_t scene, uint8_t phrase, uint8_t bpb);
 */
 uint8_t getPhraseBPB(uint8_t scene, uint8_t phrase);
 
+#ifdef HAS_MIMALLOC
+/** @brief  Print mimalloc stats
+ */
+void print_mimalloc_stats();
+#endif
 
 #ifdef __cplusplus
 }

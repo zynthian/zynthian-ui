@@ -186,6 +186,7 @@ class StepEvent {
     void setStutterFreq(uint8_t freq) { m_nStutterFreq = freq; }
 };
 #pragma pack()
+
 typedef std::vector<StepEvent*> StepEventVector;
 
 /**    Pattern class provides a group of MIDI events within period of time
