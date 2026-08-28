@@ -1314,10 +1314,9 @@ if __name__ == '__main__':
 
         elif sys.argv[1] == "presets":
             generate_presets_cache_workaround()
-
             if len(sys.argv) > 2:
-                plugin_url = sys.argv[2]
-                generate_plugin_presets_cache(plugin_url, False)
+                for plugin_url in sys.argv[2:]:
+                    generate_plugin_presets_cache(plugin_url, False)
             else:
                 generate_all_presets_cache(False)
 

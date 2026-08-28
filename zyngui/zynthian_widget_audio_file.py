@@ -73,6 +73,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         self.playcur_color = hexcolor_to_opengl(zynthian_gui_config.color_on)
         self.bg_crop_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bg, 25))
         self.lmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_ml)
+        self.bg_loop_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_ml, -150))
         self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.axis_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
 
@@ -175,7 +176,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.touched = True
             return True
         # Num Vertex = 2 * (Chans * Axis + Chans * Waveform + Beat Markers) + Crop Markers + Loop Markers + Cursor
-        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 12 + 6
+        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 18 + 6
         if self.vbo_data is None or nchans != self.channels or nv != self.n_vertex:
             self.channels = nchans
             self.n_vertex = nv
@@ -214,8 +215,9 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             i0 = i1
             i1 += self.n_vertex_markers
             self.vbo_data['col'][i0:i1] = self.bmarker_color
-            self.vbo_data['col'][-30:-18] = self.bg_crop_color
-            self.vbo_data['col'][-18:-6] = self.lmarker_color
+            self.vbo_data['col'][-36:-24] = self.bg_crop_color
+            self.vbo_data['col'][-24:-12] = self.lmarker_color
+            self.vbo_data['col'][-12:-6] = self.bg_loop_color
             self.vbo_data['col'][-6:] = self.playcur_color
 
             # Create VBO & VAO in ModernGL
@@ -239,6 +241,15 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         except Exception as e:
             logging.error(f"Can't set wave data ... => {e}")
 
+    def reset_wave_data(self, ydata):
+        try:
+            i0 = self.channels * 2
+            i1 = i0 + self.n_vertex_waveform
+            self.vbo_data['pos'][i0:i1, 1] = 0.0
+            self.touched = True
+        except Exception as e:
+            logging.error(f"Can't reset wave data ... => {e}")
+
     def set_beat_markers(self, xdata, coldata):
         try:
             i0 = self.channels * 2 + self.n_vertex_waveform
@@ -260,9 +271,9 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         try:
             x1 = (2 * x1 / self.width) - 1.0
             x2 = (2 * x2 / self.width) - 1.0
-            self.vbo_data['pos'][-30:-18, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-30:-18, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-30:-18, 2] = 0.5
+            self.vbo_data['pos'][-36:-24, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-36:-24, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-36:-24, 2] = 0.5
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set crop markers ... => {e}")
@@ -274,16 +285,17 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             w = 2 / self.width
             x11 = x1 - w
             x22 = x2 + w
-            self.vbo_data['pos'][-18:-6, 0] = np.array([x11, x11, x1, x1, x1, x11, x22, x22, x2, x2, x2, x22], dtype=np.float32)
-            self.vbo_data['pos'][-18:-6, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-18:-6, 2] = -0.5
+            self.vbo_data['pos'][-24:-6, 0] = np.array([x11, x11, x1, x1, x1, x11, x22, x22, x2, x2, x2, x22, x1, x1, x2, x1, x2, x2], dtype=np.float32)
+            self.vbo_data['pos'][-24:-6, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][-24:-12, 2] = -0.5
+            self.vbo_data['pos'][-12:-6, 2] = 0.6
             self.touched = True
         except Exception as e:
             logging.error(f"Can't set crop markers ... => {e}")
 
     def reset_loop_markers(self):
         try:
-            self.vbo_data['pos'][-18:-6] = 0
+            self.vbo_data['pos'][-24:-6] = 0
             self.touched = True
         except Exception as e:
             logging.error(f"Can't reset crop markers ... => {e}")
@@ -308,9 +320,9 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.ctx.clear()
             if self.vao:
                 # Dibujar líneas
-                self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 30)
+                self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 36)
                 # Dibujar Quads using native Triangles
-                self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 30, vertices=30)
+                self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 36, vertices=36)
             self.touched = False
 
     def update(self):
@@ -552,9 +564,41 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.refreshing = True
         refresh_info = False
 
-        zoom = offset = crop_start = crop_end = loop_start = loop_end = warp = beats = gain = vzoom = cursor_pos = None
-        # Get clippy parameters
+        # Path zctrl => Clippy, samplv1 and others
+        if self.zctrl:
+            fpath = self.zctrl.value
+        # Filename in monitors => AudioPlayer
+        elif "filename" in self.monitors:
+            fpath = self.monitors["filename"]
+        else:
+            fpath = None
+
+        # No Audio File => Reset data!
+        if fpath in ("", "_"):
+            self.fpath = ""
+            self.fname = ""
+            self.channels = 0
+            self.frames = 0
+            self.duration = 0
+            self.samplerate = None
+        # Audio file changed so reload waveform from file audio data
+        elif fpath and self.fpath != fpath:
+            self.fpath = fpath
+            self.fname = basename(self.fpath)
+            waveform_thread = Thread(target=self.load_file, name="load_waveform")
+            waveform_thread.start()
+            self.refreshing = False
+            return
+
+        if not self.widget_canvas.init_channels(self.channels):
+            self.refreshing = False
+            return
+
+        # Get parameters from engine ...
+        zoom = offset = crop_start = crop_end = loop_markers = loop_start = loop_end = warp = beats = gain = vzoom = cursor_pos = None
+        # Clippy =>
         if self.processor.eng_code == "CL":
+            loop_markers = False
             if "zoom" in self.monitors:
                 zoom = self.monitors["zoom"]
             if "offset" in self.monitors:
@@ -576,8 +620,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     cursor_pos = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan] / 100.0
                 else:
                     cursor_pos = 0.0
-        # Get AudioPlayer parameters
+        # AudioPlayer =>
         elif self.processor.eng_code == "AP" and self.samplerate:
+            loop_markers = False
             zoom = self.processor.controllers_dict['zoom'].value
             offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
             crop_start = self.processor.controllers_dict['crop start'].value
@@ -596,7 +641,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 cursor_pos = 0
             crop_start = int(self.samplerate * crop_start)
             crop_end = int(self.samplerate * crop_end)
-        # Get samplv1 parameters
+        # samplv1 =>
         elif self.processor.eng_code == "JV/samplv1":
             zoom = 1
             offset = 0
@@ -608,13 +653,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             else:
                 crop_start = 0
                 crop_end = self.frames
-            loop_enabled = self.processor.controllers_dict['GEN1_LOOP'].value
-            if loop_enabled:
+            loop_markers = self.processor.controllers_dict['GEN1_LOOP'].value
+            if loop_markers:
                 loop_start = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_1'].value)
                 loop_end = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_2'].value)
-                self.loop_markers = True
-            else:
-                self.loop_markers = False
             vzoom = 2.0 * self.processor.controllers_dict['OUT1_VOLUME'].value
 
         # Process parameter changes
@@ -639,6 +681,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.refresh_waveform = True
             if self.auto_offset:
                 self.auto_offset = 2
+        if loop_markers is not None and loop_markers != self.loop_markers:
+            self.loop_markers = loop_markers
+            self.update_markers = True
+            self.refresh_waveform = True
         if self.loop_markers:
             if loop_start is not None and loop_start != self.loop_start:
                 self.loop_start = loop_start
@@ -652,7 +698,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 self.refresh_waveform = True
                 if self.auto_offset:
                     self.auto_offset = 1
-
         if warp is not None and warp != self.warp:
             self.warp = warp
             self.update_markers = True
@@ -666,28 +711,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.refresh_waveform = True
 
         try:
-            # Path zctrl => Clippy and others
-            if self.zctrl:
-                fpath = self.zctrl.value
-            # Filename in monitors => AudioPlayer
-            elif "filename" in self.monitors:
-                fpath = self.monitors["filename"]
-            else:
-                fpath = None
-
-            # Audio file changed so reload waveform from file audio data
-            if fpath and self.fpath != fpath:
-                self.fpath = fpath
-                self.fname = basename(self.fpath)
-                waveform_thread = Thread(target=self.load_file, name="load_waveform")
-                waveform_thread.start()
-                self.refreshing = False
-                return
-
-            if not self.widget_canvas.init_channels(self.channels):
-                self.refreshing = False
-                return
-
             if self.refresh_waveform:
                 length = self.frames // self.zoom
                 if self.auto_offset == 1:
@@ -761,26 +784,30 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 refresh_info = True
 
             if refresh_info:
+                n = (self.width // self.font_info.measure("x")) - 12
+                info_text = (self.fname[:n-3] + '...') if len(self.fname) > n else (self.fname + ' ')
+
                 if "info" in self.monitors:
                     info = self.monitors["info"]
                 else:
                     info = 0
+                if self.samplerate:
+                    match info:
+                        case 1: # Position
+                            pos = self.last_cursor_pos * (self.crop_end - self.crop_start) / self.samplerate
+                            time = self.format_time(pos - self.crop_start / self.samplerate)
+                        case 2: # Remaining
+                            pos = self.last_cursor_pos * (self.crop_end - self.crop_start) / self.samplerate
+                            time = self.format_time(self.crop_end / self.samplerate - pos)
+                        case 3: # Samplerate
+                            time = self.samplerate
+                        case 4: # CODEC
+                            time = self.monitors['codec']
+                        case _: # Duration
+                            time = self.format_time((self.crop_end - self.crop_start) / self.samplerate)
+                    info_text += f"[{time}]"
 
-                match info:
-                    case 1: # Position
-                        time = self.format_time(self.processor.controllers_dict['position'].value - crop_start / self.samplerate)
-                    case 2: # Remaining
-                        time = self.format_time(crop_end / self.samplerate - self.processor.controllers_dict['position'].value)
-                    case 3: # Samplerate
-                        time = self.samplerate
-                    case 4: # CODEC
-                        time = self.monitors['codec']
-                    case _: # Duration
-                        time = self.format_time((crop_end - crop_start) / self.samplerate)
-
-                n = (self.width // self.font_info.measure("x")) - 12
-                fname = (self.fname[:n-3] + '...') if len(self.fname) > n else (self.fname + ' ')
-                self.info_text_var.set(f"{fname}[{time}]")
+                self.info_text_var.set(info_text)
 
         except Exception as e:
             # logging.error(e)
