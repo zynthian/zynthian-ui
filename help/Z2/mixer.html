@@ -7,8 +7,8 @@
  <div class="knobs_action_container">
   <div class="knob_action knob_action_1">
    <div class="action rotate">chain volume</div>
-   <div class="action short_press">chain solo</div>
-   <div class="action bold_press">---</div>
+   <div class="action short_press">record arm</div>
+   <div class="action bold_press">mixer toggles</div>
   </div>
   <div class="knob_action knob_action_2">
    <div class="action rotate">chain balance</div>
@@ -18,7 +18,7 @@
   <div class="knob_action knob_action_3">
    <div class="action rotate">main volume</div>
    <div class="action short_press">add chain</div>
-   <div class="action bold_press">---</div>
+   <div class="action bold_press">move chain</div>
   </div>
   <div class="knob_action knob_action_4">
    <div class="action rotate">select chain</div>
@@ -46,26 +46,40 @@
 
  <div class="left_container">
   <ul>
-   <li><b>Solo:</b> Solo flag. Push to toggle. This is a non-exclusive solo mode. When a chain has solo enabled, all
-    other chains without solo enabled will be muted, allowing auditioning of one or more chains. The <i>main</i> solo
-    will disable all chain solos.</li>
+   <li><b>Rec Arm:</b> Record-armed flag. Push to toggle. Audio output from record-armed chains is included in multi-track
+   recordings as separated track. From admin menu, this can be configured as any other mixer toggle: solo, pfl, mono, phase
+   or M+S. When configured as solo, it's non-exclusive solo mode. When a chain is solo-ed, all not solo-ed chains will be muted,
+   allowing auditioning of one or more chains. The <i>main</i> solo will disable all chain solos.</li>
    <li><b>Mute:</b> Mute flag. Push to toggle. When a chain is muted ("mute" enabled), it will remain silent.</li>
+   <li><b>Balance/Pan:</b> Mixing right/left balance (or pan of a mono signal) for the associated chain. Rotate knob 2
+    or drag left & right on the fader to modify.</li>
    <li><b>Fader:</b> Mixing volume for the associated chain. Rotate knob 1 or drag up & down to modify the fader level.
     On the touchscreen you can drag multiple faders at once. Tap it to set the active chain.</li>
    <li><b>DPM:</b> Digital Peak Meter for the associated chain, covering the range from -50dBFS to 0dBFS. </li>
    <li><b>Description:</b> A vertically oriented text describing the chain. By default, for a synth chain it will show
     synth processor and preset name. If you give a name to the chain, this will be included in the description too.</li>
-   <li><b>Balance/Pan:</b> Mixing right/left balance (or pan of a mono signal) for the associated chain. Rotate knob 2
-    or drag left & right on the fader to modify.</li>
    <li><b>Legend:</b> It shows an icon for the chain's type and a number for the assigned MIDI channel. Tap it to access
     the chain's control view.</li>
   </ul>
  </div>
 
-<div class="full_container">
+ <div class="full_container">
   <h2>Chain selection</h2>
   <p>The active chain is indicated by the legend at the bottom of the strip being highlighted. You may change active chain by using the left/right arrow buttons or rotating knob 4. A thin strip at the bottom of the legend indicates the chain is active for MIDI input, not user interface actions. These may differ if for example the active chain is audio only.</p>
-</div>
+ </div>
+
+ <div class="full_container">
+  <h2>Moving Chains</h2>
+  <p>You can reorganize your chains, moving any chain horizontally to the position you want. You can also dock the chains
+  you want into the right side, sticked to the main chain:</p>
+  <ul>
+   <li><b>Bold-push knob 3</b> to start moving the selected chain. The chain legend will display a double-arrow symbol.</li>
+   <li><b>Rotate knob 4</b> to move the chain to the desired position. To dock a chain into the right side, simply keep moving it to the right.</li>
+   <li><b>Push SELECT or BACK</b> to finish.</li>
+  </ul>
+  <p>Note you can also move your chains like this from the launcher's view.</p>
+ </div>
+
  <div class="clear"></div>
  </body>
 </html>

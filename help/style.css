@@ -12,14 +12,14 @@ body.help_ui {
 
 header.global_header {
 	margin-top: 0.2em;
-	margin-bottom: 0.2em;
-	padding: 0.5em;
+	margin-bottom: 0;
+	padding: 0.4em;
 	padding-bottom: 0.2em;
 	background: #C0C0C0;
 }
 
 header.global_header a {
-	font-size: 120%;
+	font-size: 90%;
 	font-weight: bold;
 	color: #0000C0;
 }
@@ -36,15 +36,22 @@ header.global_header a {
 .help_ui h1 {
 	color: #ffffff;
 	font-size: 180%;
-	margin-top: 0.8em;
-	margin-bottom: 0.3em;
+	margin-top: 0.6em;
+	margin-bottom: 0em;
 }
 
 .help_ui h2 {
 	color: #ffffff;
 	font-size: 150%;
-	margin-top: 0.8em;
-	margin-bottom: 0.3em;
+	margin-top: 0.6em;
+	margin-bottom: 0em;
+}
+
+.help_ui h3 {
+	color: #ffffff;
+	font-size: 130%;
+	margin-top: 0.6em;
+	margin-bottom: 0em;
 }
 
 .help_ui ul {

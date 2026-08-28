@@ -8,7 +8,7 @@
   <div class="knob_action knob_action_1">
    <div class="action rotate">chain volume</div>
    <div class="action short_press">chain solo</div>
-   <div class="action bold_press">---</div>
+   <div class="action bold_press">mixer toggles</div>
   </div>
   <div class="knob_action knob_action_2">
    <div class="action rotate">chain balance</div>
@@ -18,7 +18,7 @@
   <div class="knob_action knob_action_3">
    <div class="action rotate">select phrase</div>
    <div class="action short_press">add chain</div>
-   <div class="action bold_press">---</div>
+   <div class="action bold_press">move chain</div>
   </div>
   <div class="knob_action knob_action_4">
    <div class="action rotate">select chain</div>
@@ -52,6 +52,42 @@
   <li><b>Tempo:</b> When the phrase is launched, the tempo is changed to the specified value in BPM.</li>
   <li><b>Beats per Bar:</b> The time signature used in patterns.</li>
   <li><b>Automate:</b> "Loop from", "loops to play" and "jump to" options allow to create simple song structures.</li>
+  </ul>
+  <p>The phrase management options are:</p>
+  <ul>
+  <li><b>Insert Phrase:</b> Insert a new phrase (row) in the launcher.</li>
+  <li><b>Clone Phrase:</b> Clone the selected phrase (row).</li>
+  <li><b>Move Phrase:</b> Move the selected phrase (row) to a new position.</li>
+  <li><b>Delete Phrase:</b> Delete the selected phrase (row).</li>
+  </ul>
+  <p>When inserting, cloning, moving or deleting phrases, you may need to adjust automation parameteres of the affected phrases.</p>
+  </div>
+
+ <div class="full_container">
+  <h2>Chain selection</h2>
+  <p>The active chain is indicated by the legend at the bottom of the strip being highlighted. You may change active chain by using the left/right arrow buttons or rotating knob 4. A thin strip at the bottom of the legend indicates the chain is active for MIDI input, not user interface actions. These may differ if for example the active chain is audio only.</p>
+ </div>
+
+ <div class="full_container">
+  <h2>Moving Chains</h2>
+  <p>You can reorganize your columns (chains), moving any chain horizontally to the position you want. You can also dock the chains
+  you want into the right side, sticked to the main chain:</p>
+  <ul>
+   <li><b>Bold-push knob 3</b> to start moving the selected chain. The chain legend will display a double-arrow symbol.</li>
+   <li><b>Rotate knob 4</b> to move the chain to the desired position. To dock a chain into the right side, simply keep moving it to the right.</li>
+   <li><b>Push SELECT or BACK</b> to finish.</li>
+  </ul>
+  <p>Note you can also move your chains like this from the mixer's view.</p>
+ </div>
+
+  <div class="full_container">
+  <h2>Copy/paste patterns and audio clips</h2>
+  <p>To copy/paste patterns or audio clips across the launcher cells you must enter ALT mode and use the buffer keys F1/F2 to copy/paste, like this:</p>
+  <ul>
+   <li><b>Bold-push F1/F2</b> to copy the content of the selected cell into the buffer. The F1/F2 will blink in orange.</li>
+   <li><b>Rotate knob 3 & 4 to move the cursor</b> to move the cursor to the desired position. Note the buffer button's blinking color changes when you move the cursor.
+   It blinks in green when you can paste and blinks in red when you can't paste (i.e. you can't paste a sequencer pattern into an audio clip cell).</li>
+   <li><b>Short-push F1/F2</b> to paste. You can paste the buffer as many times as you want. If the destination cell is not empty, confirmation will be requested before overwriting.</li>
   </ul>
  </div>
 
