@@ -76,7 +76,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         self.chain = None      # Chain object
         self.midi_input = True      # True to process MIDI inputs, False for MIDI outputs
         self.thread = None
-        super().__init__('Menu', parent=parent, topbar=topbar)
+        super().__init__('MIDI Config', parent=parent, topbar=topbar)
 
     def build_view(self):
         # Enable background scan for MIDI devices
@@ -248,7 +248,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                                    [get_info("Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", False),
                                     "midi_settings.png"]))
 
-        self.list_data.append((None, None, "Internal Devices"))
+        self.list_data.append((None, None, "INTERNAL DEVICES"))
         nint = len(self.list_data)
 
         for i in int_devices:
@@ -268,19 +268,19 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             self.list_data.pop()
 
         if usb_devices:
-            self.list_data.append((None, None, "USB Devices"))
+            self.list_data.append((None, None, "USB DEVICES"))
             for x in sorted(usb_devices, key=natural_keys):
                 append_port(x[1])
 
         if self.chain is None or ble_devices:
-            self.list_data.append((None, None, "Bluetooth Devices"))
+            self.list_data.append((None, None, "BLUETOOTH DEVICES"))
             if self.chain is None:
                 append_service("bluetooth", "BLE MIDI", "Bluetooth MIDI.", "midi_bluetooth.png")
             for x in sorted(ble_devices, key=natural_keys):
                 append_port(x[1])
 
         if not self.chain or net_devices:
-            self.list_data.append((None, None, "Network Devices"))
+            self.list_data.append((None, None, "NETWORK DEVICES"))
             if self.chain:
                 for i in net_devices.values():
                     append_port(i)
@@ -303,7 +303,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
         a2m_ports = zynautoconnect.get_a2m_ports()
         if self.midi_input and self.chain and a2m_ports:
-            self.list_data.append((None, None, "> Audio to MIDI"))
+            self.list_data.append((None, None, "> AUDIO => MIDI"))
             for name, title in a2m_ports:
                 if name in self.chain.midi_in:
                     self.list_data.append(("audio2midi", name, f"\u2612 {title}", [get_info("Connected from chain.", False), "midi_audio.png"]))
@@ -311,7 +311,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     self.list_data.append(("audio2midi", name, f"\u2610 {title}", [get_info("Disconnected from chain.", False), "midi_audio.png"]))
 
         if not self.midi_input and self.chain:
-            self.list_data.append((None, None, "> Chain inputs"))
+            self.list_data.append((None, None, "> CHAINS"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.chains):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
                 if chain and chain.is_midi() and chain != self.chain and chain.midi_chan < 16:

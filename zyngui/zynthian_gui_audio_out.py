@@ -61,7 +61,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
         if self.zyngui.chain_manager.active_chain.chain_id:
             # Normal chain so add mixer / chain targets
             port_names = [("Main mixbus", 0, ["Send audio from this chain to the main mixbus", "audio_output.png"])]
-            self.list_data.append((None, None, "> Chain inputs"))
+            self.list_data.append((None, None, "> CHAINS"))
             for chain_id, chain in self.zyngui.chain_manager.chains.items():
                 if chain_id != 0 and chain != self.zyngui.chain_manager.active_chain and chain.audio_thru or chain.is_synth() and chain.synth_slots[0][0].type == "Special":
                     if self.zyngui.chain_manager.will_audio_howl(self.zyngui.chain_manager.active_chain.chain_id, chain_id):
@@ -86,7 +86,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
         if self.zyngui.chain_manager.active_chain.is_audio():
             port_names = []
             # Direct physical outputs
-            self.list_data.append((None, None, "> Direct Outputs"))
+            self.list_data.append((None, None, "> AUDIO OUTPUT"))
             port_count = len(self.playback_ports)
             for i in range(0, port_count, 2):
                 if self.playback_ports[i].aliases:

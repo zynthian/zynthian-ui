@@ -65,7 +65,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
-        self.list_data.append((None, None, "> Processors"))
+        self.list_data.append((None, None, "> PROCESSORS"))
         if self.chain.is_midi():
             self.list_data.append((self.midifx_add, None, "Add MIDI-FX processor",
                                     ["Add a MIDI effects processor to this the end of this chain.", "midi_processor.png"]))
@@ -86,7 +86,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.clear_midi_learn, None, "Clean MIDI Learn",
                                    ["Remove CC bindings from all parameters of all processors in this chain.", "delete_presets.png"]))
 
-        self.list_data.append((None, None, "> Chain"))
+        self.list_data.append((None, None, "> MANAGE"))
 
         if self.chain.chain_id:
             self.list_data.append((self.move_chain, None, "Move chain",

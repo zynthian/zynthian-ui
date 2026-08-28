@@ -2060,7 +2060,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             options[f"Rename ({name})"] = name
         else:
             options[f"Rename"] = ""
-        options["> EDIT"] = None
+        options["> MANAGE"] = None
         options["Insert phrase"] = phrase
         options["Clone phrase"] = phrase
         if self.zynseq.phrases > 1:
