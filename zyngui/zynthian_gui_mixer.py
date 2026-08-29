@@ -1626,7 +1626,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         for strip in self.chain_strips:
             self.pending_refresh_queue.add((strip, "record"))
 
-    def update_control_play(self, handle, state):
+    def update_control_play(self, id, play_state, loop, pos):
         """ Function to handle audio play status
         """
         for strip in self.chain_strips:

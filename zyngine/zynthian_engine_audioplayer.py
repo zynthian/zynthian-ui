@@ -31,9 +31,8 @@ from subprocess import check_output, STDOUT
 
 import zynconf
 from zyngine.zynthian_engine import zynthian_engine
-from zyngine.zynthian_signal_manager import zynsigman
-
 from zynlibs.zynaudioplayer import *
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Audio Player Engine Class
@@ -53,15 +52,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
     # Controller Screens
     _ctrl_screens = []
 
-    preset_fexts = zynaudioplayer.get_supported_codecs()
     root_bank_dirs = [
         ('User Audio', zynthian_engine.my_data_dir + "/files/Audio"),
         ('User Samples', zynthian_engine.my_data_dir + "/files/Samples"),
         ('System Audio', zynthian_engine.data_dir + "/files/Audio"),
         ('System Samples', zynthian_engine.data_dir + "/files/Samples")
     ]
-
-    logging.info(f"Supported Audio Codecs: {preset_fexts}")
 
     # ---------------------------------------------------------------------------
     # Initialization
@@ -80,22 +76,23 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.monitors_dict = {}
         self.start()
         self.reset()
+        self.preset_fexts = zynaudioplayer.get_supported_codecs()
+        logging.info(f"Supported Audio Codecs: {self.preset_fexts}")
 
     # ---------------------------------------------------------------------------
     # Subprocess Management & IPC
     # ---------------------------------------------------------------------------
 
     def start(self):
-        if zynaudioplayer.init():
-            self.jackname = zynaudioplayer.get_jack_client_name()
-            zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
-        else:
-            raise Exception("Can't start zynaudioplayer!")
+        self.jackname = zynaudioplayer.get_jack_client_name()
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
+        zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.update_play)
 
     def stop(self):
         try:
             zynaudioplayer.stop()
             zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_rec)
+            zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.update_play)
         except Exception as e:
             logging.error("Failed to close audio player: %s", e)
 
@@ -105,12 +102,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
     def add_processor(self, processor):
         handle = zynaudioplayer.add_player()
-        if handle == 0:
+        if handle == 255:
             return
         self.processors.append(processor)
         processor.handle = handle
         self.jackname = zynaudioplayer.get_jack_client_name()
-        processor.jackname = f"{self.jackname}:out_{zynaudioplayer.get_index(handle):02d}(a|b)"
+        processor.jackname = f"{self.jackname}:out_{handle:02d}(a|b)"
         self.monitors_dict[processor.handle] = {}
         self.monitors_dict[processor.handle]["filename"] = ""
         self.monitors_dict[processor.handle]["info"] = 0
@@ -311,12 +308,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
             ['left track', None, default_a, [track_labels, track_values]],
             ['right track', None, default_b, [track_labels, track_values]],
         ]
-        zynaudioplayer.set_control_cb(None)
         processor.refresh_controllers()
         zynaudioplayer.set_track_a(processor.handle, default_a)
         zynaudioplayer.set_track_b(processor.handle, default_b)
         self.processor = processor
-        zynaudioplayer.set_control_cb(self.control_cb)
 
         return True
 
@@ -428,7 +423,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
                         else:
                             ctrl_dict['transport'].set_value("stopped", False)
                             processor.status = ""
-                        zynsigman.send(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
                     elif id == 2:
                         ctrl_dict['position'].set_value(value, False)
                     elif id == 3:
@@ -562,6 +556,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 except:
                     pass
 
+    def update_play(self, id, play_state, loop, pos):
+        for processor in self.processors:
+            if processor.handle == id:
+                processor.controllers_dict['transport'].set_value(play_state*127, False)
+                processor.controllers_dict['position'].set_value(pos, False)
+                processor.controllers_dict['loop'].set_value(loop*127, False)
+              
     # ---------------------------------------------------------------------------
     # Specific functions
     # ---------------------------------------------------------------------------

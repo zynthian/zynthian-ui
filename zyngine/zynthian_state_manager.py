@@ -664,9 +664,9 @@ class zynthian_state_manager:
 
             sleep(0.2)
 
-    def cb_status_audio_player(self, handle, state):
-        if handle == self.audio_player.handle:
-            self.status_audio_player = state
+    def cb_status_audio_player(self, id, play_state, loop, pos):
+        if id == self.audio_player.handle:
+            self.status_audio_player = play_state
 
     def fast_thread_task(self):
         """Perform fast / high priority background tasks"""

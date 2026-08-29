@@ -26,6 +26,7 @@
 import math
 import ctypes
 import logging
+from time import monotonic
 
 from zyngine.zynthian_signal_manager import zynsigman
 
@@ -247,7 +248,11 @@ class ZynMixer():
         if channel is None:
             return
         gain = self.db_to_norm(gain)
+
+        now = monotonic()
         self.lib_zynmixer.setGain(channel, ctypes.c_float(gain))
+        then = monotonic()
+        logging.warning(f"gain: {gain} dur: {then-now}")
         zynsigman.send(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE,
                        chan=channel, symbol="gain", value=gain, mixbus=self.mixbus)
 

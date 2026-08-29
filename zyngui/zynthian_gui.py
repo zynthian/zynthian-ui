@@ -2817,6 +2817,7 @@ class zynthian_gui:
                     if zynpot_repeat[i][0]:
                         zynpot_repeat[i][0] -= 1
                     else:
+                        logging.warning(f"zynpot repeat {zynpot_repeat[i][0]}")
                         self.cuia_zynpot(zynpot_repeat[i][1])
 
             except Exception as e:

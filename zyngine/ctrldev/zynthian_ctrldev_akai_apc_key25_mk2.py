@@ -2970,8 +2970,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
             (zynsigman.S_AUDIO_PLAYER,
                 zynsigman.SS_AUDIO_PLAYER_STATE,
-                lambda handle, state:
-                    self._on_media_change_state(state, f"audio-{handle}", "player")),
+                lambda id, play_state, loop, pos:
+                    self._on_media_change_state(play_state, f"audio-{id}", "player")),
 
             (zynsigman.S_AUDIO_RECORDER,
                 zynsigman.SS_AUDIO_RECORDER_STATE,
