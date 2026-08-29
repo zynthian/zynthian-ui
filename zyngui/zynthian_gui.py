@@ -996,6 +996,8 @@ class zynthian_gui:
                             self.chain_manager.remove_processor(chain_id, old_processor)
                             chain.rebuild_graph()
                             zynautoconnect.autoconnect()
+                            if processor.type =="MIDI Synth":
+                                chain.init_MPE()
                             self.chain_control(chain_id, processor, force_bank_preset=True, reset=False)
                 else:
                     # Adding processor to existing chain
@@ -1044,6 +1046,7 @@ class zynthian_gui:
                         self.show_screen_reset("root")
                         self.show_info("Failed to create chain", 1500)
                         return
+                    chain = self.chain_manager.get_chain(chain_id)
                     processor = self.chain_manager.add_processor(chain_id, self.modify_chain_status["engine"])
                     if self.chain_manager.chains[chain_id].synth_slots or self.modify_chain_status["audio_thru"]:
                         if self.modify_chain_status["mixbus"]:
@@ -1054,7 +1057,9 @@ class zynthian_gui:
                     self.chain_manager.rebuild_optimisation_cache()
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
-                    self.state_manager.end_busy("modify_chain")
+                    if processor.type =="MIDI Synth":
+                        chain.init_MPE()
+                    #self.state_manager.end_busy("modify_chain")
                     self.screen_history = []
                     if processor:
                         if processor.eng_code == "CL":
