@@ -523,7 +523,7 @@ void print_dpm_info(uint8_t chan) {
 }
 
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
-    for (uint8_t chan = 0; chan < g_lastStrip; chan++) {
+    for (uint8_t chan = 0; chan < g_lastStrip; ++chan) {
         struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_relaxed);
         if (strip == NULL)
             continue;
@@ -1236,15 +1236,12 @@ int8_t removeStrip(uint8_t chan) {
     g_nCleanFrame = g_nNextFrame;
     pthread_mutex_unlock(&mutex);
 
-    g_lastStrip = 0;
-    uint8_t lastStrip = MAX_CHANNELS;
-    while(--lastStrip > 0) {
-        if (g_channelStrips[g_lastStrip]) {
-            g_lastStrip = lastStrip + 1;
-            break;
-        }
+    g_lastStrip = 1;
+    for (uint8_t i = 1; i < MAX_CHANNELS; ++i) {
+        if (g_channelStrips[i])
+            g_lastStrip = i + 1;
     }
-    return chan;
+    return g_lastStrip - 1;
 }
 
 int8_t addSend() {
@@ -1304,15 +1301,12 @@ uint8_t removeSend(uint8_t send) {
     pthread_mutex_unlock(&mutex);
     --g_sendCount;
 
-    g_lastSend = 0;
-    uint8_t lastSend = MAX_CHANNELS;
-    while(--lastSend > 0) {
-        if (g_channelStrips[g_lastSend]) {
-            g_lastSend = lastSend + 1;
-            break;
-        }
+    g_lastSend = 1;
+    for (uint8_t i = 1; i < MAX_CHANNELS; ++i) {
+        if (g_fxSends[i])
+            g_lastSend = i + 1;
     }
-    return 0;
+    return g_lastSend - 1;
 #endif
 }
 
@@ -1321,6 +1315,4 @@ uint8_t getSendCount() {
 }
 
 uint8_t getMaxChannels() { return MAX_CHANNELS; }
-
-uint8_t getLastChannel() { return g_lastStrip; }
 

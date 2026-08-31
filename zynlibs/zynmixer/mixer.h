@@ -315,11 +315,6 @@ uint8_t removeSend(uint8_t send);
  */
 uint8_t getMaxChannels();
 
-/** @brief Get index of highest numbered channel
- *   @retval size_t Index of last channel
- */
-uint8_t getLastChannel();
-
 /** @brief Get quantity of effect sends
  *  @retval uint8_t Quantity of effect sends
  */
