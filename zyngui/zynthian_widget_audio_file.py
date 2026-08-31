@@ -352,11 +352,11 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.zctrl = None
         self.fpath = ""
         self.fname = ""
-        self.sf = None
-        self.channels = 0  # Quantity of channels in audio
-        self.frames = 0  # Quantity of frames in audio
-        self.samplerate = None
-        self.duration = 0.0
+        self.wave_data = None   # Wave data => All file data loaded in memory
+        self.channels = 0       # Quantity of channels in audio
+        self.frames = 0         # Quantity of frames in audio
+        self.samplerate = None  # Sample Rate (frames/second)
+        self.duration = 0.0     # Duration in seconds
         self.info = 0
 
         self.refreshing = False # Flag to avoid multiple threads refreshing waveform
@@ -452,16 +452,17 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.refreshing = True
             self.info_text_var.set("Loading waveform ...")
             try:
-                self.sf = soundfile.SoundFile(self.fpath)
-                self.channels = self.sf.channels
-                self.samplerate = self.sf.samplerate
-                self.frames = self.sf.seek(0, soundfile.SEEK_END)
-                if self.samplerate:
-                    self.duration = self.frames / self.samplerate
-                else:
-                    self.duration = 0.0
+                self.duration = 0.0
                 self.offset = 0
                 self.auto_offset = 0
+                with soundfile.SoundFile(self.fpath) as sf:
+                    self.channels = sf.channels
+                    self.samplerate = sf.samplerate
+                    self.frames = sf.seek(0, soundfile.SEEK_END)
+                    sf.seek(0)
+                    self.wave_data = sf.read(self.frames, always_2d=True)
+                if self.samplerate:
+                    self.duration = self.frames / self.samplerate
                 logging.debug(f"LOADING FILE {self.fpath} => {self.frames} frames")
                 if self.clip_info:
                     self.get_clippy_values()
@@ -471,28 +472,27 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             except MemoryError:
                 logging.warning(f"Failed to display waveform: File too large!")
                 self.info_text_var.set("File too large!")
-                self.sf = None
+                self.wave_data = None
             except Exception as e:
                 logging.warning(f"Failed to display waveform: {e}")
                 self.info_text_var.set("Can't show waveform!")
-                self.sf = None
+                self.wave_data = None
             self.refreshing = False
             self.refresh_waveform = True
         else:
             self.info_text_var.set("Can't show waveform!")
             self.channels = 0
             self.frames = 0
-            self.sf = None
+            self.wave_data = None
 
     def draw_waveform(self, start, length, vzoom=1.0):
-        if self.sf is None:
+        if self.wave_data is None:
             self.info_text_var.set("Can't show waveform!")
             return
 
         length = min(self.frames, length)
         start = min(start, (self.frames - length))
         steps_per_peak = 16
-        large_file = self.frames * self.channels > 24000000
 
         self.waveform_height = self.widget_canvas.winfo_height()
         if self.channels:
@@ -504,34 +504,16 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             y_offsets.append(y0 * (i + 0.5))
         y0 = int(vzoom * y0 / 2)
 
-        if large_file:
-            frames_per_pixel = length // self.width
-            # Limit read blocks for larger files
-            block_size = min(frames_per_pixel, 1024)
-            offset1 = 0
-            offset2 = block_size
-            step = max(1, block_size // steps_per_peak)
-        else:
-            self.sf.seek(start)
-            a_data = self.sf.read(length, always_2d=True)
-            frames_per_pixel = len(a_data) / self.width
-            step = max(1, frames_per_pixel / steps_per_peak)
-            # Limit read blocks for larger files
-            block_size = min(frames_per_pixel, 1024)
+        frames_per_pixel = length // self.width
+        block_size = min(frames_per_pixel, 1024)
+        step = max(1, block_size // steps_per_peak)
 
         ydata = [0] * 2 * self.channels * self.width
         pos = 0
         for x in range(self.width):
             # For each x-axis pixel
-            if large_file:
-                self.sf.seek(start + x * frames_per_pixel)
-                a_data = self.sf.read(block_size, always_2d=True)
-                if len(a_data) == 0:
-                    break
-                offset2 = len(a_data)
-            else:
-                offset1 = x * frames_per_pixel
-                offset2 = offset1 + frames_per_pixel
+            offset1 = start + x * frames_per_pixel
+            offset2 = offset1 + frames_per_pixel
             for chan in range(self.channels):
                 # For each audio channel
                 v1 = [0.0] * self.channels
@@ -539,7 +521,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 frame = offset1
                 while int(frame) < int(offset2):
                     # Find peak audio within block of audio represented by this x-axis pixel
-                    av = a_data[int(frame)][chan]
+                    av = self.wave_data[int(frame)][chan]
                     if av < v1[chan]:
                         v1[chan] = av
                     if av > v2[chan]:
@@ -636,7 +618,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             vzoom = gain * self.processor.controllers_dict['v-zoom'].value
             dur = crop_end - crop_start
             if dur > 0:
-                cursor_pos = (self.processor.controllers_dict['position'].value - crop_start) / dur
+                pos = self.processor.controllers_dict['position'].value
+                speed = self.processor.controllers_dict['speed'].value
+                if speed > 0:
+                    pos *= (1.0 + speed)
+                elif speed < 0:
+                    pos /= (1.0 - speed)
+                cursor_pos = (pos - crop_start) / dur
             else:
                 cursor_pos = 0
             crop_start = int(self.samplerate * crop_start)
@@ -672,30 +660,30 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if crop_start is not None and crop_start != self.crop_start:
             self.crop_start = crop_start
             self.update_markers = True
-            self.refresh_waveform = True
+            #self.refresh_waveform = True
             if self.auto_offset:
                 self.auto_offset = 1
         if crop_end is not None and crop_end != self.crop_end:
             self.crop_end = crop_end
             self.update_markers = True
-            self.refresh_waveform = True
+            #self.refresh_waveform = True
             if self.auto_offset:
                 self.auto_offset = 2
         if loop_markers is not None and loop_markers != self.loop_markers:
             self.loop_markers = loop_markers
             self.update_markers = True
-            self.refresh_waveform = True
+            #self.refresh_waveform = True
         if self.loop_markers:
             if loop_start is not None and loop_start != self.loop_start:
                 self.loop_start = loop_start
                 self.update_markers = True
-                self.refresh_waveform = True
+                #self.refresh_waveform = True
                 if self.auto_offset:
                     self.auto_offset = 1
             if loop_end is not None and loop_end != self.loop_end:
                 self.loop_end = loop_end
                 self.update_markers = True
-                self.refresh_waveform = True
+                #self.refresh_waveform = True
                 if self.auto_offset:
                     self.auto_offset = 1
         if warp is not None and warp != self.warp:
