@@ -98,7 +98,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                 ["Save this chain as a snapshot.\n\nThe saved snapshot may loaded or may be imported into another snapshot.", "snapshot_chains.png"]))
 
-        self.list_data.append((self.remove_chain, None, "Remove chain",
+        if self.chain.chain_id:
+            self.list_data.append((self.remove_chain, None, "Remove chain",
                                ["Remove this chain and all its processors.", "delete_chains.png"]))
 
         super().fill_list()
