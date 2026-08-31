@@ -360,6 +360,7 @@ class zynthian_chain:
             self.audio_routes[output] = prev_slot_sources.copy()
 
         zynautoconnect.release_lock()
+        zynautoconnect.request_audio_connect()
 
     def get_input_pairs(self):
         """Get jack regexp for pairs of system:capture ports
@@ -421,6 +422,7 @@ class zynthian_chain:
                 if proc.eng_code not in ["MI", "MR"]:
                     self.midi_routes[proc.engine.jackname] = sources
         zynautoconnect.release_lock()
+        zynautoconnect.request_midi_connect()
 
     def rebuild_graph(self):
         """Build dictionary of lists of destinations mapped by source"""
