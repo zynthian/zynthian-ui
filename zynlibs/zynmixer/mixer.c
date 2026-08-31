@@ -444,7 +444,11 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 curLevelB += fDeltaB;
 
                 // Process DPM
-                if (g_enableDpm) {
+                if (g_enableDpm
+#ifdef MIXBUS
+                    || chan == 0
+#endif
+                ) {
                     fSampleA = fabs(fSampleA);
                     if (fSampleA > dpmA)
                         dpmA = fSampleA;
