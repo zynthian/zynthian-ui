@@ -43,6 +43,7 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
     def __init__(self):
         self.callback = None
         self.callback_params = None
+        self.autoclose = True
         self.zyngui = zynthian_gui_config.zyngui
 
         # Main Frame
@@ -86,12 +87,13 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         self.no_text_label.bind("<ButtonRelease-1>", self.cb_no_push)
         self.no_text_label.grid(row=1, sticky="w")
 
-    def show(self, text, callback=None, cb_params=None):
+    def show(self, text, callback=None, cb_params=None, autoclose=True):
         self.text.set(text)
         wl = zynthian_gui_config.screen_width - 2 * self.text_fs
         self.label_text.config(wraplength=wl)
         self.callback = callback
         self.callback_params = cb_params
+        self.autoclose = autoclose
         if not self.shown:
             super().show()
             if self.zyngui.tts:
@@ -105,7 +107,8 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
 
     def switch_select(self, t='S'):
         logging.info("callback %s", self.callback_params)
-        self.zyngui.close_screen()
+        if self.autoclose:
+            self.zyngui.close_screen()
         if self.callback:
             if self.zyngui.tts:
                 self.zyngui.tts._tts.beep(frequency=800)
