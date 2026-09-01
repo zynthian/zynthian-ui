@@ -377,7 +377,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                                               tags="velocityIndicator")
         self.velocity_canvas.grid(column=0, row=1)
 
-        # Configure ALT mode layout depending on hardware
+        # Configure custom switches depending on hardware
         # Clipboard imported from launcher (see build_view())
         self.launcher = None
         self.switch_i_clipboard = None
@@ -400,7 +400,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         else:
             self.switch_i_block = None
             self.switch_i_cc_editor = None
-            self.wsled_i_block = None
             self.wsled_i_block = None
             self.wsled_i_cc_editor = None
 
@@ -1958,8 +1957,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         elif i == self.switch_i_block:
             return self.cuia_v5_zynpot_switch([2, st])
 
-        # ALT mode => Use configured F buttons as copy/paste buttons
-        elif self.alt_mode and self.switch_i_clipboard is not None and i in self.switch_i_clipboard:
+        # Configured F buttons as copy/paste buttons
+        elif self.switch_i_clipboard is not None and i in self.switch_i_clipboard:
             index = self.switch_i_clipboard.index(i)
             if st == "S":
                 self.paste_pattern(index)
@@ -2104,26 +2103,22 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def update_wsleds(self, leds):
         wsl = self.zyngui.wsleds
 
-        # ALT mode
-        if self.alt_mode:
-            # ALT button
-            wsl.set_led(leds[0], wsl.wscolor_active2)
+        # Copy/Paste buttons
+        if self.wsleds_i_clipboard:
+            # Copy/paste buttons
+            for i, wsli in enumerate(self.wsleds_i_clipboard):
+                if self.clipboard[i] is None:
+                    wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                else:
+                    cpfc = self.launcher.can_paste_from_clipboard(i)
+                    if cpfc is None:
+                        wsl.blink(leds[wsli], wsl.wscolor_red)
+                    elif cpfc == False:
+                        wsl.blink(leds[wsli], wsl.wscolor_active2)
+                    elif cpfc == True:
+                        wsl.blink(leds[wsli], wsl.wscolor_active)
 
-            if self.wsleds_i_clipboard:
-                # Copy/paste buttons
-                for i, wsli in enumerate(self.wsleds_i_clipboard):
-                    if self.clipboard[i] is None:
-                        wsl.set_led(leds[wsli], wsl.wscolor_active2)
-                    else:
-                        cpfc = self.launcher.can_paste_from_clipboard(i)
-                        if cpfc is None:
-                            wsl.blink(leds[wsli], wsl.wscolor_red)
-                        elif cpfc == False:
-                            wsl.blink(leds[wsli], wsl.wscolor_active2)
-                        elif cpfc == True:
-                            wsl.blink(leds[wsli], wsl.wscolor_active)
-
-        # Block Selection  (F3 in V5, S3 in V4)
+        # Block Selection (F3 in V5)
         if self.wsled_i_block is not None:
             if self.edit_mode == EDIT_MODE_BLOCK:
                 if self.block_copied:
@@ -2133,7 +2128,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             else:
                 wsl.set_led(leds[self.wsled_i_block], wsl.wscolor_active2)
 
-        # Block Selection (F4 in V5, S4 in V4)
+        # CC/Note editor toggle (F4 in V5)
         if self.wsled_i_cc_editor is not None:
             wsl.set_led(leds[self.wsled_i_cc_editor], wsl.wscolor_active2)
 

@@ -1237,15 +1237,23 @@ class zynthian_gui_mixer(zynthian_gui_base):
         if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
             self.switch_i_clipboard = [11, 15]
             self.wsleds_i_clipboard = [10, 11]
+            self.switch_i_add_chain = 19
+            self.wsled_i_add_chain = 12
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
             self.switch_i_clipboard = [10, 11]
             self.wsleds_i_clipboard = [10, 11]
+            self.switch_i_add_chain = None
+            self.wsled_i_add_chain = None
         elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
-            self.switch_i_clipboard = None
+            self.switch_i_clipboard = [4, 5]
             self.wsleds_i_clipboard = None
+            self.switch_i_add_chain = 6
+            self.wsled_i_add_chain = None
         else:
             self.switch_i_clipboard = None
             self.wsleds_i_clipboard = None
+            self.switch_i_add_chain = None
+            self.wsled_i_add_chain = None
 
         self.update_layout()
         self.tts_title = "Mixer"
@@ -2497,18 +2505,21 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case 3:
                 return self.switch_select(t)
 
+        if self.switch_i_add_chain and swi == self.switch_i_add_chain:
+            return self.cuia_v5_zynpot_switch([2, t])
+
         # ALT mode => Use F1-F2 as copy/paste buttons
-        if self.launcher_mode and self.alt_mode\
-           and self.switch_i_clipboard and swi in self.switch_i_clipboard:
-            index = self.switch_i_clipboard.index(swi)
-            if t == "S":
-                self.paste_from_clipboard(index)
-                self.zynseq.refresh_state()
-                self.refresh_launchers(force=False)
-                return True
-            elif t == "B":
-                self.copy_to_clipboard(index)
-                return True
+        elif self.launcher_mode:
+            if self.switch_i_clipboard and swi in self.switch_i_clipboard:
+                index = self.switch_i_clipboard.index(swi)
+                if t == "S":
+                    self.paste_from_clipboard(index)
+                    self.zynseq.refresh_state()
+                    self.refresh_launchers(force=False)
+                    return True
+                elif t == "B":
+                    self.copy_to_clipboard(index)
+                    return True
         return False
 
     def cuia_v5_zynpot_switch(self, params):
@@ -2747,19 +2758,14 @@ class zynthian_gui_mixer(zynthian_gui_base):
         return True
 
     def update_wsleds(self, leds):
-        # ALT mode only!
-        if not self.alt_mode:
-            return
-
         wsl = self.zyngui.wsleds
 
-        # ALT button
-        wsl.set_led(leds[0], wsl.wscolor_active2)
+        # ALT mode
+        if self.alt_mode:
+            # CTRL button
+            wsl.set_led(leds[15], wsl.wscolor_active2)
 
-        # CTRL button
-        wsl.set_led(leds[15], wsl.wscolor_active2)
-
-        # Copy/paste buttons
+        # Copy/paste buttons (F1/F2 in V5)
         if self.launcher_mode and self.wsleds_i_clipboard:
             for i, wsli in enumerate(self.wsleds_i_clipboard):
                 if self.clipboard[i] is None:
@@ -2772,6 +2778,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         wsl.blink(leds[wsli], wsl.wscolor_active2)
                     elif cpfc == True:
                         wsl.blink(leds[wsli], wsl.wscolor_active)
+
+        # Add chain button (F3 in V5)
+        if self.wsled_i_add_chain is not None:
+            wsl.set_led(leds[self.wsled_i_add_chain], wsl.wscolor_active2)
 
     def tts_info(self, params=None):
         if not self.zyngui.tts:
