@@ -1284,8 +1284,12 @@ class zynthian_gui:
     def cuia_last_state_action(self, params=None):
         self.screens['admin'].last_state_action()
 
-    def cuia_workflow_capture_start(self, params=["ui_session"]):
-        self.start_capture_log(params[0])
+    def cuia_workflow_capture_start(self, params=None):
+        if params:
+            title = params[0]
+        else:
+            title = "ui_session"
+        self.start_capture_log(title)
 
     def cuia_workflow_capture_stop(self, params=None):
         self.stop_capture_log()
