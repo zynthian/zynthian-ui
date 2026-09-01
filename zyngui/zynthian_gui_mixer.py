@@ -1244,7 +1244,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.wsleds_i_clipboard = [10, 11]
             self.switch_i_add_chain = None
             self.wsled_i_add_chain = None
-        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):  # and wiring_layout_custom_profile == "v4_studio":
             self.switch_i_clipboard = [4, 5]
             self.wsleds_i_clipboard = None
             self.switch_i_add_chain = 6
@@ -2505,11 +2505,11 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case 3:
                 return self.switch_select(t)
 
-        if self.switch_i_add_chain and swi == self.switch_i_add_chain:
-            return self.cuia_v5_zynpot_switch([2, t])
-
         # ALT mode => Use F1-F2 as copy/paste buttons
-        elif self.launcher_mode:
+        if self.launcher_mode:
+            if self.switch_i_add_chain and swi == self.switch_i_add_chain:
+                return self.cuia_v5_zynpot_switch([2, t])
+
             if self.switch_i_clipboard and swi in self.switch_i_clipboard:
                 index = self.switch_i_clipboard.index(swi)
                 if t == "S":
@@ -2765,23 +2765,25 @@ class zynthian_gui_mixer(zynthian_gui_base):
             # CTRL button
             wsl.set_led(leds[15], wsl.wscolor_active2)
 
-        # Copy/paste buttons (F1/F2 in V5)
-        if self.launcher_mode and self.wsleds_i_clipboard:
-            for i, wsli in enumerate(self.wsleds_i_clipboard):
-                if self.clipboard[i] is None:
-                    wsl.set_led(leds[wsli], wsl.wscolor_active2)
-                else:
-                    cpfc = self.can_paste_from_clipboard(i)
-                    if cpfc is None:
-                        wsl.blink(leds[wsli], wsl.wscolor_red)
-                    elif cpfc == False:
-                        wsl.blink(leds[wsli], wsl.wscolor_active2)
-                    elif cpfc == True:
-                        wsl.blink(leds[wsli], wsl.wscolor_active)
 
-        # Add chain button (F3 in V5)
-        if self.wsled_i_add_chain is not None:
-            wsl.set_led(leds[self.wsled_i_add_chain], wsl.wscolor_active2)
+        # Only in launcher mode
+        if self.launcher_mode:
+            # Copy/paste buttons (F1/F2 in V5)
+            if self.wsleds_i_clipboard:
+                for i, wsli in enumerate(self.wsleds_i_clipboard):
+                    if self.clipboard[i] is None:
+                        wsl.set_led(leds[wsli], wsl.wscolor_active2)
+                    else:
+                        cpfc = self.can_paste_from_clipboard(i)
+                        if cpfc is None:
+                            wsl.blink(leds[wsli], wsl.wscolor_red)
+                        elif cpfc == False:
+                            wsl.blink(leds[wsli], wsl.wscolor_active2)
+                        elif cpfc == True:
+                            wsl.blink(leds[wsli], wsl.wscolor_active)
+            # Add chain button (F3 in V5)
+            if self.wsled_i_add_chain is not None:
+                wsl.set_led(leds[self.wsled_i_add_chain], wsl.wscolor_active2)
 
     def tts_info(self, params=None):
         if not self.zyngui.tts:
