@@ -1,0 +1,46 @@
+
+a.help_ui_index {
+	font-size: 120%;
+	font-weight: bold;
+	color: #0000C0;
+}
+div.help_ui {
+	background-color: #ffffff;
+	font-size: 130%;
+	color: #202020;
+}
+.help_ui img.screenshot,
+.help_ui video.screenshot {
+	width: 100%;
+	margin-bottom: 1em;
+}
+.help_ui h1,
+.help_ui h2,
+.help_ui h3,
+.help_ui h4 {
+	font-family: 'Audiowide';
+	color: #202020;
+}
+.help_ui title {
+	color: #202020;
+}
+.help_ui li {
+	margin-left: 1em;
+}
+.help_ui a,
+.help_ui li a {
+	color: #202090;
+}
+.help_ui .note-block {
+	color: #ffffff;
+}
+
+.help_ui table, .help_ui th, .help_ui td {
+	border: 1px solid #FFFFFF;
+	color: #FFFFFF;
+}
+
+.help_ui table td.empty,
+.help_ui table th.empty {
+	color: #202020;
+}

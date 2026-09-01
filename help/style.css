@@ -10,6 +10,9 @@ body.help_ui {
 	text-decoration: none;
 }
 
+.help_ui i {
+}
+
 header.global_header {
 	margin-top: 0.2em;
 	margin-bottom: 0;
@@ -70,12 +73,41 @@ header.global_header a {
 .help_ui .note-block {
 	margin: 1em auto;
 	padding: 1em 1em;
-	background-color: #9020c0;
+	background-color: #9020C0;
 	border-left: 0.3em solid #aaaaaa;
 }
 
 .help_ui div.clear {
 	clear: both;
+}
+
+.help_ui table, .help_ui th, .help_ui td {
+	border: 1px solid #000000;
+	border-collapse: collapse;
+	vertical-align: bottom;
+	white-space: nowrap;
+}
+
+.help_ui table {
+	margin: auto;
+}
+
+.help_ui table th {
+	background-color: #505050;
+	padding: 0.3em 0.5em;
+	text-align: left;
+}
+
+.help_ui table td {
+	background-color: #808080;
+	padding: 0.3em 0.5em;
+}
+
+.help_ui table td.empty,
+.help_ui table th.empty {
+	background-color: transparent;
+	border: none;
+	text-align: center;
 }
 
 div.knob_action {
