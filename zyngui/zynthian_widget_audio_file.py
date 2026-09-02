@@ -780,19 +780,18 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 else:
                     info = 0
                 if self.samplerate:
+                    dur = crop_end - crop_start
                     match info:
                         case 1: # Position
-                            pos = self.last_cursor_pos * (self.crop_end - self.crop_start) / self.samplerate
-                            time = self.format_time(pos - self.crop_start / self.samplerate)
+                            time = self.format_time(self.last_cursor_pos * dur / self.samplerate)
                         case 2: # Remaining
-                            pos = self.last_cursor_pos * (self.crop_end - self.crop_start) / self.samplerate
-                            time = self.format_time(self.crop_end / self.samplerate - pos)
+                            time = self.format_time((1.0 - self.last_cursor_pos) * dur / self.samplerate)
                         case 3: # Samplerate
                             time = self.samplerate
                         case 4: # CODEC
                             time = self.monitors['codec']
                         case _: # Duration
-                            time = self.format_time((self.crop_end - self.crop_start) / self.samplerate)
+                            time = self.format_time(dur / self.samplerate)
                     info_text += f"[{time}]"
 
                 self.info_text_var.set(info_text)
