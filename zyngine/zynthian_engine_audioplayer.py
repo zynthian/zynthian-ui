@@ -554,7 +554,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 processor.controllers_dict['transport'].set_value(play_state*127, False)
                 processor.controllers_dict['position'].set_value(pos, False)
                 processor.controllers_dict['loop'].set_value(loop*127, False)
-              
+
     # ---------------------------------------------------------------------------
     # Specific functions
     # ---------------------------------------------------------------------------
