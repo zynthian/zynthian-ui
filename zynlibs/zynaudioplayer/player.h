@@ -312,7 +312,7 @@ int get_track_b(AUDIO_PLAYER* pPlayer);
 
 /** @brief  Set base speed
  *   @param  player_handle Handle of player provided by add_player()
- *   @param  factor Speed factor (0.2..4.0)
+ *   @param  factor Speed factor (0.25..4.0)
  */
 void set_speed(AUDIO_PLAYER* pPlayer, float factor);
 
@@ -322,17 +322,29 @@ void set_speed(AUDIO_PLAYER* pPlayer, float factor);
  */
 float get_speed(AUDIO_PLAYER* pPlayer);
 
-/** @brief  Set base pitch
+/** @brief  Set base pitch in semitones
  *   @param  player_handle Handle of player provided by add_player()
- *   @param  factor Pitch factor (0.25..4.0)
+ *   @param  semitones Pitch factor (-24..+24)
  */
-void set_pitch(AUDIO_PLAYER* pPlayer, float factor);
+void set_pitch_semitone(AUDIO_PLAYER* pPlayer, int8_t semitones);
 
-/** @brief  Get base pitch
+/** @brief  Get base pitch in semitones
  *   @param  player_handle Handle of player provided by add_player()
  *   @retval float Pitch factor
  */
-float get_pitch(AUDIO_PLAYER* pPlayer);
+int8_t get_pitch_semitone(AUDIO_PLAYER* pPlayer);
+
+/** @brief  Set base pitch in cents
+ *   @param  player_handle Handle of player provided by add_player()
+ *   @param  cents Pitch factor (-100..+100)
+ */
+void set_pitch_cent(AUDIO_PLAYER* pPlayer, int8_t cents);
+
+/** @brief  Get base pitch in semitones
+ *   @param  player_handle Handle of player provided by add_player()
+ *   @retval float Pitch factor
+ */
+int8_t get_pitch_cent(AUDIO_PLAYER* pPlayer);
 
 /** @brief  Set varispeed
  *   @param  player_handle Handle of player provided by add_player()

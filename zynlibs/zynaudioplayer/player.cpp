@@ -1123,17 +1123,32 @@ float get_speed(AUDIO_PLAYER* pPlayer) {
     return pPlayer->speed;
 }
 
-void set_pitch(AUDIO_PLAYER* pPlayer, float factor) {
-    if (!pPlayer || factor < 0.25 || factor > 4.0)
+void set_pitch_semitone(AUDIO_PLAYER* pPlayer, int8_t semitones) {
+    if (!pPlayer || semitones < -24 || semitones > 24)
         return;
-    pPlayer->pitch            = factor;
+    pPlayer->semitones = semitones;
+    pPlayer->pitch = powf(2.0f, (pPlayer->cents / 100.0f + pPlayer->semitones) / 12.0f);
     pPlayer->time_ratio_dirty = true;
 }
 
-float get_pitch(AUDIO_PLAYER* pPlayer) {
+int8_t get_pitch_semitone(AUDIO_PLAYER* pPlayer) {
     if (!pPlayer)
-        return 0.0;
-    return pPlayer->pitch;
+        return 0;
+    return pPlayer->semitones;
+}
+
+void set_pitch_cent(AUDIO_PLAYER* pPlayer, int8_t cents) {
+    if (!pPlayer || cents < -100 || cents > 100)
+        return;
+    pPlayer->cents = cents;
+    pPlayer->pitch = powf(2.0f, (pPlayer->cents / 100.0f + pPlayer->semitones) / 12.0f);
+    pPlayer->time_ratio_dirty = true;
+}
+
+int8_t get_pitch_cent(AUDIO_PLAYER* pPlayer) {
+    if (!pPlayer)
+        return 0;
+    return pPlayer->cents;
 }
 
 void set_varispeed(AUDIO_PLAYER* pPlayer, float ratio) {

@@ -66,7 +66,8 @@ try:
     libaudioplayer.get_playback_state.restype = ctypes.c_uint8
     libaudioplayer.set_src_quality.restype = ctypes.c_uint8
     libaudioplayer.get_speed.restype = ctypes.c_float
-    libaudioplayer.get_pitch.restype = ctypes.c_float
+    libaudioplayer.get_pitch_semitone.restype = ctypes.c_int8
+    libaudioplayer.get_pitch_cent.restype = ctypes.c_int8
     libaudioplayer.get_varispeed.restype = ctypes.c_float
     libaudioplayer.is_loop.restype = ctypes.c_uint8
     libaudioplayer.get_file_duration.restype = ctypes.c_float
@@ -392,16 +393,28 @@ def set_speed(handle, factor):
 def get_speed(handle):
     return libaudioplayer.get_speed(ctypes.c_void_p(handle))
 
-# Set base pitch factor
+# Set base pitch factor in semitones
 # handle: Index of player
-# factor: Pitch factor
-def set_pitch(handle, factor):
-    libaudioplayer.set_pitch(ctypes.c_void_p(handle), ctypes.c_float(factor))
+# semitones: Pitch factor
+def set_pitch_semitone(handle, semitones):
+    libaudioplayer.set_pitch_semitone(ctypes.c_void_p(handle), ctypes.c_int8(semitones))
 
-# Get base pitch factor
+# Get base pitch factor in semitones
 # handle: Index of player
 # Returns: Pitch factor
-def get_pitch(handle):
+def get_pitch_semitones(handle):
+    return libaudioplayer.get_pitch(ctypes.c_void_p(handle))
+
+# Set base pitch factor in cents
+# handle: Index of player
+# cents: Pitch factor
+def set_pitch_cent(handle, cents):
+    libaudioplayer.set_pitch_cent(ctypes.c_void_p(handle), ctypes.c_int8(cents))
+
+# Get base pitch factor in cent
+# handle: Index of player
+# Returns: Pitch factor
+def get_pitch_cent(handle):
     return libaudioplayer.get_pitch(ctypes.c_void_p(handle))
 
 # Set varispeed ratio
