@@ -133,14 +133,14 @@ void* file_thread_fn(void* param) {
                                                          RubberBandStretcher::OptionPitchHighConsistency | RubberBandStretcher::OptionFormantPreserved);
         pPlayer->stretcher->setMaxProcessSize(256);
 
-        pPlayer->crop_start.store(0, memory_order_relaxed);
-        pPlayer->crop_end.store(pPlayer->sf_info.frames, memory_order_relaxed);
+        pPlayer->crop_start = 0;
+        pPlayer->crop_end = pPlayer->sf_info.frames;
         pPlayer->file_read_status.store(SEEKING, memory_order_relaxed);
         pPlayer->src_ratio        = (float)g_samplerate / pPlayer->sf_info.samplerate;
         if (pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1;
         srcData.src_ratio           = pPlayer->src_ratio;
-        pPlayer->pos_notify_delta.store(float(pPlayer->sf_info.frames) / g_samplerate / 400, memory_order_relaxed);
+        pPlayer->pos_notify_delta = float(pPlayer->sf_info.frames) / g_samplerate / 400;
         pPlayer->output_buffer_size = pPlayer->src_ratio * pPlayer->input_buffer_size;
         pPlayer->ringbuffer_a       = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_a);
@@ -160,7 +160,7 @@ void* file_thread_fn(void* param) {
             for (uint32_t i = 0; i < count; ++i)
                 add_cue_point(id, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
 
-            pPlayer->gain.store(1.0, memory_order_relaxed);
+            pPlayer->gain = 1.0;
         }
 
         // Initialise samplerate converter
@@ -171,8 +171,8 @@ void* file_thread_fn(void* param) {
         srcData.data_out        = pBufferOut;
         srcData.output_frames   = pPlayer->output_buffer_size;
         pPlayer->frames         = pPlayer->sf_info.frames * pPlayer->src_ratio;
-        pPlayer->crop_end_src.store(pPlayer->crop_end * pPlayer->src_ratio, memory_order_relaxed);
-        pPlayer->crop_start_src.store(pPlayer->crop_start * pPlayer->src_ratio, memory_order_relaxed);
+        pPlayer->crop_end_src = pPlayer->crop_end * pPlayer->src_ratio;
+        pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
         int nError;
         pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
         if (!pSrcState) {
@@ -189,7 +189,7 @@ void* file_thread_fn(void* param) {
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
                 sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
                 if (pos >= 0)
-                    pPlayer->file_read_pos.store(pos, memory_order_relaxed);
+                    pPlayer->file_read_pos = pos;
                 // DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
                 pPlayer->file_read_status.store(LOADING, memory_order_relaxed);
                 src_reset(pSrcState);
@@ -204,7 +204,7 @@ void* file_thread_fn(void* param) {
                 else
                     pos = sf_seek(pFile, pPlayer->crop_start, SEEK_SET);
                 if (pos >= 0)
-                    pPlayer->file_read_pos.store(pos, memory_order_relaxed);
+                    pPlayer->file_read_pos = pos;
                 pPlayer->file_read_status.store(LOADING, memory_order_relaxed);
                 src_reset(pSrcState);
                 srcData.end_of_input = 0;
@@ -217,7 +217,7 @@ void* file_thread_fn(void* param) {
             while (pPlayer->file_read_status == LOADING) {
                 int nFramesRead = 0;
                 // Load block of data from file to SRC or output buffer
-                nMaxFrames      = pPlayer->input_buffer_size - nUnusedFrames;
+                nMaxFrames = pPlayer->input_buffer_size - nUnusedFrames;
 
                 if (jack_ringbuffer_write_space(pPlayer->ringbuffer_a) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio &&
                     jack_ringbuffer_write_space(pPlayer->ringbuffer_b) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio) {
@@ -251,10 +251,10 @@ void* file_thread_fn(void* param) {
                         // No SRC required so populate SRC output buffer directly
                         if (bReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
-                                pPlayer->file_read_pos.store(pPlayer->file_read_pos - nMaxFrames, memory_order_relaxed);
+                                pPlayer->file_read_pos -= nMaxFrames;
                             else {
                                 nMaxFrames = pPlayer->file_read_pos;
-                                pPlayer->file_read_pos.store(0, memory_order_relaxed);
+                                pPlayer->file_read_pos = 0;
                             }
                             // Move to start of audio chunk
                             sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
@@ -273,16 +273,14 @@ void* file_thread_fn(void* param) {
                                 sf_seek(pFile, pos, SEEK_SET);
                             }
                         } else
-                            pPlayer->file_read_pos.store(
-                                pPlayer->file_read_pos + (nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames)),
-                                memory_order_relaxed);
+                            pPlayer->file_read_pos += (nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames));
                     } else {
                         // Populate SRC input buffer before SRC process
                         if (bReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
-                                pPlayer->file_read_pos.store(pPlayer->file_read_pos - nMaxFrames, memory_order_relaxed);
+                                pPlayer->file_read_pos -= nMaxFrames;
                             else
-                                pPlayer->file_read_pos.store(0, memory_order_relaxed);
+                                pPlayer->file_read_pos = 0;
                             sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
                             if (pos >= 0) {
                                 nFramesRead = sf_readf_float(pFile, pBufferRev, nMaxFrames);
@@ -296,9 +294,7 @@ void* file_thread_fn(void* param) {
                                 sf_seek(pFile, pos, SEEK_SET);
                             }
                         } else
-                            pPlayer->file_read_pos.store(
-                                pPlayer->file_read_pos + (nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames)),
-                                memory_order_relaxed);
+                            pPlayer->file_read_pos += (nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames));
                     }
 
                     if (nFramesRead) {
@@ -393,15 +389,15 @@ void* file_thread_fn(void* param) {
     pthread_exit(NULL);
 }
 
-/**** player instance functions take 'handle' param to identify player instance****/
+/*** player instance functions take 'id' param to identify player instance ***/
 
 uint8_t load(uint8_t id, const char* filename) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (!pPlayer)
         return 0;
     unload(id);
-    pPlayer->track_a.store(-1, memory_order_relaxed);
-    pPlayer->track_b.store(-1, memory_order_relaxed);
+    pPlayer->track_a = -1;
+    pPlayer->track_b = -1;
     std::strncpy(pPlayer->filename, filename, MAX_FILENAME - 1);
 
     pPlayer->file_open.store(FILE_OPENING, memory_order_relaxed);
@@ -552,7 +548,7 @@ void enable_loop(uint8_t id, uint8_t nLoop) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (!pPlayer)
         return;
-    pPlayer->loop.store(nLoop, memory_order_relaxed);
+    pPlayer->loop = nLoop;
     pPlayer->file_read_status.store(SEEKING, memory_order_relaxed);
     send_notifications(id, NOTIFY_LOOP);
 }
@@ -573,8 +569,8 @@ void set_crop_start_time(uint8_t id, float time) {
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
     if (frames >= pPlayer->crop_end)
         frames = pPlayer->crop_end - 1;
-    pPlayer->crop_start.store(frames, memory_order_relaxed);
-    pPlayer->crop_start_src.store(pPlayer->crop_start * pPlayer->src_ratio, memory_order_relaxed);
+    pPlayer->crop_start = frames;
+    pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
     if (pPlayer->play_pos_frames < frames)
         set_position(id, time);
     pPlayer->last_crop_start = -1;
@@ -597,11 +593,11 @@ void set_crop_end_time(uint8_t id, float time) {
         frames = pPlayer->crop_start + 1;
     if (frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
-    pPlayer->crop_end.store(frames, memory_order_relaxed);
-    pPlayer->crop_end_src.store(frames * pPlayer->src_ratio, memory_order_relaxed);
+    pPlayer->crop_end = frames;
+    pPlayer->crop_end_src = frames * pPlayer->src_ratio;
     if (pPlayer->crop_end_src > pPlayer->frames) {
-        pPlayer->crop_end_src.store(pPlayer->frames, memory_order_relaxed);
-        pPlayer->crop_end.store(pPlayer->frames / pPlayer->src_ratio, memory_order_relaxed);
+        pPlayer->crop_end_src = pPlayer->frames;
+        pPlayer->crop_end = pPlayer->frames / pPlayer->src_ratio;
     }
     if (pPlayer->play_pos_frames > pPlayer->crop_end_src) {
         pPlayer->play_pos_frames.store(pPlayer->crop_end_src, memory_order_relaxed);
@@ -890,7 +886,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
     return 0;
 }
 
-// Handle JACK process callback
+// Handle JACK samplerate callback
 int on_jack_samplerate(jack_nframes_t nFrames, void* pArgs) {
     DPRINTF("libzynaudioplayer: Jack sample rate: %u\n", nFrames);
     if (nFrames)
@@ -952,10 +948,8 @@ uint8_t add_player() {
     AUDIO_PLAYER* pPlayer = new AUDIO_PLAYER();
     if (!pPlayer)
         return 255;
-    pPlayer->crop_start.store(0, memory_order_relaxed);
-    pPlayer->crop_start_src.store(pPlayer->crop_start * pPlayer->src_ratio, memory_order_relaxed);
-    pPlayer->crop_end.store(pPlayer->input_buffer_size, memory_order_relaxed);
-    pPlayer->crop_end_src.store(pPlayer->crop_end * pPlayer->src_ratio, memory_order_relaxed);
+    pPlayer->crop_end = pPlayer->input_buffer_size;
+    pPlayer->crop_end_src = pPlayer->crop_end * pPlayer->src_ratio;
     g_players[id] = pPlayer;
 
     // Create audio output ports
@@ -1007,7 +1001,7 @@ uint8_t set_src_quality(uint8_t id, unsigned int quality) {
         return 0;
     if (quality > SRC_LINEAR)
         return 0;
-    pPlayer->src_quality.store(quality, memory_order_relaxed);
+    pPlayer->src_quality = quality;
     send_notifications(id, NOTIFY_QUALITY);
     return 1;
 }
@@ -1027,7 +1021,7 @@ void set_gain(uint8_t id, float gain) {
         gain = 0.00001;
     if (gain > 100000)
         gain = 100000;
-    pPlayer->gain.store(gain, memory_order_relaxed);
+    pPlayer->gain = gain;
 }
 
 float get_gain(uint8_t id) {
@@ -1043,9 +1037,9 @@ void set_track_a(uint8_t id, int track) {
         return;
     if (track < pPlayer->sf_info.channels) {
         if (pPlayer->sf_info.channels == 1)
-            pPlayer->track_a.store(0, memory_order_relaxed);
+            pPlayer->track_a = 0;
         else
-            pPlayer->track_a.store(track, memory_order_relaxed);
+            pPlayer->track_a = track;
     }
     set_position(id, get_position(id));
     send_notifications(id, NOTIFY_TRACK_A);
@@ -1057,9 +1051,9 @@ void set_track_b(uint8_t id, int track) {
         return;
     if (track < pPlayer->sf_info.channels) {
         if (pPlayer->sf_info.channels == 1)
-            pPlayer->track_b.store(0, memory_order_relaxed);
+            pPlayer->track_b = 0;
         else
-            pPlayer->track_b.store(track, memory_order_relaxed);
+            pPlayer->track_b = track;
     }
     set_position(id, get_position(id));
     send_notifications(id, NOTIFY_TRACK_B);
@@ -1081,7 +1075,7 @@ int get_track_b(uint8_t id) {
 
 void set_speed(uint8_t id, float factor) {
     AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer || factor < 0.2 || factor > 4.0)
+    if (!pPlayer || factor < 0.1 || factor > 4.0)
         return;
     pPlayer->speed            = factor;
     pPlayer->time_ratio_dirty.store(true, memory_order_relaxed);
@@ -1162,7 +1156,7 @@ float get_varispeed(uint8_t id) {
 void set_buffer_size(uint8_t id, unsigned int size) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer && pPlayer->file_open == FILE_CLOSED) {
-        pPlayer->input_buffer_size.store(size, memory_order_relaxed);
+        pPlayer->input_buffer_size = size;
     }
 }
 
@@ -1176,7 +1170,7 @@ unsigned int get_buffer_size(uint8_t id) {
 void set_buffer_count(uint8_t id, unsigned int count) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer && pPlayer->file_open == FILE_CLOSED && count > 1) {
-        pPlayer->buffer_count.store(count, memory_order_relaxed);
+        pPlayer->buffer_count = count;
     }
 }
 
@@ -1189,9 +1183,8 @@ unsigned int get_buffer_count(uint8_t id) {
 
 void set_pos_notify_delta(uint8_t id, float time) {
     AUDIO_PLAYER* pPlayer = get_player(id);
-    if (pPlayer) {
-        pPlayer->pos_notify_delta.store(time, memory_order_relaxed);
-    }
+    if (pPlayer)
+        pPlayer->pos_notify_delta = time;
 }
 
 /**** Global functions ***/

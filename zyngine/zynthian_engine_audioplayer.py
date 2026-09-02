@@ -302,7 +302,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             ['v-zoom', None, 1.0, 4.0],
             #['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
             #['cue pos', None, cue_pos, dur],
-            ['speed', {'value': 1.0, 'value_min': 0.2, 'value_max': 4.0, 'is_integer': False}],
+            ['speed', {'value': 1.0, 'value_min': 0.1, 'value_max': 4.0, 'is_integer': False}],
             ['semitones', {'value': 0, 'value_min': -24, 'value_max': 24}],
             ['cents', {'value': 0, 'value_min': -100, 'value_max': 100}],
             ['varispeed', {'value': 1.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],    # TODO: Offer different varispeed range
