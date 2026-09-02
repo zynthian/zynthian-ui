@@ -64,20 +64,26 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             0, 0,
             anchor=tkinter.CENTER,
             justify=tkinter.CENTER,
-            fill=zynthian_gui_config.color_tx)
+            fill=zynthian_gui_config.color_ml)
         self.perf_subtitle = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.CENTER,
             justify=tkinter.CENTER,
             fill=zynthian_gui_config.color_tx_off)
+        # The one colour here not taken from zynthian_gui_config: the palette
+        # has a single green, color_hl (#00c000), and nothing dimmer in that
+        # hue, and color_hl is bright enough to be part of what this is fixing.
+        # Happy to use color_off instead, or to add a ZYNTHIAN_UI_COLOR_*
+        # constant for it - see the pull request.
+        color_readout = "#008000"
         self.perf_prog = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.SW,
-            fill=zynthian_gui_config.color_ml)
+            fill=color_readout)
         self.perf_pos = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.SE,
-            fill=zynthian_gui_config.color_ml)
+            fill=color_readout)
 
     def show_waiting_label(self):
         if self.wide:
@@ -268,6 +274,17 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
         show: True for the performance face, False for the list
         """
+
+        # The topbar stays the house topbar, but during a show its title is
+        # furniture: dim it so the cue name is the brightest thing on screen.
+        # Set it the way set_title() does rather than calling set_title(), which
+        # silently early-returns under its own 30fps rate limit.
+        if self.topbar_allowed:
+            if show:
+                self.title_fg = zynthian_gui_config.color_off
+            else:
+                self.title_fg = zynthian_gui_config.color_panel_tx
+            self.label_select_path.config(fg=self.title_fg)
 
         if show:
             self.listbox.grid_remove()
