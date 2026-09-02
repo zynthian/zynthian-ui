@@ -567,14 +567,14 @@ const char* get_filename(AUDIO_PLAYER* pPlayer) {
 
 float get_duration(AUDIO_PLAYER* pPlayer) {
     if (pPlayer && pPlayer->file_open == FILE_OPEN && pPlayer->sf_info.samplerate)
-        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate / pPlayer->speed;
+        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
     return 0.0f;
 }
 
 void set_position(AUDIO_PLAYER* pPlayer, float time) {
     if (!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    sf_count_t frames = time * g_samplerate * pPlayer->speed;
+    sf_count_t frames = time * g_samplerate;
     if (frames > pPlayer->crop_end_src)
         frames = pPlayer->crop_end_src;
     else if (frames < pPlayer->crop_start_src)
@@ -589,7 +589,7 @@ void set_position(AUDIO_PLAYER* pPlayer, float time) {
 
 float get_position(AUDIO_PLAYER* pPlayer) {
     if (pPlayer && pPlayer->file_open == FILE_OPEN)
-        return (float)(pPlayer->play_pos_frames) / g_samplerate / pPlayer->speed;
+        return (float)(pPlayer->play_pos_frames) / g_samplerate;
     return 0.0;
 }
 
@@ -1111,7 +1111,7 @@ int get_track_b(AUDIO_PLAYER* pPlayer) {
 }
 
 void set_speed(AUDIO_PLAYER* pPlayer, float factor) {
-    if (!pPlayer || factor < 0.25 || factor > 4.0)
+    if (!pPlayer || factor < 0.2 || factor > 4.0)
         return;
     pPlayer->speed            = factor;
     pPlayer->time_ratio_dirty = true;
@@ -1119,7 +1119,7 @@ void set_speed(AUDIO_PLAYER* pPlayer, float factor) {
 
 float get_speed(AUDIO_PLAYER* pPlayer) {
     if (!pPlayer)
-        return 0.0;
+        return 1.0;
     return pPlayer->speed;
 }
 

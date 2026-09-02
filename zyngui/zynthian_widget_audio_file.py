@@ -609,8 +609,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
             crop_start = self.processor.controllers_dict['crop start'].value
             crop_end = self.processor.controllers_dict['crop end'].value
-            #crop_start = self.processor.controllers_dict['loop start'].value
-            #crop_end = self.processor.controllers_dict['loop end'].value
             #cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
             #selected_cue = self.processor.controllers_dict['cue'].value
             beats = 0
@@ -619,11 +617,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             dur = crop_end - crop_start
             if dur > 0:
                 pos = self.processor.controllers_dict['position'].value
-                speed = self.processor.controllers_dict['speed'].value
-                if speed > 0:
-                    pos *= (1.0 + speed)
-                elif speed < 0:
-                    pos /= (1.0 - speed)
                 cursor_pos = (pos - crop_start) / dur
             else:
                 cursor_pos = 0
@@ -780,10 +773,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 else:
                     info = 0
                 if self.samplerate:
-                    dur = crop_end - crop_start
+                    dur = self.crop_end - self.crop_start
+                    if "speed" in self.monitors:
+                        speed = self.monitors["speed"]
+                        dur /= speed
                     match info:
                         case 1: # Position
-                            time = self.format_time(self.last_cursor_pos * dur / self.samplerate)
+                            time = self.format_time(self.last_cursor_pos * dur * speed / self.samplerate)
                         case 2: # Remaining
                             time = self.format_time((1.0 - self.last_cursor_pos) * dur / self.samplerate)
                         case 3: # Samplerate

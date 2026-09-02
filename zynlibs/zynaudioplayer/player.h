@@ -312,7 +312,7 @@ int get_track_b(AUDIO_PLAYER* pPlayer);
 
 /** @brief  Set base speed
  *   @param  player_handle Handle of player provided by add_player()
- *   @param  factor Speed factor (0.25..4.0)
+ *   @param  factor Speed factor (0.2..4.0)
  */
 void set_speed(AUDIO_PLAYER* pPlayer, float factor);
 
