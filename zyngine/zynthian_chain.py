@@ -196,6 +196,26 @@ class zynthian_chain:
         for processor in self.get_processors():
             processor.set_midi_chan(chan)
 
+        self.init_MPE()
+
+    # Enable/Disable MPE for supported synth engines:
+    def init_MPE(self):
+        if self.is_synth():
+            synth_proc = self.synth_slots[0][0]
+            if synth_proc.eng_code in ("JV/Surge XT"):
+                if self.midi_chan == 0xFFFF:
+                    self.init_MPE_zone(0x0, 15)
+                else:
+                    self.init_MPE_zone(0x0, 0)
+
+    # Init MPE zone:
+    #  zone => 0x0=lower, 0xF=upper
+    #  nchans => 1-15, 0 to disable MPE zone
+    def init_MPE_zone(self, zone=0x0, nchans=0xF):
+        lib_zyncore.zmop_send_ccontrol_change(self.zmop_index, zone, 0x65, 0x0)
+        lib_zyncore.zmop_send_ccontrol_change(self.zmop_index, zone, 0x64, 0x6)
+        lib_zyncore.zmop_send_ccontrol_change(self.zmop_index, zone, 0x6, nchans)
+
     def set_title(self, title):
         """ Set user defined title
 
@@ -340,6 +360,7 @@ class zynthian_chain:
             self.audio_routes[output] = prev_slot_sources.copy()
 
         zynautoconnect.release_lock()
+        zynautoconnect.request_audio_connect()
 
     def get_input_pairs(self):
         """Get jack regexp for pairs of system:capture ports
@@ -401,6 +422,7 @@ class zynthian_chain:
                 if proc.eng_code not in ["MI", "MR"]:
                     self.midi_routes[proc.engine.jackname] = sources
         zynautoconnect.release_lock()
+        zynautoconnect.request_midi_connect()
 
     def rebuild_graph(self):
         """Build dictionary of lists of destinations mapped by source"""

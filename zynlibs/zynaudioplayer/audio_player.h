@@ -104,6 +104,8 @@ class AUDIO_PLAYER {
     float pitchshift                           = 1.0; // Ratio of MIDI pitch shift (note, bend, etc.)
     float speed                                = 1.0; // Base speed factor
     float pitch                                = 1.0; // Base pitch factor
+    int8_t semitones                           = 0; // Base pitch factor semitones
+    int8_t cents                               = 0; // Base pitch factor cents
 
     RubberBand::RubberBandStretcher* stretcher = nullptr; // Time/pitch warp
 };

@@ -1499,7 +1499,7 @@ class zynthian_chain_manager:
             # Jack, when listing ports, accepts regular expressions as the jack name.
             # So, for avoiding problems, jack names shouldn't contain regex characters.
             if sanitize:
-                jackname = re.sub("[\_]{2,}", "_", re.sub("[\s\'\*\(\)\[\]]", "_", jackname))
+                jackname = re.sub(r"[\_]{2,}", "_", re.sub(r"[\s\'\*\(\)\[\]]", "_", jackname))
             names = set()
             for processor in self.get_processors():
                 jn = processor.get_jackname()
@@ -2080,6 +2080,10 @@ class zynthian_chain_manager:
             if res:
                 return res.replace("_", " ")
         return ""
+
+    def init_MPE(self):
+        for chain in self.chains.values():
+            chain.init_MPE()
 
     # ---------------------------------------------------------------------------
     # Extended Config

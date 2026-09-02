@@ -25,7 +25,7 @@
 
 import logging
 import random
-from copy import copy
+from time import sleep
 
 # Zynthian specific modules
 import zynautoconnect
@@ -170,14 +170,16 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.add_processor("Audio Effect")
 
     def processor_remove(self):
-        self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove)
+        self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove, autoclose=False)
 
     def do_remove(self, unused=None):
+        self.state_manager.start_busy("processor_options::do_remove", "Removing processor")
         self.chain_manager.remove_processor(self.processor.chain.chain_id, self.processor)
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
         self.processor = None
-        self.zyngui.close_screen()
+        self.zyngui.prune_screen_history("processor_options", soft=False)
+        self.state_manager.end_busy("processor_options::do_remove")
 
     def preset_list(self):
         self.zyngui.cuia_bank_preset(self.processor)

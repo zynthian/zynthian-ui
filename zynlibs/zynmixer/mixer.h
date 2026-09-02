@@ -324,3 +324,4 @@ uint8_t getLastChannel();
  *  @retval uint8_t Quantity of effect sends
  */
 uint8_t getSendCount();
+

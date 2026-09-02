@@ -27,6 +27,7 @@ import logging
 import os
 
 # Zynthian specific modules
+import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
@@ -65,7 +66,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         midi_proc_count = self.chain.get_processor_count("MIDI Tool")
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
-        self.list_data.append((None, None, "> Processors"))
+        self.list_data.append((None, None, "> PROCESSORS"))
         if self.chain.is_midi():
             self.list_data.append((self.midifx_add, None, "Add MIDI-FX processor",
                                     ["Add a MIDI effects processor to this the end of this chain.", "midi_processor.png"]))
@@ -86,7 +87,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.clear_midi_learn, None, "Clean MIDI Learn",
                                    ["Remove CC bindings from all parameters of all processors in this chain.", "delete_presets.png"]))
 
-        self.list_data.append((None, None, "> Chain"))
+        self.list_data.append((None, None, "> MANAGE"))
 
         if self.chain.chain_id:
             self.list_data.append((self.move_chain, None, "Move chain",
@@ -98,7 +99,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
                                 ["Save this chain as a snapshot.\n\nThe saved snapshot may loaded or may be imported into another snapshot.", "snapshot_chains.png"]))
 
-        self.list_data.append((self.remove_chain, None, "Remove chain",
+        if self.chain.chain_id:
+            self.list_data.append((self.remove_chain, None, "Remove chain",
                                ["Remove this chain and all its processors.", "delete_chains.png"]))
 
         super().fill_list()
@@ -116,6 +118,15 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data[i][0]()
         except:
             pass
+
+    def post_action(self):
+        if self.parent:
+            self.build_view()
+            self.show()
+            self.set_select_path()
+            self.parent.refresh_chain()
+        else:
+            self.zyngui.show_screen_reset('chain_manager')
 
     def clear_midi_learn(self):
         self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in ALL processors within chain: {self.chain.get_name()}?",
@@ -135,11 +146,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def do_rename_chain(self, title):
         self.zyngui.chain_manager.set_chain_title(self.chain.chain_id, title)
-        if self.parent:
-            self.set_select_path()
-            self.parent.refresh_chain()
-        else:
-            self.zyngui.show_screen_reset('chain_manager')
+        self.post_action()
 
     def export_chain(self):
         options = {}
@@ -196,6 +203,17 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             "slot": slot
         })
 
+    def remove_all_procs_cb(self, type=None):
+        self.state_manager.start_busy("remove_all_procs", "Removing processors")
+        for processor in self.chain.get_processors(type):
+            if processor.eng_code in ["MI", "MR"]:
+                continue
+            self.zyngui.chain_manager.remove_processor(self.chain.chain_id, processor)
+        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_midi_connect(True)
+        self.state_manager.end_busy("remove_all_procs")
+        self.post_action()
+
     # Audio-FX Chain management
 
     def audiofx_add(self):
@@ -203,16 +221,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def remove_all_audiofx(self):
         self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?",
-                                 self.remove_all_procs_cb, "Audio Effect")
-
-    def remove_all_procs_cb(self, type=None):
-        for processor in self.chain.get_processors(type):
-            if processor.eng_code in ["MI", "MR"]:
-                continue
-            self.zyngui.chain_manager.remove_processor(
-                self.chain.chain_id, processor)
-        self.build_view()
-        self.show()
+                                 self.remove_all_procs_cb, "Audio Effect", autoclose=False)
 
     # MIDI-FX Chain management
 
@@ -222,7 +231,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
     def remove_all_midifx(self):
         self.zyngui.show_confirm("Do you really want to remove all MIDI effects from this chain?",
-                                 self.remove_all_procs_cb, "MIDI Tool")
+                                 self.remove_all_procs_cb, "MIDI Tool", autoclose=False)
 
     # Select Path
     def set_select_path(self):

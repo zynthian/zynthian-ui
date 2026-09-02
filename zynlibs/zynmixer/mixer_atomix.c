@@ -29,9 +29,9 @@
 #include <stdlib.h>  //provides exit
 #include <string.h>  // provides memset
 #include <unistd.h>  // provides sleep
+#include <stdatomic.h> // provides atomic (thread safe) access to variables
 
 #include "mixer.h"
-#include <arpa/inet.h> // provides inet_pton
 
 // #define DEBUG
 
@@ -40,13 +40,14 @@
 #endif
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-int g_sendEvents = 1;      // Set to 0 to exit event thread
+pthread_t g_eventThread;   // ID of low priority event thread
+int g_nRunning = 1;        // Set to 0 to exit event thread
 uint8_t g_sendCount = 0;   // Quantity of effect sends
 uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
 uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
 uint8_t g_pfl       = 0;   // Quantity of channels with PFL asserted
+uint8_t g_enableDpm = 1;   // True to enable peak meters (main mixbus always enabled)
 #ifndef MIXBUS
 double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
 float g_xf_gain_A    = 0.0; // Crossfade A gain
@@ -63,40 +64,40 @@ jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
 jack_port_t* g_pflOutPortA;// Pointer to PFL output port A
 jack_port_t* g_pflOutPortB;// Pointer to PFL output port B
 
+_Atomic jack_nframes_t g_nCleanFrame = 0; // frames since jack epockh to trigger channel cleanup (0 for none)
+_Atomic jack_nframes_t g_nNextFrame = 0; // Frames since jack epoch
+
 // Structure describing a channel strip
 struct channel_strip {
+    // Members set in RT thread
     jack_port_t* inPortA;  // Jack input port A
     jack_port_t* inPortB;  // Jack input port B
     jack_port_t* outPortA; // Jack output port A
     jack_port_t* outPortB; // Jack output port B
-    float gain;            // Current gain 0..10
-    float level;           // Current fader level 0..1
-    float reqlevel;        // Requested fader level 0..1
-    float balance;         // Current balance -1..+1
-    float reqbalance;      // Requested balance -1..+1
-    float send[MAX_CHANNELS]; // Current fx send levels
-    float dpmA;            // Current peak programme A-leg
-    float dpmB;            // Current peak programme B-leg
-    float holdA;           // Current peak hold level A-leg
-    float holdB;           // Current peak hold level B-leg
-    float dpmAlast;        // Last peak programme A-leg
-    float dpmBlast;        // Last peak programme B-leg
-    float holdAlast;       // Last peak hold level A-leg
-    float holdBlast;       // Last peak hold level B-leg
-    uint8_t mute;          // 1 if muted
-    uint8_t mono;          // 1 if mono
-    uint8_t solo;          // 1 if solo
-    uint8_t ms;            // 1 if MS decoding
-    uint8_t phase;         // 1 if channel B phase reversed
-    uint8_t pfl;           // 1 if PFL
+    // Atomic members set in non-RT thread
+    _Atomic float gain;            // Current gain 0..10
+    _Atomic float level;           // Current fader level 0..1
+    _Atomic float reqlevel;        // Requested fader level 0..1
+    _Atomic float balance;         // Current balance -1..+1
+    _Atomic float reqbalance;      // Requested balance -1..+1
+    _Atomic float send[MAX_CHANNELS]; // Current fx send levels
+    _Atomic uint8_t mute;          // 1 if muted
+    _Atomic uint8_t mono;          // 1 if mono
+    _Atomic uint8_t solo;          // 1 if solo
+    _Atomic uint8_t ms;            // 1 if MS decoding
+    _Atomic uint8_t phase;         // 1 if channel B phase reversed
+    _Atomic uint8_t pfl;           // 1 if PFL
+    _Atomic float dpmA;            // Current peak programme A-leg
+    _Atomic float dpmB;            // Current peak programme B-leg
+    _Atomic float holdA;           // Current peak hold level A-leg
+    _Atomic float holdB;           // Current peak hold level B-leg
+    _Atomic uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
+    _Atomic uint8_t normalise;     // 1 if channel normalised to main output
+    _Atomic uint8_t inRouted;      // 1 if source routed to channel
+    _Atomic uint8_t outRouted;     // 1 if output routed
 #ifndef MIXBUS
-    uint8_t ABMixGroup;    // AB mix-group: 0 => None, 1 => A, 2 => B
+    _Atomic uint8_t ABMixGroup;    // AB mix-group: 0 => None, 1 => A, 2 => B
 #endif
-    uint8_t sendMode[MAX_CHANNELS]; // 0: post-fader send, 1: pre-fader send
-    uint8_t normalise;     // 1 if channel normalised to main output
-    uint8_t inRouted;      // 1 if source routed to channel
-    uint8_t outRouted;     // 1 if output routed
-    uint8_t enable_dpm;    // 1 to enable calculation of peak meter
 };
 
 struct fx_send {
@@ -104,21 +105,20 @@ struct fx_send {
     jack_port_t* outPortB; // Jack output port B
     jack_default_audio_sample_t* bufferA; // Holds audio samples
     jack_default_audio_sample_t* bufferB; // Holds audio samples
-    float level;           // Current fader level 0..1
+    _Atomic float level;           // Current fader level 0..1
 };
 
 jack_client_t* g_jackClient;
-struct channel_strip* g_channelStrips[MAX_CHANNELS];
-int g_stripToDelete = -1;
+_Atomic(struct channel_strip*) g_channelStrips[MAX_CHANNELS];
+_Atomic(struct channel_strip*) g_channelStripsRemoved[MAX_CHANNELS]; // Pointers to removed channel strips
 #ifndef MIXBUS
-struct fx_send* g_fxSends[MAX_CHANNELS];
-int g_sendToDelete = -1;
+_Atomic(struct fx_send*) g_fxSends[MAX_CHANNELS];
+_Atomic(struct fx_send*) g_fxSendsRemoved[MAX_CHANNELS]; // Pointers to removed sends
 #endif
-unsigned int g_nDampingCount  = 0;
-unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
-unsigned int g_nHoldCount     = 0;
-float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
-
+_Atomic unsigned int g_nDampingCount  = 0;
+_Atomic unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
+_Atomic unsigned int g_nHoldCount     = 0;
+_Atomic float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
 jack_nframes_t g_samplerate                     = 48000; // Jack samplerate used to calculate damping factor
 jack_nframes_t g_buffersize                     = 1024;  // Jack buffer size used to calculate damping factor
 jack_default_audio_sample_t* g_soloBufferA    = NULL;  // Ponter to buffer used for solo bus
@@ -140,13 +140,50 @@ static float convertToDBFS(float raw) {
     return fValue;
 }
 
+void _doRemoveStrip(uint8_t chan) {
+    struct channel_strip* strip = g_channelStripsRemoved[chan];
+    jack_port_unregister(g_jackClient, strip->inPortA);
+    jack_port_unregister(g_jackClient, strip->inPortB);
+    jack_port_unregister(g_jackClient, strip->outPortA);
+    jack_port_unregister(g_jackClient, strip->outPortB);
+    free(strip);
+    g_channelStripsRemoved[chan] = NULL;
+}
+
+#ifndef MIXBUS
+void _doRemoveSend(uint8_t send) {
+    struct fx_send* strip = g_fxSendsRemoved[send];
+    jack_port_unregister(g_jackClient, strip->outPortA);
+    jack_port_unregister(g_jackClient, strip->outPortB);
+    free(strip);
+    g_fxSendsRemoved[send] = NULL;
+}
+#endif
+
+void* eventThreadFn(void* param) {
+    while (g_nRunning) {
+        if (g_nCleanFrame && (int32_t)(g_nNextFrame - g_nCleanFrame) > 0) {
+            pthread_mutex_lock(&mutex);
+            for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
+                if (g_channelStripsRemoved[chan])
+                    _doRemoveStrip(chan);
+#ifndef MIXBUS
+                if (g_fxSendsRemoved[chan])
+                    _doRemoveSend(chan);
+#endif
+            }
+            pthread_mutex_unlock(&mutex);
+            g_nCleanFrame = 0;
+        }
+        usleep(10000);
+    }
+    return NULL;
+}
 
 static int onJackProcess(jack_nframes_t frames, void* args) {
     jack_default_audio_sample_t *pPflInA, *pPflInB, *pPflOutA, *pPflOutB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
     unsigned int frame;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM, fpreFaderSampleA, fpreFaderSampleB;
-
-    pthread_mutex_lock(&mutex);
 
 /*  Solo / PFL
     The chain mixer has a pair of buffers (A/B) that are cleared at start of period, then populated with samples of any inputs that are solo.
@@ -164,7 +201,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     pPflOutB = jack_port_get_buffer(g_pflOutPortB, frames);
 
 #ifdef MIXBUS
-    // Clear the mixbus output buffers to allow them to be directly populated with effects return normalisd frames.
+    // Clear the mixbus output buffers to allow them to be directly populated with effects return normalised frames.
     memset(g_mainNormaliseBufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
     memset(g_mainNormaliseBufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
     // Populate solo buffers from trunk
@@ -191,10 +228,15 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     memset(pPflOutA, 0.0, frames * sizeof(jack_default_audio_sample_t));
     memset(pPflOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
     // Clear send buffers.
+    //!@todo This creates array on each process loop but reduces overhead of atomic access to each send later
+    struct fx_send* fxSend[MAX_CHANNELS];
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
-        if (g_fxSends[send]) {
-            memset(g_fxSends[send]->bufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
-            memset(g_fxSends[send]->bufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
+        fxSend[send] = g_fxSends[send];
+        if (fxSend[send]) {
+            fxSend[send]->bufferA = jack_port_get_buffer(fxSend[send]->outPortA, frames);
+            fxSend[send]->bufferB = jack_port_get_buffer(fxSend[send]->outPortB, frames);
+            memset(fxSend[send]->bufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
+            memset(fxSend[send]->bufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
         }
     }
 #endif
@@ -202,12 +244,37 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     // Process each channel in reverse order (so that main mixbus is last)
     uint8_t chan = g_lastStrip;
     while (chan--) {
-        struct channel_strip* strip = g_channelStrips[chan];
+        struct channel_strip* strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_relaxed);
         if (strip == NULL)
             continue;
+        // Use local vars to reduce expensive atomic loads
+        float  gain   = atomic_load_explicit(&strip->gain, memory_order_relaxed);
+        uint8_t phase = atomic_load_explicit(&strip->phase, memory_order_relaxed);
+        uint8_t ms    = atomic_load_explicit(&strip->ms, memory_order_relaxed);
+        uint8_t mono  = atomic_load_explicit(&strip->mono, memory_order_relaxed);
+        uint8_t solo  = atomic_load_explicit(&strip->solo, memory_order_relaxed);
+        uint8_t pfl  = atomic_load_explicit(&strip->pfl, memory_order_relaxed);
+        uint8_t normalise  = atomic_load_explicit(&strip->normalise, memory_order_relaxed);
+        float dpmA = atomic_load_explicit(&strip->dpmA, memory_order_relaxed);
+        float dpmB = atomic_load_explicit(&strip->dpmB, memory_order_relaxed);
+        float holdA = atomic_load_explicit(&strip->holdA, memory_order_relaxed);
+        float holdB = atomic_load_explicit(&strip->holdB, memory_order_relaxed);
+        uint8_t inRouted = atomic_load_explicit(&strip->inRouted, memory_order_relaxed);
+        uint8_t outRouted = atomic_load_explicit(&strip->outRouted, memory_order_relaxed);
+
+#ifndef MIXBUS
+        float sendLevel[MAX_CHANNELS];
+        uint8_t sendMode[MAX_CHANNELS];
+        float fxLevel[MAX_CHANNELS];
+        for (uint8_t s = 0; s < g_lastSend; ++s) {
+            sendLevel[s] = atomic_load_explicit(&strip->send[s], memory_order_relaxed);
+            sendMode[s]  = atomic_load_explicit(&strip->sendMode[s], memory_order_relaxed);
+            fxLevel[s]   = fxSend[s] ? atomic_load_explicit(&fxSend[s]->level, memory_order_relaxed) : 0.0f;
+        }
+#endif
 
         // Only process connected inputs and mixbuses
-        if (strip->inRouted
+        if (inRouted
 #ifdef MIXBUS
             || chan == 0
 #endif
@@ -266,7 +333,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             pInA = jack_port_get_buffer(strip->inPortA, frames);
             pInB = jack_port_get_buffer(strip->inPortB, frames);
 
-            if (strip->outRouted) {
+            if (outRouted) {
                 // Direct output so prepare output audio buffers
                 pChanOutA = jack_port_get_buffer(strip->outPortA, frames);
                 pChanOutB = jack_port_get_buffer(strip->outPortB, frames);
@@ -295,22 +362,22 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 fSampleB = pInB[frame];
 #endif
                 // Handle gain
-                fSampleA *= strip->gain;
-                fSampleB *= strip->gain;
+                fSampleA *= gain;
+                fSampleB *= gain;
 
                 // Handle channel phase reverse
-                if (strip->phase)
+                if (phase)
                     fSampleB = -fSampleB;
 
                 // Decode M+S
-                if (strip->ms) {
+                if (ms) {
                     fSampleM = fSampleA + fSampleB;
                     fSampleB = fSampleA - fSampleB;
                     fSampleA = fSampleM;
                 }
 
                 // Handle mono
-                if (strip->mono) {
+                if (mono) {
                     fSampleA = (fSampleA + fSampleB) / 2.0;
                     fSampleB = fSampleA;
                 }
@@ -336,17 +403,17 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     pChanOutA[frame] += fSampleA;
                     pChanOutB[frame] += fSampleB;
                 }
-                if (strip->solo) {
+                if (solo) {
                     g_soloBufferA[frame] += fSampleA;
                     g_soloBufferB[frame] += fSampleB;
                 }
-                if (strip->pfl) {
+                if (pfl) {
                     pPflOutA[frame] += fpreFaderSampleA;
                     pPflOutB[frame] += fpreFaderSampleB;
                 }
 #ifdef MIXBUS
                 // Add frames to main mixbus normalise buffer
-                if (strip->normalise) {
+                if (normalise) {
                     g_mainNormaliseBufferA[frame] += fSampleA;
                     g_mainNormaliseBufferB[frame] += fSampleB;
                 }
@@ -358,18 +425,18 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
 #else
                 // Add fx send output frames only for input channels
                 for (uint8_t send = 0; send < g_lastSend; ++send) {
-                    if (g_fxSends[send]) {
-                        if (strip->sendMode[send] == 0) {
-                            g_fxSends[send]->bufferA[frame] += fSampleA * strip->send[send] * g_fxSends[send]->level;
-                            g_fxSends[send]->bufferB[frame] += fSampleB * strip->send[send] * g_fxSends[send]->level;
-                        } else if (strip->sendMode[send] == 1) {
-                            g_fxSends[send]->bufferA[frame] += fpreFaderSampleA * strip->send[send] * g_fxSends[send]->level;
-                            g_fxSends[send]->bufferB[frame] += fpreFaderSampleB * strip->send[send] * g_fxSends[send]->level;
+                    if (fxSend[send]) {
+                        if (sendMode[send] == 0) {
+                            fxSend[send]->bufferA[frame] += fSampleA * sendLevel[send] * fxLevel[send];
+                            fxSend[send]->bufferB[frame] += fSampleB * sendLevel[send] * fxLevel[send];
+                        } else if (sendMode[send] == 1) {
+                            fxSend[send]->bufferA[frame] += fpreFaderSampleA * sendLevel[send] * fxLevel[send];
+                            fxSend[send]->bufferB[frame] += fpreFaderSampleB * sendLevel[send] * fxLevel[send];
                         }
-                        if(isinf(g_fxSends[send]->bufferA[frame]))
-                            g_fxSends[send]->bufferA[frame] = 1.0;
-                        if(isinf(g_fxSends[send]->bufferB[frame]))
-                            g_fxSends[send]->bufferB[frame] = 1.0;
+                        if(isinf(fxSend[send]->bufferA[frame]))
+                            fxSend[send]->bufferA[frame] = 1.0;
+                        if(isinf(fxSend[send]->bufferB[frame]))
+                            fxSend[send]->bufferB[frame] = 1.0;
                     }
                 }
 #endif
@@ -377,37 +444,41 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 curLevelB += fDeltaB;
 
                 // Process DPM
-                if (strip->enable_dpm) {
+                if (g_enableDpm
+#ifdef MIXBUS
+                    || chan == 0
+#endif
+                ) {
                     fSampleA = fabs(fSampleA);
-                    if (fSampleA > strip->dpmA)
-                        strip->dpmA = fSampleA;
+                    if (fSampleA > dpmA)
+                        dpmA = fSampleA;
                     fSampleB = fabs(fSampleB);
-                    if (fSampleB > strip->dpmB)
-                        strip->dpmB = fSampleB;
+                    if (fSampleB > dpmB)
+                        dpmB = fSampleB;
 
                     // Update peak hold and scale DPM for damped release
-                    if (strip->dpmA > strip->holdA)
-                        strip->holdA = strip->dpmA;
-                    if (strip->dpmB > strip->holdB)
-                        strip->holdB = strip->dpmB;
+                    if (dpmA > holdA)
+                        holdA = dpmA;
+                    if (dpmB > holdB)
+                        holdB = dpmB;
                 }
             }
             if (g_nHoldCount == 0) {
                 // Only update peak hold each g_nHoldCount cycles
-                strip->holdA = strip->dpmA;
-                strip->holdB = strip->dpmB;
+                holdA = dpmA;
+                holdB = dpmB;
             }
             if (g_nDampingCount == 0) {
                 // Only update damping release each g_nDampingCount cycles
-                strip->dpmA *= g_fDpmDecay;
-                strip->dpmB *= g_fDpmDecay;
+                dpmA = g_fDpmDecay * dpmA;
+                dpmB = g_fDpmDecay * dpmB;
             }
         } else {
-            if (strip->enable_dpm) {
-                strip->dpmA  = 0.0f;
-                strip->dpmB  = 0.0f;
-                strip->holdA = 0.0f;
-                strip->holdB = 0.0f;
+            if (g_enableDpm) {
+                dpmA  = 0.0f;
+                dpmB  = 0.0f;
+                holdA = 0.0f;
+                holdB = 0.0f;
             }
             if (strip->outRouted) {
                 // Silence channel outputs
@@ -417,6 +488,10 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 memset(pChanOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
             }
         }
+        atomic_store_explicit(&strip->dpmA, dpmA, memory_order_relaxed);
+        atomic_store_explicit(&strip->dpmB, dpmB, memory_order_relaxed);
+        atomic_store_explicit(&strip->holdA, holdA, memory_order_relaxed);
+        atomic_store_explicit(&strip->holdB, holdB, memory_order_relaxed);
     }
 
 #ifndef MIXBUS
@@ -433,50 +508,41 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     else
         --g_nHoldCount;
 
-    // Mark as deleted the pending-to-delete channel/send
-    if (g_stripToDelete >= 0) {
-        g_channelStrips[g_stripToDelete] = NULL;
-        g_stripToDelete = -1;
-    }
-#ifndef MIXBUS
-    if (g_sendToDelete >= 0) {
-        g_fxSends[g_sendToDelete] = NULL;
-        g_sendToDelete = -1;
-        g_sendCount--;
-    }
-#endif
-
-    pthread_mutex_unlock(&mutex);
+    ++g_nNextFrame;
     return 0;
 }
 
 void print_dpm_info(uint8_t chan) {
     // Debug helper to print current DPM state
-    struct channel_strip* strip = g_channelStrips[chan];
+    struct channel_strip* strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_relaxed);
     if (strip)
-        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\nDamping period: %u\n",
+        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n\nHold count: %u\nDamping period: %u\n",
             strip->dpmA,
             strip->dpmB,
             strip->holdA,
             strip->holdB,
-            strip->enable_dpm?"Enabled":"Disabled",
             g_nHoldCount,
             g_nDampingPeriod
         );
 }
 
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
-    for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
-        if (g_channelStrips[chan] == NULL)
+    for (uint8_t chan = 0; chan < g_lastStrip; ++chan) {
+        struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[chan], memory_order_relaxed);
+        if (strip == NULL)
             continue;
-        if (jack_port_connected(g_channelStrips[chan]->inPortA) > 0 || (jack_port_connected(g_channelStrips[chan]->inPortB) > 0))
-            g_channelStrips[chan]->inRouted = 1;
+        uint8_t inRouted = atomic_load_explicit(&strip->inRouted, memory_order_relaxed);
+        uint8_t outRouted = atomic_load_explicit(&strip->outRouted, memory_order_relaxed);
+        if (jack_port_connected(strip->inPortA) > 0 || (jack_port_connected(strip->inPortB) > 0))
+            inRouted = 1;
         else
-            g_channelStrips[chan]->inRouted = 0;
-        if (jack_port_connected(g_channelStrips[chan]->outPortA) > 0 || (jack_port_connected(g_channelStrips[chan]->outPortB) > 0))
-            g_channelStrips[chan]->outRouted = 1;
+            inRouted = 0;
+        if (jack_port_connected(strip->outPortA) > 0 || (jack_port_connected(strip->outPortB) > 0))
+            outRouted = 1;
         else
-            g_channelStrips[chan]->outRouted = 0;
+            outRouted = 0;
+        atomic_store_explicit(&strip->inRouted, inRouted, memory_order_relaxed);
+        atomic_store_explicit(&strip->outRouted, outRouted, memory_order_relaxed);
     }
 }
 
@@ -493,7 +559,7 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         return 0;
     g_buffersize     = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
-    pthread_mutex_lock(&mutex);
+    // Can recreate buffers here because this and process callbacks are not concurrent in jack
     free(g_soloBufferA);
     free(g_soloBufferB);
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -503,24 +569,17 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
     free(g_mainNormaliseBufferB);
     g_mainNormaliseBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
     g_mainNormaliseBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
-#else
-    for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
-        if (g_fxSends[chan]) {
-            //!@todo Do not cache jack_port_get_buffer
-            g_fxSends[chan]->bufferA = jack_port_get_buffer(g_fxSends[chan]->outPortA, g_buffersize);
-            g_fxSends[chan]->bufferB = jack_port_get_buffer(g_fxSends[chan]->outPortB, g_buffersize);
-        }
-    }
 #endif
-    pthread_mutex_unlock(&mutex);
     return 0;
 }
 
 int init() {
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         g_channelStrips[chan] = NULL;
+        g_channelStripsRemoved[chan] = NULL;
 #ifndef MIXBUS
         g_fxSends[chan] = NULL;
+        g_fxSendsRemoved[chan] = NULL;
 #endif
     }
 
@@ -593,7 +652,7 @@ int init() {
         return -1;
     }
 
-#ifdef MIXBUS
+    #ifdef MIXBUS
     int8_t id = addStrip(); // Main mixbus
     id = addStrip(); // Aux mixbus
     setLevel(id, 1.0); // Default unity gain for aux bus
@@ -625,12 +684,26 @@ int init() {
     fprintf(stderr, "libzynmixer: Activated client\n");
 #endif
 
+    // Configure and start event thread
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    if (pthread_create(&g_eventThread, &attr, eventThreadFn, NULL)) {
+        fprintf(stderr, "zynmixer error: failed to create event thread\n");
+        return 0;
+    }
+
+    // Check if any connections occured before handler started
+    onJackConnect(0, 0, 0, 0);
+
     fprintf(stderr, "Started %s\n", jackname);
     return 1;
 }
 
 void end() {
-    g_sendEvents = 0;
+    g_nRunning = 0;
+    void* status;
+    pthread_join(g_eventThread, &status);
 
     //Soft mute output
     setLevel(0, 0.0);
@@ -651,81 +724,106 @@ void end() {
 #endif
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
         free(g_channelStrips[chan]);
+        free(g_channelStripsRemoved[chan]);
 #ifndef MIXBUS
         free(g_fxSends[chan]);
+        free(g_fxSendsRemoved[chan]);
 #endif
     }
     fprintf(stderr, "zynmixer ended\n");
 }
 
 void setGain(uint8_t channel, float gain) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || gain < 0.0f)
+    if (channel >= MAX_CHANNELS ||  gain < 0.0f)
         return;
-    g_channelStrips[channel]->gain = gain;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->gain, gain, memory_order_relaxed);
 }
 
 float getGain(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0.0f;
-    return g_channelStrips[channel]->gain;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0.0f;
+    return atomic_load_explicit(&strip->gain, memory_order_relaxed);
 }
 
 void setLevel(uint8_t channel, float level) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->reqlevel = level;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->reqlevel, level, memory_order_relaxed);
 }
 
 float getLevel(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0.0f;
-    return g_channelStrips[channel]->reqlevel;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0.0f;
+    return atomic_load_explicit(&strip->reqlevel, memory_order_relaxed);
 }
 
 void setBalance(uint8_t channel, float balance) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
+        return;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
         return;
     if (fabs(balance) > 1)
         return;
-    g_channelStrips[channel]->reqbalance = balance;
+    atomic_store_explicit(&strip->reqbalance, balance, memory_order_relaxed);
 }
 
 float getBalance(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0.0f;
-    return g_channelStrips[channel]->reqbalance;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0.0f;
+    return atomic_load_explicit(&strip->reqbalance, memory_order_relaxed);
 }
 
 void setMute(uint8_t channel, uint8_t mute) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->mute = mute;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->mute, mute, memory_order_relaxed);
 }
 
 uint8_t getMute(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->mute;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->mute, memory_order_relaxed);
 }
 
 void toggleMute(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return;
-    uint8_t mute;
-    mute = g_channelStrips[channel]->mute;
-    if (mute)
+    if (getMute(channel))
         setMute(channel, 0);
     else
         setMute(channel, 1);
 }
 
 void setSolo(uint8_t channel, uint8_t solo) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
+        return;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
         return;
     solo = solo?1:0;
-    if (g_channelStrips[channel]->solo == solo)
+    if (strip->solo == solo)
         return;
-    g_channelStrips[channel]->solo = solo;
+    atomic_store_explicit(&strip->solo, solo, memory_order_relaxed);
     if (solo)
         ++g_solo;
     else
@@ -733,27 +831,24 @@ void setSolo(uint8_t channel, uint8_t solo) {
 }
 
 uint8_t getSolo(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->solo;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->solo, memory_order_relaxed);
 }
 
 void toggleSolo(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return;
-    uint8_t solo;
-    solo = g_channelStrips[channel]->mute;
-    if (solo)
+    if (getSolo(channel))
         setSolo(channel, 0);
     else
         setSolo(channel, 1);
 }
 
 void clearSolo() {
-    for (uint8_t channel = 0; channel < MAX_CHANNELS; ++channel) {
-        if (g_channelStrips[channel])
-            g_channelStrips[channel]->solo = 0;
-    }
+    for (uint8_t channel = 0; channel < g_lastStrip; ++channel)
+        setSolo(channel, 0);
     g_solo = 0;
 }
 
@@ -762,12 +857,15 @@ uint8_t getGlobalSolo() {
 }
 
 void setPfl(uint8_t channel, uint8_t pfl) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
+        return;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
         return;
     pfl = pfl?1:0;
-    if (g_channelStrips[channel]->pfl == pfl)
+    if (strip->pfl == pfl)
         return;
-    g_channelStrips[channel]->pfl = pfl;
+    atomic_store_explicit(&strip->pfl, pfl, memory_order_relaxed);
     if (pfl)
         ++g_pfl;
     else
@@ -775,27 +873,24 @@ void setPfl(uint8_t channel, uint8_t pfl) {
 }
 
 uint8_t getPfl(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->pfl;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->pfl, memory_order_relaxed);
 }
 
 void togglePFL(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return;
-    uint8_t pfl;
-    pfl = g_channelStrips[channel]->mute;
-    if (pfl)
+    if (getPfl(channel))
         setPfl(channel, 0);
     else
         setPfl(channel, 1);
 }
 
 void clearPfl() {
-    for (uint8_t channel = 0; channel < MAX_CHANNELS; ++channel) {
-        if (g_channelStrips[channel])
-            g_channelStrips[channel]->pfl = 0;
-    }
+    for (uint8_t channel = 0; channel < g_lastStrip; ++channel)
+        setPfl(channel, 0);
     g_pfl = 0;
 }
 
@@ -825,16 +920,23 @@ float getGlobalXFader() {
 }
 
 void setABMixGroup(uint8_t channel, uint8_t ab) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
+        return;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
         return;
     if (ab > 2) ab = 2;
-    g_channelStrips[channel]->ABMixGroup = ab;
+    strip->ABMixGroup = ab;
+    atomic_store_explicit(&strip->ABMixGroup, ab, memory_order_relaxed);
 }
 
 uint8_t getABMixGroup(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->ABMixGroup;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->ABMixGroup, memory_order_relaxed);
 }
 #else
 void setPflLevel(float level) {
@@ -847,48 +949,64 @@ float getPflLevel() {
 #endif
 
 void setPhase(uint8_t channel, uint8_t phase) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->phase = phase;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->phase, phase, memory_order_relaxed);
 }
 
 uint8_t getPhase(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->phase;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->phase, memory_order_relaxed);
 }
 
 void setSendMode(uint8_t channel, uint8_t send, uint8_t mode) {
-    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS || g_channelStrips[channel] == NULL || mode > 1)
+    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->sendMode[send] = mode;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->sendMode[send], mode, memory_order_relaxed);
 }
 
 uint8_t getSendMode(uint8_t channel, uint8_t send) {
-    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->sendMode[send];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->sendMode[send], memory_order_relaxed);
 }
 
 void togglePhase(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return;
-    if (g_channelStrips[channel]->phase)
-        g_channelStrips[channel]->phase = 0;
+    if (getPhase(channel))
+        setPhase(channel, 0);
     else
-        g_channelStrips[channel]->phase = 1;
+        setPhase(channel, 1);
 }
 
 void setSend(uint8_t channel, uint8_t send, float level) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || send >= MAX_CHANNELS)
+    if (channel >= MAX_CHANNELS || send >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->send[send] = level;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->send[send], level, memory_order_relaxed);
 }
 
 float getSend(uint8_t channel, uint8_t send) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL || send >= MAX_CHANNELS)
+    if (channel >= MAX_CHANNELS)
         return 0.0f;
-    return g_channelStrips[channel]->send[send];
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0.0f;
+    return atomic_load_explicit(&strip->phase, memory_order_relaxed);
 }
 
 void setNormalise(uint8_t channel, uint8_t enable) {
@@ -896,9 +1014,12 @@ void setNormalise(uint8_t channel, uint8_t enable) {
     fprintf(stderr, "Normalisation not implemented in channel strips\n");
     return;
 #endif
-    if (channel == 0 || channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel == 0 || channel >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->normalise = enable;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->normalise, enable, memory_order_relaxed);
 }
 
 uint8_t getNormalise(uint8_t channel) {
@@ -906,51 +1027,62 @@ uint8_t getNormalise(uint8_t channel) {
     fprintf(stderr, "Normalisation not implemented in channel strips\n");
     return 0;
 #endif
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->normalise;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->normalise, memory_order_relaxed);
 }
 
 void setMono(uint8_t channel, uint8_t mono) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->mono = (mono != 0);
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->mono, mono != 0, memory_order_relaxed);
 }
 
 uint8_t getMono(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->mono;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->mono, memory_order_relaxed);
 }
 
 void toggleMono(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return;
-    if (g_channelStrips[channel]->mono)
-        g_channelStrips[channel]->mono = 0;
+    if (getMono(channel))
+        setMono(channel, 0);
     else
-        g_channelStrips[channel]->mono = 1;
+        setMono(channel, 1);
 }
 
 void setMS(uint8_t channel, uint8_t enable) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return;
-    g_channelStrips[channel]->ms = enable != 0;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return;
+    atomic_store_explicit(&strip->ms, enable != 0, memory_order_relaxed);
 }
 
 uint8_t getMS(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
         return 0;
-    return g_channelStrips[channel]->ms;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
+        return 0;
+    return atomic_load_explicit(&strip->ms, memory_order_relaxed);
 }
 
 void toggleMS(uint8_t channel) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return;
-    if (g_channelStrips[channel]->ms)
-        g_channelStrips[channel]->ms = 0;
+    if (getMS(channel))
+        setMS(channel, 1);
     else
-        g_channelStrips[channel]->ms = 1;
+        setMS(channel, 0);
 }
 
 void reset(uint8_t channel) {
@@ -960,63 +1092,59 @@ void reset(uint8_t channel) {
     setMute(channel, 0);
     setMono(channel, 0);
     setPhase(channel, 0);
-    for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
+    for (uint8_t send = 0; send < g_lastSend; ++send) {
         setSend(channel, send, 0.0);
         setSendMode(channel, send, 0);
     }
 }
 
 float getDpm(uint8_t channel, uint8_t leg) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
+        return -200.0f;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
         return -200.0f;
     if (leg)
-        return convertToDBFS(g_channelStrips[channel]->dpmB);
-    return convertToDBFS(g_channelStrips[channel]->dpmA);
+        return convertToDBFS(atomic_load_explicit(&strip->dpmB, memory_order_relaxed));
+    return convertToDBFS(atomic_load_explicit(&strip->dpmA, memory_order_relaxed));
 }
 
 float getDpmHold(uint8_t channel, uint8_t leg) {
-    if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
+    if (channel >= MAX_CHANNELS)
+        return -200.0f;
+    struct channel_strip *strip = atomic_load_explicit(&g_channelStrips[channel], memory_order_relaxed);
+    if (!strip)
         return -200.0f;
     if (leg)
-        return convertToDBFS(g_channelStrips[channel]->holdB);
-    return convertToDBFS(g_channelStrips[channel]->holdA);
+        return convertToDBFS(atomic_load_explicit(&strip->holdB, memory_order_relaxed));
+    return convertToDBFS(atomic_load_explicit(&strip->holdA, memory_order_relaxed));
 }
 
 void updateDpmStates(dpm_struct* values, uint8_t count) {
     if (count == 0 || count >= MAX_CHANNELS)
         count = MAX_CHANNELS - 1;
     for (uint8_t i = 0; i < count; ++i) {
-        if (i < g_lastStrip) {
-            values[i].a = getDpm(i, 0);
-            values[i].b = getDpm(i, 1);
-            values[i].aHold = getDpmHold(i, 0);
-            values[i].bHold = getDpmHold(i, 1);
-            values[i].mono = getMono(i);
-        } else {
-            memset(values + i, 0, sizeof(dpm_struct));
-        }
+        values[i].a = getDpm(i, 0);
+        values[i].b = getDpm(i, 1);
+        values[i].aHold = getDpmHold(i, 0);
+        values[i].bHold = getDpmHold(i, 1);
+        values[i].mono = getMono(i);
     }
 }
 
 void enableDpm(uint8_t enable) {
-    struct channel_strip* pChannel;
+    g_enableDpm = enable;
+    //!@todo Do we need to silence channel dpm?
     for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
-        if (g_channelStrips[chan] == NULL)
+        struct channel_strip* strip = g_channelStrips[chan];
+        if (!strip)
             continue;
-#ifdef MIXBUS
-        if (chan == 0)
-            g_channelStrips[chan]->enable_dpm = 1;
-        else if (chan == 1)
-            g_channelStrips[chan]->enable_dpm = 0;
-        else
-#endif
-        g_channelStrips[chan]->enable_dpm = enable;
         // Silence disabled DPMs
-        if (!g_channelStrips[chan]->enable_dpm) {
-            g_channelStrips[chan]->dpmA  = 0.0f;
-            g_channelStrips[chan]->dpmB  = 0.0f;
-            g_channelStrips[chan]->holdA = 0.0f;
-            g_channelStrips[chan]->holdB = 0.0f;
+        if (!g_enableDpm) {
+            strip->dpmA  = 0.0f;
+            strip->dpmB  = 0.0f;
+            strip->holdA = 0.0f;
+            strip->holdB = 0.0f;
         }
     }
 }
@@ -1024,10 +1152,14 @@ void enableDpm(uint8_t enable) {
 int8_t addStrip() {
     uint8_t chan;
     for (chan = 0; chan < MAX_CHANNELS; ++chan) {
-        if (g_channelStrips[chan])
+        pthread_mutex_lock(&mutex);
+        struct channel_strip* strip = g_channelStrips[chan];
+        struct channel_strip* stripRemoved = g_channelStripsRemoved[chan];
+        pthread_mutex_unlock(&mutex);
+        if (strip || stripRemoved)
             continue;
-        struct channel_strip* strip = malloc(sizeof(struct channel_strip));
-        if (strip == NULL) {
+        strip = malloc(sizeof(struct channel_strip));
+        if (!strip) {
             fprintf(stderr, "Failed to allocate memory for channel strip.\n");
             return -1;
         }
@@ -1079,18 +1211,14 @@ int8_t addStrip() {
         strip->normalise  = 0;
         strip->inRouted   = 0;
         strip->outRouted  = 0;
-        strip->enable_dpm = 1;
         for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
             strip->send[send] = 0.0;
             strip->sendMode[send] = 0;
         }
         strip->dpmA = strip->holdA = 0.0f;
         strip->dpmB = strip->holdB = 0.0f;
-        strip->dpmAlast  = 100.0f;
-        strip->dpmBlast  = 100.0f;
-        strip->holdAlast = 100.0f;
-        strip->holdBlast = 100.0f;
         g_channelStrips[chan] = strip;
+
         if (chan >= g_lastStrip)
             g_lastStrip = chan + 1;
         return chan;
@@ -1107,24 +1235,17 @@ int8_t removeStrip(uint8_t chan) {
 #endif
     if (chan >= MAX_CHANNELS || g_channelStrips[chan] == NULL)
         return -1;
+    pthread_mutex_lock(&mutex);
+    g_channelStripsRemoved[chan] = atomic_exchange(&g_channelStrips[chan], NULL);
+    g_nCleanFrame = g_nNextFrame;
+    pthread_mutex_unlock(&mutex);
 
-    struct channel_strip* pstrip = g_channelStrips[chan];
-    // Flag strip to be marked as deleted at the end of this period
-    g_stripToDelete = chan;
-    // Wait until jack process has marked the strip as deleted
-    while (g_channelStrips[chan]) usleep(10000);
-    // Unregister ports and free memory
-    jack_port_unregister(g_jackClient, pstrip->inPortA);
-    jack_port_unregister(g_jackClient, pstrip->inPortB);
-    jack_port_unregister(g_jackClient, pstrip->outPortA);
-    jack_port_unregister(g_jackClient, pstrip->outPortB);
-    free(pstrip);
-    // Update g_lastStrip value
-    for (uint8_t g_lastStrip = MAX_CHANNELS - 1; g_lastStrip > 0; --g_lastStrip) {
-        if (g_channelStrips[g_lastStrip])
-            break;
+    g_lastStrip = 1;
+    for (uint8_t i = 1; i < MAX_CHANNELS; ++i) {
+        if (g_channelStrips[i])
+            g_lastStrip = i + 1;
     }
-    return chan;
+    return g_lastStrip - 1;
 }
 
 int8_t addSend() {
@@ -1132,36 +1253,35 @@ int8_t addSend() {
     fprintf(stderr, "Effects sends not implemented in mixbus\n");
 #else
     for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
-        if (g_fxSends[send] == NULL) {
-            struct fx_send* psend = malloc(sizeof(struct fx_send));
-            if (!psend) {
+        if (g_fxSends[send] == NULL && g_fxSendsRemoved[send] == NULL) {
+            struct fx_send* pSend = malloc(sizeof(struct fx_send));
+            if (!pSend) {
                 fprintf(stderr, "Failed to allocated memory for effect send %d\n", send);
                 return -1;
             }
             char name[11];
             sprintf(name, "send_%02da", send + 2);
-            if (!(psend->outPortA = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-                free(psend);
-                psend = NULL;
+            if (!(pSend->outPortA = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+                free(pSend);
+                pSend = NULL;
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
             sprintf(name, "send_%02db", send + 2);
-            if (!(psend->outPortB = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
-                jack_port_unregister(g_jackClient, psend->outPortA);
-                free(psend);
+            if (!(pSend->outPortB = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+                jack_port_unregister(g_jackClient, pSend->outPortA);
+                free(pSend);
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
-            //!@todo Do not cache jack_port_get_buffer
-            psend->bufferA = jack_port_get_buffer(psend->outPortA, g_buffersize);
-            psend->bufferB = jack_port_get_buffer(psend->outPortB, g_buffersize);
-            psend->level = 1.0;
-            g_fxSends[send] = psend;
-            g_sendCount++;
+            pSend->level = 1.0;
+            pthread_mutex_lock(&mutex);
+            g_fxSends[send] = pSend;
+            ++g_sendCount;
+            pthread_mutex_unlock(&mutex);
             if (send >= g_lastSend)
                 g_lastSend = send + 1;
-            return send + 1;
+            return send + 2;
         }
     }
     fprintf(stderr, "Exceeded maximum quantity of sends (%d).\n", MAX_CHANNELS);
@@ -1174,33 +1294,29 @@ uint8_t removeSend(uint8_t send) {
     fprintf(stderr, "Effects sends not implemented in mixbus\n");
     return 1;
 #else
+    if (send < 2)
+        return 1;
     send -= 2; // We expose sends at 2-based so need to decrement to access array
     if (send >= MAX_CHANNELS || g_fxSends[send] == NULL)
         return 1;
-    struct fx_send* pstrip = g_fxSends[send];
-    // Flag send to be marked as deleted at the end of this period
-    g_sendToDelete = send;
-    // Wait until jack process has marked the send as deleted
-    while (g_fxSends[send]) usleep(10000);
-    // Unregister ports and free memory
-    jack_port_unregister(g_jackClient, pstrip->outPortA);
-    jack_port_unregister(g_jackClient, pstrip->outPortB);
-    free(pstrip);
-    // Update lastSend value
-    for (g_lastSend = MAX_CHANNELS - 1; g_lastSend > 0; --g_lastSend) {
-        if (g_fxSends[g_lastSend])
-            break;
+    pthread_mutex_lock(&mutex);
+    g_fxSendsRemoved[send] = atomic_exchange(&g_fxSends[send], NULL);
+    g_nCleanFrame = g_nNextFrame;
+    pthread_mutex_unlock(&mutex);
+    --g_sendCount;
+
+    g_lastSend = 1;
+    for (uint8_t i = 1; i < MAX_CHANNELS; ++i) {
+        if (g_fxSends[i])
+            g_lastSend = i + 1;
     }
-    return 0;
+    return g_lastSend - 1;
 #endif
 }
-
 
 uint8_t getSendCount() {
     return g_sendCount;
 }
 
 uint8_t getMaxChannels() { return MAX_CHANNELS; }
-
-uint8_t getLastChannel() { return g_lastStrip; }
 

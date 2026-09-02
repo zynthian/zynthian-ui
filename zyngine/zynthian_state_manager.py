@@ -1235,6 +1235,9 @@ class zynthian_state_manager:
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
+        # Init MPE after MIDI connection
+        self.chain_manager.init_MPE()
+
         # Restore mute state
         self.mute(mute, 0)
 

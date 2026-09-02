@@ -25,10 +25,12 @@
 
 import tkinter
 import logging
+from tkinter import font as tkFont
 
 # Zynthian specific modules
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
+from zyngui import zs3_performance
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
@@ -48,6 +50,35 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                                                fg=zynthian_gui_config.color_ml,
                                                bg=zynthian_gui_config.color_panel_bg)
 
+        # ALT mode draws a performance face over the list: the current ZS3's
+        # title, large enough to read from across a room, its program change
+        # and its position in the stepping order. It is display only, and holds
+        # no state of its own beyond the id last announced by SS_LOAD_ZS3.
+        self.perf_zs3_id = None
+        self.perf_canvas = tkinter.Canvas(
+            self.main_frame,
+            bd=0,
+            highlightthickness=0,
+            bg=zynthian_gui_config.color_bg)
+        self.perf_title = self.perf_canvas.create_text(
+            0, 0,
+            anchor=tkinter.CENTER,
+            justify=tkinter.CENTER,
+            fill=zynthian_gui_config.color_tx)
+        self.perf_subtitle = self.perf_canvas.create_text(
+            0, 0,
+            anchor=tkinter.CENTER,
+            justify=tkinter.CENTER,
+            fill=zynthian_gui_config.color_tx_off)
+        self.perf_prog = self.perf_canvas.create_text(
+            0, 0,
+            anchor=tkinter.SW,
+            fill=zynthian_gui_config.color_ml)
+        self.perf_pos = self.perf_canvas.create_text(
+            0, 0,
+            anchor=tkinter.SE,
+            fill=zynthian_gui_config.color_ml)
+
     def show_waiting_label(self):
         if self.wide:
             padx = (0, 2)
@@ -65,6 +96,8 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                 zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.register_queued(
                 zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
+            self.perf_zs3_id = self.zyngui.state_manager.last_zs3_id
+            self.show_performance(self.alt_mode)
             return True
         else:
             return False
@@ -114,6 +147,8 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         super().fill_list()
 
     def cb_load_zs3(self, zs3_id):
+        self.perf_zs3_id = zs3_id
+        self.update_performance()
         if self.shown:
             for i, row in enumerate(self.list_data):
                 if row[0] == zs3_id:
@@ -195,5 +230,156 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def get_alt_mode(self):
         return self.alt_mode
+
+    def cuia_toggle_alt_mode(self, params=None):
+        super().cuia_toggle_alt_mode(params)
+        self.show_performance(self.alt_mode)
+        return True
+
+    # In the performance face the list is hidden, so the arrows have no list to
+    # move. Repurpose them to step cues — a manual backup for the foot pedal if
+    # it fails or is kicked out of reach. Down/Right advance, Up/Left go back,
+    # both wrapping, matching the pedal's ZS3_NEXT 1 / ZS3_PREV 1. Outside ALT
+    # mode they fall through to normal list navigation.
+    def arrow_down(self):
+        if self.alt_mode:
+            self.zyngui.state_manager.load_next_zs3(True)
+            return True
+        return super().arrow_down()
+
+    def arrow_up(self):
+        if self.alt_mode:
+            self.zyngui.state_manager.load_prev_zs3(True)
+            return True
+        return super().arrow_up()
+
+    def arrow_right(self):
+        if self.alt_mode:
+            self.zyngui.state_manager.load_next_zs3(True)
+            return True
+
+    def arrow_left(self):
+        if self.alt_mode:
+            self.zyngui.state_manager.load_prev_zs3(True)
+            return True
+
+    def show_performance(self, show):
+        """Swap between the ZS3 list and the performance face
+
+        show: True for the performance face, False for the list
+        """
+
+        if show:
+            self.listbox.grid_remove()
+            self.info_canvas.grid_remove()
+            # The PC-learn banner sits along the bottom and would cover the
+            # position readout; the performance face takes no input, so hide it.
+            self.hide_waiting_label()
+            self.show_sidebar(False)
+            self.perf_canvas.grid(
+                row=self.layout['list_pos'][0],
+                column=self.layout['list_pos'][1],
+                rowspan=self.layout['rows'],
+                columnspan=2,
+                padx=self.padx,
+                pady=self.pady,
+                sticky="news")
+            self.update_performance()
+        else:
+            self.perf_canvas.grid_remove()
+            self.listbox.grid()
+            self.info_canvas.grid()
+            self.show_sidebar(True)
+            # Restore the banner only if PC-learn is still waiting for a change.
+            if self.zyngui.state_manager.midi_learn_state:
+                self.show_waiting_label()
+
+    def update_layout(self):
+        super().update_layout()
+        self.update_performance()
+
+    def update_performance(self):
+        """Redraw the performance face
+
+        Called on ZS3 load and save, on entering ALT mode, and on geometry
+        changes. Never polled: with no ZS3 activity this screen does nothing.
+        """
+
+        if not self.alt_mode:
+            return
+
+        state = zs3_performance.performance_state(
+            self.zyngui.state_manager.zs3, self.perf_zs3_id)
+
+        # 44px at 800x480, which is what reads from ten feet away. Taken from
+        # the configured font size rather than hardcoded, so a themed or
+        # differently sized panel scales with it.
+        title_fs = int(2.2 * zynthian_gui_config.font_size)
+        label_fs = int(1.1 * zynthian_gui_config.font_size)
+        # The bottom line (program change + position) is glanced at from a few
+        # feet mid-performance, so it is larger than the "no cue" hint above it.
+        bottom_fs = int(1.6 * zynthian_gui_config.font_size)
+        title_font = tkFont.Font(family=zynthian_gui_config.font_family, size=title_fs)
+        pad = int(0.6 * zynthian_gui_config.font_size)
+
+        if state["is_loaded"]:
+            title = state["title"]
+            subtitle = ""
+        elif state["is_default"]:
+            title = "DEFAULT STATE"
+            subtitle = ""
+        else:
+            # Nothing loaded: at power on, and after a snapshot load, until the
+            # first step. A statement rather than an affordance, since the
+            # pedal reaches the first ZS3 from here on its own.
+            title = "NO CUE"
+            first_id = zs3_performance.first_cue_id(self.zyngui.state_manager.zs3)
+            if first_id:
+                subtitle = "press the pedal to start — {}".format(
+                    self.zyngui.state_manager.get_zs3_title(first_id))
+            else:
+                subtitle = "no ZS3s in this snapshot"
+
+        self.perf_canvas.itemconfigure(
+            self.perf_title,
+            font=(zynthian_gui_config.font_family, title_fs),
+            text=self.fit_title(title, title_font, self.width - 2 * pad))
+        self.perf_canvas.coords(self.perf_title, self.width // 2, int(0.38 * self.height))
+
+        self.perf_canvas.itemconfigure(
+            self.perf_subtitle,
+            font=(zynthian_gui_config.font_family, label_fs),
+            text=subtitle)
+        self.perf_canvas.coords(self.perf_subtitle, self.width // 2, int(0.62 * self.height))
+
+        self.perf_canvas.itemconfigure(
+            self.perf_prog,
+            font=(zynthian_gui_config.font_family, bottom_fs),
+            text=state["pc_label"])
+        self.perf_canvas.coords(self.perf_prog, pad, self.height - pad)
+
+        self.perf_canvas.itemconfigure(
+            self.perf_pos,
+            font=(zynthian_gui_config.font_family, bottom_fs),
+            text=state["position_label"])
+        self.perf_canvas.coords(self.perf_pos, self.width - pad, self.height - pad)
+
+    def fit_title(self, title, font, max_width):
+        """Shorten a title until it fits the available width
+
+        How many characters fit is a rendering question and needs font metrics,
+        so it lives here; how to shorten a string is zs3_performance's.
+
+        Returns : String
+        """
+
+        if max_width < 1 or font.measure(title) <= max_width:
+            return title
+        limit = len(title)
+        text = title
+        while limit > 1 and font.measure(text) > max_width:
+            limit -= 1
+            text = zs3_performance.ellipsize(title, limit)
+        return text
 
 # -------------------------------------------------------------------------------

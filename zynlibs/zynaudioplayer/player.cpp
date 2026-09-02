@@ -522,7 +522,7 @@ const char* get_filename(uint8_t id) {
 float get_duration(uint8_t id) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer && pPlayer->file_open == FILE_OPEN && pPlayer->sf_info.samplerate)
-        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate / pPlayer->speed;
+        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
     return 0.0f;
 }
 
@@ -530,7 +530,7 @@ void set_position(uint8_t id, float time) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    sf_count_t frames = time * g_samplerate * pPlayer->speed;
+    sf_count_t frames = time * g_samplerate;
     if (frames > pPlayer->crop_end_src)
         frames = pPlayer->crop_end_src;
     else if (frames < pPlayer->crop_start_src)
@@ -544,7 +544,7 @@ void set_position(uint8_t id, float time) {
 float get_position(uint8_t id) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer && pPlayer->file_open == FILE_OPEN)
-        return (float)(pPlayer->play_pos_frames) / g_samplerate / pPlayer->speed;
+        return (float)(pPlayer->play_pos_frames) / g_samplerate;
     return 0.0;
 }
 
@@ -1081,7 +1081,7 @@ int get_track_b(uint8_t id) {
 
 void set_speed(uint8_t id, float factor) {
     AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer || factor < 0.25 || factor > 4.0)
+    if (!pPlayer || factor < 0.2 || factor > 4.0)
         return;
     pPlayer->speed            = factor;
     pPlayer->time_ratio_dirty.store(true, memory_order_relaxed);
@@ -1090,23 +1090,40 @@ void set_speed(uint8_t id, float factor) {
 float get_speed(uint8_t id) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (!pPlayer)
-        return 0.0;
+        return 1.0;
     return pPlayer->speed;
 }
 
-void set_pitch(uint8_t id, float factor) {
+void set_pitch_semitone(uint8_t id, int8_t semitones) {
     AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer || factor < 0.25 || factor > 4.0)
+    if (!pPlayer || semitones < -24 || semitones > 24)
         return;
-    pPlayer->pitch            = factor;
-    pPlayer->time_ratio_dirty.store(true, memory_order_relaxed);
+    pPlayer->semitones = semitones;
+    pPlayer->pitch = powf(2.0f, (pPlayer->cents / 100.0f + pPlayer->semitones) / 12.0f);
+    pPlayer->time_ratio_dirty = true;
 }
 
-float get_pitch(uint8_t id) {
+int8_t get_pitch_semitone(uint8_t id) {
     AUDIO_PLAYER* pPlayer = get_player(id);
     if (!pPlayer)
-        return 0.0;
-    return pPlayer->pitch;
+        return 0;
+    return pPlayer->semitones;
+}
+
+void set_pitch_cent(uint8_t id, int8_t cents) {
+    AUDIO_PLAYER* pPlayer = get_player(id);
+    if (!pPlayer || cents < -100 || cents > 100)
+        return;
+    pPlayer->cents = cents;
+    pPlayer->pitch = powf(2.0f, (pPlayer->cents / 100.0f + pPlayer->semitones) / 12.0f);
+    pPlayer->time_ratio_dirty = true;
+}
+
+int8_t get_pitch_cent(uint8_t id) {
+    AUDIO_PLAYER* pPlayer = get_player(id);
+    if (!pPlayer)
+        return 0;
+    return pPlayer->cents;
 }
 
 void set_varispeed(uint8_t id, float ratio) {

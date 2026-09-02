@@ -202,6 +202,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         else:
             self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server",
                                    ["Display zynthian UI and processors' native GUI via VNC.\n This uses more CPU. It is advised to disable during performance.", "network.png"]))
+        self.list_data.append((self.bluetooth, 0, "Bluetooth",
+                               ["Scan, enable and configure Bluetooth devices.\n\nMust enable Bluetooth here to access BLE MIDI devices. Also supports HID devices.", "bluetooth.png"]))
 
         self.list_data.append((None, 0, "> USER INTERFACE"))
         self.list_data.append((self.visible_chains, 0, f"Visible Chains ({zynthian_gui_config.visible_mixer_strips})",
@@ -241,8 +243,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["10s countdown with no touch trigger. Allows screen to be cleaned without triggering any action.", "settings.png"]))
 
         self.list_data.append((None, 0, "> SYSTEM"))
-        self.list_data.append((self.bluetooth, 0, "Bluetooth",
-                               ["Scan, enable and configure Bluetooth devices.\n\nMust enable Bluetooth here to access BLE MIDI devices. Also supports HID devices.", "bluetooth.png"]))
         if "cv_config" in self.zyngui.screens:
             self.list_data.append((self.show_cv_config, 0, "CV Settings",
                                    ["Control Voltage configuration.", "settings.png"]))
