@@ -27,6 +27,7 @@ jack_port_t* g_jack_midi_in;
 jack_nframes_t g_samplerate = 48000; // Playback samplerate set by jackd
 uint8_t g_debug             = 0;
 uint8_t g_last_debug        = 0;
+uint8_t g_removePlayerId    = 255;
 char g_supported_codecs[1024];
 uint32_t g_nextIndex = 1;
 cb_fn_t* g_cb_fn = nullptr;
@@ -883,6 +884,12 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
     }
 
+    // Remove player
+    if (g_removePlayerId != 255) {
+        g_players[g_removePlayerId] = nullptr;
+        g_removePlayerId = 255;
+    }
+
     return 0;
 }
 
@@ -981,12 +988,10 @@ void remove_player(uint8_t id) {
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
         fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port B %02d\n", id, pPlayer, pPlayer->jack_out_b);
     }
+    g_removePlayerId = id;
+    while (g_removePlayerId != 255)
+        usleep(1000); // Wait for process cycle to complete
     delete(pPlayer);
-    g_players[id] = nullptr;
-    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
-        if (g_players[i])
-            return;
-    }
 }
 
 const char* get_jack_client_name() {
