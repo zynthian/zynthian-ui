@@ -145,7 +145,7 @@ void* file_thread_fn(void* param) {
         atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
         pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
         if (pPlayer->src_ratio < 0.1)
-            pPlayer->src_ratio = 1;
+            pPlayer->src_ratio = 1.0;
         srcData.src_ratio = pPlayer->src_ratio;
         pPlayer->pos_notify_delta = (float)pPlayer->sf_info.frames / g_samplerate / 400;
         pPlayer->output_buffer_size = pPlayer->src_ratio * pPlayer->input_buffer_size;
@@ -176,7 +176,7 @@ void* file_thread_fn(void* param) {
         srcData.data_out        = pBufferOut;
         srcData.output_frames   = pPlayer->output_buffer_size;
         pPlayer->frames         = pPlayer->sf_info.frames * pPlayer->src_ratio;
-        pPlayer->crop_end_src = pPlayer->crop_end * pPlayer->src_ratio;
+        pPlayer->crop_end_src   = pPlayer->crop_end * pPlayer->src_ratio;
         pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
         int nError;
         pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
@@ -310,7 +310,7 @@ void* file_thread_fn(void* param) {
                         if (srcData.src_ratio != 1.0) {
                             // We need to perform SRC on this block of code
                             srcData.input_frames = nFramesRead;
-                            int rc               = src_process(pSrcState, &srcData);
+                            int rc = src_process(pSrcState, &srcData);
                             if (rc) {
                                 DPRINTF("SRC failed with error %d, %lu frames generated\n", nFramesRead, srcData.output_frames_gen);
                             } else {
@@ -748,7 +748,6 @@ void stop_playback(uint8_t id) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer && pPlayer->play_state != STOPPED) {
         atomic_store_explicit(&pPlayer->play_state, STOPPING, memory_order_relaxed);
-        pPlayer->play_varispeed = pPlayer->varispeed;
     }
 }
 
@@ -828,8 +827,11 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
 
         if (pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
             if (pPlayer->time_ratio_dirty) {
-                rubberband_set_time_ratio(pPlayer->stretcher, (pPlayer->time_ratio / fabs(pPlayer->varispeed) / pPlayer->speed));
-                rubberband_set_pitch_scale(pPlayer->stretcher, pPlayer->pitch * fabs(pPlayer->varispeed));
+                float varispeed = fabs(pPlayer->varispeed);
+                if (varispeed) {
+                    rubberband_set_time_ratio(pPlayer->stretcher, (pPlayer->time_ratio / varispeed / pPlayer->speed));
+                    rubberband_set_pitch_scale(pPlayer->stretcher, pPlayer->pitch * varispeed);
+                }
                 atomic_store_explicit(&pPlayer->time_ratio_dirty, 0, memory_order_relaxed);
             }
             while (rubberband_available(pPlayer->stretcher) < nFrames) {
@@ -900,6 +902,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             }
             pPlayer->play_state = STOPPED;
             rubberband_reset(pPlayer->stretcher);
+            pPlayer->play_varispeed = pPlayer->varispeed;
             atomic_store_explicit(&pPlayer->varispeed, 0.0, memory_order_relaxed);
             atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
             DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count,
@@ -997,7 +1000,7 @@ uint8_t add_player() {
     pPlayer->speed = 1.0;
     pPlayer->pitch = 1.0;
     pPlayer->crop_end = pPlayer->input_buffer_size;
-    pPlayer->crop_end_src = pPlayer->crop_end * pPlayer->src_ratio;
+    pPlayer->crop_end_src = pPlayer->crop_end;
     g_players[id] = pPlayer;
 
     // Create audio output ports
@@ -1172,9 +1175,10 @@ void set_varispeed(uint8_t id, float ratio) {
         return;
 
     // Check if moving into or through zone too small to reliably varispeed
-    uint8_t stop  = ((pPlayer->varispeed >= MIN_VARISPEED && ratio < MIN_VARISPEED) || pPlayer->varispeed <= -MIN_VARISPEED && ratio > -MIN_VARISPEED);
+    float varispeed = pPlayer->varispeed;
+    uint8_t stop  = ((varispeed >= MIN_VARISPEED && ratio < MIN_VARISPEED) || varispeed <= -MIN_VARISPEED && ratio > -MIN_VARISPEED);
     // Check for scrubbing
-    uint8_t start = (pPlayer->play_state != PLAYING && fabs(pPlayer->varispeed) < MIN_VARISPEED && fabs(ratio) >= MIN_VARISPEED);
+    uint8_t start = (pPlayer->play_state != PLAYING && fabs(varispeed) < MIN_VARISPEED && fabs(ratio) >= MIN_VARISPEED);
 
     atomic_store_explicit(&pPlayer->varispeed, ratio, memory_order_relaxed);
     atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);

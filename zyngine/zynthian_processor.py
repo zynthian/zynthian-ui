@@ -478,7 +478,7 @@ class zynthian_processor:
         Preloading request engine to temporarily load a preset
         """
         # Avoid preload on engines that take excessive time to load presets
-        if self.engine.nickname in ['PD', 'MD', 'SL']:
+        if self.engine.nickname in ['PD', 'MD', 'SL', 'AP']:
             return True
         if preset_index < len(self.preset_list):
             if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):

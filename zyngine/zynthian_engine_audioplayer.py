@@ -237,7 +237,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         zynaudioplayer.set_speed(processor.handle, 1.0)
         zynaudioplayer.set_pitch_semitone(processor.handle, 0)
         zynaudioplayer.set_pitch_cent(processor.handle, 0)
-        zynaudioplayer.set_varispeed(processor.handle, 1.0)
 
         dur = zynaudioplayer.get_duration(processor.handle)
         zynaudioplayer.set_position(processor.handle, 0)
@@ -307,8 +306,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
             #['cue pos', None, cue_pos, dur],
             ['speed', {'value': 1.0, 'value_min': 0.1, 'value_max': 4.0, 'is_integer': False}],
             ['semitones', {'value': 0, 'value_min': -12, 'value_max': 12}],
+            ['semitones', {'value': 0, 'value_min': -12, 'value_max': 12}],
             ['cents', {'value': 0, 'value_min': -100, 'value_max': 100}],
-            ['varispeed', {'value': 1.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],    # TODO: Offer different varispeed range
+            ['varispeed', {'value': 0.0, 'value_min': -4.0, 'value_max': 4.0, 'is_integer': False}],
             ['left track', None, default_a, [track_labels, track_values]],
             ['right track', None, default_b, [track_labels, track_values]],
         ]
@@ -557,6 +557,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 processor.controllers_dict['transport'].set_value(play_state*127, False)
                 processor.controllers_dict['position'].set_value(pos, False)
                 processor.controllers_dict['loop'].set_value(loop*127, False)
+                processor.controllers_dict['varispeed'].set_value(zynaudioplayer.get_varispeed(processor.handle), False)
 
     # ---------------------------------------------------------------------------
     # Specific functions
