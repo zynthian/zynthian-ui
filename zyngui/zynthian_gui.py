@@ -1822,24 +1822,32 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_zs3_save(self, params=None):
-        if len(params) >= 1:
+        if params and len(params) >= 1:
             if isinstance(params[0], int):
                 self.state_manager.save_zs3_by_index(params[0])
             else:
                 self.state_manager.save_zs3(params[0])
 
     def cuia_zs3_load(self, params=None):
-        if len(params) >= 1:
+        if params and len(params) >= 1:
             if isinstance(params[0], int):
                 self.state_manager.load_zs3_by_index(params[0])
             else:
                 self.state_manager.load_zs3(params[0])
 
     def cuia_zs3_next(self, params=None):
-        self.state_manager.load_next_zs3(params)
+        if params and len(params) >= 1:
+            cycle = bool(params[0])
+        else:
+            cycle = False
+        self.state_manager.load_next_zs3(cycle)
 
     def cuia_zs3_prev(self, params=None):
-        self.state_manager.load_prev_zs3(params)
+        if params and len(params) >= 1:
+            cycle = bool(params[0])
+        else:
+            cycle = False
+        self.state_manager.load_prev_zs3(cycle)
 
     # -------------------------------------------------------------------
     # MIDI Learn CUIAS:
@@ -1853,14 +1861,14 @@ class zynthian_gui:
 
     def cuia_enable_midi_learn_cc(self, params=None):
         # TODO: Find zctrl
-        if len(params) == 2:
+        if params and len(params) > 1:
             self.state_manager.enable_learn_cc(params[0], params[1])
 
     def cuia_disable_midi_learn_cc(self, params=None):
         self.state_manager.disable_learn_cc()
 
     def cuia_enable_midi_learn_pc(self, params=None):
-        if params:
+        if params and len(params) > 0:
             self.state_manager.enable_learn_pc(params[0])
         else:
             self.state_manager.enable_learn_pc("")
@@ -1898,20 +1906,20 @@ class zynthian_gui:
     # Learn control options
     def cuia_midi_learn_control_options(self, params=None):
         scrobj = self.get_midi_learn_screen_obj()
-        if scrobj:
+        if scrobj and params and len(params) > 0:
             scrobj.controller_options(params[0])
 
     # Learn control
     def cuia_midi_learn_control(self, params=None):
         scrobj = self.get_midi_learn_screen_obj()
-        if scrobj:
+        if scrobj and params and len(params) > 0:
             scrobj.midi_learn(params[0])
 
     # Unlearn control
     def cuia_midi_unlearn_control(self, params=None):
         scrobj = self.get_midi_learn_screen_obj()
         if scrobj:
-            if params:
+            if params and len(params) > 0:
                 self.midi_learn_zctrl = scrobj.get_zcontroller(params[0])
             # if not parameter, unlearn selected learning control
             if self.midi_learn_zctrl:
@@ -1924,11 +1932,11 @@ class zynthian_gui:
                 self.chain_manager.clean_midi_learn(chain.zynmixer_proc)
 
     def cuia_midi_unlearn_node(self, params=None):
-        if params:
+        if params and len(params) > 1:
             self.chain_manager.remove_midi_learn([params[0], params[1]])
 
     def cuia_midi_unlearn_chain(self, params=None):
-        if params:
+        if params and len(params) > 0:
             self.chain_manager.clean_midi_learn(params[0])
         else:
             self.chain_manager.clean_midi_learn(self.chain_manager.active_chain.chain_id)
@@ -1937,7 +1945,7 @@ class zynthian_gui:
     # Z2 knob touch
     # -------------------------------------------------------------------
     def cuia_z2_zynpot_touch(self, params=None):
-        if params:
+        if params and len(params) > 0:
             try:
                 self.screens[self.current_screen].zctrl_touch(params[0])
             except AttributeError:
@@ -1953,8 +1961,12 @@ class zynthian_gui:
                 return True
         except:
             pass
-        i = params[0]
-        t = params[1].upper()
+        try:
+            i = params[0]
+            t = params[1].upper()
+        except:
+            logging.error("Wrong parameters!")
+            return
         if t == "L":
             if self.state_manager.zctrl_x and self.state_manager.zctrl_y:
                 self.show_screen("control_xy")
@@ -1969,7 +1981,7 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_program_change(self, params=None):
-        if len(params) > 0:
+        if params and len(params) > 0:
             if len(params) > 1:
                 chan = int(params[1])
             else:
@@ -1990,7 +2002,7 @@ class zynthian_gui:
                 self.prog_change[chan] = pgm
 
     def cuia_zyn_cc(self, params=None):
-        if len(params) > 2:
+        if params and len(params) > 2:
             chan = int(params[0])
             cc = int(params[1])
             if params[-1] == 'R':
@@ -2797,7 +2809,7 @@ class zynthian_gui:
 
                 elif cuia == "zynpot":
                     # zynpot has parameters: [pot, delta, 'P'|'R']. 'P'&'R' are only used for keybinding to zynpot
-                    if len(params) > 2:
+                    if params and len(params) > 2:
                         i = int(params[0])
                         if params[2] == 'R' and i in zynpot_repeat:
                             del zynpot_repeat[i]

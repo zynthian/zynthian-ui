@@ -51,9 +51,10 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                                                bg=zynthian_gui_config.color_panel_bg)
 
         # ALT mode draws a performance face over the list: the current ZS3's
-        # title, large enough to read from across a room, its program change
-        # and its position in the stepping order. It is display only, and holds
-        # no state of its own beyond the id last announced by SS_LOAD_ZS3.
+        # title, large enough to read from across a room, its note, its program
+        # change and its position in the stepping order. It is display only,
+        # and holds no state of its own beyond the id last announced by
+        # SS_LOAD_ZS3.
         self.perf_zs3_id = None
         self.perf_canvas = tkinter.Canvas(
             self.main_frame,
@@ -64,20 +65,26 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             0, 0,
             anchor=tkinter.CENTER,
             justify=tkinter.CENTER,
-            fill=zynthian_gui_config.color_tx)
+            fill=zynthian_gui_config.color_ml)
         self.perf_subtitle = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.CENTER,
             justify=tkinter.CENTER,
             fill=zynthian_gui_config.color_tx_off)
+        # The one colour here not taken from zynthian_gui_config: the palette
+        # has a single green, color_hl (#00c000), and nothing dimmer in that
+        # hue, and color_hl is bright enough to be part of what this is fixing.
+        # Happy to use color_off instead, or to add a ZYNTHIAN_UI_COLOR_*
+        # constant for it - see the pull request.
+        color_readout = zynthian_gui_config.color_variant(zynthian_gui_config.color_hl, -0x30)
         self.perf_prog = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.SW,
-            fill=zynthian_gui_config.color_ml)
+            fill=color_readout)
         self.perf_pos = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.SE,
-            fill=zynthian_gui_config.color_ml)
+            fill=color_readout)
 
     def show_waiting_label(self):
         if self.wide:
@@ -243,13 +250,13 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     # mode they fall through to normal list navigation.
     def arrow_down(self):
         if self.alt_mode:
-            self.zyngui.state_manager.load_next_zs3(True)
+            self.zyngui.state_manager.load_next_zs3(False)
             return True
         return super().arrow_down()
 
     def arrow_up(self):
         if self.alt_mode:
-            self.zyngui.state_manager.load_prev_zs3(True)
+            self.zyngui.state_manager.load_prev_zs3(False)
             return True
         return super().arrow_up()
 
@@ -268,6 +275,17 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
         show: True for the performance face, False for the list
         """
+
+        # The topbar stays the house topbar, but during a show its title is
+        # furniture: dim it so the cue name is the brightest thing on screen.
+        # Set it the way set_title() does rather than calling set_title(), which
+        # silently early-returns under its own 30fps rate limit.
+        if self.topbar_allowed:
+            if show:
+                self.title_fg = zynthian_gui_config.color_off
+            else:
+                self.title_fg = zynthian_gui_config.color_panel_tx
+            self.label_select_path.config(fg=self.title_fg)
 
         if show:
             self.listbox.grid_remove()
@@ -319,12 +337,20 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         # The bottom line (program change + position) is glanced at from a few
         # feet mid-performance, so it is larger than the "no cue" hint above it.
         bottom_fs = int(1.6 * zynthian_gui_config.font_size)
+        note_fs = int(1.5 * zynthian_gui_config.font_size)
         title_font = tkFont.Font(family=zynthian_gui_config.font_family, size=title_fs)
         pad = int(0.6 * zynthian_gui_config.font_size)
 
+        # The note and the "no cue" hint share one line: only one of the two can
+        # ever apply. The note is the larger of the two and sits closer to the
+        # title, because it is read at the same distance as the cue it belongs
+        # to; the hint is only read standing at the box.
+        subtitle_fs = label_fs
+
         if state["is_loaded"]:
             title = state["title"]
-            subtitle = ""
+            subtitle = state["note"]
+            subtitle_fs = note_fs
         elif state["is_default"]:
             title = "DEFAULT STATE"
             subtitle = ""
@@ -346,11 +372,15 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             text=self.fit_title(title, title_font, self.width - 2 * pad))
         self.perf_canvas.coords(self.perf_title, self.width // 2, int(0.38 * self.height))
 
+        # Wrap rather than run off the edges: a note is free text and can be
+        # longer than a title, and losing the end of one silently is worse than
+        # spending a second line on it.
         self.perf_canvas.itemconfigure(
             self.perf_subtitle,
-            font=(zynthian_gui_config.font_family, label_fs),
+            font=(zynthian_gui_config.font_family, subtitle_fs),
+            width=self.width - 2 * pad,
             text=subtitle)
-        self.perf_canvas.coords(self.perf_subtitle, self.width // 2, int(0.62 * self.height))
+        self.perf_canvas.coords(self.perf_subtitle, self.width // 2, int(0.52 * self.height))
 
         self.perf_canvas.itemconfigure(
             self.perf_prog,

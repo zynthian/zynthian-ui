@@ -159,6 +159,23 @@ def ellipsize(text, limit):
     return text[:limit - 1].rstrip() + ELLIPSIS
 
 
+def cue_note(entry):
+    """Get the note attached to a ZS3, or "" if it has none
+
+    entry : A ZS3 entry from the state manager's zs3 dict, or None
+
+    The note is optional and most ZS3s will not have one, so an absent key, an
+    empty string and a missing entry all give the same empty result and the
+    screen simply draws nothing.
+
+    Returns : String
+    """
+
+    if not isinstance(entry, dict):
+        return ""
+    return entry.get("note") or ""
+
+
 def performance_state(zs3, zs3_id):
     """Build everything the performance face draws
 
@@ -175,7 +192,7 @@ def performance_state(zs3, zs3_id):
     Never raises: an unknown id, an empty snapshot and None are all states this
     screen has to survive mid-performance.
 
-    Returns : dict of title, pc_label, position, total, position_label,
+    Returns : dict of title, note, pc_label, position, total, position_label,
               is_default, is_loaded, is_known
     """
 
@@ -197,6 +214,7 @@ def performance_state(zs3, zs3_id):
 
     return {
         "title": title,
+        "note": cue_note(entry),
         "pc_label": format_pc_label(zs3_id) if is_loaded else "",
         "position": position,
         "total": total,

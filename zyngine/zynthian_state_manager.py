@@ -1341,6 +1341,32 @@ class zynthian_state_manager:
     def set_zs3_title(self, zs3_id, title):
         self.zs3[zs3_id]["title"] = title
 
+    def get_zs3_note(self, zs3_id=None):
+        """Get ZS3 note
+
+        zs3_id : ZS3 ID (default: Use last loaded zs3)
+        Returns : Note as string, empty if the ZS3 has none
+        """
+
+        try:
+            if zs3_id is None:
+                zs3_id = self.last_zs3_id
+            return self.zs3[zs3_id].get("note", "")
+        except:
+            return ""
+
+    def set_zs3_note(self, zs3_id, note):
+        """Set ZS3 note
+
+        zs3_id : ZS3 ID
+        note : Note as string. An empty note removes the key.
+        """
+
+        if note:
+            self.zs3[zs3_id]["note"] = note
+        else:
+            self.zs3[zs3_id].pop("note", None)
+
     def toggle_zs3_restore_flag(self, zs3_id, type, id=None):
         zs3_state = self.zs3[zs3_id]
         if type == "midi_learn":
@@ -1601,6 +1627,7 @@ class zynthian_state_manager:
         omit_processors = []
         omit_chains = []
         restore_midi_learn = False
+        note = ""
         if zs3_id in self.zs3:
             zs3 = self.zs3[zs3_id]
             if "processors" in zs3:
@@ -1612,6 +1639,7 @@ class zynthian_state_manager:
                     if "restore" in chain and not chain["restore"]:
                         omit_chains.append(chain_id)
             restore_midi_learn = zs3.get("restore_midi_learn", False)
+            note = zs3.get("note", "")
 
         # Initialise zs3
         self.zs3[zs3_id] = {
@@ -1621,6 +1649,8 @@ class zynthian_state_manager:
         }
         if restore_midi_learn:
             self.zs3[zs3_id]["restore_midi_learn"] = True
+        if note:
+            self.zs3[zs3_id]["note"] = note
 
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
@@ -1838,9 +1868,10 @@ class zynthian_state_manager:
 
         return [zs3_id for zs3_id in self.zs3 if zs3_id != "zs3-0"]
 
-    def load_next_zs3(self, cycle):
+    def load_next_zs3(self, cycle=False):
         """Restore the next ZS3, or the first if none is loaded
 
+        cycle: Bool. True for cycling zs3s.
         Returns : True on success
         """
 
@@ -1853,15 +1884,16 @@ class zynthian_state_manager:
             # Nothing loaded, or the default state is loaded => start at the first
             index = 0
         if index >= len(zs3_ids):
-            if cycle is not None:
+            if cycle:
                 index = 0
             else:
                 return False
         return self.load_zs3(zs3_ids[index])
 
-    def load_prev_zs3(self, cycle):
+    def load_prev_zs3(self, cycle=False):
         """Restore the previous ZS3, or the last if none is loaded
 
+        cycle: Bool. True for cycling zs3s.
         Returns : True on success
         """
 
@@ -1874,7 +1906,7 @@ class zynthian_state_manager:
             # Nothing loaded, or the default state is loaded => start at the last
             index = len(zs3_ids) - 1
         if index < 0:
-            if cycle is not None:
+            if cycle:
                 index = len(zs3_ids) - 1
             else:
                 return False
