@@ -35,9 +35,9 @@ static void __attribute__((destructor)) lib_exit(void);
 
 /** @brief  Init jack client and ports
     @param  cb_fn Pointer to a callback function handling notifications
-    @retval bool True if success
+    @retval uint8_t 1 if success
 */
-bool init(cb_fn_t* cb_fn);
+uint8_t init(cb_fn_t* cb_fn);
 
 /** @brief  Stop jack client */
 void stop();
@@ -77,14 +77,14 @@ const char* get_jack_client_name();
 /** @brief  Open audio file
     @param  id Player id
     @param  filename Full path and name of file to load
-    @retval uint8_t True on success
+    @retval uint8_t 1 on success
 */
 uint8_t load(uint8_t id, const char* filename);
 
 /** @brief  Save audio file
     @param  id Player id
     @param  filename Full path and name of file to create or overwrite
-    @retval uint8_t True on success
+    @retval uint8_t 1 on success
     @note   Crops file by crop markers and saves cue points as metadata
 */
 uint8_t save(uint8_t id, const char* filename);
@@ -160,7 +160,7 @@ float get_crop_end_time(uint8_t id);
     @param  name Cue point name
     @retval int32_t Index of marker or -1 on failure
 */
-int32_t add_cue_point(uint8_t id, float position, const char* name = nullptr);
+int32_t add_cue_point(uint8_t id, float position, const char* name);
 
 /** @brief  Remove a cue marker
     @param  id Player id
@@ -187,9 +187,9 @@ float get_cue_point_position(uint8_t id, uint32_t index);
     @param  id Player id
     @param  index Index of cue point
     @param  position Position (in seconds) of cue point
-    @retval bool True on success
+    @retval uint8_t 1 on success
 */
-bool set_cue_point_position(uint8_t id, uint32_t index, float position);
+uint8_t set_cue_point_position(uint8_t id, uint32_t index, float position);
 
 /** @brief  Get a cue point's name
     @param  id Player id
@@ -202,9 +202,9 @@ const char* get_cue_point_name(uint8_t id, uint32_t index);
     @param  id Player id
     @param  index Index of cue point
     @param  name Name of cue point (as c-string) - max 255 characters
-    @retval bool True on success
+    @retval uint8_t 1 on success
 */
-bool set_cue_point_name(uint8_t id, uint32_t index, const char* name);
+uint8_t set_cue_point_name(uint8_t id, uint32_t index, const char* name);
 
 /** @brief  Clear all cue points
     @param  id Player id
@@ -255,7 +255,7 @@ int get_format(uint8_t id);
 /** @brief  Set samplerate converter quality
     @param  id Player id
     @param  quality Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
-    @retval uint8_t True on success, i.e. the quality parameter is valid
+    @retval uint8_t 1 on success, i.e. the quality parameter is valid
     @note   Quality will apply to subsequently opened files, not currently open file
 */
 uint8_t set_src_quality(uint8_t id, unsigned int quality);
@@ -317,7 +317,7 @@ float get_speed(uint8_t id);
 
 /** @brief  Set base pitch in semitones
     @param  player_handle Handle of player provided by add_player()
-    @param  semitones Pitch factor (-24..+24)
+    @param  semitones Pitch factor (-12..+12)
 */
 void set_pitch_semitone(uint8_t id, int8_t semitones);
 
@@ -386,7 +386,7 @@ void set_pos_notify_delta(uint8_t id, float time);
 /**** Global functions ****/
 
 /** @brief  Enable debug output
-    @param  bEnable True to enable, false to disable
+    @param  bEnable 1 to enable, 0 to disable
 */
 void enable_debug(int enable);
 

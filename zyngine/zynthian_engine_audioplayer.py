@@ -235,6 +235,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.monitors_dict[processor.handle]["info"] = 0
 
         zynaudioplayer.set_speed(processor.handle, 1.0)
+        zynaudioplayer.set_pitch_semitone(processor.handle, 0)
+        zynaudioplayer.set_pitch_cent(processor.handle, 0)
+        zynaudioplayer.set_varispeed(processor.handle, 1.0)
 
         dur = zynaudioplayer.get_duration(processor.handle)
         zynaudioplayer.set_position(processor.handle, 0)
@@ -303,7 +306,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             #['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
             #['cue pos', None, cue_pos, dur],
             ['speed', {'value': 1.0, 'value_min': 0.1, 'value_max': 4.0, 'is_integer': False}],
-            ['semitones', {'value': 0, 'value_min': -24, 'value_max': 24}],
+            ['semitones', {'value': 0, 'value_min': -12, 'value_max': 12}],
             ['cents', {'value': 0, 'value_min': -100, 'value_max': 100}],
             ['varispeed', {'value': 1.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],    # TODO: Offer different varispeed range
             ['left track', None, default_a, [track_labels, track_values]],
@@ -493,7 +496,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "cents":
             zynaudioplayer.set_pitch_cent(handle, zctrl.value)
         elif zctrl.symbol == "varispeed":
-            if abs(zctrl.value) < 0.01:
+            if abs(zctrl.value) < 0.1:
                 zctrl.value = 0.0
             zynaudioplayer.set_varispeed(handle, zctrl.value)
         elif zctrl.symbol == "info":

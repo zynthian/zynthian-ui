@@ -368,27 +368,27 @@ def get_speed(id):
     return libaudioplayer.get_speed(id)
 
 # Set base pitch factor in semitones
-# handle: Index of player
+# id: Index of player
 # semitones: Pitch factor
 def set_pitch_semitone(id, semitones):
     libaudioplayer.set_pitch_semitone(id, ctypes.c_int8(semitones))
 
 # Get base pitch factor in semitones
-# handle: Index of player
+# id: Index of player
 # Returns: Pitch factor
-def get_pitch_semitones(handle):
+def get_pitch_semitones(id):
     return libaudioplayer.get_pitch(id)
 
 # Set base pitch factor in cents
-# handle: Index of player
+# id: Index of player
 # cents: Pitch factor
-def set_pitch_cent(handle, cents):
+def set_pitch_cent(id, cents):
     libaudioplayer.set_pitch_cent(id, ctypes.c_int8(cents))
 
 # Get base pitch factor in cent
-# handle: Index of player
+# id: Index of player
 # Returns: Pitch factor
-def get_pitch_cent(handle):
+def get_pitch_cent(id):
     return libaudioplayer.get_pitch(id)
 
 # Set varispeed ratio
