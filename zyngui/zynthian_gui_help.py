@@ -122,8 +122,7 @@ class zynthian_gui_help(HtmlFrame):
                         tag.replace_with(BeautifulSoup(include_html, "html.parser"))
                     except:
                         pass
-                with open(f"{self.ui_dir}/help/header.html") as f:
-                    header_html = f.read()
+                header_html = "<header class='global_header no_tts'><a href='index:'>index</a></header>"
                 self.soup.body.insert(0, BeautifulSoup(header_html, "html.parser"))
                 html = str(self.soup)
 
