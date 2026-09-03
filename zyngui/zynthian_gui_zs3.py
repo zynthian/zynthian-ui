@@ -243,13 +243,13 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
     # mode they fall through to normal list navigation.
     def arrow_down(self):
         if self.alt_mode:
-            self.zyngui.state_manager.load_next_zs3(True)
+            self.zyngui.state_manager.load_next_zs3(False)
             return True
         return super().arrow_down()
 
     def arrow_up(self):
         if self.alt_mode:
-            self.zyngui.state_manager.load_prev_zs3(True)
+            self.zyngui.state_manager.load_prev_zs3(False)
             return True
         return super().arrow_up()
 
