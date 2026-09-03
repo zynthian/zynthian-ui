@@ -64,19 +64,21 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
             self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_note, 4, "Note", ["Add a note to this ZS3, shown by the ZS3 performance view.", "zs3_rename.png"]))
-            self.list_data.append((self.zs3_delete, 5, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
+            if len(self.zyngui.state_manager.get_zs3_ids()) > 1:
+                self.list_data.append((self.zs3_position, 5, f"Position [{self.get_position() + 1}]", ["Move this ZS3 within the order that ZS3_NEXT / ZS3_PREV step through.", "zs3_settings.png"]))
+            self.list_data.append((self.zs3_delete, 6, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
 
             if "/" in self.zs3_id:
                 if self.prog_num:
-                    self.list_data.append((self.zs3_prog_num, 6, f"Program Change Number [{self.prog_num - 1}]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_num, 7, f"Program Change Number [{self.prog_num - 1}]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
                 else:
-                    self.list_data.append((self.zs3_prog_num, 6, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_num, 7, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
                 if self.prog_chan:
-                    self.list_data.append((self.zs3_prog_chan, 7, f"Program Change Channel [{self.prog_chan}]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_chan, 8, f"Program Change Channel [{self.prog_chan}]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
                 else:
-                    self.list_data.append((self.zs3_prog_chan, 7, "Program Change Channel [Any]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_chan, 8, "Program Change Channel [Any]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
             elif id != "zs3-0":
-                self.list_data.append((self.zs3_prog_num, 6, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
+                self.list_data.append((self.zs3_prog_num, 7, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
             self.preselect_last_action()
         super().fill_list()
 
@@ -201,6 +203,27 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
     def zs3_note_cb(self, note):
         logging.info("Setting note for ZS3 '{}'".format(self.zs3_id))
         self.zyngui.state_manager.set_zs3_note(self.zs3_id, note)
+        self.zyngui.close_screen()
+
+    def get_position(self):
+        """Get this ZS3's zero-based position in the stepping order, or -1"""
+
+        try:
+            return self.zyngui.state_manager.get_zs3_ids().index(self.zs3_id)
+        except ValueError:
+            return -1
+
+    def zs3_position(self):
+        position = self.get_position()
+        if position < 0:
+            return
+        total = len(self.zyngui.state_manager.get_zs3_ids())
+        labels = [str(i + 1) for i in range(total)]
+        self.enable_param_editor(self, 'zs3_position', {'name': 'Position', 'labels': labels, 'value': position}, self.on_zs3_position)
+
+    def on_zs3_position(self, value):
+        logging.info("Moving ZS3 '{}' to position {}".format(self.zs3_id, value + 1))
+        self.zyngui.state_manager.move_zs3(self.zs3_id, value)
         self.zyngui.close_screen()
 
     def zs3_update(self):

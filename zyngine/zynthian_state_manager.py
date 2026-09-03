@@ -1778,6 +1778,41 @@ class zynthian_state_manager:
         except:
             logging.info("Tried to remove non-existant ZS3")
 
+    def move_zs3(self, zs3_id, index):
+        """Move a ZS3 within the stepping order
+
+        Stepping and the ZS3 screen both walk the zs3 dictionary in insertion
+        order, so reordering is rebuilding that dictionary with its keys in a
+        new order. 'zs3-0' keeps whatever slot it had: it is not part of the
+        stepping order, and the ZS3 screen lists it apart from the saved ZS3s.
+
+        zs3_id : ZS3 ID to move
+        index : New position, zero-based, among the ZS3s that stepping walks
+        Returns : True if the order changed
+        """
+
+        zs3_ids = self.get_zs3_ids()
+        try:
+            current = zs3_ids.index(zs3_id)
+        except ValueError:
+            logging.info(f"Tried to move non-existent ZS3 '{zs3_id}'")
+            return False
+        index = min(max(index, 0), len(zs3_ids) - 1)
+        if index == current:
+            return False
+        zs3_ids.insert(index, zs3_ids.pop(current))
+
+        moved = iter(zs3_ids)
+        zs3 = {}
+        for key in self.zs3:
+            if key == "zs3-0":
+                zs3[key] = self.zs3[key]
+            else:
+                new_key = next(moved)
+                zs3[new_key] = self.zs3[new_key]
+        self.zs3 = zs3
+        return True
+
     def reset_zs3(self):
         """Remove all ZS3"""
 
