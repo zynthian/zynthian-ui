@@ -69,6 +69,7 @@ ZynthianState = {
     "zs3": {  # Dictionary of ZS3's indexed by chan/prog or ZS3-x
         "zs3-0": {  # ZS3 state when snapshot saved
             "title": "Last state",  # ZS3 title
+            "note": "Capo 2, watch the MD",  # Optional ZS3 note, shown by the performance view
             "active_chain": "1", # Optional active chain id (overides base value)
             "restore_midi_learn": False, # Optional restore midi CC binding (Default: False)
             "processors": {  # Dictionary of processor settings
