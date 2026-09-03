@@ -44,6 +44,13 @@ struct AUDIO_PLAYER* get_player(uint8_t id) {
     return NULL;
 }
 
+static inline void try_transition(struct AUDIO_PLAYER* pPlayer, uint8_t to_state) {
+    uint8_t expected = LOADING;
+    atomic_compare_exchange_strong_explicit(
+        &pPlayer->file_read_status, &expected, to_state,
+        memory_order_relaxed, memory_order_relaxed);
+}
+
 int is_codec_supported(const char* codec) {
     SF_FORMAT_INFO format_info;
     int k, count;
@@ -171,7 +178,7 @@ void* file_thread_fn(void* param) {
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels];   // Buffer used to read sample data from file
         float pBufferOut[pPlayer->output_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write converted sample data to
-        float pBufferRev[pPlayer->output_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write reverse playback sample data to
+        float pBufferRev[pPlayer->input_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write reverse playback sample data to
         srcData.data_in         = pBufferIn;
         srcData.data_out        = pBufferOut;
         srcData.output_frames   = pPlayer->output_buffer_size;
@@ -253,6 +260,7 @@ void* file_thread_fn(void* param) {
                     }
 
                     if (srcData.src_ratio == 1.0) {
+                        size_t nTotalValid = nUnusedFrames + nFramesRead;
                         // No SRC required so populate SRC output buffer directly
                         if (bReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
@@ -265,7 +273,7 @@ void* file_thread_fn(void* param) {
                             sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
                             if (pos >= 0) {
                                 // Read audio chunk
-                                nFramesRead    = sf_readf_float(pFile, pBufferRev, nMaxFrames);
+                                nFramesRead = sf_readf_float(pFile, pBufferRev, nMaxFrames);
                                 size_t wOffset = 0;
                                 // Reverse audio chunk
                                 for (int i = nFramesRead; i > 0; --i) {
@@ -289,8 +297,8 @@ void* file_thread_fn(void* param) {
                             sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
                             if (pos >= 0) {
                                 nFramesRead = sf_readf_float(pFile, pBufferRev, nMaxFrames);
-                                size_t wPos = nUnusedFrames;
-                                for (size_t i = nFramesRead; i == 0; --i) {
+                                size_t wPos = nUnusedFrames * pPlayer->sf_info.channels;
+                                for (size_t i = nFramesRead; i > 0; --i) {
                                     for (size_t j = 0; j < pPlayer->sf_info.channels; ++j) {
                                         pBufferIn[wPos] = pBufferRev[(i - 1) * pPlayer->sf_info.channels + j];
                                         ++wPos;
@@ -309,17 +317,18 @@ void* file_thread_fn(void* param) {
 
                         if (srcData.src_ratio != 1.0) {
                             // We need to perform SRC on this block of code
-                            srcData.input_frames = nFramesRead;
+                            size_t nTotalValid = nUnusedFrames + nFramesRead;
+                            srcData.input_frames = nTotalValid;
                             int rc = src_process(pSrcState, &srcData);
                             if (rc) {
                                 DPRINTF("SRC failed with error %d, %lu frames generated\n", nFramesRead, srcData.output_frames_gen);
                             } else {
                                 DPRINTF("SRC suceeded - %lu frames generated, %lu frames used, %lu frames unused\n", srcData.output_frames_gen,
                                         srcData.input_frames_used, nUnusedFrames);
-                                nUnusedFrames = nFramesRead - srcData.input_frames_used;
+                                nUnusedFrames = nTotalValid - srcData.input_frames_used;
                                 nFramesRead   = srcData.output_frames_gen;
                                 // Shift unused samples to start of buffer
-                                memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * sizeof(float) * pPlayer->sf_info.channels,
+                                memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * pPlayer->sf_info.channels,
                                        nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
                             }
                         } else {
@@ -360,17 +369,17 @@ void* file_thread_fn(void* param) {
                         }
                     } else if (pPlayer->loop == 1) {
                         // Short read - looping so fill from loop start point in file
-                        atomic_store_explicit(&pPlayer->file_read_status, LOOPING, memory_order_relaxed);
+                        try_transition(pPlayer, LOOPING);
                         // srcData.end_of_input = 1;
                         DPRINTF("libzynaudioplayer read to loop point in input file - setting loading status to looping\n");
                     } else {
                         // End of file
-                        atomic_store_explicit(&pPlayer->file_read_status, IDLE, memory_order_relaxed);
-                        srcData.end_of_input      = 1;
+                        try_transition(pPlayer, IDLE);
+                        srcData.end_of_input = 1;
                         DPRINTF("libzynaudioplayer read to end of input file - setting loading status to IDLE\n");
                     }
                 } else {
-                    atomic_store_explicit(&pPlayer->file_read_status, WAITING, memory_order_relaxed);
+                    try_transition(pPlayer, WAITING);
                 }
             }
             // if(pPlayer->file_read_status != LOOPING) {
@@ -901,9 +910,10 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
                 pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
             }
             pPlayer->play_state = STOPPED;
-            rubberband_reset(pPlayer->stretcher);
             pPlayer->play_varispeed = pPlayer->varispeed;
             atomic_store_explicit(&pPlayer->varispeed, 0.0, memory_order_relaxed);
+            if (bReverse && pPlayer->play_pos_frames == 0)
+                pPlayer->play_varispeed = 1.0;
             atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
             DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count,
                     nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
