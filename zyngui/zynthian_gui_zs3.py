@@ -76,7 +76,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         # hue, and color_hl is bright enough to be part of what this is fixing.
         # Happy to use color_off instead, or to add a ZYNTHIAN_UI_COLOR_*
         # constant for it - see the pull request.
-        color_readout = "#008000"
+        color_readout = zynthian_gui_config.color_variant(zynthian_gui_config.color_hl, -0x30)
         self.perf_prog = self.perf_canvas.create_text(
             0, 0,
             anchor=tkinter.SW,
