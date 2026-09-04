@@ -22,6 +22,7 @@ jack_nframes_t g_samplerate = 48000; // Playback samplerate set by jackd
 uint8_t g_debug             = 0;
 uint8_t g_last_debug        = 0;
 uint8_t g_removePlayerId    = 255;
+_Atomic uint8_t g_reset_stretcher   = 0;
 char g_supported_codecs[1024];
 uint32_t g_nextIndex = 1;
 cb_fn_t* g_cb_fn = NULL;
@@ -207,7 +208,7 @@ void* file_thread_fn(void* param) {
                 src_reset(pSrcState);
                 nUnusedFrames        = 0;
                 srcData.end_of_input = 0;
-                rubberband_reset(pPlayer->stretcher);
+                atomic_store_explicit(&g_reset_stretcher, 1, memory_order_relaxed);
             } else if (pPlayer->file_read_status == LOOPING) {
                 // Reached loop end point and need to read from loop marker
                 sf_count_t pos;
@@ -835,6 +836,10 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             atomic_store_explicit(&pPlayer->play_state, PLAYING, memory_order_relaxed);
 
         if (pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
+            if (g_reset_stretcher) {
+                rubberband_reset(pPlayer->stretcher);
+                atomic_store_explicit(&g_reset_stretcher, 0, memory_order_relaxed);
+            }
             if (pPlayer->time_ratio_dirty) {
                 float varispeed = fabs(pPlayer->varispeed);
                 if (varispeed) {
