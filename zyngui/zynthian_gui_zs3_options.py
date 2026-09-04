@@ -64,21 +64,22 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
             self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_note, 4, "Note", ["Add a note to this ZS3, shown by the ZS3 performance view.", "zs3_rename.png"]))
+            self.list_data.append((self.zs3_clone, 5, "Clone", ["Copy this ZS3 to a new one, placed just after it.", "zs3_new.png"]))
             if len(self.zyngui.state_manager.get_zs3_ids()) > 1:
-                self.list_data.append((self.zs3_position, 5, f"Position [{self.get_position() + 1}]", ["Move this ZS3 within the order that ZS3_NEXT / ZS3_PREV step through.", "zs3_settings.png"]))
-            self.list_data.append((self.zs3_delete, 6, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
+                self.list_data.append((self.zs3_position, 6, f"Position [{self.get_position() + 1}]", ["Move this ZS3 within the order that ZS3_NEXT / ZS3_PREV step through.", "zs3_settings.png"]))
+            self.list_data.append((self.zs3_delete, 7, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
 
             if "/" in self.zs3_id:
                 if self.prog_num:
-                    self.list_data.append((self.zs3_prog_num, 7, f"Program Change Number [{self.prog_num - 1}]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_num, 8, f"Program Change Number [{self.prog_num - 1}]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
                 else:
-                    self.list_data.append((self.zs3_prog_num, 7, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_num, 8, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
                 if self.prog_chan:
-                    self.list_data.append((self.zs3_prog_chan, 8, f"Program Change Channel [{self.prog_chan}]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_chan, 9, f"Program Change Channel [{self.prog_chan}]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
                 else:
-                    self.list_data.append((self.zs3_prog_chan, 8, "Program Change Channel [Any]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
+                    self.list_data.append((self.zs3_prog_chan, 9, "Program Change Channel [Any]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
             elif id != "zs3-0":
-                self.list_data.append((self.zs3_prog_num, 7, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
+                self.list_data.append((self.zs3_prog_num, 8, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
             self.preselect_last_action()
         super().fill_list()
 
@@ -203,6 +204,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
     def zs3_note_cb(self, note):
         logging.info("Setting note for ZS3 '{}'".format(self.zs3_id))
         self.zyngui.state_manager.set_zs3_note(self.zs3_id, note)
+        self.zyngui.close_screen()
+
+    def zs3_clone(self):
+        title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
+        self.zyngui.show_keyboard(self.zs3_clone_cb, title)
+
+    def zs3_clone_cb(self, title):
+        logging.info("Cloning ZS3 '{}'".format(self.zs3_id))
+        self.zyngui.state_manager.clone_zs3(self.zs3_id, title)
         self.zyngui.close_screen()
 
     def get_position(self):

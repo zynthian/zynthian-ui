@@ -26,6 +26,7 @@
 import ctypes
 import logging
 import traceback
+from copy import deepcopy
 from glob import glob
 from threading import Thread
 from queue import SimpleQueue
@@ -1777,6 +1778,31 @@ class zynthian_state_manager:
 
         except:
             logging.info("Tried to remove non-existant ZS3")
+
+    def clone_zs3(self, zs3_id, title=None):
+        """Copy a ZS3, placing the copy directly after it
+
+        Saving a new ZS3 stores the *current* state; this copies the state the
+        source ZS3 already holds, so the copy is exact however much has been
+        touched since it was loaded. The copy gets a new 'zs3-N' id and so no
+        program change of its own.
+
+        zs3_id : ZS3 ID to copy
+        title : Title for the copy (Default: autogenerate as for a new ZS3)
+        Returns : ID of the copy, or None if there is nothing to copy
+        """
+
+        if zs3_id == "zs3-0" or zs3_id not in self.zs3:
+            logging.info(f"Can't clone ZS3 '{zs3_id}'")
+            return None
+        index = self.get_next_zs3_index()
+        new_zs3_id = f"zs3-{index}"
+        self.zs3[new_zs3_id] = deepcopy(self.zs3[zs3_id])
+        if not title:
+            title = f"ZS3-{index}"
+        self.zs3[new_zs3_id]["title"] = title
+        self.move_zs3(new_zs3_id, self.get_zs3_ids().index(zs3_id) + 1)
+        return new_zs3_id
 
     def move_zs3(self, zs3_id, index):
         """Move a ZS3 within the stepping order
