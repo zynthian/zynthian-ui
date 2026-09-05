@@ -265,8 +265,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
         default_b = 0
         track_labels = ['mixdown']
         track_values = [-1]
-        zoom_labels = ["x1", "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256"]
-        zoom_values = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+        frames = zynaudioplayer.get_frames(processor.handle)
+        zoom_labels = []
+        zoom_values = []
+        zoom_val = 1
+        while frames > 40:
+            zoom_values.append(zoom_val)
+            zoom_labels.append(f"x{zoom_val}")
+            zoom_val *= 2
+            frames /= 2
         if dur:
             channels = zynaudioplayer.get_channels(processor.handle)
             if channels > 2:
@@ -413,44 +420,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
             zctrl.handle = processor.handle
         return ctrls
 
-    def control_cb(self, handle, id, value):
-        try:
-            for processor in self.processors:
-                if processor.handle == handle:
-                    ctrl_dict = processor.controllers_dict
-                    if id == 1:
-                        # logging.debug(f"handle => {handle}, id => {id}, value => {value}")
-                        # QUESTION: What do mean the different values?
-                        if value:
-                            ctrl_dict['transport'].set_value("playing", False)
-                            processor.status = "\uf04b"
-                        else:
-                            ctrl_dict['transport'].set_value("stopped", False)
-                            processor.status = ""
-                    elif id == 2:
-                        ctrl_dict['position'].set_value(value, False)
-                    elif id == 3:
-                        ctrl_dict['gain'].set_value(value, False)
-                    elif id == 4:
-                        ctrl_dict['loop'].set_value(int(value), False)
-                    elif id == 5:
-                        ctrl_dict['left track'].set_value(int(value), False)
-                    elif id == 6:
-                        ctrl_dict['right track'].set_value(int(value), False)
-                    elif id == 13:
-                        ctrl_dict['crop start'].set_value(value, False)
-                    elif id == 14:
-                        ctrl_dict['crop end'].set_value(value, False)
-                    elif id == 23:
-                        ctrl_dict['varispeed'].set_value(value, False)
-                    break
-        except Exception as e:
-            logging.error(e)
-
     def send_controller_value(self, zctrl):
         handle = zctrl.handle
         if zctrl.symbol == "position":
             zynaudioplayer.set_position(handle, zctrl.value)
+            zctrl.set_value(zynaudioplayer.get_position(handle), False)
         elif zctrl.symbol == "gain":
             zynaudioplayer.set_gain(handle, zctrl.value)
         elif zctrl.symbol == "loop":
@@ -474,8 +448,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
                     self.state_manager.audio_recorder.stop_recording(proc)
         elif zctrl.symbol == "crop start":
             zynaudioplayer.set_crop_start(handle, zctrl.value)
+            zctrl.set_value(zynaudioplayer.get_crop_start(handle), False)
+            zoom = zctrl.processor.controllers_dict["zoom"].value
+            dur = zynaudioplayer.get_duration(self.processor.handle)
+            zctrl.processor.controllers_dict["offset"].set_value(zctrl.value - dur / zoom / 2)
         elif zctrl.symbol == "crop end":
             zynaudioplayer.set_crop_end(handle, zctrl.value)
+            zctrl.set_value(zynaudioplayer.get_crop_end(handle), False)
+            zoom = zctrl.processor.controllers_dict["zoom"].value
+            dur = zynaudioplayer.get_duration(self.processor.handle)
+            zctrl.processor.controllers_dict["offset"].set_value(zctrl.value - dur / zoom / 2)
         elif zctrl.symbol == "zoom":
             self.monitors_dict[handle]['zoom'] = zctrl.value
             if self.processor:

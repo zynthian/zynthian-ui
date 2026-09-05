@@ -428,12 +428,6 @@ def set_buffer_count(id, count):
 def get_buffer_count(id):
     return libaudioplayer.get_buffer_count(id)
 
-# Set difference in postion that will trigger notificaton
-# id: Index of player
-# time: Time difference in frames
-def set_pos_notify_delta(id, time):
-    libaudioplayer.set_pos_notify_delta(id, ctypes.c_uint32(time))
-
 # Enable debug output
 # enable: True to enable debug
 def enable_debug(enable=True):

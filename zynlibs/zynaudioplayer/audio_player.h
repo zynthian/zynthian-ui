@@ -51,6 +51,13 @@ struct cue_point {
     char name[MAX_CUENAME]; // Friendly name
 };
 
+typedef struct {
+    uint32_t frames;   // count of stretched output frames this marker covers
+    uint32_t position; // play_pos_frames value once these frames have been delivered
+} pos_marker_t;
+
+#define POS_MARKER_QUEUE_SIZE 256
+
 struct AUDIO_PLAYER {
 
     jack_port_t* jack_out_a;
@@ -87,11 +94,22 @@ struct AUDIO_PLAYER {
     // Note that jack_ringbuffer handles bytes so need to convert data between bytes and floats
     jack_ringbuffer_t* ringbuffer_a;        // Used to pass A samples from file reader to jack process
     jack_ringbuffer_t* ringbuffer_b;        // Used to pass B samples from file reader to jack process
+    jack_ringbuffer_t* ringbuffer_out_a;    // post-stretch audio, channel A
+    jack_ringbuffer_t* ringbuffer_out_b;    // post-stretch audio, channel B
+
+    pos_marker_t pos_markers[POS_MARKER_QUEUE_SIZE];
+    _Atomic uint32_t pos_marker_wr;        // written by file_thread_fn
+    _Atomic uint32_t pos_marker_rd;        // written by on_jack_process
+     uint32_t pos_marker_remaining;         // RT-thread-private, not atomic
+     uint32_t pos_marker_total;             // RT-thread-private, not atomic
+     uint32_t pos_marker_cached_position;   // RT-thread-private, not atomic
+     uint32_t pos_marker_start_position;    // RT-thread-private, not atomic
+     _Atomic uint8_t stream_ended;
+
     _Atomic jack_nframes_t play_pos_frames; // Current playback position in frames since start of audio at play samplerate
     char filename[MAX_FILENAME];
     _Atomic uint8_t time_ratio_dirty;       // True if time stretch ratio changed
     float src_ratio;                        // Ratio of jack/file samplerate
-    jack_nframes_t pos_notify_delta;        // Position time difference to trigger notification
     _Atomic float varispeed;                // Ratio to adjust speed and pitch - goes to zero when stopped to allow scrubbing
     float play_varispeed;                   // Used to restore varispeed when starting playback
     float speed;                            // Playback speed factor

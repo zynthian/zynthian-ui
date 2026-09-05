@@ -377,12 +377,6 @@ void set_buffer_count(uint8_t id, unsigned int count);
 */
 unsigned int get_buffer_count(uint8_t id);
 
-/** @brief  Set difference in postion that will trigger notificaton
-    @param  id Player id
-    @param  time Time difference in seconds
-*/
-void set_pos_notify_delta(uint8_t id, uint32_t time);
-
 /**** Global functions ****/
 
 /** @brief  Enable debug output
