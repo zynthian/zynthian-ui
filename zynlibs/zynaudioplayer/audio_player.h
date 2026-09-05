@@ -17,12 +17,12 @@
 #define MAX_CUES     100
 #define MAX_FILENAME 256
 #define MAX_CUENAME  32
-#define MAX_VARISPEED 32.0
+#define MAX_VARISPEED 4.0
 #define MIN_VARISPEED 0.1
-#define STRETCH_BUF_SIZE 256
+#define STRETCH_BUF_SIZE 4096
 
 // Callback function definition (id, play_state, loop, pos)
-typedef void cb_fn_t(uint8_t, uint8_t, uint8_t, float);
+typedef void cb_fn_t(uint8_t, uint8_t, uint8_t, float, float);
 
 enum playState {
     STOPPED  = 0,
@@ -78,7 +78,8 @@ struct AUDIO_PLAYER {
     // Value of data at last notification
     uint8_t last_play_state;
     uint8_t last_loop;
-    float last_position;
+    jack_nframes_t last_position;
+    float last_varispeed;
 
     struct SF_INFO sf_info; // Structure containing currently loaded file info
     pthread_t file_thread;  // ID of file reader thread
@@ -87,17 +88,16 @@ struct AUDIO_PLAYER {
     jack_ringbuffer_t* ringbuffer_a;        // Used to pass A samples from file reader to jack process
     jack_ringbuffer_t* ringbuffer_b;        // Used to pass B samples from file reader to jack process
     _Atomic jack_nframes_t play_pos_frames; // Current playback position in frames since start of audio at play samplerate
-    size_t frames;                          // Quanity of frames after samplerate conversion
     char filename[MAX_FILENAME];
     _Atomic uint8_t time_ratio_dirty;       // True if time stretch ratio changed
     float src_ratio;                        // Ratio of jack/file samplerate
-    float pos_notify_delta;                 // Position time difference to trigger notification
+    jack_nframes_t pos_notify_delta;        // Position time difference to trigger notification
     _Atomic float varispeed;                // Ratio to adjust speed and pitch - goes to zero when stopped to allow scrubbing
     float play_varispeed;                   // Used to restore varispeed when starting playback
     float speed;                            // Playback speed factor
     int8_t semitones;                       // Pitch shift factor semitones
     int8_t cents;                           // Pitch shift factor cents
-    float pitch;                            // Pitch shift factor (calculated from )
+    float pitch;                            // Pitch shift factor (calculated from semitones & cents)
 
     RubberBandState rb_state;              // Rubberband time/pitch warp engine state reference
 };

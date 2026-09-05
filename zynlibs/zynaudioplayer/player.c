@@ -20,14 +20,13 @@ jack_client_t* g_jack_client;
 jack_port_t* g_jack_midi_in;
 jack_nframes_t g_samplerate = 48000; // Playback samplerate set by jackd
 uint8_t g_debug             = 0;
-uint8_t g_last_debug        = 0;
 uint8_t g_removePlayerId    = 255;
-_Atomic uint8_t g_reset_rb = 0; // True to request RT thread reset rubberband stretcher
+_Atomic uint8_t g_reset_rb  = 0; // True to request RT thread reset rubberband stretcher
 char g_supported_codecs[1024];
-uint32_t g_nextIndex = 1;
-cb_fn_t* g_cb_fn = NULL;
+uint32_t g_nextIndex        = 1;
+cb_fn_t* g_cb_fn            = NULL;
 
-static struct AUDIO_PLAYER* g_players[MAX_PLAYERS];
+struct AUDIO_PLAYER* g_players[MAX_PLAYERS];
 
 // Declare local functions
 
@@ -39,17 +38,10 @@ static struct AUDIO_PLAYER* g_players[MAX_PLAYERS];
 
 // *** Internal private (non-public) functions not exposed as external C functions (not declared in header) ***
 
-struct AUDIO_PLAYER* get_player(uint8_t id) {
+inline struct AUDIO_PLAYER* get_player(uint8_t id) {
     if (id < MAX_PLAYERS)
         return g_players[id];
     return NULL;
-}
-
-static inline void try_transition(struct AUDIO_PLAYER* pPlayer, uint8_t to_state) {
-    uint8_t expected = LOADING;
-    atomic_compare_exchange_strong_explicit(
-        &pPlayer->file_read_status, &expected, to_state,
-        memory_order_relaxed, memory_order_relaxed);
 }
 
 int is_codec_supported(const char* codec) {
@@ -82,46 +74,42 @@ char* get_supported_codecs() {
     return g_supported_codecs;
 }
 
-void send_notifications(uint8_t id, int param) {
-    // Send dynamic notifications within this thread, not jack process
+void send_notifications(uint8_t id) {
+    // Send dynamic notifications within non-realtime thread of changes to play_state, play_pos & loop
     struct AUDIO_PLAYER* pPlayer = get_player(id);
     if (!g_cb_fn || !pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     uint8_t bSend = 0;
-    if ((param == NOTIFY_ALL || param == NOTIFY_TRANSPORT) && pPlayer->last_play_state != pPlayer->play_state) {
+    if (pPlayer->play_state <= PLAYING && pPlayer->last_play_state != pPlayer->play_state) {
         pPlayer->last_play_state = pPlayer->play_state;
-        if (pPlayer->play_state <= PLAYING)
-            bSend = 1;
+        bSend = 1;
     }
-    if ((param == NOTIFY_ALL || param == NOTIFY_POSITION)) {
-        float fPos = get_position(id);
-        if (fabs(fPos - pPlayer->last_position) >= pPlayer->pos_notify_delta) {
-            pPlayer->last_position = fPos;
-            bSend = 1;
-        }
+    if (abs((int)pPlayer->last_position - (int)pPlayer->play_pos_frames) >= pPlayer->pos_notify_delta) {
+        pPlayer->last_position = pPlayer->play_pos_frames;
+        bSend = 1;
     }
-    if ((param == NOTIFY_ALL || param == NOTIFY_LOOP) && pPlayer->loop != pPlayer->last_loop) {
+    if (pPlayer->loop != pPlayer->last_loop) {
         pPlayer->last_loop = pPlayer->loop;
         bSend = 1;
     }
+    if (pPlayer->varispeed != pPlayer->last_varispeed) {
+        pPlayer->last_varispeed = pPlayer->varispeed;
+        bSend = 1;
+    }
     if (bSend)
-        g_cb_fn(id, pPlayer->play_state != STOPPED, pPlayer->loop, pPlayer->last_position);
+        g_cb_fn(id, pPlayer->play_state != STOPPED, pPlayer->loop, (float)(pPlayer->play_pos_frames) / g_samplerate, pPlayer->varispeed);
 }
 
 // Thread function to open file and stream content to ring buffers
 void* file_thread_fn(void* param) {
-    uint8_t* pId = param;
-    uint8_t id = *pId;
+    uint8_t id = *(uint8_t*)param;
     struct AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer) {
-        pthread_exit(NULL);
-        return NULL;
-    }
+
     pPlayer->sf_info.format = 0; // This triggers sf_open to populate info structure
-    SRC_STATE* pSrcState = NULL;
     SRC_DATA srcData;
     size_t nMaxFrames;        // Maximum quantity of frames that may be read from file
     size_t nUnusedFrames = 0; // Quantity of frames in input buffer not used by SRC
+    // Open the sound file (libsoundfile handles CODEC conversion)
     SNDFILE* pFile = sf_open(pPlayer->filename, SFM_READ, &pPlayer->sf_info);
     if (!pFile || pPlayer->sf_info.channels < 1) {
         atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
@@ -135,18 +123,22 @@ void* file_thread_fn(void* param) {
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
     }
     if (pPlayer->file_open) {
+        // Create rubberband stretcher
+        RubberBandOptions options =
+            RubberBandOptionProcessRealTime |
+            RubberBandOptionEngineFaster |
+            RubberBandOptionChannelsTogether |
+            RubberBandOptionThreadingNever;
         pPlayer->rb_state = rubberband_new(
             g_samplerate,
             2,
-            RubberBandOptionProcessRealTime |
-            RubberBandOptionWindowShort |
-            RubberBandOptionPitchHighConsistency |
-            RubberBandOptionFormantPreserved,
+            options,
             1.0,
             1.0
         );
         rubberband_set_max_process_size(pPlayer->rb_state, STRETCH_BUF_SIZE);
 
+        // Reset player parameters
         pPlayer->gain = 1.0;
         pPlayer->crop_start = 0;
         pPlayer->crop_end = pPlayer->sf_info.frames;
@@ -155,26 +147,16 @@ void* file_thread_fn(void* param) {
         if (pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1.0;
         srcData.src_ratio = pPlayer->src_ratio;
-        pPlayer->pos_notify_delta = (float)pPlayer->sf_info.frames / g_samplerate / 400;
+        pPlayer->pos_notify_delta = pPlayer->sf_info.frames / 400;
         pPlayer->output_buffer_size = pPlayer->src_ratio * pPlayer->input_buffer_size;
-        pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
+        pPlayer->ringbuffer_a = jack_ringbuffer_create(MAX_VARISPEED * pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_a);
-        pPlayer->ringbuffer_b = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
+        pPlayer->ringbuffer_b = jack_ringbuffer_create(MAX_VARISPEED * pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_b);
         atomic_store_explicit(&pPlayer->file_open, FILE_OPEN, memory_order_relaxed);
-        
-        {
-            // Scope to avoid extra memory usage
-            const char* loopModes[] = {"None", "Forward", "Backward", "Alternating"};
-            SF_CUES cues;
-            uint32_t count = 0;
-            sf_command(pFile, SFC_GET_CUE_COUNT, &count, sizeof(count));
-            if (count > MAX_CUES)
-                count = MAX_CUES;
-            sf_command(pFile, SFC_GET_CUE, &cues, sizeof(cues));
-            for (uint32_t i = 0; i < count; ++i)
-                ;//add_cue_point(id, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
-        }
+
+        // Reset cue markers
+        //memset(pPlayer->cue_points, 0, MAX_CUES * sizeof(struct cue_point));
 
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels];   // Buffer used to read sample data from file
@@ -183,17 +165,16 @@ void* file_thread_fn(void* param) {
         srcData.data_in         = pBufferIn;
         srcData.data_out        = pBufferOut;
         srcData.output_frames   = pPlayer->output_buffer_size;
-        pPlayer->frames         = pPlayer->sf_info.frames * pPlayer->src_ratio;
         pPlayer->crop_end_src   = pPlayer->crop_end * pPlayer->src_ratio;
         pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
         int nError;
-        pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
+        SRC_STATE* pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
         if (!pSrcState) {
             fprintf(stderr, "Failed to create a samplerate converter: %d\n", nError);
             atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
         }
 
-        DPRINTF("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, get_duration(id));
+        DPRINTF("Opened file '%s' with samplerate %u, frames: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, pPlayer->sf_info.frames);
 
         while (pPlayer->file_open == FILE_OPEN) {
             if (pPlayer->file_read_status == SEEKING) {
@@ -370,26 +351,30 @@ void* file_thread_fn(void* param) {
                         }
                     } else if (pPlayer->loop == 1) {
                         // Short read - looping so fill from loop start point in file
-                        try_transition(pPlayer, LOOPING);
+                        atomic_store_explicit(&pPlayer->file_read_status, LOOPING, memory_order_relaxed);
                         // srcData.end_of_input = 1;
                         DPRINTF("libzynaudioplayer read to loop point in input file - setting loading status to looping\n");
                     } else {
                         // End of file
-                        try_transition(pPlayer, IDLE);
+                        atomic_store_explicit(&pPlayer->file_read_status, IDLE, memory_order_relaxed);
                         srcData.end_of_input = 1;
                         DPRINTF("libzynaudioplayer read to end of input file - setting loading status to IDLE\n");
                     }
                 } else {
-                    try_transition(pPlayer, WAITING);
+                    atomic_store_explicit(&pPlayer->file_read_status, WAITING, memory_order_relaxed);
                 }
             }
             // if(pPlayer->file_read_status != LOOPING) {
-            send_notifications(id, NOTIFY_ALL);
+            send_notifications(id);
             usleep(10000); // Reduce CPU load by waiting until next file read operation
             //}
         }
+
         rubberband_delete(pPlayer->rb_state);
+        jack_ringbuffer_free(pPlayer->ringbuffer_a);
+        jack_ringbuffer_free(pPlayer->ringbuffer_b);
         pPlayer->rb_state = NULL;
+        src_delete(pSrcState);
     }
     if (pFile) {
         int nError = sf_close(pFile);
@@ -399,8 +384,6 @@ void* file_thread_fn(void* param) {
             pPlayer->filename[0] = '\0';
     }
     atomic_store_explicit(&pPlayer->play_pos_frames, 0, memory_order_relaxed);
-    if (pSrcState)
-        pSrcState = src_delete(pSrcState);
 
     DPRINTF("File reader thread ended\n");
     pthread_exit(NULL);
@@ -418,6 +401,8 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         size_t a_count          = 0; // Quantity of frames added to playback (non silent audio)
         jack_default_audio_sample_t* pOutA = jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
         jack_default_audio_sample_t* pOutB = jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
+        memset(pOutA, 0, nFrames * sizeof(float));
+        memset(pOutB, 0, nFrames * sizeof(float));
         float pInA[STRETCH_BUF_SIZE];
         float pInB[STRETCH_BUF_SIZE];
         float* stretch_input_buffers[] = {pInA, pInB};
@@ -433,37 +418,41 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
                 atomic_store_explicit(&g_reset_rb, 0, memory_order_relaxed);
             }
             if (pPlayer->time_ratio_dirty) {
-                float varispeed = fabs(pPlayer->varispeed);
-                if (varispeed) {
-                    rubberband_set_time_ratio(pPlayer->rb_state, (varispeed / pPlayer->speed));
-                    rubberband_set_pitch_scale(pPlayer->rb_state, pPlayer->pitch * varispeed);
+                float abs_varispeed = fabs(pPlayer->varispeed);
+                if (abs_varispeed > MIN_VARISPEED) {
+                    rubberband_set_time_ratio(pPlayer->rb_state, 1.0 / (abs_varispeed *  pPlayer->speed));
+                    rubberband_set_pitch_scale(pPlayer->rb_state, abs_varispeed * pPlayer->pitch);
+                } else {
+                    rubberband_set_time_ratio(pPlayer->rb_state, 1.0 / pPlayer->speed);
+                    rubberband_set_pitch_scale(pPlayer->rb_state, pPlayer->pitch);
                 }
                 atomic_store_explicit(&pPlayer->time_ratio_dirty, 0, memory_order_relaxed);
             }
-            int available;
+            //!@todo Bypass rubberband stretcher if speed == 0.0
+            int available = 0;
             while ((available = rubberband_available(pPlayer->rb_state)) < nFrames) {
                 // Process data from fifo until sufficient to populate this frame (first attempt may give -1 but that's okay as we will repeat)
                 if (available < 0) {
                     // If rubberband stretcher gives fault it will respond with -1
-                    available = 0;
-                    break;
+                    available = 0; //!@todo Need to handle error.
                 }
-                size_t sampsReq = MIN(rubberband_get_samples_required(pPlayer->rb_state), STRETCH_BUF_SIZE);
-                size_t nBytes   = MIN(jack_ringbuffer_read_space(pPlayer->ringbuffer_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_b));
-                nBytes          = MIN(nBytes, sampsReq * sizeof(float));
-                nBytes -= nBytes % sizeof(float);
-                size_t nRead  = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pInA, nBytes);
-                size_t nReadB = jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pInB, nRead);
-                nRead /= sizeof(float);
+
+                size_t framesReq = MIN(rubberband_get_samples_required(pPlayer->rb_state), STRETCH_BUF_SIZE);
+                size_t nBytes    = MIN(jack_ringbuffer_read_space(pPlayer->ringbuffer_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_b));
+                nBytes           -= nBytes % sizeof(float); // Ensure whole samples / frames only
+                nBytes           = MIN(nBytes, framesReq * sizeof(float));
+                size_t nRead     = jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)pInA, nBytes);
+                size_t nReadB    = jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pInB, nRead);
+                nRead /= sizeof(float); // Convert to frames read
                 r_count += nRead;
                 // stretch
                 rubberband_process(pPlayer->rb_state, (const float* const*)stretch_input_buffers, nRead, 0);
                 if (nRead == 0)
-                    break; // fifo buffers run dry
+                    break; // Ringbuffer underun
             }
             a_count = rubberband_retrieve(pPlayer->rb_state, output_buffers, MIN((size_t)available, nFrames));
             for (size_t offset = 0; offset < a_count; ++offset) {
-                // Set volume / gain / level / envelope
+                // Set gain
                 pOutA[offset] *= pPlayer->gain;
                 pOutB[offset] *= pPlayer->gain;
             }
@@ -506,19 +495,12 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
                 pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
                 pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
             }
-            pPlayer->play_state = STOPPED;
-            pPlayer->play_varispeed = pPlayer->varispeed;
             atomic_store_explicit(&pPlayer->varispeed, 0.0, memory_order_relaxed);
-            if (bReverse && pPlayer->play_pos_frames == 0)
-                pPlayer->play_varispeed = 1.0;
+            atomic_store_explicit(&pPlayer->play_state, STOPPED, memory_order_relaxed);
             atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
             DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count,
                     nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
-
-        // Silence remainder of frame
-        memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
-        memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
     }
 
     // Remove player
@@ -580,32 +562,28 @@ uint8_t load(uint8_t id, const char* filename) {
     if (!pPlayer)
         return 0;
     unload(id);
-    pPlayer->track_a = -1;
-    pPlayer->track_b = -1;
     strncpy(pPlayer->filename, filename, MAX_FILENAME - 1);
 
     atomic_store_explicit(&pPlayer->file_open, FILE_OPENING, memory_order_relaxed);
-    if (pthread_create(&(pPlayer->file_thread), NULL, file_thread_fn, &id)) {
+    if (pthread_create(&pPlayer->file_thread, NULL, file_thread_fn, &id)) {
         fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
         unload(id);
         return 0;
     }
-    while (pPlayer->file_open == FILE_OPENING) {
-        usleep(10000); //!@todo Optimise wait for file open
-    }
+    while (pPlayer->file_open == FILE_OPENING)
+        usleep(1000); //!@todo Optimise wait for file open
 
     return (pPlayer->file_open == FILE_OPEN);
 }
 
 void unload(uint8_t id) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer)
+    if (!pPlayer || pPlayer->file_open == FILE_CLOSED)
         return;
     stop_playback(id);
-    if (pPlayer->file_open == FILE_CLOSED)
-        return;
+    while (pPlayer->play_state != STOPPED)
+        usleep(1000);
     atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
-    //pPlayer->cue_points.clear();
     pthread_join(pPlayer->file_thread, NULL);
 }
 
@@ -720,7 +698,7 @@ void set_position(uint8_t id, float time) {
     atomic_store_explicit(&pPlayer->play_pos_frames, frames, memory_order_relaxed);
     atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
     DPRINTF("New position requested, setting loading status to SEEKING\n");
-    send_notifications(id, NOTIFY_POSITION);
+    send_notifications(id);
 }
 
 float get_position(uint8_t id) {
@@ -732,11 +710,10 @@ float get_position(uint8_t id) {
 
 void enable_loop(uint8_t id, uint8_t nLoop) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer)
+    if (!pPlayer || nLoop == pPlayer->loop)
         return;
     pPlayer->loop = nLoop;
-    atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
-    send_notifications(id, NOTIFY_LOOP);
+    send_notifications(id);
 }
 
 uint8_t is_loop(uint8_t id) {
@@ -757,9 +734,11 @@ void set_crop_start_time(uint8_t id, float time) {
         frames = pPlayer->crop_end - 1;
     pPlayer->crop_start = frames;
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
-    if (pPlayer->play_pos_frames < frames)
-        set_position(id, time);
-    send_notifications(id, NOTIFY_CROP_START);
+    if (pPlayer->play_pos_frames < pPlayer->crop_start_src) {
+        atomic_store_explicit(&pPlayer->play_pos_frames, pPlayer->crop_start_src, memory_order_relaxed);
+        atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+    }
+    send_notifications(id);
 }
 
 float get_crop_start_time(uint8_t id) {
@@ -780,16 +759,11 @@ void set_crop_end_time(uint8_t id, float time) {
         frames = pPlayer->sf_info.frames;
     pPlayer->crop_end = frames;
     pPlayer->crop_end_src = frames * pPlayer->src_ratio;
-    if (pPlayer->crop_end_src > pPlayer->frames) {
-        pPlayer->crop_end_src = pPlayer->frames;
-        pPlayer->crop_end = pPlayer->frames / pPlayer->src_ratio;
-    }
-    if (pPlayer->play_pos_frames > pPlayer->crop_end_src) {
+    if (pPlayer->play_pos_frames >= pPlayer->crop_end_src) {
         atomic_store_explicit(&pPlayer->play_pos_frames, pPlayer->crop_end_src, memory_order_relaxed);
         atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
-    } else
-        atomic_store_explicit(&pPlayer->file_read_status, WAITING, memory_order_relaxed);
-    send_notifications(id, NOTIFY_CROP_END);
+    }
+    send_notifications(id);
 }
 
 float get_crop_end_time(uint8_t id) {
@@ -913,6 +887,8 @@ void clear_cue_points(uint8_t id) {
 void start_playback(uint8_t id) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
+        if (pPlayer->play_varispeed < 0.0 && pPlayer->play_pos_frames <= pPlayer->crop_start_src)
+            pPlayer->play_varispeed = 1.0;
         atomic_store_explicit(&pPlayer->varispeed, pPlayer->play_varispeed, memory_order_relaxed);
         atomic_store_explicit(&pPlayer->play_state, STARTING, memory_order_relaxed);
         atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);
@@ -921,9 +897,8 @@ void start_playback(uint8_t id) {
 
 void stop_playback(uint8_t id) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
-    if (pPlayer && pPlayer->play_state != STOPPED) {
+    if (pPlayer && pPlayer->play_state != STOPPED)
         atomic_store_explicit(&pPlayer->play_state, STOPPING, memory_order_relaxed);
-    }
 }
 
 uint8_t get_playback_state(uint8_t id) {
@@ -1062,7 +1037,6 @@ uint8_t set_src_quality(uint8_t id, unsigned int quality) {
     if (quality > SRC_LINEAR)
         return 0;
     pPlayer->src_quality = quality;
-    send_notifications(id, NOTIFY_QUALITY);
     return 1;
 }
 
@@ -1102,7 +1076,6 @@ void set_track_a(uint8_t id, int track) {
             pPlayer->track_a = track;
     }
     set_position(id, get_position(id));
-    send_notifications(id, NOTIFY_TRACK_A);
 }
 
 void set_track_b(uint8_t id, int track) {
@@ -1116,7 +1089,6 @@ void set_track_b(uint8_t id, int track) {
             pPlayer->track_b = track;
     }
     set_position(id, get_position(id));
-    send_notifications(id, NOTIFY_TRACK_B);
 }
 
 int get_track_a(uint8_t id) {
@@ -1182,29 +1154,28 @@ int8_t get_pitch_cent(uint8_t id) {
 
 void set_varispeed(uint8_t id, float ratio) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer || ratio < -MAX_VARISPEED || ratio > MAX_VARISPEED)
+    float abs_ratio = fabs(ratio);
+    if (!pPlayer || abs_ratio > MAX_VARISPEED)
         return;
 
     // Check if moving into or through zone too small to reliably varispeed
-    float varispeed = pPlayer->varispeed;
-    uint8_t stop  = ((varispeed >= MIN_VARISPEED && ratio < MIN_VARISPEED) || varispeed <= -MIN_VARISPEED && ratio > -MIN_VARISPEED);
+    uint8_t stop  = ((pPlayer->varispeed >= MIN_VARISPEED && ratio < MIN_VARISPEED) || pPlayer->varispeed <= -MIN_VARISPEED && ratio > -MIN_VARISPEED);
     // Check for scrubbing
-    uint8_t start = (pPlayer->play_state != PLAYING && fabs(varispeed) < MIN_VARISPEED && fabs(ratio) >= MIN_VARISPEED);
+    uint8_t start = (pPlayer->play_state != PLAYING && abs_ratio > MIN_VARISPEED);
 
+    if (abs_ratio > MIN_VARISPEED)
+        pPlayer->play_varispeed = ratio;
+    else
+        pPlayer->play_varispeed = 1.0;
     atomic_store_explicit(&pPlayer->varispeed, ratio, memory_order_relaxed);
     atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);
-    atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
 
     if (stop && pPlayer->play_state != STOPPED) {
         atomic_store_explicit(&pPlayer->play_state, STOPPING, memory_order_relaxed);
-        // send_notifications(id, NOTIFY_TRANSPORT);
     }
     if (start && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
         atomic_store_explicit(&pPlayer->play_state, STARTING, memory_order_relaxed);
-        // send_notifications(id, NOTIFY_TRANSPORT);
     }
-
-    send_notifications(id, NOTIFY_VARISPEED);
 }
 
 float get_varispeed(uint8_t id) {
@@ -1242,7 +1213,7 @@ unsigned int get_buffer_count(uint8_t id) {
     return 0;
 }
 
-void set_pos_notify_delta(uint8_t id, float time) {
+void set_pos_notify_delta(uint8_t id, uint32_t time) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
     if (pPlayer)
         pPlayer->pos_notify_delta = time;

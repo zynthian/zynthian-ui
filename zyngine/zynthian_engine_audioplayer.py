@@ -551,13 +551,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 except:
                     pass
 
-    def update_play(self, id, play_state, loop, pos):
+    def update_play(self, id, play_state, loop, pos, varispeed):
         for processor in self.processors:
             if processor.handle == id:
                 processor.controllers_dict['transport'].set_value(play_state*127, False)
                 processor.controllers_dict['position'].set_value(pos, False)
                 processor.controllers_dict['loop'].set_value(loop*127, False)
-                processor.controllers_dict['varispeed'].set_value(zynaudioplayer.get_varispeed(processor.handle), False)
+                processor.controllers_dict['varispeed'].set_value(varispeed, False)
 
     # ---------------------------------------------------------------------------
     # Specific functions

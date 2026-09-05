@@ -333,7 +333,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_RECORD, state)
         # TODO manage pattern editor record !!
 
-    def on_audio_play(self, id, play_state, loop, pos):
+    def on_audio_play(self, id, play_state, loop, pos, varispeed):
         try:
             if id == self.state_manager.audio_player.handle:
                 lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PLAY, int(play_state))

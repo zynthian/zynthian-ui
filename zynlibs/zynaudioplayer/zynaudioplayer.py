@@ -43,9 +43,9 @@ from zyngine.zynthian_signal_manager import zynsigman
 #
 # -------------------------------------------------------------------------------
 
-@ctypes.CFUNCTYPE(None, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float)
-def cb_handler(id, play_state, loop, pos):
-    zynsigman.send(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, id=id, play_state=play_state, loop=loop, pos=pos)
+@ctypes.CFUNCTYPE(None, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float)
+def cb_handler(id, play_state, loop, pos, varispeed):
+    zynsigman.send(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, id=id, play_state=play_state, loop=loop, pos=pos, varispeed=varispeed)
 
 try:
     # Load or increment ref to lib
@@ -430,9 +430,9 @@ def get_buffer_count(id):
 
 # Set difference in postion that will trigger notificaton
 # id: Index of player
-# time: Time difference in seconds
+# time: Time difference in frames
 def set_pos_notify_delta(id, time):
-    libaudioplayer.set_pos_notify_delta(id, ctypes.c_float(time))
+    libaudioplayer.set_pos_notify_delta(id, ctypes.c_uint32(time))
 
 # Enable debug output
 # enable: True to enable debug

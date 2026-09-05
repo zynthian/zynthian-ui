@@ -664,7 +664,7 @@ class zynthian_state_manager:
 
             sleep(0.2)
 
-    def cb_status_audio_player(self, id, play_state, loop, pos):
+    def cb_status_audio_player(self, id, play_state, loop, pos, varispeed):
         if id == self.audio_player.handle:
             self.status_audio_player = play_state
 
