@@ -267,8 +267,16 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         if prog is None:
             prog = self.prog_num
         if prog == 0:
-            # Remove program change
-            zs3_id = self.zs3_id.split('/')[-1]
+            # Remove program change -> reset id to the one from title, or to new index
+            title = self.zyngui.state_manager.zs3[self.zs3_id]["title"]
+            if title.startswith('ZS3-'):
+                try:
+                    index = int(title.split('-')[1])
+                except:
+                    index = self.zyngui.state_manager.get_next_zs3_index()
+            else:
+                index = self.zyngui.state_manager.get_next_zs3_index()
+            zs3_id = f"zs3-{index}"
         else:
             if chan == 0:
                 # Any channel
@@ -287,9 +295,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         """ Rename a ZS3 id
             params: [prog, chan, id]
         """
+        position = self.get_position()
+        # get current zs3 - with current id (which encodes chan/prog)
         zs3 = self.zyngui.state_manager.zs3.pop(self.zs3_id)
+        # set current zs3 id - with new id (which encodes chan/prog)
         self.zs3_id = params[2]
+        # re-insert the zs3 under the new id (which encodes chan/prog)
         self.zyngui.state_manager.zs3[self.zs3_id] = zs3
+        # Move it in place again
+        self.zyngui.state_manager.move_zs3(self.zs3_id, position)
         self.prog = params[0]
         self.chan = params[1]
         self.zyngui.close_screen()
