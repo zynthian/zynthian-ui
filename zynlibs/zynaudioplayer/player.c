@@ -738,7 +738,6 @@ uint8_t save(uint8_t id, const char* filename) {
         } else
             overwrite[i] = 0;
     }
-    overwrite[id] = 1;
 
     SF_INFO sfinfo;
     sfinfo.format   = 0; // This triggers sf_open to populate info structure

@@ -412,6 +412,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.zctrl = self.zyngui_control.widget_zctrl
         else:
             try:
+                if processor.engine_code == "AP":
+                    self.load_file()
+                    return
                 note = self.processor.engine.selected_phrase + 1
                 self.zctrl = self.processor.controllers_dict[f"file {note}"]
             except:

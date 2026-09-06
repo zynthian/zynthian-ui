@@ -70,11 +70,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.nickname = "AP"
         self.type = "MIDI Synth"
         self.options['replace'] = False
-        self.processor = None  # Last processor edited
+
+        self.zoom = 1
+        self.dur = 0.0
+        self.handle = 0
 
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
 
         self.monitors_dict = {}
+        self.id2proc = {} # Map of processor objects indexed by player id
         self.start()
         self.reset()
         self.preset_fexts = zynaudioplayer.get_supported_codecs()
@@ -106,6 +110,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
         if handle == 255:
             return
         self.processors.append(processor)
+        self.id2proc[handle] = processor
         processor.handle = handle
         self.jackname = zynaudioplayer.get_jack_client_name()
         processor.jackname = f"{self.jackname}:out_{handle:02d}(a|b)"
@@ -119,16 +124,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.monitors_dict[processor.handle]['speed'] = 1.0
         self.monitors_dict[processor.handle]['update_cue'] = True
         processor.refresh_controllers()
-        self.processor = processor
 
     def remove_processor(self, processor):
+        if processor.handle in self.id2proc:
+            self.id2proc.pop(processor.handle)
         zynaudioplayer.remove_player(processor.handle)
         super().remove_processor(processor)
-        if processor == self.processor:
-            if self.processors:
-                self.processor = self.processors[0]
-            else:
-                self.processor = None
 
     # ---------------------------------------------------------------------------
     # Bank Management
@@ -325,18 +326,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
         processor.refresh_controllers()
         zynaudioplayer.set_track_a(processor.handle, default_a)
         zynaudioplayer.set_track_b(processor.handle, default_b)
-        self.processor = processor
 
         return True
 
     def save_preset(self, bank_name, preset_name):
-        if self.processor is None:
-            return
         if bank_name is None:
             bank_name = self.root_bank_dirs[0][1] + "/capture"
         path = f"{bank_name}/{preset_name}.wav"
-        zynaudioplayer.save(self.processor.handle, path)
-        return path
+        if zynaudioplayer.save(self.handle, path):
+            return path
+        return None
 
     def delete_preset(self, bank, preset):
         try:
@@ -385,7 +384,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 parts = os.path.splitext(parts[1])
                 title = str.replace(parts[0], '_', ' ')
                 processor.set_preset([latest_fpath, None, title, None, bank_fpath])
-        self.processor = processor
 
     # ----------------------------------------------------------------------------
     # Audioplayer Preset Options
@@ -456,38 +454,36 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "record":
             if zctrl.value:
                 self.state_manager.audio_recorder.start_recording()
-            else:
-                for proc in self.processors:
-                    if proc.handle != handle:
-                        continue
-                    self.state_manager.audio_recorder.stop_recording(proc)
+            elif handle in self.id2proc:
+                self.state_manager.audio_recorder.stop_recording(self.id2proc[handle])
         elif zctrl.symbol == "crop start":
             zynaudioplayer.set_crop_start(handle, zctrl.value)
             zctrl.set_value(zynaudioplayer.get_crop_start(handle), False)
             zoom = zctrl.processor.controllers_dict["zoom"].value
-            dur = zynaudioplayer.get_duration(self.processor.handle)
+            dur = zynaudioplayer.get_duration(zctrl.processor.handle)
             zctrl.processor.controllers_dict["offset"].set_value(zctrl.value - dur / zoom / 2)
         elif zctrl.symbol == "crop end":
             zynaudioplayer.set_crop_end(handle, zctrl.value)
             zctrl.set_value(zynaudioplayer.get_crop_end(handle), False)
             zoom = zctrl.processor.controllers_dict["zoom"].value
-            dur = zynaudioplayer.get_duration(self.processor.handle)
+            dur = zynaudioplayer.get_duration(zctrl.processor.handle)
             zctrl.processor.controllers_dict["offset"].set_value(zctrl.value - dur / zoom / 2)
         elif zctrl.symbol == "zoom":
+            self.zoom = zctrl.value
+            self.dur = zynaudioplayer.get_duration(handle)
             self.monitors_dict[handle]['zoom'] = zctrl.value
-            if self.processor:
-                #self.processor.controllers_dict['zoom range'].set_value(0)
-                pos_zctrl = self.processor.controllers_dict['position']
-                pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
-                self.processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
-                self.processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
-                #self.processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
+            #zctrl.processor.controllers_dict['zoom range'].set_value(0)
+            pos_zctrl = zctrl.processor.controllers_dict['position']
+            pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
+            zctrl.processor.controllers_dict['crop start'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
+            zctrl.processor.controllers_dict['crop end'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
+            zctrl.processor.controllers_dict['offset'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
+            zctrl.processor.controllers_dict['cue pos'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
         elif zctrl.symbol == "speed":
             zynaudioplayer.set_speed(handle, zctrl.value)
             self.monitors_dict[handle]['speed'] = zctrl.value
-            if self.processor:
-                self.processor.controllers_dict['position'].value_max = zynaudioplayer.get_duration(handle)
-                self.processor.controllers_dict['crop end'].value_max = zynaudioplayer.get_duration(handle)
+            zctrl.processor.controllers_dict['position'].value_max = zynaudioplayer.get_duration(handle)
+            zctrl.processor.controllers_dict['crop end'].value_max = zynaudioplayer.get_duration(handle)
         elif zctrl.symbol == "semitones":
             zynaudioplayer.set_pitch_semitone(handle, zctrl.value)
         elif zctrl.symbol == "cents":
@@ -546,14 +542,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 # Show cropped region
                 start = zynaudioplayer.get_crop_start(handle)
                 range = zynaudioplayer.get_crop_end(handle) - start
-                self.processor.controllers_dict['offset'].set_value(start)
-                self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
+                zctrl.processor.controllers_dict['offset'].set_value(start)
+                zctrl.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
             elif zctrl.value == 3:
                 # Show loop region
                 start = zynaudioplayer.get_loop_start(handle)
                 range = zynaudioplayer.get_loop_end(handle) - start
-                self.processor.controllers_dict['offset'].set_value(start)
-                self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
+                zctrl.processor.controllers_dict['offset'].set_value(start)
+                zctrl.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
         """
 
     def num2factor(self, num):
@@ -565,6 +561,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             return 1.0 / (1.0 - num)
 
     def get_monitors_dict(self, handle):
+        self.handle = handle
         return self.monitors_dict[handle]
 
     def update_rec(self, state):
@@ -576,12 +573,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
                     pass
 
     def update_play(self, id, play_state, loop, pos, varispeed):
-        for processor in self.processors:
-            if processor.handle == id:
-                processor.controllers_dict['transport'].set_value(play_state*127, False)
-                processor.controllers_dict['position'].set_value(pos, False)
-                processor.controllers_dict['loop'].set_value(loop*127, False)
-                processor.controllers_dict['varispeed'].set_value(varispeed, False)
+        try:
+            processor = self.id2proc[id]
+            processor.controllers_dict['transport'].set_value(play_state*127, False)
+            processor.controllers_dict['position'].set_value(pos, False)
+            processor.controllers_dict['loop'].set_value(loop*127, False)
+            processor.controllers_dict['varispeed'].set_value(varispeed, False)
+            if play_state:
+                processor.controllers_dict['offset'].set_value(pos - self.dur / self.zoom / 2, False)
+        except:
+            pass
 
     # ---------------------------------------------------------------------------
     # Specific functions
