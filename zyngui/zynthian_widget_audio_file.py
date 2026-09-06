@@ -181,7 +181,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.channels = nchans
             self.n_vertex = nv
             self.n_vertex_waveform = 2 * self.channels * self.width
-            self.n_vertex_markers = 2 * self.width // 16
+            self.n_vertex_markers = 2 * (self.width // 16)
 
             # Vertex data matrix
             self.vbo_data = np.zeros(self.n_vertex, dtype=[
@@ -609,8 +609,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
             crop_start = self.processor.controllers_dict['crop start'].value
             crop_end = self.processor.controllers_dict['crop end'].value
-            #cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
-            #selected_cue = self.processor.controllers_dict['cue'].value
             beats = 0
             gain = self.processor.controllers_dict['gain'].value    # Linear gain
             vzoom = gain * self.processor.controllers_dict['v-zoom'].value
@@ -622,6 +620,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 cursor_pos = 0
             crop_start = int(self.samplerate * crop_start)
             crop_end = int(self.samplerate * crop_end)
+            if self.monitors["update_cue"]:
+                self.update_markers = True
+                self.monitors["update_cue"] = False
         # samplv1 =>
         elif self.processor.eng_code == "JV/samplv1":
             zoom = 1
@@ -756,6 +757,17 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 xdata.append(x)
                                 coldata.append(col)
                         self.widget_canvas.set_beat_markers(xdata, coldata)
+                    elif self.processor.eng_code == "AP":
+                        selected_cue = self.processor.controllers_dict['cue'].value
+                        for cue in self.processor.cues:
+                            cue_frames = self.samplerate * cue
+                            xdata.append(f * (cue_frames - self.offset))
+                            if cue == selected_cue:
+                                coldata.append(self.bmarker_color1)
+                            else:
+                                coldata.append(self.bmarker_color2)
+                        self.widget_canvas.set_beat_markers(xdata, coldata)
+
                 # Playing cursor
                 if cursor_pos is not None and (self.last_cursor_pos != cursor_pos or self.update_markers):
                     self.last_cursor_pos = cursor_pos
