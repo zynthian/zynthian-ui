@@ -14,9 +14,7 @@
 #include <stdatomic.h>                  // provides atomic variable access
 
 #define MAX_PLAYERS  100
-#define MAX_CUES     100
 #define MAX_FILENAME 256
-#define MAX_CUENAME  32
 #define MAX_VARISPEED 4.0
 #define MIN_VARISPEED 0.1
 #define STRETCH_BUF_SIZE 4096
@@ -43,12 +41,6 @@ enum fileState {
     FILE_CLOSED,
     FILE_OPENING,
     FILE_OPEN
-};
-
-// Defines a cue point marker
-struct cue_point {
-    uint32_t offset;        // Position in frames
-    char name[MAX_CUENAME]; // Friendly name
 };
 
 typedef struct {
@@ -80,7 +72,6 @@ struct AUDIO_PLAYER {
     unsigned int output_buffer_size;    // Quantity of frames that may be SRC
     unsigned int buffer_count;          // Factor by which ring buffer is larger than input / SRC buffer
     unsigned int src_quality;           // SRC quality [0..4]
-    struct cue_point cue_points[MAX_CUES]; // List of cue point markers
 
     // Value of data at last notification
     uint8_t last_play_state;

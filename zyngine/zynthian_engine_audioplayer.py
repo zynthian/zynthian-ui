@@ -258,7 +258,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
         gain = zynaudioplayer.get_gain(processor.handle)
         processor.cues = [0.0]
         try:
-            with open(f"{self.root_bank_dirs[0][1]}/cues", "r") as f:
+            with open(f"{self.root_bank_dirs[0][1]}/cues.json", "r") as f:
                 data = json.load(f)
                 processor.cues += data[preset[0]]
         except:
@@ -424,7 +424,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
         return ctrls
 
     def save_cues(self, processor):
-        with open(f"{self.root_bank_dirs[0][1]}/cues", "a+") as f:
+        with open(f"{self.root_bank_dirs[0][1]}/cues.json", "a+") as f:
             f.seek(0)
             try:
                 data = json.load(f)

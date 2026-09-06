@@ -183,9 +183,6 @@ void* file_thread_fn(void* param) {
 
         atomic_store_explicit(&pPlayer->file_open, FILE_OPEN, memory_order_relaxed);
 
-        // Reset cue markers
-        //memset(pPlayer->cue_points, 0, MAX_CUES * sizeof(struct cue_point));
-
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels];   // Buffer used to read sample data from file
         float pBufferOut[pPlayer->output_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write converted sample data to
@@ -898,37 +895,6 @@ float get_crop_end_time(uint8_t id) {
     if (!pPlayer || pPlayer->sf_info.samplerate == 0)
         return 0.0;
     return (float)(pPlayer->crop_end) / pPlayer->sf_info.samplerate;
-}
-
-int32_t add_cue_point(uint8_t id, float position, const char* name) {
-    return -1; //!@todo Implement cue points
-}
-
-int32_t remove_cue_point(uint8_t id, float position) {
-    return -1;
-}
-
-uint32_t get_cue_point_count(uint8_t id) {
-    return 0;
-}
-
-float get_cue_point_position(uint8_t id, uint32_t index) {
-    return 0.0f;
-}
-
-uint8_t set_cue_point_position(uint8_t id, uint32_t index, float position) {
-    return 1;
-}
-
-const char* get_cue_point_name(uint8_t id, uint32_t index) {
-    return "";
-}
-
-uint8_t set_cue_point_name(uint8_t id, uint32_t index, const char* name) {
-    return 1;
-}
-
-void clear_cue_points(uint8_t id) {
 }
 
 void start_playback(uint8_t id) {

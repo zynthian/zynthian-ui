@@ -60,13 +60,6 @@ try:
     libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
     libaudioplayer.get_gain.restype = ctypes.c_float
     libaudioplayer.add_player.restype = ctypes.c_uint8
-    libaudioplayer.get_cue_point_position.restype = ctypes.c_float
-    libaudioplayer.set_cue_point_position.restype = ctypes.c_bool
-    libaudioplayer.add_cue_point.restype = ctypes.c_int32
-    libaudioplayer.remove_cue_point.restype = ctypes.c_int32
-    libaudioplayer.get_cue_point_count.restype = ctypes.c_uint32
-    libaudioplayer.get_cue_point_name.restype = ctypes.c_char_p
-    libaudioplayer.set_cue_point_name.restype = ctypes.c_bool
     libaudioplayer.get_playback_state.restype = ctypes.c_uint8
     libaudioplayer.set_src_quality.restype = ctypes.c_uint8
     libaudioplayer.get_speed.restype = ctypes.c_float
@@ -195,64 +188,6 @@ def get_crop_end(id):
 # time: Crop end
 def set_crop_end(id, time):
     libaudioplayer.set_crop_end_time(id, ctypes.c_float(time))
-
-# Add a cue point marker
-# id: Index of player
-# pos: Marker position in seconds
-# name: Marker name (max 255 chars)
-# Returns: Index of cue point or -1 on failure
-def add_cue_point(id, pos, name=None):
-    if name is None:
-        name = ""
-    return libaudioplayer.add_cue_point(id, ctypes.c_float(pos), ctypes.c_char_p(bytes(name, "utf-8")))
-
-# Remove a cue point marker
-# id: Index of player
-# frames: Marker position in frames
-# Returns: True on success
-def remove_cue_point(id, frames):
-    return libaudioplayer.remove_cue_point(id, ctypes.c_float(frames))
-
-# Get quantity of cue point markers
-# id: Index of player
-# Returns: Quantity of cue point markers
-def get_cue_point_count(id):
-    return libaudioplayer.get_cue_point_count(id)
-
-# Get a cue point's position
-# id: Index of player
-# index Index of cue point
-# Returns: Position (in seconds) of cue point or -1.0 if not found
-def get_cue_point_position(id, index):
-    return libaudioplayer.get_cue_point_position(id, ctypes.c_uint32(index))
-
-# Set a cue point's position
-# id: Index of player
-# index Index of cue point
-# position: Position (in seconds) of cue point or -1.0 if not found
-# Returns: True on success
-def set_cue_point_position(id, index, position):
-    return libaudioplayer.set_cue_point_position(id, ctypes.c_uint32(index), ctypes.c_float(position))
-
-# Get a cue point's name
-# id: Index of player
-# index Index of cue point
-# Returns: Cue point name  or "" if not found
-def get_cue_point_name(id, index):
-    return libaudioplayer.get_cue_point_name(id, ctypes.c_uint32(index)).decode("utf-8")
-
-# Set a cue point's name
-# id: Index of player
-# index Index of cue point
-# name: New name for cue point (max 255 chars)
-# Returns: True on success
-def set_cue_point_name(id, index, name):
-    return libaudioplayer.set_cue_point_name(id, ctypes.c_uint32(index), ctypes.c_char_p(bytes(name[:255], "utf-8")))
-
-# Remove all cue points
-# id: Index of player
-def clear_cue_points(id):
-    libaudioplayer.clear_cue_points(id)
 
 # Start playback
 # id: Index of player

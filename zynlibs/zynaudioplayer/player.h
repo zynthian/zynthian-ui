@@ -85,7 +85,7 @@ uint8_t load(uint8_t id, const char* filename);
     @param  id Player id
     @param  filename Full path and name of file to create or overwrite
     @retval uint8_t 1 on success
-    @note   Crops file by crop markers and saves cue points as metadata
+    @note   Crops file by crop markers
 */
 uint8_t save(uint8_t id, const char* filename);
 
@@ -153,63 +153,6 @@ void set_crop_end_time(uint8_t id, float time);
     @retval float End of crop in seconds since end of file
 */
 float get_crop_end_time(uint8_t id);
-
-/** @brief  Add a cue marker
-    @param  id Player id
-    @param  position Position within file (in seconds) to add marker
-    @param  name Cue point name
-    @retval int32_t Index of marker or -1 on failure
-*/
-int32_t add_cue_point(uint8_t id, float position, const char* name);
-
-/** @brief  Remove a cue marker
-    @param  id Player id
-    @param  position Position within file (in secondes) of marker to remove
-    @retval int32_t Index of removed maker or -1 on failure
-    @note   The closest marker within +/-0.5s will be removed
-*/
-int32_t remove_cue_point(uint8_t id, float position);
-
-/** @brief  Get quantity of cue points
-    @param  id Player id
-    @retval uint32_t Quantity of cue points
-*/
-uint32_t get_cue_point_count(uint8_t id);
-
-/** @brief  Get a cue point's position
-    @param  id Player id
-    @param  index Index of cue point
-    @retval float Position (in seconds) of cue point or -1.0 if not found
-*/
-float get_cue_point_position(uint8_t id, uint32_t index);
-
-/** @brief  Set a cue point's position
-    @param  id Player id
-    @param  index Index of cue point
-    @param  position Position (in seconds) of cue point
-    @retval uint8_t 1 on success
-*/
-uint8_t set_cue_point_position(uint8_t id, uint32_t index, float position);
-
-/** @brief  Get a cue point's name
-    @param  id Player id
-    @param  index Index of cue point
-    @retval char* Name of cue point or "" if not found
-*/
-const char* get_cue_point_name(uint8_t id, uint32_t index);
-
-/** @brief  Set a cue point's name
-    @param  id Player id
-    @param  index Index of cue point
-    @param  name Name of cue point (as c-string) - max 255 characters
-    @retval uint8_t 1 on success
-*/
-uint8_t set_cue_point_name(uint8_t id, uint32_t index, const char* name);
-
-/** @brief  Clear all cue points
-    @param  id Player id
-*/
-void clear_cue_points(uint8_t id);
 
 /** @brief  Start playback
     @param  id Player id
