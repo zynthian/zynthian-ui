@@ -71,7 +71,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.type = "MIDI Synth"
         self.options['replace'] = False
 
-        self.zoom = 1
         self.dur = 0.0
         self.handle = 0
 
@@ -308,9 +307,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
             ['crop start', None, 0.0, dur],
             ['crop end', None, dur, dur],
             ['zoom', None, 1, [zoom_labels, zoom_values]],
-            #['zoom range', None, 0, ["User", "File", "Crop"]],
             ['info', None, 0, ["Duration", "Position", "Remaining", "Samplerate", "CODEC"]],
-            ['offset', None, 0, dur],
+            ['offset', None, 0.0, 0.0],
             ['v-zoom', None, 1.0, 4.0],
             ['cue', {'value_max': len(processor.cues)-1}],
             ['cue pos', None, 0.0, dur],
@@ -437,6 +435,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
             f.truncate()
             json.dump(data, f, indent=4)
 
+    def centre_offset(self):
+        try:
+            self.last_offset_ctrl.processor.controllers_dict["offset"].set_value(self.last_offset_ctrl.value - self.dur / self.zoom / 2)
+        except Exception as e:
+            logging.warning(e)
+
     def send_controller_value(self, zctrl):
         handle = zctrl.handle
         if zctrl.symbol == "position":
@@ -463,26 +467,26 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "crop start":
             zynaudioplayer.set_crop_start(handle, zctrl.value)
             zctrl.set_value(zynaudioplayer.get_crop_start(handle), False)
-            zoom = zctrl.processor.controllers_dict["zoom"].value
-            dur = zynaudioplayer.get_duration(zctrl.processor.handle)
-            zctrl.processor.controllers_dict["offset"].set_value(zctrl.value - dur / zoom / 2)
+            self.last_offset_ctrl = zctrl
+            self.centre_offset()
         elif zctrl.symbol == "crop end":
             zynaudioplayer.set_crop_end(handle, zctrl.value)
             zctrl.set_value(zynaudioplayer.get_crop_end(handle), False)
-            zoom = zctrl.processor.controllers_dict["zoom"].value
-            dur = zynaudioplayer.get_duration(zctrl.processor.handle)
-            zctrl.processor.controllers_dict["offset"].set_value(zctrl.value - dur / zoom / 2)
+            self.last_offset_ctrl = zctrl
+            self.centre_offset()
         elif zctrl.symbol == "zoom":
-            self.zoom = zctrl.value
-            self.dur = zynaudioplayer.get_duration(handle)
             self.monitors_dict[handle]['zoom'] = zctrl.value
-            #zctrl.processor.controllers_dict['zoom range'].set_value(0)
+            self.zoom = zctrl.value
             pos_zctrl = zctrl.processor.controllers_dict['position']
-            pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
-            zctrl.processor.controllers_dict['crop start'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
-            zctrl.processor.controllers_dict['crop end'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
-            zctrl.processor.controllers_dict['offset'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
-            zctrl.processor.controllers_dict['cue pos'].set_options({"nudge_factor":pos_zctrl.nudge_factor})
+            nudge_factor = pos_zctrl.value_max / 100 / zctrl.value
+            pos_zctrl.set_options({"nudge_factor":nudge_factor})
+            max_offset = pos_zctrl.value_max - pos_zctrl.value_max / self.monitors_dict[handle]['zoom']
+            zctrl.processor.controllers_dict['crop start'].set_options({"nudge_factor":nudge_factor})
+            zctrl.processor.controllers_dict['crop end'].set_options({"nudge_factor":nudge_factor})
+            zctrl.processor.controllers_dict['cue pos'].set_options({"nudge_factor":nudge_factor})
+            zctrl.processor.controllers_dict['offset'].set_options({"nudge_factor":nudge_factor, "value_max":max_offset})
+            self.centre_offset()
+
         elif zctrl.symbol == "speed":
             zynaudioplayer.set_speed(handle, zctrl.value)
             self.monitors_dict[handle]['speed'] = zctrl.value
@@ -535,26 +539,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 self.save_cues(zctrl.processor)
             zctrl.value = 1
             self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
-        """
-        elif zctrl.symbol == "zoom range":
-            if zctrl.value == 1:
-                # Show whole file
-                zctrl.processor.controllers_dict['zoom'].set_value(1, False)
-                zctrl.processor.controllers_dict['offset'].set_value(0)
-                range = zynaudioplayer.get_duration(handle)
-            elif zctrl.value == 2:
-                # Show cropped region
-                start = zynaudioplayer.get_crop_start(handle)
-                range = zynaudioplayer.get_crop_end(handle) - start
-                zctrl.processor.controllers_dict['offset'].set_value(start)
-                zctrl.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
-            elif zctrl.value == 3:
-                # Show loop region
-                start = zynaudioplayer.get_loop_start(handle)
-                range = zynaudioplayer.get_loop_end(handle) - start
-                zctrl.processor.controllers_dict['offset'].set_value(start)
-                zctrl.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
-        """
 
     def num2factor(self, num):
         if abs(num) < 0.01:
@@ -565,7 +549,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
             return 1.0 / (1.0 - num)
 
     def get_monitors_dict(self, handle):
-        self.handle = handle
+        if handle != self.handle:
+            self.handle = handle
+            self.dur = zynaudioplayer.get_duration(handle)
+            self.zoom = self.id2proc[handle].controllers_dict['zoom'].value
+            self.last_offset_ctrl = self.id2proc[handle].controllers_dict['position']
         return self.monitors_dict[handle]
 
     def update_rec(self, state):
@@ -584,8 +572,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
             processor.controllers_dict['position'].set_value(pos, False)
             processor.controllers_dict['loop'].set_value(loop*127, False)
             processor.controllers_dict['varispeed'].set_value(varispeed, False)
-            if play_state:
-                processor.controllers_dict['offset'].set_value(pos - self.dur / self.zoom / 2, False)
+            self.last_offset_ctrl = processor.controllers_dict['position']
+            self.centre_offset()
         except:
             pass
 
