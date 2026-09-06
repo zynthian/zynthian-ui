@@ -366,7 +366,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
         else:
             return False
 
-    def load_latest(self, processor):
+    def load_latest(self):
+        try:
+            processor = self.id2proc[0]
+        except:
+            return
         bank_dirs = [self.root_bank_dirs[0][1] + "/capture"]
         bank_dirs += zynconf.get_external_storage_dirs(zynthian_engine.ex_data_dir)
         wav_fpaths = []
@@ -571,6 +575,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                     processor.controllers_dict['record'].set_value("stopped", False)
                 except:
                     pass
+            self.load_latest()
 
     def update_play(self, id, play_state, loop, pos, varispeed):
         try:

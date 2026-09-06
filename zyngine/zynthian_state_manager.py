@@ -2318,7 +2318,7 @@ class zynthian_state_manager:
         if (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or zynaudioplayer.get_filename(self.audio_player.handle):
             zynaudioplayer.start_playback(self.audio_player.handle)
         else:
-            self.audio_player.engine.load_latest(self.audio_player)
+            self.audio_player.engine.load_latest()
             zynaudioplayer.start_playback(self.audio_player.handle)
 
     def stop_audio_player(self, reset_pos=False):

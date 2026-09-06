@@ -1400,18 +1400,25 @@ class zynthian_gui:
             self.state_manager.audio_recorder.toggle_recording()
 
     def cuia_start_audio_play(self, params=None):
-        self.state_manager.start_audio_player()
+        if self.current_processor and self.current_processor.eng_code == "AP":
+            self.current_processor.controllers_dict["transport"].set_value(127)
+        else:
+            self.state_manager.start_audio_player()
 
     def cuia_stop_audio_play(self, params=None):
         if self.current_screen == "pattern_editor":
             self.screens["pattern_editor"].stop_playback()
+        elif self.current_processor and self.current_processor.eng_code == "AP":
+            self.current_processor.controllers_dict["transport"].set_value(0)
+            self.current_processor.controllers_dict["position"].set_value(0)
         else:
             self.state_manager.stop_audio_player(reset_pos=True)
 
     def cuia_toggle_audio_play(self, params=None):
-        # TODO: This logic should not be here
         if self.current_screen == "pattern_editor":
             self.screens["pattern_editor"].toggle_playback()
+        elif self.current_processor and self.current_processor.eng_code == "AP":
+            self.current_processor.controllers_dict["transport"].toggle()
         else:
             self.state_manager.toggle_audio_player()
 
