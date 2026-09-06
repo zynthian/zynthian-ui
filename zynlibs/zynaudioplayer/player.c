@@ -728,15 +728,17 @@ uint8_t save(uint8_t id, const char* filename) {
     if (!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
 
-    uint8_t nOverwrite = 255;
+    // Reload any players that have the new filename loaded
+    uint8_t overwrite[MAX_PLAYERS];
     for (size_t i = 0; i < MAX_PLAYERS; ++i) {
         struct AUDIO_PLAYER* player = g_players[i];
         if (player && strcmp(player->filename, filename) == 0) {
             unload(id);
-            nOverwrite = id;
-            break;
-        }
+            overwrite[i] = 1;
+        } else
+            overwrite[i] = 0;
     }
+    overwrite[id] = 1;
 
     SF_INFO sfinfo;
     sfinfo.format   = 0; // This triggers sf_open to populate info structure
@@ -753,7 +755,7 @@ uint8_t save(uint8_t id, const char* filename) {
         sf_close(infile);
         fprintf(stderr, "Invalid encoding\n");
         return 0;
-    };
+    }
 
     SNDFILE* outfile = sf_open(filename, SFM_WRITE, &sfinfo);
     if (!outfile) {
@@ -765,7 +767,7 @@ uint8_t save(uint8_t id, const char* filename) {
     int32_t count = 0;
 
     float buffer[1024 * sfinfo.channels];
-    sf_count_t pos    = sf_seek(infile, pPlayer->crop_start, SEEK_SET);
+    sf_count_t pos = sf_seek(infile, pPlayer->crop_start, SEEK_SET);
     uint32_t duration = pPlayer->crop_end - pPlayer->crop_start;
     while (duration) {
         uint32_t frames = sf_readf_float(infile, buffer, 1024);
@@ -779,9 +781,11 @@ uint8_t save(uint8_t id, const char* filename) {
     }
     sf_close(infile);
     sf_close(outfile);
-    struct AUDIO_PLAYER* pOverwrite = get_player(nOverwrite);
-    if (pOverwrite)
-        load(nOverwrite, pOverwrite->filename);
+
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        if (overwrite[i])
+            load(i, filename);
+    }
     return 1;
 }
 

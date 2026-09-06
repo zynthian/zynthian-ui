@@ -130,7 +130,7 @@ def get_duration(id):
 # filename: Full path and filename
 # Returns: True on success
 def save(id, filename):
-    return libaudioplayer.save(id), ctypes.c_char_p(bytes(filename, "utf-8"))
+    return libaudioplayer.save(id, ctypes.c_char_p(bytes(filename, "utf-8")))
 
 
 # Set playback position
