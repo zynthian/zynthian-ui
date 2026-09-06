@@ -31,6 +31,7 @@ import traceback
 from math import modf, pow
 from threading import Thread
 from os.path import basename
+from collections import namedtuple
 
 import moderngl
 import numpy as np
@@ -52,6 +53,38 @@ def hexcolor_to_opengl(hex_str):
     return [r, g, b]
 
 
+# Single source of truth for the vertex buffer layout
+Layout = namedtuple("Layout", [
+    "axis_start", "axis_count",
+    "wave_start", "wave_count",
+    "markers_start", "markers_count",
+    "crop_start", "loop_start", "cursor_start",
+    "total",
+])
+
+
+def compute_layout(nchans, width):
+    """ Computes layout
+    
+    Params
+        nchans: Number of channels
+        width:  Display width in pixels
+    """
+    axis_count = nchans * 2
+    wave_count = 2 * nchans * width
+    markers_count = 2 * (width // 16)
+    axis_start = 0
+    wave_start = axis_start + axis_count
+    markers_start = wave_start + wave_count
+    crop_start = markers_start + markers_count
+    loop_start = crop_start + 12
+    cursor_start = loop_start + 18
+    total = cursor_start + 6
+    return Layout(axis_start, axis_count, wave_start, wave_count,
+                  markers_start, markers_count,
+                  crop_start, loop_start, cursor_start, total)
+
+
 class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficial
 
     def __init__(self, *args, **kwargs):
@@ -63,8 +96,11 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
 
         self.channels = 0
         self.n_vertex = 0
+        self.layout = None  # Layout namedtuple for the current (channels, width)
         self.vbo_data = None
         self.touched = False
+        self.dirty_lo = None  # Start of the byte range that changed since last upload
+        self.dirty_hi = None  # End changed range (exclusive, in vertex units)
 
         # Configuración de colores
         self.bg_color = hexcolor_to_opengl(zynthian_gui_config.color_bg)
@@ -86,40 +122,14 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
     def initgl(self):
         #self.tkMakeCurrent()
 
-        # PI4/PI5 FIX: Bind to the desktop compatibility layer
-        # Version 140 corresponds directly to OpenGL 3.1 Desktop
-        #self.ctx = moderngl.create_context(require=140)
-        # GLSL 140 SHADERS (Native desktop fallback for Pi 4 & Pi 5)
-        # We replace 'in' with 'attribute' for inputs, and 'out' with 'varying' for pipelines
-        _vertex_shader = """
-            #version 140
+        try:
+            self.ctx = moderngl.create_context(require=140)
+        except Exception as e:
+            logging.error(f"Failed to create ModernGL context: {e}")
+            raise
 
-            attribute vec3 in_position;
-            attribute vec3 in_color;
-            varying vec3 v_color;
-
-            void main() {
-                gl_Position = vec4(in_position, 1.0);
-                v_color = in_color;
-            }
-        """
-        _fragment_shader = """
-            #version 140
-
-            varying vec3 v_color;
-
-            // In GLSL 140, we can use gl_FragColor directly or define a targeted out vec4
-            out vec4 f_color;
-
-            void main() {
-                f_color = vec4(v_color, 1.0);
-            }
-        """
-
-        self.ctx = moderngl.create_context(require=130)
         vertex_shader = """
-            #version 300 es
-            precision mediump float;
+            #version 140
 
             in vec3 in_position;
             in vec3 in_color;
@@ -129,11 +139,9 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
                 gl_Position = vec4(in_position, 1.0);
                 v_color = in_color;
             }
-
         """
         fragment_shader = """
-            #version 300 es
-            precision mediump float;
+            #version 140
 
             in vec3 v_color;
             out vec4 f_color;
@@ -158,6 +166,17 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         if self.ctx:
             self.ctx.viewport = (0, 0, self.width, self.height)
 
+    def mark_dirty(self, i0, i1):
+        """ Mark a section of data dirty to force update
+        
+        Params:
+            i0: Lower byte range limit
+            i1: Upper byte range limit
+        """
+        self.touched = True
+        self.dirty_lo = i0 if self.dirty_lo is None else min(self.dirty_lo, i0)
+        self.dirty_hi = i1 if self.dirty_hi is None else max(self.dirty_hi, i1)
+
     def init_channels(self, nchans=None):
         if nchans is None:
             nchans = self.channels
@@ -166,22 +185,22 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         if nchans == 0:
             self.channels = 0
             self.n_vertex = 0
-            self.n_vertex_waveform = 0
-            self.n_vertex_markers = 0
+            self.layout = None
             self.vbo_data = None
             if self.vbo:
                 self.vbo.release()
                 self.vbo = None
             self.vao = None
             self.touched = True
+            self.dirty_lo = None
+            self.dirty_hi = None
             return True
-        # Num Vertex = 2 * (Chans * Axis + Chans * Waveform + Beat Markers) + Crop Markers + Loop Markers + Cursor
-        nv = 2 * (nchans + nchans * self.width + self.width // 16) + 12 + 18 + 6
-        if self.vbo_data is None or nchans != self.channels or nv != self.n_vertex:
+
+        layout = compute_layout(nchans, self.width)
+        if self.vbo_data is None or nchans != self.channels or layout.total != self.n_vertex:
             self.channels = nchans
-            self.n_vertex = nv
-            self.n_vertex_waveform = 2 * self.channels * self.width
-            self.n_vertex_markers = 2 * (self.width // 16)
+            self.layout = layout
+            self.n_vertex = layout.total
 
             # Vertex data matrix
             self.vbo_data = np.zeros(self.n_vertex, dtype=[
@@ -190,8 +209,8 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             ])
 
             # Initialize axis lines data
-            i0 = 0
-            i1 = self.channels * 2
+            i0 = layout.axis_start
+            i1 = layout.wave_start
             y_coords = []
             yaxix = -1.0 + 1.0 / self.channels
             for ch in range(self.channels):
@@ -204,21 +223,21 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.vbo_data['col'][i0:i1] = self.waveform_color2
 
             # Initialize waveform X coords
-            i0 = i1
-            i1 += self.n_vertex_waveform
+            i0 = layout.wave_start
+            i1 = layout.markers_start
             x_coords = np.linspace(-1.0, 1.0, self.width, dtype=np.float32)
             self.vbo_data['pos'][i0:i1, 0] = np.repeat(x_coords, 2 * self.channels)
             self.vbo_data['col'][i0:i1:2] = self.waveform_color1
             self.vbo_data['col'][i0+1:i1:2] = self.waveform_color2
 
             # Initialize markers & cursor
-            i0 = i1
-            i1 += self.n_vertex_markers
+            i0 = layout.markers_start
+            i1 = layout.crop_start
             self.vbo_data['col'][i0:i1] = self.bmarker_color
-            self.vbo_data['col'][-36:-24] = self.bg_crop_color
-            self.vbo_data['col'][-24:-12] = self.lmarker_color
-            self.vbo_data['col'][-12:-6] = self.bg_loop_color
-            self.vbo_data['col'][-6:] = self.playcur_color
+            self.vbo_data['col'][layout.crop_start:layout.loop_start] = self.bg_crop_color
+            self.vbo_data['col'][layout.loop_start:layout.loop_start + 12] = self.lmarker_color
+            self.vbo_data['col'][layout.loop_start + 12:layout.cursor_start] = self.bg_loop_color
+            self.vbo_data['col'][layout.cursor_start:] = self.playcur_color
 
             # Create VBO & VAO in ModernGL
             if self.vbo:
@@ -230,32 +249,34 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
                 [(self.vbo, '3f 3f', 'in_position', 'in_color')],
             )
             self.touched = True
+            self.dirty_lo = None
+            self.dirty_hi = None
         return True
 
     def set_wave_data(self, ydata):
         try:
-            i0 = self.channels * 2
-            i1 = i0 + self.n_vertex_waveform
+            i0 = self.layout.wave_start
+            i1 = i0 + self.layout.wave_count
             self.vbo_data['pos'][i0:i1, 1] = (2 * np.array(ydata, dtype=np.float32) / self.height) - 1.0
-            self.touched = True
+            self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't set wave data ... => {e}")
 
     def reset_wave_data(self, ydata):
         try:
-            i0 = self.channels * 2
-            i1 = i0 + self.n_vertex_waveform
+            i0 = self.layout.wave_start
+            i1 = i0 + self.layout.wave_count
             self.vbo_data['pos'][i0:i1, 1] = 0.0
-            self.touched = True
+            self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't reset wave data ... => {e}")
 
     def set_beat_markers(self, xdata, coldata):
         try:
-            i0 = self.channels * 2 + self.n_vertex_waveform
+            i0 = self.layout.markers_start
             i1 = i0 + 2 * len(xdata)
-            i2 = i0 + self.n_vertex_markers
-            if  i1 > i0:
+            i2 = i0 + self.layout.markers_count
+            if i1 > i0:
                 self.vbo_data['pos'][i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
                 self.vbo_data['pos'][i0:i1:2, 1] = 1.0
                 self.vbo_data['pos'][i0+1:i1:2, 1] = -1.0
@@ -263,66 +284,80 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
                 colmatrix = np.array(coldata, dtype=np.float32)
                 self.vbo_data['col'][i0:i1] = np.repeat(colmatrix, 2, axis=0)
             self.vbo_data['pos'][i1:i2] = 0
-            self.touched = True
+            self.mark_dirty(i0, i2)
         except Exception as e:
             logging.error(f"Can't set beat markers ... => {e}")
 
     def set_crop_markers(self, x1, x2):
         try:
+            i0 = self.layout.crop_start
+            i1 = i0 + 12
             x1 = (2 * x1 / self.width) - 1.0
             x2 = (2 * x2 / self.width) - 1.0
-            self.vbo_data['pos'][-36:-24, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-36:-24, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-36:-24, 2] = 0.5
-            self.touched = True
+            self.vbo_data['pos'][i0:i1, 0] = np.array([-1.0, -1.0, x1, x1, x1, -1.0, 1.0, 1.0, x2, x2, x2, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][i0:i1, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][i0:i1, 2] = 0.5
+            self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't set crop markers ... => {e}")
 
     def set_loop_markers(self, x1, x2):
         try:
+            i0 = self.layout.loop_start
+            i1 = i0 + 18
             x1 = (2 * x1 / self.width) - 1.0
             x2 = (2 * x2 / self.width) - 1.0
             w = 2 / self.width
             x11 = x1 - w
             x22 = x2 + w
-            self.vbo_data['pos'][-24:-6, 0] = np.array([x11, x11, x1, x1, x1, x11, x22, x22, x2, x2, x2, x22, x1, x1, x2, x1, x2, x2], dtype=np.float32)
-            self.vbo_data['pos'][-24:-6, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-24:-12, 2] = -0.5
-            self.vbo_data['pos'][-12:-6, 2] = 0.6
-            self.touched = True
+            self.vbo_data['pos'][i0:i1, 0] = np.array([x11, x11, x1, x1, x1, x11, x22, x22, x2, x2, x2, x22, x1, x1, x2, x1, x2, x2], dtype=np.float32)
+            self.vbo_data['pos'][i0:i1, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][i0:i0 + 12, 2] = -0.5
+            self.vbo_data['pos'][i0 + 12:i1, 2] = 0.6
+            self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't set crop markers ... => {e}")
 
     def reset_loop_markers(self):
         try:
-            self.vbo_data['pos'][-24:-6] = 0
-            self.touched = True
+            i0 = self.layout.loop_start
+            i1 = i0 + 18
+            self.vbo_data['pos'][i0:i1] = 0
+            self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't reset crop markers ... => {e}")
 
     def set_cursor_pos(self, xpos):
         try:
+            i0 = self.layout.cursor_start
+            i1 = i0 + 6
             x = (2 * xpos / self.width) - 1.0
             w = 2 / self.width
             x1 = x - w
             x2 = x + w
-            self.vbo_data['pos'][-6:, 0] = np.array([x1, x1, x2, x2, x2, x1], dtype=np.float32)
-            self.vbo_data['pos'][-6:, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][-6:, 2] = -1
-            self.touched = True
+            self.vbo_data['pos'][i0:i1, 0] = np.array([x1, x1, x2, x2, x2, x1], dtype=np.float32)
+            self.vbo_data['pos'][i0:i1, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
+            self.vbo_data['pos'][i0:i1, 2] = -1
+            self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't set cursor position ... => {e}")
 
     def redraw(self):
         if self.touched:
-            if self.vbo:
-                self.vbo.write(self.vbo_data.tobytes())
+            if self.vbo and self.dirty_lo is not None:
+                stride = self.vbo_data.itemsize
+                byte_offset = self.dirty_lo * stride
+                chunk = self.vbo_data[self.dirty_lo:self.dirty_hi].tobytes()
+                self.vbo.write(chunk, offset=byte_offset)
+            self.dirty_lo = None
+            self.dirty_hi = None
             self.ctx.clear()
             if self.vao:
+                tri_start = self.layout.crop_start if self.layout else max(self.n_vertex - 36, 0)
                 # Dibujar líneas
-                self.vao.render(moderngl.LINES, first=0, vertices=self.n_vertex - 36)
+                self.vao.render(moderngl.LINES, first=0, vertices=tri_start)
                 # Dibujar Quads using native Triangles
-                self.vao.render(moderngl.TRIANGLES, first=self.n_vertex - 36, vertices=36)
+                self.vao.render(moderngl.TRIANGLES, first=tri_start, vertices=self.n_vertex - tri_start)
             self.touched = False
 
     def update(self):
@@ -513,10 +548,11 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         ydata = [0] * 2 * self.channels * self.width
         pos = 0
+        waveform_size = len(self.wave_data)
         for x in range(self.width):
             # For each x-axis pixel
             offset1 = start + x * frames_per_pixel
-            offset2 = offset1 + frames_per_pixel
+            offset2 = min(waveform_size, offset1 + frames_per_pixel)
             for chan in range(self.channels):
                 # For each audio channel
                 v1 = [0.0] * self.channels

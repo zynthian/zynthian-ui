@@ -72,6 +72,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.options['replace'] = False
 
         self.dur = 0.0
+        self.zoom = 1.0
         self.handle = 0
 
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
@@ -288,11 +289,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 track_values.append(track)
             self._ctrl_screens = [
                 ['main', ['record', 'transport', 'position', 'gain']],
-                ['edit', ['crop start', 'crop end', 'zoom', 'offset']],
+                ['edit', ['crop start', 'crop end', 'zoom', 'v-zoom']],
                 ['speed', ['speed', 'semitones', 'cents', 'varispeed']],
-                ['config', ['left track', 'right track', 'v-zoom', 'loop']],
-                ['cue markers', ['cue', 'cue pos', 'del/add']],
-                ['misc', ['info']]
+                ['config', ['left track', 'right track', 'info', 'loop']],
+                ['cue markers', ['cue', 'cue pos', 'del/add', 'offset']]
             ]
         else:
             self._ctrl_screens = [['main', ['record', 'gain']],
@@ -311,7 +311,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             ['offset', None, 0.0, 0.0],
             ['v-zoom', None, 1.0, 4.0],
             ['cue', {'value_max': len(processor.cues)-1}],
-            ['cue pos', None, 0.0, dur],
+            ['cue pos', None, 0.0, 0.0],
             ['del/add', None, 1, ['-', '<>', '+']],
             ['speed', {'value': 1.0, 'value_min': 0.1, 'value_max': 4.0, 'is_integer': False}],
             ['semitones', {'value': 0, 'value_min': -12, 'value_max': 12}],
@@ -503,16 +503,17 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "info":
             self.monitors_dict[handle]['info'] = zctrl.value
         elif zctrl.symbol == "cue":
-            zctrl.processor.controllers_dict["cue pos"].set_value(zctrl.processor.cues[zctrl.value], False)
+            value_max = self.dur if zctrl.value else 0.0
+            zctrl.processor.controllers_dict["cue pos"].set_options({"value":zctrl.processor.cues[zctrl.value], "value_max":value_max})
             zynaudioplayer.set_position(zctrl.processor.handle, zctrl.processor.cues[zctrl.value])
+
             self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
         elif zctrl.symbol == "cue pos":
-            try:
-                zctrl.processor.cues[zctrl.processor.controllers_dict["cue"].value] = zctrl.value
-                self.save_cues(zctrl.processor)
-                self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
-            except:
-                logging.warning("cue error")
+            zctrl.processor.cues[zctrl.processor.controllers_dict["cue"].value] = zctrl.value
+            self.save_cues(zctrl.processor)
+            self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
+            self.last_offset_ctrl = zctrl
+            self.centre_offset()
         elif zctrl.symbol == "del/add":
             if zctrl.value == 0:
                 # Delete
