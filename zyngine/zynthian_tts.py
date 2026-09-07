@@ -61,6 +61,7 @@ TTS_DICT_DEFER = {
 for i in range(2, 8):
     char = chr(0x2672 + i)
     TTS_DICT_DEFER[char] = f". Shared by {i} chains"
+ALT_MODE_TXT = ["off","on"]
 
 ALL_KEYS = list(TTS_DICT) + list(TTS_DICT_DEFER)
 
@@ -86,6 +87,7 @@ class zynthian_tts:
         self._process = None
         self._lock = threading.Lock() # Process locking mutex
         self.playing = False
+        self.alt_mode = False
         self.translate_pattern = re.compile("|".join(map(re.escape, sorted(ALL_KEYS, key=len, reverse=True))))
 
         self.clear_queue()
@@ -216,10 +218,15 @@ class zynthian_tts:
         if not self._stop_event or self.busy:
             return
         text = text.strip()
+        alt_mode = zynthian_gui_config.zyngui.get_alt_mode()
+        if alt_mode != self.alt_mode:
+            self.alt_mode = alt_mode
+            text += f". Alt mode {ALT_MODE_TXT[alt_mode]}."
         if text:
             text = self.translate(text)
             if replace:
                 self.clear_queue()
+
             with self._cond:
                 if urgent:
                     if self.line:
@@ -315,6 +322,7 @@ class zynthian_tts:
 
     def _do_beep(self, cfg):
         try:
+            #logging.warning(f"ZynVoice: Beep {cfg}")
             duration, frequency, amplitude = cfg
             # Try to open soundcard with low resource parameters
             pcm = alsaaudio.PCM(
@@ -384,6 +392,7 @@ class zynthian_tts:
                         self.playing = False
 
                 try:
+                    #logging.warning(f"ZynVoice: {text}")
                     with self._lock:
                         self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard})
                     self._process.wait()

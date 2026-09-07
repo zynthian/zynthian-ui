@@ -721,9 +721,9 @@ class zynthian_gui:
             self.screen_history = [screen]
 
         if self.current_screen != screen:
+            self.current_screen = screen
             if not dummy_show:
                 self.screens[screen].show()
-            self.current_screen = screen
             if not dummy_show:
                 self.hide_screens(exclude=screen)
             zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
