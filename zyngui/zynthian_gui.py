@@ -189,10 +189,15 @@ class zynthian_gui:
 
         # Init multitouch driver
         #if zynthian_gui_config.check_kit_version(["V5"]) or
-        if os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
-            self.multitouch = MultiTouch(self.state_manager, invert_x_axis=True, invert_y_axis=True)
-        else:
-            self.multitouch = MultiTouch(self.state_manager)
+        # DISPLAY_ROTATION is a touch-rotation hint (webconf field "Touch
+        # Rotation"). MultiTouch.ROTATION_MAP turns it into the driver's
+        # (swap_xy, invert_x, invert_y) flags; unknown values fall back to
+        # "None" (native, no transform), preserving previous behaviour.
+        _swap, _ix, _iy = MultiTouch.ROTATION_MAP.get(
+            os.environ.get('DISPLAY_ROTATION', 'None'),
+            MultiTouch.ROTATION_MAP['None'])
+        self.multitouch = MultiTouch(self.state_manager, invert_x_axis=_ix,
+                                     invert_y_axis=_iy, swap_xy=_swap)
 
         # Load keyboard binding map
         zynthian_gui_keybinding.load()

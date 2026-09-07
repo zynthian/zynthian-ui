@@ -182,7 +182,47 @@ class MultiTouch(object):
     EVENT_FORMAT = str('llHHi')
     EVENT_SIZE = struct.calcsize(EVENT_FORMAT)
 
-    def __init__(self, state_manager, invert_x_axis=False, invert_y_axis=False):
+    # Map a DISPLAY_ROTATION value to (swap_xy, invert_x, invert_y).
+    #   None     -> 0 deg   (native portrait)
+    #   Right    -> 90 deg  (landscape; verified on RPi Touch Display 2)
+    #   Inverted -> 180 deg (previous behaviour, unchanged)
+    #   Left     -> 270 deg (mathematical mirror of Right; not hw-verified)
+    ROTATION_MAP = {
+        'None':     (False, False, False),
+        'Right':    (True,  False, True),
+        'Inverted': (False, True,  True),
+        'Left':     (True,  True,  False),
+    }
+
+    @staticmethod
+    def _transform_abs(is_x_event, value, swap_xy, invert_x, invert_y, max_x, max_y):
+        """Map a raw ABS_MT_POSITION_{X,Y} event to a (dest_attr, value) pair.
+
+        is_x_event - True for a raw panel-X event, False for a raw panel-Y event.
+        value      - the raw event value.
+        Returns ("x_root" | "y_root", transformed_value).
+
+        When swap_xy is False: raw X -> x_root, raw Y -> y_root (legacy).
+        When swap_xy is True:  raw X -> y_root, raw Y -> x_root (90/270 deg).
+        The invert flag is chosen by the *destination* axis; the maximum used
+        for inversion is the *source* axis maximum (max_x for a raw-X event,
+        max_y for a raw-Y event).
+        """
+        if is_x_event:
+            src_max = max_x
+            if swap_xy:
+                dest, invert = "y_root", invert_y
+            else:
+                dest, invert = "x_root", invert_x
+        else:
+            src_max = max_y
+            if swap_xy:
+                dest, invert = "x_root", invert_x
+            else:
+                dest, invert = "y_root", invert_y
+        return dest, (src_max - value if invert else value)
+
+    def __init__(self, state_manager, invert_x_axis=False, invert_y_axis=False, swap_xy=False):
         """Instantiate the touch driver
 
         Creates an instance of the driver attached to the first multitouch hardware discovered.
@@ -190,6 +230,11 @@ class MultiTouch(object):
         state_manager - State Manager object used for disabling powersave mode
         invert_x_axis - True to invert x axis (optional)
         invert_y_axis - True to invert y axis (optional)
+        swap_xy - True to swap the X and Y axes, e.g. for a portrait-native
+                  panel mounted in landscape (90/270 deg). When swapped, the
+                  invert flags refer to the *destination* (screen) axis, while
+                  each inversion uses its *source* (panel) axis maximum.
+                  (optional)
         """
 
         self.state_manager = state_manager
@@ -197,6 +242,7 @@ class MultiTouch(object):
         self.thread = None  # Background thread processing touch events
         self._invert_x = invert_x_axis
         self._invert_y = invert_y_axis
+        self._swap_xy = swap_xy
         self.events = []  # List of pending multipoint events (not yet sent)
         self.gesture_events = []  # List of events currently active as gestures
         self._g_pending = None  # Event that is pending multiple touch gesture start
@@ -315,17 +361,17 @@ class MultiTouch(object):
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
                 elif evdev_event.code == ecodes.ABS_MT_POSITION_X:
-                    if self._invert_x:
-                        self._current_touch.x_root = self.max_x - evdev_event.value
-                    else:
-                        self._current_touch.x_root = evdev_event.value
+                    dest, val = self._transform_abs(
+                        True, evdev_event.value, self._swap_xy,
+                        self._invert_x, self._invert_y, self.max_x, self.max_y)
+                    setattr(self._current_touch, dest, val)
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
                 elif evdev_event.code == ecodes.ABS_MT_POSITION_Y:
-                    if self._invert_y:
-                        self._current_touch.y_root = self.max_y - evdev_event.value
-                    else:
-                        self._current_touch.y_root = evdev_event.value
+                    dest, val = self._transform_abs(
+                        False, evdev_event.value, self._swap_xy,
+                        self._invert_x, self._invert_y, self.max_x, self.max_y)
+                    setattr(self._current_touch, dest, val)
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
 
