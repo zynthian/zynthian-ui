@@ -551,6 +551,9 @@ class zynthian_gui_base(tkinter.Frame):
 
     def cuia_toggle_alt_mode(self, params=None):
         self.alt_mode = not self.alt_mode
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("")
+
         return True
 
     def arrow_up(self, nudge=1):
