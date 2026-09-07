@@ -46,6 +46,8 @@ MIDI_LEARNING_GLOBAL = 2
 
 class zynthian_gui_control(zynthian_gui_selector):
 
+    modules = {}
+
     def __init__(self, parent=None, topbar=None):
         self.mode = "control"
 
@@ -54,7 +56,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.zgui_controllers = []
         self.midi_learning = MIDI_LEARNING_DISABLED
 
-        self.modules = {}
         self.widgets = {}
         self.current_widget = None
         self.widget_zctrl = None
