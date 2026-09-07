@@ -378,11 +378,21 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
     # MAX_FRAMES = 2880000
 
+    # Type of engine integration
+    ENG_NONE = 0
+    ENG_CLIPPY = 1
+    ENG_GLOBAL_AP = 2
+    ENG_CHAIN_AP = 3
+    ENG_SAMPLV1 = 4
+
     def __init__(self, parent):
         super().__init__(parent)
 
         # Take only half height
         self.rows //= 2
+
+        self.clip_info = None
+        self.eng_type = self.ENG_NONE
 
         self.zctrl = None
         self.fpath = ""
@@ -450,20 +460,35 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 note = self.processor.engine.selected_phrase + 1
                 self.zctrl = self.processor.controllers_dict[f"file {note}"]
             except:
+                self.zctrl = None
                 for zctrl in self.processor.controllers_dict.values():
                     if zctrl.is_path:
                         self.zctrl = zctrl
                         break
-        self.clip_info = self.get_clippy_info()
+        # Determine type of engine
+        self.clip_info = None
+        if self.processor:
+            if self.processor.eng_code == "CL":
+                self.eng_type = self.ENG_CLIPPY
+                self.clip_info = self.get_clippy_info()
+            elif self.processor.eng_code == "AP":
+                if self.processor.id < 0:
+                    self.eng_type = self.ENG_GLOBAL_AP
+                else:
+                    self.eng_type = self.ENG_CHAIN_AP
+            elif self.processor.eng_code == "JV/samplv1":
+                self.eng_type = self.ENG_SAMPLV1
+        else:
+            self.eng_type = self.ENG_NONE
 
     def show(self):
         self.refreshing = False
         super().show()
-        if self.clip_info:
+        if self.eng_type:
             zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
 
     def hide(self):
-        if self.clip_info:
+        if self.eng_type:
             zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
         super().hide()
 
@@ -576,7 +601,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.set_wave_data(ydata)
 
     def refresh_gui(self):
-        if not self.zctrl and self.processor.eng_code != "AP":
+        if not self.zctrl and not self.eng_type:
             return
 
         self.refreshing = True
@@ -615,7 +640,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         # Get parameters from engine ...
         zoom = offset = crop_start = crop_end = loop_markers = loop_start = loop_end = warp = beats = gain = vzoom = cursor_pos = None
         # Clippy =>
-        if self.processor.eng_code == "CL":
+        if self.eng_type == self.ENG_CLIPPY:
             loop_markers = False
             if "zoom" in self.monitors:
                 zoom = self.monitors["zoom"]
@@ -639,28 +664,29 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 else:
                     cursor_pos = 0.0
         # AudioPlayer =>
-        elif self.processor.eng_code == "AP" and self.samplerate:
-            loop_markers = False
-            zoom = self.processor.controllers_dict['zoom'].value
-            offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
-            crop_start = self.processor.controllers_dict['crop start'].value
-            crop_end = self.processor.controllers_dict['crop end'].value
-            beats = 0
-            gain = self.processor.controllers_dict['gain'].value    # Linear gain
-            vzoom = gain * self.processor.controllers_dict['v-zoom'].value
-            dur = crop_end - crop_start
-            if dur > 0:
-                pos = self.processor.controllers_dict['position'].value
-                cursor_pos = (pos - crop_start) / dur
-            else:
-                cursor_pos = 0
-            crop_start = int(self.samplerate * crop_start)
-            crop_end = int(self.samplerate * crop_end)
-            if self.monitors["update_cue"]:
-                self.update_markers = True
-                self.monitors["update_cue"] = False
+        elif self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
+            if self.samplerate:
+                loop_markers = False
+                zoom = self.processor.controllers_dict['zoom'].value
+                offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
+                crop_start = self.processor.controllers_dict['crop start'].value
+                crop_end = self.processor.controllers_dict['crop end'].value
+                beats = 0
+                gain = self.processor.controllers_dict['gain'].value    # Linear gain
+                vzoom = gain * self.processor.controllers_dict['v-zoom'].value
+                dur = crop_end - crop_start
+                if dur > 0:
+                    pos = self.processor.controllers_dict['position'].value
+                    cursor_pos = (pos - crop_start) / dur
+                else:
+                    cursor_pos = 0
+                crop_start = int(self.samplerate * crop_start)
+                crop_end = int(self.samplerate * crop_end)
+                if self.monitors["update_cue"]:
+                    self.update_markers = True
+                    self.monitors["update_cue"] = False
         # samplv1 =>
-        elif self.processor.eng_code == "JV/samplv1":
+        elif self.eng_type == self.ENG_SAMPLV1:
             zoom = 1
             offset = 0
             beats = 0
@@ -793,7 +819,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 xdata.append(x)
                                 coldata.append(col)
                         self.widget_canvas.set_beat_markers(xdata, coldata)
-                    elif self.processor.eng_code == "AP":
+                    elif self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
                         selected_cue = self.processor.controllers_dict['cue'].value
                         for cue in self.processor.cues:
                             cue_frames = self.samplerate * cue
@@ -852,29 +878,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     def format_time(time):
         return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
 
-    # -------------------------------------------------------------------------
-    # Audio recorder signal callback
-    # -------------------------------------------------------------------------
-
-    def audio_recorder_cb(self, state):
-        if self.clip_info:
-            #self.zyngui.state_manager.audio_recorder.status:
-            try:
-                self.processor.controllers_dict['record'].set_value(state, False)
-            except:
-                logging.error("Clippy processor doesn't have a record controller!")
-            # Manage stop recording => load recorded sample!
-            if not state:
-                fpath = self.zyngui.state_manager.audio_recorder.filename
-                if os.path.isfile(fpath):
-                    self.zctrl.set_value(fpath)
-
-    # -------------------------------------------------------------------------
-    # AudioPlayer integration
-    # -------------------------------------------------------------------------
-
     def get_monitors(self):
-        if self.processor.eng_code == "AP":
+        if self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
             self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
         else:
             super().get_monitors()
@@ -916,6 +921,32 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 logging.error(f"Can't get clip audio values for clip {self.clip_info} => {e}")
 
     # -------------------------------------------------------------------------
+    # Audio recorder signal callback
+    # -------------------------------------------------------------------------
+
+    def audio_recorder_cb(self, state):
+        logging.debug(f"SIGNAL RECORD STATE => PROCESSOR {self.processor.id}")
+        if self.eng_type == self.ENG_CLIPPY:
+            #self.zyngui.state_manager.audio_recorder.status:
+            try:
+                self.processor.controllers_dict['record'].set_value(state, False)
+            except:
+                logging.error("Clippy processor doesn't have a record controller!")
+            # Manage stop recording => load recorded file in clippy
+            if not state:
+                fpath = self.zyngui.state_manager.audio_recorder.filename
+                if os.path.isfile(fpath):
+                    self.zctrl.set_value(fpath)
+
+        elif self.eng_type == self.ENG_CHAIN_AP:
+            # Manage stop recording => load last recorded file in the chain audio player
+            if not state:
+                fpath = self.zyngui.state_manager.audio_recorder.filename
+                if os.path.isfile(fpath):
+                    self.processor.engine.load_latest(self.processor)
+                    logging.debug(f"THIS SHOULD LOAD THE LATEST RECORDED FILE INTO THE SELECTED CHAIN AUDIO PLAYER => {self.processor.id}")
+
+    # -------------------------------------------------------------------------
     # CUIA & LEDs methods
     # -------------------------------------------------------------------------
 
@@ -931,14 +962,14 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if self.clip_info:
             self.zyngui.state_manager.zynseq.libseq.setPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2], 0)
             return True
-        elif self.processor and self.processor.eng_code == "AP":
+        elif self.eng_type == self.ENG_CHAIN_AP:
             self.processor.controllers_dict["transport"].set_value(0)
             self.processor.controllers_dict["position"].set_value(0)
             return True
         return False
 
     def cuia_play(self, param=None):
-        if self.processor and self.processor.eng_code == "AP":
+        if self.eng_type == self.ENG_CHAIN_AP:
             self.processor.controllers_dict["transport"].set_value(127)
             return True
         return False
@@ -948,7 +979,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if self.clip_info:
             self.zyngui.state_manager.zynseq.libseq.togglePlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
             return True
-        elif self.processor and self.processor.eng_code == "AP":
+        elif self.eng_type == self.ENG_CHAIN_AP:
             self.processor.controllers_dict["transport"].toggle()
             return True
         return False
@@ -975,7 +1006,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 wsl.set_led(leds[3], color_default)
 
         # Handle LEDs for chanin audio player
-        elif self.processor and self.processor.id >= 0 and self.processor.eng_code == "AP":
+        elif self.eng_type == self.ENG_CHAIN_AP:
             wsl = self.zyngui.wsleds
             color_default = wsl.wscolor_active2
             # REC Button
