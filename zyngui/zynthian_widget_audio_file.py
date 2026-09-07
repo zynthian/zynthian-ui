@@ -639,69 +639,76 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
         # Get parameters from engine ...
         zoom = offset = crop_start = crop_end = loop_markers = loop_start = loop_end = warp = beats = gain = vzoom = cursor_pos = None
-        # Clippy =>
-        if self.eng_type == self.ENG_CLIPPY:
-            loop_markers = False
-            if "zoom" in self.monitors:
-                zoom = self.monitors["zoom"]
-            if "offset" in self.monitors:
-                offset = self.monitors["offset"]
-            if "crop_start" in self.monitors:
-                crop_start = self.monitors["crop_start"]
-            if "crop_end" in self.monitors:
-                crop_end = self.monitors["crop_end"]
-            if "warp" in self.monitors:
-                warp = self.monitors["warp"]
-            if "beats" in self.monitors:
-                beats = self.monitors["beats"]
-            if "gain" in self.monitors:
-                gain = self.monitors["gain"]
-                vzoom = pow(1.26, gain)       # Calculate vzoom from gain in dB
-            if self.frames and self.clip_info:
-                clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
-                if clip_state == 1:
-                    cursor_pos = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan] / 100.0
-                else:
-                    cursor_pos = 0.0
-        # AudioPlayer =>
-        elif self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
-            if self.samplerate:
+        match self.eng_type:
+            # Clippy =>
+            case self.ENG_CLIPPY:
                 loop_markers = False
-                zoom = self.processor.controllers_dict['zoom'].value
-                offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
-                crop_start = self.processor.controllers_dict['crop start'].value
-                crop_end = self.processor.controllers_dict['crop end'].value
+                if "zoom" in self.monitors:
+                    zoom = self.monitors["zoom"]
+                if "offset" in self.monitors:
+                    offset = self.monitors["offset"]
+                if "crop_start" in self.monitors:
+                    crop_start = self.monitors["crop_start"]
+                if "crop_end" in self.monitors:
+                    crop_end = self.monitors["crop_end"]
+                if "warp" in self.monitors:
+                    warp = self.monitors["warp"]
+                if "beats" in self.monitors:
+                    beats = self.monitors["beats"]
+                if "gain" in self.monitors:
+                    gain = self.monitors["gain"]
+                    vzoom = pow(1.26, gain)       # Calculate vzoom from gain in dB
+                if self.frames and self.clip_info:
+                    clip_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
+                    if clip_state == 1:
+                        cursor_pos = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan] / 100.0
+                        try:
+                            cursor_frame = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start))
+                            length = self.frames // self.zoom
+                            offset = cursor_frame - length // 2
+                        except Exception as e:
+                            pass
+                    else:
+                        cursor_pos = 0.0
+            # AudioPlayer =>
+            case self.ENG_GLOBAL_AP | self.ENG_CHAIN_AP:
+                if self.samplerate:
+                    loop_markers = False
+                    zoom = self.processor.controllers_dict['zoom'].value
+                    offset = int(self.samplerate * self.processor.controllers_dict['offset'].value)
+                    crop_start = self.processor.controllers_dict['crop start'].value
+                    crop_end = self.processor.controllers_dict['crop end'].value
+                    beats = 0
+                    gain = self.processor.controllers_dict['gain'].value    # Linear gain
+                    vzoom = gain * self.processor.controllers_dict['v-zoom'].value
+                    dur = crop_end - crop_start
+                    if dur > 0:
+                        pos = self.processor.controllers_dict['position'].value
+                        cursor_pos = (pos - crop_start) / dur
+                    else:
+                        cursor_pos = 0
+                    crop_start = int(self.samplerate * crop_start)
+                    crop_end = int(self.samplerate * crop_end)
+                    if self.monitors["update_cue"]:
+                        self.update_markers = True
+                        self.monitors["update_cue"] = False
+            # samplv1 =>
+            case self.ENG_SAMPLV1:
+                zoom = 1
+                offset = 0
                 beats = 0
-                gain = self.processor.controllers_dict['gain'].value    # Linear gain
-                vzoom = gain * self.processor.controllers_dict['v-zoom'].value
-                dur = crop_end - crop_start
-                if dur > 0:
-                    pos = self.processor.controllers_dict['position'].value
-                    cursor_pos = (pos - crop_start) / dur
+                offset_enabled = self.processor.controllers_dict['GEN1_OFFSET'].value
+                if offset_enabled:
+                    crop_start = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_1'].value)
+                    crop_end = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_2'].value)
                 else:
-                    cursor_pos = 0
-                crop_start = int(self.samplerate * crop_start)
-                crop_end = int(self.samplerate * crop_end)
-                if self.monitors["update_cue"]:
-                    self.update_markers = True
-                    self.monitors["update_cue"] = False
-        # samplv1 =>
-        elif self.eng_type == self.ENG_SAMPLV1:
-            zoom = 1
-            offset = 0
-            beats = 0
-            offset_enabled = self.processor.controllers_dict['GEN1_OFFSET'].value
-            if offset_enabled:
-                crop_start = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_1'].value)
-                crop_end = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_2'].value)
-            else:
-                crop_start = 0
-                crop_end = self.frames
-            loop_markers = self.processor.controllers_dict['GEN1_LOOP'].value
-            if loop_markers:
-                loop_start = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_1'].value)
-                loop_end = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_2'].value)
-            vzoom = 2.0 * self.processor.controllers_dict['OUT1_VOLUME'].value
+                    crop_start = 0
+                    crop_end = self.frames
+                loop_markers = self.processor.controllers_dict['GEN1_LOOP'].value
+                if loop_markers:
+                    loop_start = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_1'].value)
+                    loop_end = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_2'].value)
+                vzoom = 2.0 * self.processor.controllers_dict['OUT1_VOLUME'].value
 
         # Process parameter changes
         if zoom is not None and zoom != self.zoom:
@@ -716,32 +723,23 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if crop_start is not None and crop_start != self.crop_start:
             self.crop_start = crop_start
             self.update_markers = True
-            #self.refresh_waveform = True
             if self.auto_offset:
                 self.auto_offset = 1
         if crop_end is not None and crop_end != self.crop_end:
             self.crop_end = crop_end
             self.update_markers = True
-            #self.refresh_waveform = True
             if self.auto_offset:
                 self.auto_offset = 2
         if loop_markers is not None and loop_markers != self.loop_markers:
             self.loop_markers = loop_markers
             self.update_markers = True
-            #self.refresh_waveform = True
         if self.loop_markers:
             if loop_start is not None and loop_start != self.loop_start:
                 self.loop_start = loop_start
                 self.update_markers = True
-                #self.refresh_waveform = True
-                if self.auto_offset:
-                    self.auto_offset = 1
             if loop_end is not None and loop_end != self.loop_end:
                 self.loop_end = loop_end
                 self.update_markers = True
-                #self.refresh_waveform = True
-                if self.auto_offset:
-                    self.auto_offset = 1
         if warp is not None and warp != self.warp:
             self.warp = warp
             self.update_markers = True
@@ -763,7 +761,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 elif self.auto_offset == 2:
                     # Centre on end crop marker
                     self.offset = self.crop_end - length // 2
-                # Ensure whoe waveform can be drawn
+                # Ensure whole waveform can be drawn
                 self.offset = min(self.offset, self.frames - length)
                 self.offset = max(self.offset, 0)
                 self.draw_waveform(self.offset, length, self.vzoom)
@@ -833,8 +831,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 # Playing cursor
                 if cursor_pos is not None and (self.last_cursor_pos != cursor_pos or self.update_markers):
                     self.last_cursor_pos = cursor_pos
-                    current_frame = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start)) - self.offset
-                    self.widget_canvas.set_cursor_pos(f * current_frame)
+                    frpos = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start)) - self.offset
+                    self.widget_canvas.set_cursor_pos(f * frpos)
 
                 refresh_info = True
 
