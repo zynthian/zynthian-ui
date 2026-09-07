@@ -447,9 +447,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.zctrl = self.zyngui_control.widget_zctrl
         else:
             try:
-                if processor.engine_code == "AP":
-                    self.load_file()
-                    return
                 note = self.processor.engine.selected_phrase + 1
                 self.zctrl = self.processor.controllers_dict[f"file {note}"]
             except:
@@ -934,12 +931,25 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         if self.clip_info:
             self.zyngui.state_manager.zynseq.libseq.setPlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2], 0)
             return True
+        elif self.processor and self.processor.eng_code == "AP":
+            self.processor.controllers_dict["transport"].set_value(0)
+            self.processor.controllers_dict["position"].set_value(0)
+            return True
+        return False
+
+    def cuia_play(self, param=None):
+        if self.processor and self.processor.eng_code == "AP":
+            self.processor.controllers_dict["transport"].set_value(127)
+            return True
         return False
 
     def cuia_toggle_play(self, param=None):
         # Handle transport for clippy
         if self.clip_info:
             self.zyngui.state_manager.zynseq.libseq.togglePlayState(self.clip_info[0], self.clip_info[1], self.clip_info[2])
+            return True
+        elif self.processor and self.processor.eng_code == "AP":
+            self.processor.controllers_dict["transport"].toggle()
             return True
         return False
 

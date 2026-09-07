@@ -420,7 +420,7 @@ class zynthian_gui_help(HtmlFrame):
             html_output += f'    <li><a href="{filename}">{title}</a></li>\n'
         html_output += """
   </ul>
-  <h2>Control GUI Widgets</h2>
+  <h2>Control Widgets</h2>
   <ul class="index">
 """
         for title, filename in get_data(widgets):

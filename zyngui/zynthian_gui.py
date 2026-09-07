@@ -1385,46 +1385,27 @@ class zynthian_gui:
 
     # Audio & MIDI Recording/Playback actions
     def cuia_start_audio_record(self, params=None):
-        if self.current_processor.eng_code == "AP":
-            self.state_manager.audio_recorder.start_recording(self.current_processor)
-        else:
-            self.state_manager.audio_recorder.start_recording()
+        self.state_manager.audio_recorder.start_recording()
 
     def cuia_stop_audio_record(self, params=None):
         self.state_manager.audio_recorder.stop_recording()
 
     def cuia_toggle_audio_record(self, params=None):
-        if self.current_processor and self.current_processor.eng_code == "AP":
-            self.state_manager.audio_recorder.toggle_recording(self.current_processor)
-        else:
-            self.state_manager.audio_recorder.toggle_recording()
+        self.state_manager.audio_recorder.toggle_recording()
 
     def cuia_start_audio_play(self, params=None):
-        if self.current_processor and self.current_processor.eng_code == "AP":
-            self.current_processor.controllers_dict["transport"].set_value(127)
-        else:
-            self.state_manager.start_audio_player()
+        self.state_manager.start_audio_player()
 
     def cuia_stop_audio_play(self, params=None):
-        if self.current_screen == "pattern_editor":
-            self.screens["pattern_editor"].stop_playback()
-        elif self.current_processor and self.current_processor.eng_code == "AP":
-            self.current_processor.controllers_dict["transport"].set_value(0)
-            self.current_processor.controllers_dict["position"].set_value(0)
-        else:
-            self.state_manager.stop_audio_player(reset_pos=True)
+        self.state_manager.stop_audio_player(reset_pos=True)
 
     def cuia_toggle_audio_play(self, params=None):
-        if self.current_screen == "pattern_editor":
-            self.screens["pattern_editor"].toggle_playback()
-        elif self.current_processor and self.current_processor.eng_code == "AP":
-            self.current_processor.controllers_dict["transport"].toggle()
-        else:
-            self.state_manager.toggle_audio_player()
+        self.state_manager.toggle_audio_player()
 
     def cuia_audio_file_list(self, params=None):
         self.show_screen("audio_player")
         return
+
         # Don't ask for a file each time we open the Audio Player
         self.replace_screen('bank')
         n_banks = len(self.state_manager.audio_player.bank_list)
@@ -1438,11 +1419,13 @@ class zynthian_gui:
 
     def cuia_stop_midi_record(self, params=None):
         self.state_manager.stop_midi_record()
+        # TODO We should use signals for this
         if self.current_screen == "midi_recorder":
             self.screens['midi_recorder'].select()
 
     def cuia_toggle_midi_record(self, params=None):
         self.state_manager.toggle_midi_record()
+        # TODO We should use signals for this
         if self.current_screen == "midi_recorder":
             self.screens['midi_recorder'].select()
 
