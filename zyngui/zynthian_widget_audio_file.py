@@ -974,5 +974,25 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             else:  # play_state == 0:`
                 wsl.set_led(leds[3], color_default)
 
+        # Handle LEDs for chanin audio player
+        elif self.processor and self.processor.id >= 0 and self.processor.eng_code == "AP":
+            wsl = self.zyngui.wsleds
+            color_default = wsl.wscolor_active2
+            # REC Button
+            if self.zyngui.state_manager.audio_recorder.status:
+                wsl.set_led(leds[1], wsl.wscolor_red)
+            else:
+                wsl.set_led(leds[1], color_default)
+            # STOP button:
+            wsl.set_led(leds[2], color_default)
+            # PLAY button:
+            play_state = self.processor.controllers_dict["transport"].value
+            if play_state:
+                wsl.set_led(leds[3], wsl.wscolor_green)
+            else:
+                wsl.set_led(leds[3], color_default)
+
+
+
 
 # ------------------------------------------------------------------------------
