@@ -174,7 +174,8 @@ standalone_engine_info = {
     'MC': ["MIDI Control", "MIDI Control External", "MIDI Tool", "Other", True],
     'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True],
     'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
-    'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True]
+    'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True],
+    'SP': ["SpotifyConnect", "SpotifyConnect", "Audio Generator", "Other", True]
 }
 
 rpi5_plugins = [
