@@ -1270,20 +1270,25 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
         self.grid_canvas.tag_raise(self.rect_selected_cell)
-        if step_changed:
-            tts_step = f"Step {step + 1}"
-        else:
-            tts_step = ""
-        if note_changed:
-            try:
-                tts_name = f"{NOTE_PORNOUNCE[note%12]}{note//12-1}"
-                tts_name = self.keymap[row]["name"]
-            except:
-                pass
-        else:
-            tts_name = ""
         if self.zyngui.tts:
-            self.zyngui.tts.announce(f"{tts_step} {tts_name}")
+            if step_changed:
+                tts_step = f"Step {step + 1}"
+            else:
+                tts_step = ""
+            if note_changed:
+                try:
+                    tts_name = f"{NOTE_PORNOUNCE[note%12]}{note//12-1}"
+                    tts_name = self.keymap[row]["name"]
+                except:
+                    pass
+            else:
+                tts_name = ""
+            if evdata:
+                dur = f"{duration:.2f}".rstrip("0").rstrip(".")
+                note_info = f"duration {dur} velocity {velocity}"
+            else:
+                note_info = ""
+            self.zyngui.tts.announce(f"{tts_step} {tts_name} {note_info}")
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block

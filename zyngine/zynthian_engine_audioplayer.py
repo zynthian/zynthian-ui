@@ -288,10 +288,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 track_labels.append(f'{track + 1}')
                 track_values.append(track)
             self._ctrl_screens = [
-                ['main', ['record', 'transport', 'position', 'gain']],
+                ['main', ['record', 'transport', 'position', 'loop']],
                 ['edit', ['crop start', 'crop end', 'zoom', 'v-zoom']],
                 ['speed', ['speed', 'semitones', 'cents', 'varispeed']],
-                ['config', ['left track', 'right track', 'info', 'loop']],
+                ['audio', ['left track', 'right track', 'gain', 'info']],
                 ['cue markers', ['cue', 'cue pos', 'del/add', 'offset']]
             ]
         else:
