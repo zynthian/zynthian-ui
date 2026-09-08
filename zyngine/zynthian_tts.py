@@ -359,7 +359,7 @@ class zynthian_tts:
             # Send waveform to soundcard
             pcm.write(samples)
         except Exception as e:
-            logging.warning(f"TTS failed to send tone to soundcard - {e}")
+            logging.debug(f"TTS failed to send tone to soundcard - {e}")
         self.pending_beep = None
 
     def _worker(self):
@@ -397,7 +397,7 @@ class zynthian_tts:
                 try:
                     #logging.warning(f"ZynVoice: {text}")
                     with self._lock:
-                        self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard})
+                        self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard}, stderr=subprocess.DEVNULL)
                     self._process.wait()
                 except Exception as e:
                     logging.debug(e)
@@ -409,7 +409,7 @@ class zynthian_tts:
         if self.announce_disable:
             try:
                 with self._lock:
-                    self._process = subprocess.Popen(self._build_command("ZynVoice disabled"), env={"ALSA_CARD": self.soundcard})
+                    self._process = subprocess.Popen(self._build_command("ZynVoice disabled"), env={"ALSA_CARD": self.soundcard}, stderr=subprocess.DEVNULL)
                 self._process.wait()
             except Exception as e:
                 logging.debug(e)
