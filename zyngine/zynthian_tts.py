@@ -218,10 +218,13 @@ class zynthian_tts:
         if not self._stop_event or self.busy:
             return
         text = text.strip()
-        alt_mode = zynthian_gui_config.zyngui.get_alt_mode()
-        if alt_mode != self.alt_mode:
-            self.alt_mode = alt_mode
-            text += f". Alt mode {ALT_MODE_TXT[alt_mode]}."
+        try:
+            alt_mode = zynthian_gui_config.zyngui.get_alt_mode()
+            if alt_mode != self.alt_mode:
+                self.alt_mode = alt_mode
+                text += f". Alt mode {ALT_MODE_TXT[alt_mode]}."
+        except:
+            pass # Can fail if zyngui not yet initialised
         if text:
             text = self.translate(text)
             if replace:
