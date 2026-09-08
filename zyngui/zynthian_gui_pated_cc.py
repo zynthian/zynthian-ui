@@ -440,7 +440,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                     if newval != val:
                         self.zynseq.libseq.setControlValue(step, self.cc_num, newval, newval)
                 # Select cell
-                self.select_cell(step, self.selected_cell[1] + dval)
+                self.select_cell(step, self.selected_cell[1] - dval)
                 return True
 
         if super().zynpot_cb(i, dval):
