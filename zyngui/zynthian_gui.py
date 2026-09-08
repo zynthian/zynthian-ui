@@ -419,9 +419,12 @@ class zynthian_gui:
     def osc_cb_all(self, path, args, types, src):
         logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 
+        if not path.startswith("/"):
+            logging.warning("Invalid OSC path. Must start with '/'")
+            return
         parts = path.upper().split("/", 2)
         # TODO: message may have fewer parts than expected
-        if parts[0] == "" and parts[1] == "CUIA":
+        if parts[1] == "CUIA":
             # Execute action
             cuia = parts[2].upper()
             if cuia != "POWER_SAVE":
@@ -430,7 +433,7 @@ class zynthian_gui:
                 logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
                 return
             self.cuia_queue.put_nowait((cuia, args, src))
-            # Run autoconnect if needed
+            # Run autoconnect if needed # TODO: It is wasteful to run autoconnect after every CUIA message. The action should trigger if necessary
             zynautoconnect.request_audio_connect()
             zynautoconnect.request_midi_connect()
         elif parts[1] in ("MIXER", "DAWOSC"):
@@ -1354,6 +1357,10 @@ class zynthian_gui:
                     screen.tts_info()
                 except:
                     self.tts.announce(f"View: {self.current_screen}", replace="True", interrupt=True)
+
+    def cuia_tts_register(self, params=None):
+        if self.tts:
+            self.tts._tts.register_osc(params)
 
     # Panic Actions
 

@@ -33,6 +33,7 @@ import alsaaudio
 import threading
 import subprocess
 from time import sleep
+import pyliblo3 as liblo
 
 import zynconf
 import zynautoconnect
@@ -88,6 +89,8 @@ class zynthian_tts:
         self._lock = threading.Lock() # Process locking mutex
         self.playing = False
         self.alt_mode = False
+        self.osc_path = "/tts"
+        self.osc_uri = None
         self.translate_pattern = re.compile("|".join(map(re.escape, sorted(ALL_KEYS, key=len, reverse=True))))
 
         self.clear_queue()
@@ -96,6 +99,21 @@ class zynthian_tts:
         self._thread.start()
         self.set_volume()
         self.append("ZynVoice enabled")
+
+    def register_osc(self, params=None):
+        """ Request TTS announcement text be sent to a remote host via OSC
+        Args:
+            uri: Remote host OSC URI as [ip, port, optional path] or None to disable sending to OSC
+        """
+
+        if len(params) < 2:
+            self.osc_uri == None
+        elif len(params) < 3:
+            self.osc_uri = tuple(params)
+            self.osc_path = "/tts"
+        else:
+            self.osc_uri = tuple(params[:2])
+            self.osc_path = params[2]
 
     def close(self):
         """ Stop background services and cleanup """
@@ -398,6 +416,11 @@ class zynthian_tts:
                     #logging.warning(f"ZynVoice: {text}")
                     with self._lock:
                         self._process = subprocess.Popen(self._build_command(text), env={"ALSA_CARD": self.soundcard}, stderr=subprocess.DEVNULL)
+                        if self.osc_uri:
+                            try:
+                                liblo.send(self.osc_uri, self.osc_path, text)
+                            except:
+                                pass # Silently ignore bad osc targer uri
                     self._process.wait()
                 except Exception as e:
                     logging.debug(e)
