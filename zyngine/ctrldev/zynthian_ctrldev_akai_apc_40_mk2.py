@@ -350,7 +350,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
 
     def update_mode_leds(self, screen=None):
         if screen is None:
-           screen = zynthian_gui_config.zyngui.current_screen
+            try:
+               screen = zynthian_gui_config.zyngui.current_screen
+            except:
+                pass
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_PAN, self.enc_mode == ENC_MODE_PAN)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_SENDS, self.enc_mode == ENC_MODE_SENDS)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_USER, self.enc_mode == ENC_MODE_USER)

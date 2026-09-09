@@ -54,7 +54,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
-        self.tts_title = "Pattern editor: CC"
 
     # Function to get name of this view
     def get_name(self):
@@ -67,6 +66,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         zctrl = self.zyngui.chain_manager.get_zynstep_mapped_zctrl(midi_chan, self.cc_num)
         if zctrl:
             title = f"{title} ({zctrl.name})"
+        self.tts_title = f"Pattern editor. CC {self.cc_num}"
         return title
 
     def set_edit_mode(self, mode):
@@ -326,6 +326,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 row = self.get_pianoroll_num_cells() - 1
             else:
                 row = int(row)
+        step_changed = step != self.selected_cell[0]
+        row_changed = row != self.selected_cell[1]
         self.selected_cell = [step, row]
 
         if self.edit_mode == EDIT_MODE_BLOCK:
@@ -348,6 +350,20 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             self.grid_canvas.coords(self.rect_selected_cell, coord)
         self.grid_canvas.tag_raise(self.rect_selected_cell)
 
+        if self.zyngui.tts:
+            tts_val = ""
+            if step_changed:
+                tts_step = f"Step {step + 1}"
+                if val is not None:
+                    tts_val = f"Value {val}"
+            else:
+                tts_step = ""
+            if row_changed:
+                if val is not None:
+                    tts_val = f"Value {val}"
+                else:
+                    tts_val = row
+            self.zyngui.tts.announce(f"{tts_step} {tts_val}")
 
     # ---------------------------------------------------------------
     # Block edit functionality => Copy/paste block
@@ -424,7 +440,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                     if newval != val:
                         self.zynseq.libseq.setControlValue(step, self.cc_num, newval, newval)
                 # Select cell
-                self.select_cell(step, self.selected_cell[1] + dval)
+                self.select_cell(step, self.selected_cell[1] - dval)
                 return True
 
         if super().zynpot_cb(i, dval):

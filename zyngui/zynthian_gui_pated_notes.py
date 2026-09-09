@@ -108,7 +108,7 @@ STUT_FREQ_OPTIONS = (
 )
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-NOTE_PORNOUNCE = ["C", "C Sharp", "D", "D Sharp", "E", "F", "F Sharp", "G", "G Sharp", "A", "A Sharp", "B"]
+NOTE_PRONOUNCE = ["C", "C Sharp", "D", "D Sharp", "E", "F", "F Sharp", "G", "G Sharp", "A", "A Sharp", "B"]
 SCALES = {
     "major": [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23],
     "minor": [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22]
@@ -1270,6 +1270,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             self.grid_canvas.coords(self.rect_selected_cell, coord)
         self.grid_canvas.tag_raise(self.rect_selected_cell)
+
         if self.zyngui.tts:
             if step_changed:
                 tts_step = f"Step {step + 1}"
@@ -1277,7 +1278,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 tts_step = ""
             if note_changed:
                 try:
-                    tts_name = f"{NOTE_PORNOUNCE[note%12]}{note//12-1}"
+                    tts_name = f"{NOTE_PRONOUNCE[note%12]}{note//12-1}"
                     tts_name = self.keymap[row]["name"]
                 except:
                     pass
