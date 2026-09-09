@@ -466,6 +466,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                         self.zctrl = zctrl
                         break
         # Determine type of engine
+        self.eng_type = self.ENG_NONE
         self.clip_info = None
         if self.processor:
             if self.processor.eng_code == "CL":
@@ -479,8 +480,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.eng_type = self.ENG_CHAIN_AP
             elif self.processor.eng_code == "JV/samplv1":
                 self.eng_type = self.ENG_SAMPLV1
-        else:
-            self.eng_type = self.ENG_NONE
 
     def show(self):
         self.refreshing = False
@@ -710,6 +709,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     loop_end = int(self.frames * self.processor.controllers_dict['GEN1_LOOP_2'].value)
                 vzoom = 2.0 * self.processor.controllers_dict['OUT1_VOLUME'].value
 
+            # Others =>
+            case _:
+                zoom = 1
+                offset = 0
+                beats = 0
+
         # Process parameter changes
         if zoom is not None and zoom != self.zoom:
             self.zoom = zoom
@@ -834,7 +839,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                         frpos = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start)) - self.offset
                         self.widget_canvas.set_cursor_pos(f * frpos)
                 else:
-                    # Hide Cursor!
                     self.widget_canvas.set_cursor_pos(-100)
 
                 refresh_info = True
