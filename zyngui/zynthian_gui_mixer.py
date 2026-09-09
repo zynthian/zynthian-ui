@@ -2505,11 +2505,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             case 3:
                 return self.switch_select(t)
 
-        # ALT mode => Use F1-F2 as copy/paste buttons
-        if self.launcher_mode:
-            if self.switch_i_add_chain and swi == self.switch_i_add_chain:
-                return self.cuia_v5_zynpot_switch([2, t])
-
+        # ALT mode + Launcher mode
+        if self.alt_mode and self.launcher_mode:
+            # Use F1-F2 as copy/paste buttons
             if self.switch_i_clipboard and swi in self.switch_i_clipboard:
                 index = self.switch_i_clipboard.index(swi)
                 if t == "S":
@@ -2520,6 +2518,10 @@ class zynthian_gui_mixer(zynthian_gui_base):
                 elif t == "B":
                     self.copy_to_clipboard(index)
                     return True
+            # Use F3 for adding/moving chains
+            if self.switch_i_add_chain and swi == self.switch_i_add_chain:
+                return self.cuia_v5_zynpot_switch([2, t])
+
         return False
 
     def cuia_v5_zynpot_switch(self, params):
@@ -2758,15 +2760,16 @@ class zynthian_gui_mixer(zynthian_gui_base):
         return True
 
     def update_wsleds(self, leds):
+        # ALT mode
+        if not self.alt_mode:
+            return
+
         wsl = self.zyngui.wsleds
 
-        # ALT mode
-        if self.alt_mode:
-            # CTRL button
-            wsl.set_led(leds[15], wsl.wscolor_active2)
+        # CTRL button
+        wsl.set_led(leds[15], wsl.wscolor_active2)
 
-
-        # Only in launcher mode
+        # Only in launcher mode =>
         if self.launcher_mode:
             # Copy/paste buttons (F1/F2 in V5)
             if self.wsleds_i_clipboard:
@@ -2781,6 +2784,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
                             wsl.blink(leds[wsli], wsl.wscolor_active2)
                         elif cpfc == True:
                             wsl.blink(leds[wsli], wsl.wscolor_active)
+
             # Add chain button (F3 in V5)
             if self.wsled_i_add_chain is not None:
                 wsl.set_led(leds[self.wsled_i_add_chain], wsl.wscolor_active2)
