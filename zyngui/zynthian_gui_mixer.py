@@ -1233,8 +1233,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         # Configure ALT mode layout depending on hardware
         self.pated = None
-        self.clipboard = 8 * [None]      # Pattern clipboard: Array of pattern indexes to copy/paste, shared by all pated instances.
-        if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
+        self.clipboard = 4 * [None]      # Clipboard: Array of copied cells (patterns / audio clips)
+        if zynthian_gui_config.check_wiring_layout(["V5"]) or zynthian_gui_config.touch_navigation:
             self.switch_i_clipboard = [11, 15]
             self.wsleds_i_clipboard = [10, 11]
             self.switch_i_add_chain = 19
@@ -1244,11 +1244,13 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.wsleds_i_clipboard = [10, 11]
             self.switch_i_add_chain = None
             self.wsled_i_add_chain = None
-        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):  # and wiring_layout_custom_profile == "v4_studio":
+        elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
             self.switch_i_clipboard = [4, 5]
             self.wsleds_i_clipboard = None
             self.switch_i_add_chain = 6
             self.wsled_i_add_chain = None
+            # Auto-enable ALT-mode to get alt. functions for S1-S4 buttons
+            self.alt_mode = True
         else:
             self.switch_i_clipboard = None
             self.wsleds_i_clipboard = None

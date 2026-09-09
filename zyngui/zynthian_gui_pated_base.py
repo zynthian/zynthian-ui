@@ -382,7 +382,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.launcher = None
         self.switch_i_clipboard = None
         self.wsleds_i_clipboard = None
-        if zynthian_gui_config.check_wiring_layout(["V5", "TOUCH_ONLY"]):
+        if zynthian_gui_config.check_wiring_layout(["V5"]) or zynthian_gui_config.touch_navigation:
             self.switch_i_block = 19
             self.switch_i_cc_editor = 23
             self.wsled_i_block = 12
@@ -397,6 +397,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.switch_i_cc_editor = 7
             self.wsled_i_block = None
             self.wsled_i_cc_editor = None
+            # Auto-enable ALT-mode to get alt. functions on S1-S4 buttons
+            self.alt_mode = True
         else:
             self.switch_i_block = None
             self.switch_i_cc_editor = None
