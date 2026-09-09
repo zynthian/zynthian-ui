@@ -308,26 +308,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
             self.update_text()
             self.replot = False
 
-    def zynpot_cb(self, i, dval):
-        if i < len(self.zgui_ctrls):
-            self.zgui_ctrls[i].zynpot_cb(dval)
-            return True
-        else:
-            return False
-
-    def zynpot_abs(self, i, val):
-        if i < len(self.zgui_ctrls):
-            self.zgui_ctrls[i].zynpot_abs(val)
-            return True
-        else:
-            return False
-
-    # Function to back event
-    def back_action(self):
-        if self.learn_mode:
-            self.zyngui.cuia_disable_midi_learn()
-            return True
-
     def enter_midi_learn(self):
         self.learn_mode = -1
         self.learn_text['text'] = "learning..."
@@ -337,6 +317,14 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         self.learn_mode = 0
         self.learn_text['text'] = "not learning"
         self.learn_text['fg'] = 'Dark Grey'
+
+    def toggle_midi_learn(self):
+        if not self.learn_mode:
+            self.enter_midi_learn()
+            return True
+        else:
+            self.exit_midi_learn()
+            return False
 
     def send_controller_value(self, zctrl):
         if self.shown and self.zmop_index is not None:
@@ -395,14 +383,52 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
             self.zyngui.cuia_disable_midi_learn()
         self.update_piano()
 
-    def switch_select(self, t='S'):
-        self.zyngui.close_screen()
-
     def set_select_path(self):
         try:
             self.select_path.set(f"{self.chain.get_title()} > Note Range & Transpose...")
         except:
             self.select_path.set("Note Range & Transpose...")
+
+    # --------------------------------------------------------------------------
+    # Physical UI events management & CUIA
+    # --------------------------------------------------------------------------
+
+    def zynpot_cb(self, i, dval):
+        if i < len(self.zgui_ctrls):
+            self.zgui_ctrls[i].zynpot_cb(dval)
+            return True
+        else:
+            return False
+
+    def zynpot_abs(self, i, val):
+        if i < len(self.zgui_ctrls):
+            self.zgui_ctrls[i].zynpot_abs(val)
+            return True
+        else:
+            return False
+
+    def back_action(self):
+        if self.learn_mode:
+            self.zyngui.cuia_disable_midi_learn()
+
+    def switch_select(self, t='S'):
+        self.zyngui.back_screen()
+
+    def switch(self, i, t):
+        if i == 2 and t == 'S':
+            self.zyngui.cuia_toggle_midi_learn()
+            return True
+
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 2 and t == 'S':
+            self.zyngui.cuia_toggle_midi_learn()
+            return True
+
+    # --------------------------------------------------------------------------
+    # Touch event management
+    # --------------------------------------------------------------------------
 
     def cb_piano_press(self, event):
         for key, rect in enumerate(self.piano_keys):
