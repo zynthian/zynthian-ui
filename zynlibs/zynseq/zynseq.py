@@ -614,7 +614,6 @@ class zynseq(zynthian_engine):
 
     def set_tempo(self, tempo):
         self.zctrl_tempo.set_value(tempo)
-        zynaudioplayer.set_tempo(tempo)
 
     def get_tempo(self):
         return self.libseq.getTempo()
