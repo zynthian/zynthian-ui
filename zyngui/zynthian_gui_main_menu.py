@@ -63,7 +63,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "icon": "midi_output.png",
                 "action": self.zyngui.midi_out_config
             }, {
-                "title": "Recorder",
+                "title": "Play &\nRecord",
                 "icon": "recorder.png",
                 "action": self.recorder_menu
             }, {
@@ -172,7 +172,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
         self.zyngui.show_screen_reset('root')
 
     def recorder_menu(self, select=0):
-        self.zyngui.screens["grid_sel"].setup("Recorder", [
+        self.zyngui.screens["grid_sel"].setup("Play & Record", [
             {
                 "icon": "audio_recording.png" if self.state_manager.audio_recorder.status else "audio_recorder.png",
                 "title": "Stop Audio\nRecording" if self.state_manager.audio_recorder.status else "Start Audio\nRecording",
