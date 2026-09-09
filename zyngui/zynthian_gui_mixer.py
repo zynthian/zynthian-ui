@@ -1242,8 +1242,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         elif zynthian_gui_config.check_wiring_layout(["Z2"]):
             self.switch_i_clipboard = [10, 11]
             self.wsleds_i_clipboard = [10, 11]
-            self.switch_i_add_chain = None
-            self.wsled_i_add_chain = None
+            self.switch_i_add_chain = 12
+            self.wsled_i_add_chain = 12
         elif zynthian_gui_config.check_wiring_layout(["MCP23017"]):
             self.switch_i_clipboard = [4, 5]
             self.wsleds_i_clipboard = None
