@@ -472,6 +472,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 self.eng_type = self.ENG_CLIPPY
                 self.clip_info = self.get_clippy_info()
             elif self.processor.eng_code == "AP":
+                self.processor.engine.set_monitored_processor(self.processor)
                 if self.processor.id < 0:
                     self.eng_type = self.ENG_GLOBAL_AP
                 else:
@@ -664,8 +665,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                         cursor_pos = self.zyngui.state_manager.zynseq.progress[self.zctrl.processor.midi_chan] / 100.0
                         try:
                             cursor_frame = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start))
-                            length = self.frames // self.zoom
-                            offset = cursor_frame - length // 2
+                            offset = cursor_frame - self.frames // (self.zoom * 2)
                         except Exception as e:
                             pass
                     else:
@@ -697,8 +697,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 zoom = 1
                 offset = 0
                 beats = 0
-                offset_enabled = self.processor.controllers_dict['GEN1_OFFSET'].value
-                if offset_enabled:
+                crop_enabled = self.processor.controllers_dict['GEN1_OFFSET'].value
+                if crop_enabled:
                     crop_start = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_1'].value)
                     crop_end = int(self.frames * self.processor.controllers_dict['GEN1_OFFSET_2'].value)
                 else:
@@ -816,7 +816,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                     col = self.bmarker_color1
                                 xdata.append(x)
                                 coldata.append(col)
-                        self.widget_canvas.set_beat_markers(xdata, coldata)
                     elif self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
                         selected_cue = self.processor.controllers_dict['cue'].value
                         for cue in self.processor.cues:
@@ -826,13 +825,17 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 coldata.append(self.bmarker_color1)
                             else:
                                 coldata.append(self.bmarker_color2)
-                        self.widget_canvas.set_beat_markers(xdata, coldata)
+                    self.widget_canvas.set_beat_markers(xdata, coldata)
 
                 # Playing cursor
-                if cursor_pos is not None and (self.last_cursor_pos != cursor_pos or self.update_markers):
-                    self.last_cursor_pos = cursor_pos
-                    frpos = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start)) - self.offset
-                    self.widget_canvas.set_cursor_pos(f * frpos)
+                if cursor_pos is not None:
+                    if self.last_cursor_pos != cursor_pos or self.update_markers:
+                        self.last_cursor_pos = cursor_pos
+                        frpos = self.crop_start + int(cursor_pos * (self.crop_end - self.crop_start)) - self.offset
+                        self.widget_canvas.set_cursor_pos(f * frpos)
+                else:
+                    # Hide Cursor!
+                    self.widget_canvas.set_cursor_pos(-100)
 
                 refresh_info = True
 
@@ -875,12 +878,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     @staticmethod
     def format_time(time):
         return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
-
-    def get_monitors(self):
-        if self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
-            self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
-        else:
-            super().get_monitors()
 
     # -------------------------------------------------------------------------
     # Clippy integration

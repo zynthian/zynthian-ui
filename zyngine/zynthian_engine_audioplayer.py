@@ -71,9 +71,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
         self.type = "MIDI Synth"
         self.options['replace'] = False
 
+        self.monproc = None
         self.dur = 0.0
         self.zoom = 1.0
-        self.handle = 0
 
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
 
@@ -130,6 +130,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
             self.id2proc.pop(processor.handle)
         zynaudioplayer.remove_player(processor.handle)
         super().remove_processor(processor)
+
+    def set_monitored_processor(self, proc):
+        try:
+            self.monproc = proc
+            self.handle = proc.handle
+        except Exception as e:
+            self.monproc = None
+            self.handle = 0
+            logging.error(e)
+        self.dur = zynaudioplayer.get_duration(self.handle)
+        self.zoom = self.id2proc[self.handle].controllers_dict['zoom'].value
+        self.last_offset_ctrl = self.id2proc[self.handle].controllers_dict['position']
 
     # ---------------------------------------------------------------------------
     # Bank Management
@@ -438,7 +450,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
     def centre_offset(self):
         try:
-            self.last_offset_ctrl.processor.controllers_dict["offset"].set_value(self.last_offset_ctrl.value - self.dur / self.zoom / 2)
+            offset = self.last_offset_ctrl.value - self.dur / (self.zoom * 2)
+            self.last_offset_ctrl.processor.controllers_dict["offset"].set_value(offset)
         except Exception as e:
             logging.warning(e)
 
@@ -550,12 +563,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
         else:
             return 1.0 / (1.0 - num)
 
-    def get_monitors_dict(self, handle):
-        if handle != self.handle:
-            self.handle = handle
-            self.dur = zynaudioplayer.get_duration(handle)
-            self.zoom = self.id2proc[handle].controllers_dict['zoom'].value
-            self.last_offset_ctrl = self.id2proc[handle].controllers_dict['position']
+    def get_monitors_dict(self, handle=None):
+        if handle is None:
+            handle = self.handle
         return self.monitors_dict[handle]
 
     def update_rec(self, state):
