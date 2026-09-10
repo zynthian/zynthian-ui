@@ -177,10 +177,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
             else:
                 self.list_data[0] = (("START_RECORDING", 0,
                                      "⬤ Start MIDI Recording", ["Start MIDI recording.", "midi_recorder.png"]))
-            if False:
-                self.listbox.delete(0)
-                self.listbox.insert(0, self.list_data[0][2])
-                self.select_listbox(self.index)
+            self.listbox.delete(0)
+            self.listbox.insert(0, self.list_data[0][2])
+            self.select_listbox(self.index)
 
     def update_status_loop(self):
         if zynthian_gui_config.midi_play_loop:
