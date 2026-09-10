@@ -38,7 +38,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 class zynthian_gui_selector_info(zynthian_gui_selector):
 
-    def __init__(self, selcap='Select', default_icon="zynthian_logo.png", loading_anim=True, tiny_ctrls=True, zsel_hidden=True, parent=None, topbar=None):
+    def __init__(self, selcap='Select', default_icon="zynthian_logo.png", default_info=None, loading_anim=True, tiny_ctrls=True, zsel_hidden=True, parent=None, topbar=None):
         # Custom layout for GUI selector info
         self.layout = {
             'name': 'gui_selector_info',
@@ -59,6 +59,7 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         self.info_canvas = None
         self.info_text = None
         self.default_icon = default_icon
+        self.default_info = default_info
         self.icons = {}
 
         if self.zsel_hidden:
@@ -99,9 +100,10 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             info = self.list_data[self.index][-1]
         except:
             return None
-
         if isinstance(info, list):
             return info
+        elif self.default_info:
+            return [self.default_info, ""]
         else:
             return ["", ""]
 

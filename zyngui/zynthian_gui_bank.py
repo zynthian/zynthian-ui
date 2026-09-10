@@ -38,7 +38,10 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
 
     def __init__(self):
         self.processor = None
-        super().__init__('Bank', default_icon="presets_bank.png", zsel_hidden=False)
+        super().__init__('Bank',
+                         default_icon="presets_bank.png",
+                         default_info="Bold to show options.",
+                         zsel_hidden=False)
 
     def fill_list(self):
         if not self.processor:

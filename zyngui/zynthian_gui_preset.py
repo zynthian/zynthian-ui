@@ -42,12 +42,21 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         self.preload_timer_id = None
         self.preload_timer_ms = 300
         self.processor = None
-        zynthian_gui_selector_info.__init__(self, 'Preset', default_icon="preset.png", zsel_hidden=False)
+        zynthian_gui_selector_info.__init__(self, 'Preset',
+                                            default_icon="preset.png",
+                                            zsel_hidden=False)
 
     def fill_list(self):
         if not self.processor:
             logging.error("Can't fill preset list for None processor!")
             return
+        # Configure default info text
+        if zynthian_gui_config.preset_preload:
+            self.default_info = "Preload enabled."
+        else:
+            self.default_info = "Preload disabled."
+        self.default_info += "\nBold to show options."
+        # Load preset list
         self.processor.load_preset_list()
         self.list_data = self.processor.preset_list
         super().fill_list()
