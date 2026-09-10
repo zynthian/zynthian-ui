@@ -948,30 +948,44 @@ class zynthian_gui:
         if fpath == "index:":
             self.screens['help'].load_file(fpath)
             return
-        if not fpath:
-            # Get help path for current view
-            try:
-                curscreen_obj = self.get_current_screen_obj()
-                fpath = curscreen_obj.get_help_fpath()
-            except:
-                fpath = f"{self.current_screen}.html"
 
-        html_root = self.screens["help"].help_dir
-        for b in ("/", "./"):
-            if fpath.startswith(b):
-                fpath = f"{html_root}/{fpath[len(b):]}"
-        p = Path(fpath).resolve()
-        if not p.exists():
-            for dir in [zynthian_gui_config.layout['name'], "common"]:
-                fpath = f"{html_root}/{dir}/{p.name}"
-                if Path(fpath).exists():
-                    break
+        def get_fpath(fpath):
+            html_root = self.screens["help"].help_dir
+            for b in ("/", "./"):
+                if fpath.startswith(b):
+                    fpath = f"{html_root}/{fpath[len(b):]}"
+            p = Path(fpath).resolve()
+            if not p.exists():
+                for dir in [zynthian_gui_config.layout['name'], "common"]:
+                    fpath = f"{html_root}/{dir}/{p.name}"
+                    if Path(fpath).exists():
+                        break
+            return fpath
 
-        if Path(fpath).exists():
+        # Get help page for the specified file
+        if fpath:
+            if Path(fpath).exists():
+                self.screens['help'].load_file(fpath)
+            else:
+                logging.error(f"Help file '{fpath}' doesn't exist.")
+            return
+
+        # Get help for current view, using view name
+        fpath = get_fpath(f"{self.current_screen}.html")
+        if fpath and Path(fpath).exists():
             self.screens['help'].load_file(fpath)
-        else:
-            topic = str(fpath).split("/")[-1]
-            logging.warning(f"No help for '{topic}'")
+            return
+        # Get help for current view, asking the screen object
+        try:
+            curscreen_obj = self.get_current_screen_obj()
+            fpath = get_fpath(curscreen_obj.get_help_fpath())
+            if fpath and Path(fpath).exists():
+                self.screens['help'].load_file(fpath)
+                return
+        except:
+            fpath = self.current_screen
+        topic = str(fpath).split("/")[-1]
+        logging.warning(f"No help for '{topic}'")
 
     # TODO: Rename - this is called for various chain manipulation purposes
     def modify_chain(self, status=None):

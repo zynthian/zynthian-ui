@@ -286,4 +286,5 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             else:
                 self.select_path.set(self.processor.get_bankpath())
 
+
 # ------------------------------------------------------------------------------
