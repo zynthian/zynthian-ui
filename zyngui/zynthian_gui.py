@@ -964,6 +964,7 @@ class zynthian_gui:
 
         # Get help page for the specified file
         if fpath:
+            fpath = get_fpath(fpath)
             if Path(fpath).exists():
                 self.screens['help'].load_file(fpath)
             else:
