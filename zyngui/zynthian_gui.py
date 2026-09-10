@@ -948,8 +948,6 @@ class zynthian_gui:
         if fpath == "index:":
             self.screens['help'].load_file(fpath)
             return
-
-        html_root = self.screens["help"].ui_dir + "/help"
         if not fpath:
             # Get help path for current view
             try:
@@ -957,12 +955,14 @@ class zynthian_gui:
                 fpath = curscreen_obj.get_help_fpath()
             except:
                 fpath = f"{self.current_screen}.html"
+
+        html_root = self.screens["help"].help_dir
         for b in ("/", "./"):
             if fpath.startswith(b):
                 fpath = f"{html_root}/{fpath[len(b):]}"
         p = Path(fpath).resolve()
         if not p.exists():
-            for dir in [zynthian_gui_config.layout['name'], "core", "widgets"]:
+            for dir in [zynthian_gui_config.layout['name'], "common"]:
                 fpath = f"{html_root}/{dir}/{p.name}"
                 if Path(fpath).exists():
                     break
