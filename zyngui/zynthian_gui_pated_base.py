@@ -1666,12 +1666,16 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.block_cell_start = copy.copy(self.selected_cell)
         self.block_cell_end = copy.copy(self.selected_cell)
         self.select_block(0, 0)
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Start block selection")
 
     def end_select_block(self):
         self.clean_selected_events()
         self.block_copied = None
         self.set_edit_mode(EDIT_MODE_NONE)
         self.select_cell()
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"Block deselected")
 
     def select_block(self, dstep, drow):
         # Move end position
@@ -1682,6 +1686,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.select_cell(self.block_cell_end[0], self.block_cell_end[1])
         # Plot
         self.plot_select_block()
+        if self.zyngui.tts:
+            self.zyngui.tts.announce(f"Step {self.block_cell_end[0]+1}, row {self.block_cell_end[1]}")
 
     def select_block_all(self):
         # Get all events indexed by "step/note"" key
@@ -1759,6 +1765,12 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # Redraw pattern notes
         if cut:
             self.redraw_pending = 3
+        if self.zyngui.tts:
+            if cut:
+                self.zyngui.tts.announce(f"Cut block of {n} events")
+            else:
+                self.zyngui.tts.announce(f"Copied block of {n} events")
+
 
     def select_block_events(self):
         self._end_block_selection()
@@ -1782,6 +1794,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # Get all events indexed by "step/note"" key
         self.selected_events = self.zynseq.get_pattern_selection(self.pattern, 0, self.n_steps, 0, 127)
         self.redraw_pending = 3
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Selected all events")
 
     def move_block(self, dstep, drow):
         # Calculate new position
@@ -1815,6 +1829,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             else:
                 row = self.block_cell_start[1] + 1
             self.select_cell(step, row)
+            if self.zyngui.tts:
+                self.zyngui.tts.announce(f"Block moved to step {pos1[0]+1}, row {pos1[1]}")
 
     def paste_block(self):
         # Save snapshot
@@ -1823,6 +1839,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.zynseq.libseq.pastePatternBuffer(self.pattern, self.block_dstep, 0.0, self.block_drow, False)  # truncate=False to use horizontal circular overflow
         self.changed = True
         self.redraw_pending = 3
+        if self.zyngui.tts:
+            self.zyngui.tts.announce("Block pasted")
 
     # -------------------------------------------------------------------------
     # Event management

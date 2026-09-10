@@ -97,7 +97,7 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
         if not self.shown:
             super().show()
             if self.zyngui.tts:
-                self.zyngui.tts.announce(f"{text}. Yes or no.")
+                self.zyngui.tts.announce(f"{text}. Yes or no")
 
     def zynpot_cb(self, i, dval):
         pass

@@ -280,7 +280,7 @@ class zynthian_gui_help(HtmlFrame):
             self.link = None
             self.link_text.place_forget()
             if self.zyngui.tts:
-                self.zyngui.tts.announce("Link selection closed.")
+                self.zyngui.tts.announce("Link selection closed")
             return True
 
     def refresh_loading(self):
@@ -368,7 +368,7 @@ class zynthian_gui_help(HtmlFrame):
     # --------------------------------------------------------------------------
 
     def tts_info(self):
-        self.zyngui.tts.announce(f"Help page.")
+        self.zyngui.tts.announce(f"Help page")
         try:
             # Parse knob info
             if not self.soup.head.find("div", class_="tts_parsed"):

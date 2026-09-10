@@ -770,7 +770,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             self.moving_proc = None
         self.select_node(proc=self.moving_proc)
         if self.zyngui.tts and self.moving_proc:
-            self.zyngui.tts.announce("Move processor.")
+            self.zyngui.tts.announce("Move processor")
 
     def end_moving_processor(self):
         """ Exit processor move mode
@@ -780,13 +780,13 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             return
         self.moving_proc = None
         if self.zyngui.tts:
-            self.zyngui.tts.announce("End move processor.")
+            self.zyngui.tts.announce("End move processor")
 
     def start_moving_chain(self):
         self.moving_chain = True
         self._draw_graph(self.moving_proc)
         if self.zyngui.tts:
-            self.zyngui.tts.announce("Move chain.")
+            self.zyngui.tts.announce("Move chain")
 
     def end_moving_chain(self):
         if not self.moving_chain:
@@ -796,7 +796,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
         self.canvas.delete("chain_move")
         self.select_node()
         if self.zyngui.tts:
-            self.zyngui.tts.announce("End move chain.")
+            self.zyngui.tts.announce("End move chain")
 
     def arrow_down(self):
         """
