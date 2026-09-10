@@ -523,7 +523,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
             self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
         elif zctrl.symbol == "cue pos":
-            zctrl.processor.cues[zctrl.processor.controllers_dict["cue"].value] = zctrl.value
+            cue = zctrl.processor.controllers_dict["cue"].value
+            pos = zctrl.value
+            if pos in zctrl.processor.cues:
+                pos += 0.01
+            zctrl.processor.cues[cue] = pos
+            zctrl.processor.cues.sort()
+            cue = zctrl.processor.cues.index(pos)
+            zctrl.processor.controllers_dict["cue"].set_value(cue, False)
+            zctrl.processor.controllers_dict["cue pos"].set_value(pos, False)
             self.save_cues(zctrl.processor)
             self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
             self.last_offset_ctrl = zctrl
@@ -549,6 +557,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                         zctrl.processor.controllers_dict["cue"].set_options({"value_max": len(zctrl.processor.cues) - 1})
                         cue = zctrl.processor.cues.index(pos)
                         zctrl.processor.controllers_dict["cue"].set_value(cue, False)
+                        zctrl.processor.controllers_dict["cue pos"].set_value(pos, False)
                 except:
                     logging.warning("cue error")
                 self.save_cues(zctrl.processor)

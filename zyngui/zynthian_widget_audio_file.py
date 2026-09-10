@@ -156,10 +156,10 @@ def compute_layout(nchans, width):
                   crop_start, loop_start, cursor_start, total)
 
 
-class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficial
+class WaveformCanvas(ModernglTkWindow):
 
     def __init__(self, *args, **kwargs):
-        # 1. Forzar/asegurar ciertos nombres de variables que ModernGL-Window espera nativamente
+        # Define variables that ModernGL-Window expects
         self.ctx = None
         self.prog = None
         self.vbo = None
@@ -173,7 +173,7 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         self.dirty_lo = None  # Start of the byte range that changed since last upload
         self.dirty_hi = None  # End changed range (exclusive, in vertex units)
 
-        # Configuración de colores
+        # Configure colours
         self.bg_color = hexcolor_to_opengl(zynthian_gui_config.color_bg)
         self.waveform_color1 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_hl, -60))
         self.waveform_color2 = hexcolor_to_opengl(zynthian_gui_config.color_hl)
@@ -187,7 +187,6 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         super().__init__(*args, **kwargs)
         #self.animate = True
 
-        # 4. Enlazar el evento de redimensionado nativo de Tkinter
         self.bind("<Configure>", self.on_resize)
 
     def initgl(self):
@@ -972,7 +971,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                             else:
                                 coldata.append(self.bmarker_color2)
                     self.widget_canvas.set_beat_markers(xdata, coldata)
-                    if self.eng_type == self.ENG_CHAIN_AP:
+                    if self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
                         self.widget_canvas.set_marker_numbers(xdata[1:])
                     else:
                         self.widget_canvas.set_marker_numbers(xdata)
