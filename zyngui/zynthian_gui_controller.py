@@ -582,7 +582,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             return
 
         title = str(title).strip().replace("_", " ")
-        if camel:
+        if camel and len(title) > 4:
             title = camel_split_re.sub(' ', title)
 
         fskey = f"{max_width}x{max_height}x{camel}"
@@ -591,7 +591,6 @@ class zynthian_gui_controller(tkinter.Canvas):
             font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)
             self.itemconfigure(obj_id, text=title, font=font)
             return
-
 
         fs = int(1.0 * zynthian_gui_config.font_size)
         font = tkFont.Font(family=zynthian_gui_config.font_family, size=fs)

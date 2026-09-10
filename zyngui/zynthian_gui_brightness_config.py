@@ -64,14 +64,12 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
                                           bg=zynthian_gui_config.color_panel_bg,
                                           bd=0,
                                           highlightthickness=0)
-        self.main_frame.rowconfigure(2, weight=1)
+        self.main_frame.rowconfigure(2, weight=1, )
         if zynthian_gui_config.layout['columns'] == 3:
-            self.info_canvas.grid(row=0, column=1, rowspan=2,
-                                  padx=(2, 2), sticky='news')
+            self.info_canvas.grid(row=0, column=1, rowspan=2, padx=(2, 2), sticky='news')
             self.main_frame.columnconfigure(1, weight=1)
         else:
-            self.info_canvas.grid(row=0, column=0, rowspan=4,
-                                  padx=(0, 2), sticky='news')
+            self.info_canvas.grid(row=0, column=0, rowspan=4, padx=(0, 2), sticky='news')
             self.main_frame.columnconfigure(0, weight=1)
 
         self.replot = True
@@ -80,16 +78,13 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
         if os.path.isdir(self.backlight_sysctrl_dir):
             try:
                 # Search brightness system control files
-                brightness_files = list(glob.iglob(
-                    f"{self.backlight_sysctrl_dir}/*/brightness"))
+                brightness_files = list(glob.iglob(f"{self.backlight_sysctrl_dir}/*/brightness"))
                 # Return the first one
                 if len(brightness_files) > 0:
-                    logging.debug(
-                        f"Display brightness control file: {brightness_files[0]}")
+                    logging.debug(f"Display brightness control file: {brightness_files[0]}")
                     return brightness_files[0]
                 else:
-                    logging.debug(
-                        f"Can't find a display brightness control file")
+                    logging.debug(f"Can't find a display brightness control file")
             except Exception as e:
                 logging.error(e)
         return None
@@ -100,8 +95,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
                 val = int(os.environ.get("ZYNTHIAN_DISPLAY_BRIGHTNESS", "100"))
             except:
                 val = 100
-                logging.warning(
-                    "Can't get init value for display brightness. Using default value.")
+                logging.warning("Can't get init value for display brightness. Using default value.")
             try:
                 val = int(val * 255 / 100)
                 self.set_display_brightness(val)
@@ -110,8 +104,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
                 if not self.display_brightness_gui_ctrl:
                     self.display_brightness_zctrl = zynthian_controller(self, 'display_brightness', {
                                                                         'name': 'Display', 'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value': val})
-                    self.display_brightness_gui_ctrl = zynthian_gui_controller(
-                        0, self.main_frame, self.display_brightness_zctrl)
+                    self.display_brightness_gui_ctrl = zynthian_gui_controller(0, self.main_frame, self.display_brightness_zctrl)
                     self.zgui_ctrls.append(self.display_brightness_gui_ctrl)
             except:
                 logging.warning("Can't set display brightness!")
@@ -121,8 +114,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
                 val = int(os.environ.get("ZYNTHIAN_WSLEDS_BRIGHTNESS", "100"))
             except:
                 val = 100
-                logging.warning(
-                    "Can't get init value for LED brightness. Using default value.")
+                logging.warning("Can't get init value for LED brightness. Using default value.")
             val = val / 100.0
             self.zyngui.wsleds.set_brightness(val)
             logging.info("Setting LED brightness to {}.".format(val))
@@ -130,8 +122,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
             if not self.wsleds_brightness_gui_ctrl:
                 self.wsleds_brightness_zctrl = zynthian_controller(self, 'wsleds_brightness', {
                                                                    'name': 'LEDs', 'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value':  val})
-                self.wsleds_brightness_gui_ctrl = zynthian_gui_controller(
-                    1, self.main_frame, self.wsleds_brightness_zctrl)
+                self.wsleds_brightness_gui_ctrl = zynthian_gui_controller(1, self.main_frame, self.wsleds_brightness_zctrl)
                 self.zgui_ctrls.append(self.wsleds_brightness_gui_ctrl)
 
     def get_num_zctrls(self):
@@ -184,11 +175,9 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
         if self.shown:
             config = {}
             if self.display_brightness_zctrl:
-                config["ZYNTHIAN_DISPLAY_BRIGHTNESS"] = str(
-                    self.display_brightness_zctrl.value)
+                config["ZYNTHIAN_DISPLAY_BRIGHTNESS"] = str(self.display_brightness_zctrl.value)
             if self.wsleds_brightness_zctrl:
-                config["ZYNTHIAN_WSLEDS_BRIGHTNESS"] = str(
-                    self.wsleds_brightness_zctrl.value)
+                config["ZYNTHIAN_WSLEDS_BRIGHTNESS"] = str(self.wsleds_brightness_zctrl.value)
             if len(config) > 0:
                 zynconf.save_config(config)
 
@@ -206,10 +195,8 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
             i = zgui_ctrl.index
             zgui_ctrl.setup_zynpot()
             zgui_ctrl.erase_midi_bind()
-            zgui_ctrl.configure(
-                height=self.height // zynthian_gui_config.layout['rows'], width=self.width // 4)
-            zgui_ctrl.grid(
-                row=zynthian_gui_config.layout['ctrl_pos'][i][0], column=zynthian_gui_config.layout['ctrl_pos'][i][1])
+            zgui_ctrl.configure(height=(self.height // zynthian_gui_config.layout['rows']) - 2, width=self.width // 4)
+            zgui_ctrl.grid(row=zynthian_gui_config.layout['ctrl_pos'][i][0], column=zynthian_gui_config.layout['ctrl_pos'][i][1], pady=(0, 1))
 
     def plot_zctrls(self):
         if self.replot:
