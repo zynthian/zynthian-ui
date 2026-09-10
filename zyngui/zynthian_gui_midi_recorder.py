@@ -52,7 +52,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
     ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
     def __init__(self):
-        super().__init__('MIDI file', default_icon="file_midi.png", tiny_ctrls=False, zsel_hidden=True)
+        super().__init__('MIDI file', default_icon="file_midi.png", tiny_ctrls=False, zsel_hidden=False)
+        self.info_canvas_relh = 0.6
 
         # Secondary controller
         self.mpl_zctrl = zynthian_controller(self, "midi_play_loop", {'name': "Loop", 'short_name': "Loop",
@@ -60,20 +61,18 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
                                               'value': zynthian_gui_config.midi_play_loop})
         self.zgui_ctrl2 = zynthian_gui_controller(2, self.main_frame, self.mpl_zctrl, hidden=False,
                                                  orientation=self.layout['ctrl_orientation'])
-        self.zgui_ctrl2.grid(row=self.layout['ctrl_pos'][3][0],
-                            column=self.layout['ctrl_pos'][3][1],
+        self.zgui_ctrl2.grid(row=self.layout['ctrl_pos'][2][0],
+                            column=self.layout['ctrl_pos'][2][1],
                             sticky='news', pady=(0, 1))
 
-    #def grid_info_canvas(self):
-    #    self.main_frame.rowconfigure(0, weight=0)
-    #    self.main_frame.rowconfigure(1, weight=0)
-    #    self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news", padx=(2,2), pady=(2,2))
+    def grid_info_canvas(self):
+        self.main_frame.rowconfigure(0, weight=0)
+        self.main_frame.rowconfigure(1, weight=0)
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news", padx=(2,2), pady=(2,2))
 
     def build_view(self):
         res = super().build_view()
         if not self.shown:
-            self.update_status_recording(self.zyngui.state_manager.status_midi_recorder)
-            self.update_status_playback(self.zyngui.state_manager.status_midi_player)
             zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_PLAYER_STATE, self.update_status_playback)
             zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.update_status_recording)
         return res
@@ -87,7 +86,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
     def fill_list(self):
         # self.index = 0
-        self.list_data = []
+        self.list_data = [None]
+        self.update_status_recording(self.zyngui.state_manager.status_midi_recorder)
         self.update_status_loop()
         i = 1
 
@@ -110,6 +110,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         fill_from_source(self.user_dir_sdc, "SD> User MIDI Tracks")
         fill_from_source(self.system_dir_sdc, "SD> System MIDI Tracks")
         super().fill_list()
+        self.update_status_playback(self.zyngui.state_manager.status_midi_player)
+
 
     def get_filelist(self, src_dir):
         res = []
@@ -175,9 +177,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
             else:
                 self.list_data[0] = (("START_RECORDING", 0,
                                      "⬤ Start MIDI Recording", ["Start MIDI recording.", "midi_recorder.png"]))
-            self.listbox.delete(0)
-            self.listbox.insert(0, self.list_data[0][2])
-            self.select_listbox(self.index)
+            if False:
+                self.listbox.delete(0)
+                self.listbox.insert(0, self.list_data[0][2])
+                self.select_listbox(self.index)
 
     def update_status_loop(self):
         if zynthian_gui_config.midi_play_loop:

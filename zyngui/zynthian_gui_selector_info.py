@@ -56,9 +56,17 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             'ctrl_width': 0.25
         }
         self.zsel_hidden = zsel_hidden
+        self.info_canvas = None
         self.info_text = None
         self.default_icon = default_icon
         self.icons = {}
+
+        if self.zsel_hidden:
+            self.info_canvas_relh = 1.0
+            self.info_canvas_rowspan = 4
+        else:
+            self.info_canvas_relh = 0.73
+            self.info_canvas_rowspan = 3
 
         super().__init__(selcap, wide=True, loading_anim=loading_anim, tiny_ctrls=tiny_ctrls, parent=parent, topbar=topbar)
 
@@ -67,24 +75,22 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             bd=0,
             highlightthickness=0,
             bg=zynthian_gui_config.color_bg)
-        self.grid_info_canvas()
+        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
         self.info_text = self.info_canvas.create_text(
             0, 0,
             anchor=tkinter.NW,
             justify=tkinter.LEFT,
             fill=zynthian_gui_config.color_panel_tx
         )
-        self.info_icon = self.info_canvas.create_image(0, 0, anchor=tkinter.NW)
+        self.grid_info_canvas()
 
     def grid_info_canvas(self):
-        if self.zsel_hidden:
-            rowspan = 4
-        else:
-            rowspan = 3
-        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=rowspan, sticky="news", padx=(2,2), pady=(2,2))
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=self.info_canvas_rowspan, sticky="news", padx=(2,2), pady=(2,2))
 
     def update_layout(self):
         super().update_layout()
+        if self.info_canvas:
+            self.info_canvas.configure(height=int(self.info_canvas_relh * self.height))
         if self.info_text:
             self.update_info()
 
