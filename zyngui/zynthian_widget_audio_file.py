@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import os
+import math
 import logging
 import tkinter
 import soundfile
@@ -53,11 +54,78 @@ def hexcolor_to_opengl(hex_str):
     return [r, g, b]
 
 
+# Vector/stroke font for marker number labels.
+def _arc(cx, cy, rx, ry, a0, a1, n):
+    """ Sample n+1 points along an elliptical arc from angle a0 to a1 (degrees) """
+    pts = []
+    for i in range(n + 1):
+        t = math.radians(a0 + (a1 - a0) * i / n)
+        pts.append((cx + rx * math.cos(t), cy + ry * math.sin(t)))
+    return pts
+
+
+def _build_digit_strokes():
+    strokes = {
+        '0': [_arc(0.5, 0.5, 0.38, 0.47, 90, 450, 16)],
+        '1': [
+            [(0.30, 0.80), (0.55, 1.0), (0.55, 0.0)],
+            [(0.30, 0.0), (0.80, 0.0)],
+        ],
+        '2': [
+            _arc(0.5, 0.80, 0.38, 0.20, 200, -20, 7) + [(0.12, 0.02), (0.90, 0.02)],
+        ],
+        '3': [
+            [(0.16, 0.88), (0.46, 1.00), (0.76, 0.90), (0.85, 0.72), (0.68, 0.55),
+             (0.35, 0.52), (0.68, 0.48), (0.85, 0.30), (0.76, 0.10), (0.46, 0.00), (0.16, 0.12)],
+        ],
+        '4': [
+            [(0.65, 1.0), (0.12, 0.35), (0.90, 0.35)],
+            [(0.65, 1.0), (0.65, 0.0)],
+        ],
+        '5': [
+            [(0.85, 0.98), (0.12, 0.98), (0.12, 0.55)]
+            + _arc(0.45, 0.32, 0.40, 0.28, 150, -170, 8),
+        ],
+        '6': [
+            [(0.78, 0.95), (0.45, 0.88), (0.22, 0.65), (0.15, 0.38)],
+            _arc(0.5, 0.27, 0.33, 0.26, 0, 360, 12),
+        ],
+        '7': [
+            [(0.08, 0.98), (0.92, 0.98), (0.30, 0.0)],
+        ],
+        '8': [
+            _arc(0.5, 0.73, 0.30, 0.25, 0, 360, 10),
+            _arc(0.5, 0.27, 0.34, 0.27, 0, 360, 10),
+        ],
+        '9': [
+            _arc(0.5, 0.68, 0.33, 0.26, 0, 360, 12),
+            [(0.78, 0.55), (0.60, 0.25), (0.38, 0.02)],
+        ],
+    }
+    return strokes
+
+
+MAX_DIGITS_PER_NUMBER = 3
+DIGIT_STROKES = _build_digit_strokes()
+SEGMENTS_PER_DIGIT = max(
+    sum(len(stroke) - 1 for stroke in strokes) for strokes in DIGIT_STROKES.values()
+)
+
+# Label sizing/placement - defined in pixels and converted per-axis to NDC at draw time
+DIGIT_HEIGHT_PX = 12
+DIGIT_WIDTH_PX = 7
+DIGIT_GAP_PX = 2             # Horizontal gap between digits within the same number
+DIGIT_BOTTOM_MARGIN_PX = 3   # Gap from the bottom edge of the canvas to the digits
+DIGIT_LINE_GAP_PX = 3        # Gap between the top of a digit and the marker line above it
+MIN_LABEL_GAP_PX = 5         # Minimum pixel gap required between adjacent number labels, else hide next label
+
+
 # Single source of truth for the vertex buffer layout
 Layout = namedtuple("Layout", [
     "axis_start", "axis_count",
     "wave_start", "wave_count",
     "markers_start", "markers_count",
+    "digits_start", "digits_count",
     "crop_start", "loop_start", "cursor_start",
     "total",
 ])
@@ -73,15 +141,18 @@ def compute_layout(nchans, width):
     axis_count = nchans * 2
     wave_count = 2 * nchans * width
     markers_count = 2 * (width // 16)
+    max_markers = max(1, width // 16)
+    digits_count = max_markers * MAX_DIGITS_PER_NUMBER * SEGMENTS_PER_DIGIT * 2
     axis_start = 0
     wave_start = axis_start + axis_count
     markers_start = wave_start + wave_count
-    crop_start = markers_start + markers_count
+    digits_start = markers_start + markers_count
+    crop_start = digits_start + digits_count
     loop_start = crop_start + 12
     cursor_start = loop_start + 18
     total = cursor_start + 6
     return Layout(axis_start, axis_count, wave_start, wave_count,
-                  markers_start, markers_count,
+                  markers_start, markers_count, digits_start, digits_count,
                   crop_start, loop_start, cursor_start, total)
 
 
@@ -232,8 +303,13 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
 
             # Initialize markers & cursor
             i0 = layout.markers_start
-            i1 = layout.crop_start
+            i1 = layout.digits_start
             self.vbo_data['col'][i0:i1] = self.bmarker_color
+
+            # Initialize labels
+            self.vbo_data['pos'][layout.digits_start:layout.crop_start] = [2.0, 2.0, 0.0]
+            self.vbo_data['col'][layout.digits_start:layout.crop_start] = self.bmarker_color
+
             self.vbo_data['col'][layout.crop_start:layout.loop_start] = self.bg_crop_color
             self.vbo_data['col'][layout.loop_start:layout.loop_start + 12] = self.lmarker_color
             self.vbo_data['col'][layout.loop_start + 12:layout.cursor_start] = self.bg_loop_color
@@ -271,15 +347,25 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
         except Exception as e:
             logging.error(f"Can't reset wave data ... => {e}")
 
+    def _label_row_bottom_ndc(self):
+        """ Bottom y (NDC) of the digit label row, converted from a fixed pixel margin """
+        return -1.0 + 2.0 * DIGIT_BOTTOM_MARGIN_PX / self.height
+
+    def _marker_line_bottom_ndc(self):
+        """ Bottom y (NDC) where beat-marker lines should stop, leaving clear space above the label row so the line never overlaps a label """
+        label_area_px = DIGIT_BOTTOM_MARGIN_PX + DIGIT_HEIGHT_PX + DIGIT_LINE_GAP_PX
+        return -1.0 + 2.0 * label_area_px / self.height
+
     def set_beat_markers(self, xdata, coldata):
         try:
             i0 = self.layout.markers_start
             i1 = i0 + 2 * len(xdata)
             i2 = i0 + self.layout.markers_count
             if i1 > i0:
+                y_bottom = self._marker_line_bottom_ndc()
                 self.vbo_data['pos'][i0:i1:, 0] = 2 * (np.repeat(xdata, 2)/self.width) - 1.0
                 self.vbo_data['pos'][i0:i1:2, 1] = 1.0
-                self.vbo_data['pos'][i0+1:i1:2, 1] = -1.0
+                self.vbo_data['pos'][i0+1:i1:2, 1] = y_bottom
                 self.vbo_data['pos'][i0:i1:, 2] = -0.75
                 colmatrix = np.array(coldata, dtype=np.float32)
                 self.vbo_data['col'][i0:i1] = np.repeat(colmatrix, 2, axis=0)
@@ -287,6 +373,58 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             self.mark_dirty(i0, i2)
         except Exception as e:
             logging.error(f"Can't set beat markers ... => {e}")
+
+    def set_marker_numbers(self, xdata):
+        """ Draw a sequential number (starting at 1) below each given marker x position
+
+        Params:
+            xdata: list of marker x positions in canvas pixels, in the order they should be numbered.
+                   The caller is expected to have already excluded any marker that shouldn't be
+                   labeled (e.g. the first marker, which is always at position 0).
+        """
+        try:
+            i0 = self.layout.digits_start
+            i1 = self.layout.crop_start
+            slot_size = MAX_DIGITS_PER_NUMBER * SEGMENTS_PER_DIGIT * 2
+
+            # Park everything off-screen first so stale digits from a previous frame don't linger
+            self.vbo_data['pos'][i0:i1] = [2.0, 2.0, 0.0]
+            px_to_ndc_x = 2.0 / self.width
+            px_to_ndc_y = 2.0 / self.height
+            digit_h = DIGIT_HEIGHT_PX * px_to_ndc_y
+            digit_w = DIGIT_WIDTH_PX * px_to_ndc_x
+            digit_gap = DIGIT_GAP_PX * px_to_ndc_x
+            y_bottom = self._label_row_bottom_ndc()
+
+            max_markers = (i1 - i0) // slot_size
+            last_right_px = None
+            for n, xpix in enumerate(xdata[:max_markers]):
+                digits = str(n + 1)[:MAX_DIGITS_PER_NUMBER]
+                label_w_px = len(digits) * DIGIT_WIDTH_PX + (len(digits) - 1) * DIGIT_GAP_PX
+                left_px = xpix - label_w_px / 2
+                right_px = xpix + label_w_px / 2
+
+                # Skip label if overlapping previous
+                if last_right_px is not None and left_px < last_right_px + MIN_LABEL_GAP_PX:
+                    continue
+                last_right_px = right_px
+
+                total_w = len(digits) * digit_w + (len(digits) - 1) * digit_gap
+                x_ndc = (2 * xpix / self.width) - 1.0
+                x_left = x_ndc - total_w / 2
+
+                v = i0 + n * slot_size
+                for di, ch in enumerate(digits):
+                    dx = x_left + di * (digit_w + digit_gap)
+                    for stroke in DIGIT_STROKES.get(ch, []):
+                        for (px0, py0), (px1, py1) in zip(stroke, stroke[1:]):
+                            self.vbo_data['pos'][v] = [dx + px0 * digit_w, y_bottom + py0 * digit_h, -0.9]
+                            v += 1
+                            self.vbo_data['pos'][v] = [dx + px1 * digit_w, y_bottom + py1 * digit_h, -0.9]
+                            v += 1
+            self.mark_dirty(i0, i1)
+        except Exception as e:
+            logging.error(f"Can't set marker numbers ... => {e}")
 
     def set_crop_markers(self, x1, x2):
         try:
@@ -337,7 +475,10 @@ class WaveformCanvas(ModernglTkWindow):  # Hereda directamente del widget oficia
             x2 = x + w
             self.vbo_data['pos'][i0:i1, 0] = np.array([x1, x1, x2, x2, x2, x1], dtype=np.float32)
             self.vbo_data['pos'][i0:i1, 1] = np.array([-1.0, 1.0, -1.0, -1.0, 1.0, 1.0], dtype=np.float32)
-            self.vbo_data['pos'][i0:i1, 2] = -1
+            # z=-0.8 puts the playhead behind the digit strokes (z=-0.9, which wins the depth
+            # test since depth_func='<'), so it passes behind the number labels instead of over them,
+            # while still drawing in front of the waveform/crop/loop geometry (z >= -0.75)
+            self.vbo_data['pos'][i0:i1, 2] = -0.8
             self.mark_dirty(i0, i1)
         except Exception as e:
             logging.error(f"Can't set cursor position ... => {e}")
@@ -831,6 +972,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                             else:
                                 coldata.append(self.bmarker_color2)
                     self.widget_canvas.set_beat_markers(xdata, coldata)
+                    if self.eng_type == self.ENG_CHAIN_AP:
+                        self.widget_canvas.set_marker_numbers(xdata[1:])
+                    else:
+                        self.widget_canvas.set_marker_numbers(xdata)
 
                 # Playing cursor
                 if cursor_pos is not None:
