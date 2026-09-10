@@ -1370,7 +1370,7 @@ class zynthian_gui:
                 try:
                     screen.tts_info()
                 except:
-                    self.tts.announce(f"View: {self.current_screen}", replace="True", interrupt=True)
+                    self.tts.announce(f"View: {self.current_screen}", replace=True, interrupt=True)
 
     def cuia_tts_register(self, params=None):
         if self.tts:

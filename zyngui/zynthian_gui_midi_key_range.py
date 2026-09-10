@@ -470,7 +470,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
     def tts_info(self):
         super().tts_info()
-        self.zyngui.tts.announce(f"Transpose: {self.octave_zctrl.get_value2label()} octaves and {self.halftone_zctrl.get_value2label()} semitones.", False, False, False)
-        self.zyngui.tts.announce(f"Range: {self.get_midi_note_name(self.note_low)} to {self.get_midi_note_name(self.note_high)}.", False, False, False)
+        self.zyngui.tts.announce(f"Transpose: {self.octave_zctrl.get_value2label()} octaves and {self.halftone_zctrl.get_value2label()} semitones", False, False, False)
+        self.zyngui.tts.announce(f"Range: {self.get_midi_note_name(self.note_low)} to {self.get_midi_note_name(self.note_high)}", False, False, False)
 
 # ------------------------------------------------------------------------------
