@@ -963,8 +963,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 coldata.append(col)
                     elif self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
                         selected_cue = self.processor.controllers_dict['cue'].value
-                        for cue in self.processor.cues:
-                            cue_frames = self.samplerate * cue
+                        for cue, cue_val in enumerate(self.processor.cues):
+                            cue_frames = self.samplerate * cue_val
                             xdata.append(f * (cue_frames - self.offset))
                             if cue == selected_cue:
                                 coldata.append(self.bmarker_color1)
