@@ -517,10 +517,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
         elif zctrl.symbol == "info":
             self.monitors_dict[handle]['info'] = zctrl.value
         elif zctrl.symbol == "cue":
+            #TODO: self.dur is 0.0 on first load so this does not set the cue pos correctly
             value_max = self.dur if zctrl.value else 0.0
             zctrl.processor.controllers_dict["cue pos"].set_options({"value":zctrl.processor.cues[zctrl.value], "value_max":value_max})
             zynaudioplayer.set_position(zctrl.processor.handle, zctrl.processor.cues[zctrl.value])
-
             self.monitors_dict[zctrl.processor.handle]['update_cue'] = True
         elif zctrl.symbol == "cue pos":
             cue = zctrl.processor.controllers_dict["cue"].value

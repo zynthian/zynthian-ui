@@ -373,13 +373,14 @@ class WaveformCanvas(ModernglTkWindow):
         except Exception as e:
             logging.error(f"Can't set beat markers ... => {e}")
 
-    def set_marker_numbers(self, xdata):
+    def set_marker_numbers(self, xdata, num1):
         """ Draw a sequential number (starting at 1) below each given marker x position
 
         Params:
             xdata: list of marker x positions in canvas pixels, in the order they should be numbered.
                    The caller is expected to have already excluded any marker that shouldn't be
                    labeled (e.g. the first marker, which is always at position 0).
+            num1: First number to show
         """
         try:
             i0 = self.layout.digits_start
@@ -398,7 +399,7 @@ class WaveformCanvas(ModernglTkWindow):
             max_markers = (i1 - i0) // slot_size
             last_right_px = None
             for n, xpix in enumerate(xdata[:max_markers]):
-                digits = str(n + 1)[:MAX_DIGITS_PER_NUMBER]
+                digits = str(num1 + n)[:MAX_DIGITS_PER_NUMBER]
                 label_w_px = len(digits) * DIGIT_WIDTH_PX + (len(digits) - 1) * DIGIT_GAP_PX
                 left_px = xpix - label_w_px / 2
                 right_px = xpix + label_w_px / 2
@@ -972,9 +973,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 coldata.append(self.bmarker_color2)
                     self.widget_canvas.set_beat_markers(xdata, coldata)
                     if self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
-                        self.widget_canvas.set_marker_numbers(xdata[1:])
+                        self.widget_canvas.set_marker_numbers(xdata[1:], 1)
                     else:
-                        self.widget_canvas.set_marker_numbers(xdata)
+                        self.widget_canvas.set_marker_numbers(xdata, 2)
 
                 # Playing cursor
                 if cursor_pos is not None:
