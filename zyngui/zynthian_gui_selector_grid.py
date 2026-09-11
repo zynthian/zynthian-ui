@@ -240,6 +240,17 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
             return
         self.select_offset(self.columns)
 
+    def select(self, i):
+        idx = i
+        # Skip empty items
+        while 0 < idx < len(self.config) and self.config[idx] is None:
+            idx += 1
+        idx = min(len(self.config) - 1, max(0, idx))
+        if self.config[idx] is None:
+            return
+        self.selected_node = idx
+        self._draw_selection()
+
     def select_offset(self, dval):
         idx = self.selected_node + dval
         # Skip empty items
