@@ -349,7 +349,7 @@ int init() {
     for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
         memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
         g_oscClient[i].sin_family      = AF_INET;
-        g_oscClient[i].sin_port        = htons(1370);
+        g_oscClient[i].sin_port        = 0;
         g_oscClient[i].sin_addr.s_addr = 0;
     }
 
@@ -690,16 +690,25 @@ void enableDpm(uint8_t start, uint8_t end, uint8_t enable) {
     }
 }
 
-int addOscClient(const char* client) {
+int addOscClient(const char* client, uint16_t port) {
+    struct in_addr address;
+    if (port == 0 || inet_pton(AF_INET, client, &address) != 1) {
+        fprintf(stderr, "libzynmixer: Failed to register client %s:%u\n", client, (unsigned int)port);
+        return -1;
+    }
+
+    for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
+        if (g_oscClient[i].sin_addr.s_addr == address.s_addr &&
+            g_oscClient[i].sin_port == htons(port))
+            return i;
+    }
+
     for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
         if (g_oscClient[i].sin_addr.s_addr != 0)
             continue;
-        if (inet_pton(AF_INET, client, &(g_oscClient[i].sin_addr)) != 1) {
-            g_oscClient[i].sin_addr.s_addr = 0;
-            fprintf(stderr, "libzynmixer: Failed to register client %s\n", client);
-            return -1;
-        }
-        fprintf(stderr, "libzynmixer: Added OSC client %d: %s\n", i, client);
+        g_oscClient[i].sin_addr = address;
+        g_oscClient[i].sin_port = htons(port);
+        fprintf(stderr, "libzynmixer: Added OSC client %d: %s:%u\n", i, client, (unsigned int)port);
         for (int nChannel = 0; nChannel < MAX_CHANNELS; ++nChannel) {
             setBalance(nChannel, getBalance(nChannel));
             setLevel(nChannel, getLevel(nChannel));
@@ -715,19 +724,22 @@ int addOscClient(const char* client) {
         g_bOsc = 1;
         return i;
     }
-    fprintf(stderr, "libzynmixer: Not adding OSC client %s - Maximum client count reached [%d]\n", client, MAX_OSC_CLIENTS);
+    fprintf(stderr, "libzynmixer: Not adding OSC client %s:%u - Maximum client count reached [%d]\n",
+            client, (unsigned int)port, MAX_OSC_CLIENTS);
     return -1;
 }
 
-void removeOscClient(const char* client) {
-    char pClient[sizeof(struct in_addr)];
-    if (inet_pton(AF_INET, client, pClient) != 1)
+void removeOscClient(const char* client, uint16_t port) {
+    struct in_addr address;
+    if (port == 0 || inet_pton(AF_INET, client, &address) != 1)
         return;
     g_bOsc = 0;
     for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
-        if (memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0) {
+        if (g_oscClient[i].sin_addr.s_addr == address.s_addr &&
+            g_oscClient[i].sin_port == htons(port)) {
             g_oscClient[i].sin_addr.s_addr = 0;
-            fprintf(stderr, "libzynmixer: Removed OSC client %d: %s\n", i, client);
+            g_oscClient[i].sin_port        = 0;
+            fprintf(stderr, "libzynmixer: Removed OSC client %d: %s:%u\n", i, client, (unsigned int)port);
         }
         if (g_oscClient[i].sin_addr.s_addr != 0)
             g_bOsc = 1;

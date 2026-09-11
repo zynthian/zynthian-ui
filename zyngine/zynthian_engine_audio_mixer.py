@@ -102,6 +102,12 @@ class zynmixer(zynthian_engine):
         self.lib_zynmixer.enableDpm.argtypes = [
             ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
 
+        self.lib_zynmixer.addOscClient.argtypes = [
+            ctypes.c_char_p, ctypes.c_uint16]
+        self.lib_zynmixer.addOscClient.restype = ctypes.c_int
+        self.lib_zynmixer.removeOscClient.argtypes = [
+            ctypes.c_char_p, ctypes.c_uint16]
+
         self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
 
         self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
@@ -550,14 +556,17 @@ class zynmixer(zynthian_engine):
 
     # Function to add OSC client registration
     # client: IP address of OSC client
-    def add_osc_client(self, client):
-        return self.lib_zynmixer.addOscClient(ctypes.c_char_p(client.encode('utf-8')))
+    # port: UDP port of OSC client
+    def add_osc_client(self, client, port):
+        return self.lib_zynmixer.addOscClient(
+            ctypes.c_char_p(client.encode('utf-8')), port)
 
     # Function to remove OSC client registration
     # client: IP address of OSC client
-    def remove_osc_client(self, client):
+    # port: UDP port of OSC client
+    def remove_osc_client(self, client, port):
         self.lib_zynmixer.removeOscClient(
-            ctypes.c_char_p(client.encode('utf-8')))
+            ctypes.c_char_p(client.encode('utf-8')), port)
 
     # --------------------------------------------------------------------------
     # State management (for snapshots)
