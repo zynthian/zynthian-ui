@@ -192,15 +192,17 @@ void enableDpm(uint8_t start, uint8_t end, uint8_t enable);
 
 /** @brief  Adds client to list of registered OSC clients
  *   @param  client IP address of client
+ *   @param  port UDP port of client
  *   @retval int Index of client or -1 on failure
  *   @note   Clients get all updates including DPM
  */
-int addOscClient(const char* client);
+int addOscClient(const char* client, uint16_t port);
 
 /** @brief  Removes client from list of registered OSC clients
  *   @param  client IP address of client
+ *   @param  port UDP port of client
  */
-void removeOscClient(const char* client);
+void removeOscClient(const char* client, uint16_t port);
 
 /** @brief Get maximum quantity of channels
  *   @retval size_t Maximum quantity of channels

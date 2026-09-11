@@ -394,15 +394,16 @@ class zynthian_gui:
             self.state_manager.set_event_flag()
             part2 = parts[2]
             if part2 in ("HEARTBEAT", "SETUP"):
-                if src.hostname not in self.osc_clients:
+                client = (src.hostname, int(src.port))
+                if client not in self.osc_clients:
                     try:
-                        if self.state_manager.zynmixer.add_osc_client(src.hostname) < 0:
-                            logging.warning("Failed to add OSC client registration {}".format(src.hostname))
+                        if self.state_manager.zynmixer.add_osc_client(*client) < 0:
+                            logging.warning("Failed to add OSC client registration {}:{}".format(*client))
                             return
                     except:
-                        logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
+                        logging.warning("Error trying to add OSC client registration {}:{}".format(*client))
                         return
-                self.osc_clients[src.hostname] = monotonic()
+                self.osc_clients[client] = monotonic()
                 self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 2, True)
             else:
                 if part2[:6] == "VOLUME":
@@ -2583,7 +2584,7 @@ class zynthian_gui:
                 if self.osc_clients[client] < self.watchdog_last_check - self.osc_heartbeat_timeout:
                     self.osc_clients.pop(client)
                     try:
-                        self.state_manager.zynmixer.remove_osc_client(client)
+                        self.state_manager.zynmixer.remove_osc_client(*client)
                     except:
                         pass
 
