@@ -71,7 +71,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     def set_edit_mode(self, mode):
         # Currently EDIT modes disabled in CC editor
-        if mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI):
+        if mode in (EDIT_MODE_SINGLE, EDIT_MODE_MULTI, EDIT_MODE_BLOCK):
             mode = EDIT_MODE_NONE
         super().set_edit_mode(mode)
 
