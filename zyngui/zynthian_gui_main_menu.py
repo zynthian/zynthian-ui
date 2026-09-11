@@ -25,6 +25,7 @@
 
 from time import sleep
 
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_grid import zynthian_gui_selector_grid
 
@@ -35,6 +36,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
     """
     def __init__(self):
         super().__init__()
+        self.get_config = self._get_config
         self.title = "Main Menu"
         if zynthian_gui_config.check_wiring_layout(("V5", "Z2")) or zynthian_gui_config.screen_width < 800:
             self.columns = 3
@@ -42,8 +44,29 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
             self.columns = 4
 
     def build_view(self):
+        zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_status_audio_recording)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_MIDI_RECORDER_STATE, self.update_status_midi_recording)
+        return super().build_view()
+
+    def update_status_audio_recording(self, state):
         if self.columns == 3:
-            self.config = [{
+            scr = self.zyngui.screens["grid_sel"]
+            if scr.shown and scr.title == "Play & Record":
+                scr.update_node(0, self.get_node_toggle_audio_rec(state))
+        elif self.columns == 4 and self.shown:
+            self.update_node(8, self.get_node_toggle_audio_rec(state))
+
+    def update_status_midi_recording(self, state):
+        if self.columns == 3:
+            scr = self.zyngui.screens["grid_sel"]
+            if scr.shown and scr.title == "Play & Record":
+                scr.update_node(2, self.get_node_toggle_midi_rec(state))
+        elif self.columns == 4 and self.shown:
+            self.update_node(10, self.get_node_toggle_midi_rec(state))
+
+    def _get_config(self):
+        if self.columns == 3:
+            config = [{
                 "title": "Add\nChain",
                 "icon": "add_chain.png",
                 "action": self.zyngui.cuia_add_chain
@@ -83,7 +106,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "action": self.zyngui.cuia_power
             }]
         elif self.columns == 4:
-            self.config = [{
+            config = [{
                 "title": "Add\nChain",
                 "icon": "add_chain.png",
                 "action": self.zyngui.cuia_add_chain
@@ -117,8 +140,8 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "icon": "zs3.png",
                 "action": self.zyngui.cuia_screen_zs3
             }]
-            self.config += self.get_playrec_options()
-            self.config += [{
+            config += self.get_playrec_options()
+            config += [{
                 "title": "Admin",
                 "icon": "settings.png",
                 "action": self.zyngui.cuia_screen_admin
@@ -135,7 +158,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
                 "icon": "poweroff.png",
                 "action": self.zyngui.cuia_power
             }]
-        return super().build_view()
+        return config
 
     # Claen submenu
 
@@ -164,44 +187,42 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
     # Play & Record
 
     def playrec_menu(self, select=0):
-        self.zyngui.screens["grid_sel"].setup("Play & Record", self.get_playrec_options(), cols=2, select=select)
+        self.zyngui.screens["grid_sel"].setup("Play & Record", self.get_playrec_options, cols=2, select=select)
         self.zyngui.show_screen("grid_sel")
 
     def get_playrec_options(self):
         return [
+            self.get_node_toggle_audio_rec(),
             {
-                "icon": "audio_recording.png" if self.state_manager.audio_recorder.status else "audio_recorder.png",
-                "title": "Stop Audio\nRecording" if self.state_manager.audio_recorder.status else "Start Audio\nRecording",
-                "action": self.toggle_audio_record
-            }, {
                 "icon": "folder_audio.png",
                 "title": "Audio\nPlayer",
                 "action": self.zyngui.cuia_audio_file_list
-            }, {
-                "icon": "midi_recording.png" if self.state_manager.status_midi_recorder else "midi_recorder.png",
-                "title": "Stop MIDI\nRecording" if self.state_manager.status_midi_recorder else "Start MIDI\nRecording",
-                "action": self.toggle_midi_record
-            }, {
+            },
+            self.get_node_toggle_midi_rec(),
+            {
                 "icon": "folder_midi.png",
                 "title": "MIDI\nPlayer",
                 "action": self.zyngui.cuia_screen_midi_recorder
             }
         ]
 
-    def toggle_audio_record(self):
-        self.zyngui.cuia_toggle_audio_record()
-        if self.columns == 3:
-            self.playrec_menu(select=0)
-        elif self.columns == 4:
-            self.build_view()
+    def get_node_toggle_audio_rec(self, state=None):
+        if state is None:
+            state = self.state_manager.audio_recorder.status
+        return {
+            "icon": "audio_recording.png" if state else "audio_recorder.png",
+            "title": "Stop Audio\nRecording" if state else "Start Audio\nRecording",
+            "action": self.zyngui.cuia_toggle_audio_record
+        }
 
-    def toggle_midi_record(self):
-        self.zyngui.cuia_toggle_midi_record()
-        sleep(0.2)
-        if self.columns == 3:
-            self.playrec_menu(select=2)
-        elif self.columns == 4:
-            self.build_view()
+    def get_node_toggle_midi_rec(self, state=None):
+        if state is None:
+            state = self.state_manager.status_midi_recorder
+        return  {
+            "icon": "midi_recording.png" if state else "midi_recorder.png",
+            "title": "Stop MIDI\nRecording" if state else "Start MIDI\nRecording",
+            "action": self.zyngui.cuia_toggle_midi_record
+        }
 
     # Workflow Capture
 

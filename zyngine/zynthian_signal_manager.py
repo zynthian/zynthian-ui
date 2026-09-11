@@ -81,6 +81,7 @@ class zynthian_signal_manager:
     SS_GUI_LAUNCHER_MODE = 6
     SS_GUI_VIEW_POS = 7
 
+    # MIDI events
     SS_MIDI_ALL = 0
     SS_MIDI_CC = 1
     SS_MIDI_PC = 2
