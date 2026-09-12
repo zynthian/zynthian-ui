@@ -1295,7 +1295,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Block edit functionality => Copy/paste block
     # ---------------------------------------------------------------
 
-    def move_cell(self, cell, dstep, drow):
+    def _move_cell(self, cell, dstep, drow):
         inrange = True
         if dstep:
             cell[0] += dstep
