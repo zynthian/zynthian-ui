@@ -606,6 +606,7 @@ power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
 audio_power_threshold = get_env_int('ZYNTHIAN_UI_AUDIO_POWER_THRESHOLD', -40)
 preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
 mixer_toggle = os.environ.get('ZYNTHIAN_UI_MIXER_TOGGLE', "record")
+preset_preload_noteon = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD_NOTEON', 1)
 
 # ------------------------------------------------------------------------------
 # Audio Options

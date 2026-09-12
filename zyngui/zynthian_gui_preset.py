@@ -260,9 +260,27 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         except:
             pass
 
+    #def select_listbox(self, index, see=True):
+    #    super().select_listbox(index, see=True)
+    #    if zynthian_gui_config.preset_preload:
+    #        try:
+    #            zynthian_gui_config.top.after_cancel(self.preload_timer_id)
+    #        except:
+    #            pass
+    #        self.preload_timer_id = zynthian_gui_config.top.after(self.preload_timer_ms, self.preload_action)
+
+    # HR next function is for note on
+    def preselect_action(self):
+        if zynthian_gui_config.preset_preload:
+            self.zyngui.state_manager.start_busy("preselect preset")
+            res = self.processor.preload_preset(self.index)
+            self.zyngui.state_manager.end_busy("preselect preset")
+            return res
+ 
+    # HR next 2 functions are for browse listing
     def select_listbox(self, index, see=True):
         super().select_listbox(index, see=True)
-        if zynthian_gui_config.preset_preload:
+        if zynthian_gui_config.preset_preload and not zynthian_gui_config.preset_preload_noteon:
             try:
                 zynthian_gui_config.top.after_cancel(self.preload_timer_id)
             except:

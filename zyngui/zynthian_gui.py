@@ -2472,11 +2472,12 @@ class zynthian_gui:
             self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
         # => Now using delayed pre-load (see zynthian_gui_preset.py)
-        #elif self.current_screen == 'preset':
-        #    if zynthian_gui_config.preset_preload_noteon:
-        #        curproc = self.get_current_processor()
-        #        if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
-        #            self.screens['preset'].preselect_action()
+        # HR Removed comment 5 lines  below to restore original functionality
+        elif self.current_screen == 'preset':
+            if zynthian_gui_config.preset_preload_noteon:
+                curproc = self.get_current_processor()
+                if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
+                    self.screens['preset'].preselect_action()
         # Note Range Learn
         elif self.current_screen == 'midi_key_range':
             if self.state_manager.midi_learn_state:

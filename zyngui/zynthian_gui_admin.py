@@ -212,12 +212,28 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["Quantity of launchers shown in mixer", "settings.png"]))
         self.list_data.append((self.mixer_toggle, 0, f"Mixer Toggle Control ({zynthian_gui_config.mixer_toggle})",
                                ["The toggle control to show at top of each mixer channel", "settings.png"]))
+
+        #if zynthian_gui_config.preset_preload:
+        #    self.list_data.append((self.toggle_preset_preload, 0, "\u2612 Preset Preload",
+        #                           ["Pre-load presets while browsing the list", "settings.png"]))
+        #else:
+        #    self.list_data.append((self.toggle_preset_preload, 0, "\u2610 Preset Preload",
+        #                           ["Do not pre-load preset for while browsing the list", "settings.png"]))
+
+        # Restore NoteOn preload
         if zynthian_gui_config.preset_preload:
             self.list_data.append((self.toggle_preset_preload, 0, "\u2612 Preset Preload",
-                                   ["Pre-load presets while browsing the list", "settings.png"]))
+                                   ["Pre-load presets while browsing the list or by Note-On", "settings.png"]))
+            if zynthian_gui_config.preset_preload_noteon:
+                self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2612 Preload by Note-On",
+                                      ["Load preset for preview when a MIDI note-on command is received", "settings.png"]))
+            else:
+                self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Preload by Note-On",
+                                      ["Pre-load preset while browsing the list", "settings.png"]))              
         else:
             self.list_data.append((self.toggle_preset_preload, 0, "\u2610 Preset Preload",
-                                   ["Do not pre-load preset for while browsing the list", "settings.png"]))
+                                  ["Do not pre-load preset while browsing the list or by Note On", "settings.png"]))
+
         #if not zynthian_gui_config.wiring_layout.startswith("V5"):
         match zynthian_gui_config.touch_navigation:
             case "v5_keypad_left":
@@ -539,6 +555,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         # Save config
         zynconf.save_config({"ZYNTHIAN_UI_PRESET_PRELOAD": str(int(zynthian_gui_config.preset_preload))})
+        self.update_list()
+
+    def toggle_preset_preload_noteon(self):
+        if zynthian_gui_config.preset_preload_noteon:
+            logging.info("Preset NoteOn OFF")
+            zynthian_gui_config.preset_preload_noteon = False
+        else:
+            logging.info("Preset NoteOn ON")
+            zynthian_gui_config.preset_preload_noteon = True
+
+        # Save config
+        zynconf.save_config({"ZYNTHIAN_UI_PRESET_PRELOAD_NOTEON": str(int(zynthian_gui_config.preset_preload_noteon))})
         self.update_list()
 
     def bluetooth(self):
