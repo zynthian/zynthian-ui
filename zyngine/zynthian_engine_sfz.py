@@ -80,6 +80,14 @@ class zynthian_engine_sfz(zynthian_engine):
        self.custom_ctrl_screens = []
 
     # ---------------------------------------------------------------------------
+    # Preset preload
+    # ---------------------------------------------------------------------------
+
+    def allow_timer_preload(self, preset_data):
+        # TODO Calculate the size of the soundfont to determine how to preload
+        return False
+
+    # ---------------------------------------------------------------------------
     # Controllers Management
     # ---------------------------------------------------------------------------
 

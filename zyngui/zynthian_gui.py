@@ -2471,12 +2471,10 @@ class zynthian_gui:
         if self.current_screen == 'pattern_editor':
             self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
-        # => Now using delayed pre-load (see zynthian_gui_preset.py)
-        #elif self.current_screen == 'preset':
-        #    if zynthian_gui_config.preset_preload_noteon:
-        #        curproc = self.get_current_processor()
-        #        if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
-        #            self.screens['preset'].preselect_action()
+        # => By default using delayed pre-load
+        #    but this is customized for soundfont engines
+        elif self.current_screen == 'preset':
+            self.screens['preset'].midi_note_on(izmip, chan)
         # Note Range Learn
         elif self.current_screen == 'midi_key_range':
             if self.state_manager.midi_learn_state:

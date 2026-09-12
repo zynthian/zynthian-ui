@@ -77,6 +77,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py"
 
+        self.allow_preset_preload = False
+
         self.monitors_dict = {}
         self.id2proc = {} # Map of processor objects indexed by player id
         self.start()

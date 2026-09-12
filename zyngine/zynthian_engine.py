@@ -189,6 +189,7 @@ class zynthian_engine(zynthian_basic_engine):
         self.osc_server_port = None
         self.osc_server_url = None
 
+        self.allow_preset_preload = True
         self.preset_favs = None
         self.preset_favs_fpath = None
         self.show_favs_bank = True
@@ -532,6 +533,9 @@ class zynthian_engine(zynthian_basic_engine):
 
     def preset_exists(self, bank_info, preset_name):
         logging.error("Not implemented!!!")
+
+    def allow_timer_preload(self, preset_data):
+        return True
 
     # Implement in derived classes to enable features in GUI
     # def save_preset(self, bank_name, preset_name):

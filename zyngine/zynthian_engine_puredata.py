@@ -112,6 +112,8 @@ class zynthian_engine_puredata(zynthian_engine):
         self.osc_child_handlers = []
         self.osc_unhandle_messages = queue.Queue(100)
 
+        self.allow_preset_preload = False
+
         self.preset = ""
         self.preset_config = None
         self.zctrl_config = None

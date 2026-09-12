@@ -338,6 +338,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
         self.jackname = "sooperlooper"
         self.type = "Audio Effect"
 
+        self.allow_preset_preload = False
+
         self.osc_target_port = self.SL_PORT
 
         # Load custom MIDI bindings

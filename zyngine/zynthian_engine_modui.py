@@ -69,6 +69,8 @@ class zynthian_engine_modui(zynthian_engine):
         self.nickname = "MD"
         self.jackname = "mod-monitor"
 
+        self.allow_preset_preload = False
+
         self.websocket = None
         self.ws_thread = None
         self.ws_preset_loaded = False

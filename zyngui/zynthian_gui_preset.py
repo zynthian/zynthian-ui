@@ -27,6 +27,7 @@ import copy
 import logging
 
 # Zynthian specific modules
+import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
@@ -262,18 +263,47 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def select_listbox(self, index, see=True):
         super().select_listbox(index, see=True)
-        if zynthian_gui_config.preset_preload:
+        self.timer_preload()
+
+    def allow_preset_preload(self):
+        try:
+            if zynthian_gui_config.preset_preload and self.processor.engine.allow_preset_preload:
+                return True
+            else:
+                return False
+        except:
+            return False
+
+    def allow_timer_preload(self):
+        try:
+            preset_data = self.list_data[self.index]
+            return self.processor.engine.allow_timer_preload(preset_data)
+        except:
+            return False
+
+    def timer_preload(self):
+        if self.allow_preset_preload():
             try:
                 zynthian_gui_config.top.after_cancel(self.preload_timer_id)
             except:
                 pass
-            self.preload_timer_id = zynthian_gui_config.top.after(self.preload_timer_ms, self.preload_action)
+            if self.allow_timer_preload():
+                self.preload_timer_id = zynthian_gui_config.top.after(self.preload_timer_ms, self.preload_action, self.index)
 
-    def preload_action(self):
+    def midi_note_on(self, izmip, chan):
+        if self.allow_preset_preload():
+            if zynautoconnect.get_midi_in_dev_mode(izmip) or chan == self.processor.midi_chan:
+                # TODO Check the device is routed to this chain
+                if not self.allow_timer_preload():
+                    self.preload_action()
+
+    def preload_action(self, index=None):
         self.preload_timer_id = None
-        if self.list_data and self.index < len(self.list_data):
+        if index is None:
+            index = self.index
+        if self.list_data and index < len(self.list_data):
             self.zyngui.state_manager.start_busy("preload preset", tts=False)
-            self.processor.preload_preset(self.index)
+            self.processor.preload_preset(index)
             self.zyngui.state_manager.end_busy("preload preset")
 
     def restore_preset(self):
