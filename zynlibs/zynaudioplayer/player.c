@@ -976,7 +976,7 @@ void stop() {
 }
 
 static void lib_exit(void) {
-    fprintf(stderr, "libzynaudioplayer exiting\n");
+    fprintf(stderr, "zynaudioplayer ended\n");
 }
 
 uint8_t add_player() {
