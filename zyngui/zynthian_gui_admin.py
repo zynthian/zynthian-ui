@@ -243,6 +243,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["10s countdown with no touch trigger. Allows screen to be cleaned without triggering any action.", "settings.png"]))
 
         self.list_data.append((None, 0, "> SYSTEM"))
+        len_check = len(self.list_data)
         if "cv_config" in self.zyngui.screens:
             self.list_data.append((self.show_cv_config, 0, "CV Settings",
                                    ["Control Voltage configuration.", "settings.png"]))
@@ -260,6 +261,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                    ["Stop zynthian UI but do not reboot.", "poweroff.png"]))
         #self.list_data.append((self.power, 0, "Power",
         #                       ["Turn off or reboot zynthian.\n\nPower is still fed to the device but it is effectively off.", "poweroff.png"]))
+        if len(self.list_data) == len_check:
+            self.list_data.pop() # Remove section title for empty section
 
         super().fill_list()
         self.filling_list = False
