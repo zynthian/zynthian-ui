@@ -308,10 +308,12 @@ class zynthian_engine_jalv(zynthian_engine):
             self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
             # Look for a custom GUI
-            try:
-                self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
-            except:
-                self.custom_gui_fpath = None
+            self.custom_gui_fpath = self.get_user_custom_gui()
+            if not self.custom_gui_fpath:
+                try:
+                    self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
+                except:
+                    self.custom_gui_fpath = None
 
             # Instance jalv host with the plugin URI
             output = self.start()
@@ -330,6 +332,15 @@ class zynthian_engine_jalv(zynthian_engine):
 
     def load_preset_info(self):
         self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
+
+    def get_user_custom_gui(self):
+        pname = self.plugin_name.lower().replace(" ", "_")
+        fpath = self.ui_dir + "/zyngui/widgets_user/zynthian_widget_" + pname + ".py"
+        logging.debug(f"PLUGIN FPATH => {fpath}")
+        if os.path.isfile(fpath):
+            return fpath
+        else:
+            return None
 
     # ---------------------------------------------------------------------------
     # Subprocess Management & IPC
