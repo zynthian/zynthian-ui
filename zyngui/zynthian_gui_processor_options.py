@@ -56,11 +56,11 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
         # TODO Implement bypass for MIDI processors!!
         if self.processor.type == "Audio Effect" and self.processor.eng_code not in ("MI", "MR"):
-                if self.processor.is_bypassed():
-                    title = "\u2612 Bypass"
-                else:
-                    title = "\u2610 Bypass"
-                self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", "bypass.png"]))
+            if self.processor.is_bypassed():
+                title = "\u2612 Bypass"
+            else:
+                title = "\u2610 Bypass"
+            self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", "bypass.png"]))
 
         # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator") and self.processor.chain is not None:
@@ -98,6 +98,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.list_data.append((self.show_details, None, "Info", ["Show information about this processor.", "info.png"]))
 
         self.list_data.append((None, None, "> Add to chain"))
+        len_check = len(self.list_data)
         pos = "series" if self.processor.type in ["MIDI Synth", "MIDI Tool"] or self.processor.eng_code in ["MI", "MX"] else "parallel"
         if self.processor.type in ("MIDI Synth", "MIDI Tool"):
             self.list_data.append((self.add_midi_processor, None, "Insert MIDI Processor",
@@ -105,6 +106,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         if self.processor.type in ("MIDI Synth", "Audio Effect", "Audio Generator"):
             self.list_data.append((self.add_audio_processor, None, "Insert Audio Processor",
                                    [f"Insert a new audio processor in the chain in {pos} with this processor.", "audio_processor.png"]))
+        if len(self.list_data) == len_check:
+            self.list_data.pop() # Remove section title for empty section
 
         super().fill_list()
 
