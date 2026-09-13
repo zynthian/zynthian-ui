@@ -24,7 +24,6 @@
  */
 
 #include <math.h>    //provides fabs isinf
-#include <pthread.h> //provides multithreading
 #include <stdio.h>   //provides printf
 #include <stdlib.h>  //provides exit
 #include <string.h>  // provides memset
@@ -39,21 +38,21 @@
 #define MAX_CHANNELS 99
 #endif
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-int g_sendEvents = 1;      // Set to 0 to exit event thread
+uint8_t g_running   = 1;   // True when running
 uint8_t g_sendCount = 0;   // Quantity of effect sends
 uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
 uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
 uint8_t g_pfl       = 0;   // Quantity of channels with PFL asserted
 #ifndef MIXBUS
+const char* g_jackname = "zynmixer_bus";
 double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
 float g_xf_gain_A    = 0.0; // Crossfade A gain
 float g_reqxf_gain_A = 1.0; // Requested crossfade A gain
 float g_xf_gain_B    = 1.0; // Crossfade B gain
 float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
 #else
+const char* g_jackname = "zynmixer_chan";
 jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
 jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
 float g_pflLevel     = 1.0; // PFL volumne level
@@ -142,11 +141,11 @@ static float convertToDBFS(float raw) {
 
 
 static int onJackProcess(jack_nframes_t frames, void* args) {
+    if (!g_running)
+        return 0;
     jack_default_audio_sample_t *pPflInA, *pPflInB, *pPflOutA, *pPflOutB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
     unsigned int frame;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM, fpreFaderSampleA, fpreFaderSampleB;
-
-    pthread_mutex_lock(&mutex);
 
 /*  Solo / PFL
     The chain mixer has a pair of buffers (A/B) that are cleared at start of period, then populated with samples of any inputs that are solo.
@@ -446,7 +445,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     }
 #endif
 
-    pthread_mutex_unlock(&mutex);
     return 0;
 }
 
@@ -466,6 +464,8 @@ void print_dpm_info(uint8_t chan) {
 }
 
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
+    if (!g_running)
+        return;
     for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
         if (g_channelStrips[chan] == NULL)
             continue;
@@ -493,7 +493,6 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         return 0;
     g_buffersize     = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
-    pthread_mutex_lock(&mutex);
     free(g_soloBufferA);
     free(g_soloBufferB);
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -512,7 +511,6 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         }
     }
 #endif
-    pthread_mutex_unlock(&mutex);
     return 0;
 }
 
@@ -528,12 +526,7 @@ int init() {
     char* sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
-    #ifdef MIXBUS
-    const char* jackname = "zynmixer_bus";
-    #else
-    const char* jackname = "zynmixer_chan";
-    #endif
-    if ((g_jackClient = jack_client_open(jackname, nOptions, &nStatus, sServerName)) == 0) {
+    if ((g_jackClient = jack_client_open(g_jackname, nOptions, &nStatus, sServerName)) == 0) {
         fprintf(stderr, "libzynmixer: Failed to start channel jack client: %d\n", nStatus);
         exit(1);
     }
@@ -625,16 +618,19 @@ int init() {
     fprintf(stderr, "libzynmixer: Activated client\n");
 #endif
 
-    fprintf(stderr, "Started %s\n", jackname);
+    fprintf(stderr, "Started %s\n", g_jackname);
     return 1;
 }
 
 void end() {
-    g_sendEvents = 0;
-
+#ifdef MIXBUS
     //Soft mute output
+    jack_nframes_t next_period = jack_frame_time(g_jackClient) + g_buffersize;
     setLevel(0, 0.0);
-    usleep(100000);
+    while (jack_frame_time(g_jackClient) < next_period)
+        usleep(1000);
+#endif
+    g_running = 0;
 
     // Close links with jack server
     if (g_jackClient) {
@@ -655,7 +651,7 @@ void end() {
         free(g_fxSends[chan]);
 #endif
     }
-    fprintf(stderr, "zynmixer ended\n");
+fprintf(stderr, "%s mixbuses ended\n", g_jackname);
 }
 
 void setGain(uint8_t channel, float gain) {
