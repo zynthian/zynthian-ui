@@ -336,8 +336,9 @@ class zynthian_engine_jalv(zynthian_engine):
     def get_user_custom_gui(self):
         pname = self.plugin_name.lower().replace(" ", "_")
         fpath = self.ui_dir + "/zyngui/widgets_user/zynthian_widget_" + pname + ".py"
-        logging.debug(f"PLUGIN FPATH => {fpath}")
+        logging.debug(f"Looking for user custom widget '{fpath}' ...")
         if os.path.isfile(fpath):
+            logging.debug(f"... found!")
             return fpath
         else:
             return None
