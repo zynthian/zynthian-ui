@@ -107,16 +107,10 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def select_action(self, i, t='S'):
         if t == 'S':
-            # Allow animation
-            self.info_canvas.grid_remove()
-            self.grid_loading_canvas()
-            self.zyngui.state_manager.start_busy("set preset")
             # Set preset
+            self.start_busy("set preset")
             result = self.zyngui.get_current_processor().set_preset(i)
-            self.zyngui.state_manager.end_busy("set preset")
-            # Stop animation and restore icon canvas
-            self.loading_canvas.grid_remove()
-            self.grid_info_canvas()
+            self.end_busy("set preset")
             # If result is None (still browsing) => refresh preset list
             if result is None:
                 self.set_select_path()
@@ -301,10 +295,10 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         self.preload_timer_id = None
         if index is None:
             index = self.index
-        if self.list_data and index < len(self.list_data):
-            self.zyngui.state_manager.start_busy("preload preset", tts=False)
+        if self.processor.preload_preset(index, dryrun=True):
+            self.start_busy("preload preset", tts=False)
             self.processor.preload_preset(index)
-            self.zyngui.state_manager.end_busy("preload preset")
+            self.end_busy("preload preset")
 
     def restore_preset(self):
         return self.processor.restore_preset()

@@ -95,6 +95,20 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         if self.info_text:
             self.update_info()
 
+    def start_busy(self, clid, message=None, details=None, tts=True):
+        # Allow animation => Replace info canvas by animated logo
+        self.info_canvas.grid_remove()
+        self.grid_loading_canvas()
+        # Call start busy to start animation
+        self.zyngui.state_manager.start_busy(clid, message, details, tts)
+
+    def end_busy(self, clid):
+        # Call end busy to stop animation
+        self.zyngui.state_manager.end_busy(clid)
+        # Restore info canvas
+        self.loading_canvas.grid_remove()
+        self.grid_info_canvas()
+
     def get_info(self):
         try:
             info = self.list_data[self.index][-1]

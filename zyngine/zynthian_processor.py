@@ -351,12 +351,12 @@ class zynthian_processor:
         self.preset_name = None
         self.preset_info = None
 
-    def set_preset(self, preset_index, set_engine=True, force_set_engine=True):
+    def set_preset(self, preset_index, set_engine=True, force_set_engine=False):
         """Set the processor's engine preset
 
         preset_index : Index of preset or preset_info
-        set_engine : True to set the engine preset???
-        force_set_engine : True to force engine set???
+        set_engine : True to load engine preset if needed
+        force_set_engine : True to force loading engine preset
         Returns : True on success
         """
 
@@ -385,17 +385,27 @@ class zynthian_processor:
             if bank_name != self.bank_name:
                 self.set_bank_by_name(bank_name)
 
-        # Check if preset is already loaded
-        if not force_set_engine and self.engine.cmp_presets(preset_info, self.preset_info):
-            logging.info(f"Preset already selected: {preset_name} ({preset_index})")
-            # Check if some other preset is preloaded
-            if self.preload_info and not self.engine.cmp_presets(self.preload_info, self.preset_info):
-                set_engine_needed = True
+        if not force_set_engine:
+            # If there is a preloaded preset ...
+            if self.preload_info:
+                # if preloaded preset matches loading preset => no need to load again
+                if self.engine.cmp_presets(self.preload_info, preset_info):
+                    logging.info(f"Preset already preloaded: {preset_name} ({preset_index})")
+                    set_engine_needed = False
+                # else => preset must be loaded
+                else:
+                    set_engine_needed = True
+
+            # if not preloaded preset and loading preset matches current one => no need to load again
+            #elif self.engine.cmp_presets(preset_info, self.preset_info):
+            #    logging.info(f"Preset already selected: {preset_name} ({preset_index})")
+            #    set_engine_needed = False
+
+            # Load fresh preset when re-selecting, resetting parameter values
             else:
-                set_engine_needed = False
+                set_engine_needed = True
         else:
             set_engine_needed = True
-            logging.info(f"Preset selected: {preset_name} ({preset_index})")
 
         if preset_index is not None:
             self.preset_index = preset_index
@@ -411,6 +421,7 @@ class zynthian_processor:
 
         if set_engine:
             if set_engine_needed:
+                logging.info(f"Loading preset: {preset_name} ({preset_index})")
                 # self.load_ctrl_config()
                 return self.engine.set_preset(self, self.preset_info)
             else:
@@ -418,15 +429,14 @@ class zynthian_processor:
 
         return True
 
-    def set_preset_by_info(self, preset_info, set_engine=True, force_set_engine=True):
+    def set_preset_by_info(self, preset_info, set_engine=True, force_set_engine=False):
         return self.set_preset(preset_info, set_engine, force_set_engine)
 
-    def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
+    def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=False):
         """Set processor's engine preset by name
-
         preset_name : Name of preset to select
-        set_engine : True to set engine's preset???
-        force_set_engine : True to force setting engine's preset???
+        set_engine : True to load engine preset if needed
+        force_set_engine : True to force loading engine preset
         TODO:Optimize search!!
         """
         if preset_name[0] == '❤':
@@ -443,12 +453,11 @@ class zynthian_processor:
 
         return False
 
-    def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
+    def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=False):
         """Set processor's engine preset by ID
-
         preset_id : ID of preset to select
-        set_engine : True to set engine's preset???
-        force_set_engine : True to force setting engine's preset???
+        set_engine : True to load engine preset if needed
+        force_set_engine : True to force loading engine preset
         """
 
         index = self.find_preset_index_by_id(preset_id)
@@ -471,17 +480,20 @@ class zynthian_processor:
                 return i
         return None
 
-    def preload_preset(self, preset_index):
+    def preload_preset(self, preset_index, dryrun=False):
         """Preload processor's engine preset by index
 
         preset_index : Index of preset
         Preloading request engine to temporarily load a preset
         """
-        # Avoid preload on engines that take excessive time to load presets
+        # Avoid preloading on flagged engines
         if not self.engine.allow_preset_preload:
             return True
         if preset_index < len(self.preset_list):
-            if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
+            if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or \
+                (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
+                if dryrun:
+                    return True
                 if self.preload_state is None:
                     self.preload_state = self.get_state()
                 self.preload_index = preset_index
