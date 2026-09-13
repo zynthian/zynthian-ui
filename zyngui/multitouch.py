@@ -238,6 +238,8 @@ class MultiTouch(object):
                 if idev_caps[ecodes.EV_ABS][ecodes.ABS_Z][0] == ecodes.ABS_MT_SLOT:
                     self.max_x = idev_caps[ecodes.EV_ABS][ecodes.ABS_X][1].max
                     self.max_y = idev_caps[ecodes.EV_ABS][ecodes.ABS_Y][1].max
+                    self.scale_x = zynthian_gui_config.display_width / self.max_x
+                    self.scale_y = zynthian_gui_config.display_height / self.max_y
                     self._f_device = open(device, 'rb', self.EVENT_SIZE)
                     for libinput in self.xinput("--list").split("\n"):
                         if idev.name in libinput and "slave  pointer" in libinput:
@@ -319,6 +321,7 @@ class MultiTouch(object):
                         self._current_touch.x_root = self.max_x - evdev_event.value
                     else:
                         self._current_touch.x_root = evdev_event.value
+                    self._current_touch.x_root = round(self._current_touch.x_root * self.scale_x)
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
                 elif evdev_event.code == ecodes.ABS_MT_POSITION_Y:
@@ -326,6 +329,7 @@ class MultiTouch(object):
                         self._current_touch.y_root = self.max_y - evdev_event.value
                     else:
                         self._current_touch.y_root = evdev_event.value
+                    self._current_touch.y_root = round(self._current_touch.y_root * self.scale_y)
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
 
