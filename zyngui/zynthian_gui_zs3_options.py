@@ -66,7 +66,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             self.list_data.append((self.zs3_note, 4, "Note", ["Add a note to this ZS3, shown by the ZS3 performance view.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_clone, 5, "Clone", ["Copy this ZS3 to a new one, placed just after it.", "zs3_new.png"]))
             if len(self.zyngui.state_manager.get_zs3_ids()) > 1:
-                self.list_data.append((self.zs3_position, 6, f"Position [{self.get_position() + 1}]", ["Move this ZS3 within the order that ZS3_NEXT / ZS3_PREV step through.", "zs3_settings.png"]))
+                self.list_data.append((self.zs3_move, 6, "Move", ["Move this ZS3 within the order that ZS3_NEXT / ZS3_PREV step through.\n\nBack in the ZS3 list, turn the knob or use the arrows to slide it, then select to finish.", "zs3_settings.png"]))
             self.list_data.append((self.zs3_delete, 7, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
 
             if "/" in self.zs3_id:
@@ -223,17 +223,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         except ValueError:
             return -1
 
-    def zs3_position(self):
-        position = self.get_position()
-        if position < 0:
-            return
-        total = len(self.zyngui.state_manager.get_zs3_ids())
-        labels = [str(i + 1) for i in range(total)]
-        self.enable_param_editor(self, 'zs3_position', {'name': 'Position', 'labels': labels, 'value': position}, self.on_zs3_position)
-
-    def on_zs3_position(self, value):
-        logging.info("Moving ZS3 '{}' to position {}".format(self.zs3_id, value + 1))
-        self.zyngui.state_manager.move_zs3(self.zs3_id, value)
+    def zs3_move(self):
+        # The move itself happens in the ZS3 list, where the neighbours are in
+        # view, the same way "Move phrase" hands over to the launcher.
+        self.zyngui.screens['zs3'].moving_zs3 = self.zs3_id
         self.zyngui.close_screen()
 
     def zs3_update(self):
