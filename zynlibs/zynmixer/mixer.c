@@ -44,18 +44,18 @@ uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
 uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
 uint8_t g_pfl       = 0;   // Quantity of channels with PFL asserted
-#ifndef MIXBUS
+#ifdef MIXBUS
 const char* g_jackname = "zynmixer_bus";
+jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
+jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
+float g_pflLevel     = 1.0; // PFL volumne level
+#else
+const char* g_jackname = "zynmixer_chan";
 double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
 float g_xf_gain_A    = 0.0; // Crossfade A gain
 float g_reqxf_gain_A = 1.0; // Requested crossfade A gain
 float g_xf_gain_B    = 1.0; // Crossfade B gain
 float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
-#else
-const char* g_jackname = "zynmixer_chan";
-jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
-jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
-float g_pflLevel     = 1.0; // PFL volumne level
 #endif
 jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
 jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
