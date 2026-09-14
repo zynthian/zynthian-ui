@@ -62,6 +62,14 @@ class zynthian_gui_save_preset():
             else:
                 self.save_preset_select_name_cb()
 
+    def save_preset_overwrite(self, preset_name):
+        if self.processor:
+            preset_name = preset_name.strip()
+            if preset_name:
+                self.save_preset_create_bank_name = None
+                self.save_preset_bank_info = self.processor.bank_info
+                self.zyngui.show_confirm(f"Do you want to overwrite preset '{preset_name}'?", self.do_save_preset, preset_name)
+
     def save_preset_select_bank_cb(self, bank_name, bank_info):
         self.save_preset_bank_info = bank_info
         if bank_info == "NEW_BANK":
