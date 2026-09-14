@@ -638,15 +638,16 @@ class zynthian_gui_mixer_strip():
         self.legend_strip_txt = self.canvas.create_text(self.centre_x, self.gui_mixer.legend_y + self.legend_height / 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}",), font=self.gui_mixer.font)
         self.legend_strip_midi_bg = self.canvas.create_rectangle(x, self.gui_mixer.legend_y + self.legend_height - 2, x + self.width, self.gui_mixer.legend_y + self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=tags)
 
+        # Moved indicators up to improve visibility
         # MIDI pedal indicators
         self.pedals = []
         for col in range(4):
             self.pedals.append(
                 self.canvas.create_rectangle(
                     int(x + self.width / 5 * col),
-                    self.gui_mixer.legend_y + self.legend_height - 4,
+                    self.gui_mixer.legend_y,
                     int(x + self.width / 5 * (col + 1)),
-                    self.gui_mixer.legend_y + self.legend_height,
+                    self.gui_mixer.legend_y + 6,
                     width=0,
                     fill="yellow",
                     state=tkinter.HIDDEN
@@ -654,9 +655,9 @@ class zynthian_gui_mixer_strip():
             )
         self.midi_indicator = self.canvas.create_rectangle(
             int(x + self.width / 5 * 4),
-            self.gui_mixer.legend_y + self.legend_height - 4,
+            self.gui_mixer.legend_y,
             int(x + self.width),
-            self.gui_mixer.legend_y + self.legend_height,
+            self.gui_mixer.legend_y + 6,
             width=0,
             fill=zynthian_gui_config.color_status_midi,
             state=tkinter.HIDDEN
