@@ -1134,6 +1134,9 @@ int8_t removeStrip(uint8_t chan) {
     g_stripToDelete = chan;
     // Wait until jack process has marked the strip as deleted
     while (g_channelStrips[chan]) usleep(1000);
+
+    pthread_mutex_unlock(&lock);
+
     // Unregister ports and free memory
     jack_port_unregister(g_jackClient, pstrip->inPortA);
     jack_port_unregister(g_jackClient, pstrip->inPortB);
@@ -1141,7 +1144,6 @@ int8_t removeStrip(uint8_t chan) {
     jack_port_unregister(g_jackClient, pstrip->outPortB);
     free(pstrip);
 
-    pthread_mutex_unlock(&lock);
     return chan;
 }
 
@@ -1203,12 +1205,13 @@ uint8_t removeSend(uint8_t send) {
     g_sendToDelete = send;
     // Wait until jack process has marked the send as deleted
     while (g_fxSends[send]) usleep(1000);
+
+    pthread_mutex_unlock(&lock);
+
     // Unregister ports and free memory
     jack_port_unregister(g_jackClient, pstrip->outPortA);
     jack_port_unregister(g_jackClient, pstrip->outPortB);
     free(pstrip);
-
-    pthread_mutex_unlock(&lock);
     return 0;
 #endif
 }
