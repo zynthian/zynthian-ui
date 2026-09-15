@@ -70,13 +70,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
         # Replace and Remove processor
         if self.processor.eng_code not in ("MI", "MR"):
-            if self.processor.type == "MIDI Synth":
-                eng_options = self.processor.engine.get_options()
-                if eng_options['replace']:
-                    self.list_data.append((self.replace, None, f"Replace {self.processor.name}",
-                                           ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
-            else:
-                self.list_data.append((self.replace, None, "Replace",
+            if (self.processor.type != "MIDI Synth" or self.processor.engine.get_options()['replace']) and self.processor.eng_code != "CL":
+                self.list_data.append((self.replace, None, f"Replace {self.processor.name}",
                                            ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
 
             if self.processor.type in ("MIDI Tool", "Audio Effect"):
