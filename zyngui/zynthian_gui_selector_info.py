@@ -123,13 +123,14 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
 
     def update_info(self):
         side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
-        fs = min(int(0.8 * zynthian_gui_config.font_size), side_width // 16)
+        # Make font-size relative to view, but clamp it to still be readable
+        fs = min(max(int(0.7 * zynthian_gui_config.font_size), side_width // 16), zynthian_gui_config.font_size)
         info = self.get_info()
         if info:
             image = self.get_icon(info[1])
             self.info_canvas.itemconfigure(self.info_icon, image=image)
             self.info_canvas.coords(self.info_text, 0, image.height() + 2)
-            self.info_canvas.itemconfigure(self.info_text, font=("sans-serif", fs), text=info[0], width=image.width())
+            self.info_canvas.itemconfigure(self.info_text, font=("sans-serif", fs), text=info[0], width=side_width-2)
 
     def get_icon(self, icon_fname):
         if not icon_fname:
@@ -147,6 +148,10 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
             img = Image.open(icon_fpath)
             side_width = int(self.layout['ctrl_width'] * zynthian_gui_config.screen_width)
             icon_size = (side_width - 2, side_width - 2)
+            if (side_width // 16 < 0.7 * zynthian_gui_config.font_size):
+                # If we would have to shrink the font-size to
+                # something unreadable to make it fit, shrink the image instead:
+                icon_size = (side_width // 2 - 2, side_width // 2 - 2)
             icon = ImageTk.PhotoImage(img.resize(icon_size))
             if icon_fpath not in self.icons:
                 self.icons[icon_fpath] = [None, None]
@@ -170,6 +175,12 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
                 self.info_canvas.move(self.info_text, 0, dval * -10)
             return True
         return super().zynpot_cb(i, dval)
+
+    def arrow_left(self):
+        self.zynpot_cb(2, -1)
+
+    def arrow_right(self):
+        self.zynpot_cb(2, 1)
 
     def select(self, index=None, set_zctrl=True):
         super().select(index, set_zctrl)
