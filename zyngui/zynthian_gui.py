@@ -1082,7 +1082,7 @@ class zynthian_gui:
                     if processor and processor.type =="MIDI Synth":
                         chain.init_MPE()
                     self.state_manager.end_busy("modify_chain")
-                    self.screen_history = []
+                    self.reset_screen_history()
                     if processor:
                         if processor.eng_code == "CL":
                             self.show_screen("launcher")
@@ -2667,6 +2667,10 @@ class zynthian_gui:
                 logging.warning(f"Clients have been busy for longer than {int(busy_warn_time / 10)}s: {self.state_manager.busy}")
 
             sleep(0.1)
+
+    def wait_close_loading(self):
+        if self.current_screen == "loading":
+            sleep(0.05)
 
     # ------------------------------------------------------------------
     # Status Refresh Thread

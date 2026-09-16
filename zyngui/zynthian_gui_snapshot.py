@@ -354,18 +354,21 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         state = self.sm.load_snapshot(fpath)
         if state is None:
             self.zyngui.clean_all()
+        self.zyngui.reset_screen_history()
         self.zyngui.show_screen('root', self.zyngui.SCREEN_HMODE_RESET)
 
     def load_snapshot_chains(self, fpath, merge=False):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
             self.sm.save_last_state_snapshot()
         self.sm.load_snapshot(fpath, load_sequences=False, merge=merge)
+        self.zyngui.reset_screen_history()
         self.zyngui.show_screen('mixer', self.zyngui.SCREEN_HMODE_RESET)
 
     def load_snapshot_sequences(self, fpath):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
             self.sm.save_last_state_snapshot()
         self.sm.load_snapshot(fpath, load_chains=False)
+        self.zyngui.reset_screen_history()
         self.zyngui.show_screen('launcher', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
     def restore_backup_cb(self, fname, fpath):
