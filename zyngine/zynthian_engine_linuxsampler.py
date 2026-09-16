@@ -63,12 +63,13 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
 
     lscp_port = ServerPort["linuxsampler_osc"]
 
-    preset_fexts = ["sfz", "gig"]
+    #preset_fexts = ["sfz", "gig"]
+    preset_fexts = ["gig"]
     root_bank_dirs = [
         ('User GIG', zynthian_engine_sfz.my_data_dir + "/soundfonts/gig"),
-        ('User SFZ', zynthian_engine_sfz.my_data_dir + "/soundfonts/sfz"),
+        #('User SFZ', zynthian_engine_sfz.my_data_dir + "/soundfonts/sfz"),
         ('System GIG', zynthian_engine_sfz.data_dir + "/soundfonts/gig"),
-        ('System SFZ', zynthian_engine_sfz.data_dir + "/soundfonts/sfz")
+        #('System SFZ', zynthian_engine_sfz.data_dir + "/soundfonts/sfz")
     ]
 
     # ---------------------------------------------------------------------------
@@ -241,6 +242,8 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
             exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
             for sd in glob.glob(preset_dpath + "/*"):
                 if os.path.isdir(sd):
+                    if "sfz" not in preset_fexts:
+                        continue
                     cmd = f"find '{sd}' -maxdepth 1 -type f -name '*.sfz'"
                     output = check_output(cmd, shell=True).decode('utf8')
                     flist = list(filter(None, output.split('\n')))
@@ -263,7 +266,9 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
                     f = sd
                     filehead, filetail = os.path.split(f)
                     filename, filext = os.path.splitext(f)
-                    if filext.lower() == ".sfz" and not exclude_sfz.fullmatch(filetail):
+                    if filext.lower() == ".sfz":
+                        if "sfz" not in preset_fexts or exclude_sfz.fullmatch(filetail):
+                            continue
                         filename = filename[len(preset_dpath) + 1:]
                         title = filename.replace('_', ' ')
                         engine = filext[1:].lower()
@@ -528,8 +533,7 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
             bank_name = bank_name[4:]
         else:
             bank_type = "sfz"
-        os.mkdir(zynthian_engine.my_data_dir +
-                 "/soundfonts/{}/{}".format(bank_type, bank_name))
+        os.mkdir(zynthian_engine.my_data_dir + "/soundfonts/{}/{}".format(bank_type, bank_name))
 
     @classmethod
     def zynapi_rename_bank(cls, bank_path, new_bank_name):
@@ -574,7 +578,7 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
             raise Exception("Destiny is not a directory!")
 
         fname, ext = os.path.splitext(dpath)
-        if os.path.isdir(dpath):
+        if os.path.isdir(dpath) and "sfz" in cls.preset_fexts:
             # Locate sfz files and move all them to first level directory
             try:
                 cmd = "find \"{}\" -type f -iname *.sfz".format(dpath)
@@ -608,14 +612,15 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
                 raise Exception("Destiny is not a GIG bank!")
 
         else:
-            raise Exception("File doesn't look like a SFZ or GIG soundfont")
+            raise Exception("File doesn't look like a supported soundfont")
 
     @classmethod
     def zynapi_get_formats(cls):
+        #return "gig,zip,tgz,tar.gz,tar.bz2,tar.xz"
         return "gig,zip,tgz,tar.gz,tar.bz2,tar.xz"
 
     @classmethod
     def zynapi_martifact_formats(cls):
-        return "sfz,gig"
+        return ",".join(cls.preset_fexts)
 
 # ******************************************************************************
