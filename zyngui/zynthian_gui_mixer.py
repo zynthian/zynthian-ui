@@ -624,7 +624,7 @@ class zynthian_gui_mixer_strip():
                 self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", self.gui_mixer.loop_info_width, self.dpm_length), state=dpm_xstate)
 
         # Chain title
-        self.fader_text = self.canvas.create_text(x, self.legend_y - 2, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
+        self.fader_text = self.canvas.create_text(x, self.legend_y - 6, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
             tags=("fader", f"fader_{id}"), justify=tkinter.LEFT)
 
         # Legend strip at bottom of screen
@@ -644,9 +644,9 @@ class zynthian_gui_mixer_strip():
             self.pedals.append(
                 self.canvas.create_rectangle(
                     int(x + self.width / 5 * col),
-                    self.gui_mixer.legend_y + self.legend_height - 4,
+                    self.gui_mixer.legend_y - 4,
                     int(x + self.width / 5 * (col + 1)),
-                    self.gui_mixer.legend_y + self.legend_height,
+                    self.gui_mixer.legend_y,
                     width=0,
                     fill="yellow",
                     state=tkinter.HIDDEN
@@ -654,9 +654,9 @@ class zynthian_gui_mixer_strip():
             )
         self.midi_indicator = self.canvas.create_rectangle(
             int(x + self.width / 5 * 4),
-            self.gui_mixer.legend_y + self.legend_height - 4,
+            self.gui_mixer.legend_y  - 4,
             int(x + self.width),
-            self.gui_mixer.legend_y + self.legend_height,
+            self.gui_mixer.legend_y,
             width=0,
             fill=zynthian_gui_config.color_status_midi,
             state=tkinter.HIDDEN
