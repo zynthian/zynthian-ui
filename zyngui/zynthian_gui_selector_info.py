@@ -90,6 +90,8 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
 
     def update_layout(self):
         super().update_layout()
+        if self.loading_canvas:
+            self.loading_canvas.configure(height=int(self.info_canvas_relh * self.height))
         if self.info_canvas:
             self.info_canvas.configure(height=int(self.info_canvas_relh * self.height))
         if self.info_text:
