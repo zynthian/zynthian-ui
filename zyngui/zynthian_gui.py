@@ -1021,7 +1021,7 @@ class zynthian_gui:
                         self.state_manager.end_busy("modify_chain")
                 else:
                     # Adding processor to existing chain
-                    self.state_manager.start_busy("modify_chain", "Replacing processor")
+                    self.state_manager.start_busy("modify_chain", "Adding processor")
                     if "slot" in self.modify_chain_status:
                         slot = self.modify_chain_status["slot"]
                     else:
