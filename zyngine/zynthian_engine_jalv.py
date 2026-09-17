@@ -42,162 +42,21 @@ from zyngine.zynthian_engine import zynthian_engine
 from zyngine.zynthian_controller import zynthian_controller
 from zyngine.ctrlinfo import *
 
+
 # ------------------------------------------------------------------------------
-# Jalv Engine Class => Engine for LV2 plugins
+# Jalv Engine Base Class => Base Class Engine with basic LV2 functionality
 # ------------------------------------------------------------------------------
 
-camel_split_re = re.compile(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])')
-
-
-class zynthian_engine_jalv(zynthian_engine):
-
-    # ------------------------------------------------------------------------------
-    # Custom plugin info
-    # ------------------------------------------------------------------------------
-
-    if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
-        rpi = "RPi4"
-    elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
-        rpi = "RPi3"
-    else:
-        rpi = "RPi2"
-
-    # Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
-    broken_ui = {
-        # 'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
-        # 'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
-        # 'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
-        # 'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
-        # Disable because CPU usage and widget implemented in main UI
-        'http://gareus.org/oss/lv2/tuna#one': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},
-        # Disable because CPU usage and widget implemented in main UI
-        'http://gareus.org/oss/lv2/tuna#mod': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},
-        # "http://tytel.org/helm": {"RPi5": False, "RPi4": False, "RPi3": True, "RPi2": False},				 # Better CPU with gtk but only qt4 works on RPi4
-        'https://git.code.sf.net/p/qmidiarp/arp': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
-        'https://git.code.sf.net/p/qmidiarp/lfo': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
-        'https://git.code.sf.net/p/qmidiarp/seq': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
-        'http://distrho.sf.net/plugins/3BandEQ': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False}
-    }
-
-    plugins_custom_gui = {
-        'http://gareus.org/oss/lv2/meters#spectr30mono': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
-        'http://gareus.org/oss/lv2/meters#spectr30stereo': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
-        'http://gareus.org/oss/lv2/tuna#one': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
-        'http://gareus.org/oss/lv2/tuna#mod': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
-        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_aidax.py",
-        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py",
-        'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
-        'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
-        'http://samplv1.sourceforge.net/lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_audio_file.py"
-    }
-
-    # For certain plugins its beneficial to set parameters not set
-    # in preset files to their default values, for consistent loading
-    # of preset files in the event of the parameter list being
-    # extended from one plugin version to the next. For these we add
-    # -D to the jalv argument list.
-
-    plugins_custom_jalv_args = {
-        'https://butoba.net/homepage/mimid.html': [ "-D" ]
-    }
-
-    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia", "JE8086", "NodalRed2x"]
-
-    # ------------------------------------------------------------------------------
-    # Native formats configuration (used by zynapi_install, preset converter, etc.)
-    # ------------------------------------------------------------------------------
-
-    plugin2native_ext = {
-        "Dexed": "syx",
-        "synthv1": "synthv1",
-        "padthv1": "padthv1",
-        "Obxd": "fxb"
-        # "Helm": "helm"
-    }
-
-    plugin2preset2lv2_format = {
-        "Dexed": "dx7syx",
-        "synthv1": "synthv1",
-        "padthv1": "padthv1",
-        "Obxd": "obxdfxb"
-        # "Helm": "helm"
-    }
-
-    plugin2native_presets_dir = {
-        "TAL U-No-LX-V2": "/zynthian/zynthian-my-data/presets/TAL-U-No-LX",
-        "Vavra": "/zynthian/zynthian-my-data/presets/Vavra",
-        "Xenia": "/zynthian/zynthian-my-data/presets/Xenia"
-    }
-
-    # ---------------------------------------------------------------------------
-    # Custom controller pages
-    # ---------------------------------------------------------------------------
-
-    plugin_ctrl_info = {
-        "ctrls": {
-            'breath': [2, 64],
-            'volume': [7, 98],
-            'panning': [10, 64],
-            'expression': [11, 127],
-            'modulation wheel': [1, 0],
-            'expression': [11, 64],
-            'filter cutoff': [74, 64],
-            'filter resonance': [71, 64],
-            'reverb': [91, 127],
-            'chorus': [93, 127]
-        },
-        "ctrl_screens": {
-            '_default_synth': ['modulation wheel'],
-            'Calf Monosynth': ['modulation wheel'],
-            'Dexed': [],
-            'Fabla': [],
-            'Foo YC20 Organ': [],
-            'Helm': [],
-            'MDA DX10': ['volume', 'modulation wheel'],
-            'MDA JX10': ['volume', 'modulation wheel'],
-            'MDA ePiano': ['volume', 'modulation wheel'],
-            'MDA Piano': ['volume', 'modulation wheel'],
-            'Nekobi': [],
-            'Noize Mak3r': [],
-            'Obxd': ['modulation wheel'],
-            'Pianoteq 7 Stage': [],
-            'Pianoteq 8 Stage': [],
-            'Pianoteq 9 Stage': [],
-            'Pianoteq 7': [],
-            'Pianoteq 8': [],
-            'Pianoteq 9': [],
-            'Raffo Synth': [],
-            'Red Zeppelin 5': [],
-            'reMID': ['volume'],
-            'String machine': [],
-            'synthv1': [],
-            'Surge': ['modulation wheel'],
-            'padthv1': [],
-            'VirtualJV': ['modulation wheel', 'expression', 'reverb', 'chorus'],
-            'Vex': [],
-            'amsynth': ['modulation wheel'],
-            'JC303': [],
-            'Novachord': []
-        }
-    }
-
-    # ----------------------------------------------------------------------------
-    # ZynAPI variables
-    # ----------------------------------------------------------------------------
-
-    zynapi_instance = None
+class zynthian_engine_jalv_base(zynthian_engine):
 
     # ----------------------------------------------------------------------------
     # Initialization
     # ----------------------------------------------------------------------------
 
-    def __init__(self, eng_code, state_manager, dryrun=False, jackname=None):
+    def __init__(self, eng_code, state_manager, jackname=None):
         super().__init__(state_manager)
 
         self.proc_poll_thread = None
-
-        self.save_bank = None
-        self.save_preset_uri = None
 
         if state_manager:
             self.eng_info = self.chain_manager.engine_info[eng_code]
@@ -205,143 +64,68 @@ class zynthian_engine_jalv(zynthian_engine):
             self.eng_info = zynthian_lv2.get_engines()[eng_code]
 
         self.type = self.eng_info["TYPE"]
-        self.name = "Jalv/" + self.eng_info["NAME"]
+        self.name = self.eng_info["NAME"]
         self.nickname = eng_code
         self.plugin_name = self.eng_info["NAME"]
         self.plugin_url = self.eng_info['URL']
 
         self.bypass_zctrl = None
 
-        # WARNING Show all controllers for Gareus Meters, as they seem to be wrongly marked with property "not_on_gui"
-        if self.plugin_url.startswith("http://gareus.org/oss/lv2/meters"):
-            self.ignore_not_on_gui = True
-        else:
-            self.ignore_not_on_gui = False
-
         self.native_gui = False
-        self.minimize_native_gui = False
         if 'UI' in self.eng_info:
-            if self.plugin_url in self.broken_ui:
-                self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
+            self.native_gui = self.eng_info['UI']
+
+        if jackname:
+            self.jackname = jackname
+        else:
+            self.jackname = self.chain_manager.get_next_jackname(self.plugin_name)
+
+        logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
+
+        if self.config_remote_display() and self.native_gui:
+            if self.native_gui == "UI":
+                self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
             else:
-                self.native_gui = self.eng_info['UI']
+                if self.native_gui == "Qt5UI":
+                    jalv_bin = "jalv.qt5"
+                elif self.native_gui == "Qt4UI":
+                    # jalv_bin = "jalv.qt4"
+                    jalv_bin = "jalv.gtk3"
+                else:  # elif self.native_gui=="X11UI":
+                    jalv_bin = "jalv.gtk3"
+                self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
+        else:
+            self.command = ["jalv", "-n", self.jackname, self.plugin_url]
 
-        if not dryrun:
-            if jackname:
-                self.jackname = jackname
-            else:
-                self.jackname = self.chain_manager.get_next_jackname(self.plugin_name)
+        # Use jalv's development version =>
+        #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
+        self.command_prompt = ">"
+        # Jalv which uses PWD as the root for presets
+        self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
 
-            logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
+        # Setup MIDI Controllers
+        self._ctrls = []
+        self._ctrl_screens = []
 
-            if self.config_remote_display() and self.native_gui:
-                if self.native_gui == "UI":
-                    self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
-                else:
-                    if self.native_gui == "Qt5UI":
-                        jalv_bin = "jalv.qt5"
-                    elif self.native_gui == "Qt4UI":
-                        # jalv_bin = "jalv.qt4"
-                        jalv_bin = "jalv.gtk3"
-                    else:  # elif self.native_gui=="X11UI":
-                        jalv_bin = "jalv.gtk3"
-                        if not self.native_gui:
-                            self.minimize_native_gui = True
-                    self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
-            else:
-                self.command = ["jalv", "-n", self.jackname, self.plugin_url]
-                # Some plugins need a X11 display for running headless (QT5, QT6),
-                # but some others can't run headless if there is a valid DISPLAY defined
-                if not self.plugin_name.endswith("v1"):
-                    self.command_env['DISPLAY'] = "X"
+        #logging.debug(f"CTRLS => {self._ctrls}")
+        #logging.debug(f"CTRL_SCREENS => {self._ctrl_screens}")
 
-            # Add custom (per-plugin) jalv arguments:
-            if self.plugin_url in self.plugins_custom_jalv_args:
-                self.command = self.command[:1] + self.plugins_custom_jalv_args[self.plugin_url] + self.command[1:]
+        # Generate LV2-Plugin Controllers
+        self.lv2_monitors_dict = {}
+        self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
+        self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
-            # Use jalv's development version =>
-            #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
-            self.command_prompt = ">"
-            # Jalv which uses PWD as the root for presets
-            self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
-
-            # Setup MIDI Controllers
-            self._ctrls = []
-            self._ctrl_screens = []
-
-            # Search for a custom controller config for this plugin
-            module_name = f"zyngine.ctrlinfo.ctrlinfo_{self.plugin_name}"
-            if module_name in sys.modules:
-                try:
-                    self._ctrls = getattr(sys.modules[module_name], "ctrls", None)
-                    self._ctrl_screens = getattr(sys.modules[module_name], "ctrl_screens", None)
-                    logging.info("Using custom MIDI controllers file for '{}'.".format(self.plugin_name))
-                except Exception as e:
-                    logging.error(f"Wrong ctrlinfo module => {e}")
-
-            # If not available or wrong, take from hardcoded controller configs
-            if not self._ctrls or not self._ctrl_screens:
-                self._ctrls = []
-                self._ctrl_screens = []
-                try:
-                    if self.plugin_name in self.plugin_ctrl_info['ctrl_screens']:
-                        logging.info("Using custom MIDI controllers for '{}'.".format(self.plugin_name))
-                        ctrl_screens = self.plugin_ctrl_info['ctrl_screens'][self.plugin_name]
-                    elif self.type == 'MIDI Synth':
-                        logging.info("Using default MIDI controllers for '{}'.".format(self.plugin_name))
-                        ctrl_screens = self.plugin_ctrl_info['ctrl_screens']['_default_synth']
-                    else:
-                        ctrl_screens = None
-                    if ctrl_screens:
-                        self._ctrl_screens = [['MIDI Controllers', copy.copy(ctrl_screens)]]
-                        for ctrl_name in ctrl_screens:
-                            self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
-                except Exception as e:
-                    logging.error(f"Error setting MIDI controllers for '{self.plugin_name}' => {e}")
-
-            #logging.debug(f"CTRLS => {self._ctrls}")
-            #logging.debug(f"CTRL_SCREENS => {self._ctrl_screens}")
-
-            # Generate LV2-Plugin Controllers
-            self.lv2_monitors_dict = {}
-            self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
-            self.generate_ctrl_screens(self.lv2_zctrl_dict)
-
-            # Look for a custom GUI
-            self.custom_gui_fpath = self.get_user_custom_gui()
-            if not self.custom_gui_fpath:
-                try:
-                    self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
-                except:
-                    self.custom_gui_fpath = None
-
-            # Instance jalv host with the plugin URI
-            output = self.start()
-            # Get Plugin & Jack names from Jalv starting text ...
-            if output:
-                for line in output.split("\n"):
-                    if line[0:10] == "JACK Name:":
-                        self.jackname = line[11:].strip()
-                        logging.debug("Jack Name => {}".format(self.jackname))
-                        break
-
-        # Get bank & presets info
-        self.load_preset_info()
+        # Instance jalv host with the plugin URI
+        output = self.start()
+        # Get Plugin & Jack names from Jalv starting text ...
+        if output:
+            for line in output.split("\n"):
+                if line[0:10] == "JACK Name:":
+                    self.jackname = line[11:].strip()
+                    logging.debug("Jack Name => {}".format(self.jackname))
+                    break
 
         self.reset()
-
-    def load_preset_info(self):
-        self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
-
-    def get_user_custom_gui(self):
-        pname = self.plugin_name.lower().replace(" ", "_")
-        fpath = self.ui_dir + "/zyngui/widgets_user/zynthian_widget_" + pname + ".py"
-        logging.debug(f"Looking for user custom widget '{fpath}' ...")
-        if os.path.isfile(fpath):
-            logging.debug(f"... found!")
-            return fpath
-        else:
-            return None
 
     # ---------------------------------------------------------------------------
     # Subprocess Management & IPC
@@ -422,24 +206,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
     def proc_poll_line(self):
         return self.proc.stdout.readline()
-
-    # Resize and minimize window for auto-generated native GUIs
-    def minimize_autogenerated_gui(self):
-        if self.minimize_native_gui:
-            count = 0
-            while count < 5:
-                try:
-                    window_id = check_output(["xdotool", "getactivewindow"], env=self.command_env, stderr=STDOUT)
-                    if int(window_id) > 0:
-                        check_output(["xdotool", "windowsize", window_id, "500", "500"], env=self.command_env, stderr=STDOUT)
-                        check_output(["xdotool", "windowminimize", window_id], env=self.command_env, stderr=STDOUT)
-                        return True
-                except Exception as e:
-                    pass
-                sleep(0.1)
-                count += 1
-            return False
-        return None
 
     def proc_poll_thread_task(self):
         #self.minimize_autogenerated_gui()
@@ -548,235 +314,16 @@ class zynthian_engine_jalv(zynthian_engine):
 
     def set_midi_chan(self, processor):
         processor.midi_chan_engine = processor.midi_chan
-        if self.plugin_name == "Triceratops":
-            self.lv2_zctrl_dict["midi_channel"].set_value(processor.midi_chan + 1.5)
-        elif self.plugin_name.startswith("SO-"):
-            self.lv2_zctrl_dict["channel"].set_value(processor.midi_chan)
-        elif self.plugin_name in self.dsp56300_plugins:
-            processor.midi_chan_engine = 0
-            lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
-                                                 processor.midi_chan,
-                                                 processor.midi_chan_engine)
-
-    # ----------------------------------------------------------------------------
-    # Bank Managament
-    # ----------------------------------------------------------------------------
-
-    def get_bank_list(self, processor=None):
-        bank_list = []
-        for bank_label, info in self.preset_info.items():
-            if info['bank_url'] is None:
-                bank_uri = ""
-            else:
-                bank_uri = str(info['bank_url'])
-            bank_list.append((bank_uri, None, bank_label, None))
-        if len(bank_list) == 0:
-            bank_list.append(("", None, "None", None))
-        return bank_list
-
-    def set_bank(self, processor, bank):
-        return True
-
-    def get_user_bank_urid(self, bank_name):
-        return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir,
-                                                                zynthian_engine_jalv.sanitize_text(self.plugin_name),
-                                                                zynthian_engine_jalv.sanitize_text(bank_name))
-
-    def create_user_bank(self, bank_name):
-        bundle_path = "{}/presets/lv2/{}.presets.lv2".format(
-            self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name))
-        fpath = bundle_path + "/manifest.ttl"
-
-        bank_id = zynthian_engine_jalv.sanitize_text(bank_name)
-        bank_ttl = "\n<{}>\n".format(bank_id)
-        bank_ttl += "\ta pset:Bank ;\n"
-        bank_ttl += "\tlv2:appliesTo <{}> ;\n".format(self.plugin_url)
-        bank_ttl += "\trdfs:label \"{}\" .\n".format(bank_name)
-
-        with open(fpath, 'a+') as f:
-            f.write(bank_ttl)
-
-        # Cache is updated when saving the preset
-
-    def rename_user_bank(self, bank, new_bank_name):
-        if self.is_preset_user(bank):
-            try:
-                # TODO: This changes position of bank in list - Suggest using bank URI as key in preset_info
-                zynthian_engine_jalv.lv2_rename_bank(bank[0], new_bank_name)
-            except Exception as e:
-                logging.error(e)
-
-            # Update cache
-            self.chain_manager.reload_engine_preset_info(self.nickname)
-            #try:
-            #    self.preset_info[new_bank_name] = self.preset_info.pop(bank[2])
-            #    zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-            #except Exception as e:
-            #    logging.error(e)
-
-    def remove_user_bank(self, bank):
-        if self.is_preset_user(bank):
-            try:
-                zynthian_engine_jalv.lv2_remove_bank(bank)
-            except Exception as e:
-                logging.error(e)
-
-            # Update cache
-            self.chain_manager.reload_engine_preset_info(self.nickname)
-            #if bank[2] in self.preset_info:
-            #    try:
-            #        self.preset_info.pop(bank[2])
-            #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-            #    except Exception as e:
-            #        logging.error(e)
-
-    def delete_user_bank(self, bank):
-        if self.is_preset_user(bank):
-            try:
-                for preset in list(self.preset_info[bank[2]]['presets']):
-                    self.delete_preset(bank, preset['url'], refresh_cache=False)
-                self.remove_user_bank(bank)
-                # TODO: self.processors[0].load_preset_list()
-            except Exception as e:
-                logging.error(e)
-
-    # ----------------------------------------------------------------------------
-    # Preset Management
-    # ----------------------------------------------------------------------------
-
-    def get_preset_list(self, bank, processor=None):
-        preset_list = []
-        try:
-            for info in self.preset_info[bank[2]]['presets']:
-                title = info['label'].replace("_", " ").strip()
-                preset_list.append([info['url'], None, title, bank[0]])
-        except:
-            preset_list.append(("", None, "", None))
-
-        return preset_list
-
-    def set_preset(self, processor, preset, preload=False):
-        if not preset[0]:
-            return
-        self.proc_cmd(f"preset {preset[0]}")
-        return True
-
-    def cmp_presets(self, preset1, preset2):
-        try:
-            if preset1[0] == preset2[0]:
-                return True
-            else:
-                return False
-        except:
-            return False
-
-    def is_preset_user(self, preset):
-        return isinstance(preset[0], str) and preset[0].startswith(f"file://{self.my_data_dir}/presets/lv2/")
-
-    def preset_exists(self, bank, preset_name):
-        # TODO: This would be more robust using URI but that is created dynamically by save_preset()
-        if not bank or bank[2] not in self.preset_info:
-            return False
-        try:
-            for preset in self.preset_info[bank[2]]['presets']:
-                if preset['label'] == preset_name:
-                    return True
-        except Exception as e:
-            logging.error(e)
-        return False
-
-    def save_preset(self, bank, preset_name):
-        if not bank:
-            self.save_bank = ["", None, "None", None]
-        else:
-            self.save_bank = bank
-
-        # Reset save_uri
-        self.save_preset_uri = None
-        # Send "save preset" command to jalv
-        if self.save_bank[0]:
-            cmd = f"save preset {self.save_bank[0]},{preset_name}"
-        else:
-            cmd = f"save preset {preset_name}"
-        #logging.debug(f"SAVE PRESET COMMAND => {cmd}")
-        self.proc_cmd(cmd)
-        # Wait for save preset feedback
-        i = 0
-        while i < 20 and self.save_preset_uri == None:
-            sleep(0.1)
-            i += 1
-        return self.save_preset_uri
-
-    # Currently not used
-    def add_preset(self, preset_uri, preset_name):
-        logging.info(f"Add preset '{preset_name}' => {preset_uri}")
-        # TODO: Re-order cache after adding!
-        # Add to cache
-        try:
-            # Add bank if needed
-            if self.save_bank[2] not in self.preset_info:
-                self.preset_info[self.save_bank[2]] = {
-                    'bank_url': self.save_bank[0],
-                    'presets': []
-                }
-            # Add preset
-            if not self.preset_exists(self.save_bank, preset_name):
-                self.preset_info[self.save_bank[2]]['presets'].append(
-                    {'label': preset_name,
-                     "url": preset_uri})
-                # Save presets cache
-                zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-                # If added, return true
-                return True
-        except Exception as e:
-            logging.error(e)
-        return False
-
-    def delete_preset(self, bank, preset, refresh_cache=True):
-        if self.is_preset_user(preset):
-            try:
-                # Remove from LV2 ttl
-                zynthian_engine_jalv.lv2_remove_preset(preset[0])
-                # Remove from  cache
-                if refresh_cache:
-                    self.chain_manager.reload_engine_preset_info(self.nickname)
-                    #for i, p in enumerate(self.preset_info[bank[2]]['presets']):
-                    #    if p['url'] == preset[0]:
-                    #        del self.preset_info[bank[2]]['presets'][i]
-                    #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-                    #        break
-            except Exception as e:
-                logging.error(e)
-
-        # Return number of remaining presets in bank
-        try:
-            n = len(self.preset_info[bank[2]]['presets'])
-            if n > 0:
-                return n
-        except Exception as e:
-            pass
-        # If user bank is empty, delete it!
-        zynthian_engine_jalv.lv2_remove_bank(bank)
-        return 0
-
-    def rename_preset(self, bank, preset, new_preset_name):
-        if self.is_preset_user(preset):
-            try:
-                # Update LV2 ttl
-                zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
-                # Update cache
-                self.chain_manager.reload_engine_preset_info(self.nickname)
-                #for i, p in enumerate(self.preset_info[bank[2]]['presets']):
-                #    if p['url'] == preset[0]:
-                #        self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
-                #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
-                #        break
-            except Exception as e:
-                logging.error(e)
 
     # ----------------------------------------------------------------------------
     # Controllers Managament
     # ----------------------------------------------------------------------------
+
+    # Customize the data for a LV2 controller
+    # Returns False if controller must be ignored
+    def customize_lv2_controller(self, info):
+        return True
+
 
     def get_lv2_controllers_dict(self):
         logging.info("Getting Controller List from LV2 Plugin ...")
@@ -785,15 +332,8 @@ class zynthian_engine_jalv(zynthian_engine):
         for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
             symbol = info['symbol']
 
-            # Restrict to Channel 1 for DSP56300 plugins
-            # TODO => Implement multi-timbral jalv engines
-            if self.plugin_name in self.dsp56300_plugins:
-                parts = info['name'].split(" ")
-                if parts[0] == "Ch":
-                    if parts[1] == "1":
-                        info['name'] = info['name'][5:]
-                    else:
-                        continue
+            if not self.customize_lv2_controller(info):
+                continue
 
             #logging.debug("Controller {} info =>\n{}!".format(symbol, info))
             #logging.debug(f"Controller {symbol} group => {info['group_symbol']}")
@@ -1062,6 +602,583 @@ class zynthian_engine_jalv(zynthian_engine):
                 self.proc_cmd(f"{zctrl.symbol}={val}")
             else:
                 self.proc_cmd("%s=%.6f" % (zctrl.symbol, zctrl.value))
+
+
+# ------------------------------------------------------------------------------
+# Jalv Engine Class => Engine for LV2 plugins
+# ------------------------------------------------------------------------------
+
+camel_split_re = re.compile(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])')
+
+
+class zynthian_engine_jalv(zynthian_engine_jalv_base):
+
+    # ------------------------------------------------------------------------------
+    # Custom plugin info
+    # ------------------------------------------------------------------------------
+
+    if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
+        rpi = "RPi4"
+    elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
+        rpi = "RPi3"
+    else:
+        rpi = "RPi2"
+
+    # Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
+    broken_ui = {
+        # 'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+        # 'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
+        # 'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
+        # 'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+        # Disable because CPU usage and widget implemented in main UI
+        'http://gareus.org/oss/lv2/tuna#one': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},
+        # Disable because CPU usage and widget implemented in main UI
+        'http://gareus.org/oss/lv2/tuna#mod': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},
+        # "http://tytel.org/helm": {"RPi5": False, "RPi4": False, "RPi3": True, "RPi2": False},				 # Better CPU with gtk but only qt4 works on RPi4
+        'https://git.code.sf.net/p/qmidiarp/arp': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
+        'https://git.code.sf.net/p/qmidiarp/lfo': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
+        'https://git.code.sf.net/p/qmidiarp/seq': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
+        'http://distrho.sf.net/plugins/3BandEQ': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False}
+    }
+
+    plugins_custom_gui = {
+        'http://gareus.org/oss/lv2/meters#spectr30mono': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
+        'http://gareus.org/oss/lv2/meters#spectr30stereo': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
+        'http://gareus.org/oss/lv2/tuna#one': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
+        'http://gareus.org/oss/lv2/tuna#mod': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
+        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_aidax.py",
+        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py",
+        'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
+        'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
+        'https://dusk-audio.github.io/plugins/chord-analyzer-headless': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
+        'https://dusk-audio.github.io/plugins/chord-analyzer-midi': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
+        'https://dusk-audio.github.io/plugins/chord-analyzer': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
+        'http://samplv1.sourceforge.net/lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_audio_file.py"
+    }
+
+    # For certain plugins its beneficial to set parameters not set
+    # in preset files to their default values, for consistent loading
+    # of preset files in the event of the parameter list being
+    # extended from one plugin version to the next. For these we add
+    # -D to the jalv argument list.
+
+    plugins_custom_jalv_args = {
+        'https://butoba.net/homepage/mimid.html': [ "-D" ]
+    }
+
+    dsp56300_plugins = ["Osirus", "OsTIrus", "Vavra", "Xenia", "JE8086", "NodalRed2x"]
+
+    # ------------------------------------------------------------------------------
+    # Native formats configuration (used by zynapi_install, preset converter, etc.)
+    # ------------------------------------------------------------------------------
+
+    plugin2native_ext = {
+        "Dexed": "syx",
+        "synthv1": "synthv1",
+        "padthv1": "padthv1",
+        "Obxd": "fxb"
+        # "Helm": "helm"
+    }
+
+    plugin2preset2lv2_format = {
+        "Dexed": "dx7syx",
+        "synthv1": "synthv1",
+        "padthv1": "padthv1",
+        "Obxd": "obxdfxb"
+        # "Helm": "helm"
+    }
+
+    plugin2native_presets_dir = {
+        "TAL U-No-LX-V2": "/zynthian/zynthian-my-data/presets/TAL-U-No-LX",
+        "Vavra": "/zynthian/zynthian-my-data/presets/Vavra",
+        "Xenia": "/zynthian/zynthian-my-data/presets/Xenia"
+    }
+
+    # ---------------------------------------------------------------------------
+    # Custom controller pages
+    # ---------------------------------------------------------------------------
+
+    plugin_ctrl_info = {
+        "ctrls": {
+            'breath': [2, 64],
+            'volume': [7, 98],
+            'panning': [10, 64],
+            'expression': [11, 127],
+            'modulation wheel': [1, 0],
+            'expression': [11, 64],
+            'filter cutoff': [74, 64],
+            'filter resonance': [71, 64],
+            'reverb': [91, 127],
+            'chorus': [93, 127]
+        },
+        "ctrl_screens": {
+            '_default_synth': ['modulation wheel'],
+            'Calf Monosynth': ['modulation wheel'],
+            'Dexed': [],
+            'Fabla': [],
+            'Foo YC20 Organ': [],
+            'Helm': [],
+            'MDA DX10': ['volume', 'modulation wheel'],
+            'MDA JX10': ['volume', 'modulation wheel'],
+            'MDA ePiano': ['volume', 'modulation wheel'],
+            'MDA Piano': ['volume', 'modulation wheel'],
+            'Nekobi': [],
+            'Noize Mak3r': [],
+            'Obxd': ['modulation wheel'],
+            'Pianoteq 7 Stage': [],
+            'Pianoteq 8 Stage': [],
+            'Pianoteq 9 Stage': [],
+            'Pianoteq 7': [],
+            'Pianoteq 8': [],
+            'Pianoteq 9': [],
+            'Raffo Synth': [],
+            'Red Zeppelin 5': [],
+            'reMID': ['volume'],
+            'String machine': [],
+            'synthv1': [],
+            'Surge': ['modulation wheel'],
+            'padthv1': [],
+            'VirtualJV': ['modulation wheel', 'expression', 'reverb', 'chorus'],
+            'Vex': [],
+            'amsynth': ['modulation wheel'],
+            'JC303': [],
+            'Novachord': []
+        }
+    }
+
+    # ----------------------------------------------------------------------------
+    # ZynAPI variables
+    # ----------------------------------------------------------------------------
+
+    zynapi_instance = None
+
+    # ----------------------------------------------------------------------------
+    # Initialization
+    # ----------------------------------------------------------------------------
+
+    def __init__(self, eng_code, state_manager, dryrun=False, jackname=None):
+        zynthian_engine.__init__(self, state_manager)
+
+        self.proc_poll_thread = None
+
+        self.save_bank = None
+        self.save_preset_uri = None
+
+        if state_manager:
+            self.eng_info = self.chain_manager.engine_info[eng_code]
+        else:
+            self.eng_info = zynthian_lv2.get_engines()[eng_code]
+
+        self.type = self.eng_info["TYPE"]
+        self.name = "Jalv/" + self.eng_info["NAME"]
+        self.nickname = eng_code
+        self.plugin_name = self.eng_info["NAME"]
+        self.plugin_url = self.eng_info['URL']
+
+        self.bypass_zctrl = None
+
+        # WARNING Show all controllers for Gareus Meters, as they seem to be wrongly marked with property "not_on_gui"
+        if self.plugin_url.startswith("http://gareus.org/oss/lv2/meters"):
+            self.ignore_not_on_gui = True
+        else:
+            self.ignore_not_on_gui = False
+
+        self.native_gui = False
+        self.minimize_native_gui = False
+        if 'UI' in self.eng_info:
+            if self.plugin_url in self.broken_ui:
+                self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
+            else:
+                self.native_gui = self.eng_info['UI']
+
+        if not dryrun:
+            if jackname:
+                self.jackname = jackname
+            else:
+                self.jackname = self.chain_manager.get_next_jackname(self.plugin_name)
+
+            logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
+
+            if self.config_remote_display() and self.native_gui:
+                if self.native_gui == "UI":
+                    self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
+                else:
+                    if self.native_gui == "Qt5UI":
+                        jalv_bin = "jalv.qt5"
+                    elif self.native_gui == "Qt4UI":
+                        # jalv_bin = "jalv.qt4"
+                        jalv_bin = "jalv.gtk3"
+                    else:  # elif self.native_gui=="X11UI":
+                        jalv_bin = "jalv.gtk3"
+                        if not self.native_gui:
+                            self.minimize_native_gui = True
+                    self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
+            else:
+                self.command = ["jalv", "-n", self.jackname, self.plugin_url]
+                # Some plugins need a X11 display for running headless (QT5, QT6),
+                # but some others can't run headless if there is a valid DISPLAY defined
+                if not self.plugin_name.endswith("v1"):
+                    self.command_env['DISPLAY'] = "X"
+
+            # Add custom (per-plugin) jalv arguments:
+            if self.plugin_url in self.plugins_custom_jalv_args:
+                self.command = self.command[:1] + self.plugins_custom_jalv_args[self.plugin_url] + self.command[1:]
+
+            # Use jalv's development version =>
+            #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
+            self.command_prompt = ">"
+            # Jalv which uses PWD as the root for presets
+            self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
+
+            # Setup MIDI Controllers
+            self._ctrls = []
+            self._ctrl_screens = []
+
+            # Search for a custom controller config for this plugin
+            module_name = f"zyngine.ctrlinfo.ctrlinfo_{self.plugin_name}"
+            if module_name in sys.modules:
+                try:
+                    self._ctrls = getattr(sys.modules[module_name], "ctrls", None)
+                    self._ctrl_screens = getattr(sys.modules[module_name], "ctrl_screens", None)
+                    logging.info("Using custom MIDI controllers file for '{}'.".format(self.plugin_name))
+                except Exception as e:
+                    logging.error(f"Wrong ctrlinfo module => {e}")
+
+            # If not available or wrong, take from hardcoded controller configs
+            if not self._ctrls or not self._ctrl_screens:
+                self._ctrls = []
+                self._ctrl_screens = []
+                try:
+                    if self.plugin_name in self.plugin_ctrl_info['ctrl_screens']:
+                        logging.info("Using custom MIDI controllers for '{}'.".format(self.plugin_name))
+                        ctrl_screens = self.plugin_ctrl_info['ctrl_screens'][self.plugin_name]
+                    elif self.type == 'MIDI Synth':
+                        logging.info("Using default MIDI controllers for '{}'.".format(self.plugin_name))
+                        ctrl_screens = self.plugin_ctrl_info['ctrl_screens']['_default_synth']
+                    else:
+                        ctrl_screens = None
+                    if ctrl_screens:
+                        self._ctrl_screens = [['MIDI Controllers', copy.copy(ctrl_screens)]]
+                        for ctrl_name in ctrl_screens:
+                            self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
+                except Exception as e:
+                    logging.error(f"Error setting MIDI controllers for '{self.plugin_name}' => {e}")
+
+            #logging.debug(f"CTRLS => {self._ctrls}")
+            #logging.debug(f"CTRL_SCREENS => {self._ctrl_screens}")
+
+            # Generate LV2-Plugin Controllers
+            self.lv2_monitors_dict = {}
+            self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
+            self.generate_ctrl_screens(self.lv2_zctrl_dict)
+
+            # Look for a custom GUI
+            self.custom_gui_fpath = self.get_user_custom_gui()
+            if not self.custom_gui_fpath:
+                try:
+                    self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
+                except:
+                    self.custom_gui_fpath = None
+
+            # Instance jalv host with the plugin URI
+            output = self.start()
+            # Get Plugin & Jack names from Jalv starting text ...
+            if output:
+                for line in output.split("\n"):
+                    if line[0:10] == "JACK Name:":
+                        self.jackname = line[11:].strip()
+                        logging.debug("Jack Name => {}".format(self.jackname))
+                        break
+
+        # Get bank & presets info
+        self.load_preset_info()
+
+        self.reset()
+
+    def load_preset_info(self):
+        self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
+
+    def get_user_custom_gui(self):
+        pname = self.plugin_name.lower().replace(" ", "_")
+        fpath = self.ui_dir + "/zyngui/widgets_user/zynthian_widget_" + pname + ".py"
+        logging.debug(f"Looking for user custom widget '{fpath}' ...")
+        if os.path.isfile(fpath):
+            logging.debug(f"... found!")
+            return fpath
+        else:
+            return None
+
+    # ---------------------------------------------------------------------------
+    # Subprocess Management & IPC
+    # ---------------------------------------------------------------------------
+
+    # Resize and minimize window for auto-generated native GUIs
+    def minimize_autogenerated_gui(self):
+        if self.minimize_native_gui:
+            count = 0
+            while count < 5:
+                try:
+                    window_id = check_output(["xdotool", "getactivewindow"], env=self.command_env, stderr=STDOUT)
+                    if int(window_id) > 0:
+                        check_output(["xdotool", "windowsize", window_id, "500", "500"], env=self.command_env, stderr=STDOUT)
+                        check_output(["xdotool", "windowminimize", window_id], env=self.command_env, stderr=STDOUT)
+                        return True
+                except Exception as e:
+                    pass
+                sleep(0.1)
+                count += 1
+            return False
+        return None
+
+    # ---------------------------------------------------------------------------
+    # MIDI Channel Management
+    # ---------------------------------------------------------------------------
+
+    def set_midi_chan(self, processor):
+        super().set_midi_chan(processor)
+        if self.plugin_name == "Triceratops":
+            self.lv2_zctrl_dict["midi_channel"].set_value(processor.midi_chan + 1.5)
+        elif self.plugin_name.startswith("SO-"):
+            self.lv2_zctrl_dict["channel"].set_value(processor.midi_chan)
+        elif self.plugin_name in self.dsp56300_plugins:
+            processor.midi_chan_engine = 0
+            lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index,
+                                                 processor.midi_chan,
+                                                 processor.midi_chan_engine)
+
+    # ----------------------------------------------------------------------------
+    # Bank Managament
+    # ----------------------------------------------------------------------------
+
+    def get_bank_list(self, processor=None):
+        bank_list = []
+        for bank_label, info in self.preset_info.items():
+            if info['bank_url'] is None:
+                bank_uri = ""
+            else:
+                bank_uri = str(info['bank_url'])
+            bank_list.append((bank_uri, None, bank_label, None))
+        if len(bank_list) == 0:
+            bank_list.append(("", None, "None", None))
+        return bank_list
+
+    def set_bank(self, processor, bank):
+        return True
+
+    def get_user_bank_urid(self, bank_name):
+        return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir,
+                                                                zynthian_engine_jalv.sanitize_text(self.plugin_name),
+                                                                zynthian_engine_jalv.sanitize_text(bank_name))
+
+    def create_user_bank(self, bank_name):
+        bundle_path = "{}/presets/lv2/{}.presets.lv2".format(
+            self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name))
+        fpath = bundle_path + "/manifest.ttl"
+
+        bank_id = zynthian_engine_jalv.sanitize_text(bank_name)
+        bank_ttl = "\n<{}>\n".format(bank_id)
+        bank_ttl += "\ta pset:Bank ;\n"
+        bank_ttl += "\tlv2:appliesTo <{}> ;\n".format(self.plugin_url)
+        bank_ttl += "\trdfs:label \"{}\" .\n".format(bank_name)
+
+        with open(fpath, 'a+') as f:
+            f.write(bank_ttl)
+
+        # Cache is updated when saving the preset
+
+    def rename_user_bank(self, bank, new_bank_name):
+        if self.is_preset_user(bank):
+            try:
+                # TODO: This changes position of bank in list - Suggest using bank URI as key in preset_info
+                zynthian_engine_jalv.lv2_rename_bank(bank[0], new_bank_name)
+            except Exception as e:
+                logging.error(e)
+
+            # Update cache
+            self.chain_manager.reload_engine_preset_info(self.nickname)
+            #try:
+            #    self.preset_info[new_bank_name] = self.preset_info.pop(bank[2])
+            #    zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+            #except Exception as e:
+            #    logging.error(e)
+
+    def remove_user_bank(self, bank):
+        if self.is_preset_user(bank):
+            try:
+                zynthian_engine_jalv.lv2_remove_bank(bank)
+            except Exception as e:
+                logging.error(e)
+
+            # Update cache
+            self.chain_manager.reload_engine_preset_info(self.nickname)
+            #if bank[2] in self.preset_info:
+            #    try:
+            #        self.preset_info.pop(bank[2])
+            #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+            #    except Exception as e:
+            #        logging.error(e)
+
+    def delete_user_bank(self, bank):
+        if self.is_preset_user(bank):
+            try:
+                for preset in list(self.preset_info[bank[2]]['presets']):
+                    self.delete_preset(bank, preset['url'], refresh_cache=False)
+                self.remove_user_bank(bank)
+                # TODO: self.processors[0].load_preset_list()
+            except Exception as e:
+                logging.error(e)
+
+    # ----------------------------------------------------------------------------
+    # Preset Management
+    # ----------------------------------------------------------------------------
+
+    def get_preset_list(self, bank, processor=None):
+        preset_list = []
+        try:
+            for info in self.preset_info[bank[2]]['presets']:
+                title = info['label'].replace("_", " ").strip()
+                preset_list.append([info['url'], None, title, bank[0]])
+        except:
+            preset_list.append(("", None, "", None))
+
+        return preset_list
+
+    def set_preset(self, processor, preset, preload=False):
+        if not preset[0]:
+            return
+        self.proc_cmd(f"preset {preset[0]}")
+        return True
+
+    def cmp_presets(self, preset1, preset2):
+        try:
+            if preset1[0] == preset2[0]:
+                return True
+            else:
+                return False
+        except:
+            return False
+
+    def is_preset_user(self, preset):
+        return isinstance(preset[0], str) and preset[0].startswith(f"file://{self.my_data_dir}/presets/lv2/")
+
+    def preset_exists(self, bank, preset_name):
+        # TODO: This would be more robust using URI but that is created dynamically by save_preset()
+        if not bank or bank[2] not in self.preset_info:
+            return False
+        try:
+            for preset in self.preset_info[bank[2]]['presets']:
+                if preset['label'] == preset_name:
+                    return True
+        except Exception as e:
+            logging.error(e)
+        return False
+
+    def save_preset(self, bank, preset_name):
+        if not bank:
+            self.save_bank = ["", None, "None", None]
+        else:
+            self.save_bank = bank
+
+        # Reset save_uri
+        self.save_preset_uri = None
+        # Send "save preset" command to jalv
+        if self.save_bank[0]:
+            cmd = f"save preset {self.save_bank[0]},{preset_name}"
+        else:
+            cmd = f"save preset {preset_name}"
+        #logging.debug(f"SAVE PRESET COMMAND => {cmd}")
+        self.proc_cmd(cmd)
+        # Wait for save preset feedback
+        i = 0
+        while i < 20 and self.save_preset_uri == None:
+            sleep(0.1)
+            i += 1
+        return self.save_preset_uri
+
+    # Currently not used
+    def add_preset(self, preset_uri, preset_name):
+        logging.info(f"Add preset '{preset_name}' => {preset_uri}")
+        # TODO: Re-order cache after adding!
+        # Add to cache
+        try:
+            # Add bank if needed
+            if self.save_bank[2] not in self.preset_info:
+                self.preset_info[self.save_bank[2]] = {
+                    'bank_url': self.save_bank[0],
+                    'presets': []
+                }
+            # Add preset
+            if not self.preset_exists(self.save_bank, preset_name):
+                self.preset_info[self.save_bank[2]]['presets'].append(
+                    {'label': preset_name,
+                     "url": preset_uri})
+                # Save presets cache
+                zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+                # If added, return true
+                return True
+        except Exception as e:
+            logging.error(e)
+        return False
+
+    def delete_preset(self, bank, preset, refresh_cache=True):
+        if self.is_preset_user(preset):
+            try:
+                # Remove from LV2 ttl
+                zynthian_engine_jalv.lv2_remove_preset(preset[0])
+                # Remove from  cache
+                if refresh_cache:
+                    self.chain_manager.reload_engine_preset_info(self.nickname)
+                    #for i, p in enumerate(self.preset_info[bank[2]]['presets']):
+                    #    if p['url'] == preset[0]:
+                    #        del self.preset_info[bank[2]]['presets'][i]
+                    #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+                    #        break
+            except Exception as e:
+                logging.error(e)
+
+        # Return number of remaining presets in bank
+        try:
+            n = len(self.preset_info[bank[2]]['presets'])
+            if n > 0:
+                return n
+        except Exception as e:
+            pass
+        # If user bank is empty, delete it!
+        zynthian_engine_jalv.lv2_remove_bank(bank)
+        return 0
+
+    def rename_preset(self, bank, preset, new_preset_name):
+        if self.is_preset_user(preset):
+            try:
+                # Update LV2 ttl
+                zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
+                # Update cache
+                self.chain_manager.reload_engine_preset_info(self.nickname)
+                #for i, p in enumerate(self.preset_info[bank[2]]['presets']):
+                #    if p['url'] == preset[0]:
+                #        self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
+                #        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+                #        break
+            except Exception as e:
+                logging.error(e)
+
+    # ----------------------------------------------------------------------------
+    # Controllers Managament
+    # ----------------------------------------------------------------------------
+
+    # Customize the data for a LV2 controller
+    # Returns False if controller must be ignored
+    def customize_lv2_controller(self, info):
+        # Restrict to Channel 1 for DSP56300 plugins
+        # TODO => Implement multi-timbral jalv engines
+        if self.plugin_name in self.dsp56300_plugins:
+            parts = info['name'].split(" ")
+            if parts[0] == "Ch":
+                if parts[1] == "1":
+                    info['name'] = info['name'][5:]
+                else:
+                    return False
+        return True
 
     # ---------------------------------------------------------------------------
     # API methods
