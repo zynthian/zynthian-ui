@@ -996,7 +996,7 @@ uint8_t add_player() {
     pPlayer->buffer_count = 5;
     pPlayer->src_quality = SRC_SINC_FASTEST;
     pPlayer->src_ratio = 1.0;
-    pPlayer->varispeed = 1.0;
+    pPlayer->varispeed = 0.0;
     pPlayer->play_varispeed = 1.0;
     pPlayer->speed = 1.0;
     pPlayer->pitch = 1.0;
