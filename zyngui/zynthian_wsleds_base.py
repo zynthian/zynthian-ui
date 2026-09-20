@@ -48,6 +48,7 @@ class zynthian_wsleds_base:
         self.spi_freq = 6400000
         self.num_leds = 0
         self.wsleds = None
+        self.ended = False
 
         # LED state variables
         self.blink_count = 0
@@ -126,6 +127,7 @@ class zynthian_wsleds_base:
                 logging.error(f"Can't start RGB LEDs => {e}")
 
     def end(self):
+        self.ended = True
         self.light_off_all()
 
     def get_num(self):
@@ -174,6 +176,11 @@ class zynthian_wsleds_base:
         self.wsleds[i] = color
 
     def update(self):
+        # Ignore refreshes once end() has lighted-off the LEDs, so a late call
+        # from the status thread can't light them up again while exiting.
+        if self.ended:
+            return
+
         # Power Save Mode
         if self.zyngui.state_manager.power_save_mode:
             if self.blink_count % 64 > 44:
