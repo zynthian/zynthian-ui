@@ -2888,12 +2888,6 @@ class zynthian_gui:
         # Signal zynpot thread so it can unlock and finish normally
         self.zynpot_event.set()
 
-        # Stop the status thread before lighting-off the LEDs. It only tests
-        # exit_flag at the top of its loop, so a cycle already in progress
-        # would otherwise repaint the LEDs after they have been lighted-off.
-        if self.status_thread and self.status_thread.is_alive():
-            self.status_thread.join(timeout=1)
-
         # Light-off LEDs
         if self.wsleds:
             self.wsleds.end()
