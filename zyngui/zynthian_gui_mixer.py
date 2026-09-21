@@ -644,9 +644,9 @@ class zynthian_gui_mixer_strip():
             self.pedals.append(
                 self.canvas.create_rectangle(
                     int(x + self.width / 5 * col),
-                    self.gui_mixer.legend_y + 5,
+                    self.gui_mixer.legend_y - 5,
                     int(x + self.width / 5 * (col + 1)),
-                    self.gui_mixer.legend_y + 8,
+                    self.gui_mixer.legend_y - 1,
                     width=0,
                     fill="yellow",
                     state=tkinter.HIDDEN
@@ -654,9 +654,9 @@ class zynthian_gui_mixer_strip():
             )
         self.midi_indicator = self.canvas.create_rectangle(
             int(x + self.width / 5 * 4),
-            self.gui_mixer.legend_y + 5,
+            self.gui_mixer.legend_y - 5,
             int(x + self.width),
-            self.gui_mixer.legend_y + 8,
+            self.gui_mixer.legend_y - 1,
             width=0,
             fill=zynthian_gui_config.color_status_midi,
             state=tkinter.HIDDEN
