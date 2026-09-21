@@ -120,7 +120,7 @@ class zynthian_state_manager:
         self.status_midi_player = False
         self.last_midi_file = None
         self.status_midi = False
-        self.status_midi_ch = 0 # 16-bit MIDI activity indicator, 1-bit per MIDI
+        self.status_midi_zmop = 0x0 # 16-bit MIDI activity indicator, 1-bit per ZMOP
         self.status_midi_clock = False
         self.update_available = False  # True when updates available from repositories
         self.checking_for_updates = False  # True whilst checking for updates
@@ -633,9 +633,9 @@ class zynthian_state_manager:
                 if self.status_xrun:
                     xruns_status = self.status_xrun
 
+                self.status_midi_zmop = lib_zyncore.zmop_get_midi_activity()
                 if midi_status:
                     self.status_midi = False
-                    self.status_midi_ch = 0
                     midi_status = False
                 if self.status_midi:
                     midi_status = True
@@ -895,11 +895,11 @@ class zynthian_state_manager:
 
                 # Flag MIDI event
                 self.status_midi = True
-                self.status_midi_ch |= (1 << chan)
                 self.last_event_flag = True
 
         except Exception as err:
             logging.exception(err)
+
 
     # ---------------------------------------------------------------------------
     # Power Saving
