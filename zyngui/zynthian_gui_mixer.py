@@ -638,29 +638,35 @@ class zynthian_gui_mixer_strip():
         self.legend_strip_txt = self.canvas.create_text(self.centre_x, self.gui_mixer.legend_y + self.legend_height // 2 + 2, fill=self.gui_mixer.legend_txt_color, text="-", tags=(f"legend_strip_{id}",), font=self.gui_mixer.font)
         self.legend_strip_midi_bg = self.canvas.create_rectangle(x, self.gui_mixer.legend_y + self.legend_height - 2, x + self.width, self.gui_mixer.legend_y + self.legend_height, width=0, fill=self.gui_mixer.legend_bg_color, tags=tags)
 
-        # MIDI pedal indicators
+        # MIDI and pedal indicators
         self.pedals = []
+        horizontal_separator = 0
         for col in range(4):
             self.pedals.append(
                 self.canvas.create_rectangle(
-                    int(x + self.width / 5 * col),
-                    self.gui_mixer.legend_y + 5,
+                    # Horizontal
+                    int( (x + self.width / 5 * col) + horizontal_separator),
+                    self.gui_mixer.legend_y - 5,
                     int(x + self.width / 5 * (col + 1)),
-                    self.gui_mixer.legend_y + 8,
+                    self.gui_mixer.legend_y - 1,
                     width=0,
                     fill="yellow",
                     state=tkinter.HIDDEN
                 )
             )
+            horizontal_separator = 1
+
         self.midi_indicator = self.canvas.create_rectangle(
+            # On top
             int(x + self.width / 5 * 4),
-            self.gui_mixer.legend_y + 5,
+            self.gui_mixer.legend_y - 4,
             int(x + self.width),
-            self.gui_mixer.legend_y + 8,
+            self.gui_mixer.legend_y,
             width=0,
             fill=zynthian_gui_config.color_status_midi,
             state=tkinter.HIDDEN
         )
+
 
         # Clip Launcher Progress Bar
         self.clip_progress = self.canvas.create_rectangle(x, self.gui_mixer.legend_y, x, self.gui_mixer.legend_y + 4, width=0, fill=self.gui_mixer.legend_txt_color, tags=(f"legend_strip_{id}",))
