@@ -692,7 +692,6 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             return
 
         length = min(self.frames, length)
-        start = min(start, (self.frames - length))
         steps_per_peak = 16
 
         self.waveform_height = self.widget_canvas.winfo_height()
@@ -708,6 +707,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         frames_per_pixel = length // self.width
         block_size = min(frames_per_pixel, 1024)
         step = max(1, block_size // steps_per_peak)
+
+        start = min(start, (self.frames - length))
+        # Align start to block size avoid flickering when scrolling wave
+        start = (start // frames_per_pixel) * frames_per_pixel
 
         ydata = [0] * 2 * self.channels * self.width
         pos = 0
