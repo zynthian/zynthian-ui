@@ -81,6 +81,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
         self.monitors_dict = {}
         self.id2proc = {} # Map of processor objects indexed by player id
+        self.last_offset_ctrl = None
+
         self.start()
         self.reset()
         self.preset_fexts = zynaudioplayer.get_supported_codecs()
@@ -451,11 +453,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
             json.dump(data, f, indent=4)
 
     def centre_offset(self):
-        try:
-            offset = self.last_offset_ctrl.value - self.dur / (self.zoom * 2)
-            self.last_offset_ctrl.processor.controllers_dict["offset"].set_value(offset)
-        except Exception as e:
-            logging.warning(e)
+        if self.last_offset_ctrl:
+            try:
+                offset = self.last_offset_ctrl.value - self.dur / (self.zoom * 2)
+                self.last_offset_ctrl.processor.controllers_dict["offset"].set_value(offset)
+            except Exception as e:
+                logging.warning(e)
 
     def send_controller_value(self, zctrl):
         handle = zctrl.handle

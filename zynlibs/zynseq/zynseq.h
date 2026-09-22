@@ -988,9 +988,9 @@ uint32_t getSequenceState(uint8_t scene, uint8_t phrase, uint8_t sequence);
 uint32_t getStateChange(uint32_t* states, uint32_t max);
 
 /** @brief  Get progress of each group
-    @retval uint8_t* Pointer to array of uint8_t holding results in percentage played
+    @retval float* Pointer to array of float holding results in percentage played
 */
-uint8_t* getProgress();
+float* getProgress();
 
 /** @brief  Get current beat in bar
     @retval uint8_t Beat

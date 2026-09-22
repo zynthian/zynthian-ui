@@ -246,7 +246,7 @@ class zynseq(zynthian_engine):
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
             self.libseq.getStateChange.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
             self.libseq.getStateChange.restype = ctypes.c_uint32
-            self.libseq.getProgress.restype = ctypes.POINTER(ctypes.c_uint8)
+            self.libseq.getProgress.restype = ctypes.POINTER(ctypes.c_float)
 
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
@@ -314,7 +314,7 @@ class zynseq(zynthian_engine):
         self.seq_in_scene = 0  # Quantity of sequence in the selected scene
         self.playing_sequences = 0 # Quantity of playing sequences
         self.pause_update = False
-        self.progress = [0] * LAUNCHER_COLS
+        self.progress = [0.0] * LAUNCHER_COLS
         self.bpb = 4
         self.beat = 0 # Current beat of bar
         self.clippy = None # Clippy engine object
