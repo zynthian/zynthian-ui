@@ -55,12 +55,18 @@ class zynthian_wsleds_base:
         self.pulse_step = 0
         self.brightness = 1
 
+        self.setup_colors()
+
+        # Beat blinking variables
+        self.beat = 0
+        self.beat_state = 0
+        self.beat_color = self.wscolor_default
+        self.beat_led = None
+
         self.ended = False
 
         self.wsled_state_enabled = True
         self.last_wsled_state = ""
-
-        self.setup_colors()
 
     def setup_colors(self):
         # Predefined colors
@@ -179,6 +185,18 @@ class zynthian_wsleds_base:
             self.pulse_step = 0
 
         self.wsleds[i] = color
+
+    def beat_cb(self, beat):
+        if self.beat_led is not None and self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() > 0:
+            if beat != self.beat:
+                self.beat = self.beat
+                if self.beat_state:
+                    self.wsleds[self.beat_led] = self.beat_color
+                    self.beat_state = 0
+                else:
+                    self.wsleds[self.beat_led] = self.wscolor_off
+                    self.beat_state = 1
+                self.wsleds.show()
 
     def update(self):
         # Ignore refreshes once end() has lighted-off the LEDs, so a late call

@@ -107,6 +107,7 @@ class zynthian_signal_manager:
     SS_SEQ_TEMPO = 5
     SS_SEQ_TIMESIG = 6
     SS_SEQ_METRO = 7
+    SS_SEQ_BEAT = 8
 
     # Mixer
     SS_ZYNMIXER_SET_VALUE = 1
