@@ -864,8 +864,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.offset = offset
             self.refresh_waveform = True
             self.auto_offset = 0
-        elif self.auto_offset == 0:
-            self.auto_offset = 1
+        #elif self.auto_offset == 0:
+        #    self.auto_offset = 1
         if crop_start is not None and crop_start != self.crop_start:
             self.crop_start = crop_start
             self.update_markers = True
