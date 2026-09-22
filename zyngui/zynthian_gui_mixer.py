@@ -546,18 +546,20 @@ class zynthian_gui_mixer_strip():
         else:
             self.chan = self.chain.midi_chan
 
+        self.sep_width = 1
+        self.wwidth = self.width - self.sep_width
         self.button_height = self.gui_mixer.button_height
         self.legend_height = self.gui_mixer.legend_height
         self.flags_height = self.gui_mixer.flags_height
         self.balance_height = self.gui_mixer.balance_height
-        self.balance_width = (self.width - 2) / 2 # Width of each half of the balance indicator
+        self.balance_width = self.wwidth  // 2 # Width of each half of the balance indicator
         self.toggle_y = parent.toggle_y
         self.mute_y = parent.mute_y
         self.balance_y = parent.balance_y
         self.flags_y = parent.flags_y
         self.fader_y = parent.fader_y
         self.legend_y = parent.legend_y
-        self.centre_x = x + int(self.width * 0.5)
+        self.centre_x = x + self.balance_width
         self.fader_text_limit = int(0.95 * self.gui_mixer.fader_height)
         self.dragging = False
 
@@ -589,23 +591,29 @@ class zynthian_gui_mixer_strip():
         self.audio_bg = self.canvas.create_rectangle(x, self.toggle_y, x + self.width, parent.launcher_y, fill=self.gui_mixer.button_bgcol, width=0)
         # Fader background defines height of fader
         self.fader_bg = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_bg_color, width=0, tags=("fader", f"fader_{id}"))
+
         # Audio mixer elements
         if self.chain.zynmixer_proc:
+            # Separator
+            if self.launcher_mode:
+                self.sep = self.canvas.create_rectangle(x + self.wwidth, 0, x + self.width, self.fader_y + self.balance_height, fill="#000000", width=0)
+            else:
+                self.sep = self.canvas.create_rectangle(x + self.wwidth, 0, x + self.width, self.fader_y, fill="#000000", width=0)
+
             # Toggle 1 button
-            w = self.width - 1
-            self.toggle = self.canvas.create_rectangle(x, self.toggle_y, x + w, self.mute_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"toggle_{id}",))
-            self.toggle_text = self.canvas.create_text(x + w // 2, self.toggle_y + self.button_height * 0.5, text="S", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"toggle_{id}",))
+            self.toggle = self.canvas.create_rectangle(x, self.toggle_y, x + self.wwidth, self.mute_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"toggle_{id}",))
+            self.toggle_text = self.canvas.create_text(x + self.wwidth // 2, self.toggle_y + self.button_height * 0.5, text="S", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"toggle_{id}",))
 
             # Mute button
-            self.mute = self.canvas.create_rectangle(x, self.mute_y, x + w, self.flags_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"mute_{id}",))
-            self.mute_text = self.canvas.create_text(x + w // 2, self.mute_y + self.button_height * 0.5, text="M", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"mute_{id}",))
+            self.mute = self.canvas.create_rectangle(x, self.mute_y, x + self.wwidth, self.flags_y, fill=self.gui_mixer.button_bgcol, width=0, tags=(f"mute_{id}",))
+            self.mute_text = self.canvas.create_text(x + self.wwidth // 2, self.mute_y + self.button_height * 0.5, text="M", fill=self.gui_mixer.button_txcol, font=self.gui_mixer.font, tags=(f"mute_{id}",))
 
             # Balance indicator
             self.balance_bg = self.canvas.create_rectangle(self.x + 1, self.balance_y, self.x + self.width - 1, self.fader_y, fill=self.gui_mixer.balance_bg_color, width=0, tags=(f"balance_{id}",))
             self.balance_fg = self.canvas.create_rectangle(self.centre_x - 1, self.balance_y, self.centre_x + 1, self.fader_y, fill=self.gui_mixer.balance_fg_color, width=0, tags=(f"balance_{id}",))
             # Fader
             self.fader_overlay = self.canvas.create_rectangle(x, self.fader_y, x + self.fader_width, self.legend_y, fill=self.gui_mixer.fader_color, width=0, tags=("fader", "fader_overlay", f"fader_{id}"))
-            self.fader_horizontal = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal",), state=tkinter.HIDDEN)
+            self.fader_horizontal = self.canvas.create_rectangle(x, self.fader_y, x + self.wwidth, self.fader_y + self.balance_height, fill=self.gui_mixer.fader_color, width=0, tags=("fader_horizontal",), state=tkinter.HIDDEN)
 
             # DPM
             if self.chain.chain_id:
@@ -627,6 +635,14 @@ class zynthian_gui_mixer_strip():
             self.dpm_scale = self.canvas.create_image(self.dpm_scale_x0, self.dpm_y0, anchor="nw", image=self.get_bg_img("dpm", self.dpm_scale_width, self.dpm_length), state=dpm_xstate)
             if self.chain.chain_id == 0:
                 self.dpm_labels = self.canvas.create_image(self.dpm_a_x0, self.dpm_y0, anchor="ne", image=self.get_bg_img("dpm_lbl", self.gui_mixer.loop_info_width, self.dpm_length), state=dpm_xstate)
+
+        # No audio mixer elements => MIDI-only chains
+        else:
+            # Strip separator
+            self.sep = self.canvas.create_rectangle(x + self.wwidth, 0, x + self.width, self.height, fill="#000000", width=0)
+            # Indicators separation
+            self.balance_bg = self.canvas.create_rectangle(self.x + 1, self.balance_y, self.x + self.width - 1, self.fader_y, fill=self.gui_mixer.balance_bg_color, width=0, tags=(f"balance_{id}",))
+
 
         # Chain title
         self.fader_text = self.canvas.create_text(x, self.legend_y - 6, fill=self.gui_mixer.legend_txt_color, angle=90, anchor="nw", font=self.gui_mixer.font_fader, text="",
@@ -661,7 +677,7 @@ class zynthian_gui_mixer_strip():
         self.midi_indicator = self.canvas.create_rectangle(
             int(x + self.fader_width),
             self.flags_y,
-            int(x + self.width),
+            int(x + self.wwidth),
             self.flags_y + self.flags_height,
             width=0,
             fill=zynthian_gui_config.color_status_midi,
@@ -697,6 +713,7 @@ class zynthian_gui_mixer_strip():
         self.launcher_mode = mode
         try:
             if mode:
+                self.canvas.coords(self.sep, self.x + self.wwidth, 0, self.x + self.width, self.fader_y + self.balance_height)
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, 0, self.x + self.width, self.balance_y)
                 self.dpm_a.move(self.dpm_a_x0, 0, self.dpm_width, self.balance_y)
                 self.dpm_b.move(self.dpm_b_x0, 0, self.dpm_width, self.balance_y)
@@ -704,6 +721,10 @@ class zynthian_gui_mixer_strip():
                 if self.chain.chain_id == 0:
                     self.canvas.itemconfig(self.dpm_labels, state=tkinter.HIDDEN)
             else:
+                if self.chain.zynmixer_proc:
+                    self.canvas.coords(self.sep, self.x + self.wwidth, 0, self.x + self.width, self.fader_y)
+                else:
+                    self.canvas.coords(self.sep, self.x + self.wwidth, 0, self.x + self.width, self.height)
                 self.canvas.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
                 self.dpm_a.move(self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
                 self.dpm_b.move(self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
@@ -719,12 +740,13 @@ class zynthian_gui_mixer_strip():
     def move(self, dx):
         # Re-calculate geometry variables
         self.x += dx
-        self.centre_x = self.x + int(self.width * 0.5)
+        self.centre_x = self.x + int(self.wwidth * 0.5)
         self.dpm_b_x0 = self.x + self.width - self.dpm_width
         self.dpm_scale_x0 = self.dpm_b_x0 - self.dpm_scale_width
         self.dpm_a_x0 = self.dpm_scale_x0 - self.dpm_width
 
         # Move canvas objects to new coordinates
+        self.canvas.move(self.sep, dx, 0)
         self.canvas.move(self.audio_bg, dx, 0)
         self.canvas.move(self.fader_bg, dx, 0)
         if self.chain.zynmixer_proc:
@@ -836,7 +858,7 @@ class zynthian_gui_mixer_strip():
                 self.x + self.fader_width, self.legend_y)
             self.canvas.coords(self.fader_horizontal,
                 self.x, self.fader_y,
-                self.x + self.width * level, self.fader_y + self.balance_height)
+                self.x + self.wwidth * level, self.fader_y + self.balance_height)
 
     def draw_fader_text(self):
         label_parts = self.chain.get_description(2).split("\n") + [""]
