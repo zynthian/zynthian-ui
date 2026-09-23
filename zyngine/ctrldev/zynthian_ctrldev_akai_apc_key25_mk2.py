@@ -507,7 +507,7 @@ class DeviceHandler(ModeHandlerBase):
         self._leds.all_off()
         self._refresh()
 
-    def _refresh(self):
+    def _refresh(self, metronome=False):
         if self._state_manager.power_save_mode:
             return True
 
@@ -524,7 +524,7 @@ class DeviceHandler(ModeHandlerBase):
                 wsled_state = zynthian_gui_config.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
                     [note, colors_dict] = self.ZYNSWITCH_NOTES_AND_COLORS.get(i + 4, [None, self.WSCOLORS_DICT])
-                    if note is not None:
+                    if note is not None and (note != BTN_METRONOME or metronome == True or zynthian_gui_config.zyngui.state_manager.zynseq.libseq.getMetronomeMode() == 0):
                         color = colors_dict.get(colstr, None)
                         if color is not None:
                             self._leds.led_on(note, color, WSBRIGHTNESS_DICT.get(note, LED_BRIGHT_100))
@@ -2964,6 +2964,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
         self._signals = [
+
+            (zynsigman.S_STEPSEQ,
+             zynsigman.SS_SEQ_BEAT, self.beat_cb),
+
             (zynsigman.S_GUI,
                 zynsigman.SS_GUI_SHOW_SCREEN,
                 self._on_gui_show_screen),
@@ -3012,6 +3016,11 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler.set_active(False)
         super().end()
         zynthian_ctrldev_zynpad.end(self)
+
+    def beat_cb(self, beat):
+        if self._current_handler == self._device_handler:
+            self._device_handler._refresh(True)
+        pass
 
     def refresh(self):
         super().refresh()
