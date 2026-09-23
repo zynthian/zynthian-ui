@@ -29,6 +29,7 @@ import traceback
 import neopixel_spi as neopixel
 
 # Zynthian specific modules
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 
 # ---------------------------------------------------------------------------
@@ -156,14 +157,14 @@ class zynthian_wsleds_base:
             # Light all LEDs
             for i in range(0, self.num_leds):
                 self.wsleds[i] = self.wscolor_default
-            self.wsleds.show()
+            self.show()
 
     def light_off_all(self):
         if self.num_leds > 0:
             # Light-off all LEDs
             for i in range(0, self.num_leds):
                 self.wsleds[i] = self.wscolor_off
-            self.wsleds.show()
+            self.show()
 
     def blink(self, i, color):
         if self.blink_state:
@@ -196,7 +197,7 @@ class zynthian_wsleds_base:
                 else:
                     self.wsleds[self.beat_led] = self.wscolor_off
                     self.beat_state = 1
-                self.wsleds.show()
+                self.show()
 
     def update(self):
         # Ignore refreshes once end() has lighted-off the LEDs, so a late call
@@ -213,7 +214,7 @@ class zynthian_wsleds_base:
             for i in range(0, self.num_leds):
                 self.wsleds[i] = self.wscolor_off
             self.pulse(0)
-            self.wsleds.show()
+            self.show()
 
         # Normal mode
         else:
@@ -225,7 +226,7 @@ class zynthian_wsleds_base:
                 self.update_wsleds()
             except Exception as e:
                 logging.exception(traceback.format_exc())
-            self.wsleds.show()
+            self.show()
 
             if self.wsled_state_enabled and (self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state()):
                 try:
@@ -259,5 +260,10 @@ class zynthian_wsleds_base:
 
     def update_wsleds(self):
         pass
+
+    def show(self):
+        self.wsleds.show()
+        if self.wsled_state_enabled and not self.state_manager.power_save_mode:
+            zynsigman.send(zynsigman.S_WSLEDS, zynsigman.SS_WSLEDS_UPDATE)
 
 # ------------------------------------------------------------------------------
