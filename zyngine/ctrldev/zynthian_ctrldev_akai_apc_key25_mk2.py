@@ -383,6 +383,10 @@ class FeedbackLEDs:
     def clear_delayed(self, led):
         self._timer.remove(led)
 
+
+class RefreshTimer(IntervalTimer):
+    RESOLUTION = 0.4
+
 # --------------------------------------------------------------------------
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
@@ -479,19 +483,31 @@ class DeviceHandler(ModeHandlerBase):
         self._is_playing = set()
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
+        self._refresh_timer = RefreshTimer()
         self.cuia_queue = state_manager.cuia_queue
 
     def __del__(self):
         self._btn_timer.end()
+        self._refresh_timer.end()
 
     def set_active(self, active):
         super().set_active(active)
+        # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
+        if not active:
+            self._refresh_timer.remove('refresh_leds')
+            #self._zynseq.libseq.updateSequenceInfo()
+        else:
+            self._refresh_timer.add('refresh_leds', 1, self.refresh_timed)
+
+    def refresh_timed(self, name):
+        if (name == 'refresh_leds'):
+            self._refresh()
 
     def refresh(self):
         self._leds.all_off()
         self._refresh()
 
-    def _refresh(self):
+    def _refresh(self, metronome=False):
         if self._state_manager.power_save_mode:
             return True
 
@@ -508,7 +524,7 @@ class DeviceHandler(ModeHandlerBase):
                 wsled_state = zynthian_gui_config.zyngui.wsleds.last_wsled_state.split(",")
                 for i, colstr in enumerate(wsled_state):
                     [note, colors_dict] = self.ZYNSWITCH_NOTES_AND_COLORS.get(i + 4, [None, self.WSCOLORS_DICT])
-                    if note is not None:
+                    if note is not None and (note != BTN_METRONOME or metronome == True or zynthian_gui_config.zyngui.state_manager.zynseq.libseq.getMetronomeMode() == 0):
                         color = colors_dict.get(colstr, None)
                         if color is not None:
                             self._leds.led_on(note, color, WSBRIGHTNESS_DICT.get(note, LED_BRIGHT_100))
@@ -2949,7 +2965,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
         self._signals = [
 
-            (zynsigman.S_WSLEDS, zynsigman.SS_WSLEDS_UPDATE, self.wsled_cb),
+            (zynsigman.S_STEPSEQ,
+             zynsigman.SS_SEQ_BEAT, self.beat_cb),
 
             (zynsigman.S_GUI,
                 zynsigman.SS_GUI_SHOW_SCREEN,
@@ -3000,9 +3017,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         super().end()
         zynthian_ctrldev_zynpad.end(self)
 
-    def wsled_cb(self):
+    def beat_cb(self, beat):
         if self._current_handler == self._device_handler:
-            self._device_handler._refresh()
+            self._device_handler._refresh(True)
+        pass
 
     def refresh(self):
         super().refresh()
