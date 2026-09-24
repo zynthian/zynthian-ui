@@ -30,6 +30,9 @@ import oyaml as yaml
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_engine import zynthian_engine
 
+#SFIZZ_YAML_URL = "https://raw.githubusercontent.com/sfztools/sfztools.github.io/refs/heads/master/data/sfizz/support.yml"
+#SFIZZ_SUPPORTED = "/zynthian/config/sfizz_supported.yml"
+
 # ------------------------------------------------------------------------------
 # SFZ extensions class
 # ------------------------------------------------------------------------------
@@ -267,5 +270,104 @@ class zynthian_engine_sfz(zynthian_engine):
                 except Exception as e:
                     logging.error(f"Can't send note-on '{zctrl.value}' from keyswitch controller '{zctrl.symbol}' to zmop {zctrl.processor.chain.zmop_index} => {e}")
 
+    #-------------------------------------------------------------------------
+    # Opcode parsing and support detection
+    #-------------------------------------------------------------------------
+
+    ''' Not used currently!
+
+    @staticmethod
+    def get_supported_opcode_patterns(download=False):
+        """ Get list of regex patterns describing sfizz supported sfz codes
+        Args:
+            download: True to download latest support yaml file
+        Returns: List of regex patterns describing supported opcodes
+        """
+
+        patterns = []
+        if download and os.system(f"wget -N -O {SFIZZ_SUPPORTED} {SFIZZ_YAML_URL} > /dev/null 2>&1") != 0:
+            return patterns
+
+        try:
+            with open(SFIZZ_SUPPORTED, "r") as f:
+                data = yaml.safe_load(f)
+        except:
+            return patterns
+        if not data:
+            return patterns
+
+        opcodes = data.get("opcodes", [])
+        for cat in data['categories']:
+            opcodes += cat.get('opcodes', [])
+        for op in opcodes:
+            if "support" in op:
+                continue
+            name = op.get("name")
+            if not name:
+                continue
+            escaped = re.escape(name)
+            escaped = re.sub(r"[A-Z]", r"\\d+", escaped)
+            patterns.append(re.compile(f"^{escaped}$"))
+        return patterns
+
+    @staticmethod
+    def get_used_codes(filename):
+        """Extract headers and opcodes from a .sfz file
+        Args:
+            filename: Full path of sfz file
+        Returns: Dict of headers and opcodes used by sfz
+        """
+
+        used = {"headers": set(), "opcodes": set()}
+        with open(filename, "r", encoding="utf-8") as f:
+            for line in f:
+                line = re.sub(r"//.*", "", line)
+                line = re.sub(r"/\*.*?\*/", "", line)
+                headers = re.findall(r"<[^>]+>", line)
+                used["headers"].update(headers)
+                matches = re.findall(r"([A-Za-z0-9_]+)\s*=", line)
+                used["opcodes"].update(matches)
+        return used
+
+    @staticmethod
+    def get_all_sfz(path):
+        """ Get a list of all sfz files within a directory branch (recurssive)
+        Args:
+            path: Path of directory to search
+        Returns: List of sfz files
+        """
+
+        return list(Path(path).rglob("*.sfz"))
+
+    @staticmethod
+    def is_opcode_supported(opcode, patterns):
+        """ Check if opcode matches any supported pattern
+        Args:
+            opcode: Opcode to validate
+            patterns: List of regexp patterns used to validate
+        Returns: True if valid opcode
+        """
+
+        for pattern in patterns:
+            if pattern.match(opcode):
+                return True
+        return False
+
+    @staticmethod
+    def get_unsupported_opcodes(filename, patterns):
+        """ Get list of unsupported opcodes used by sfz
+        Args:
+            filename: Full path of sfz file
+            patterns: List of regex patterns describing supported opcodes (see get_supported_opcode_patterns)
+        Returns: List of unsupported opcodes
+        """
+
+        unsupported = []
+        for opcode in zynthian_engine_sfz.get_used_codes(filename)["opcodes"]:
+            if not zynthian_engine_sfz.is_opcode_supported(opcode, patterns):
+                unsupported.append(opcode)
+        return unsupported
+
+    '''
 
 # ******************************************************************************

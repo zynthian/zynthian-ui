@@ -67,6 +67,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         audio_proc_count = max(0, self.chain.get_processor_count("Audio Effect") - 1)
 
         self.list_data.append((None, None, "> PROCESSORS"))
+        len_check = len(self.list_data)
         if self.chain.is_midi():
             self.list_data.append((self.midifx_add, None, "Add MIDI-FX processor",
                                     ["Add a MIDI effects processor to this the end of this chain.", "midi_processor.png"]))
@@ -86,6 +87,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         if self.chain.get_processor_count():
             self.list_data.append((self.clear_midi_learn, None, "Clean MIDI Learn",
                                    ["Remove CC bindings from all parameters of all processors in this chain.", "delete_presets.png"]))
+        if len(self.list_data) == len_check:
+            self.list_data.pop() # Remove section title for empty section
 
         self.list_data.append((None, None, "> MANAGE"))
 

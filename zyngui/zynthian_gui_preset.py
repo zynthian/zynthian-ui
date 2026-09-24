@@ -52,8 +52,11 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             logging.error("Can't fill preset list for None processor!")
             return
         # Configure default info text
-        if zynthian_gui_config.preset_preload:
-            self.default_info = "Preload enabled."
+        if self.allow_preset_preload:
+            if self.processor.engine.allow_timer_preload(None):
+                self.default_info = "Preload enabled."
+            else:
+                self.default_info = "Preload on note."
         else:
             self.default_info = "Preload disabled."
         self.default_info += "\nBold to show options."
@@ -143,10 +146,12 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             else:
                 options["\u2610 Favourite"] = [preset, ["Add to favorites list", "favorite_add.png"]]
             if engine.is_preset_user(preset):
+                if hasattr(engine, "save_preset"):
+                    options["Save"] = [preset, ["Save overwriting", "file_save.png"]]
                 if hasattr(engine, "rename_preset"):
-                    options["Rename"] = [preset, ["Rename preset", "rename.png"]]
+                    options["Rename"] = [preset, ["Rename", "rename.png"]]
                 if hasattr(engine, "delete_preset"):
-                    options["Delete"] = [preset, ["Delete preset", "file_delete.png"]]
+                    options["Delete"] = [preset, ["Delete", "file_delete.png"]]
 
         global_options = {}
         if hasattr(engine, "save_preset"):
@@ -186,6 +191,8 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             self.processor.toggle_preset_fav(preset)
             self.processor.load_preset_list()
             self.show_preset_options()
+        elif option == "Save":
+            super().save_preset_overwrite(preset[2])
         elif option == "Rename":
             self.zyngui.show_keyboard(self.rename_preset, preset[2])
         elif option == "Delete":

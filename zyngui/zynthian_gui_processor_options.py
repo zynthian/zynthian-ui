@@ -56,11 +56,11 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
         # TODO Implement bypass for MIDI processors!!
         if self.processor.type == "Audio Effect" and self.processor.eng_code not in ("MI", "MR"):
-                if self.processor.is_bypassed():
-                    title = "\u2612 Bypass"
-                else:
-                    title = "\u2610 Bypass"
-                self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", "bypass.png"]))
+            if self.processor.is_bypassed():
+                title = "\u2612 Bypass"
+            else:
+                title = "\u2610 Bypass"
+            self.list_data.append((self.processor.toggle_bypass, None, title, ["Bypass this processor.", "bypass.png"]))
 
         # Move processor
         if self.processor.type not in ("MIDI Synth", "Audio Generator") and self.processor.chain is not None:
@@ -70,13 +70,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
 
         # Replace and Remove processor
         if self.processor.eng_code not in ("MI", "MR"):
-            if self.processor.type == "MIDI Synth":
-                eng_options = self.processor.engine.get_options()
-                if eng_options['replace']:
-                    self.list_data.append((self.replace, None, f"Replace {self.processor.name}",
-                                           ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
-            else:
-                self.list_data.append((self.replace, None, "Replace",
+            if (self.processor.type != "MIDI Synth" or self.processor.engine.get_options()['replace']) and self.processor.eng_code != "CL":
+                self.list_data.append((self.replace, None, f"Replace {self.processor.name}",
                                            ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
 
             if self.processor.type in ("MIDI Tool", "Audio Effect"):
@@ -98,6 +93,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.list_data.append((self.show_details, None, "Info", ["Show information about this processor.", "info.png"]))
 
         self.list_data.append((None, None, "> Add to chain"))
+        len_check = len(self.list_data)
         pos = "series" if self.processor.type in ["MIDI Synth", "MIDI Tool"] or self.processor.eng_code in ["MI", "MX"] else "parallel"
         if self.processor.type in ("MIDI Synth", "MIDI Tool"):
             self.list_data.append((self.add_midi_processor, None, "Insert MIDI Processor",
@@ -105,6 +101,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         if self.processor.type in ("MIDI Synth", "Audio Effect", "Audio Generator"):
             self.list_data.append((self.add_audio_processor, None, "Insert Audio Processor",
                                    [f"Insert a new audio processor in the chain in {pos} with this processor.", "audio_processor.png"]))
+        if len(self.list_data) == len_check:
+            self.list_data.pop() # Remove section title for empty section
 
         super().fill_list()
 
@@ -170,7 +168,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.add_processor("Audio Effect")
 
     def processor_remove(self):
-        self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove, autoclose=False)
+        self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove, autoclose=True)
 
     def do_remove(self, unused=None):
         self.state_manager.start_busy("processor_options::do_remove", "Removing processor")
@@ -178,8 +176,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
         self.processor = None
-        self.zyngui.prune_screen_history("processor_options", soft=False)
         self.state_manager.end_busy("processor_options::do_remove")
+        self.zyngui.close_screen()
 
     def preset_list(self):
         self.zyngui.cuia_bank_preset(self.processor)

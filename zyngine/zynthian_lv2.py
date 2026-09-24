@@ -85,20 +85,21 @@ engine_categories = {
         "Other"
     ),
     "Audio Effect": (
+        "Analyzer",
         "Delay",
         "Distortion",
         "Dynamics",
         "Filter & EQ",
         "Modulation",
         "Panning",
-        "Spatial",
         "Pitch",
         "Reverb",
         "Simulator",
-        "Analyzer",
+        "Spatial",
         "Other"
     ),
     "MIDI Tool": (
+        "Analyzer",
         "Arpeggiator",
         "Automation",
         "Filter",
@@ -127,7 +128,7 @@ lv2class2engcat = {
     "Soundfont": "Sampler",
     "Instrument": "Synth",
     "Analyser": "Analyzer",
-    "Spectral": "Filter",
+    "Spectral": "Filter & EQ",
     "Delay": "Delay",
     "Looper": "Delay",
     "Compressor": "Dynamics",
@@ -163,7 +164,7 @@ standalone_engine_info = {
     "ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Synth", True],
     "FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Sampler", True],
     "SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Sampler", True],
-    "LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Sampler", True],
+    "LS": ["LinuxSampler", "LinuxSampler: GIG", "MIDI Synth", "Sampler", True],
     "CL": ["Clippy", "Clip launcher", "Audio Generator", "Other", True],
     "BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
     "AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
@@ -519,10 +520,13 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
             engine_title = engine_info[1]
             engine_cat = engine_info[3]
             engine_index = i
-            engine_descr = get_engine_description(key)
+            engine_descr = ""
             engine_quality = 0
             engine_complex = 0
             engine_edit = 0
+
+        if not engine_descr:
+            engine_descr = get_engine_description(key)
 
         if reset_rankings == 1:
             engine_quality = engine_complex = 0
@@ -582,21 +586,23 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
             except:
                 engine_edit = 0
         except:
-            # Get plugin description
-            engine_description = get_plugin_description(plugin)
-            # If not, use "Lorem Ipsum" default
-            if not engine_description:
-                engine_description = get_engine_description(key)
             hash.update(key.encode())
             engine_id = hash.hexdigest()[:10]
             engine_title = engine_name
             engine_type = get_plugin_type(plugin).value
             engine_cat = get_plugin_cat(plugin)
             engine_index = 9999
-            engine_descr = engine_description
+            engine_descr = ""
             engine_quality = 0
             engine_complex = 0
             engine_edit = 0
+
+        if not engine_descr:
+            # Get plugin description
+            engine_descr = get_plugin_description(plugin)
+            # If not, use "Lorem Ipsum" default
+            if not engine_descr:
+                engine_descr = get_engine_description(key)
 
         if reset_rankings == 1:
             engine_quality = engine_complex = 0

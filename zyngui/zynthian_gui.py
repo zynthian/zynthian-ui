@@ -1021,7 +1021,7 @@ class zynthian_gui:
                         self.state_manager.end_busy("modify_chain")
                 else:
                     # Adding processor to existing chain
-                    self.state_manager.start_busy("modify_chain", "Replacing processor")
+                    self.state_manager.start_busy("modify_chain", "Adding processor")
                     if "slot" in self.modify_chain_status:
                         slot = self.modify_chain_status["slot"]
                     else:
@@ -1082,7 +1082,7 @@ class zynthian_gui:
                     if processor and processor.type =="MIDI Synth":
                         chain.init_MPE()
                     self.state_manager.end_busy("modify_chain")
-                    self.screen_history = []
+                    self.reset_screen_history()
                     if processor:
                         if processor.eng_code == "CL":
                             self.show_screen("launcher")
@@ -2450,6 +2450,8 @@ class zynthian_gui:
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, self.cb_show_message)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        if self.wsleds:
+            zynsigman.register(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, self.wsleds.beat_cb)
 
     def unregister_signals(self):
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
@@ -2457,6 +2459,9 @@ class zynthian_gui:
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_MESSAGE, self.cb_show_message)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+        if self.wsleds:
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, self.wsleds.beat_cb)
+
 
     def cb_midi_note_on(self, izmip, chan, note, vel):
         """Handle MIDI_NOTE_ON signal
@@ -2668,6 +2673,10 @@ class zynthian_gui:
 
             sleep(0.1)
 
+    def wait_close_loading(self):
+        if self.current_screen == "loading":
+            sleep(0.05)
+
     # ------------------------------------------------------------------
     # Status Refresh Thread
     # ------------------------------------------------------------------
@@ -2869,14 +2878,14 @@ class zynthian_gui:
 
     def exit(self, code=0):
         self.exit_code = code
+        self.exit_flag = True
+        self.exit_wait_count = 0
+        logging.info("STOPPING ZYNTHIAN-UI...")
         zynthian_gui_config.top.after(1, self.do_exit)
 
     def do_exit(self):
         # Log exit message
-        logging.info("STOPPING ZYNTHIAN-UI...")
-
-        self.exit_flag = True
-        self.exit_wait_count = 0
+        logging.info("EXITING ZYNTHIAN-UI...")
 
         # End signal manager queue processing
         zynsigman.stop()

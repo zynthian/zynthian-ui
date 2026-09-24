@@ -271,7 +271,7 @@ class zynthian_gui_controller(tkinter.Canvas):
             self.itemconfigure(self.graph_pickup, width=arc_width)
 
 
-        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, self.value_width // 7))
+        self.itemconfigure(self.midi_bind, font=(zynthian_gui_config.font_family, max(self.value_width // 7, MIN_FS)))
         self.coords(self.midi_bind, x0, hh - 2)
 
     # Handle resize of rectangle graph
@@ -642,7 +642,8 @@ class zynthian_gui_controller(tkinter.Canvas):
                 else:
                     val_text = "000.0"
             else:
-                val_text =max([str(self.zctrl.value_min), str(self.zctrl.value_max)], key=len)
+                text_len = max(len(str(self.zctrl.value_min)), len(str(self.zctrl.value_max)))
+                val_text = "0" * text_len
 
         fs = get_cached_font_size(val_text, self.value_width)
         if fs:

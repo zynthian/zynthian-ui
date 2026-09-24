@@ -940,13 +940,13 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.controller_options(param, keep_selection=True)
             elif parts[0] in ["Relative", "Absolute"]:
                 options = {
-                    "Absolute Mode": (param, 0),
-                    "Absolute Reverse": (param, 0),
-                    "Relative Mode 1": (param, 1),
-                    "Relative Mode 2": (param, 2),
-                    "Relative Mode 3": (param, 3),
-                    "Relative Mode 4": (param, 4),
-                    "Learn Relative Mode": (param, -1)
+                    "Absolute Mode": [(param, 0), ["Controller sends absolute value:\n0—127", None]],
+                    "Absolute Reverse": [(param, 0), ["Controller sends reversed absolute value:\n127—0", None]],
+                    "Relative Mode 1 (55—63, 64—73)": [(param, 1),  ["Down: 55—63\nUp:65—73\nWITH speed-up", None]],
+                    "Relative Mode 2 (118—127, 1—9)": [(param, 2), ["Down: 118—127\nUp:1—9\nWITH speed-up", None]],
+                    "Relative Mode 3 (7—15, 17—24)": [(param, 3), ["Down:7—15\nUp:17—24\nWITH speed-up", None]],
+                    "Relative Mode 4 (0—63, 64—127)": [(param, 4), ["Down:0—63\nUp:64—127\nNO speed-up", None]],
+                    "Learn Relative Mode": [(param, -1), ["Auto-detected from user's actions", None]]
                 }
                 self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
                 self.zyngui.show_screen('option')

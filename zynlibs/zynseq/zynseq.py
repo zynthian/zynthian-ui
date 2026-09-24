@@ -246,7 +246,7 @@ class zynseq(zynthian_engine):
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
             self.libseq.getStateChange.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32]
             self.libseq.getStateChange.restype = ctypes.c_uint32
-            self.libseq.getProgress.restype = ctypes.POINTER(ctypes.c_uint8)
+            self.libseq.getProgress.restype = ctypes.POINTER(ctypes.c_float)
 
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
@@ -314,7 +314,7 @@ class zynseq(zynthian_engine):
         self.seq_in_scene = 0  # Quantity of sequence in the selected scene
         self.playing_sequences = 0 # Quantity of playing sequences
         self.pause_update = False
-        self.progress = [0] * LAUNCHER_COLS
+        self.progress = [0.0] * LAUNCHER_COLS
         self.bpb = 4
         self.beat = 0 # Current beat of bar
         self.clippy = None # Clippy engine object
@@ -667,7 +667,6 @@ class zynseq(zynthian_engine):
         # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
         # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
 
-        self.beat = self.libseq.getBeat()
         tempo = self.libseq.getTempo()
         if tempo != self.zctrl_tempo.value:
             self.zctrl_tempo.set_value(tempo)
@@ -705,6 +704,12 @@ class zynseq(zynthian_engine):
         #progress = self.libseq.getProgress()
         #for i in range(33):
         #    self.progress[i] = progress[i]
+
+    def update_beat(self):
+        beat = self.libseq.getBeat()
+        if beat != self.beat:
+            self.beat = beat
+            zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, beat=beat)
 
     def refresh_state(self, send=True):
         self.state = loads(self.libseq.getState().decode("utf-8"))

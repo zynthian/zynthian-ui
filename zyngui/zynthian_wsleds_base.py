@@ -29,6 +29,7 @@ import traceback
 import neopixel_spi as neopixel
 
 # Zynthian specific modules
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 
 # ---------------------------------------------------------------------------
@@ -55,10 +56,18 @@ class zynthian_wsleds_base:
         self.pulse_step = 0
         self.brightness = 1
 
+        self.setup_colors()
+
+        # Beat blinking variables
+        self.beat = 0
+        self.beat_state = 0
+        self.beat_color = self.wscolor_default
+        self.beat_led = None
+
+        self.ended = False
+
         self.wsled_state_enabled = True
         self.last_wsled_state = ""
-
-        self.setup_colors()
 
     def setup_colors(self):
         # Predefined colors
@@ -118,14 +127,19 @@ class zynthian_wsleds_base:
         if self.num_leds > 0:
             try:
                 self.spi_board = board.SPI()
-                self.wsleds = neopixel.NeoPixel_SPI(
-                    self.spi_board, self.num_leds, pixel_order=neopixel.GRB, auto_write=False, frequency=self.spi_freq)
+                self.wsleds = neopixel.NeoPixel_SPI(self.spi_board,
+                                                    self.num_leds,
+                                                    pixel_order=neopixel.GRB,
+                                                    auto_write=False,
+                                                    frequency=self.spi_freq)
+                self.ended = False
                 self.light_on_all()
             except Exception as e:
                 self.wsleds = None
                 logging.error(f"Can't start RGB LEDs => {e}")
 
     def end(self):
+        self.ended = True
         self.light_off_all()
 
     def get_num(self):
@@ -143,14 +157,14 @@ class zynthian_wsleds_base:
             # Light all LEDs
             for i in range(0, self.num_leds):
                 self.wsleds[i] = self.wscolor_default
-            self.wsleds.show()
+            self.show()
 
     def light_off_all(self):
         if self.num_leds > 0:
             # Light-off all LEDs
             for i in range(0, self.num_leds):
                 self.wsleds[i] = self.wscolor_off
-            self.wsleds.show()
+            self.show()
 
     def blink(self, i, color):
         if self.blink_state:
@@ -173,7 +187,24 @@ class zynthian_wsleds_base:
 
         self.wsleds[i] = color
 
+    def beat_cb(self, beat):
+        if self.beat_led is not None and self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() > 0:
+            if beat != self.beat:
+                self.beat = self.beat
+                if self.beat_state:
+                    self.wsleds[self.beat_led] = self.beat_color
+                    self.beat_state = 0
+                else:
+                    self.wsleds[self.beat_led] = self.wscolor_off
+                    self.beat_state = 1
+                self.show()
+
     def update(self):
+        # Ignore refreshes once end() has lighted-off the LEDs, so a late call
+        # from the status thread can't light them up again while exiting.
+        if self.ended:
+            return
+
         # Power Save Mode
         if self.zyngui.state_manager.power_save_mode:
             if self.blink_count % 64 > 44:
@@ -183,7 +214,7 @@ class zynthian_wsleds_base:
             for i in range(0, self.num_leds):
                 self.wsleds[i] = self.wscolor_off
             self.pulse(0)
-            self.wsleds.show()
+            self.show()
 
         # Normal mode
         else:
@@ -195,7 +226,7 @@ class zynthian_wsleds_base:
                 self.update_wsleds()
             except Exception as e:
                 logging.exception(traceback.format_exc())
-            self.wsleds.show()
+            self.show()
 
             if self.wsled_state_enabled and (self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state()):
                 try:
@@ -229,5 +260,10 @@ class zynthian_wsleds_base:
 
     def update_wsleds(self):
         pass
+
+    def show(self):
+        self.wsleds.show()
+        if self.wsled_state_enabled and not self.state_manager.power_save_mode:
+            zynsigman.send(zynsigman.S_WSLEDS, zynsigman.SS_WSLEDS_UPDATE)
 
 # ------------------------------------------------------------------------------

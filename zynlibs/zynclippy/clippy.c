@@ -770,7 +770,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
         }
     }
 
-    printf("loadClip('%s', %d BEATS at %f BPM) => RATIO=%f (%d)\n", path, nbeats, tempo, ratio, timestretch);
+    //printf("loadClip('%s', %d BEATS at %f BPM) => RATIO=%f (%d)\n", path, nbeats, tempo, ratio, timestretch);
 
     if (timestretch) {
         // Rubberband Options

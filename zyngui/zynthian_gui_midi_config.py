@@ -312,6 +312,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
         if not self.midi_input and self.chain:
             self.list_data.append((None, None, "> CHAINS"))
+            len_check = len(self.list_data)
             for i, chain_id in enumerate(self.zyngui.chain_manager.chains):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
                 if chain and chain.is_midi() and chain != self.chain and chain.midi_chan < 16:
@@ -323,6 +324,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                         self.list_data.append((chain_id, None, f"\u2612 {prefix}{chain.get_name()}", [get_info("Connected to chain.", False), "midi_output.png"]))
                     else:
                         self.list_data.append((chain_id, None, f"\u2610 {prefix}{chain.get_name()}", [get_info("Disconnected from chain.", False), "midi_output.png"]))
+            if len(self.list_data) == len_check:
+                self.list_data.pop() # Remove section title for empty section
 
         super().fill_list()
 
