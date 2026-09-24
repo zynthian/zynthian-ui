@@ -105,20 +105,22 @@ void send_notifications(uint8_t id) {
 // Detects whether the effective playback direction has changed since we last read or
 // stretched audio and, if so, flushes the raw/stretch pipeline so newly-read audio
 // reflects the new direction.
-static void handle_direction_change(struct AUDIO_PLAYER* pPlayer, uint8_t* pLastReverse, SNDFILE* pFile, SRC_STATE* pSrcState, size_t* pNUnusedFrames,
-                                     uint8_t* pFinalSignalled) {
+static void handle_direction_change(struct AUDIO_PLAYER* pPlayer, uint8_t* pLastReverse, SNDFILE* pFile, SRC_STATE* pSrcState, SRC_DATA* pSrcData,
+                                     size_t* pNUnusedFrames, uint8_t* pFinalSignalled, int64_t* pPipelinePos) {
     uint8_t bReverse = (pPlayer->varispeed < 0.0);
     if (bReverse == *pLastReverse)
         return;
     jack_ringbuffer_reset(pPlayer->ringbuffer_a);
     jack_ringbuffer_reset(pPlayer->ringbuffer_b);
     src_reset(pSrcState);
+    pSrcData->end_of_input = 0;
     rubberband_reset(pPlayer->rb_state);
     *pNUnusedFrames  = 0;
     *pFinalSignalled = 0;
     sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
     if (pos >= 0)
         pPlayer->file_read_pos = pos;
+    *pPipelinePos = (int64_t)pPlayer->play_pos_frames;
     if (pPlayer->file_read_status == IDLE || pPlayer->file_read_status == WAITING)
         atomic_store_explicit(&pPlayer->file_read_status, LOADING, memory_order_relaxed);
     atomic_store_explicit(&pPlayer->stream_ended, 0, memory_order_relaxed);
@@ -208,6 +210,7 @@ void* file_thread_fn(void* param) {
         atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
         fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", pPlayer->filename);
         int nError = sf_close(pFile);
+        pFile = NULL;
         if (nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
     }
@@ -325,8 +328,7 @@ void* file_thread_fn(void* param) {
                 atomic_store_explicit(&pPlayer->file_read_status, LOADING, memory_order_relaxed);
 
             while (pPlayer->file_read_status == LOADING) {
-                handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &nUnusedFrames, &finalSignalled);
-
+                handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &srcData, &nUnusedFrames, &finalSignalled, &pipelinePos);
                 int nFramesRead = 0;
                 // Load block of data from file to SRC or output buffer
                 nMaxFrames = pPlayer->input_buffer_size - nUnusedFrames;
@@ -334,8 +336,7 @@ void* file_thread_fn(void* param) {
                 if (jack_ringbuffer_write_space(pPlayer->ringbuffer_a) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio &&
                     jack_ringbuffer_write_space(pPlayer->ringbuffer_b) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio) {
 
-                    uint8_t bReverse = (pPlayer->varispeed < 0.0);
-                    if (bReverse) {
+                    if (lastReverse) {
                         if (pPlayer->file_read_pos <= pPlayer->crop_start)
                             nMaxFrames = 0;
                         else if (pPlayer->file_read_pos < pPlayer->crop_start + nMaxFrames)
@@ -349,7 +350,7 @@ void* file_thread_fn(void* param) {
                     if (srcData.src_ratio == 1.0) {
                         size_t nTotalValid = nUnusedFrames + nFramesRead;
                         // No SRC required so populate SRC output buffer directly
-                        if (bReverse) {
+                        if (lastReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
                                 pPlayer->file_read_pos -= nMaxFrames;
                             else {
@@ -376,7 +377,7 @@ void* file_thread_fn(void* param) {
                             pPlayer->file_read_pos += (nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames));
                     } else {
                         // Populate SRC input buffer before SRC process
-                        if (bReverse) {
+                        if (lastReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
                                 pPlayer->file_read_pos -= nMaxFrames;
                             else {
@@ -442,24 +443,10 @@ void* file_thread_fn(void* param) {
             }
 
             for (;;) {
-                if (pPlayer->file_read_status == SEEKING)
+                if (pPlayer->file_read_status == SEEKING || pPlayer->play_state == STOPPED)
                     break;
 
-                // While genuinely paused, don't commit any more stretched audio into
-                // ringbuffer_out. varispeed reads as 0.0 (i.e. "forward") the whole time
-                // we're stopped, so without this the pipeline would quietly keep
-                // pre-generating and queuing up forward-direction audio in that buffer -
-                // and since handle_direction_change() deliberately leaves ringbuffer_out
-                // alone (to keep live reversals during active playback gapless), that
-                // stale forward content would just play first, as a burst, before
-                // whatever direction is actually requested on resume. Reading/feeding can
-                // continue harmlessly (handle_direction_change() flushes it if direction
-                // changes anyway); only the retrieve-and-commit step needs to pause.
-                if (pPlayer->play_state == STOPPED)
-                    break;
-
-                handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &nUnusedFrames, &finalSignalled);
-
+                handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &srcData, &nUnusedFrames, &finalSignalled, &pipelinePos);
                 if (pPlayer->time_ratio_dirty) {
                     float abs_varispeed = fabs(pPlayer->varispeed);
                     float speed = pPlayer->speed;
@@ -529,9 +516,11 @@ void* file_thread_fn(void* param) {
                             pipelinePos = cropEnd - i;
                         }
                     } else if (pipelinePos >= cropEnd) {
-                        if (cropEnd > 0)
-                            pipelinePos %= cropEnd;
-                        pipelinePos += cropStart;
+                        int64_t i = pipelinePos - cropEnd;
+                        int64_t span = cropEnd - cropStart;
+                        if (span > 0)
+                            i %= span;
+                        pipelinePos = cropStart + i;
                     }
                 } else {
                     // Not looping, so the position must stay within the crop range.
@@ -923,7 +912,7 @@ void set_crop_end_time(uint8_t id, float time) {
     if (!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if (frames < pPlayer->crop_start)
+    if (frames <= pPlayer->crop_start)
         frames = pPlayer->crop_start + 1;
     if (frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
@@ -1048,23 +1037,28 @@ uint8_t add_player() {
     pPlayer->pitch = 1.0;
     pPlayer->crop_end = pPlayer->input_buffer_size;
     pPlayer->crop_end_src = pPlayer->crop_end;
-    g_players[id] = pPlayer;
 
     // Create audio output ports
     char port_name[8];
 
     sprintf(port_name, "out_%02da", id);
+    uint8_t error = 0;
     if (!(pPlayer->jack_out_a = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
         fprintf(stderr, "libaudioplayer error: cannot register audio output port %s\n", port_name);
-        return 255;
+        error = 1;
     }
     sprintf(port_name, "out_%02db", id);
-    if (!(pPlayer->jack_out_b = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
+    if (!error && !(pPlayer->jack_out_b = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
         fprintf(stderr, "libaudioplayer error: cannot register audio output port %s\n", port_name);
         jack_port_unregister(g_jack_client, pPlayer->jack_out_a);
-        return 255;
+        error = 1;
     }
     DPRINTF("libaudioplayer player %u registered JACK audio output ports %u & %u\n", pPlayer, pPlayer->jack_out_a, pPlayer->jack_out_b);
+    if (error) {
+        free(pPlayer);
+        return 255;
+    }
+    g_players[id] = pPlayer;
     return id;
 }
 
