@@ -56,6 +56,10 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         # and holds no state of its own beyond the id last announced by
         # SS_LOAD_ZS3.
         self.perf_zs3_id = None
+        # Set by the options menu's "Move" entry: while it holds a ZS3 id, the
+        # knob and arrows slide that ZS3 through the list instead of moving
+        # the selection, as moving a phrase does in the launcher.
+        self.moving_zs3 = None
         self.perf_canvas = tkinter.Canvas(
             self.main_frame,
             bd=0,
@@ -111,6 +115,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def hide(self):
         if self.shown:
+            self.moving_zs3 = None
             self.disable_midi_learn()
             zynsigman.unregister(
                 zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
@@ -130,6 +135,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             pass
 
         # Add list of programs
+        zs3_ids = self.zyngui.state_manager.get_zs3_ids()
         if len(self.zyngui.state_manager.zs3) > 1:
             self.list_data.append((None, None, "> SAVED ZS3s"))
         for id, state in self.zyngui.state_manager.zs3.items():
@@ -146,7 +152,18 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                         title = f"{state['title']} -> CH#{int(parts[0]) + 1}:PRG#{parts[1]}"
                 else:
                     title = f"{state['title']} ({id})"
-            self.list_data.append((id, state, title, ["Load ZS3.\n\nBold select for options.\nALT for stage mode.", None]))
+            if id == self.moving_zs3:
+                # Same marks as a phrase being moved in the launcher
+                if id == zs3_ids[0]:
+                    title = f"⇓ {title}"
+                elif id == zs3_ids[-1]:
+                    title = f"⇑ {title}"
+                else:
+                    title = f"⇕ {title}"
+                info = "Use knob, arrows or touch-drag to move.\n\nSelect or back to finish."
+            else:
+                info = "Restore ZS3.\n\nBold select for options."
+            self.list_data.append((id, state, title, [info + "\nALT for stage mode.", None]))
             if id == self.zyngui.state_manager.last_zs3_id:
                 self.index = idx
             idx += 1
@@ -157,10 +174,41 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         self.perf_zs3_id = zs3_id
         self.update_performance()
         if self.shown:
-            for i, row in enumerate(self.list_data):
-                if row[0] == zs3_id:
-                    self.select(i)
-                    break
+            if self.moving_zs3:
+                self.end_moving_zs3()
+            self.select_zs3(zs3_id)
+
+    def select_zs3(self, zs3_id):
+        """Select the list row showing a ZS3, if there is one"""
+
+        for i, row in enumerate(self.list_data):
+            if row[0] == zs3_id:
+                super().select(i)
+                break
+
+    # While a ZS3 is being moved, everything that would change the selection -
+    # knob 4, the arrows, the mouse wheel, a touch on another row - moves the
+    # ZS3 there instead. The selection follows it.
+    def select(self, index=None, set_zctrl=True):
+        if self.moving_zs3 and index is not None and index != self.index:
+            self.nudge_zs3(index - self.index)
+        else:
+            super().select(index, set_zctrl)
+
+    def nudge_zs3(self, d):
+        zs3_ids = self.zyngui.state_manager.get_zs3_ids()
+        if self.moving_zs3 not in zs3_ids:
+            self.end_moving_zs3()
+            return
+        self.zyngui.state_manager.move_zs3(self.moving_zs3, zs3_ids.index(self.moving_zs3) + d)
+        self.update_list()
+        self.select_zs3(self.moving_zs3)
+
+    def end_moving_zs3(self):
+        zs3_id = self.moving_zs3
+        self.moving_zs3 = None
+        self.update_list()
+        self.select_zs3(zs3_id)
 
     def cb_save_zs3(self, zs3_id):
         if self.shown:
@@ -169,6 +217,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             self.cb_load_zs3(zs3_id)
 
     def select_action(self, i, t='S'):
+        if self.moving_zs3:
+            self.end_moving_zs3()
+            return True
         zs3_index = self.list_data[i][0]
         if t == 'S':
             self.zyngui.state_manager.disable_learn_pc()
@@ -230,6 +281,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def back_action(self):
         self.zyngui.state_manager.disable_learn_pc()
+        if self.moving_zs3:
+            self.end_moving_zs3()
+            return True
         return False
 
     def set_select_path(self):
@@ -240,6 +294,8 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def cuia_toggle_alt_mode(self, params=None):
         super().cuia_toggle_alt_mode(params)
+        if self.moving_zs3:
+            self.end_moving_zs3()
         self.show_performance(self.alt_mode)
         return True
 
