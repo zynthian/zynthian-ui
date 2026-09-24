@@ -305,6 +305,13 @@ class zynseq(zynthian_engine):
             'value_default': 24,
             'value': self.libseq.getExtClockPPQN()
         })
+        self.zctrl_bpb = zynthian_controller(self, 'bpb', {
+            'name': 'Beats/Bar',
+            'value_min': 1,
+            'value_max': 23,
+            'value_default': 4,
+            'value': self.libseq.getBpb()
+        })
 
         # Cache sequence info for launchers to reduce access to libseq
         self.phrases = 0  # Quantity of launcher slots/rows/phrases
@@ -641,6 +648,8 @@ class zynseq(zynthian_engine):
             zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, mode=self.zctrl_metro_mode.value, volume=zctrl.value)
         elif zctrl == self.zctrl_ppqn:
             self.libseq.setExtClockPPQN(zctrl.value)
+        elif zctrl == self.zctrl_bpb:
+            self.libseq.setBpb(zctrl.value)
 
     # -------------------------------------------------------------------
     # Zynseq MIDI learn ==> Is this still used?
@@ -678,6 +687,7 @@ class zynseq(zynthian_engine):
             bpb = self.libseq.getBpb()
             if bpb != self.bpb:
                 self.bpb = bpb
+                self.zctrl_bpb.set_value(self.bpb)
                 zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, bpb=bpb)
             # Iterate state changes
             for i in range(count):
@@ -730,6 +740,7 @@ class zynseq(zynthian_engine):
         try:
             if self.state["bpb"] != self.bpb:
                 self.bpb = self.state["bpb"]
+                self.zctrl_bpb.set_value(self.bpb)
                 zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_TIMESIG, bpb=self.bpb)
         except:
             logging.warning("Failed to set bpb")

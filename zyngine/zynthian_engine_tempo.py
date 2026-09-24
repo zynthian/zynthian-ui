@@ -43,7 +43,7 @@ class zynthian_engine_tempo(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     _ctrl_screens = [
-        ["Tempo", ["bpm", "metro_enable", "metro_volume", "ppqn"]]
+        ["Tempo", ["bpm", "metro_enable", "metro_volume", "bpb"]]
     ]
 
     # ----------------------------------------------------------------------------
@@ -111,25 +111,23 @@ class zynthian_engine_tempo(zynthian_engine):
 
     def get_controllers_dict(self, processor=None, ctrl_list=None):
         if zynautoconnect.get_ext_clock_zmip() < 0:
-            self._ctrl_screens = [["Tempo", ["bpm", "metro_enable", "metro_volume"]]]
+            self._ctrl_screens = [["Tempo", ["bpm", "metro_enable", "metro_volume", "bpb"]]]
         else:
-            self._ctrl_screens = [["Tempo", ["ppqn", "metro_enable", "metro_volume"]]]
+            self._ctrl_screens = [["Tempo", ["ppqn", "metro_enable", "metro_volume", "bpb"]]]
 
-        if processor:
-            if not processor.controllers_dict:
-                processor.controllers_dict = {
-                    "bpm": self.state_manager.zynseq.zctrl_tempo,
-                    "metro_enable": self.state_manager.zynseq.zctrl_metro_mode,
-                    "metro_volume": self.state_manager.zynseq.zctrl_metro_volume,
-                    "ppqn": self.state_manager.zynseq.zctrl_ppqn
-                }
-            return processor.controllers_dict
-        return  {
+        zctrls = {
             "bpm": self.state_manager.zynseq.zctrl_tempo,
             "metro_enable": self.state_manager.zynseq.zctrl_metro_mode,
             "metro_volume": self.state_manager.zynseq.zctrl_metro_volume,
-            "ppqn": self.state_manager.zynseq.zctrl_ppqn
+            "ppqn": self.state_manager.zynseq.zctrl_ppqn,
+            "bpb": self.state_manager.zynseq.zctrl_bpb,
         }
+
+        if processor:
+            if not processor.controllers_dict:
+                processor.controllers_dict = zctrls
+            return processor.controllers_dict
+        return  zctrls
 
     def send_controller_value(self, zctrl):
         pass
