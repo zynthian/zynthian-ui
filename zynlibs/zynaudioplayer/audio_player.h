@@ -19,12 +19,12 @@
 #define MIN_VARISPEED 0.1
 #define STRETCH_BUF_SIZE 4096
 
-// Callback function definition (id, play_state, loop, pos)
+// Callback function definition (id, play_state, loop, pos, varispeed)
 typedef void cb_fn_t(uint8_t, uint8_t, uint8_t, float, float);
 
 enum playState {
-    STOPPED  = 0,
-    PLAYING  = 1,
+    STOPPED  = 0, // Must be 0
+    PLAYING  = 1, // Must be 1
     STARTING = 2,
     STOPPING = 3
 };
@@ -56,19 +56,19 @@ struct AUDIO_PLAYER {
     jack_port_t* jack_out_b;
     
     _Atomic uint8_t file_open;          // Used to flag thread to close file or thread to flag file failed to open
-    _Atomic uint8_t file_read_status;   // File reading status (IDLE|SEEKING|LOADING)
+    _Atomic uint8_t file_read_status;   // File reading status (IDLE|SEEKING|LOADING|LOOPING|WAITING)
     _Atomic uint32_t flush_req;         // Incremented by the file thread to ask the JACK callback to discard queued output
     _Atomic uint32_t flush_ack;         // Set by JACK callback to flush_req once it has discarded queued output
 
     _Atomic uint8_t play_state;         // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
     _Atomic uint32_t seek_pos_frames;   // Target of a pending seek (JACK-rate frames)
     sf_count_t file_read_pos;           // Current file read position (frames)
-    uint8_t loop;                       // 1 to loop between crop markers
-    sf_count_t crop_start;              // Start of audio (crop) in frames from start of file
-    sf_count_t crop_start_src;          // Start of audio (crop) in frames from start after SRC
-    sf_count_t crop_end;                // End of audio (crop) in frames from start of file
-    sf_count_t crop_end_src;            // End of audio (crop) in frames from start after SRC
-    float gain;                         // Audio level (volume) 0.00001..10000 (-100db..+100dB)
+    _Atomic uint8_t loop;               // 1 to loop between crop markers
+    _Atomic sf_count_t crop_start;      // Start of audio (crop) in frames from start of file
+    _Atomic sf_count_t crop_start_src;  // Start of audio (crop) in frames from start after SRC
+    _Atomic sf_count_t crop_end;        // End of audio (crop) in frames from start of file
+    _Atomic sf_count_t crop_end_src;    // End of audio (crop) in frames from start after SRC
+    _Atomic float gain;                 // Audio level (volume) 0.00001..100000 (-100db..+100dB)
     int track_a;                        // Which track to playback to left output (-1 to mix all stereo pairs)
     int track_b;                        // Which track to playback to right output (-1 to mix all stereo pairs)
     unsigned int input_buffer_size;     // Quantity of frames that may be read from file
@@ -94,22 +94,22 @@ struct AUDIO_PLAYER {
     pos_marker_t pos_markers[POS_MARKER_QUEUE_SIZE];
     _Atomic uint32_t pos_marker_wr;        // written by file_thread_fn
     _Atomic uint32_t pos_marker_rd;        // written by on_jack_process
-     uint32_t pos_marker_remaining;         // RT-thread-private, not atomic
-     uint32_t pos_marker_total;             // RT-thread-private, not atomic
-     uint32_t pos_marker_cached_position;   // RT-thread-private, not atomic
-     uint32_t pos_marker_start_position;    // RT-thread-private, not atomic
-     _Atomic uint8_t stream_ended;
+    uint32_t pos_marker_remaining;         // RT-thread-private, not atomic
+    uint32_t pos_marker_total;             // RT-thread-private, not atomic
+    uint32_t pos_marker_cached_position;   // RT-thread-private, not atomic
+    uint32_t pos_marker_start_position;    // RT-thread-private, not atomic
+    _Atomic uint8_t stream_ended;
 
     _Atomic jack_nframes_t play_pos_frames; // Current playback position in frames since start of audio at play samplerate
     char filename[MAX_FILENAME];
     _Atomic uint8_t time_ratio_dirty;       // True if time stretch ratio changed
-    float src_ratio;                        // Ratio of jack/file samplerate
+    double src_ratio;                       // Ratio of jack/file samplerate
     _Atomic float varispeed;                // Ratio to adjust speed and pitch - goes to zero when stopped to allow scrubbing
-    float play_varispeed;                   // Used to restore varispeed when starting playback
-    float speed;                            // Playback speed factor
+    _Atomic float play_varispeed;           // Used to restore varispeed when starting playback
+    _Atomic float speed;                    // Playback speed factor
     int8_t semitones;                       // Pitch shift factor semitones
     int8_t cents;                           // Pitch shift factor cents
-    float pitch;                            // Pitch shift factor (calculated from semitones & cents)
+    _Atomic float pitch;                    // Pitch shift factor (calculated from semitones & cents)
 
     RubberBandState rb_state;              // Rubberband time/pitch warp engine state reference
 };
