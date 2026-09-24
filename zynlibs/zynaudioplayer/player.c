@@ -105,10 +105,10 @@ void send_notifications(uint8_t id) {
 // Detects whether the effective playback direction has changed since we last read or
 // stretched audio and, if so, flushes the raw/stretch pipeline so newly-read audio
 // reflects the new direction.
-static void handle_direction_change(struct AUDIO_PLAYER* pPlayer, uint8_t* pLastBReverse, SNDFILE* pFile, SRC_STATE* pSrcState, size_t* pNUnusedFrames,
+static void handle_direction_change(struct AUDIO_PLAYER* pPlayer, uint8_t* pLastReverse, SNDFILE* pFile, SRC_STATE* pSrcState, size_t* pNUnusedFrames,
                                      uint8_t* pFinalSignalled) {
     uint8_t bReverse = (pPlayer->varispeed < 0.0);
-    if (bReverse == *pLastBReverse)
+    if (bReverse == *pLastReverse)
         return;
     jack_ringbuffer_reset(pPlayer->ringbuffer_a);
     jack_ringbuffer_reset(pPlayer->ringbuffer_b);
@@ -119,7 +119,74 @@ static void handle_direction_change(struct AUDIO_PLAYER* pPlayer, uint8_t* pLast
     sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
     if (pos >= 0)
         pPlayer->file_read_pos = pos;
-    *pLastBReverse = bReverse;
+    if (pPlayer->file_read_status == IDLE || pPlayer->file_read_status == WAITING)
+        atomic_store_explicit(&pPlayer->file_read_status, LOADING, memory_order_relaxed);
+    atomic_store_explicit(&pPlayer->stream_ended, 0, memory_order_relaxed);
+    *pLastReverse = bReverse;
+}
+
+// Demuxes nFrames of interleaved audio from pBuffer into the raw (pre-stretch) ring buffers A & B.
+// Returns the number of frames written. Stops early (with an error) if either ring buffer is full.
+static size_t demux_to_raw(struct AUDIO_PLAYER* pPlayer, const float* pBuffer, size_t nFrames) {
+    int nChannels = pPlayer->sf_info.channels;
+    size_t frame;
+    for (frame = 0; frame < nFrames; ++frame) {
+        if (jack_ringbuffer_write_space(pPlayer->ringbuffer_a) < sizeof(float) ||
+            jack_ringbuffer_write_space(pPlayer->ringbuffer_b) < sizeof(float)) {
+            fprintf(stderr, "libZynAudioPlayer Underrun during writing to ringbuffer - this should never happen!!!\n");
+            break;
+        }
+        float fA = 0.0f, fB = 0.0f;
+        size_t sample = frame * nChannels;
+        if (nChannels > 1) {
+            if (pPlayer->track_a < 0) {
+                // Send sum of odd channels to A
+                for (int track = 0; track < nChannels; track += 2)
+                    fA += pBuffer[sample + track] / (nChannels / 2);
+            } else {
+                // Send pPlayer->track to A
+                fA = pBuffer[sample + pPlayer->track_a];
+            }
+            if (pPlayer->track_b < 0) {
+                // Send sum of odd channels to B
+                for (int track = 0; track + 1 < nChannels; track += 2)
+                    fB += pBuffer[sample + track + 1] / (nChannels / 2);
+            } else {
+                // Send pPlayer->track to B
+                fB = pBuffer[sample + pPlayer->track_b];
+            }
+        } else {
+            // Mono source so send to both outputs
+            fA = pBuffer[sample] / 2;
+            fB = pBuffer[sample] / 2;
+        }
+        jack_ringbuffer_write(pPlayer->ringbuffer_a, (const char*)(&fA), sizeof(float));
+        jack_ringbuffer_write(pPlayer->ringbuffer_b, (const char*)(&fB), sizeof(float));
+    }
+    return frame;
+}
+
+//  Drains the samplerate converter at end of input (EOF or loop point).
+static void flush_src(struct AUDIO_PLAYER* pPlayer, SRC_STATE* pSrcState, SRC_DATA* pSrcData, float* pBufferIn, size_t* pNUnusedFrames) {
+    int nChannels = pPlayer->sf_info.channels;
+    pSrcData->end_of_input = 1;
+    for (int i = 0; i < 16; ++i) {
+        pSrcData->input_frames = *pNUnusedFrames;
+        int rc = src_process(pSrcState, pSrcData);
+        if (rc) {
+            fprintf(stderr, "libzynaudioplayer error: SRC flush failed: %s\n", src_strerror(rc));
+            break;
+        }
+        size_t nUsed = pSrcData->input_frames_used;
+        *pNUnusedFrames -= nUsed;
+        if (*pNUnusedFrames)
+            memmove(pBufferIn, pBufferIn + nUsed * nChannels, *pNUnusedFrames * nChannels * sizeof(float));
+        if (pSrcData->output_frames_gen == 0)
+            break;
+        DPRINTF("libzynaudioplayer SRC flush produced %ld frames\n", pSrcData->output_frames_gen);
+        demux_to_raw(pPlayer, pSrcData->data_out, pSrcData->output_frames_gen);
+    }
+    *pNUnusedFrames = 0;
 }
 
 // Thread function to open file, stream content to ring buffers AND time-stretch it.
@@ -211,7 +278,7 @@ void* file_thread_fn(void* param) {
         DPRINTF("Opened file '%s' with samplerate %u, frames: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, pPlayer->sf_info.frames);
 
         int64_t pipelinePos = (int64_t)pPlayer->play_pos_frames;
-        uint8_t lastBReverse = (pPlayer->varispeed < 0.0);
+        uint8_t lastReverse = (pPlayer->varispeed < 0.0);
         uint8_t finalSignalled = 0;
 
         atomic_store_explicit(&pPlayer->stream_ended, 0, memory_order_relaxed);
@@ -228,7 +295,7 @@ void* file_thread_fn(void* param) {
                 atomic_store_explicit(&pPlayer->pos_marker_wr, 0, memory_order_relaxed);
                 atomic_store_explicit(&pPlayer->pos_marker_rd, 0, memory_order_relaxed);
                 pipelinePos  = (int64_t)pPlayer->play_pos_frames; // play_pos_frames here is the caller's seek target
-                lastBReverse = (pPlayer->varispeed < 0.0);        // re-sync - this reset already accounts for the current direction
+                lastReverse = (pPlayer->varispeed < 0.0);        // re-sync - this reset already accounts for the current direction
                 sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
                 if (pos >= 0)
                     pPlayer->file_read_pos = pos;
@@ -258,7 +325,7 @@ void* file_thread_fn(void* param) {
                 atomic_store_explicit(&pPlayer->file_read_status, LOADING, memory_order_relaxed);
 
             while (pPlayer->file_read_status == LOADING) {
-                handle_direction_change(pPlayer, &lastBReverse, pFile, pSrcState, &nUnusedFrames, &finalSignalled);
+                handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &nUnusedFrames, &finalSignalled);
 
                 int nFramesRead = 0;
                 // Load block of data from file to SRC or output buffer
@@ -269,29 +336,16 @@ void* file_thread_fn(void* param) {
 
                     uint8_t bReverse = (pPlayer->varispeed < 0.0);
                     if (bReverse) {
-                        if (pPlayer->loop == 1) {
-                            // Limit read to crop range
-                            if (pPlayer->file_read_pos <= pPlayer->crop_start)
-                                nMaxFrames = 0;
-                            else if (pPlayer->file_read_pos - nMaxFrames < pPlayer->crop_start)
-                                nMaxFrames = pPlayer->file_read_pos - pPlayer->crop_start;
-                        } else if (pPlayer->file_read_pos - nMaxFrames < pPlayer->crop_start) {
-                            // Limit read to crop range
+                        if (pPlayer->file_read_pos <= pPlayer->crop_start)
+                            nMaxFrames = 0;
+                        else if (pPlayer->file_read_pos < pPlayer->crop_start + nMaxFrames)
                             nMaxFrames = pPlayer->file_read_pos - pPlayer->crop_start;
-                        }
                     } else {
-                        if (pPlayer->loop == 1) {
-                            // Limit read to crop range
-                            if (pPlayer->file_read_pos >= pPlayer->crop_end)
-                                nMaxFrames = 0;
-                            else if (pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end)
-                                nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
-                        } else if (pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end) {
-                            // Limit read to crop range
+                        if (pPlayer->file_read_pos >= pPlayer->crop_end)
+                            nMaxFrames = 0;
+                        else if (pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end)
                             nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
-                        }
                     }
-
                     if (srcData.src_ratio == 1.0) {
                         size_t nTotalValid = nUnusedFrames + nFramesRead;
                         // No SRC required so populate SRC output buffer directly
@@ -325,8 +379,10 @@ void* file_thread_fn(void* param) {
                         if (bReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
                                 pPlayer->file_read_pos -= nMaxFrames;
-                            else
+                            else {
+                                nMaxFrames = pPlayer->file_read_pos;
                                 pPlayer->file_read_pos = 0;
+                            }
                             sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
                             if (pos >= 0) {
                                 nFramesRead = sf_readf_float(pFile, pBufferRev, nMaxFrames);
@@ -361,51 +417,20 @@ void* file_thread_fn(void* param) {
                                 nUnusedFrames = nTotalValid - srcData.input_frames_used;
                                 nFramesRead   = srcData.output_frames_gen;
                                 // Shift unused samples to start of buffer
-                                memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * pPlayer->sf_info.channels,
-                                       nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
+                                memmove(pBufferIn, pBufferIn + srcData.input_frames_used * pPlayer->sf_info.channels, nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
                             }
-                        } else {
-                            // DPRINTF("No SRC, read %u frames\n", nFramesRead);
                         }
                         // Demux samples and populate raw (pre-stretch) ring buffers
-                        for (size_t frame = 0; frame < nFramesRead; ++frame) {
-                            float fA = 0.0f, fB = 0.0f;
-                            size_t sample = frame * pPlayer->sf_info.channels;
-                            if (pPlayer->sf_info.channels > 1) {
-                                if (pPlayer->track_a < 0) {
-                                    // Send sum of odd channels to A
-                                    for (int track = 0; track < pPlayer->sf_info.channels; track += 2)
-                                        fA += pBufferOut[sample + track] / (pPlayer->sf_info.channels / 2);
-                                } else {
-                                    // Send pPlayer->track to A
-                                    fA = pBufferOut[sample + pPlayer->track_a];
-                                }
-                                if (pPlayer->track_b < 0) {
-                                    // Send sum of odd channels to B
-                                    for (int track = 0; track + 1 < pPlayer->sf_info.channels; track += 2)
-                                        fB += pBufferOut[sample + track + 1] / (pPlayer->sf_info.channels / 2);
-                                } else {
-                                    // Send pPlayer->track to B
-                                    fB = pBufferOut[sample + pPlayer->track_b];
-                                }
-                            } else {
-                                // Mono source so send to both outputs
-                                fA = pBufferOut[sample] / 2;
-                                fB = pBufferOut[sample] / 2;
-                            }
-                            int nWrote = jack_ringbuffer_write(pPlayer->ringbuffer_b, (const char*)(&fB), sizeof(float));
-                            if (sizeof(float) < jack_ringbuffer_write(pPlayer->ringbuffer_a, (const char*)(&fA), nWrote)) {
-                                // Shouldn't underun due to previous wait for space but just in case...
-                                fprintf(stderr, "libZynAudioPlayer Underrun during writing to ringbuffer - this should never happen!!!\n");
-                                break;
-                            }
-                        }
+                        demux_to_raw(pPlayer, pBufferOut, nFramesRead);
                     } else if (pPlayer->loop == 1) {
+                        if (srcData.src_ratio != 1.0)
+                            flush_src(pPlayer, pSrcState, &srcData, pBufferIn, &nUnusedFrames);
                         // Short read - looping so fill from loop start point in file
                         atomic_store_explicit(&pPlayer->file_read_status, LOOPING, memory_order_relaxed);
-                        // srcData.end_of_input = 1;
                         DPRINTF("libzynaudioplayer read to loop point in input file - setting loading status to looping\n");
                     } else {
+                        if (srcData.src_ratio != 1.0)
+                            flush_src(pPlayer, pSrcState, &srcData, pBufferIn, &nUnusedFrames);
                         // End of file
                         atomic_store_explicit(&pPlayer->file_read_status, IDLE, memory_order_relaxed);
                         srcData.end_of_input = 1;
@@ -416,7 +441,6 @@ void* file_thread_fn(void* param) {
                 }
             }
 
-            uint8_t bReverseStretch = (pPlayer->varispeed < 0.0);
             for (;;) {
                 if (pPlayer->file_read_status == SEEKING)
                     break;
@@ -434,20 +458,19 @@ void* file_thread_fn(void* param) {
                 if (pPlayer->play_state == STOPPED)
                     break;
 
-                handle_direction_change(pPlayer, &lastBReverse, pFile, pSrcState, &nUnusedFrames, &finalSignalled);
+                handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &nUnusedFrames, &finalSignalled);
 
                 if (pPlayer->time_ratio_dirty) {
                     float abs_varispeed = fabs(pPlayer->varispeed);
                     float speed = pPlayer->speed;
                     float pitch = pPlayer ->pitch;
-                    if (abs_varispeed > MIN_VARISPEED) {
+                    if (abs_varispeed >= MIN_VARISPEED) {
                         speed *= abs_varispeed;
                         pitch *= abs_varispeed;
                     }
                     rubberband_set_pitch_scale(pPlayer->rb_state, pitch);
                     rubberband_set_time_ratio(pPlayer->rb_state, 1.0 / speed);
                     atomic_store_explicit(&pPlayer->time_ratio_dirty, 0, memory_order_relaxed);
-                    bReverseStretch = (pPlayer->varispeed < 0.0);
                 }
 
                 int available = rubberband_available(pPlayer->rb_state);
@@ -493,11 +516,11 @@ void* file_thread_fn(void* param) {
                 jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)pInB, nRead * sizeof(float));
                 rubberband_process(pPlayer->rb_state, (const float* const*)stretch_input_buffers, nRead, 0);
 
-                pipelinePos += bReverseStretch ? -(int64_t)nRead : (int64_t)nRead;
+                pipelinePos += lastReverse ? -(int64_t)nRead : (int64_t)nRead;
                 if (pPlayer->loop == 1) {
                     int64_t cropStart = (int64_t)pPlayer->crop_start_src;
                     int64_t cropEnd   = (int64_t)pPlayer->crop_end_src;
-                    if (bReverseStretch) {
+                    if (lastReverse) {
                         if (pipelinePos <= cropStart) {
                             int64_t i = cropStart - pipelinePos;
                             int64_t span = cropEnd - cropStart;
@@ -510,6 +533,14 @@ void* file_thread_fn(void* param) {
                             pipelinePos %= cropEnd;
                         pipelinePos += cropStart;
                     }
+                } else {
+                    // Not looping, so the position must stay within the crop range.
+                    int64_t cropStart = (int64_t)pPlayer->crop_start_src;
+                    int64_t cropEnd   = (int64_t)pPlayer->crop_end_src;
+                    if (pipelinePos < cropStart)
+                        pipelinePos = cropStart;
+                    else if (pipelinePos > cropEnd)
+                        pipelinePos = cropEnd;
                 }
             }
 
@@ -728,64 +759,74 @@ uint8_t save(uint8_t id, const char* filename) {
     if (!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
 
-    // Reload any players that have the new filename loaded
-    uint8_t overwrite[MAX_PLAYERS];
-    for (size_t i = 0; i < MAX_PLAYERS; ++i) {
-        struct AUDIO_PLAYER* player = g_players[i];
-        if (player && strcmp(player->filename, filename) == 0) {
-            unload(id);
-            overwrite[i] = 1;
-        } else
-            overwrite[i] = 0;
-    }
+    char srcFilename[MAX_FILENAME];
+    strncpy(srcFilename, pPlayer->filename, MAX_FILENAME - 1);
+    srcFilename[MAX_FILENAME - 1] = '\0';
+    sf_count_t cropStart = pPlayer->crop_start;
+    sf_count_t cropEnd   = pPlayer->crop_end;
+
+    char tmpFilename[MAX_FILENAME + 8];
+    snprintf(tmpFilename, sizeof(tmpFilename), "%s.tmp", filename);
 
     SF_INFO sfinfo;
-    sfinfo.format   = 0; // This triggers sf_open to populate info structure
-
-    SNDFILE* infile = sf_open(pPlayer->filename, SFM_READ, &sfinfo);
+    sfinfo.format = 0; // This triggers sf_open to populate info structure
+    SNDFILE* infile = sf_open(srcFilename, SFM_READ, &sfinfo);
     if (!infile || sfinfo.channels < 1) {
-        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename, sf_strerror(infile));
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", srcFilename, sf_strerror(infile));
+        if (infile)
+            sf_close(infile);
         return 0;
     }
 
     sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
-
     if (!sf_format_check(&sfinfo)) {
         sf_close(infile);
         fprintf(stderr, "Invalid encoding\n");
         return 0;
     }
 
-    SNDFILE* outfile = sf_open(filename, SFM_WRITE, &sfinfo);
+    SNDFILE* outfile = sf_open(tmpFilename, SFM_WRITE, &sfinfo);
     if (!outfile) {
-        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", filename, sf_strerror(outfile));
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", tmpFilename, sf_strerror(outfile));
         sf_close(infile);
         return 0;
     }
 
-    int32_t count = 0;
-
     float buffer[1024 * sfinfo.channels];
-    sf_count_t pos = sf_seek(infile, pPlayer->crop_start, SEEK_SET);
-    uint32_t duration = pPlayer->crop_end - pPlayer->crop_start;
-    while (duration) {
-        uint32_t frames = sf_readf_float(infile, buffer, 1024);
-        if (duration > frames) {
-            sf_writef_float(outfile, buffer, frames);
-            duration -= frames;
-        } else {
-            sf_writef_float(outfile, buffer, duration);
-            duration = 0;
-        }
+    sf_seek(infile, cropStart, SEEK_SET);
+    sf_count_t remaining = cropEnd - cropStart;
+    while (remaining > 0) {
+        sf_count_t frames = sf_readf_float(infile, buffer, MIN(remaining, 1024));
+        if (frames <= 0)
+            break;
+        sf_writef_float(outfile, buffer, frames);
+        remaining -= frames;
     }
     sf_close(infile);
     sf_close(outfile);
+
+    uint8_t overwrite[MAX_PLAYERS];
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        struct AUDIO_PLAYER* player = g_players[i];
+        if (player && player->file_open == FILE_OPEN && strcmp(player->filename, filename) == 0) {
+            unload(i);
+            overwrite[i] = 1;
+        } else
+            overwrite[i] = 0;
+    }
+
+    uint8_t result = 1;
+    if (rename(tmpFilename, filename)) {
+        fprintf(stderr, "libaudioplayer error: failed to rename %s to %s\n", tmpFilename, filename);
+        remove(tmpFilename);
+        result = 0;
+    }
 
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (overwrite[i])
             load(i, filename);
     }
-    return 1;
+    return result;
 }
 
 const char* get_filename(uint8_t id) {
@@ -905,7 +946,12 @@ void start_playback(uint8_t id) {
     if (pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
         if (pPlayer->play_varispeed < 0.0 && pPlayer->play_pos_frames <= pPlayer->crop_start_src)
             pPlayer->play_varispeed = 1.0;
+        uint8_t bAtEnd = (pPlayer->play_pos_frames >= pPlayer->crop_end_src) || (!pPlayer->loop && pPlayer->stream_ended);
+        if (pPlayer->play_varispeed >= 0.0 && bAtEnd)
+            set_position(id, 0.0);
         atomic_store_explicit(&pPlayer->varispeed, pPlayer->play_varispeed, memory_order_relaxed);
+        if (pPlayer->play_varispeed < 0.0)
+            atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
         atomic_store_explicit(&pPlayer->play_state, STARTING, memory_order_relaxed);
         atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);
     }
@@ -1167,30 +1213,41 @@ int8_t get_pitch_cent(uint8_t id) {
     return pPlayer->cents;
 }
 
+// Returns true if playback in the direction of ratio would immediately run beyond a crop point.
+static uint8_t is_at_crop_limit(struct AUDIO_PLAYER* pPlayer, float ratio) {
+    if (ratio < 0.0)
+        return pPlayer->play_pos_frames <= pPlayer->crop_start_src;
+    return pPlayer->play_pos_frames >= pPlayer->crop_end_src ||
+           (!pPlayer->loop && pPlayer->stream_ended && pPlayer->file_read_status != SEEKING);
+}
+
 void set_varispeed(uint8_t id, float ratio) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
-    if (!pPlayer || fabs(ratio) > MAX_VARISPEED)
+    float abs_ratio = fabs(ratio);
+    if (!pPlayer || abs_ratio > MAX_VARISPEED)
         return;
 
-    float abs_ratio = fabs(ratio);
-
     // Check if moving into or through zone too small to reliably varispeed
-    uint8_t stop  = ((pPlayer->varispeed >= MIN_VARISPEED && ratio < MIN_VARISPEED) || pPlayer->varispeed <= -MIN_VARISPEED && ratio > -MIN_VARISPEED);
+    uint8_t stop  = (abs_ratio < MIN_VARISPEED && (fabs(pPlayer->varispeed) >= MIN_VARISPEED));
     // Check for scrubbing
     uint8_t start = (pPlayer->play_state != PLAYING && abs_ratio >= MIN_VARISPEED);
+    if (start && is_at_crop_limit(pPlayer, ratio)) {
+        pPlayer->last_varispeed = NAN; // Triggers notification
+        return;
+    }
 
     if (abs_ratio >= MIN_VARISPEED)
         pPlayer->play_varispeed = ratio;
     else
         pPlayer->play_varispeed = 1.0;
     atomic_store_explicit(&pPlayer->varispeed, ratio, memory_order_relaxed);
-    atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);
 
     if (stop && pPlayer->play_state != STOPPED) {
         atomic_store_explicit(&pPlayer->play_state, STOPPING, memory_order_relaxed);
-    }
-    if (start && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
-        atomic_store_explicit(&pPlayer->play_state, STARTING, memory_order_relaxed);
+    } else if (start) {
+        start_playback(id);
+    } else {
+        atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);
     }
 }
 

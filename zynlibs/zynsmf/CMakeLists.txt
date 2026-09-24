@@ -11,6 +11,7 @@ link_directories(/usr/local/lib)
 
 add_library(zynsmf SHARED zynsmf.cpp event.cpp track.cpp smf.cpp)
 add_definitions(-Werror)
+target_compile_options(zynsmf PRIVATE -Wmisleading-indentation)
 target_link_libraries(zynsmf jack)
 
 install(TARGETS zynsmf LIBRARY DESTINATION lib)

@@ -501,10 +501,10 @@ bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uin
     if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || duration > (m_nBeats * m_nStepsPerBeat))
         return false;
 
-	if (m_bInterpolateCC[control]) stepControlEvents(control);
+    if (m_bInterpolateCC[control]) stepControlEvents(control);
     StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration, offset);
 	pEvent->setValue2end(valueEnd);
-	if (m_bInterpolateCC[control]) joinControlEvents(control);
+    if (m_bInterpolateCC[control]) joinControlEvents(control);
 
     return true;
 }
