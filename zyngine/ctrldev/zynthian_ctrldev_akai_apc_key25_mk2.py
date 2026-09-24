@@ -383,10 +383,6 @@ class FeedbackLEDs:
     def clear_delayed(self, led):
         self._timer.remove(led)
 
-
-class RefreshTimer(IntervalTimer):
-    RESOLUTION = 0.4
-
 # --------------------------------------------------------------------------
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
@@ -483,25 +479,13 @@ class DeviceHandler(ModeHandlerBase):
         self._is_playing = set()
         self._is_recording = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
-        self._refresh_timer = RefreshTimer()
         self.cuia_queue = state_manager.cuia_queue
 
     def __del__(self):
         self._btn_timer.end()
-        self._refresh_timer.end()
 
     def set_active(self, active):
         super().set_active(active)
-        # Defined to force update of launcher pad when leaving this mode https://github.com/zynthian/zynthian-issue-tracking/issues/1574
-        if not active:
-            self._refresh_timer.remove('refresh_leds')
-            #self._zynseq.libseq.updateSequenceInfo()
-        else:
-            self._refresh_timer.add('refresh_leds', 1, self.refresh_timed)
-
-    def refresh_timed(self, name):
-        if (name == 'refresh_leds'):
-            self._refresh()
 
     def refresh(self):
         self._leds.all_off()
@@ -2964,6 +2948,9 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self.rows = 5  # Quantity of rows of controllers, usually mapped to phrases
 
         self._signals = [
+
+            (zynsigman.S_WSLEDS, zynsigman.SS_WSLEDS_UPDATE, self.wsled_cb),
+
             (zynsigman.S_GUI,
                 zynsigman.SS_GUI_SHOW_SCREEN,
                 self._on_gui_show_screen),
@@ -3012,6 +2999,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler.set_active(False)
         super().end()
         zynthian_ctrldev_zynpad.end(self)
+
+    def wsled_cb(self):
+        if self._current_handler == self._device_handler:
+            self._device_handler._refresh()
 
     def refresh(self):
         super().refresh()
