@@ -325,6 +325,7 @@ class zynseq(zynthian_engine):
         self.bpb = 4
         self.beat = 0 # Current beat of bar
         self.clippy = None # Clippy engine object
+        self.last_beat_status = False # True when playing during last beat
         self.reset()
 
     # Destroy instance of shared library
@@ -717,7 +718,9 @@ class zynseq(zynthian_engine):
 
     def update_beat(self):
         beat = self.libseq.getBeat()
-        if beat != self.beat:
+        playing = self.playing_sequences != 0
+        if beat != self.beat or playing != self.last_beat_status:
+            self.last_beat_status = playing
             self.beat = beat
             zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, beat=beat)
 

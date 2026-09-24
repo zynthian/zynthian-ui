@@ -60,9 +60,10 @@ class zynthian_wsleds_base:
 
         # Beat blinking variables
         self.beat = 0
-        self.beat_state = 0
+        self.beat_state = False
         self.beat_color = self.wscolor_default
         self.beat_led = None
+        self.metro_mode = 0
 
         self.ended = False
 
@@ -187,17 +188,32 @@ class zynthian_wsleds_base:
 
         self.wsleds[i] = color
 
+    def metro_cb(self, mode, volume):
+        self.metro_mode = mode
+        if mode == 0:
+            self.wsleds[self.beat_led] = self.wscolor_default
+        elif self.zyngui.state_manager.zynseq.playing_sequences == 0:
+            self.wsleds[self.beat_led] = self.beat_color
+
     def beat_cb(self, beat):
-        if self.beat_led is not None and self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() > 0:
-            if beat != self.beat:
-                self.beat = self.beat
-                if self.beat_state:
-                    self.wsleds[self.beat_led] = self.beat_color
-                    self.beat_state = 0
-                else:
-                    self.wsleds[self.beat_led] = self.wscolor_off
-                    self.beat_state = 1
-                self.show()
+        if self.beat_led is None or self.metro_mode == 0:
+            return
+
+        if self.beat != beat:
+            self.beat_state = not self.beat_state
+            if self.beat_state:
+                self.wsleds[self.beat_led] = self.wscolor_off
+            else:
+                self.wsleds[self.beat_led] = self.beat_color
+            self.beat = beat
+        if beat == 1:
+            if self.metro_mode == 1 and self.zyngui.state_manager.zynseq.playing_sequences == 0:
+                self.wsleds[self.beat_led] = self.beat_color
+            elif self.metro_mode != 4:
+                self.beat_state = False
+                self.wsleds[self.beat_led] = self.wscolor_active2
+
+        self.show()
 
     def update(self):
         # Ignore refreshes once end() has lighted-off the LEDs, so a late call
