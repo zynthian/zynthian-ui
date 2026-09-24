@@ -286,7 +286,8 @@ void* file_thread_fn(void* param) {
             atomic_store_explicit(&pPlayer->file_open, FILE_OPEN, memory_order_release);
         }
 
-        DPRINTF("Opened file '%s' with samplerate %u, frames: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, pPlayer->sf_info.frames);
+        DPRINTF("Opened file '%s' with samplerate %d, frames: %lld\n", pPlayer->filename, pPlayer->sf_info.samplerate,
+                (long long)pPlayer->sf_info.frames);
 
         int64_t pipelinePos = (int64_t)pPlayer->play_pos_frames;
         uint8_t lastReverse = (pPlayer->varispeed < 0.0);
@@ -354,7 +355,6 @@ void* file_thread_fn(void* param) {
                             nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
                     }
                     if (srcData.src_ratio == 1.0) {
-                        size_t nTotalValid = nUnusedFrames + nFramesRead;
                         // No SRC required so populate SRC output buffer directly
                         if (lastReverse) {
                             if (pPlayer->file_read_pos > nMaxFrames)
@@ -598,7 +598,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         jack_default_audio_sample_t* pOutB = jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
         memset(pOutA, 0, nFrames * sizeof(float));
         memset(pOutB, 0, nFrames * sizeof(float));
-        if (!pPlayer || pPlayer->file_open != FILE_OPEN)
+        if (pPlayer->file_open != FILE_OPEN)
             continue;
         size_t a_count = 0; // Quantity of frames delivered to JACK this cycle
         uint8_t readStatus = atomic_load_explicit(&pPlayer->file_read_status, memory_order_acquire);
@@ -611,11 +611,10 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
                                   memory_order_relaxed);
             pPlayer->pos_marker_remaining       = 0;
             pPlayer->pos_marker_total           = 0;
-            pPlayer->pos_marker_start_position  = pPlayer->play_pos_frames;
-            pPlayer->pos_marker_cached_position = pPlayer->play_pos_frames;
-            atomic_store_explicit(&pPlayer->flush_ack, flushReq, memory_order_release);
             pPlayer->pos_marker_start_position  = atomic_load_explicit(&pPlayer->seek_pos_frames, memory_order_relaxed);
-            pPlayer->pos_marker_cached_position = pPlayer->pos_marker_start_position;        }
+            pPlayer->pos_marker_cached_position = pPlayer->pos_marker_start_position;
+            atomic_store_explicit(&pPlayer->flush_ack, flushReq, memory_order_release);
+        }
 
         if (pPlayer->play_state == STARTING && readStatus != SEEKING) {
             atomic_store_explicit(&pPlayer->play_state, PLAYING, memory_order_relaxed);
@@ -625,7 +624,8 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             pPlayer->pos_marker_cached_position = pPlayer->play_pos_frames;
         }
 
-        if ((pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) && readStatus != SEEKING) {            size_t nBytes = MIN(jack_ringbuffer_read_space(pPlayer->ringbuffer_out_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_out_b));
+        if ((pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) && readStatus != SEEKING) {
+            size_t nBytes = MIN(jack_ringbuffer_read_space(pPlayer->ringbuffer_out_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_out_b));
             nBytes -= nBytes % sizeof(float);
             nBytes = MIN(nBytes, (size_t)nFrames * sizeof(float));
             a_count = jack_ringbuffer_read(pPlayer->ringbuffer_out_a, (char*)pOutA, nBytes) / sizeof(float);
@@ -682,7 +682,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             atomic_store_explicit(&pPlayer->varispeed, 0.0, memory_order_relaxed);
             atomic_store_explicit(&pPlayer->play_state, STOPPED, memory_order_relaxed);
             request_seek(pPlayer, pPlayer->play_pos_frames);
-            DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count,
+            DPRINTF("libzynaudioplayer: Stopped. Used %zu frames from %u in buffer to soft mute (fade). Silencing remaining %zu frames (%zu bytes)\n", a_count,
                     nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
     }
@@ -759,7 +759,11 @@ uint8_t load(uint8_t id, const char* filename) {
     while (pPlayer->file_open == FILE_OPENING)
         usleep(1000); //!@todo Optimise wait for file open
 
-    return (pPlayer->file_open == FILE_OPEN);
+    if (pPlayer->file_open != FILE_OPEN) {
+        pthread_join(pPlayer->file_thread, NULL);
+        return 0;
+    }
+    return 1;
 }
 
 void unload(uint8_t id) {
@@ -767,8 +771,10 @@ void unload(uint8_t id) {
     if (!pPlayer || pPlayer->file_open == FILE_CLOSED)
         return;
     stop_playback(id);
-    while (pPlayer->play_state != STOPPED)
+    for (int i = 0; i < 100 && pPlayer->play_state != STOPPED; ++i)
         usleep(1000);
+    if (pPlayer->play_state != STOPPED)
+        atomic_store_explicit(&pPlayer->play_state, STOPPED, memory_order_relaxed);
     atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
     pthread_join(pPlayer->file_thread, NULL);
 }
@@ -871,7 +877,6 @@ void set_position(uint8_t id, float time) {
         frames = pPlayer->crop_end_src;
     else if (frames < pPlayer->crop_start_src)
         frames = pPlayer->crop_start_src;
-    atomic_store_explicit(&pPlayer->play_pos_frames, frames, memory_order_relaxed);
     request_seek(pPlayer, frames);
     DPRINTF("New position requested, setting loading status to SEEKING\n");
 }
@@ -990,9 +995,6 @@ const char* get_codec(uint8_t id) {
     struct AUDIO_PLAYER* pPlayer = get_player(id);
     if (!pPlayer || pPlayer->file_open != FILE_OPEN)
         return "NONE";
-    static char buffer[20];
-    const char* sType    = NULL;
-    const char* sSubtype = NULL;
 
     SF_FORMAT_INFO format_info;
     format_info.format = pPlayer->sf_info.format;
@@ -1073,7 +1075,7 @@ uint8_t add_player() {
         jack_port_unregister(g_jack_client, pPlayer->jack_out_a);
         error = 1;
     }
-    DPRINTF("libaudioplayer player %u registered JACK audio output ports %u & %u\n", pPlayer, pPlayer->jack_out_a, pPlayer->jack_out_b);
+    DPRINTF("libaudioplayer player %u registered JACK audio output ports %s & %s\n", id, jack_port_name(pPlayer->jack_out_a), jack_port_name(pPlayer->jack_out_b));
     if (error) {
         free(pPlayer);
         return 255;
@@ -1090,12 +1092,11 @@ void remove_player(uint8_t id) {
     g_removePlayerId = id;
     for (int i = 0; i < 100 && g_removePlayerId != 255; ++i)
         usleep(1000); // Wait for process cycle to complete with timeout
-    if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a)) {
-        fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port A %02d\n", id, pPlayer, pPlayer->jack_out_a);
-    }
-    if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
-        fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port B %02d\n", id, pPlayer, pPlayer->jack_out_b);
-    }
+
+    if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a))
+        fprintf(stderr, "libaudioplayer error: player %u cannot unregister audio output port %s\n", id, jack_port_name(pPlayer->jack_out_a));
+    if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b))
+        fprintf(stderr, "libaudioplayer error: player %u cannot unregister audio output port %s\n", id, jack_port_name(pPlayer->jack_out_b));
     free(pPlayer);
 }
 

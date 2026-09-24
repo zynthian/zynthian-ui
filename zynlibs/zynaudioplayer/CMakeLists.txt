@@ -9,8 +9,13 @@ include(CheckLibraryExists)
 link_directories(/usr/local/lib)
 
 add_library(zynaudioplayer SHARED player.c)
-add_definitions(-Werror)
-target_compile_options(zynaudioplayer PRIVATE -Wmisleading-indentation)
+
+option(ZYNAUDIOPLAYER_WERROR "Treat compiler warnings as errors" ON)
+target_compile_options(zynaudioplayer PRIVATE -Wall)
+if(ZYNAUDIOPLAYER_WERROR)
+    target_compile_options(zynaudioplayer PRIVATE -Werror)
+endif()
+
 target_link_libraries(zynaudioplayer jack sndfile pthread samplerate rubberband)
 
 install(TARGETS zynaudioplayer LIBRARY DESTINATION lib)
