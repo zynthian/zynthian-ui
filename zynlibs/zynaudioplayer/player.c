@@ -248,8 +248,6 @@ void* file_thread_fn(void* param) {
         pPlayer->ringbuffer_out_b = jack_ringbuffer_create(STRETCH_LOOKAHEAD_FRAMES * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_out_b);
 
-        atomic_store_explicit(&pPlayer->file_open, FILE_OPEN, memory_order_relaxed);
-
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels];   // Buffer used to read sample data from file
         float pBufferOut[pPlayer->output_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write converted sample data to
@@ -273,6 +271,8 @@ void* file_thread_fn(void* param) {
         if (!pSrcState) {
             fprintf(stderr, "Failed to create a samplerate converter: %d\n", nError);
             atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
+        } else {
+            atomic_store_explicit(&pPlayer->file_open, FILE_OPEN, memory_order_release);
         }
 
         DPRINTF("Opened file '%s' with samplerate %u, frames: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, pPlayer->sf_info.frames);
