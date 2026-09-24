@@ -291,24 +291,20 @@ void* file_thread_fn(void* param) {
                 // Main thread has signalled seek within file
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-                jack_ringbuffer_reset(pPlayer->ringbuffer_out_a);
-                jack_ringbuffer_reset(pPlayer->ringbuffer_out_b);
                 atomic_store_explicit(&pPlayer->stream_ended, 0, memory_order_relaxed);
-                // Fresh, disjoint stream of position markers starts now
-                atomic_store_explicit(&pPlayer->pos_marker_wr, 0, memory_order_relaxed);
-                atomic_store_explicit(&pPlayer->pos_marker_rd, 0, memory_order_relaxed);
                 pipelinePos  = (int64_t)pPlayer->play_pos_frames; // play_pos_frames here is the caller's seek target
                 lastReverse = (pPlayer->varispeed < 0.0);        // re-sync - this reset already accounts for the current direction
                 sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
                 if (pos >= 0)
                     pPlayer->file_read_pos = pos;
-                // DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
-                atomic_store_explicit(&pPlayer->file_read_status, LOADING, memory_order_relaxed);
                 src_reset(pSrcState);
                 rubberband_reset(pPlayer->rb_state); // Was signalled to the RT thread via g_reset_rb; now done directly, same thread
                 nUnusedFrames        = 0;
                 srcData.end_of_input = 0;
                 finalSignalled       = 0;
+                atomic_store_explicit(&pPlayer->flush_req, atomic_load_explicit(&pPlayer->flush_req, memory_order_relaxed) + 1,
+                                      memory_order_relaxed);
+                atomic_store_explicit(&pPlayer->file_read_status, LOADING, memory_order_release);
             } else if (pPlayer->file_read_status == LOOPING) {
                 // Reached loop end point and need to read from loop marker
                 sf_count_t pos;
@@ -442,8 +438,9 @@ void* file_thread_fn(void* param) {
                 }
             }
 
-            for (;;) {
-                if (pPlayer->file_read_status == SEEKING || pPlayer->play_state == STOPPED)
+            while (1) {
+                if (pPlayer->file_read_status == SEEKING || pPlayer->play_state == STOPPED ||
+                    atomic_load_explicit(&pPlayer->flush_ack, memory_order_acquire) != atomic_load_explicit(&pPlayer->flush_req, memory_order_relaxed))
                     break;
 
                 handle_direction_change(pPlayer, &lastReverse, pFile, pSrcState, &srcData, &nUnusedFrames, &finalSignalled, &pipelinePos);
@@ -588,7 +585,22 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         memset(pOutA, 0, nFrames * sizeof(float));
         memset(pOutB, 0, nFrames * sizeof(float));
 
-        if (pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING) {
+        uint8_t readStatus = atomic_load_explicit(&pPlayer->file_read_status, memory_order_acquire);
+
+        uint32_t flushReq = atomic_load_explicit(&pPlayer->flush_req, memory_order_relaxed);
+        if (flushReq != atomic_load_explicit(&pPlayer->flush_ack, memory_order_relaxed)) {
+            jack_ringbuffer_read_advance(pPlayer->ringbuffer_out_a, jack_ringbuffer_read_space(pPlayer->ringbuffer_out_a));
+            jack_ringbuffer_read_advance(pPlayer->ringbuffer_out_b, jack_ringbuffer_read_space(pPlayer->ringbuffer_out_b));
+            atomic_store_explicit(&pPlayer->pos_marker_rd, atomic_load_explicit(&pPlayer->pos_marker_wr, memory_order_acquire),
+                                  memory_order_relaxed);
+            pPlayer->pos_marker_remaining       = 0;
+            pPlayer->pos_marker_total           = 0;
+            pPlayer->pos_marker_start_position  = pPlayer->play_pos_frames;
+            pPlayer->pos_marker_cached_position = pPlayer->play_pos_frames;
+            atomic_store_explicit(&pPlayer->flush_ack, flushReq, memory_order_release);
+        }
+
+        if (pPlayer->play_state == STARTING && readStatus != SEEKING) {
             atomic_store_explicit(&pPlayer->play_state, PLAYING, memory_order_relaxed);
             pPlayer->pos_marker_remaining      = 0;
             pPlayer->pos_marker_total          = 0;
@@ -596,8 +608,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             pPlayer->pos_marker_cached_position = pPlayer->play_pos_frames;
         }
 
-        if ((pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) && pPlayer->file_read_status != SEEKING) {
-            size_t nBytes = MIN(jack_ringbuffer_read_space(pPlayer->ringbuffer_out_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_out_b));
+        if ((pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) && readStatus != SEEKING) {            size_t nBytes = MIN(jack_ringbuffer_read_space(pPlayer->ringbuffer_out_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_out_b));
             nBytes -= nBytes % sizeof(float);
             nBytes = MIN(nBytes, (size_t)nFrames * sizeof(float));
             a_count = jack_ringbuffer_read(pPlayer->ringbuffer_out_a, (char*)pOutA, nBytes) / sizeof(float);
@@ -723,7 +734,7 @@ uint8_t load(uint8_t id, const char* filename) {
     atomic_store_explicit(&pPlayer->file_open, FILE_OPENING, memory_order_relaxed);
     if (pthread_create(&pPlayer->file_thread, NULL, file_thread_fn, &id)) {
         fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
-        unload(id);
+        atomic_store_explicit(&pPlayer->file_open, FILE_CLOSED, memory_order_relaxed);
         return 0;
     }
     while (pPlayer->file_open == FILE_OPENING)

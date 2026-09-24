@@ -579,6 +579,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
         self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
         self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
+        self.widget_canvas.bind("<Button-4>", self.on_wheel)
+        self.widget_canvas.bind("<Button-5>", self.on_wheel)
         self.widget_canvas.grid(row=0, column=0, sticky='news')
 
         self.info_text_var = tkinter.StringVar()
@@ -646,6 +648,20 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
     def on_canvas_release(self, event):
         pass
+
+    def on_wheel(self, event):
+        """ Handle mouse wheel events to navigate the graph.
+        Args:
+            event: The mouse wheel event.
+        """
+
+        try:
+            if event.num == 5 or event.delta == -120:
+                self.processor.controllers_dict['zoom'].nudge(-1)
+            elif event.num == 4 or event.delta == 120:
+                self.processor.controllers_dict['zoom'].nudge(1)
+        except:
+            pass
 
     def load_file(self):
         # Run as background thread

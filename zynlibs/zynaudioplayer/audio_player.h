@@ -57,6 +57,8 @@ struct AUDIO_PLAYER {
     
     _Atomic uint8_t file_open;          // Used to flag thread to close file or thread to flag file failed to open
     _Atomic uint8_t file_read_status;   // File reading status (IDLE|SEEKING|LOADING)
+    _Atomic uint32_t flush_req;         // Incremented by the file thread to ask the JACK callback to discard queued output
+    _Atomic uint32_t flush_ack;         // Set by JACK callback to flush_req once it has discarded queued output
 
     _Atomic uint8_t play_state;         // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
     sf_count_t file_read_pos;           // Current file read position (frames)
