@@ -66,7 +66,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             self.list_data.append((self.zs3_note, 4, "Note", ["Add a note to this ZS3, shown by the ZS3 performance view.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_clone, 5, "Clone", ["Copy this ZS3 to a new one, placed just after it.", "zs3_new.png"]))
             if len(self.zyngui.state_manager.get_zs3_ids()) > 1:
-                self.list_data.append((self.zs3_move, 6, "Move", ["Move this ZS3 within the order that ZS3_NEXT / ZS3_PREV step through.\n\nBack in the ZS3 list, turn the knob or use the arrows to slide it, then select to finish.", "zs3_settings.png"]))
+                self.list_data.append((self.zs3_move, 6, "Move", ["Move this ZS3 up/down in the list.", "zs3_settings.png"]))
             self.list_data.append((self.zs3_delete, 7, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
 
             if "/" in self.zs3_id:

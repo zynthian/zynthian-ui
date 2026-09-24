@@ -103,12 +103,11 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def build_view(self):
         if super().build_view():
-            zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
-            zynsigman.register_queued(
-                zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             self.perf_zs3_id = self.zyngui.state_manager.last_zs3_id
             self.show_performance(self.alt_mode)
+            self.index = 0
             return True
         else:
             return False
@@ -117,10 +116,8 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         if self.shown:
             self.moving_zs3 = None
             self.disable_midi_learn()
-            zynsigman.unregister(
-                zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
-            zynsigman.unregister(
-                zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
+            zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             super().hide()
 
     def fill_list(self):
@@ -153,6 +150,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                 else:
                     title = f"{state['title']} ({id})"
             if id == self.moving_zs3:
+                self.index = idx
                 # Same marks as a phrase being moved in the launcher
                 if id == zs3_ids[0]:
                     title = f"⇓ {title}"
@@ -162,10 +160,10 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                     title = f"⇕ {title}"
                 info = "Use knob, arrows or touch-drag to move.\n\nSelect or back to finish."
             else:
-                info = "Restore ZS3.\n\nBold select for options."
-            self.list_data.append((id, state, title, [info + "\nALT for stage mode.", None]))
-            if id == self.zyngui.state_manager.last_zs3_id:
-                self.index = idx
+                info = "Restore ZS3.\n\nBold select for options.\nALT for stage mode."
+                if self.index == 0 and id == self.zyngui.state_manager.last_zs3_id:
+                    self.index = idx
+            self.list_data.append((id, state, title, [info, None]))
             idx += 1
 
         super().fill_list()
