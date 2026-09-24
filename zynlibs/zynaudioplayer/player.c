@@ -103,6 +103,13 @@ void send_notifications(uint8_t id) {
         g_cb_fn(id, pPlayer->play_state != STOPPED, pPlayer->loop, (float)(pPlayer->play_pos_frames) / g_samplerate, pPlayer->varispeed);
 }
 
+// Requests a seek to frames (JACK-rate domain)
+static void request_seek(struct AUDIO_PLAYER* pPlayer, uint32_t frames) {
+    atomic_store_explicit(&pPlayer->seek_pos_frames, frames, memory_order_relaxed);
+    atomic_store_explicit(&pPlayer->play_pos_frames, frames, memory_order_relaxed);
+    atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_release);
+}
+
 // Detects whether the effective playback direction has changed since we last read or
 // stretched audio and, if so, flushes the raw/stretch pipeline so newly-read audio
 // reflects the new direction.
@@ -235,7 +242,7 @@ void* file_thread_fn(void* param) {
         pPlayer->gain = 1.0;
         pPlayer->crop_start = 0;
         pPlayer->crop_end = pPlayer->sf_info.frames;
-        atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+        request_seek(pPlayer, pPlayer->play_pos_frames);
         pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
         if (pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1.0;
@@ -290,12 +297,14 @@ void* file_thread_fn(void* param) {
         while (pPlayer->file_open == FILE_OPEN) {
             if (pPlayer->file_read_status == SEEKING) {
                 // Main thread has signalled seek within file
+                uint32_t seekPos = atomic_load_explicit(&pPlayer->seek_pos_frames, memory_order_relaxed);
+                atomic_store_explicit(&pPlayer->play_pos_frames, seekPos, memory_order_relaxed);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
                 atomic_store_explicit(&pPlayer->stream_ended, 0, memory_order_relaxed);
-                pipelinePos  = (int64_t)pPlayer->play_pos_frames; // play_pos_frames here is the caller's seek target
+                pipelinePos  = (int64_t)seekPos;
                 lastReverse = (pPlayer->varispeed < 0.0);        // re-sync - this reset already accounts for the current direction
-                sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
+                sf_count_t pos = sf_seek(pFile, seekPos / pPlayer->src_ratio, SEEK_SET);
                 if (pos >= 0)
                     pPlayer->file_read_pos = pos;
                 src_reset(pSrcState);
@@ -605,7 +614,8 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             pPlayer->pos_marker_start_position  = pPlayer->play_pos_frames;
             pPlayer->pos_marker_cached_position = pPlayer->play_pos_frames;
             atomic_store_explicit(&pPlayer->flush_ack, flushReq, memory_order_release);
-        }
+            pPlayer->pos_marker_start_position  = atomic_load_explicit(&pPlayer->seek_pos_frames, memory_order_relaxed);
+            pPlayer->pos_marker_cached_position = pPlayer->pos_marker_start_position;        }
 
         if (pPlayer->play_state == STARTING && readStatus != SEEKING) {
             atomic_store_explicit(&pPlayer->play_state, PLAYING, memory_order_relaxed);
@@ -671,7 +681,7 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
             }
             atomic_store_explicit(&pPlayer->varispeed, 0.0, memory_order_relaxed);
             atomic_store_explicit(&pPlayer->play_state, STOPPED, memory_order_relaxed);
-            atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+            request_seek(pPlayer, pPlayer->play_pos_frames);
             DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count,
                     nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
@@ -862,7 +872,7 @@ void set_position(uint8_t id, float time) {
     else if (frames < pPlayer->crop_start_src)
         frames = pPlayer->crop_start_src;
     atomic_store_explicit(&pPlayer->play_pos_frames, frames, memory_order_relaxed);
-    atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+    request_seek(pPlayer, frames);
     DPRINTF("New position requested, setting loading status to SEEKING\n");
 }
 
@@ -879,21 +889,9 @@ void enable_loop(uint8_t id, uint8_t nLoop) {
         return;
     pPlayer->loop = nLoop;
     if (nLoop && pPlayer->file_read_status == IDLE) {
-        // Reader may have already reached true end-of-file and given up before loop was
-        // enabled - kick it back into action.
         atomic_store_explicit(&pPlayer->file_read_status, LOOPING, memory_order_relaxed);
     } else if (!nLoop && pPlayer->file_open == FILE_OPEN) {
-        // Disabling loop mid-playback: while looping, the reader keeps re-reading the same
-        // crop_start..crop_end region over and over as far ahead as the deep raw buffer
-        // allows, so that buffer can already hold several EXTRA loop iterations' worth of
-        // audio queued up. Flipping the flag only changes what happens on FUTURE reads - it
-        // doesn't discard any of that already-buffered backlog, so playback would keep
-        // looping through whatever was already queued for potentially a long time before
-        // the reader's own next encounter with crop_end (now correctly non-looping) takes
-        // effect on fresh material - which is what made this look ignored. Force a reseek
-        // from the current position instead, discarding the stale backlog and resuming
-        // immediately under the new, non-looping bound.
-        atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+        request_seek(pPlayer, pPlayer->play_pos_frames);
     }
 }
 
@@ -917,7 +915,8 @@ void set_crop_start_time(uint8_t id, float time) {
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
     if (pPlayer->play_pos_frames < pPlayer->crop_start_src)
         atomic_store_explicit(&pPlayer->play_pos_frames, pPlayer->crop_start_src, memory_order_relaxed);
-    atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+    uint32_t pos = pPlayer->play_pos_frames;
+    request_seek(pPlayer, pos < pPlayer->crop_start_src ? pPlayer->crop_start_src : pos);
 }
 
 float get_crop_start_time(uint8_t id) {
@@ -940,7 +939,8 @@ void set_crop_end_time(uint8_t id, float time) {
     pPlayer->crop_end_src = frames * pPlayer->src_ratio;
     if (pPlayer->play_pos_frames >= pPlayer->crop_end_src)
         atomic_store_explicit(&pPlayer->play_pos_frames, pPlayer->crop_end_src, memory_order_relaxed);
-    atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+    uint32_t pos = pPlayer->play_pos_frames;
+    request_seek(pPlayer, pos > pPlayer->crop_end_src ? pPlayer->crop_end_src : pos);
 }
 
 float get_crop_end_time(uint8_t id) {
@@ -960,7 +960,7 @@ void start_playback(uint8_t id) {
             set_position(id, 0.0);
         atomic_store_explicit(&pPlayer->varispeed, pPlayer->play_varispeed, memory_order_relaxed);
         if (pPlayer->play_varispeed < 0.0)
-            atomic_store_explicit(&pPlayer->file_read_status, SEEKING, memory_order_relaxed);
+            request_seek(pPlayer, pPlayer->play_pos_frames);
         atomic_store_explicit(&pPlayer->play_state, STARTING, memory_order_relaxed);
         atomic_store_explicit(&pPlayer->time_ratio_dirty, 1, memory_order_relaxed);
     }

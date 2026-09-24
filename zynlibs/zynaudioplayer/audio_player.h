@@ -61,6 +61,7 @@ struct AUDIO_PLAYER {
     _Atomic uint32_t flush_ack;         // Set by JACK callback to flush_req once it has discarded queued output
 
     _Atomic uint8_t play_state;         // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
+    _Atomic uint32_t seek_pos_frames;   // Target of a pending seek (JACK-rate frames)
     sf_count_t file_read_pos;           // Current file read position (frames)
     uint8_t loop;                       // 1 to loop between crop markers
     sf_count_t crop_start;              // Start of audio (crop) in frames from start of file
