@@ -19,6 +19,7 @@
 jack_client_t* g_jack_client;
 jack_port_t* g_jack_midi_in;
 jack_nframes_t g_samplerate = 48000; // Playback samplerate set by jackd
+_Atomic jack_nframes_t g_jack_cycle = 0; // Increments for each jack cycle
 uint8_t g_debug             = 0;
 uint8_t g_removePlayerId    = 255;
 char g_supported_codecs[1024];
@@ -550,6 +551,11 @@ void* file_thread_fn(void* param) {
             usleep(STRETCH_POLL_USLEEP);
         }
 
+        // Wait for current jack process to complete but timeout if necessary
+        jack_nframes_t cycle = atomic_load_explicit(&g_jack_cycle, memory_order_acquire);
+        for (int i = 0; cycle == atomic_load_explicit(&g_jack_cycle, memory_order_acquire) && i < 100; ++i)
+            usleep(1000);
+
         rubberband_delete(pPlayer->rb_state);
         jack_ringbuffer_free(pPlayer->ringbuffer_a);
         jack_ringbuffer_free(pPlayer->ringbuffer_b);
@@ -576,15 +582,16 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
 
     for (uint8_t id = 0; id < MAX_PLAYERS; ++id) {
         struct AUDIO_PLAYER* pPlayer = g_players[id];
-        if (!pPlayer || pPlayer->file_open != FILE_OPEN)
+        if (!pPlayer)
             continue;
 
-        size_t a_count = 0; // Quantity of frames delivered to JACK this cycle
         jack_default_audio_sample_t* pOutA = jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
         jack_default_audio_sample_t* pOutB = jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
         memset(pOutA, 0, nFrames * sizeof(float));
         memset(pOutB, 0, nFrames * sizeof(float));
-
+        if (!pPlayer || pPlayer->file_open != FILE_OPEN)
+            continue;
+        size_t a_count = 0; // Quantity of frames delivered to JACK this cycle
         uint8_t readStatus = atomic_load_explicit(&pPlayer->file_read_status, memory_order_acquire);
 
         uint32_t flushReq = atomic_load_explicit(&pPlayer->flush_req, memory_order_relaxed);
@@ -675,6 +682,8 @@ int on_jack_process(jack_nframes_t nFrames, void* arg) {
         g_players[g_removePlayerId] = NULL;
         g_removePlayerId = 255;
     }
+
+    atomic_fetch_add_explicit(&g_jack_cycle, 1, memory_order_release);
 
     return 0;
 }
@@ -1078,15 +1087,15 @@ void remove_player(uint8_t id) {
     if (!pPlayer)
         return;
     unload(id);
+    g_removePlayerId = id;
+    for (int i = 0; i < 100 && g_removePlayerId != 255; ++i)
+        usleep(1000); // Wait for process cycle to complete with timeout
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a)) {
         fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port A %02d\n", id, pPlayer, pPlayer->jack_out_a);
     }
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
         fprintf(stderr, "libaudioplayer error: player %u (%u) cannot unregister audio output port B %02d\n", id, pPlayer, pPlayer->jack_out_b);
     }
-    g_removePlayerId = id;
-    while (g_removePlayerId != 255)
-        usleep(1000); // Wait for process cycle to complete
     free(pPlayer);
 }
 
