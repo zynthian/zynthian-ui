@@ -104,6 +104,9 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         else:
             self.beat_color = self.wscolor_default
 
+        if self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() == 0:
+            self.wsleds[6] = self.beat_color
+
         # ALT button:
         if alt_mode:
             self.wsleds[7] = self.wscolor_alt
