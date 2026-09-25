@@ -714,28 +714,29 @@ class zynthian_gui_mixer_strip():
         try:
             if mode:
                 self.canvas.coords(self.sep, self.x + self.wwidth, 0, self.x + self.width, self.fader_y + self.balance_height)
-                self.canvas.coords(self.dpm_bg, self.dpm_a_x0, 0, self.x + self.width, self.balance_y)
-                self.dpm_a.move(self.dpm_a_x0, 0, self.dpm_width, self.balance_y)
-                self.dpm_b.move(self.dpm_b_x0, 0, self.dpm_width, self.balance_y)
-                self.canvas.itemconfig(self.dpm_scale, state=tkinter.HIDDEN)
-                if self.chain.chain_id == 0:
-                    self.canvas.itemconfig(self.dpm_labels, state=tkinter.HIDDEN)
+                if self.chain.zynmixer_proc:
+                    self.canvas.coords(self.dpm_bg, self.dpm_a_x0, 0, self.x + self.width, self.balance_y)
+                    self.dpm_a.move(self.dpm_a_x0, 0, self.dpm_width, self.balance_y)
+                    self.dpm_b.move(self.dpm_b_x0, 0, self.dpm_width, self.balance_y)
+                    self.canvas.itemconfig(self.dpm_scale, state=tkinter.HIDDEN)
+                    if self.chain.chain_id == 0:
+                        self.canvas.itemconfig(self.dpm_labels, state=tkinter.HIDDEN)
             else:
                 if self.chain.zynmixer_proc:
                     self.canvas.coords(self.sep, self.x + self.wwidth, 0, self.x + self.width, self.fader_y)
+                    self.canvas.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
+                    self.dpm_a.move(self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+                    self.dpm_b.move(self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
+                    self.canvas.itemconfig(self.dpm_scale, state=tkinter.NORMAL)
+                    if self.chain.chain_id == 0:
+                        self.canvas.itemconfig(self.dpm_labels, state=tkinter.NORMAL)
                 else:
                     self.canvas.coords(self.sep, self.x + self.wwidth, 0, self.x + self.width, self.height)
-                self.canvas.coords(self.dpm_bg, self.dpm_a_x0, self.dpm_y0, self.x + self.width, self.dpm_y0 + self.dpm_length)
-                self.dpm_a.move(self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
-                self.dpm_b.move(self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.dpm_length)
-                self.canvas.itemconfig(self.dpm_scale, state=tkinter.NORMAL)
-                if self.chain.chain_id == 0:
-                    self.canvas.itemconfig(self.dpm_labels, state=tkinter.NORMAL)
                 if self.pending_draw_fader_text:
                     self.pending_draw_fader_text = False
                     self.draw_fader_text()
-        except:
-            pass # meters not yet created?
+        except Exception as e:
+            logging.error(e)
 
     def move(self, dx):
         # Re-calculate geometry variables
