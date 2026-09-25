@@ -43,6 +43,7 @@ class zynthian_wsleds_base:
         self.zyngui = zyngui
         self.state_manager = self.zyngui.state_manager
         self.ctrldev_manager = self.state_manager.ctrldev_manager
+        self.zynseq = self.zyngui.state_manager.zynseq
 
         # LED strip variables
         self.spi_board = None
@@ -190,30 +191,32 @@ class zynthian_wsleds_base:
 
     def metro_cb(self, mode, volume):
         self.metro_mode = mode
-        if mode == 0:
-            self.wsleds[self.beat_led] = self.wscolor_default
-        elif self.zyngui.state_manager.zynseq.playing_sequences == 0:
+        if self.metro_mode == 0 or (self.metro_mode == 1 and self.zynseq.playing_sequences == 0):
             self.wsleds[self.beat_led] = self.beat_color
 
     def beat_cb(self, beat):
-        if self.beat_led is None or self.metro_mode == 0:
+        if self.beat_led is None or self.metro_mode == 0 or (self.metro_mode == 1 and self.zynseq.playing_sequences == 0):
             return
-
         if self.beat != beat:
-            self.beat_state = not self.beat_state
-            if self.beat_state:
+            self.beat = beat
+            if self.beat == 1 and self.metro_mode != 4:
+                self.beat_state = True
+                self.wsleds[self.beat_led] = self.wscolor_active2
+            elif self.beat_state:
+                self.beat_state = False
                 self.wsleds[self.beat_led] = self.wscolor_off
             else:
+                self.beat_state = True
                 self.wsleds[self.beat_led] = self.beat_color
-            self.beat = beat
-        if beat == 1:
-            if self.metro_mode == 1 and self.zyngui.state_manager.zynseq.playing_sequences == 0:
-                self.wsleds[self.beat_led] = self.beat_color
-            elif self.metro_mode != 4:
-                self.beat_state = False
-                self.wsleds[self.beat_led] = self.wscolor_active2
+            self.show()
 
-        self.show()
+    def update_tempo_wsled(self, workflow):
+        if workflow == "tempo":
+            self.beat_color = self.wscolor_active
+        else:
+            self.beat_color = self.wscolor_default
+        if self.metro_mode == 0 or (self.metro_mode == 1 and self.zynseq.playing_sequences == 0):
+            self.wsleds[self.beat_led] = self.beat_color
 
     def update(self):
         # Ignore refreshes once end() has lighted-off the LEDs, so a late call

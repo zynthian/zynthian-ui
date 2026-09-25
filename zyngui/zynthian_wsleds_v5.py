@@ -98,14 +98,8 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
         else:
             self.wsleds[5] = self.wscolor_default
 
-        # Tempo Screen
-        if workflow == "tempo":
-            self.beat_color = self.wscolor_active
-        else:
-            self.beat_color = self.wscolor_default
-
-        if self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() == 0:
-            self.wsleds[6] = self.beat_color
+        # Tempo LED
+        self.update_tempo_wsled(workflow)
 
         # ALT button:
         if alt_mode:
