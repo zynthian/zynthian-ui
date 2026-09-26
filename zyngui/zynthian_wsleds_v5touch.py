@@ -142,4 +142,3 @@ class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
             str(self.wscolor_yellow): "Y",
             str(self.wscolor_purple): "P"
         }
-

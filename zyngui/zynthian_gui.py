@@ -2453,6 +2453,9 @@ class zynthian_gui:
         if self.wsleds:
             zynsigman.register(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, self.wsleds.beat_cb)
             zynsigman.register(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.wsleds.metro_cb)
+        if self.wsleds_v5touch:
+            zynsigman.register(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, self.wsleds_v5touch.beat_cb)
+            zynsigman.register(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.wsleds_v5touch.metro_cb)
 
     def unregister_signals(self):
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
@@ -2463,6 +2466,9 @@ class zynthian_gui:
         if self.wsleds:
             zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, self.wsleds.beat_cb)
             zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.wsleds.metro_cb)
+        if self.wsleds_v5touch:
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_BEAT, self.wsleds_v5touch.beat_cb)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.wsleds_v5touch.metro_cb)
 
     def cb_midi_note_on(self, izmip, chan, note, vel):
         """Handle MIDI_NOTE_ON signal
