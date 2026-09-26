@@ -26,6 +26,7 @@
 import os
 import shutil
 import logging
+from time import sleep
 from glob import glob
 from os.path import isfile, isdir, join, basename, dirname, splitext
 
@@ -470,8 +471,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         self.update_list()
 
     def save_snapshot(self, path):
+        parts = self.get_parts_from_path(path)
+        self.sm.start_busy("save_snapshot", f"Saving snapshot", parts[1])
         self.sm.backup_snapshot(path)
         self.sm.save_snapshot(path)
+        sleep(1)
+        self.sm.end_busy("save_snapshot")
+        self.zyngui.wait_close_loading()
         self.zyngui.show_screen('root', self.zyngui.SCREEN_HMODE_RESET)
 
     def delete_confirmed(self, fpath):
