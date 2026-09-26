@@ -164,6 +164,7 @@ class WaveformCanvas(ModernglTkWindow):
         self.prog = None
         self.vbo = None
         self.vao = None
+        self.size_changed = False
 
         self.channels = 0
         self.n_vertex = 0
@@ -191,7 +192,6 @@ class WaveformCanvas(ModernglTkWindow):
 
     def initgl(self):
         #self.tkMakeCurrent()
-
         try:
             self.ctx = moderngl.create_context(require=140)
         except Exception as e:
@@ -233,8 +233,7 @@ class WaveformCanvas(ModernglTkWindow):
     def on_resize(self, event):
         self.width = self.winfo_width()    #event.width
         self.height = self.winfo_height()  #event.height
-        if self.ctx:
-            self.ctx.viewport = (0, 0, self.width, self.height)
+        self.size_changed = True
 
     def mark_dirty(self, i0, i1):
         """ Mark a section of data dirty to force update
@@ -247,11 +246,17 @@ class WaveformCanvas(ModernglTkWindow):
         self.dirty_lo = i0 if self.dirty_lo is None else min(self.dirty_lo, i0)
         self.dirty_hi = i1 if self.dirty_hi is None else max(self.dirty_hi, i1)
 
+    def reset_dirty(self):
+        self.touched = False
+        self.dirty_lo = None
+        self.dirty_hi = None
+
     def init_channels(self, nchans=None):
+        if not self.ctx or not self.prog:
+            return False
+
         if nchans is None:
             nchans = self.channels
-        if not self.ctx:
-            return False
         if nchans == 0:
             self.channels = 0
             self.n_vertex = 0
@@ -268,6 +273,7 @@ class WaveformCanvas(ModernglTkWindow):
 
         layout = compute_layout(nchans, self.width)
         if self.vbo_data is None or nchans != self.channels or layout.total != self.n_vertex:
+            logging.debug(f"Resetting VBO & VAO => {nchans}, {self.width}")
             self.channels = nchans
             self.layout = layout
             self.n_vertex = layout.total
@@ -323,9 +329,9 @@ class WaveformCanvas(ModernglTkWindow):
                 self.prog,
                 [(self.vbo, '3f 3f', 'in_position', 'in_color')],
             )
+            self.dirty_lo = 0
+            self.dirty_hi = 4
             self.touched = True
-            self.dirty_lo = None
-            self.dirty_hi = None
         return True
 
     def set_wave_data(self, ydata):
@@ -483,33 +489,45 @@ class WaveformCanvas(ModernglTkWindow):
         except Exception as e:
             logging.error(f"Can't set cursor position ... => {e}")
 
-    def redraw(self):
+    def redraw(self, reset=True):
         if self.touched:
             if self.vbo and self.dirty_lo is not None:
                 stride = self.vbo_data.itemsize
                 byte_offset = self.dirty_lo * stride
                 chunk = self.vbo_data[self.dirty_lo:self.dirty_hi].tobytes()
                 self.vbo.write(chunk, offset=byte_offset)
-            self.dirty_lo = None
-            self.dirty_hi = None
             self.ctx.clear()
-            if self.vao:
-                tri_start = self.layout.crop_start if self.layout else max(self.n_vertex - 36, 0)
+            if self.vao and self.layout:
+                tri_start = self.layout.crop_start
                 # Dibujar líneas
                 self.vao.render(moderngl.LINES, first=0, vertices=tri_start)
                 # Dibujar Quads using native Triangles
                 self.vao.render(moderngl.TRIANGLES, first=tri_start, vertices=self.n_vertex - tri_start)
-            self.touched = False
+            if reset:
+                self.reset_dirty()
+
+    def set_viewport(self):
+        # Bind the OpenGL rendering context to this X11 frame container
+        self.tkMakeCurrent()
+        # Set CTX viewport only if size changed
+        if self.size_changed and self.ctx:
+            self.size_changed = False
+            self.ctx.viewport = (0, 0, self.width, self.height)
+            logging.debug(f"Setting viewport to {self.width}x{self.height}")
 
     def update(self):
-        """Forces a single, immediate frame refresh when animate=False."""
+        self.set_viewport()
         if self.touched:
-            # 1. Bind the OpenGL rendering context to this X11 frame container
-            self.tkMakeCurrent()
-            # 2. Manually invoke your standard frame drawing logic
+            #logging.debug(f" => DIRTY from {self.dirty_lo} to {self.dirty_hi}")
+            # Draw
             self.redraw()
-            # 3. Force the GPU to flush instructions and swap the front/back buffers
+            # Force the GPU to flush instructions and swap the front/back buffers
             self.tkSwapBuffers()
+
+    def clear(self):
+        self.set_viewport()
+        self.ctx.clear()
+        self.tkSwapBuffers()
 
 # ------------------------------------------------------------------------------
 # Zynthian Widget Class for audio file selectors
@@ -536,7 +554,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.eng_type = self.ENG_NONE
 
         self.zctrl = None
-        self.fpath = ""
+        self.fpath = None
         self.fname = ""
         self.wave_data = None   # Wave data => All file data loaded in memory
         self.channels = 0       # Quantity of channels in audio
@@ -545,6 +563,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.duration = 0.0     # Duration in seconds
         self.info = 0
 
+        self.first_update = True
+        self.loading = False    # Flag to avoid multiple threads loading waveform
         self.refreshing = False # Flag to avoid multiple threads refreshing waveform
         self.refresh_waveform = False  # True to force redraw of waveform on next refresh
         self.update_markers = False  # True to force update markers on next refresh
@@ -625,7 +645,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 self.eng_type = self.ENG_SAMPLV1
 
     def show(self):
-        self.refreshing = False
+        #self.loading = False
+        #self.refreshing = False
         super().show()
         if self.eng_type:
             zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
@@ -665,8 +686,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
     def load_file(self):
         # Run as background thread
+        if self.loading:
+            return
+        self.loading = True
         if self.fpath:
-            self.refreshing = True
             self.info_text_var.set("Loading waveform ...")
             try:
                 self.duration = 0.0
@@ -680,32 +703,36 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.wave_data = sf.read(self.frames, always_2d=True)
                 if self.samplerate:
                     self.duration = self.frames / self.samplerate
-                logging.debug(f"LOADING FILE {self.fpath} => {self.frames} frames")
+                logging.debug(f"Loaded waveform {self.fpath} => {self.frames} frames at {self.samplerate}")
                 if self.clip_info:
                     self.get_clippy_values()
                 else:
                     self.crop_start = 0
                     self.crop_end = self.frames
+                self.refresh_waveform = True
             except MemoryError:
-                logging.warning(f"Failed to display waveform: File too large!")
+                logging.warning(f"Can't display waveform: File too large!")
                 self.info_text_var.set("File too large!")
+                self.channels = 0
+                self.frames = 0
                 self.wave_data = None
             except Exception as e:
-                logging.warning(f"Failed to display waveform: {e}")
-                self.info_text_var.set("Can't show waveform!")
+                logging.warning(f"Can't display waveform: {e}")
+                self.info_text_var.set("Display error!")
+                self.channels = 0
+                self.frames = 0
                 self.wave_data = None
-            self.refreshing = False
-            self.refresh_waveform = True
         else:
-            self.info_text_var.set("Can't show waveform!")
+            self.info_text_var.set("No file!")
             self.channels = 0
             self.frames = 0
             self.wave_data = None
+        self.loading = False
 
     def draw_waveform(self, start, length, vzoom=1.0):
         if self.wave_data is None:
-            self.info_text_var.set("Can't show waveform!")
-            return
+            self.info_text_var.set("No data!")
+            return False
 
         length = min(self.frames, length)
         steps_per_peak = 16
@@ -721,6 +748,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         y0 = int(vzoom * y0 / 2)
 
         frames_per_pixel = length // self.width
+        if frames_per_pixel <= 0:
+            frames_per_pixel = 1
         block_size = min(frames_per_pixel, 1024)
         step = max(1, block_size // steps_per_peak)
 
@@ -759,13 +788,15 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 pos += 2
 
         self.widget_canvas.set_wave_data(ydata)
+        return True
 
     def refresh_gui(self):
         if not self.zctrl and not self.eng_type:
             return
+        if self.loading or self.refreshing:
+            return
 
         self.refreshing = True
-        refresh_info = False
 
         # Path zctrl => Clippy, samplv1 and others
         if self.zctrl:
@@ -776,24 +807,32 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         else:
             fpath = None
 
-        # No Audio File => Reset data!
-        if fpath in ("", "_"):
+        # No Audio File => Reset data and clear widget canvas.
+        if self.fpath != "" and (not fpath or fpath == "_"):
             self.fpath = ""
             self.fname = ""
             self.channels = 0
             self.frames = 0
             self.duration = 0
             self.samplerate = None
+            self.widget_canvas.init_channels(0)
+            self.widget_canvas.clear()
+            self.refreshing = False
+            logging.debug(f"Cleaning Waveform Widget!")
+            return
         # Audio file changed so reload waveform from file audio data
-        elif fpath and self.fpath != fpath:
+        elif fpath and (self.fpath != fpath):
             self.fpath = fpath
             self.fname = basename(self.fpath)
             waveform_thread = Thread(target=self.load_file, name="load_waveform")
             waveform_thread.start()
             self.refreshing = False
+            logging.debug(f"Loading Waveform File ...")
             return
 
+        # Ensure widget canvas is initialized
         if not self.widget_canvas.init_channels(self.channels):
+            logging.warning(f"Can't init widget canvas channels!")
             self.refreshing = False
             return
 
@@ -917,6 +956,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             self.vzoom = vzoom
             self.refresh_waveform = True
 
+        refresh_info = False
         try:
             if self.refresh_waveform:
                 length = self.frames // self.zoom
@@ -929,10 +969,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 # Ensure whole waveform can be drawn
                 self.offset = min(self.offset, self.frames - length)
                 self.offset = max(self.offset, 0)
-                self.draw_waveform(self.offset, length, self.vzoom)
-                refresh_info = True
-                self.update_markers = True
-                self.refresh_waveform = False
+                if self.draw_waveform(self.offset, length, self.vzoom):
+                    refresh_info = True
+                    self.update_markers = True
+                    self.refresh_waveform = False
+                else:
+                    return
 
             if self.frames:
                 h = self.waveform_height
@@ -1039,9 +1081,13 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             # logging.error(e)
             logging.exception(traceback.format_exc())
 
-        self.update_markers = False
-        self.refreshing = False
         self.widget_canvas.update()
+        self.update_markers = False
+        # On first update => repeat redraw to ensure widget is not blank
+        if self.first_update:
+            self.refresh_waveform = True
+            self.first_update = False
+        self.refreshing = False
 
     @staticmethod
     def format_time(time):
