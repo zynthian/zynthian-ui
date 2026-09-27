@@ -141,6 +141,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         else:
             self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel", [info_txt, "midi_settings.png"]))
 
+        if lib_zyncore.get_classic_midi_cc():
+            self.list_data.append((self.toggle_classic_midi_cc, 0, "\u2612 Classic MIDI CC", [info_txt, "midi_settings.png"]))
+        else:
+            self.list_data.append((self.toggle_classic_midi_cc, 0, "\u2610 Classic MIDI CC", [info_txt, "midi_settings.png"]))
+
         if zynthian_gui_config.midi_usb_by_port:
             self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 MIDI-USB mapped by port",
                                    ["MIDI ports are indexed by their device name and the physical USB port to which they are plugged", "midi_settings.png"]))
@@ -641,6 +646,23 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         # Save config
         zynconf.update_midi_profile({
             "ZYNTHIAN_MIDI_ACTIVE_CHANNEL": str(int(zynthian_gui_config.active_midi_channel))
+        })
+        self.update_list()
+
+    def toggle_classic_midi_cc(self):
+        if lib_zyncore.get_classic_midi_cc():
+            logging.info("Classic MIDI CC OFF")
+            zynthian_gui_config.classic_midi_cc = False
+        else:
+            logging.info("Classic MIDI CC ON")
+            zynthian_gui_config.classic_midi_cc = True
+
+        lib_zyncore.set_classic_midi_cc(
+            zynthian_gui_config.classic_midi_cc)
+
+        # Save config
+        zynconf.update_midi_profile({
+            "ZYNTHIAN_MIDI_CLASSIC_CC": str(int(zynthian_gui_config.classic_midi_cc ))
         })
         self.update_list()
 
