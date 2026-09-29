@@ -297,7 +297,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         except:
             if self.load_bank(preset[3], not preload):
                 sfi = self.soundfont_index[preset[3]]
-                if not preload and processor:
+                if processor:
                     processor.refresh_controllers()
             else:
                 logging.debug(f"Can't load bank '{preset[3]}' for preset '{preset[2]}'.")
