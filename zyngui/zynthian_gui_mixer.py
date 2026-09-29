@@ -47,17 +47,36 @@ from zyngine.zynthian_signal_manager import zynsigman
 logging.getLogger('PIL').setLevel(logging.WARNING)
 
 
-# --------------------------------------------------------------
-# Zynthian sequence launcher button class
-# This provides a UI element that represents a launcher button
-# --------------------------------------------------------------
-
 LOOP_INFO_WIDTH = 0.2
 DRAG_THRESHOLD = 5
 SPEAKER_ICON = "\uf028"
 MICROPHONE_ICON = "\uf130"
 QUAVER_ICON = "\u266b"
 SLIDERS_ICON = "\uf1de"
+
+PEDAL_CC_NUMBERS = {
+    64: {
+        'index': 0,
+        'pos': 2
+    },
+    66: {
+        'index': 1,
+        'pos': 1
+    },
+    67: {
+        'index': 2,
+        'pos': 0
+    },
+    69: {
+        'index': 3,
+        'pos': 3
+    }
+}
+
+# --------------------------------------------------------------
+# Zynthian sequence launcher button class
+# This provides a UI element that represents a launcher button
+# --------------------------------------------------------------
 
 class zynthian_gui_launcher_pad():
 
@@ -1680,12 +1699,13 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.chain_manager.set_active_chain_by_id(active_chain_id)
         self.highlight_chain(active_chain_id)
         self.select_launcher()
-        for cc in (64, 66, 67, 69):
+        for cc in PEDAL_CC_NUMBERS:
             self.midi_cc_cb(0, 0, cc, 0)
 
     def midi_cc_cb(self, izmip, chan, num, val):
         try:
-            index = (64, 66, 67, 69).index(num)
+            index = PEDAL_CC_NUMBERS[num]["index"]
+            pos = PEDAL_CC_NUMBERS[num]["pos"]
         except:
             return
         try:
@@ -1693,9 +1713,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
             for strip in self.chain_strips:
                 if strip.chain and strip.chain.is_midi():
                     if flags & (1 << strip.chain.zmop_index):
-                        strip.canvas.itemconfigure(strip.pedals[index], state=tkinter.NORMAL)
+                        strip.canvas.itemconfigure(strip.pedals[pos], state=tkinter.NORMAL)
                     else:
-                        strip.canvas.itemconfig(strip.pedals[index], state=tkinter.HIDDEN)
+                        strip.canvas.itemconfig(strip.pedals[pos], state=tkinter.HIDDEN)
         except Exception as e:
             logging.warning(e)
 
