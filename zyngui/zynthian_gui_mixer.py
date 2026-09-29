@@ -66,11 +66,11 @@ PEDAL_CC_NUMBERS = {
     67: {
         'index': 2,
         'pos': 0
-    },
-    69: {
-        'index': 3,
-        'pos': 3
     }
+#    69: {
+#        'index': 3,
+#        'pos': 3
+#    }
 }
 
 # --------------------------------------------------------------
@@ -598,7 +598,7 @@ class zynthian_gui_mixer_strip():
         self.dpm_b_x0 = x + self.width - self.dpm_width
         self.dpm_scale_x0 = self.dpm_b_x0 - self.dpm_scale_width
         self.dpm_a_x0 = self.dpm_scale_x0 - self.dpm_width
-        self.pedal_width = self.fader_width // 4
+        self.pedal_width = self.fader_width // len(PEDAL_CC_NUMBERS)
 
         self.fader_press_event = None
         self.launchers = [] # List of launcher button objects, indexed by phrase
@@ -680,7 +680,7 @@ class zynthian_gui_mixer_strip():
 
         # MIDI pedal indicators
         self.pedals = []
-        for col in range(4):
+        for col in range(len(PEDAL_CC_NUMBERS)):
             xpos = x + self.pedal_width * col
             self.pedals.append(
                 self.canvas.create_rectangle(
