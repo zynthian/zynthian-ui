@@ -202,7 +202,7 @@ class zynthian_chain:
     def init_MPE(self):
         if self.is_synth():
             synth_proc = self.synth_slots[0][0]
-            if synth_proc.eng_code in ("JV/Surge XT"):
+            if synth_proc.eng_code in ("JV/Surge XT", "JV/OB-Xf", "TAL U-No-LX-V2"):
                 if self.midi_chan == 0xFFFF:
                     self.init_MPE_zone(0x0, 15)
                 else:
