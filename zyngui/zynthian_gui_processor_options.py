@@ -168,7 +168,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         self.add_processor("Audio Effect")
 
     def processor_remove(self):
-        self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove, autoclose=True)
+        self.zyngui.show_confirm(f"Do you want to remove {self.processor.engine.name} from chain?", self.do_remove, autoclose=False)
 
     def do_remove(self, unused=None):
         self.state_manager.start_busy("processor_options::do_remove", "Removing processor")
@@ -176,8 +176,9 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
         self.processor = None
+        self.zyngui.wait_show_loading(0.5)
+        self.zyngui.prune_screen_history("processor_options", soft=False)
         self.state_manager.end_busy("processor_options::do_remove")
-        self.zyngui.close_screen()
 
     def preset_list(self):
         self.zyngui.cuia_bank_preset(self.processor)

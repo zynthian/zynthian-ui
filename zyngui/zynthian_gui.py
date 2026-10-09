@@ -2680,9 +2680,21 @@ class zynthian_gui:
 
             sleep(0.1)
 
-    def wait_close_loading(self):
-        if self.current_screen == "loading":
+    def wait_close_loading(self, time=0):
+        while self.current_screen == "loading":
             sleep(0.05)
+        if time > 0:
+            dt = time - (monotonic() - self.state_manager.busy_ts)
+            if dt > 0:
+                sleep(dt)
+
+    def wait_show_loading(self, time=0):
+        while self.current_screen != "loading":
+            sleep(0.05)
+        if time > 0:
+            dt = time - (monotonic() - self.state_manager.busy_ts)
+            if dt > 0:
+                sleep(dt)
 
     # ------------------------------------------------------------------
     # Status Refresh Thread
