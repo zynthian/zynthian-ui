@@ -378,12 +378,19 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
     def pfl(self, t='S'):
         logging.info("PFL routing")
-        port_count = len(zynautoconnect.get_hw_audio_dst_ports())
+        ports = zynautoconnect.get_hw_audio_dst_ports()
+        port_count = len(ports)
         labels = ["None"]
         for i in range(0, port_count, 2):
-            labels.append(f"{i+1}")
-            labels.append(f"{i+2}")
-            labels.append(f"{i+1}+{i+2}")
+            try:
+                name1 = ports[i].aliases[0]
+                name2 = ports[i+1].aliases[0]
+            except:
+                name1 = ports[i].name
+                name2 = ports[i+1].name
+            labels.append(f"{i+1} ({name1})")
+            labels.append(f"{i+2} ({name2})")
+            labels.append(f"{i+1}+{i+2} ({name1}+{name2})")
         self.enable_param_editor(self, "PFL Output",
                 {'labels': labels, 'value': zynthian_gui_config.pfl_output},
                 self.pfl_cb)
