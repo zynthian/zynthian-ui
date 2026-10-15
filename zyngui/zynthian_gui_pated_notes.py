@@ -268,7 +268,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         scales = self.get_scales()
         options[f"Scale ({scales[self.zynseq.libseq.getScale()]})"] = 'Scale'
         options[f"Tonic ({NOTE_NAMES[self.zynseq.libseq.getTonic()]})"] = 'Tonic'
-        menu_options['PATTERN'].update(options)
+        menu_options['_PATTERN'].update(options)
         # Pattern Edit
         options = {}
         note = self.zynseq.libseq.getInputRest()

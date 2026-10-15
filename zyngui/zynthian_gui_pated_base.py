@@ -543,6 +543,10 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         if self.seq_info:
             options = {}
             name = self.seq_info["name"]
+            if name:
+                options[f"Rename ({name})"] = 'Rename sequence'
+            else:
+                options[f"Rename"] = 'Rename sequence'
             repeat = self.seq_info["repeat"]
             # TODO: Configure start and stop modes
             if repeat > 0:
@@ -558,10 +562,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             if program_change > 127:
                 program_change = "None"
             options[f"Program Change ({program_change})"] = 'Program Change'
-            if name:
-                options[f"Rename ({name})"] = 'Rename sequence'
-            else:
-                options[f"Rename"] = 'Rename sequence'
             menu_options['_SEQUENCE'] = options
         # Pattern Options
         options = {}
@@ -583,7 +583,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
         options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime())})"] = 'Time Humanization'
-        menu_options['PATTERN'] = options
+        menu_options['_PATTERN'] = options
         # Pattern Edit
         options = {}
         if not self.zyngui.multitouch._f_device:
@@ -613,7 +613,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             if subtitle[0] != "_":
                 options[f"> {subtitle}"] = None
             options.update(subopts)
-        title = "Sequence options"
+        title = "Pattern options"
         if self.seq_info and self.seq_info["name"]:
             title += ": " + self.seq_info["name"]
 

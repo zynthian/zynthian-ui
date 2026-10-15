@@ -248,10 +248,15 @@ class zynthian_gui_help(HtmlFrame):
             return True
 
     def cuia_v5_zynpot_switch(self, params):
-        return self.switch(*params)
+        if params[0] >= 2:
+            return self.switch(*params)
+        return False
 
     def switch(self, i, t):
-        if self.zyngui.tts and i == 2:
+        if i == 1 and t == 'B':
+            self.zyngui.close_screen()
+            return True
+        elif self.zyngui.tts and i == 2:
                 if t =='S':
                     self.zyngui.cuia_tts_toggle_pause()
                     return True
@@ -263,9 +268,6 @@ class zynthian_gui_help(HtmlFrame):
                 self.select_link(0)
             else:
                 self.zyngui.show_help(self.links[self.link][0])
-            return True
-        elif i == 1 and t == 'B':
-            self.zyngui.close_screen()
             return True
 
     def back_action(self):

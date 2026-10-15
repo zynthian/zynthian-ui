@@ -274,10 +274,10 @@ class SequenceManager {
     void setDefaultTimeSig(uint8_t bpb);
 
     /** @brief  Get playback progress percentage
-        @param   uint8_t* Pointer to 33 element array containing progress as a percentage of sequence length
+        @param   float* Pointer to 33 element array containing progress as a percentage of sequence length
         @note   Element 32 (phrase launchers) is a percentage of the current time signature (beats per bar)
     */
-    uint8_t* getProgress();
+    float* getProgress();
 
     /** @brief  Enable a channel
         @param  channel MIDI channel
@@ -379,7 +379,7 @@ class SequenceManager {
     uint8_t m_nDefaultTimeSig = DEFAULT_BPB;    // Default time signature in beats (1/4 notes) per bar
     uint8_t m_nTriggerDevice = 0xFF;  // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
-    uint8_t m_aGroupProgress[33];     // Array of group playback progress percentage
+    float m_aGroupProgress[33];       // Array of group playback progress (percentage)
     uint8_t m_nBeatsPerBar = 4;       // Time signature in beats
     uint8_t m_bEnabled[32];           // Array indicating if channel is enabled
     uint8_t m_nScene = 0;             // Index of selected scene

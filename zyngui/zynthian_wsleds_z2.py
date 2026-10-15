@@ -49,6 +49,9 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
                               8, 9, 10, 11, 12,
                               None]
 
+        # Beat blinking variables
+        self.beat_led = 16
+
     def update_wsleds(self):
         curscreen = self.zyngui.get_current_screen()
         workflow = self.zyngui.get_current_workflow()
@@ -148,13 +151,8 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             else:
                 self.wsleds[15] = self.wscolor_default
 
-        # Tempo Screen
-        if workflow == "tempo":
-            self.wsleds[16] = self.wscolor_active
-        elif self.zyngui.state_manager.zynseq.libseq.getMetronomeMode() > 0:
-            self.blink(16, self.wscolor_active)
-        else:
-            self.wsleds[16] = self.wscolor_default
+        # Tempo LED
+        self.update_tempo_wsled(workflow)
 
         # Select/Yes button
         self.wsleds[20] = self.wscolor_green

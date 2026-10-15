@@ -26,6 +26,7 @@
 import os
 import shutil
 import logging
+from time import sleep
 from glob import glob
 from os.path import isfile, isdir, join, basename, dirname, splitext
 
@@ -354,18 +355,21 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         state = self.sm.load_snapshot(fpath)
         if state is None:
             self.zyngui.clean_all()
+        self.zyngui.reset_screen_history()
         self.zyngui.show_screen('root', self.zyngui.SCREEN_HMODE_RESET)
 
     def load_snapshot_chains(self, fpath, merge=False):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
             self.sm.save_last_state_snapshot()
         self.sm.load_snapshot(fpath, load_sequences=False, merge=merge)
+        self.zyngui.reset_screen_history()
         self.zyngui.show_screen('mixer', self.zyngui.SCREEN_HMODE_RESET)
 
     def load_snapshot_sequences(self, fpath):
         if self.is_not_empty_snapshot() and fpath != self.sm.last_state_snapshot_fpath:
             self.sm.save_last_state_snapshot()
         self.sm.load_snapshot(fpath, load_chains=False)
+        self.zyngui.reset_screen_history()
         self.zyngui.show_screen('launcher', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
     def restore_backup_cb(self, fname, fpath):
@@ -467,8 +471,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         self.update_list()
 
     def save_snapshot(self, path):
+        parts = self.get_parts_from_path(path)
+        self.sm.start_busy("save_snapshot", f"Saving snapshot", parts[1])
         self.sm.backup_snapshot(path)
         self.sm.save_snapshot(path)
+        sleep(1)
+        self.sm.end_busy("save_snapshot")
+        self.zyngui.wait_close_loading()
         self.zyngui.show_screen('root', self.zyngui.SCREEN_HMODE_RESET)
 
     def delete_confirmed(self, fpath):

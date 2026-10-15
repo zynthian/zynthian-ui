@@ -248,6 +248,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["10s countdown with no touch trigger. Allows screen to be cleaned without triggering any action.", "settings.png"]))
 
         self.list_data.append((None, 0, "> SYSTEM"))
+        len_check = len(self.list_data)
         if "cv_config" in self.zyngui.screens:
             self.list_data.append((self.show_cv_config, 0, "CV Settings",
                                    ["Control Voltage configuration.", "settings.png"]))
@@ -265,6 +266,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                    ["Stop zynthian UI but do not reboot.", "poweroff.png"]))
         #self.list_data.append((self.power, 0, "Power",
         #                       ["Turn off or reboot zynthian.\n\nPower is still fed to the device but it is effectively off.", "poweroff.png"]))
+        if len(self.list_data) == len_check:
+            self.list_data.pop() # Remove section title for empty section
 
         super().fill_list()
         self.filling_list = False
@@ -380,12 +383,19 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
     def pfl(self, t='S'):
         logging.info("PFL routing")
-        port_count = len(zynautoconnect.get_hw_audio_dst_ports())
+        ports = zynautoconnect.get_hw_audio_dst_ports()
+        port_count = len(ports)
         labels = ["None"]
         for i in range(0, port_count, 2):
-            labels.append(f"{i+1}")
-            labels.append(f"{i+2}")
-            labels.append(f"{i+1}+{i+2}")
+            try:
+                name1 = ports[i].aliases[0]
+                name2 = ports[i+1].aliases[0]
+            except:
+                name1 = ports[i].name
+                name2 = ports[i+1].name
+            labels.append(f"{i+1} ({name1})")
+            labels.append(f"{i+2} ({name2})")
+            labels.append(f"{i+1}+{i+2} ({name1}+{name2})")
         self.enable_param_editor(self, "PFL Output",
                 {'labels': labels, 'value': zynthian_gui_config.pfl_output},
                 self.pfl_cb)

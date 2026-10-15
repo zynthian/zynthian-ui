@@ -53,6 +53,7 @@ class zynthian_signal_manager:
     S_MIDI = 12
     S_TRANSPORT = 13
     S_PROCESSOR = 14
+    S_WSLEDS = 15
 
     #-------------------------------------------------------------------------
     # Signal sub-id (owned by each corresponding class)
@@ -107,6 +108,7 @@ class zynthian_signal_manager:
     SS_SEQ_TEMPO = 5
     SS_SEQ_TIMESIG = 6
     SS_SEQ_METRO = 7
+    SS_SEQ_BEAT = 8
 
     # Mixer
     SS_ZYNMIXER_SET_VALUE = 1
@@ -118,7 +120,10 @@ class zynthian_signal_manager:
     SS_AUDIO_RECORDER_STATE = 1
     SS_AUDIO_RECORDER_ARM = 2
 
-    last_signal = 14
+    # RGB LEDs
+    SS_WSLEDS_UPDATE = 0
+
+    last_signal = 15
     last_subsignal = 10
 
     def __init__(self):

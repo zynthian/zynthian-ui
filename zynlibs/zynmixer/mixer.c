@@ -28,6 +28,7 @@
 #include <stdlib.h>  //provides exit
 #include <string.h>  // provides memset
 #include <unistd.h>  // provides sleep
+#include <pthread.h> // multi-threading
 
 #include "mixer.h"
 #include <arpa/inet.h> // provides inet_pton
@@ -38,24 +39,27 @@
 #define MAX_CHANNELS 99
 #endif
 
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
 uint8_t g_running   = 1;   // True when running
 uint8_t g_sendCount = 0;   // Quantity of effect sends
 uint8_t g_lastStrip = 1;   // Highest index of any strips (one-based)
 uint8_t g_lastSend  = 1;   // Highest index of any send (one-based)
 uint8_t g_solo      = 0;   // Quantity of channels with solo asserted
 uint8_t g_pfl       = 0;   // Quantity of channels with PFL asserted
-#ifndef MIXBUS
+#ifdef MIXBUS
 const char* g_jackname = "zynmixer_bus";
+jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
+jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
+float g_pflLevel     = 1.0; // PFL volumne level
+#else
+const char* g_jackname = "zynmixer_chan";
 double g_xfader      = 0.0; // Global crossfader phase / angle value for AB mixing
 float g_xf_gain_A    = 0.0; // Crossfade A gain
 float g_reqxf_gain_A = 1.0; // Requested crossfade A gain
 float g_xf_gain_B    = 1.0; // Crossfade B gain
 float g_reqxf_gain_B = 0.0; // Requested crossfade B gain
-#else
-const char* g_jackname = "zynmixer_chan";
-jack_port_t* g_pflInPortA;  // Pointer to PFL trunk port A
-jack_port_t* g_pflInPortB;  // Pointer to PFL trunk port B
-float g_pflLevel     = 1.0; // PFL volumne level
 #endif
 jack_port_t* g_soloPortA;  // Pointer to solo trunk port A
 jack_port_t* g_soloPortB;  // Pointer to solo trunk port B
@@ -356,7 +360,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 }
 #else
                 // Add fx send output frames only for input channels
-                for (uint8_t send = 0; send < g_lastSend; ++send) {
+                for (uint8_t send = 0; send < g_lastSend; send++) {
                     if (g_fxSends[send]) {
                         if (strip->sendMode[send] == 0) {
                             g_fxSends[send]->bufferA[frame] += fSampleA * strip->send[send] * g_fxSends[send]->level;
@@ -426,22 +430,36 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     if (g_nDampingCount == 0)
         g_nDampingCount = g_nDampingPeriod;
     else
-        --g_nDampingCount;
+        g_nDampingCount--;
     if (g_nHoldCount == 0)
         g_nHoldCount = g_nDampingPeriod * 20;
     else
-        --g_nHoldCount;
+        g_nHoldCount--;
 
     // Mark as deleted the pending-to-delete channel/send
     if (g_stripToDelete >= 0) {
         g_channelStrips[g_stripToDelete] = NULL;
+        // Update g_lastStrip value
+        uint8_t ls;
+        for (ls = MAX_CHANNELS; ls > 1; ls--) {
+            if (g_channelStrips[ls - 1])
+                break;
+        }
+        g_lastStrip = ls;
         g_stripToDelete = -1;
     }
 #ifndef MIXBUS
     if (g_sendToDelete >= 0) {
         g_fxSends[g_sendToDelete] = NULL;
-        g_sendToDelete = -1;
         g_sendCount--;
+        // Update lastSend value
+        uint8_t ls;
+        for (ls = MAX_CHANNELS; ls > 1; ls--) {
+            if (g_fxSends[ls - 1])
+                break;
+        }
+        g_lastSend = ls;
+        g_sendToDelete = -1;
     }
 #endif
 
@@ -466,6 +484,7 @@ void print_dpm_info(uint8_t chan) {
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
     if (!g_running)
         return;
+    pthread_mutex_lock(&lock);
     for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
         if (g_channelStrips[chan] == NULL)
             continue;
@@ -478,6 +497,7 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
         else
             g_channelStrips[chan]->outRouted = 0;
     }
+    pthread_mutex_unlock(&lock);
 }
 
 int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
@@ -488,9 +508,12 @@ int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
     return 0;
 }
 
+// WARNING This implementation, without any mutex, probably will cause segmentation fault,
+// but jack's buffersize never changes on-the-fly on zynthian
 int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
     if (nBuffersize == 0)
         return 0;
+
     g_buffersize     = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
     free(g_soloBufferA);
@@ -1104,22 +1127,23 @@ int8_t removeStrip(uint8_t chan) {
     if (chan >= MAX_CHANNELS || g_channelStrips[chan] == NULL)
         return -1;
 
+    pthread_mutex_lock(&lock);
+
     struct channel_strip* pstrip = g_channelStrips[chan];
     // Flag strip to be marked as deleted at the end of this period
     g_stripToDelete = chan;
     // Wait until jack process has marked the strip as deleted
-    while (g_channelStrips[chan]) usleep(10000);
+    while (g_channelStrips[chan]) usleep(1000);
+
+    pthread_mutex_unlock(&lock);
+
     // Unregister ports and free memory
     jack_port_unregister(g_jackClient, pstrip->inPortA);
     jack_port_unregister(g_jackClient, pstrip->inPortB);
     jack_port_unregister(g_jackClient, pstrip->outPortA);
     jack_port_unregister(g_jackClient, pstrip->outPortB);
     free(pstrip);
-    // Update g_lastStrip value
-    for (uint8_t g_lastStrip = MAX_CHANNELS - 1; g_lastStrip > 0; --g_lastStrip) {
-        if (g_channelStrips[g_lastStrip])
-            break;
-    }
+
     return chan;
 }
 
@@ -1173,28 +1197,26 @@ uint8_t removeSend(uint8_t send) {
     send -= 2; // We expose sends at 2-based so need to decrement to access array
     if (send >= MAX_CHANNELS || g_fxSends[send] == NULL)
         return 1;
+
+    pthread_mutex_lock(&lock);
+
     struct fx_send* pstrip = g_fxSends[send];
     // Flag send to be marked as deleted at the end of this period
     g_sendToDelete = send;
     // Wait until jack process has marked the send as deleted
-    while (g_fxSends[send]) usleep(10000);
+    while (g_fxSends[send]) usleep(1000);
+
+    pthread_mutex_unlock(&lock);
+
     // Unregister ports and free memory
     jack_port_unregister(g_jackClient, pstrip->outPortA);
     jack_port_unregister(g_jackClient, pstrip->outPortB);
     free(pstrip);
-    // Update lastSend value
-    for (g_lastSend = MAX_CHANNELS - 1; g_lastSend > 0; --g_lastSend) {
-        if (g_fxSends[g_lastSend])
-            break;
-    }
     return 0;
 #endif
 }
 
-
-uint8_t getSendCount() {
-    return g_sendCount;
-}
+uint8_t getSendCount() { return g_sendCount; }
 
 uint8_t getMaxChannels() { return MAX_CHANNELS; }
 
