@@ -1006,7 +1006,11 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         try:
             patinfo = params[0]
             dst_pattern = params[1]
+            # Copy the pattern content
             self.zynseq.libseq.copyPattern(patinfo[3], dst_pattern)
+            # Copy the sequence name too
+            name = self.zynseq.get_sequence_name(self.zynseq.scene, patinfo[1], patinfo[2])
+            self.zynseq.set_sequence_param(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, "name", name)
         except Exception as e:
             logging.error(e)
         if self.shown:
