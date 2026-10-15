@@ -2178,7 +2178,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.zynseq.phrase += 1
             self.build_launchers()
             self.moving_phrase = True
-            self.zyngui.purge_screen_history("option")
+            self.zyngui.wait_show_loading()
+            self.zyngui.prune_screen_history("option", soft=False)
             self.state_manager.end_busy("clone_phrase")
         elif option.startswith("Delete phrase"):
             self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
@@ -2287,7 +2288,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.state_manager.start_busy("remove_phrase", "Deleting phrase...")
         self.zynseq.remove_phrase(self.zynseq.scene, phrase)
         self.build_launchers()
-        self.zyngui.purge_screen_history("option")
+        self.zyngui.wait_show_loading(0.5)
+        self.zyngui.prune_screen_history("option", soft=False)
         self.state_manager.end_busy("remove_phrase")
 
     def drag_launcher(self, dy):
