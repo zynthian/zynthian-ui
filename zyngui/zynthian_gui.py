@@ -2584,12 +2584,14 @@ class zynthian_gui:
 
     def plot_zctrls_task(self):
         # Refresh GUI Controllers & Widgets
-        try:
-            self.screens[self.current_screen].plot_zctrls()
-        except AttributeError:
-            pass
-        except Exception as e:
-            logging.error(e)
+        screen_obj = self.get_current_screen_obj()
+        if screen_obj:
+            plot_zctrls_func = getattr(screen_obj, "plot_zctrls", None)
+            if plot_zctrls_func:
+                try:
+                    plot_zctrls_func()
+                except Exception as e:
+                    logging.error(e)
 
         if not self.exit_flag:
             zynthian_gui_config.top.after(32, self.plot_zctrls_task)
