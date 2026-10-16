@@ -646,7 +646,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
     def show(self):
         #self.loading = False
-        #self.refreshing = False
+        self.refreshing = False
         super().show()
         if self.eng_type:
             zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.audio_recorder_cb)
@@ -791,6 +791,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         return True
 
     def refresh_gui(self):
+        if not self.widget_canvas.prog:
+            #logging.debug("Waiting for OpenGL context...")
+            return
         if not self.zctrl and not self.eng_type:
             return
         if self.loading or self.refreshing:
