@@ -945,10 +945,6 @@ class zynthian_gui:
             fpath: Full path to the html document, filename for specific view or None for auto detection
         """
 
-        if fpath == "index:":
-            self.screens['help'].load_file(fpath)
-            return
-
         def get_fpath(fpath):
             html_root = self.screens["help"].help_dir
             for b in ("/", "./"):
@@ -964,28 +960,30 @@ class zynthian_gui:
 
         # Get help page for the specified file
         if fpath:
-            fpath = get_fpath(fpath)
-            if Path(fpath).exists():
+            if fpath == "index:":
                 self.screens['help'].load_file(fpath)
             else:
-                logging.error(f"Help file '{fpath}' doesn't exist.")
+                fpath = get_fpath(fpath)
+                if Path(fpath).exists():
+                    self.screens['help'].load_file(fpath)
+                else:
+                    logging.error(f"Help file '{fpath}' doesn't exist.")
             return
 
-        # Get help for current view, using view name
-        fpath = get_fpath(f"{self.current_screen}.html")
+        # Get help page for the current view
+        try:
+            # Ask screen object
+            curscreen_obj = self.get_current_screen_obj()
+            fpath = get_fpath(curscreen_obj.get_help_fpath())
+        except:
+            # Else use view name
+            fpath = get_fpath(f"{self.current_screen}.html")
+
         if fpath and Path(fpath).exists():
             self.screens['help'].load_file(fpath)
             return
-        # Get help for current view, asking the screen object
-        try:
-            curscreen_obj = self.get_current_screen_obj()
-            fpath = get_fpath(curscreen_obj.get_help_fpath())
-            if fpath and Path(fpath).exists():
-                self.screens['help'].load_file(fpath)
-                return
-        except:
-            fpath = self.current_screen
-        topic = str(fpath).split("/")[-1]
+
+        topic = str(self.current_screen).split("/")[-1]
         logging.warning(f"No help for '{topic}'")
 
     # TODO: Rename - this is called for various chain manipulation purposes
