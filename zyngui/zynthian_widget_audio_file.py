@@ -974,6 +974,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.update_markers = True
                     self.refresh_waveform = False
                 else:
+                    self.refreshing = False
                     return
 
             if self.frames:
