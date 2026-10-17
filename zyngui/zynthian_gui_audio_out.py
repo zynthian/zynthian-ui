@@ -97,13 +97,13 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                     suffix = f" ({self.playback_ports[i].aliases[0]})"
                 else:
                     suffix = ""
-                port_names.append((f"Output {i + 1}{suffix}", f"^{self.playback_ports[i].name}$", [f"Send audio from this chain directly to physical audio output {i + 1} as mono.", "audio_output.png"]))
+                port_names.append((f"Output {i + 1}{suffix}", f"^{self.playback_ports[i].name}$", [f"Send audio from this chain directly to physical audio output {i + 1}{suffix} as mono.", "audio_output.png"]))
                 if i < port_count:
                     if self.playback_ports[i + 1].aliases:
                         suffix = f" ({self.playback_ports[i + 1].aliases[0]})"
                     else:
                         suffix = ""
-                    port_names.append((f"Output {i + 2}{suffix}", f"^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio output {i + 2} as mono.", "audio_output.png"]))
+                    port_names.append((f"Output {i + 2}{suffix}", f"^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio output {i + 2}{suffix} as mono.", "audio_output.png"]))
                     port_names.append((f"Outputs {i + 1}+{i + 2} (stereo)", f"^{self.playback_ports[i].name}$|^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio outputs {i + 1} & {i + 2} as stereo.", "audio_output.png"]))
             for title, processor, info in port_names:
                 if processor in self.zyngui.chain_manager.active_chain.audio_out:
