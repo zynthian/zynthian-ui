@@ -1162,8 +1162,9 @@ class zynthian_gui:
         curproc = self.get_current_processor()
         if curproc:
             self.cuia_bank_preset()
-            curproc.set_show_fav_presets(True)
-            self.show_screen("preset")
+            if self.current_screen in ("bank", "preset"):
+                curproc.set_show_fav_presets(True)
+                self.show_screen("preset")
 
     def set_current_processor(self, processor):
         self.current_processor = processor
