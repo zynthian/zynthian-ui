@@ -1,8 +1,8 @@
 # Zynthian User Interface
 
-[Zynthian](http://zynthian.org) is an Open Synth Platform based on Raspberry Pi, Linux (Raspbian) and Free Software Synthesizers (mostly).
+[Zynthian](http://zynthian.org) is an Open Synth Platform based on Raspberry Pi, Linux and Free Software Synthesizers.
 
-The [ZynthianOS SD-image](https://os.zynthian.org/zynthianos-last-stable.zip) includes all the software you need for building a ZynthianBox, including a good amount of sound libraries and presets.
+The [ZynthianOS SD-image](https://os.zynthian.org/zynthianos-last-stable.zip) has all the software you need for building a ZynthianBox, including a good amount of sound libraries and presets.
 
 This repository contains the software for the Engine Manager & User Interface.
 
