@@ -71,6 +71,7 @@ PLUGIN_OPTION_USE_CHUNKS = 0x008
 CARLA_HOST_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zynthian_carla_host.py")
 
 PRESET_EXT = ".carxs"
+LAYOUT_DIR = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config") + "/carla/layouts"
 CONTROL_SOCKET = os.environ.get("ZYNTHIAN_CARLA_SOCKET", "/tmp/zynthian-carla.sock")
 HOST_CALL_TIMEOUT = 15
 HOST_LOAD_TIMEOUT = 180
@@ -512,6 +513,12 @@ class zynthian_engine_carla(zynthian_engine):
         cmd = msg.get("cmd")
         if cmd == "list":
             return self.control_list()
+        if cmd == "layout":
+            for processor, plugin in list(self.plugins.items()):
+                if processor.id == msg.get("id") and plugin.loaded:
+                    return {"key": plugin.key, "file": f"{LAYOUT_DIR}/{plugin.key}.json",
+                            "layout": self.get_layout_template(plugin)}
+            raise RuntimeError("Unknown plugin id")
         if cmd in ("show", "hide", "toggle"):
             for processor, plugin in list(self.plugins.items()):
                 if processor.id == msg.get("id"):
@@ -992,6 +999,61 @@ class zynthian_engine_carla(zynthian_engine):
         used.add(symbol)
         return symbol
 
+    def load_layout(self, plugin):
+        fpath = f"{LAYOUT_DIR}/{plugin.key}.json"
+        try:
+            with open(fpath) as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return None
+        except Exception as e:
+            logging.error(f"Can't read the controller layout {fpath} => {e}")
+            return None
+
+    def apply_layout(self, plugin, layout):
+        refs = {}
+        for p in plugin.desc.get("params", []):
+            symbol = plugin.index2symbol.get(p["index"])
+            if symbol is None:
+                continue
+            for key in (p["symbol"], p["name"], symbol):
+                if key:
+                    refs.setdefault(str(key).casefold(), symbol)
+
+        def find(ref):
+            if isinstance(ref, int):
+                return plugin.index2symbol.get(ref)
+            return refs.get(str(ref).casefold())
+
+        used = set()
+        for page in layout.get("pages", []):
+            symbols = []
+            for ref in page.get("params", []):
+                symbol = find(ref)
+                if symbol is None:
+                    logging.warning(f"Layout of {plugin.title}: parameter '{ref}' not found")
+                elif symbol not in used:
+                    symbols.append(symbol)
+                    used.add(symbol)
+            name = page.get("name") or "Params"
+            for n in range(0, len(symbols), 4):
+                suffix = f" {n // 4 + 1}" if len(symbols) > 4 else ""
+                self._ctrl_screens.append([name + suffix, symbols[n:n + 4]])
+        for ref in layout.get("hide", []):
+            symbol = find(ref)
+            if symbol:
+                used.add(symbol)
+        rest = {k: v for k, v in plugin.zctrls.items() if k not in used}
+        if rest and not layout.get("hide_unlisted", False):
+            self.generate_ctrl_screens(rest)
+
+    def get_layout_template(self, plugin):
+        params = []
+        for p in plugin.desc.get("params", []):
+            if p["index"] in plugin.index2symbol:
+                params.append(p["name"] or p["symbol"] or p["index"])
+        return {"pages": [{"name": "Params", "params": params}]}
+
     def map_plugin_params(self, plugin, desc):
         plugin.params = {p["index"]: p for p in desc.get("params", [])}
 
@@ -1057,7 +1119,11 @@ class zynthian_engine_carla(zynthian_engine):
         plugin.gui_shown = False
 
         self._ctrl_screens = [[s[0], list(s[1])] for s in plugin.midi_ctrl_screens]
-        self.generate_ctrl_screens(plugin.zctrls)
+        layout = self.load_layout(plugin)
+        if layout:
+            self.apply_layout(plugin, layout)
+        else:
+            self.generate_ctrl_screens(plugin.zctrls)
         plugin._ctrl_screens = self._ctrl_screens
         self._ctrl_screens = []
 

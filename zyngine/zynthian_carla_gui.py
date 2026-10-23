@@ -56,6 +56,11 @@ def run_cli(argv):
         for p in request("list"):
             state = "-" if not p["has_gui"] else ("shown" if p["shown"] else "hidden")
             print(f"{p['id']}\t{p['name']}\t{p['jackname']}\t{state}")
+    elif cmd == "params" and len(argv) > 1:
+        p = find_plugin(argv[1])
+        res = request("layout", id=p["id"])
+        print(f"# Save as {res['file']} after editing", file=sys.stderr)
+        print(json.dumps(res["layout"], indent=2))
     elif cmd in ("show", "hide", "toggle") and len(argv) > 1:
         p = find_plugin(argv[1])
         print(request(cmd, id=p["id"]))
