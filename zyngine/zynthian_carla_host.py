@@ -40,7 +40,7 @@ IDLE_FAST = 0.02     # Main loop period (s) when native GUI is visible
 IDLE_SLOW = 0.25     # Main loop period (s) when native GUI is not visible
 
 PROBE_TYPES = ("VST2", "VST3", "CLAP")
-PROBE_COARSE_POINTS = 17 
+PROBE_COARSE_POINTS = 17
 PROBE_FINE_POINTS = 257
 PROBE_MAX_ITEMS = 32
 PROBE_MAX_NUMERIC_ITEMS = 8
@@ -291,7 +291,11 @@ class CarlaHostProcess:
                 return None
             if all(is_number(t) for t in labels) and len(runs) > PROBE_MAX_NUMERIC_ITEMS:
                 return None
-            return [[finite((r[1] + r[2]) / 2), r[0]] for r in runs]
+            items = [[finite((r[1] + r[2]) / 2), r[0]] for r in runs]
+            if len(items) == 2 and is_number(labels[0]) and is_number(labels[1]) and \
+                    abs(float(labels[0].split()[0])) < 1e-9 and abs(float(labels[1].split()[0]) - 1.0) < 1e-9:
+                items[0][1], items[1][1] = "off", "on"
+            return items
         except Exception as e:
             self.log("debug", f"Can't probe parameter {index} => {e}")
             return None
