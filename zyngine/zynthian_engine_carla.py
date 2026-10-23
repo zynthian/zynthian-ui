@@ -1064,11 +1064,16 @@ class zynthian_engine_carla(zynthian_engine):
         is_toggle = bool(hints & PARAMETER_IS_BOOLEAN)
         is_log = bool(hints & PARAMETER_IS_LOGARITHMIC) and vmin > 0
         group = p["group"] or None
+        group_name = group
+        if group:
+            m = re.match(r"^([^\s:]+):(.+)$", group)
+            if m:
+                group, group_name = m.group(1), m.group(2).strip()
         opts = {
             'processor': plugin.processor,
             'name': p["name"] or symbol,
             'group_symbol': group,
-            'group_name': group,
+            'group_name': group_name,
             'graph_path': p["index"],
             'is_trigger': False,
             'is_path': False,
