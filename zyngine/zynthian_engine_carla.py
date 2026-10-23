@@ -76,7 +76,6 @@ HOST_CALL_TIMEOUT = 15
 HOST_LOAD_TIMEOUT = 180
 DETACH_GRACE_TIME = 3.0
 
-# Plugin types whose state is just their parameter values => not worth saving in snapshots
 STATELESS_TYPES = ("LADSPA", "DSSI", "INTERNAL")
 
 
@@ -135,6 +134,10 @@ class carla_plugin:
     # ---------------------------------------------------------------------------
     # Engine interface used by the zynthian core (through the proxy)
     # ---------------------------------------------------------------------------
+
+    @property
+    def name(self):
+        return self.title
 
     def get_jackname(self):
         return self.jackname
@@ -268,7 +271,7 @@ class carla_plugin:
 
 class carla_processor_engine:
 
-    _per_plugin = ("jackname", "get_jackname", "bypass_zctrl", "_ctrl_screens", "custom_gui_fpath",
+    _per_plugin = ("name", "jackname", "get_jackname", "bypass_zctrl", "_ctrl_screens", "custom_gui_fpath",
                    "get_monitors_dict", "get_preset_options", "preset_options_cb",
                    "get_user_bank_urid", "create_user_bank", "rename_user_bank", "delete_user_bank",
                    "preset_exists", "save_preset", "rename_preset", "delete_preset")
