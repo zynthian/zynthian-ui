@@ -11,8 +11,8 @@
 # Usage (from the zynthian-ui directory):
 #   python3 -m zyngine.zynthian_carla scan [TYPE ...]     => print discovered plugins
 #   python3 -m zyngine.zynthian_carla engines [TYPE ...]  => scan and update the engine config
-# TYPE is one of LADSPA DSSI LV2 VST2 VST3 CLAP (default: all except LV2, because
-# LV2 plugins are already provided by the Jalv engines).
+# TYPE is one of LV2 LADSPA DSSI VST2 VST3 CLAP (default: all). LV2 plugins are also
+# provided by the Jalv engines, so they are listed twice while both engines are enabled.
 #
 # Extra search paths can be set with the usual environment variables (LADSPA_PATH,
 # DSSI_PATH, LV2_PATH, VST_PATH, VST3_PATH, CLAP_PATH) or in
@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import os
+import re
 import sys
 import json
 import time
@@ -271,12 +272,31 @@ def make_unique_titles(plugins):
     return result
 
 
+def get_lv2_description(uri, current):
+    for key, eng in current.items():
+        if key.startswith("JV/") and eng.get("URL") == uri and eng.get("DESCR"):
+            return eng["DESCR"]
+    try:
+        from zyngine import zynthian_lv2
+        if getattr(zynthian_lv2, "world", None) is None:
+            zynthian_lv2.init_lilv()
+        plugin = zynthian_lv2.world.get_all_plugins().get_by_uri(uri)
+        if plugin:
+            return zynthian_lv2.get_plugin_description(plugin)
+    except Exception as e:
+        logging.debug(f"Can't get LV2 description of {uri} => {e}")
+    return None
+
+
 def generate_engines(plugins, current=None):
     current = current or {}
     engines = {}
     for title, info in make_unique_titles(plugins):
         key = f"CA/{title}"
         etype = get_plugin_engine_type(info)
+        default_descr = f"{info['type']} plugin" + (f" by {info['maker']}" if info.get("maker") else "")
+        if info["type"] == "LV2":
+            default_descr = get_lv2_description(info.get("label"), current) or default_descr
         entry = {
             'ID': hashlib.sha1(key.encode()).hexdigest()[:10],
             'NAME': title,
@@ -287,7 +307,7 @@ def generate_engines(plugins, current=None):
             'INDEX': 9999,
             'URL': info.get("label") or info["filename"],
             'UI': "UI" if info.get("hints", 0) & PLUGIN_HAS_CUSTOM_UI else None,
-            'DESCR': f"{info['type']} plugin" + (f" by {info['maker']}" if info.get("maker") else ""),
+            'DESCR': default_descr,
             'QUALITY': 0,
             'COMPLEX': 0,
             'EDIT': 0,
@@ -303,6 +323,8 @@ def generate_engines(plugins, current=None):
         if old:
             for field in ('ID', 'TITLE', 'TYPE', 'CAT', 'ENABLED', 'INDEX', 'DESCR', 'QUALITY', 'COMPLEX', 'EDIT'):
                 if field in old:
+                    if field == 'DESCR' and re.match(r"^[A-Z0-9]+ plugin( by .*)?$", old[field] or ""):
+                        continue
                     entry[field] = old[field]
         engines[key] = entry
     return engines
