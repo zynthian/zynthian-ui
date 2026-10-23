@@ -69,6 +69,7 @@ engine2class = {
     "LS": zynthian_engine_linuxsampler,
     "BF": zynthian_engine_setbfree,
     'JV': zynthian_engine_jalv,
+    'CA': zynthian_engine_carla,
     "AE": zynthian_engine_aeolus,
     "PT": zynthian_engine_pianoteq,
     "AP": zynthian_engine_audioplayer,

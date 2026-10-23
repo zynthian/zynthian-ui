@@ -14,6 +14,7 @@ __all__ = [
     "zynthian_engine_puredata",
     "zynthian_engine_aeolus",
     "zynthian_engine_jalv",
+    "zynthian_engine_carla",
     "zynthian_engine_sfizz",
     "zynthian_engine_alsa_mixer",
     "zynthian_engine_tempo",
@@ -40,6 +41,7 @@ from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_puredata import *
 from zyngine.zynthian_engine_aeolus import *
 from zyngine.zynthian_engine_jalv import *
+from zyngine.zynthian_engine_carla import *
 from zyngine.zynthian_engine_sfizz import *
 from zyngine.zynthian_engine_alsa_mixer import *
 from zyngine.zynthian_engine_tempo import *

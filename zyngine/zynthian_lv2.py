@@ -628,6 +628,11 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
         logging.debug("LV2 Plugin '{}' => {}".format(
             engine_name, genengines[key]))
 
+    # Keep the Carla plugins registered by zynthian_carla.py
+    for key, info in (engines or {}).items():
+        if key.startswith("CA/"):
+            genengines[key] = info
+
     try:
         # Sort using title, so user can customize order by changing title from webconf
         engines = dict(sorted(genengines.items(), key=lambda r: r[1]['TITLE'].casefold()))
