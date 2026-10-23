@@ -11,6 +11,10 @@
 # Usage (from the zynthian-ui directory):
 #   python3 -m zyngine.zynthian_carla scan [TYPE ...]     => print discovered plugins
 #   python3 -m zyngine.zynthian_carla engines [TYPE ...]  => scan and update the engine config
+# Options: --remove-duplicates registers a plugin that is available in several formats only
+# once, using the first available format of LV2, CLAP, VST3, VST2, DSSI, LADSPA.
+# --keep-duplicates (default) registers every format. The default can be changed with
+# "remove_duplicates": true in the config file below.
 # TYPE is one of LV2 LADSPA DSSI VST2 VST3 CLAP (default: all). LV2 plugins are also
 # provided by the Jalv engines, so they are listed twice while both engines are enabled.
 #
@@ -76,6 +80,8 @@ CARLA_CAT_TO_ENGCAT = {
 }
 
 DISCOVERY_TIMEOUT = 60
+
+FORMAT_PREFERENCE = ["LV2", "CLAP", "VST3", "VST2", "DSSI", "LADSPA"]
 
 # ------------------------------------------------------------------------------
 # Discovery
@@ -196,7 +202,56 @@ def discover_file(tool, ptype, path):
     return found
 
 
-def scan_plugins(types=None, progress=None):
+def normalize_name(name):
+    name = (name or "").lower()
+    name = re.sub(r"[\(\[]\s*(lv2|clap|vst3?|vst2|dssi|ladspa)\s*[\)\]]", " ", name)
+    name = re.sub(r"\b(lv2|clap|vst3?|vst2|dssi|ladspa)\b", " ", name)
+    return re.sub(r"[^a-z0-9]", "", name)
+
+
+def makers_match(a, b):
+    na, nb = normalize_name(a), normalize_name(b)
+    if not na or not nb or na in nb or nb in na:
+        return True
+    wa = re.split(r"\W+", (a or "").strip().lower())[0]
+    wb = re.split(r"\W+", (b or "").strip().lower())[0]
+    return bool(wa) and wa == wb
+
+
+def format_rank(info):
+    try:
+        return FORMAT_PREFERENCE.index(info["type"])
+    except ValueError:
+        return len(FORMAT_PREFERENCE)
+
+
+def remove_duplicates(plugins):
+    groups = {}
+    for info in plugins:
+        groups.setdefault(normalize_name(info.get("name")), []).append(info)
+    result = []
+    for key, group in groups.items():
+        if not key:
+            result += group
+            continue
+        clusters = []
+        for info in sorted(group, key=lambda i: (format_rank(i), i["filename"], i.get("label", ""))):
+            for cl in clusters:
+                if makers_match(cl[0].get("maker"), info.get("maker")):
+                    if info["type"] == cl[0]["type"]:
+                        cl[1].append(info)
+                    break
+            else:
+                clusters.append([info, [info]])
+        for cl in clusters:
+            result += cl[1]
+    removed = len(plugins) - len(result)
+    if removed:
+        logging.info(f"{removed} duplicated plugins removed")
+    return result
+
+
+def scan_plugins(types=None, progress=None, remove_dups=None):
     # Returns a list with the info of every plugin found (one entry per plugin, not per file)
     tool = find_discovery_tool()
     if not tool:
@@ -215,6 +270,10 @@ def scan_plugins(types=None, progress=None):
             if progress:
                 progress(ptype, path, i, len(files))
             plugins += discover_file(tool, ptype, path)
+    if remove_dups is None:
+        remove_dups = bool(config.get("remove_duplicates", False))
+    if remove_dups:
+        plugins = remove_duplicates(plugins)
     return plugins
 
 # ------------------------------------------------------------------------------
@@ -245,6 +304,9 @@ def get_plugin_engine_cat(info, etype):
     if etype == "MIDI Tool":
         return "Other"
     cat = CARLA_CAT_TO_ENGCAT.get(info.get("category", "none"), "Other")
+    # Carla has no reverb category (reverbs are reported as "delay" or "other"), so use the name
+    if cat in ("Delay", "Other") and re.search(r"reverb|verb", info.get("name", ""), re.I):
+        cat = "Reverb"
     if etype == "MIDI Synth":
         return "Synth" if cat == "Other" else "Synth"
     if cat == "Synth":
@@ -272,19 +334,43 @@ def make_unique_titles(plugins):
     return result
 
 
-def get_lv2_description(uri, current):
+def get_jalv_engine(uri, current):
     for key, eng in current.items():
-        if key.startswith("JV/") and eng.get("URL") == uri and eng.get("DESCR"):
-            return eng["DESCR"]
+        if key.startswith("JV/") and eng.get("URL") == uri:
+            return eng
+    return None
+
+
+def get_lv2_plugin(uri):
     try:
         from zyngine import zynthian_lv2
         if getattr(zynthian_lv2, "world", None) is None:
             zynthian_lv2.init_lilv()
-        plugin = zynthian_lv2.world.get_all_plugins().get_by_uri(uri)
-        if plugin:
-            return zynthian_lv2.get_plugin_description(plugin)
+        return zynthian_lv2.world.get_all_plugins().get_by_uri(uri)
     except Exception as e:
-        logging.debug(f"Can't get LV2 description of {uri} => {e}")
+        logging.debug(f"Can't get LV2 plugin {uri} => {e}")
+    return None
+
+
+def get_lv2_description(uri, current):
+    eng = get_jalv_engine(uri, current)
+    if eng and eng.get("DESCR"):
+        return eng["DESCR"]
+    plugin = get_lv2_plugin(uri)
+    if plugin:
+        from zyngine import zynthian_lv2
+        return zynthian_lv2.get_plugin_description(plugin)
+    return None
+
+
+def get_lv2_category(uri, current):
+    eng = get_jalv_engine(uri, current)
+    if eng and eng.get("CAT"):
+        return eng["CAT"]
+    plugin = get_lv2_plugin(uri)
+    if plugin:
+        from zyngine import zynthian_lv2
+        return zynthian_lv2.get_plugin_cat(plugin)
     return None
 
 
@@ -295,14 +381,18 @@ def generate_engines(plugins, current=None):
         key = f"CA/{title}"
         etype = get_plugin_engine_type(info)
         default_descr = f"{info['type']} plugin" + (f" by {info['maker']}" if info.get("maker") else "")
+        cat = get_plugin_engine_cat(info, etype)
+        auto_cat = cat
         if info["type"] == "LV2":
             default_descr = get_lv2_description(info.get("label"), current) or default_descr
+            if etype == "Audio Effect":
+                cat = get_lv2_category(info.get("label"), current) or cat
         entry = {
             'ID': hashlib.sha1(key.encode()).hexdigest()[:10],
             'NAME': title,
             'TITLE': title,
             'TYPE': etype,
-            'CAT': get_plugin_engine_cat(info, etype),
+            'CAT': cat,
             'ENABLED': False,
             'INDEX': 9999,
             'URL': info.get("label") or info["filename"],
@@ -325,14 +415,16 @@ def generate_engines(plugins, current=None):
                 if field in old:
                     if field == 'DESCR' and re.match(r"^[A-Z0-9]+ plugin( by .*)?$", old[field] or ""):
                         continue
+                    if field == 'CAT' and old[field] in (auto_cat, CARLA_CAT_TO_ENGCAT.get(info.get("category", "none"))):
+                        continue
                     entry[field] = old[field]
         engines[key] = entry
     return engines
 
 
-def update_engines(types=None, progress=None):
+def update_engines(types=None, progress=None, remove_dups=None):
     from zyngine import zynthian_lv2
-    plugins = scan_plugins(types, progress)
+    plugins = scan_plugins(types, progress, remove_dups)
     current = zynthian_lv2.get_engines()
     new = generate_engines(plugins, current)
     merged = {k: v for k, v in current.items() if not k.startswith("CA/")}
@@ -351,13 +443,18 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=logging.INFO)
     start = time.time()
     cmd = sys.argv[1] if len(sys.argv) > 1 else "engines"
-    types = sys.argv[2:] or None
+    remove_dups = None
+    if "--remove-duplicates" in sys.argv:
+        remove_dups = True
+    if "--keep-duplicates" in sys.argv:
+        remove_dups = False
+    types = [a for a in sys.argv[2:] if not a.startswith("--")] or None
     if cmd == "scan":
-        for title, info in make_unique_titles(scan_plugins(types)):
+        for title, info in make_unique_titles(scan_plugins(types, remove_dups=remove_dups)):
             etype = get_plugin_engine_type(info)
             print(f"{info['type']:6} {etype:16} {title}  [{info['filename']}]")
     elif cmd == "engines":
-        new = update_engines(types)
+        new = update_engines(types, remove_dups=remove_dups)
         logging.info(f"{len(new)} Carla plugins registered")
     else:
         print(__doc__ if __doc__ else "usage: zynthian_carla.py scan|engines [TYPE ...]")
