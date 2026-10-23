@@ -38,6 +38,12 @@ import traceback
 
 IDLE_FAST = 0.02     # Main loop period (s) when native GUI is visible
 IDLE_SLOW = 0.25     # Main loop period (s) when native GUI is not visible
+
+PROBE_TYPES = ("VST2", "VST3", "CLAP")
+PROBE_COARSE_POINTS = 17 
+PROBE_FINE_POINTS = 257
+PROBE_MAX_ITEMS = 32
+PROBE_MAX_NUMERIC_ITEMS = 8
 LIB_DIR_CANDIDATES = [
     "/usr/lib/carla",
     "/usr/local/lib/carla",
@@ -117,6 +123,8 @@ class CarlaHostProcess:
         self.quit = False
         self.ui_shown = set()
         self.last_cmd = 0.0
+        self.mute_pids = {}
+        self.enum_cache = {}
         self.host = None
         self.cb = None
 
@@ -192,6 +200,8 @@ class CarlaHostProcess:
         cb = self.cb
         try:
             if action == cb.ENGINE_CALLBACK_PARAMETER_VALUE_CHANGED:
+                if time.monotonic() < self.mute_pids.get(plugin_id, 0):
+                    return
                 h = self.handle_of(plugin_id)
                 if h is not None:
                     with self.pending_lock:
@@ -246,10 +256,60 @@ class CarlaHostProcess:
     # Plugin information
     # ---------------------------------------------------------------------------
 
+    def probe_enum(self, pid, index, vmin, vmax, original):
+        host = self.host
+
+        def sample(n):
+            res = []
+            for k in range(n):
+                v = vmin + (vmax - vmin) * k / (n - 1)
+                host.set_parameter_value(pid, index, v)
+                res.append((v, to_str(host.get_parameter_text(pid, index)).strip()))
+            return res
+
+        def is_number(t):
+            try:
+                float(t.split()[0])
+                return True
+            except (ValueError, IndexError):
+                return False
+
+        try:
+            texts = [t for _, t in sample(PROBE_COARSE_POINTS)]
+            distinct = set(texts)
+            if len(distinct) < 2 or len(distinct) >= PROBE_COARSE_POINTS or "" in distinct:
+                return None
+            fine = sample(PROBE_FINE_POINTS)
+            runs = []
+            for v, t in fine:
+                if runs and runs[-1][0] == t:
+                    runs[-1][2] = v
+                else:
+                    runs.append([t, v, v])
+            labels = [r[0] for r in runs]
+            if len(set(labels)) != len(labels) or len(runs) < 2 or len(runs) > PROBE_MAX_ITEMS:
+                return None
+            if all(is_number(t) for t in labels) and len(runs) > PROBE_MAX_NUMERIC_ITEMS:
+                return None
+            return [[finite((r[1] + r[2]) / 2), r[0]] for r in runs]
+        except Exception as e:
+            self.log("debug", f"Can't probe parameter {index} => {e}")
+            return None
+        finally:
+            host.set_parameter_value(pid, index, original)
+
     def describe_params(self, pid):
         cb = self.cb
         host = self.host
         params = []
+        pinfo = host.get_plugin_info(pid)
+        ptype = int(pinfo["type"])
+        names = os.environ.get("ZYNTHIAN_CARLA_PROBE_TYPES")
+        types = [t.strip().upper() for t in names.split(",")] if names else PROBE_TYPES
+        probe = ptype in [getattr(cb, "PLUGIN_" + t, -1) for t in types]
+        plugin_key = (ptype, to_str(pinfo["label"]), to_str(pinfo["maker"]), host.get_parameter_count(pid))
+        if probe:
+            self.mute_pids[pid] = time.monotonic() + 2.0
         for i in range(host.get_parameter_count(pid)):
             d = host.get_parameter_data(pid, i)
             inf = host.get_parameter_info(pid, i)
@@ -259,6 +319,14 @@ class CarlaHostProcess:
                 for s in range(inf["scalePointCount"]):
                     sp = host.get_parameter_scalepoint_info(pid, i, s)
                     sps.append([finite(sp["value"]), to_str(sp["label"])])
+            elif (probe and d["type"] == cb.PARAMETER_INPUT and not d["hints"] & cb.PARAMETER_IS_READ_ONLY
+                  and not d["hints"] & (cb.PARAMETER_IS_BOOLEAN | cb.PARAMETER_IS_INTEGER)):
+                key = plugin_key + (i,)
+                if key not in self.enum_cache:
+                    self.enum_cache[key] = self.probe_enum(
+                        pid, i, finite(r["min"]), finite(r["max"], 1.0),
+                        finite(host.get_current_parameter_value(pid, i)))
+                sps = self.enum_cache[key] or []
             params.append({
                 "index": i,
                 "type": d["type"],
@@ -274,6 +342,8 @@ class CarlaHostProcess:
                 "value": finite(host.get_current_parameter_value(pid, i)),
                 "scale_points": sps
             })
+        if probe:
+            self.mute_pids[pid] = time.monotonic() + 1.0
         return params
 
     def describe_programs(self, pid):
