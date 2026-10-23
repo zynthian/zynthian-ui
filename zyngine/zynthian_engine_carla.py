@@ -851,8 +851,9 @@ class zynthian_engine_carla(zynthian_engine):
             return [("", None, "None", None)]
         bank_list = []
 
-        bank_list.append((plugin.plugin_dir, None, "User", None))
         try:
+            if any(n.endswith(PRESET_EXT) for n in os.listdir(plugin.plugin_dir)):
+                bank_list.append((plugin.plugin_dir, None, "User", None))
             for name in sorted(os.listdir(plugin.plugin_dir), key=str.casefold):
                 dpath = f"{plugin.plugin_dir}/{name}"
                 if os.path.isdir(dpath):
@@ -864,9 +865,14 @@ class zynthian_engine_carla(zynthian_engine):
 
         if plugin.programs:
             bank_list.append((f"carla:{plugin.key}:prog", None, "Programs", None))
-        banks = sorted({b for b, p, n in plugin.midi_programs})
-        for bank in banks:
-            bank_list.append((f"carla:{plugin.key}:midibank:{bank}", None, f"MIDI Bank {bank}", None))
+        if plugin.carla.get("type") != "LV2":
+            for bank in sorted({b for b, p, n in plugin.midi_programs}):
+                names = [n for b, p, n in plugin.midi_programs if b == bank]
+                if plugin.programs and names == list(plugin.programs):
+                    continue
+                bank_list.append((f"carla:{plugin.key}:midibank:{bank}", None, f"MIDI Bank {bank}", None))
+        if not bank_list:
+            bank_list.append(("", None, "None", None))
         return bank_list
 
     def set_bank(self, processor, bank):
