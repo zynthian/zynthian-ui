@@ -29,6 +29,8 @@ import time
 import select
 import signal
 import argparse
+import ctypes
+import ctypes.util
 import threading
 import traceback
 
@@ -116,6 +118,150 @@ def to_str(v):
 # Host class
 # ------------------------------------------------------------------------------
 
+class XWindowAttributes(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int), ("width", ctypes.c_int), ("height", ctypes.c_int),
+                ("border_width", ctypes.c_int), ("depth", ctypes.c_int), ("visual", ctypes.c_void_p),
+                ("root", ctypes.c_ulong), ("klass", ctypes.c_int), ("bit_gravity", ctypes.c_int),
+                ("win_gravity", ctypes.c_int), ("backing_store", ctypes.c_int),
+                ("backing_planes", ctypes.c_ulong), ("backing_pixel", ctypes.c_ulong),
+                ("save_under", ctypes.c_int), ("colormap", ctypes.c_ulong), ("map_installed", ctypes.c_int),
+                ("map_state", ctypes.c_int), ("all_event_masks", ctypes.c_long),
+                ("your_event_mask", ctypes.c_long), ("do_not_propagate_mask", ctypes.c_long),
+                ("override_redirect", ctypes.c_int), ("screen", ctypes.c_void_p)]
+
+
+class XWindows:
+    # Minimal Xlib access (ctypes) to find the windows of the plugin GUIs and read/set their
+    # position, so a GUI re-appears where the user left it. Carla destroys the GUI when it is
+    # hidden (to use no CPU), so the new window would otherwise open in the default position.
+
+    XA_CARDINAL = 6
+    IS_VIEWABLE = 2
+    _handler = None
+
+    def __init__(self):
+        lib = ctypes.util.find_library("X11")
+        if not lib:
+            raise RuntimeError("libX11 not found")
+        x = self.x = ctypes.CDLL(lib)
+        c = ctypes
+        x.XOpenDisplay.restype = c.c_void_p
+        x.XOpenDisplay.argtypes = [c.c_char_p]
+        x.XCloseDisplay.argtypes = [c.c_void_p]
+        x.XDefaultRootWindow.restype = c.c_ulong
+        x.XDefaultRootWindow.argtypes = [c.c_void_p]
+        x.XInternAtom.restype = c.c_ulong
+        x.XInternAtom.argtypes = [c.c_void_p, c.c_char_p, c.c_int]
+        x.XQueryTree.argtypes = [c.c_void_p, c.c_ulong, c.POINTER(c.c_ulong), c.POINTER(c.c_ulong),
+                                 c.POINTER(c.POINTER(c.c_ulong)), c.POINTER(c.c_uint)]
+        x.XFree.argtypes = [c.c_void_p]
+        x.XGetWindowProperty.argtypes = [c.c_void_p, c.c_ulong, c.c_ulong, c.c_long, c.c_long, c.c_int,
+                                         c.c_ulong, c.POINTER(c.c_ulong), c.POINTER(c.c_int),
+                                         c.POINTER(c.c_ulong), c.POINTER(c.c_ulong),
+                                         c.POINTER(c.POINTER(c.c_ubyte))]
+        x.XGetWindowAttributes.argtypes = [c.c_void_p, c.c_ulong, c.POINTER(XWindowAttributes)]
+        x.XTranslateCoordinates.argtypes = [c.c_void_p, c.c_ulong, c.c_ulong, c.c_int, c.c_int,
+                                            c.POINTER(c.c_int), c.POINTER(c.c_int), c.POINTER(c.c_ulong)]
+        x.XMoveWindow.argtypes = [c.c_void_p, c.c_ulong, c.c_int, c.c_int]
+        x.XSync.argtypes = [c.c_void_p, c.c_int]
+        if XWindows._handler is None:
+            XWindows._handler = c.CFUNCTYPE(c.c_int, c.c_void_p, c.c_void_p)(lambda d, e: 0)
+        x.XSetErrorHandler(XWindows._handler)
+        self.dpy = x.XOpenDisplay(None)
+        if not self.dpy:
+            raise RuntimeError("Can't open the display")
+        self.root = x.XDefaultRootWindow(self.dpy)
+        self.a_pid = x.XInternAtom(self.dpy, b"_NET_WM_PID", 0)
+
+    def close(self):
+        if self.dpy:
+            self.x.XCloseDisplay(self.dpy)
+            self.dpy = None
+
+    def get_pid(self, win):
+        c = ctypes
+        atype, afmt = c.c_ulong(), c.c_int()
+        nitems, after = c.c_ulong(), c.c_ulong()
+        data = c.POINTER(c.c_ubyte)()
+        res = self.x.XGetWindowProperty(self.dpy, win, self.a_pid, 0, 1, 0, self.XA_CARDINAL, c.byref(atype),
+                                        c.byref(afmt), c.byref(nitems), c.byref(after), c.byref(data))
+        pid = None
+        if res == 0 and data and nitems.value == 1 and afmt.value == 32:
+            pid = c.cast(data, c.POINTER(c.c_long))[0]
+        if data:
+            self.x.XFree(data)
+        return pid
+
+    def is_viewable(self, win):
+        attr = XWindowAttributes()
+        return bool(self.x.XGetWindowAttributes(self.dpy, win, ctypes.byref(attr))) and \
+            attr.map_state == self.IS_VIEWABLE
+
+    def windows(self, pids):
+        found = {}
+        c = ctypes
+        stack = [(self.root, 0)]
+        while stack:
+            win, depth = stack.pop()
+            root, parent = c.c_ulong(), c.c_ulong()
+            children = c.POINTER(c.c_ulong)()
+            n = c.c_uint()
+            if not self.x.XQueryTree(self.dpy, win, c.byref(root), c.byref(parent), c.byref(children), c.byref(n)):
+                continue
+            kids = [children[i] for i in range(n.value)] if children else []
+            if children:
+                self.x.XFree(children)
+            for k in kids:
+                pid = self.get_pid(k)
+                if pid in pids:
+                    if self.is_viewable(k):
+                        found[k] = pid
+                elif depth < 2:
+                    stack.append((k, depth + 1))
+        return found
+
+    def origin(self, win):
+        c = ctypes
+        if not self.is_viewable(win):
+            return None
+        x, y, child = c.c_int(), c.c_int(), c.c_ulong()
+        if not self.x.XTranslateCoordinates(self.dpy, win, self.root, 0, 0, c.byref(x), c.byref(y), c.byref(child)):
+            return None
+        return (x.value, y.value)
+
+    def move(self, win, x, y):
+        want = (x, y)
+        req = (x, y)
+        for _ in range(3):
+            self.x.XMoveWindow(self.dpy, win, req[0], req[1])
+            self.x.XSync(self.dpy, 0)
+            time.sleep(0.15)
+            now = self.origin(win)
+            if now is None or now == want:
+                return now
+            req = (req[0] + want[0] - now[0], req[1] + want[1] - now[1])
+        return self.origin(win)
+
+
+def descendant_pids(root_pid):
+    children = {}
+    for name in os.listdir("/proc"):
+        if name.isdigit():
+            try:
+                with open(f"/proc/{name}/stat") as f:
+                    ppid = int(f.read().rsplit(")", 1)[1].split()[1])
+                children.setdefault(ppid, []).append(int(name))
+            except Exception:
+                pass
+    pids, todo = {root_pid}, [root_pid]
+    while todo:
+        for ch in children.get(todo.pop(), []):
+            if ch not in pids:
+                pids.add(ch)
+                todo.append(ch)
+    return pids
+
+
 class CarlaHostProcess:
 
     def __init__(self, args):
@@ -125,6 +271,8 @@ class CarlaHostProcess:
         self.last_cmd = 0.0
         self.mute_pids = {}
         self.enum_cache = {}
+        self.ui_windows = {}
+        self.ui_pos = {}
         self.host = None
         self.cb = None
 
@@ -517,12 +665,77 @@ class CarlaHostProcess:
         return {"values": self.read_values(pid, True)}
 
     def cmd_show_ui(self, a):
-        self.host.show_custom_ui(self.pid_of(a), bool(a["show"]))
+        h = a["h"]
+        pid = self.pid_of(a)
         if a["show"]:
-            self.ui_shown.add(a["h"])
+            known = None
+            try:
+                xw = XWindows()
+                try:
+                    known = set(xw.windows(descendant_pids(os.getpid())))
+                finally:
+                    xw.close()
+            except Exception as e:
+                self.log("debug", f"Can't track the GUI window position => {e}")
+            self.host.show_custom_ui(pid, True)
+            self.ui_shown.add(h)
+            if known is not None:
+                threading.Thread(target=self.track_ui_window, args=(h, known, a.get("pos")),
+                                 name=f"ui_pos_{h}", daemon=True).start()
         else:
-            self.ui_shown.discard(a["h"])
+            self.update_ui_pos(h)
+            self.host.show_custom_ui(pid, False)
+            self.ui_shown.discard(h)
         return None
+
+    def update_ui_pos(self, h, xw=None):
+        wid = self.ui_windows.get(h)
+        if wid is None:
+            return
+        close = xw is None
+        try:
+            if close:
+                xw = XWindows()
+            pos = xw.origin(wid)
+        except Exception:
+            pos = None
+        finally:
+            if close and xw:
+                xw.close()
+        if pos is not None and pos != self.ui_pos.get(h):
+            self.ui_pos[h] = pos
+            self.emit({"evt": "ui_pos", "h": h, "x": pos[0], "y": pos[1]})
+
+    def track_ui_window(self, h, known, pos):
+        self.ui_windows.pop(h, None)
+        try:
+            xw = XWindows()
+        except Exception as e:
+            self.log("debug", f"Can't track the GUI window position => {e}")
+            return
+        try:
+            wid = None
+            deadline = time.monotonic() + 10
+            while wid is None and h in self.ui_shown and time.monotonic() < deadline:
+                time.sleep(0.1)
+                new = [w for w in xw.windows(descendant_pids(os.getpid())) if w not in known]
+                if new:
+                    wid = new[0]
+            if wid is None:
+                return
+            self.ui_windows[h] = wid
+            if pos:
+                xw.move(wid, int(pos[0]), int(pos[1]))
+            self.ui_pos[h] = None
+            while h in self.ui_shown and not self.quit:
+                self.update_ui_pos(h, xw)
+                if xw.origin(wid) is None:
+                    break
+                time.sleep(1.0)
+        except Exception as e:
+            self.log("debug", f"GUI window tracking stopped => {e}")
+        finally:
+            xw.close()
 
     def cmd_quit(self, a):
         self.quit = True

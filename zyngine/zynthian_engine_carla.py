@@ -129,6 +129,7 @@ class carla_plugin:
         self.bypass_zctrl = None
         self.custom_gui_fpath = None
         self.gui_shown = False
+        self.gui_pos = None
 
         self.proxy = carla_processor_engine(engine, self)
 
@@ -165,7 +166,7 @@ class carla_plugin:
     def show_gui(self, show=True):
         # Show or hide the plugin's native GUI window
         if self.can_show_gui():
-            self.engine.host_send("show_ui", h=self.h, show=bool(show))
+            self.engine.host_send("show_ui", h=self.h, show=bool(show), pos=self.gui_pos)
             self.set_gui_state(show)
 
     def toggle_gui(self):
@@ -653,6 +654,10 @@ class zynthian_engine_carla(zynthian_engine):
             plugin = self.plugins_by_handle.get(msg["h"])
             if plugin:
                 plugin.set_gui_state(msg.get("state") == 1)
+        elif evt == "ui_pos":
+            plugin = self.plugins_by_handle.get(msg["h"])
+            if plugin:
+                plugin.gui_pos = [msg["x"], msg["y"]]
         elif evt == "reload":
             plugin = self.plugins_by_handle.get(msg["h"])
             if plugin:
