@@ -80,6 +80,16 @@ DETACH_GRACE_TIME = 3.0
 STATELESS_TYPES = ("LADSPA", "DSSI", "INTERNAL")
 
 
+
+def lv2_node_uri(node):
+    try:
+        if node.is_uri():
+            return str(node.as_uri())
+    except Exception:
+        pass
+    return str(node).strip("<>")
+
+
 def sanitize_text(text):
     bad_chars = ['.', ',', ';', ':', '!', '*', '+', '?', '@', '&', '$', '%', '=',
                  '"', '\'', '`', '/', '\\', '^', '<', '>', '[', ']', '(', ')', '{', '}']
@@ -117,6 +127,8 @@ class carla_plugin:
 
         self.params = {}
         self.zctrls = {}
+        self.path_zctrls = [] 
+        self.path_props = {}
         self.index2symbol = {}
         self.monitors = {}
         self.monitor_symbols = {}
@@ -1024,6 +1036,11 @@ class zynthian_engine_carla(zynthian_engine):
             for key in (p["symbol"], p["name"], symbol):
                 if key:
                     refs.setdefault(str(key).casefold(), symbol)
+        for symbol, prop in plugin.path_props.items():
+            zctrl = plugin.zctrls.get(symbol)
+            for key in (prop["uri"], zctrl.name if zctrl else None, symbol):
+                if key:
+                    refs.setdefault(str(key).casefold(), symbol)
 
         def find(ref):
             if isinstance(ref, int):
@@ -1074,6 +1091,11 @@ class zynthian_engine_carla(zynthian_engine):
         plugin.monitors = {}
         plugin.monitor_symbols = {}
         plugin.bypass_zctrl = None
+        plugin.path_zctrls = []
+        plugin.path_props = {}
+
+        lv2_ports = self.get_lv2_ports(plugin)
+        path_props = self.get_lv2_path_params(plugin, lv2_ports)
 
         used = set()
         for p in desc.get("params", []):
@@ -1091,6 +1113,8 @@ class zynthian_engine_carla(zynthian_engine):
             except Exception:
                 logging.error(f"Can't create controller for parameter '{p['name']}' => {traceback.format_exc()}")
                 continue
+            if p["symbol"] in lv2_ports:
+                self.apply_lv2_port_info(zctrl, lv2_ports[p["symbol"]])
             plugin.zctrls[symbol] = zctrl
             plugin.index2symbol[p["index"]] = symbol
 
@@ -1098,6 +1122,9 @@ class zynthian_engine_carla(zynthian_engine):
                     (symbol.lower() in ("bypass", "enable") or p["name"].lower() in ("bypass", "enable")):
                 zctrl.set_options({"is_bypass": True, "bypass_value": int(not p["value"])})
                 plugin.bypass_zctrl = zctrl
+
+        for n, prop in enumerate(path_props):
+            self.add_path_zctrl(plugin, prop, n == 0, used)
 
         if plugin.bypass_zctrl:
             bz = plugin.bypass_zctrl
@@ -1131,6 +1158,88 @@ class zynthian_engine_carla(zynthian_engine):
             self.generate_ctrl_screens(plugin.zctrls)
         plugin._ctrl_screens = self._ctrl_screens
         self._ctrl_screens = []
+
+    def get_lv2_ports(self, plugin):
+        if str(plugin.carla.get("type", "")).upper() != "LV2" or not plugin.carla.get("label"):
+            return {}
+        try:
+            from zyngine import zynthian_lv2
+            if getattr(zynthian_lv2, "world", None) is None:
+                zynthian_lv2.init_lilv()
+            return {info["symbol"]: info for info in zynthian_lv2.get_plugin_ports(plugin.carla["label"]).values()}
+        except Exception:
+            logging.warning(f"Can't get the LV2 description of <{plugin.carla.get('label')}> => "
+                            f"{traceback.format_exc()}")
+            return {}
+
+    def apply_lv2_port_info(self, zctrl, info):
+        display_priority = info["display_priority"]
+        if info.get("group_display_priority", 0) > 0:
+            display_priority += 1000000 * info["group_display_priority"]
+        opts = {"display_priority": display_priority, "not_on_gui": info["not_on_gui"]}
+        if info.get("group_symbol") is not None or info.get("group_name") is not None:
+            opts["group_symbol"] = info["group_symbol"]
+            opts["group_name"] = info["group_name"]
+        zctrl.set_options(opts)
+
+    def get_lv2_path_params(self, plugin, lv2_ports):
+        infos = {symbol: info for symbol, info in lv2_ports.items() if info.get("is_path")}
+        if not infos:
+            return []
+        res = []
+        try:
+            from zyngine import zynthian_lv2
+            world = zynthian_lv2.world
+            lv2_plugin = world.get_all_plugins()[plugin.carla["label"]]
+            for node in world.find_nodes(lv2_plugin.get_uri(), world.ns.patch.writable, None):
+                symbol = world.get_symbol(node)
+                if symbol in infos:
+                    res.append({"uri": lv2_node_uri(node), "symbol": symbol, "info": infos[symbol]})
+        except Exception:
+            logging.warning(f"Can't get the path properties of <{plugin.carla.get('label')}> => "
+                            f"{traceback.format_exc()}")
+            return []
+        return sorted(res, key=lambda i: i["uri"].encode())
+
+    def add_path_zctrl(self, plugin, prop, primary, used):
+        info = prop["info"]
+        base = sanitize_text(prop["symbol"]) or "path"
+        symbol = base
+        i = 1
+        while symbol in used:
+            symbol = f"{base}_path{i}"
+            i += 1
+        display_priority = info['display_priority']
+        if info.get('group_display_priority', 0) > 0:
+            display_priority += 1000000 * info['group_display_priority']
+        try:
+            zctrl = zynthian_controller(self, symbol, {
+                'processor': plugin.processor,
+                'name': info['name'],
+                'group_symbol': info['group_symbol'],
+                'group_name': info['group_name'],
+                'value': None,
+                'value_default': None,
+                'value_min': None,
+                'value_max': None,
+                'is_toggle': False,
+                'is_trigger': False,
+                'is_integer': False,
+                'is_logarithmic': False,
+                'is_path': True,
+                'path_file_types': info['path_file_types'],
+                'path_preload': info['path_preload'],
+                'not_on_gui': info['not_on_gui'],
+                'display_priority': display_priority
+            })
+        except Exception:
+            logging.error(f"Can't create controller for path property '{info['name']}' => {traceback.format_exc()}")
+            return None
+        used.add(symbol)
+        plugin.zctrls[symbol] = zctrl
+        plugin.path_zctrls.append(zctrl)
+        plugin.path_props[symbol] = {"uri": prop["uri"], "primary": primary}
+        return symbol
 
     def create_zctrl(self, plugin, p, symbol):
         hints = p["hints"]
@@ -1217,7 +1326,7 @@ class zynthian_engine_carla(zynthian_engine):
             zctrl = plugin.zctrls.get(symbol)
             if not zctrl:
                 continue
-            if check_ignore and zctrl.get_ignore_engine_fb():
+            if zctrl.is_path or (check_ignore and zctrl.get_ignore_engine_fb()):
                 continue
             try:
                 zctrl.set_value(val, False)
@@ -1234,6 +1343,11 @@ class zynthian_engine_carla(zynthian_engine):
                                                       zctrl.get_ctrl_midi_val())
             except Exception as e:
                 logging.error(f"Can't send controller '{zctrl.symbol}' with CC{zctrl.midi_cc} => {e}")
+        elif plugin and plugin.loaded and zctrl.is_path:
+            prop = plugin.path_props.get(zctrl.symbol)
+            if zctrl.value and prop:
+                self.host_send("set_path", h=plugin.h, uri=prop["uri"], primary=prop["primary"],
+                               value=str(zctrl.value))
         elif plugin and plugin.loaded and zctrl.graph_path is not None:
             self.host_send("set_param", h=plugin.h, index=zctrl.graph_path, value=float(zctrl.value))
 

@@ -22,6 +22,7 @@
 # ******************************************************************************
 
 import os
+import re
 import sys
 import json
 import math
@@ -31,8 +32,10 @@ import signal
 import argparse
 import ctypes
 import ctypes.util
+import tempfile
 import threading
 import traceback
+from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
 # ------------------------------------------------------------------------------
 # Locate Carla
@@ -61,6 +64,39 @@ SHARE_DIR_CANDIDATES = [
     "/usr/local/share/carla",
     "/zynthian/zynthian-sw/carla/source/frontend"
 ]
+
+CUSTOM_DATA_TYPE_PATH = "http://kxstudio.sf.net/ns/carla/path"
+CUSTOM_DATA_TYPE_ATOM_PATH = "http://lv2plug.in/ns/ext/atom#Path"
+
+XML_ENTITIES = {"'": "&apos;", '"': "&quot;"}
+CUSTOM_DATA_RE = re.compile(r"<CustomData>.*?</CustomData>", re.S)
+CUSTOM_DATA_KEY_RE = re.compile(r"<Key>(.*?)</Key>", re.S)
+
+
+def state_set_custom_data(xml, ctype, key, value):
+    if len(value) >= 128:
+        value_xml = f"    <Value>\n{xml_escape(value, XML_ENTITIES)}\n    </Value>\n"
+    else:
+        value_xml = f"    <Value>{xml_escape(value, XML_ENTITIES)}</Value>\n"
+    entry = (f"<CustomData>\n    <Type>{xml_escape(ctype, XML_ENTITIES)}</Type>\n"
+             f"    <Key>{xml_escape(key, XML_ENTITIES)}</Key>\n{value_xml}   </CustomData>")
+    done = []
+
+    def replace(m):
+        km = CUSTOM_DATA_KEY_RE.search(m.group(0))
+        if km and xml_unescape(km.group(1), XML_ENTITIES).strip() == key and not done:
+            done.append(True)
+            return entry
+        return m.group(0)
+
+    xml = CUSTOM_DATA_RE.sub(replace, xml)
+    if done:
+        return xml
+    end = xml.rfind("</Data>")
+    if end < 0:
+        raise RuntimeError("Unexpected Carla state format")
+    start = xml.rfind("\n", 0, end) + 1
+    return xml[:start] + "\n   " + entry + "\n" + xml[start:]
 
 
 def find_carla_lib_dir():
@@ -605,6 +641,37 @@ class CarlaHostProcess:
         self.echo[(int(a["h"]), idx)] = (val, time.monotonic())
         self.host.set_parameter_value(pid, idx, val)
         return None
+
+    def cmd_set_path(self, a):
+        pid = self.pid_of(a)
+        value = str(a["value"])
+        if not value:
+            return None
+        uri = a.get("uri")
+        if a.get("primary", True) or not uri:
+            self.host.set_custom_data(pid, CUSTOM_DATA_TYPE_PATH, "file", value)
+            return None
+        return self.set_path_via_state(int(a["h"]), pid, str(uri), value)
+
+    def set_path_via_state(self, h, pid, uri, value):
+        fd, tmp = tempfile.mkstemp(suffix=".carxs")
+        os.close(fd)
+        try:
+            self.host.prepare_for_save(pid)
+            if not self.host.save_plugin_state(pid, tmp):
+                raise RuntimeError("Can't save state => " + to_str(self.host.get_last_error()))
+            with open(tmp, encoding="utf-8") as f:
+                xml = f.read()
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(state_set_custom_data(xml, CUSTOM_DATA_TYPE_ATOM_PATH, uri, value))
+            if not self.host.load_plugin_state(pid, tmp):
+                raise RuntimeError("Can't load state => " + to_str(self.host.get_last_error()))
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        return self.values_after_load(h, pid)
 
     def cmd_set_active(self, a):
         self.host.set_active(self.pid_of(a), bool(a["on"]))
