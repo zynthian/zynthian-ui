@@ -329,7 +329,7 @@ class zynthian_engine_jalv_base(zynthian_engine):
         logging.info("Getting Controller List from LV2 Plugin ...")
         zctrls = {}
         self.bypass_zctrl = None
-        for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
+        for info in zynthian_lv2.get_plugin_ports(self.plugin_url):
             symbol = info['symbol']
 
             if not self.customize_lv2_controller(info):

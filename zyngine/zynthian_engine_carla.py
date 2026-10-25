@@ -127,7 +127,7 @@ class carla_plugin:
 
         self.params = {}
         self.zctrls = {}
-        self.path_zctrls = [] 
+        self.path_zctrls = []
         self.path_props = {}
         self.index2symbol = {}
         self.monitors = {}
@@ -1149,6 +1149,7 @@ class zynthian_engine_carla(zynthian_engine):
             })
 
         plugin.gui_shown = False
+        plugin.custom_gui_fpath = self.get_custom_gui(plugin)
 
         self._ctrl_screens = [[s[0], list(s[1])] for s in plugin.midi_ctrl_screens]
         layout = self.load_layout(plugin)
@@ -1159,6 +1160,15 @@ class zynthian_engine_carla(zynthian_engine):
         plugin._ctrl_screens = self._ctrl_screens
         self._ctrl_screens = []
 
+    def get_custom_gui(self, plugin):
+        fpath = f"{self.ui_dir}/zyngui/widgets_user/zynthian_widget_{plugin.title.lower().replace(' ', '_')}.py"
+        if os.path.isfile(fpath):
+            return fpath
+        if str(plugin.carla.get("type", "")).upper() == "LV2":
+            from zyngine.zynthian_engine_jalv import zynthian_engine_jalv
+            return zynthian_engine_jalv.plugins_custom_gui.get(plugin.carla.get("label"))
+        return None
+
     def get_lv2_ports(self, plugin):
         if str(plugin.carla.get("type", "")).upper() != "LV2" or not plugin.carla.get("label"):
             return {}
@@ -1166,7 +1176,7 @@ class zynthian_engine_carla(zynthian_engine):
             from zyngine import zynthian_lv2
             if getattr(zynthian_lv2, "world", None) is None:
                 zynthian_lv2.init_lilv()
-            return {info["symbol"]: info for info in zynthian_lv2.get_plugin_ports(plugin.carla["label"]).values()}
+            return {info["symbol"]: info for info in zynthian_lv2.get_plugin_ports(plugin.carla["label"])}
         except Exception:
             logging.warning(f"Can't get the LV2 description of <{plugin.carla.get('label')}> => "
                             f"{traceback.format_exc()}")
@@ -1176,7 +1186,8 @@ class zynthian_engine_carla(zynthian_engine):
         display_priority = info["display_priority"]
         if info.get("group_display_priority", 0) > 0:
             display_priority += 1000000 * info["group_display_priority"]
-        opts = {"display_priority": display_priority, "not_on_gui": info["not_on_gui"]}
+        opts = {"display_priority": display_priority, "not_on_gui": info["not_on_gui"],
+                "envelope": info.get("envelope"), "filter": info.get("filter")}
         if info.get("group_symbol") is not None or info.get("group_name") is not None:
             opts["group_symbol"] = info["group_symbol"]
             opts["group_name"] = info["group_name"]

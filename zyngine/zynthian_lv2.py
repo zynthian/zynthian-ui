@@ -946,7 +946,7 @@ def get_plugin_ports(plugin_url):
     wplugins = world.get_all_plugins()
     plugin = wplugins[plugin_url]
 
-    ports_info = {}
+    ports_info = []
     # Control ports
     for i in range(plugin.get_num_ports()):
         control = plugin.get_port_by_index(i)
@@ -1053,7 +1053,7 @@ def get_plugin_ports(plugin_url):
             except:
                 vdef = vmin
 
-            ports_info[i] = {
+            ports_info.append({
                 'index': i,
                 'symbol': symbol,
                 'name': name,
@@ -1082,11 +1082,10 @@ def get_plugin_ports(plugin_url):
                 'not_on_gui': not_on_gui,
                 'display_priority': display_priority,
                 'scale_points': sp
-            }
+            })
             #logging.debug("CONTROL PORT {} => {}".format(i, ports_info[i]))
 
     # Property parameters
-    i = len(ports_info)
     for control in world.find_nodes(plugin.get_uri(), world.ns.patch.writable, None):
         symbol = world.get_symbol(control)
         name = str(world.get(control, world.ns.rdfs.label, None))
@@ -1204,7 +1203,7 @@ def get_plugin_ports(plugin_url):
             # logging.debug("Control <{}> has no group.".format(symbol))
 
         i += 1
-        ports_info[i] = {
+        ports_info.append({
             'index': i,
             'symbol': symbol,
             'name': name,
@@ -1233,7 +1232,7 @@ def get_plugin_ports(plugin_url):
             'not_on_gui': not_on_gui,
             'display_priority': display_priority,
             'scale_points': sp
-        }
+        })
         #logging.debug("CONTROL PROPERTY {} => {}".format(i, ports_info[i]))
 
     return ports_info
