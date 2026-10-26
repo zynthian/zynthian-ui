@@ -112,7 +112,7 @@ jack_nframes_t process_clip(uint8_t channel, Clip* clip, jack_nframes_t frames, 
     if (pos >= clip->frames)
         return 0;
     // Last fragment
-    if (pos >= clip->frames - frames)
+    if (pos + frames >= clip->frames)
         frames = clip->frames - pos;
 
     float gain;
@@ -167,11 +167,8 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                         break;
                     if (event.buffer[1] == 0) {
                         // Note 0 stops playback
-                        if (player->state == STATE_PLAYING) {
+                        if (player->state == STATE_PLAYING || player->state == STATE_STARTING)
                             player->state = STATE_STOPPING;
-                        } else {
-                            player->state == STATE_READY;
-                        }
                     } else {
                         if (player->state == STATE_READY || player->state == STATE_PLAYING) {
                             // Set starting clip
@@ -187,11 +184,8 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                                 }
                                 // else if the clip is NULL => STOP
                                 else {
-                                    if (player->state == STATE_PLAYING) {
+                                    if (player->state == STATE_PLAYING || player->state == STATE_PLAYING)
                                         player->state = STATE_STOPPING;
-                                    } else {
-                                        player->state == STATE_READY;
-                                    }
                                 }
                             }
                         }
@@ -629,7 +623,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
         }
         note++;
     }
-    if (note >= MAX_CLIPS) {
+    if (note > MAX_CLIPS) {
         fprintf(stderr,"loadClip(): Note %d out of range.\n", note);
         return 0;
     }
@@ -854,8 +848,6 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
     // Create & setup new clip with the processed sample data
     //---------------------------------------------------------------
 
-    uint8_t id = note - 1;
-
     // Create a new clip instance
     Clip* clip = NULL;
     clip = malloc(sizeof(Clip));
@@ -893,18 +885,30 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
     clip->state = STATE_READY;
 
     // Re-sync if playing
-    uint8_t curclip = (id == player->current_clip_id);
-    unloadClip(channel, note);
+    // Swap the clip atomically so the audio thread never sees a NULL or freed clip
+    uint8_t id = note - 1;
+    getMutex();
+    Clip* old_clip = player->clips[id];
     player->clips[id] = clip;
-    if (curclip) {
-        getMutex();
+    // Redirect any pending start that referred to the clip being replaced
+    if (old_clip && player->starting_clip == old_clip)
+        player->starting_clip = clip;
+    if (player->current_clip_id == id) {
         player->current_clip = clip;
-        player->current_clip_id = id;
-        if (player->state == STATE_IDLE)
-            player->state = STATE_SYNCYNG;
-        releaseMutex();
+        // Old play position is meaningless for the new clip so re-sync or clamp it
+        if (player->state == STATE_PLAYING || player->state == STATE_IDLE) {
+            if (clip->tempo > 0 && !clip->tempo_lock)
+                player->state = STATE_SYNCYNG; // Wait for next beat sync
+            else if (player->play_pos >= clip->frames)
+                player->play_pos = 0;          // Restart rather than going silent
+        }
     }
-    //fprintf(stderr, "loadClip(channel=%u, note=%u, path=%s) id=%u\n", channel, note, path, id);
+    releaseMutex();
+    if (old_clip) {
+        for (int i = 0; i < old_clip->channels; i++)
+            free(old_clip->data[i]);
+        free(old_clip);
+    }
     return note;
 }
 
