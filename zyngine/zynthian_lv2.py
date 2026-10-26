@@ -1054,7 +1054,6 @@ def get_plugin_ports(plugin_url):
                 vdef = vmin
 
             ports_info.append({
-                'index': i,
                 'symbol': symbol,
                 'name': name,
                 'group_index': group_index,
@@ -1202,9 +1201,7 @@ def get_plugin_ports(plugin_url):
             group_display_priority = 0
             # logging.debug("Control <{}> has no group.".format(symbol))
 
-        i += 1
         ports_info.append({
-            'index': i,
             'symbol': symbol,
             'name': name,
             'group_index': group_index,

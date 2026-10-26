@@ -134,7 +134,7 @@ class zynthian_controller:
                 self.short_name = self.name
         if 'short_name' in options:
             self.short_name = options['short_name']
-        if 'group_name' in options:
+        if 'group_name' in options and options['group_name']:
             self.group_name = options['group_name']
         if 'group_symbol' in options and options['group_symbol'] is not None:
             self.group_symbol = options['group_symbol']
