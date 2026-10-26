@@ -196,7 +196,8 @@ def get_a2m_ports():
     ports = []
     for processor in chain_manager.get_processors(type="Audio Effect"):
         jackname = processor.get_jackname()
-        if jackname:
+        has_midi_out = getattr(processor.engine, "has_midi_out", None)
+        if jackname and (has_midi_out is None or has_midi_out(processor)):
             proc_ports = jclient.get_ports(jackname, is_midi=True, is_output=True)
             if proc_ports:
                 title = processor.chain.title

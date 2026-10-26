@@ -859,6 +859,10 @@ class zynthian_engine_carla(zynthian_engine):
     # MIDI Channel Management
     # ---------------------------------------------------------------------------
 
+    def has_midi_out(self, processor):
+        plugin = self.plugins.get(processor)
+        return bool(plugin and plugin.loaded and plugin.desc.get("midi_outs"))
+
     def set_midi_chan(self, processor):
         processor.midi_chan_engine = processor.midi_chan
         plugin = self.plugins.get(processor)
@@ -1113,15 +1117,19 @@ class zynthian_engine_carla(zynthian_engine):
             except Exception:
                 logging.error(f"Can't create controller for parameter '{p['name']}' => {traceback.format_exc()}")
                 continue
-            if p["symbol"] in lv2_ports:
-                self.apply_lv2_port_info(zctrl, lv2_ports[p["symbol"]])
+            lv2_info = lv2_ports.get(p["symbol"])
+            if lv2_info:
+                self.apply_lv2_port_info(zctrl, lv2_info)
             plugin.zctrls[symbol] = zctrl
             plugin.index2symbol[p["index"]] = symbol
 
-            if etype == "Audio Effect" and plugin.bypass_zctrl is None and \
-                    (symbol.lower() in ("bypass", "enable") or p["name"].lower() in ("bypass", "enable")):
-                zctrl.set_options({"is_bypass": True, "bypass_value": int(not p["value"])})
-                plugin.bypass_zctrl = zctrl
+            if etype == "Audio Effect" and plugin.bypass_zctrl is None:
+                if lv2_info and lv2_info.get("is_bypass"):
+                    zctrl.set_options({"is_bypass": True, "bypass_value": lv2_info["bypass_value"]})
+                    plugin.bypass_zctrl = zctrl
+                elif symbol.lower() in ("bypass", "enable") or p["name"].lower() in ("bypass", "enable"):
+                    zctrl.set_options({"is_bypass": True, "bypass_value": int(not p["value"])})
+                    plugin.bypass_zctrl = zctrl
 
         for n, prop in enumerate(path_props):
             self.add_path_zctrl(plugin, prop, n == 0, used)
