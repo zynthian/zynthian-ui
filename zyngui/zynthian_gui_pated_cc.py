@@ -155,8 +155,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             self.disable_param_editor()
 
         # Get cell coordinates
-        row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
-        step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+        row = int((self.grid_height - self.grid_canvas.canvasy(event.y) + 1) / self.row_height - self.row0 - 1)
+        if self.interpolateCC:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width + 0.5)
+        else:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
 
         # If there is no CC point, add a new CC point
         val = self.get_cc_value(step)
@@ -182,8 +185,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # event: Mouse event
     def on_grid_drag(self, event):
         # Get cell coordinates
-        row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
-        step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+        row = int((self.grid_height - self.grid_canvas.canvasy(event.y) + 1) / self.row_height - self.row0 - 1)
+        if self.interpolateCC:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width + 0.5)
+        else:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
 
         # If there is no CC point, add a new CC point
         val = self.get_cc_value(step)
