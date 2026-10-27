@@ -841,8 +841,6 @@ class zynthian_state_manager:
                     if ccnum < 120:
                         if not self.midi_learn_zctrl:
                             self.chain_manager.midi_control_change(izmip, chan, ccnum, ccval)
-                            self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
-                            self.audio_player.midi_control_change(chan, ccnum, ccval)
                         zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC,
                                               izmip=izmip, chan=chan, num=ccnum, val=ccval)
                     # Special CCs >= Channel Mode
