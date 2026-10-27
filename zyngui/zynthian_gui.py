@@ -1254,7 +1254,36 @@ class zynthian_gui:
             params = None
         self.callable_ui_action(cuia, params)
 
-    # System actions CUIA
+    # -------------------------------------------------------------------------
+    # CUIA functions
+    # -------------------------------------------------------------------------
+    #
+    # Each CUIA function should be documented using the Google Docstring spec.
+    #
+    # -------------------------------------------------------------------------
+    """A short, one-line summary sentence describing what the function does.
+
+    An optional longer paragraph providing additional architectural context,
+    behavioral edge cases, or relative processing constraints for the AI.
+
+    Args:
+        cutoff (int): Description of the cutoff parameter. Include valid ranges
+            or mathematical conversion tips here for the LLM.
+        resonance (float): Description of the resonance parameter.
+        bypass (bool, optional): Description of the bypass parameter.
+            Defaults to False.
+
+    Returns:
+        bool: True if the OSC packet was transmitted successfully, False otherwise.
+
+    Raises:
+        ValueError: If the cutoff integer breaches safe system limits.
+    """
+    #
+    # -------------------------------------------------------------------------
+
+    # System CUIAs
+
     def cuia_nop(self, params):
         pass
 
@@ -1262,6 +1291,9 @@ class zynthian_gui:
         pass
 
     def cuia_help(self, params=None):
+        """Show the contextual help screen.
+        """
+
         self.show_help(params)
 
     def cuia_power_save(self, params=None):
@@ -1272,12 +1304,32 @@ class zynthian_gui:
             self.state_manager.set_event_flag()
 
     def cuia_power(self, params=None):
+        """Poweroff the zynthian device.
+
+        AI Context:
+            Only call this tool with the 'CONFIRM' param when user's command explicitly confirms the action.
+            If not sure, call the action without the confirm parameter to ask for confirmation.
+
+        Keyword Args:
+            confirm (str) enum["CONFIRM"]: When value is "CONFIRM", zynthian don't ask for confirmation.
+        """
+
         if params == ['CONFIRM']:
             self.screens['admin'].power_off_confirmed()
         else:
             self.screens['admin'].power()
 
     def cuia_reboot(self, params=None):
+        """Reboot the zynthian device.
+
+        AI Context:
+            Only call this tool with the 'CONFIRM' param when user's command explicitly confirms the action.
+            If not sure, call the action without the confirm parameter to ask for confirmation.
+
+        Keyword Args:
+            confirm (str) enum["CONFIRM"]: When value is "CONFIRM", zynthian don't ask for confirmation.
+        """
+
         if params == ['CONFIRM']:
             self.screens['admin'].reboot_confirmed()
         else:
@@ -1302,6 +1354,9 @@ class zynthian_gui:
         self.screens['admin'].last_state_action()
 
     def cuia_workflow_capture_start(self, params=None):
+        """Starts capturing workflow.
+        """
+
         if params:
             title = params[0]
         else:
@@ -1309,19 +1364,26 @@ class zynthian_gui:
         self.start_capture_log(title)
 
     def cuia_workflow_capture_stop(self, params=None):
+        """Stops capturing workflow.
+        """
+
         self.stop_capture_log()
 
     def cuia_workflow_capture_text(self, params=None):
+        """Includes a text note into the on-going workflow capture.
+        """
+
         self.write_capture_log(f"TEXT: {params[0]}")
 
     # ZynVoice TTS actions
     def cuia_tts_announce(self, params=["", True, False, True]):
         """ Announce a TTS message
-        Params:
-            text: Text to append
-            replace: True to clear queue and replace with this text
-            urgent: True to play next. False to append to end of queue.
-            interrupt: True to interrupt currently playing message. False to finish current announcement.
+
+        Kwywords Args:
+            text (str) [REQUIRED]: Text to announce.
+            replace (bool): True to clear queue and replace with this text
+            urgent (bool): True to play next. False to append to end of queue.
+            interrupt (bool): True to interrupt currently playing message. False to finish current announcement.
         """
         if self.tts:
             self.tts.announce(*params)
@@ -1379,6 +1441,13 @@ class zynthian_gui:
     # Panic Actions
 
     def cuia_all_notes_off(self, params=None):
+        """Stop all playing notes.
+
+
+        AI Context:
+            Call this action when the user say 'panic' or 'stop'.
+        """
+
         self.state_manager.all_notes_off()
         sleep(0.1)
         self.state_manager.raw_all_notes_off()
@@ -1388,6 +1457,12 @@ class zynthian_gui:
             pass
 
     def cuia_all_sounds_off(self, params=None):
+        """Stop all playing notes, sequences and audio playback.
+
+        AI Context:
+            Call this action when the user say 'silence', 'shut up' or 'stop everything'.
+        """
+
         self.state_manager.all_notes_off()
         self.state_manager.all_sounds_off()
         sleep(0.1)
@@ -1399,35 +1474,65 @@ class zynthian_gui:
             pass
 
     def cuia_clean_all(self, params=None):
+        """Remove all chains and sequences.
+
+        AI Context:
+            Only call this tool with confirm='CONFIRM' when user's command explicitly confirms the action.
+            If not sure, call the action without the confirm parameter to ask for confirmation.
+
+        Keyword Args:
+            confirm (str) enum["CONFIRM"]: When value is "CONFIRM", zynthian don't ask for confirmation.
+        """
+
         if params == ['CONFIRM']:
             self.clean_all()
             # TODO: Should send signal so that UI can react
             self.show_screen_reset("chain_manager")
 
     # Audio & MIDI Recording/Playback actions
+
     def cuia_start_audio_record(self, params=None):
+        """Starts the global audio recording.
+        """
+
         self.state_manager.audio_recorder.start_recording()
 
     def cuia_stop_audio_record(self, params=None):
+        """Stops the global audio recording.
+        """
+
         self.state_manager.audio_recorder.stop_recording()
 
     def cuia_toggle_audio_record(self, params=None):
+        """Toggles the global audio recording.
+        """
+
         self.state_manager.audio_recorder.toggle_recording()
 
     def cuia_start_audio_play(self, params=None):
+        """Starts the global audio playback.
+        """
+
         self.state_manager.start_audio_player()
 
     def cuia_stop_audio_play(self, params=None):
+        """Stops the global audio playback.
+        """
+
         self.state_manager.stop_audio_player(reset_pos=True)
 
     def cuia_toggle_audio_play(self, params=None):
+        """Toggles the global audio playback.
+        """
+
         self.state_manager.toggle_audio_player()
 
     def cuia_audio_file_list(self, params=None):
         self.show_screen("audio_player")
         return
 
-        # Don't ask for a file each time we open the Audio Player
+    # Don't ask for a file each time we open the Audio Player
+    def _cuia_audio_file_list(self, params=None):
         self.replace_screen('bank')
         n_banks = len(self.state_manager.audio_player.bank_list)
         if n_banks == 1 or self.state_manager.audio_player.bank_name:
@@ -1436,53 +1541,109 @@ class zynthian_gui:
             self.close_screen()
 
     def cuia_start_midi_record(self, params=None):
+        """Starts the MIDI (SMF) recording.
+        """
+
         self.state_manager.start_midi_record()
 
     def cuia_stop_midi_record(self, params=None):
+        """Stops the MIDI (SMF) recording.
+        """
+
         self.state_manager.stop_midi_record()
         # TODO We should use signals for this
         if self.current_screen == "midi_recorder":
             self.screens['midi_recorder'].select()
 
     def cuia_toggle_midi_record(self, params=None):
+        """Toggles the MIDI (SMF) recording.
+        """
+
         self.state_manager.toggle_midi_record()
         # TODO We should use signals for this
         if self.current_screen == "midi_recorder":
             self.screens['midi_recorder'].select()
 
     def cuia_start_midi_play(self, params=None):
+        """Starts the MIDI (SMF) playback.
+        """
+
         self.state_manager.start_midi_playback()
 
     def cuia_stop_midi_play(self, params=None):
+        """Stops the MIDI (SMF) playback.
+        """
+
         self.state_manager.stop_midi_playback()
 
     def cuia_toggle_midi_play(self, params=None):
+        """Toggles the MIDI (SMF) playback.
+
+        The played SMF file is the currently selected one.
+        """
+
         self.state_manager.toggle_midi_playback()
 
     def cuia_toggle_record(self, params=None):
+        """Toggles the contextual recording action.
+
+        The contextual recording action depends of the current screen and the ALT mode status.
+        Default is global audio recording. When ALT mode is enabled, the action is MIDI recording (SMF).
+        If current screen is pattern editor, recording action is step sequencer pattern recording.
+        """
+
         if self.get_alt_mode():
             self.cuia_toggle_midi_record()
         else:
             self.cuia_toggle_audio_record()
 
     def cuia_stop(self, params=None):
+        """Stops the contextual playback action.
+
+        The contextual playback action depends of the current screen and the ALT mode status.
+        Default is global audio playback. When ALT mode is enabled, the action is MIDI playback (SMF).
+        If current screen is audio-clip control or pattern editor, playback action is specific.
+        """
+
         if self.get_alt_mode():
             self.cuia_stop_midi_play()
         else:
             self.cuia_stop_audio_play()
 
     def cuia_toggle_play(self, params=None):
+        """Toggles the contextual playback action.
+
+        The contextual playback action depends of the current screen and the ALT mode status.
+        Default is global audio playback. When ALT mode is enabled, the action is SMF playback.
+        If current screen is audio-clip control or pattern editor, playback action is specific.
+        """
+
         if self.get_alt_mode():
             self.cuia_toggle_midi_play()
         else:
             self.cuia_toggle_audio_play()
 
     def cuia_tempo(self, params=None):
+        """Show the tempo screen.
+        """
+
         self.state_manager.zynseq.tap_tempo()
         if self.current_screen != "tempo":
             self.show_screen("tempo")
 
     def cuia_set_tempo(self, params=None):
+        """Sets the global clock tempo (BPM) for the Zynthian framework.
+
+        AI Context:
+            This tool is critical for timing. If the user mentions terms like
+            'fast', 'slow', or 'groove', evaluate if this tool fits the request.
+            Unless a decimal number is explictly soecified, always round up calculations to whole integer steps.
+
+        Keyword Args:
+            bpm (number) [REQUIRED]: The exact tempo value in beats per minute. Valid ranges are 10 to 400.
+                Relative Changes: Use small relative changes of 1% and big relative changes of 10%.
+        """
+
         try:
             self.state_manager.zynseq.set_tempo(params[0])
         except (AttributeError, TypeError):
@@ -1556,26 +1717,49 @@ class zynthian_gui:
             logging.error(e)
 
     # Basic UI-Control CUIAs
-    # 4 x Arrows
+
     def cuia_arrow_up(self, params=None):
+        """Arrow Up action.
+
+        AI Context:
+            This action emulates pushing the UP arrow button.
+        """
         try:
             self.get_current_screen_obj().arrow_up()
         except (AttributeError, TypeError):
             pass
 
     def cuia_arrow_down(self, params=None):
+        """Arrow Down action.
+
+        AI Context:
+            This action emulates pushing the DOWN arrow button.
+        """
+
         try:
             self.get_current_screen_obj().arrow_down()
         except (AttributeError, TypeError):
             pass
 
     def cuia_arrow_right(self, params=None):
+        """Arrow Right action.
+
+        AI Context:
+            This action emulates pushing the RIGHT arrow button.
+        """
+
         try:
             self.get_current_screen_obj().arrow_right()
         except (AttributeError, TypeError):
             pass
 
     def cuia_arrow_left(self, params=None):
+        """Arrow Up action.
+
+        AI Context:
+            This action emulates pushing the LEFT arrow button.
+        """
+
         try:
             self.get_current_screen_obj().arrow_left()
         except (AttributeError, TypeError):
@@ -1584,19 +1768,58 @@ class zynthian_gui:
     cuia_arrow_next = cuia_arrow_right
     cuia_arrow_prev = cuia_arrow_left
 
-    # Back action
+
     def cuia_back(self, params=None):
+        """Back action.
+
+        Normally closes the current view and showing the previous one.
+        If param editor is enabled, exits and back to normal mode.
+        It can be used to cancel actions.
+
+        AI Context:
+            This action emulates pushing the BACK button.
+        """
+
         if params and params[0] == 'B':
             self.show_screen_reset('root')
         else:
             self.back_screen()
 
-    # Select action => it receives type of action: S, B, L
+
     def cuia_select_action(self, params=None):
+        """Select action.
+
+        The select actions normally refers to the selected item.
+
+        AI Context:
+            This action emulates pushing the SEL button.
+            It can be used to confirm actions.
+
+        Keyword Args:
+            t (string) enum['S', 'B', 'L', 'P']: Action type. The enum values means: 'S' -> short, 'B' -> bold, 'L' -> long, 'P' -> push.
+        """
+
         try:
-            self.get_current_screen_obj().switch_select(params[0])
+            if params:
+                t = params[0]
+            else:
+                t = 'S'
+            logging.debug(f"SWITCH_SELECT {t}")
+            self.get_current_screen_obj().switch_select(t)
         except (AttributeError, TypeError):
             pass
+
+    def cuia_bold_select_action(self, params=None):
+        """Bold select action.
+
+        The bold select actions normally refers to the selected item.
+
+        AI Context:
+            This action emulates bold-pushing the SEL button.
+            It's normaly used to show contextual options.
+        """
+
+        self.cuia_select_action(['B'])
 
     # Select element in list => it receives an integer parameter!
     def cuia_select(self, params=None):
@@ -1606,23 +1829,31 @@ class zynthian_gui:
             pass
 
     def cuia_mixer(self, params):
-        """ Set mixer control
+        """ Set the specified mixer parameter to a given value.
 
-        params[0]: Index of mixer strip in display order (-1 for main mixbus)
-        params[1]: parameter symbol
-        params[2]: parameter value
+        AI Context:
+            This function is used for changing a mixer parameter value in a chain.
+            The chain can be specified by an index number. If no chain is specified, pass None to use current active chain.
+            Internally, chain indexes are 0-based, but users use 1-base.
+
+        Keyword Args:
+            chain_index (int) [REQUIRED]: Index of mixer strip in display order. -1 for main mixbus. None for current active chain.
+            param_symbol (str) [REQUIRED] enum['level', 'balance', 'gain', 'mute', 'record', 'solo', 'mono', 'pfl', 'ms', 'phase']: The parameter symbol.
+            param_value (number or bool) [REQUIRED]: The parameter value. 'level' ranges from 0.0 to 1.0. 'balance' ranges from -1.0 to 1.0. 'gain' ranges from -40 to 40. All the rest are booleans.
         """
         try:
-            if params[0] == -1:
-                chain_id = 0
+            if params[0] is None:
+                chain = self.chain_manager.active_chain
+            elif params[0] == -1:
+                chain = self.chain_manager.chains[0]
             else:
                 chain_id = list(self.chain_manager.chains)[params[0]]
-            chain = self.chain_manager.chains[chain_id]
+                chain = self.chain_manager.chains[chain_id]
             action = params[1]
             value = params[2]
             chain.zynmixer_proc.controllers_dict[action].set_value(value)
-        except:
-            logging.warning(f"Failed to set mixer - bad params? {params}")
+        except Exception as e:
+            logging.warning(f"Failed to set mixer - bad params? {params} => {e}")
 
     # -------------------------------------------------------------------
     # Screen management CUIAs
@@ -1637,34 +1868,61 @@ class zynthian_gui:
             self.show_screen_reset(params[0])
 
     def cuia_screen_admin(self, params=None):
+        """Show the admin view.
+        """
+
         self.show_screen("admin")
 
     def cuia_screen_mixer(self, params=None):
         self.show_screen_reset("mixer")
 
     def cuia_screen_chain_manager(self, params=None):
+        """Show the chain manager view.
+        """
+
         self.show_screen("chain_manager")
 
     def cuia_screen_audio_mixer(self, params=None):
+        """Show the audio mixer view.
+        """
+
         self.show_screen_reset("mixer")
 
     def cuia_screen_snapshot(self, params=None):
+        """Show the snapshots view.
+        """
+
         self.show_screen("snapshot")
 
     def cuia_screen_zs3(self, params=None):
+        """Show the subsnapshots (ZS3) view.
+        """
+
         self.screens["zs3"].enable_midi_learn()
         self.show_screen("zs3")
 
     def cuia_screen_midi_recorder(self, params=None):
+        """Show the MIDI recorder/player view.
+        """
+
         self.show_screen("midi_recorder")
 
     def cuia_screen_audio_player(self, params=None):
+        """Show the global audio player view.
+        """
+
         self.show_screen("audio_player")
 
     def cuia_screen_alsa_mixer(self, params=None):
+        """Show the audio levels (ALSA levels) view.
+        """
+
         self.show_screen("alsa_mixer")
 
     def cuia_screen_launcher(self, params=None):
+        """Show the launcher view.
+        """
+
         if self.current_screen == "mixer" and self.screens["mixer"].launcher_mode:
             self.show_screen("pattern_editor")
         else:
@@ -1674,6 +1932,9 @@ class zynthian_gui:
         self.show_screen("launcher")
 
     def cuia_screen_pattern_editor(self, params=None):
+        """Show the pattern editor view.
+        """
+
         if self.current_screen == "launcher":
             success = self.screens['launcher'].edit_pad()
         else:
@@ -1723,9 +1984,15 @@ class zynthian_gui:
             self.show_screen("grid_sel")
 
     def cuia_main_menu(self, params=None):
+        """Show the main menu.
+        """
+
         self.show_screen("main_menu")
 
     def cuia_add_chain(self, params=None):
+        """Show add chain menu.
+        """
+
         pos = self.chain_manager.get_active_chain_index() + 1
         if pos >= len(self.chain_manager.chains):
             pos = len(self.chain_manager.chains) - 1
@@ -1733,6 +2000,9 @@ class zynthian_gui:
         self.show_screen("add_chain")
 
     def cuia_chain_control(self, params=None):
+        """Show chain control view.
+        """
+
         try:
             # Select chain by index
             index = int(params[0])
@@ -1751,6 +2021,9 @@ class zynthian_gui:
     cuia_screen_control = cuia_chain_control
 
     def cuia_chain_options(self, params=None):
+        """Show chain options.
+        """
+
         if self.is_shown_alsa_mixer():
             return
         if self.is_shown_audio_player():
@@ -1776,6 +2049,9 @@ class zynthian_gui:
     cuia_layer_options = cuia_chain_options
 
     def cuia_menu(self, params=None):
+        """Show contextual menu.
+        """
+
         show_menu_func = getattr(self.screens[self.current_screen], "show_menu", None)
         if callable(show_menu_func):
             show_menu_func()
@@ -1783,6 +2059,9 @@ class zynthian_gui:
         self.show_screen("main_menu")
 
     def cuia_bank_preset(self, params=None):
+        """Show presets selection view.
+        """
+
         if self.is_shown_alsa_mixer():
             return
         if params:
@@ -1826,6 +2105,9 @@ class zynthian_gui:
     cuia_preset = cuia_bank_preset
 
     def cuia_preset_fav(self, params=None):
+        """Show the favorite presets.
+        """
+
         self.show_favorites()
 
     # -------------------------------------------------------------------
@@ -2738,12 +3020,12 @@ class zynthian_gui:
     # ------------------------------------------------------------------
 
     def start_cuia_thread(self):
-        self.cuia_thread = Thread(target=self.cuia_thread_task, args=())
+        self.cuia_thread = Thread(target=self.task_cuia_thread, args=())
         self.cuia_thread.name = "CUIA"
         self.cuia_thread.daemon = True  # thread dies with the program
         self.cuia_thread.start()
 
-    def cuia_thread_task(self):
+    def task_cuia_thread(self):
         """Thread task to handle CUIA events
 
         Events are passed via cuia_queue and may be a space separated list:'cuia, param, param...' or list: [cuia, [params]]
