@@ -117,7 +117,7 @@ class zynthian_chain_manager:
         self.active_midi_chain = None # Chain currently receiving active MIDI input
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
-        # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
+        # Map of list of zctrls indexed by 24-bit ZMIP,CHAN,CC
         self.absolute_midi_cc_binding = {}
         # Map of list of zctrls indexed by 24-bit CHAIN,CHAN,CC
         self.chain_midi_cc_binding = {}
@@ -1751,23 +1751,35 @@ class zynthian_chain_manager:
                 if not zctrls:
                     self.absolute_midi_cc_binding.pop(key)
 
-    def get_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=True):
+    def get_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=True, all=False):
+        result = []
         if chain:
             for key, zctrls in self.chain_midi_cc_binding.items():
                 if zctrl in zctrls:
-                    return [key, "chain"]
+                    if all:
+                        result.append([key, "chain"])
+                    else:
+                        return [key, "chain"]
         if abs:
             for key, zctrls in self.absolute_midi_cc_binding.items():
                 if (key >> 16) & 0xff == ZMIP_STEP_INDEX:
                     continue
                 if zctrl in zctrls:
-                    return [key, "abs"]
+                    if all:
+                        result.append([key, "abs"])
+                    else:
+                        return [key, "abs"]
         if zynstep:
             for key, zctrls in self.absolute_midi_cc_binding.items():
                 if (key >> 16) & 0xff != ZMIP_STEP_INDEX:
                     continue
                 if zctrl in zctrls:
-                    return [key, "zynstep"]
+                    if all:
+                        result.append([key, "zynstep"])
+                    else:
+                        return [key, "zynstep"]
+        if all:
+            return result
 
     def is_custom_zynstep_mapping(self, zctrl):
         # Look for a non-zynstep mapping (absolute or chain)

@@ -783,7 +783,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zyngui.show_screen('option')
                 return
 
-            ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=True, chain=True, zynstep=False)
+            ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl)
             if not unlearn_only:
                 title = f"Control options: {zctrl.name}"
 
@@ -825,7 +825,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options["\u2612 Debounce"] = i
                     else:
                         options["\u2610 Debounce"] = i
-                elif ml:
+                elif ml and ml[1] != "zynstep":
                     match zctrl.midi_cc_mode:
                         case -1:
                             options["Relative Mode learning..."] = i
@@ -838,6 +838,8 @@ class zynthian_gui_control(zynthian_gui_selector):
                             options["CC Value Range"] = i
                         case _:
                             options[f"Relative Mode {zctrl.midi_cc_mode}"] = i
+                if ml and ml[1] in ["abs", "zynstep"]:
+                    options["CC Binding Devices"] = zctrl
                 if zctrl.processor:
                     options[f"Chain learn..."] = i
                 options[f"Global learn..."] = i
@@ -888,6 +890,30 @@ class zynthian_gui_control(zynthian_gui_selector):
         elif option == "CC Value Range":
             self.zyngui.screens["midi_cc_range"].config(self.zgui_controllers[param].zctrl)
             self.zyngui.show_screen('midi_cc_range')
+        elif option == "CC Binding Devices":
+            options = {
+                "Select All": -1,
+                "Select None": -2
+            }
+            result = self.chain_manager.get_midi_learn_from_zctrl(param, chain=False, zynstep=True, all=True)
+            bound_devices = []
+            for ml in result:
+                mip = ml[0] >> 16
+                bound_devices.append(mip)
+                cc = ml[0] & 0x7f
+                chan = (ml[0] >> 8) & 0xf
+            for i, port in enumerate(zynautoconnect.devices_in):
+                try:
+                    if port:
+                        key = (i << 16) | (chan << 8) | cc
+                        if i in bound_devices:
+                            options[f"\u2612 {port.aliases[0]}"] = {"key":key, "zctrl":param}
+                        else:
+                            options[f"\u2610 {port.aliases[0]}"] = {"key":key, "zctrl":param}
+                except Exception as e:
+                    logging.warning(e)
+            self.zyngui.screens['option'].config(f"MIDI devices bound to CC {cc}", options, self.midi_device_cb)
+            self.zyngui.show_screen('option')
         else:
             parts = option.split(" ")
             if parts[1] == "X-axis":
@@ -950,6 +976,19 @@ class zynthian_gui_control(zynthian_gui_selector):
                 }
                 self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
                 self.zyngui.show_screen('option')
+
+    def midi_device_cb(self, option, param):
+        key = param["key"]
+        zctrl = param["zctrl"]
+        if key not in self.chain_manager.absolute_midi_cc_binding:
+            self.chain_manager.absolute_midi_cc_binding[key] = [zctrl]
+        elif zctrl not in self.chain_manager.absolute_midi_cc_binding[key]:
+            self.chain_manager.absolute_midi_cc_binding[key].append(zctrl)
+        else:
+            self.chain_manager.absolute_midi_cc_binding[key].remove(zctrl)
+            if not self.chain_manager.absolute_midi_cc_binding[key]:
+                del self.chain_manager.absolute_midi_cc_binding[key]
+        self.controller_options_cb("CC Binding Devices", zctrl)
 
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])
