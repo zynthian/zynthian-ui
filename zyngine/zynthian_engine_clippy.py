@@ -337,7 +337,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     # Get zctrl values
                     beat_slice = beat_slice_zctrl.value
                     beats_value = beats_zctrl.value
-                    warp_value = warp_zctrl.value
+                    #warp_value = warp_zctrl.value
                     crop_start = crop_start_zctrl.value
                     crop_end = crop_end_zctrl.value
                     duration = (crop_end - crop_start) / sr
@@ -348,9 +348,9 @@ class zynthian_engine_clippy(zynthian_engine):
                         self.update_nudge(processor, note, frames)
 
                 if beats_value <= MAX_BEATS and min_duration <= duration <= MAX_DURATION:
-                    can_warp = True
+                    pass #can_warp = True
                 else:
-                    can_warp = False
+                    #can_warp = False
                     warp_zctrl.value = 0
 
                 if not warp_zctrl.value:
@@ -754,7 +754,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def set_state_post_note(self, processor, note):
         try:
-            file_zctrl = processor.controllers_dict[f"file {note}"]
+            processor.controllers_dict[f"file {note}"]
         except:
             return False
         phrase = note - 1

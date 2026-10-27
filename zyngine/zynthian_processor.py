@@ -823,20 +823,6 @@ class zynthian_processor:
     # MIDI processing
     # ----------------------------------------------------------------------------
 
-    def midi_control_change(self, chan, ccnum, ccval):
-        """Handle MIDI CC message
-
-        chan : MIDI channel
-        ccnum : CC number
-         ccval : CC value
-        """
-
-        # logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
-        try:
-            self.engine.midi_control_change(chan, ccnum, ccval)
-        except:
-            pass
-
     def midi_bank_msb(self, bank_msb):
         """Handle MIDI bank MSB message
 
