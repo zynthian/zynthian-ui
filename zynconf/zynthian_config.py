@@ -363,8 +363,8 @@ def get_wifi_list():
         logging.info("Creating Wi-Fi Access Point connection 'zynthian'...")
         check_output(f"{sys_dir}/sbin/create_wifi_access_point.sh", encoding='utf-8')
 
-    # Get list of available networks
-    wifi_data = []
+    # Get list of available networks, use a dict to avoid repeating APs with same SSID
+    wifi_data = {}
     ap_enabled = False
     rows = check_output(["nmcli", "--terse", "dev", "wifi", "list"], encoding='utf-8').split("\n")
     for row in rows:
@@ -376,20 +376,53 @@ def get_wifi_list():
             if signal == "0":
                 ap_enabled = True
                 continue
+            # Check if the SSID already is in the list
+            try:
+                curentry = wifi_data[ssid]
+                # If it's in the list and it's enabled, skip the rest with same SSID
+                if curentry[4]:
+                    continue
+            except:
+                curentry = None
+            # Check if it's configured'
             if ssid in configured_wifi:
                 configured = True
             else:
                 configured = False
-            rate = parts[-4].replace("Mbit/s", "Mbs")
+            # Get rate (quality of signal)
+            rate_parts = parts[-4].split(" ")
+            try:
+                rate_num = int(rate_parts[0])
+                rate_unit = rate_parts[1]
+            except:
+                continue
+            if rate_unit == "Gbit/s":
+                rate_num *= 1000000000
+                rate = rate_parts[0] . " Gbs"
+            elif rate_unit == "Mbit/s":
+                rate_num *= 1000000
+                rate = rate_parts[0] . " Mbs"
+            elif rate_unit == "Kbit/s":
+                rate_num *= 1000
+                rate = rate_parts[0] . " Kbs"
+            else:
+                continue
+            # Check if it's enabled (only one can be enabled!)
             if parts[0] == "*":
                 enabled = True
                 bullet = "\u2612"
             else:
                 enabled = False
                 bullet = "\u2610"
+            # Skip if not enabled and already in the list with a higher rate
+            if not enabled and curentry and curentry[5] >= rate_num:
+                continue
             title = f"{bullet} {bars} {ssid} ({rate})"
             txt = "Disconnect from" if enabled else "Connect to"
-            wifi_data.append((ssid, 0, title, configured, enabled, [f"{txt} Wi-Fi access point.", None]))
+            wifi_data[ssid] = (ssid, 0, title, configured, enabled, rate_num, [f"{txt} Wi-Fi access point.", None])
+
+    # Convert from dict to list
+    wifi_data = list(wifi_data.values())
 
     # Add Access Point
     if ap_enabled:
