@@ -398,13 +398,13 @@ def get_wifi_list():
                 continue
             if rate_unit == "Gbit/s":
                 rate_num *= 1000000000
-                rate = rate_parts[0] . " Gbs"
+                rate = rate_parts[0] + " Gbs"
             elif rate_unit == "Mbit/s":
                 rate_num *= 1000000
-                rate = rate_parts[0] . " Mbs"
+                rate = rate_parts[0] + " Mbs"
             elif rate_unit == "Kbit/s":
                 rate_num *= 1000
-                rate = rate_parts[0] . " Kbs"
+                rate = rate_parts[0] + " Kbs"
             else:
                 continue
             # Check if it's enabled (only one can be enabled!)
