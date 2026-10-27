@@ -350,9 +350,10 @@ class zynseq(zynthian_engine):
         self.libseq.setChannel(chan, sequence, track, channel)
         self.refresh_state()
 
-    def enable_channel(self, channel, enable, refresh=False):
+    def enable_channel(self, channel, enable, refresh_state=True, refresh_send_signal=False):
         self.libseq.enableChannel(channel, enable)
-        self.refresh_state(refresh)
+        if refresh_state:
+            self.refresh_state(refresh_send_signal)
 
     # -------------------------------------------------------------------
     # Miscelaneous

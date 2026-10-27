@@ -1944,8 +1944,8 @@ class zynthian_chain_manager:
         chain.set_midi_chan(midi_chan)
         for mc in range(16):
             if not self._midi_chan_2_chain_ids[mc]:
-                self.state_manager.zynseq.enable_channel(mc, False)
-        self.state_manager.zynseq.enable_channel(midi_chan, True, True)
+                self.state_manager.zynseq.enable_channel(mc, False, refresh_state=False)
+        self.state_manager.zynseq.enable_channel(midi_chan, True, refresh_state=True)
 
         # Add new midi_chan(s) to dictionary
         if isinstance(midi_chan, int):
