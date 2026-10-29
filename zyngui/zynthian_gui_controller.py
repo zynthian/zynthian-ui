@@ -556,15 +556,18 @@ class zynthian_gui_controller(tkinter.Canvas):
             elif self.zctrl == self.zyngui.state_manager.zctrl_y:
                 self.plot_midi_bind("Y", zynthian_gui_config.color_alt2)
             elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
-                key = midi_learn_params[0]
-                cc = key & 0xff
-                match midi_learn_params[1]:
-                    case "abs":
-                        #zmip = (key >> 16) & 0xff
-                        chan = (key >> 8) & 0xff
+                if len(midi_learn_params) > 1:
+                    for ml in midi_learn_params:
+                        if ml[1] != "zynstep":
+                            break
+                else:
+                    ml = midi_learn_params[0]
+                key = ml[0]
+                cc, chan, zmip, chain_id = self.zyngui.chain_manager.unpack_midi_bind_key(key)
+                match ml[1]:
+                    case "global":
                         self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_ml)
                     case "chain":
-                        chan = (key >> 8) & 0xff
                         if chan < 16:
                             self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_hl)
                         else:

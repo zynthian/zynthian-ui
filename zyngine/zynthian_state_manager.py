@@ -809,7 +809,7 @@ class zynthian_state_manager:
                             self.all_notes_off()
                         else:
                             if self.midi_learn_zctrl:
-                                self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, izmip)
+                                self.chain_manager.add_midi_learn(self.midi_learn_zctrl, ccnum, chan, izmip, self.midi_learn_state)
                     # Master Note CUIA with ZynSwitch emulation
                     elif evtype == 0x8 or evtype == 0x9:
                         note = str(ev[1] & 0x7F)
@@ -1412,7 +1412,6 @@ class zynthian_state_manager:
                 zs3_id = "zs3-0"
 
         restored_chains = []
-        restored_cc_mapping = []
         restore_midi_learn = zs3_id == "zs3-0" or zs3_state.get("restore_midi_learn", False)
         mute_pause = False
         if "chains" in zs3_state:
@@ -1474,22 +1473,6 @@ class zynthian_state_manager:
                 if restore_midi_learn:
                     # Current (correct) chain MIDI-learn state
                     self.chain_manager.clean_midi_learn(chain_id)
-                    if "midi_learn" in chain_state:
-                        for low_key, cfg in chain_state["midi_learn"].items():
-                            low_key = int(low_key)
-                            midi_chan = (low_key >> 8) & 0xff
-                            midi_cc = low_key & 0x7f
-                            for proc_id, symbol in cfg:
-                                if proc_id in self.chain_manager.processors:
-                                    restored_cc_mapping.append((proc_id, symbol, midi_chan, midi_cc))
-                    # Legacy (wrong) chain MIDI-learn state
-                    elif "midi_cc" in chain_state:
-                        for midi_cc, cfg in chain_state["midi_cc"].items():
-                            midi_chan = 0xff
-                            midi_cc = int(midi_cc) & 0x7f
-                            for proc_id, symbol in cfg:
-                                if proc_id in self.chain_manager.processors:
-                                    restored_cc_mapping.append((proc_id, symbol, midi_chan, midi_cc))
 
         if mute_pause:
             # Wait for soft mutes to apply before changing settings
@@ -1511,14 +1494,6 @@ class zynthian_state_manager:
                         processor.set_state(proc_state)
                 except Exception as e:
                     logging.error(f"Failed to restore processor {proc_id} state => {e}")
-
-        for cc_map in restored_cc_mapping:
-            processor = self.chain_manager.processors[cc_map[0]]
-            try:
-                zctrl = processor.controllers_dict[cc_map[1]]
-                self.chain_manager.add_midi_learn(cc_map[2], cc_map[3], zctrl)
-            except:
-                logging.warning(f"Failed to restore MIDI learning {cc_map[2]}#{cc_map[3]} => {cc_map[0]}:{cc_map[1]}")
 
         if "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
@@ -1688,7 +1663,7 @@ class zynthian_state_manager:
                             break
                 chain_state["audio_out"].append(out)
             # Add chain MIDI mapping
-            for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
+            for key, zctrls in self.chain_manager.midi_cc_binding.items():
                 if chain_id == (key >> 16) & 0xff:
                     key_low = key & 0xff7f
                     chain_state["midi_learn"][key_low] = []
@@ -2087,23 +2062,26 @@ class zynthian_state_manager:
             # Aubio state
             if uid == "AUBIO:in":
                 mcstate[uid]["audio_in"] = self.aubio_in
-            # Add global / absolute MIDI mapping
-            for key, zctrls in self.chain_manager.absolute_midi_cc_binding.items():
-                if izmip == (key >> 16) & 0xff:
-                    key_low = key & 0xff7f
-                    mcstate[uid]["midi_learn"][key_low] = []
+            # Add MIDI mapping
+            for key, zctrls in self.chain_manager.midi_cc_binding.items():
+                cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(key)
+                ss_key = f"{chain_id:02x}{chan:02x}{cc:02x}"
+                if izmip == zmip:
+                    mcstate[uid]["midi_learn"][ss_key] = []
                     for zctrl in zctrls:
-                        mcstate[uid]["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
+                        mcstate[uid]["midi_learn"][ss_key].append([zctrl.processor.id, zctrl.symbol])
 
         mcstate["zynmidi"] = {"midi_learn": {}}
         # Add global / absolute MIDI mapping
-        for key, zctrls in self.chain_manager.absolute_midi_cc_binding.items():
+        """ TODO: Internal MIDI learn is not (correctly) inplemented
+        for key, zctrls in self.chain_manager.midi_cc_binding.items():
             if 0xff0000 == key & 0xff0000:
                 key_low = key & 0xff7f
                 mcstate["zynmidi"]["midi_learn"][key_low] = []
                 for zctrl in zctrls:
                     mcstate["zynmidi"]["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
-
+        """
+         
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None, restore_midi_learn=True):
@@ -2161,7 +2139,7 @@ class zynthian_state_manager:
                 else:
                     izmip = 0xff
 
-                # Absolute MIDI-learn state
+                # MIDI-learn state
                 if restore_midi_learn:
                     try:
                         midi_learn_state = state["midi_learn"]
@@ -2171,8 +2149,8 @@ class zynthian_state_manager:
                         except:
                             midi_learn_state = None
                     if midi_learn_state:
-                        for key_low, cfg in midi_learn_state.items():
-                            key_low = int(key_low)
+                        for key, cfg in midi_learn_state.items():
+                            key = int(key, 16)
                             for proc_id, symbol in cfg:
                                 try:
                                     processor = self.chain_manager.processors[proc_id]
@@ -2183,9 +2161,12 @@ class zynthian_state_manager:
                                 except:
                                     logging.warning(f"Can't MIDI learn '{symbol}'. Controller not found in processor {proc_id}.")
                                     continue
-                                chan = (key_low >> 8) & 0xff
-                                cc = key_low & 0x7f
-                                self.chain_manager.add_midi_learn(chan, cc, zctrl, izmip)
+                                chan = (key >> 8) & 0xff
+                                cc = key & 0x7f
+                                chain_id = (key >> 16) & 0xff
+                                if chain_id == 0xff:
+                                    chain_id = None
+                                self.chain_manager.add_midi_learn(zctrl, cc, chan, izmip, chain_id)
             self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
 
         else:

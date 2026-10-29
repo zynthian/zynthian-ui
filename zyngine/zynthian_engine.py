@@ -655,7 +655,7 @@ class zynthian_engine(zynthian_basic_engine):
                 if symbol in symbols:
                     zctrl.reset(self, symbol, full=False)
                 else:
-                    self.state_manager.chain_manager.remove_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=True)
+                    self.state_manager.chain_manager.clear_midi_learn(processor, symbol)
                     del processor.controllers_dict[symbol]
             # Regenerate / update controller dictionary
             for ctrl in self._ctrls:
@@ -669,7 +669,7 @@ class zynthian_engine(zynthian_basic_engine):
                     zctrl = zynthian_controller(self, ctrl[0], options)
                     processor.controllers_dict[zctrl.symbol] = zctrl
                     if zctrl.midi_cc is not None and processor.midi_autolearn and zctrl.midi_autolearn:
-                        self.state_manager.chain_manager.add_midi_learn(None, zctrl.midi_cc, zctrl)
+                        self.state_manager.chain_manager.add_midi_learn(zctrl, zctrl.midi_cc)
 
         return processor.controllers_dict
 

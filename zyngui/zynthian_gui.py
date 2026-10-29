@@ -2229,7 +2229,7 @@ class zynthian_gui:
 
     def cuia_midi_unlearn_node(self, params=None):
         if params and len(params) > 1:
-            self.chain_manager.remove_midi_learn([params[0], params[1]])
+            self.chain_manager.clear_midi_learn([params[0], params[1]])
 
     def cuia_midi_unlearn_chain(self, params=None):
         if params and len(params) > 0:

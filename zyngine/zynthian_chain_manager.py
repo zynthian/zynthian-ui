@@ -117,10 +117,7 @@ class zynthian_chain_manager:
         self.active_midi_chain = None # Chain currently receiving active MIDI input
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
-        # Map of list of zctrls indexed by 24-bit ZMIP,CHAN,CC
-        self.absolute_midi_cc_binding = {}
-        # Map of list of zctrls indexed by 24-bit CHAIN,CHAN,CC
-        self.chain_midi_cc_binding = {}
+        self.midi_cc_binding = {} # Lists of zctrls indexed by 24-bit [chain,zmip,chan,cc]
         self.rebuild_optimisation_cache()
 
     # ------------------------------------------------------------------------
@@ -1230,7 +1227,7 @@ class zynthian_chain_manager:
             self.state_manager.start_busy("remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
 
         for symbol in processor.controllers_dict:
-            self.remove_midi_learn(processor, symbol)
+            self.clear_midi_learn(processor, symbol)
 
         id = None
         for i, p in self.processors.items():
@@ -1602,206 +1599,181 @@ class zynthian_chain_manager:
     # MIDI CC
     # ----------------------------------------------------------------------------
 
-    def print_midi_learn(self):
-        print(f"\n\n*********** CHAIN MIDI LEARN TABLE ***********")
-        for key, zctrls in self.chain_midi_cc_binding.items():
-            key = int(key)
-            chain_id = (key >> 16) & 0xFF
-            midi_chan = (key >> 8) & 0xFF
-            midi_cc = key & 0x7F
-            print(f"CHAIN={chain_id}, CHAN={midi_chan}, CC={midi_cc} =>")
-            for zctrl in zctrls:
-                print(f"     {zctrl.symbol}")
-        print(f"*********** ABSOLUTE MIDI LEARN TABLE ***********")
-        for key, zctrls in self.absolute_midi_cc_binding.items():
-            key = int(key)
-            zmip = (key >> 16) & 0xFF
-            midi_chan = (key >> 8) & 0xFF
-            midi_cc = key & 0x7F
-            print(f"ZMIP={zmip}, CHAN={midi_chan}, CC={midi_cc} =>")
-            for zctrl in zctrls:
-                print(f"     {zctrl.symbol}")
-        print(f"**************************************************\n\n")
+    def pack_midi_bind_key(self, cc, chan, zmip, chain_id):
+        return (chain_id << 24) | (zmip << 16) | (chan << 8) | cc
 
-    def add_midi_learn(self, midi_chan, midi_cc, zctrl, zmip=None):
-        """Adds a midi learn configuration
+    def unpack_midi_bind_key(self, key):
+        """ Unpack the 32-bit MIDI bindingin key
+            Returns: Tuple (cc, chan, zmip, chain_id)
+        """
+        return (key & 0xff, (key >> 8) & 0xff, (key >> 16) & 0xff, (key >> 24) & 0xff)
 
-        midi_chan : MIDI channel to bind (None / 0xFF to not bind to MIDI channel)
-        midi_cc : CC number of CC message
+    def add_midi_learn(self, zctrl, midi_cc, midi_chan=None, zmip=None, chain_id=None):
+        """ Adds a midi learn binding for a zctrl
+
         zctrl : Controller object
-        zmip : ZMIP of absolute learn device (Optional: Default - do not learn absolute)
+        midi_cc : CC number of CC message
+        midi_chan : MIDI channel to bind (Optional: Default - None (or 0xFF) to bind to all MIDI channels)
+        zmip : ZMIP of MIDI device (Optional: Default - None to bind all MIDI inputs)
+        chain_id : Id of chain to bind (Optional: Default - None (or 0xFF) for global binding)
         """
 
         if zctrl is None:
             return
 
-        # Remove previous mappings with extra care
-        if zmip is None or zmip != ZMIP_STEP_INDEX:
+        if chain_id is not None or zmip != ZMIP_STEP_INDEX:
             # When mapping chain or absolute, remove previous mappings, except custom ZynStep mappings
             map_zynstep = not self.is_custom_zynstep_mapping(zctrl)
-            self.remove_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=map_zynstep)
         else:
             # When explicitly mapping ZynStep, don't remove previous chain/absolute mappings
             map_zynstep = True
-            self.remove_midi_learn_from_zctrl(zctrl, chain=False, abs=False, zynstep=True)
 
         if midi_chan is None:
             midi_chan = 0xff
-        logging.debug(f"(chan={midi_chan}, midi_cc={midi_cc}, zctrl={zctrl.symbol}, zmip={zmip})")
+        if chain_id is None:
+            chain_id = 0xff
 
-        # Chain learning for external devices => All chain types
-        if zmip is None:
-            if zctrl.processor and zctrl.processor.chain_id is not None:
-                key = (zctrl.processor.chain_id << 16) | (midi_chan << 8) | midi_cc
-                if key in self.chain_midi_cc_binding:
-                    if zctrl not in self.chain_midi_cc_binding[key]:
-                        self.chain_midi_cc_binding[key].append(zctrl)
-                else:
-                    self.chain_midi_cc_binding[key] = [zctrl]
+        # Remove existing bindings except zynstep
+        mask = ZMIP_STEP_INDEX << 16
+        for key in list(self.midi_cc_binding):
+            if (key & mask) != mask and zctrl in self.midi_cc_binding[key]:
+                a, b, c, d = self.unpack_midi_bind_key(key)
+                self.remove_midi_learn(zctrl, a, b, c, d)
 
-        # Absolute learning for external devices
-        elif zmip != ZMIP_STEP_INDEX:
-            key = (zmip << 16) | (midi_chan << 8) | midi_cc
-            if key in self.absolute_midi_cc_binding:
-                if zctrl not in self.absolute_midi_cc_binding[key]:
-                    self.absolute_midi_cc_binding[key].append(zctrl)
+        if zmip != ZMIP_STEP_INDEX:
+            key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
+            if key in self.midi_cc_binding:
+                if zctrl not in self.midi_cc_binding[key]:
+                    self.midi_cc_binding[key].append(zctrl)
             else:
-                self.absolute_midi_cc_binding[key] = [zctrl]
+                self.midi_cc_binding[key] = [zctrl]
 
         # ZynStep mapping => MIDI chains only, excluding chains listening to "ALL MIDI CHANNELS"
         if map_zynstep and zctrl.processor and zctrl.processor.midi_chan is not None and zctrl.processor.midi_chan < 16:
-            key = (ZMIP_STEP_INDEX << 16) | (zctrl.processor.midi_chan << 8) | midi_cc
-            if key in self.absolute_midi_cc_binding:
-                if zctrl not in self.absolute_midi_cc_binding[key]:
-                    self.absolute_midi_cc_binding[key].append(zctrl)
+            key = self.pack_midi_bind_key(midi_cc, zctrl.processor.midi_chan, ZMIP_STEP_INDEX, chain_id)
+            if key in self.midi_cc_binding:
+                if zctrl not in self.midi_cc_binding[key]:
+                    self.midi_cc_binding[key].append(zctrl)
             else:
-                self.absolute_midi_cc_binding[key] = [zctrl]
+                self.midi_cc_binding[key] = [zctrl]
 
-        #self.print_midi_learn()
+    def remove_midi_learn(self, zctrl, midi_cc, midi_chan, zmip, chain_id=None):
+        """ Remove a midi learn binding for a zctrl
 
-    def add_zynstep_midi_learn(self, midi_cc, zctrl):
-        """Adds a midi learn configuration for zynstep
-
-        midi_cc : CC number of CC message
         zctrl : Controller object
+        midi_cc : CC number of CC message
+        midi_chan : MIDI channel
+        zmip : ZMIP of MIDI device
+        chain_id : Id of chain to bind (Optional: Default - None (or 0xFF) for global binding)
         """
 
-        self.add_midi_learn(None, midi_cc, zctrl, ZMIP_STEP_INDEX)
+        if chain_id is None:
+            chain_id == 0xff
+        key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
+        try:
+            if zctrl in self.midi_cc_binding[key]:
+                self.midi_cc_binding[key].remove(zctrl)
+                if not self.midi_cc_binding[key]:
+                    del self.midi_cc_binding[key]
+        except:
+            pass
 
-    def remove_midi_learn(self, proc, symbol, chain=True, abs=True, zynstep=None):
-        """Remove a midi learn configuration
+    def toggle_midi_learn(self, zctrl, midi_cc, midi_chan, zmip, chain_id=None):
+        """ Add or remove a midi learn binding for a zctrl
+
+        zctrl : Controller object
+        midi_cc : CC number of CC message
+        midi_chan : MIDI channel
+        zmip : ZMIP of MIDI device
+        chain_id : Id of chain to bind (Optional: Default - None (or 0xFF) for global binding)
+        """
+
+        if chain_id is None:
+            chain_id == 0xff
+        key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
+
+        try:
+            exists = zctrl in self.midi_cc_binding[key]
+        except:
+            exists = False
+        if exists:
+            self.remove_midi_learn(zctrl, midi_cc, midi_chan, zmip, chain_id)
+        else:
+            self.add_midi_learn(zctrl, midi_cc, midi_chan, zmip, chain_id)
+
+    def clear_midi_learn(self, proc, symbol, zynstep=None):
+        """Removes all midi bindings from a zctrl
 
         proc : Processor object
         symbol : Control symbol
-        chain : remove chain MIDI learn
-        abs : remove absolute MIDI learn
-        zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
+        zynstep : True to clear zynstep binding (Optional: Default - None only clears if same CC as other bindings)
         """
 
         try:
             zctrl = proc.controllers_dict[symbol]
         except:
             return
-        self.remove_midi_learn_from_zctrl(zctrl, chain=chain, abs=abs, zynstep=zynstep)
-
-    def remove_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=None):
-        """Remove a midi learn configuration
-
-        zctrl : zctrl object
-        chain : remove chain MIDI learn
-        abs : remove absolute MIDI learn
-        zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
-        """
-
-        # processor.id may not exist! logging.debug(f"(proccessor={zctrl.processor.id}, symbol={zctrl.symbol})")
 
         if zynstep is None:
             zynstep = not self.is_custom_zynstep_mapping(zctrl)
 
-        if chain:
-            for key in list(self.chain_midi_cc_binding):
-                zctrls = self.chain_midi_cc_binding[key]
-                try:
-                    zctrls.remove(zctrl)
-                except:
-                    pass
-                if not zctrls:
-                    self.chain_midi_cc_binding.pop(key)
-        if abs:
-            for key in list(self.absolute_midi_cc_binding):
-                if (key >> 16) & 0xff == ZMIP_STEP_INDEX:
-                    continue
-                zctrls = self.absolute_midi_cc_binding[key]
-                try:
-                    zctrls.remove(zctrl)
-                except:
-                    pass
-                if not zctrls:
-                    self.absolute_midi_cc_binding.pop(key)
+        for key in list(self.midi_cc_binding):
+            cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
+            if not zynstep and zmip == ZMIP_STEP_INDEX:
+                continue
+            zctrls = self.midi_cc_binding[key]
+            try:
+                zctrls.remove(zctrl)
+            except:
+                pass
+            if not zctrls:
+                self.midi_cc_binding.pop(key)
 
-        if zynstep:
-            for key in list(self.absolute_midi_cc_binding):
-                if (key >> 16) & 0xff != ZMIP_STEP_INDEX:
-                    continue
-                zctrls = self.absolute_midi_cc_binding[key]
-                try:
-                    zctrls.remove(zctrl)
-                except:
-                    pass
-                if not zctrls:
-                    self.absolute_midi_cc_binding.pop(key)
+    def get_midi_learn_from_zctrl(self, zctrl, filter_chain=True, filter_global=True, filter_zynstep=True, max_results=None):
+        """ Get list of MIDI learn binding for a zctrl
 
-    def get_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=True, all=False):
+        zctrl : zctrl object
+        filter_chain: True to include chain bindings (Optional: Default - True)
+        filter_abs: True to include global bindings (Optional: Default - True)
+        filter_zynstep: True to include zynstep bindings (Optional: Default - True)
+        max_results: Maximum quantity of results (Optional: Default - None for unlimited)
+
+        Returns: List of tuples (key, type) where key is 32-bit packed key (chain_id,zmip,chan,cc) and type is "chain", "global" or "zynstep"
+        """
+
         result = []
-        if chain:
-            for key, zctrls in self.chain_midi_cc_binding.items():
-                if zctrl in zctrls:
-                    if all:
-                        result.append([key, "chain"])
-                    else:
-                        return [key, "chain"]
-        if abs:
-            for key, zctrls in self.absolute_midi_cc_binding.items():
-                if (key >> 16) & 0xff == ZMIP_STEP_INDEX:
-                    continue
-                if zctrl in zctrls:
-                    if all:
-                        result.append([key, "abs"])
-                    else:
-                        return [key, "abs"]
-        if zynstep:
-            for key, zctrls in self.absolute_midi_cc_binding.items():
-                if (key >> 16) & 0xff != ZMIP_STEP_INDEX:
-                    continue
-                if zctrl in zctrls:
-                    if all:
+        for key, zctrls in self.midi_cc_binding.items():
+            if max_results is not None and len(result) == max_results:
+                return result
+            if zctrl in zctrls:
+                cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
+                if zmip == ZMIP_STEP_INDEX:
+                    if filter_zynstep:
                         result.append([key, "zynstep"])
-                    else:
-                        return [key, "zynstep"]
-        if all:
-            return result
+                    continue
+                if filter_chain and chain_id != 0xff:
+                    result.append([key, "chain"])
+                if filter_global and chain_id == 0xff:
+                    result.append([key, "global"])
+        return result
 
     def is_custom_zynstep_mapping(self, zctrl):
-        # Look for a non-zynstep mapping (absolute or chain)
-        try:
-            key = self. get_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=False)[0]
-            midi_cc = key & 0x7f
-        except:
-            midi_cc = None
-        # Look for a zynstep mapping
-        for key, zctrls in self.absolute_midi_cc_binding.items():
-            if ZMIP_STEP_INDEX == (key >> 16) & 0xff and zctrl in zctrls:
-                # Check if it's custom mapping => It's different to non-zynstep mapping (not auto-mapped!)
-                if midi_cc is None or midi_cc != key & 0x7f:
-                    return True
+        # Check if sequencer binding is same as other bindings
+        bindings = []
+        step_cc = None
+        for key, zctrls in self.midi_cc_binding.items():
+            if zctrl in zctrls:
+                cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
+                if zmip == ZMIP_STEP_INDEX:
+                    step_cc = cc
                 else:
-                    return False
-        return False
+                    bindings.append(cc)
+        return not step_cc in bindings
 
     def get_zynstep_mapped_zctrl(self, midi_chan, cc_num):
         try:
             key = (ZMIP_STEP_INDEX << 16) | (midi_chan << 8) | cc_num
-            return self.absolute_midi_cc_binding[key][0]
+            return self.midi_cc_binding[key][0]
         except:
             return None
 
@@ -1829,8 +1801,6 @@ class zynthian_chain_manager:
                         break
                     return
 
-        key_low = (midi_chan << 8) | cc_num
-
         # Handle controller feedback from setBfree engine => setBfree sends feedback in assigned MIDI channels
         # Each engine sending feedback should use a separated zmip, currently only setBfree does.
         if zmip == ZMIP_CTRL_INDEX:
@@ -1851,35 +1821,33 @@ class zynthian_chain_manager:
                     logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
-        # Handle absolute CC binding
+        key = self.chain_manager.pack_midi_bind_key(cc_num, midi_chan, zmip, 0)
+        
+        # Handle global CC binding
         try:
-            key = (zmip << 16) | key_low
-            zctrls = self.absolute_midi_cc_binding[key]
+            zctrls = self.midi_cc_binding[key | (0xff << 24)]
             for zctrl in zctrls:
                 zctrl.midi_control_change(cc_val)
-                #logging.debug(f"ABSOLUTE LEARNED ZCTRL {zctrl.symbol} ...")
         except:
             pass
-        if zmip == ZMIP_STEP_INDEX:
-            #logging.debug(f"MIDI CC FROM ZYNSTEP:  {midi_chan}#{cc_num} => {cc_val}")
-            return
 
         # Handle active chain CC binding
+        key |= (chain_id << 24)        
         try:
             # Channel-bond
             try:
-                key = (self.active_chain.chain_id << 16) | key_low
-                zctrls1 = self.chain_midi_cc_binding[key]
+                zctrls = self.midi_cc_binding[key]
             except:
-                zctrls1 = []
+                zctrls = []
             # Channel-unbond
             try:
-                key = (self.active_chain.chain_id << 16) | (0xff << 8) | cc_num
-                zctrls2 = self.chain_midi_cc_binding[key]
+                # TODO: I don't know how this is used {BW}
+                key |= (0xff << 8)
+                zctrls += self.midi_cc_binding[key]
             except:
-                zctrls2 = []
+                pass
             # Change controllers values
-            for zctrl in zctrls1 + zctrls2:
+            for zctrl in zctrls:
                 zctrl.midi_control_change(cc_val)
         except:
             pass
@@ -1896,16 +1864,16 @@ class zynthian_chain_manager:
             return
 
         if isinstance(obj, zynthian_controller):
-            self.remove_midi_learn(obj.processor, obj.symbol)
+            self.clear_midi_learn(obj.processor, obj.symbol)
 
         elif isinstance(obj, zynthian_processor):
             for symbol in obj.controllers_dict:
-                self.remove_midi_learn(obj, symbol)
+                self.clear_midi_learn(obj, symbol)
 
         elif isinstance(obj, int):
             for proc in self.get_processors(obj):
                 for symbol in proc.controllers_dict:
-                    self.remove_midi_learn(proc, symbol)
+                    self.clear_midi_learn(proc, symbol)
 
     # ----------------------------------------------------------------------------
     # MIDI Program Change (when ZS3 is disabled!)

@@ -22,7 +22,7 @@
 # ******************************************************************************
 
 ZynthianState = {
-    "schema_version": 4,  # Version of state (snapshot) model
+    "schema_version": 5,  # Version of state (snapshot) model
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
     "midi_profile_state": {  # MIDI Profile TODO: Document midi profile
         "MASTER_BANK_CHANGE_UP": "",
@@ -117,8 +117,8 @@ ZynthianState = {
                     "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
-                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 24-bit encoded (zmop, MIDI chan, CC)
-                        "11": [  # List of control bindings to this CC
+                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 24-bit hex encoded (chain (ff for global), MIDI chan, CC)
+                        "ff0021": [  # List of control bindings to this CC
                             [
                                 1, # Processor id
                                 "volume" # Controller symbol

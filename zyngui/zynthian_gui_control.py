@@ -34,6 +34,7 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
+from zyngine.zynthian_chain_manager import ZMIP_STEP_INDEX
 
 # ------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
@@ -720,10 +721,11 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.enter_midi_learn(mlmode, False)
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
-        if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
+        curproc = self.zyngui.get_current_processor()
+        if self.midi_learning == MIDI_LEARNING_CHAIN and curproc:
+            self.chain_manager.add_midi_learn(self.zyngui.state_manager.get_midi_learn_zctrl(), midi_cc, chan, zmip, curproc.chain_id)
         elif self.midi_learning == MIDI_LEARNING_GLOBAL:
-            self.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
+            self.chain_manager.add_midi_learn(self.zyngui.state_manager.get_midi_learn_zctrl(), midi_cc, chan, zmip)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -825,7 +827,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options["\u2612 Debounce"] = i
                     else:
                         options["\u2610 Debounce"] = i
-                elif ml and ml[1] != "zynstep":
+                elif ml and ml[0][1] != "zynstep":
                     match zctrl.midi_cc_mode:
                         case -1:
                             options["Relative Mode learning..."] = i
@@ -838,34 +840,28 @@ class zynthian_gui_control(zynthian_gui_selector):
                             options["CC Value Range"] = i
                         case _:
                             options[f"Relative Mode {zctrl.midi_cc_mode}"] = i
-                if ml and ml[1] in ["abs", "zynstep"]:
-                    options["CC Binding Devices"] = zctrl
                 if zctrl.processor:
                     options[f"Chain learn..."] = i
                 options[f"Global learn..."] = i
-                zynstep_ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=False, chain=False, zynstep=True)
+                zynstep_ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, False, False, True, 1)
                 if zynstep_ml:
-                    ccnum = zynstep_ml[0] & 0x7f
+                    ccnum = self.chain_manager.unpack_midi_bind_key(zynstep_ml[0][0])[0]
                 else:
                     ccnum = "NONE"
                 options[f"ZynStep CC [{ccnum}]"] = i
+                if ml:
+                    options["MIDI Inputs"] = zctrl
             else:
                 title = "Control unlearn"
 
+            ml = self.chain_manager.get_midi_learn_from_zctrl(zctrl, filter_zynstep=False)
             if ml:
-                cc = ml[0] & 0x7f
-                chan = (ml[0] >> 8) & 0xff
+                cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(ml[0][0])
                 if chan < 16:
                     ml_text = f"CH{chan + 1}, CC{cc}"
                 else:
                     ml_text = f"CC{cc}"
-                match ml[1]:
-                    case "abs":
-                        zmip = (ml[0] >> 16) & 0xff
-                        dev_name = zynautoconnect.get_midi_in_devid(zmip)
-                        options[f"Unlearn [{dev_name}, {ml_text}]"] = zctrl
-                    case "chain":
-                        options[f"Unlearn [{ml_text}]"] = zctrl
+                options[f"Unlearn [{ml_text}]"] = zctrl
             options["Unlearn all controls"] = ""
 
             if keep_selection:
@@ -890,22 +886,19 @@ class zynthian_gui_control(zynthian_gui_selector):
         elif option == "CC Value Range":
             self.zyngui.screens["midi_cc_range"].config(self.zgui_controllers[param].zctrl)
             self.zyngui.show_screen('midi_cc_range')
-        elif option == "CC Binding Devices":
-            options = {
-                "Select All": -1,
-                "Select None": -2
-            }
-            result = self.chain_manager.get_midi_learn_from_zctrl(param, chain=False, zynstep=True, all=True)
+        elif option == "MIDI Inputs":
+            options = {}
+            result = self.chain_manager.get_midi_learn_from_zctrl(param)
+            if not result:
+                return
             bound_devices = []
             for ml in result:
-                mip = ml[0] >> 16
-                bound_devices.append(mip)
-                cc = ml[0] & 0x7f
-                chan = (ml[0] >> 8) & 0xf
+                cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(ml[0])
+                bound_devices.append(zmip)
             for i, port in enumerate(zynautoconnect.devices_in):
                 try:
                     if port:
-                        key = (i << 16) | (chan << 8) | cc
+                        key = self.chain_manager.pack_midi_bind_key(cc, chan, i, chain_id)
                         if i in bound_devices:
                             options[f"\u2612 {port.aliases[0]}"] = {"key":key, "zctrl":param}
                         else:
@@ -980,15 +973,9 @@ class zynthian_gui_control(zynthian_gui_selector):
     def midi_device_cb(self, option, param):
         key = param["key"]
         zctrl = param["zctrl"]
-        if key not in self.chain_manager.absolute_midi_cc_binding:
-            self.chain_manager.absolute_midi_cc_binding[key] = [zctrl]
-        elif zctrl not in self.chain_manager.absolute_midi_cc_binding[key]:
-            self.chain_manager.absolute_midi_cc_binding[key].append(zctrl)
-        else:
-            self.chain_manager.absolute_midi_cc_binding[key].remove(zctrl)
-            if not self.chain_manager.absolute_midi_cc_binding[key]:
-                del self.chain_manager.absolute_midi_cc_binding[key]
-        self.controller_options_cb("CC Binding Devices", zctrl)
+        cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(key)
+        self.chain_manager.toggle_midi_learn(zctrl, cc, chan, zmip, chain_id)
+        self.controller_options_cb("MIDI Inputs", zctrl)
 
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])
@@ -997,7 +984,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def zynstep_midi_cc_cb(self, ccnum, i):
         zctrl = self.zgui_controllers[i].zctrl
-        self.chain_manager.add_zynstep_midi_learn(ccnum, zctrl)
+        self.chain_manager.add_midi_learn(zctrl, ccnum, zmip=ZMIP_STEP_INDEX)
         self.controller_options(i, keep_selection=True)
 
     def show_xy(self, params=None):

@@ -4,7 +4,7 @@
 #
 # Legacy snapshots conversion
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -31,7 +31,7 @@ import base64
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 from zyngine import zynthian_state_manager
 
-SNAPSHOT_SCHEMA_VERSION = 5
+SNAPSHOT_SCHEMA_VERSION = 6
 
 
 class zynthian_legacy_snapshot:
@@ -77,6 +77,26 @@ class zynthian_legacy_snapshot:
             logging.info(f"Converting snapshot from schema V{version} to V{version+1}")
             getattr(self, f'version_{version}')()
         return self.snapshot
+
+    def version_5(self):
+        # Convert snapshot schema V5 to V6
+
+        # MIDI binding
+
+        for zs3 in self.snapshot["zs3"].values():
+            chain_binding = {}
+            for chain, chain_cfg in zs3["chains"].items():
+                for key, value in chain_cfg["midi_learn"].items():
+                    new_key = f"{int(chain):02X}{int(key):04X}"
+                    chain_binding[new_key] = value
+                chain_cfg.pop("midi_learn")
+            for dev_cfg in zs3["midi_capture"].values():
+                for key in list(dev_cfg["midi_learn"].keys()):
+                    new_key = f"ff{int(key):04X}"
+                    dev_cfg["midi_learn"][new_key] = dev_cfg["midi_learn"].pop(key)
+                dev_cfg["midi_learn"].update(chain_binding)
+            pass
+
 
     def version_4(self):
         # Convert snapshot from schema V4 to V5
