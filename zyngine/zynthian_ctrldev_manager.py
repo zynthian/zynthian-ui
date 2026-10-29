@@ -254,13 +254,13 @@ class zynthian_ctrldev_manager():
     def sleep_on(self):
         """Enable sleep state"""
 
-        for dev in self.drivers.values():
+        for dev in list(self.drivers.values()):
             dev.sleep_on()
 
     def sleep_off(self):
         """Disable sleep state"""
 
-        for dev in self.drivers.values():
+        for dev in list(self.drivers.values()):
             dev.sleep_off()
 
     def midi_event(self, idev, ev):
