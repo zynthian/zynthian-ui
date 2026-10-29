@@ -40,6 +40,26 @@ from zyngui.zynthian_gui_base import zynthian_gui_base
 # Zynthian Step-Sequencer Pattern CC Editor GUI Class
 # ------------------------------------------------------------------------------
 
+CC_NAMES = {
+    1: "ModWheel",
+    2: "Breath",
+    5: "Portamento",
+    7: "Volume",
+    8: "Balance",
+    10: "Pan",
+    11: "Expression",
+    64: "Sustain Pedal",
+    66: "Sostenuto Pedal",
+    67: "Soft Pedal",
+    71: "Resonance",
+    72: "Release",
+    73: "Attack",
+    74: "Cutoff",
+    91: "Reverb",
+    92: "Tremolo",
+    93: "Chorus",
+    94: "Detune"
+}
 
 class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
@@ -68,15 +88,18 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             return True
         return False
 
-    def nudge_cc_num(self, dval):
-        cc_num = self.cc_num
+    def nudge_cc_num(self, dval=0):
+        if dval == 0:
+            cc_num = 0
+        else:
+            cc_num = self.cc_num
         if dval > 0:
             while cc_num < 127:
                 cc_num += 1
                 if self.set_cc_num(cc_num, allow_unassigned=self.show_all_cc_num):
                     break
         elif dval < 0:
-            while cc_num > 0:
+            while cc_num > 1:
                 cc_num -= 1
                 if self.set_cc_num(cc_num, allow_unassigned=self.show_all_cc_num):
                     break
@@ -90,6 +113,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         # Get CC title from zynstep mapped zctrl
         if self.zctrl:
             title = f"{title} ({self.zctrl.name})"
+        else:
+            try:
+                title = f"{title} (MIDI {CC_NAMES[self.cc_num]})"
+            except:
+                pass
         self.tts_title = f"Pattern editor. CC {self.cc_num}"
         return title
 
@@ -442,6 +470,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         t = params[1].upper()
         if i == 0 and t == 'B':
             self.show_all_cc_num = not self.show_all_cc_num
+            self.nudge_cc_num()
             return True
         else:
             return super().cuia_v5_zynpot_switch(params)
