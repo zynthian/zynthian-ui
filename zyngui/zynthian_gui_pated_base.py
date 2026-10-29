@@ -596,10 +596,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 if paste is not None and paste[0] == "PAT" and paste[3] != self.pattern:
                     name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[1], paste[2])
                     options[f"Paste {name} from clipboard #{i + 1}"] = ('Paste pattern', i)
-        options['Load pattern'] = 'Load pattern'
-        options['Save pattern'] = 'Save pattern'
-        options['Import from SMF'] = 'Import from SMF'
-        options['Export to SMF'] = 'Export to SMF'
         options['Clear pattern ALL'] = 'Clear pattern ALL'
         menu_options['EDIT'] = options
         return menu_options
@@ -1998,7 +1994,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         i = params[0]
         t = params[1].upper()
         if i == 0:
-            if t == 'S' or t == 'B':
+            if t == 'S':
                 self.zyngui.toggle_pated()
                 return True
         elif i == 1:

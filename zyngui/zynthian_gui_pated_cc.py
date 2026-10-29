@@ -49,11 +49,37 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # Function to initialise class
     def __init__(self):
         self.row0 = 8
-        self.cc_num = 64
+        self.cc_num = 1
+        self.zctrl = None
         self.interpolateCC = True
+        self.show_all_cc_num = False
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
+
+    def set_cc_num(self, cc_num, allow_unassigned=False):
+        zctrl = self.zyngui.chain_manager.get_zynstep_mapped_zctrl(self.channel, cc_num)
+        if allow_unassigned or zctrl:
+            self.cc_num = cc_num
+            self.zctrl = zctrl
+            self.set_title()
+            self.interpolateCC = self.zynseq.libseq.getInterpolateCC(cc_num)
+            self.redraw_pending = 2
+            return True
+        return False
+
+    def nudge_cc_num(self, dval):
+        cc_num = self.cc_num
+        if dval > 0:
+            while cc_num < 127:
+                cc_num += 1
+                if self.set_cc_num(cc_num, allow_unassigned=self.show_all_cc_num):
+                    break
+        elif dval < 0:
+            while cc_num > 0:
+                cc_num -= 1
+                if self.set_cc_num(cc_num, allow_unassigned=self.show_all_cc_num):
+                    break
 
     # Function to get name of this view
     def get_name(self):
@@ -62,10 +88,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def get_title(self):
         title = f"{super().get_title()}: CC{self.cc_num}"
         # Get CC title from zynstep mapped zctrl
-        midi_chan = self.zynseq.libseq.getChannel(self.zynseq.scene, self.phrase, self.sequence, 0)
-        zctrl = self.zyngui.chain_manager.get_zynstep_mapped_zctrl(midi_chan, self.cc_num)
-        if zctrl:
-            title = f"{title} ({zctrl.name})"
+        if self.zctrl:
+            title = f"{title} ({self.zctrl.name})"
         self.tts_title = f"Pattern editor. CC {self.cc_num}"
         return title
 
@@ -413,6 +437,15 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def refresh_status(self):
         super().refresh_status()
 
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 0 and t == 'B':
+            self.show_all_cc_num = not self.show_all_cc_num
+            return True
+        else:
+            return super().cuia_v5_zynpot_switch(params)
+
     # Function to handle zynpots value change
     #   i: Zynpot index [0..n]
     #   dval: Current value of zyncoder
@@ -420,17 +453,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         #logging.debug(f"DVAL {i} => {dval}")
         if zynthian_gui_base.zynpot_cb(self, i, dval):
             return True
-
         if i == self.ctrl_order[0]:
             if self.edit_mode == EDIT_MODE_NONE:
-                self.cc_num += dval
-                if self.cc_num < 1:
-                    self.cc_num = 1
-                elif self.cc_num > 127:
-                    self.cc_num = 127
-                self.set_title()
-                self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
-                self.redraw_pending = 2
+                self.nudge_cc_num(dval)
                 return True
         elif i == self.ctrl_order[2]:
             if self.edit_mode == EDIT_MODE_NONE:
