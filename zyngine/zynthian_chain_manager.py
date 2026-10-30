@@ -1452,10 +1452,10 @@ class zynthian_chain_manager:
                 self.zyngines[eng_key].stop()
                 del self.zyngines[eng_key]
 
-    def stop_unused_jalv_engines(self):
-        """Stop JALV engines that are not used by any processors"""
+    def stop_unused_single_proc_engines(self):
+        """Stop engines that need restart and are not used by any processors"""
         for eng_key in list(self.zyngines.keys()):
-            if len(self.zyngines[eng_key].processors) == 0 and eng_key[0:3] == "JV/":
+            if not self.zyngines[eng_key].processors and (eng_key[0:3] == "JV/" or eng_key in self.single_processor_engines):
                 logging.debug(f"Stopping Unused Jalv Engine '{eng_key}'...")
                 self.state_manager.set_busy_details(f"stopping engine {self.zyngines[eng_key].get_name()}")
                 self.zyngines[eng_key].stop()
@@ -1555,13 +1555,13 @@ class zynthian_chain_manager:
 
         self.state_manager.start_busy("set_chain_state", None, "loading chains")
 
-        # Clean all chains but don't stop unused engines
+
         if not merge:
+            # Remove all chains but don't the unused engines yet
             self.remove_all_chains(False)
 
-            # Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
-            # so we stop Jalv engines!
-            self.stop_unused_jalv_engines()  # TODO: Can we factor this out? => Not yet!!
+        # Stop those unused engines that need restart
+        self.stop_unused_single_proc_engines()
 
         for chain_id, chain_state in state.items():
             if merge:
@@ -1916,8 +1916,8 @@ class zynthian_chain_manager:
         chain.set_midi_chan(midi_chan)
         for mc in range(16):
             if not self._midi_chan_2_chain_ids[mc]:
-                self.state_manager.zynseq.enable_channel(mc, False)
-        self.state_manager.zynseq.enable_channel(midi_chan, True, True)
+                self.state_manager.zynseq.enable_channel(mc, False, refresh_state=False)
+        self.state_manager.zynseq.enable_channel(midi_chan, True, refresh_state=True)
 
         # Add new midi_chan(s) to dictionary
         if isinstance(midi_chan, int):

@@ -284,6 +284,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         options['Transpose pattern'] = 'Transpose pattern'
         options.update(menu_options['EDIT'])
         options['Clear pattern notes'] = 'Clear pattern notes'
+        options['Load pattern'] = 'Load pattern'
+        options['Save pattern'] = 'Save pattern'
+        options['Import from SMF'] = 'Import from SMF'
+        options['Export to SMF'] = 'Export to SMF'
         menu_options['EDIT'] = options
         return menu_options
 
