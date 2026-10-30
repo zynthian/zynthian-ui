@@ -766,6 +766,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.exit_midi_learn()
         if len(self.zgui_controllers) > i and self.zgui_controllers[i] and self.zgui_controllers[i].zctrl:
             zctrl = self.zgui_controllers[i].zctrl
+            self.zgui_i = i
         else:
             #logging.debug("No GUI zctrl#{i}!")
             return
@@ -890,7 +891,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             options = {}
             result = self.chain_manager.get_midi_learn_from_zctrl(param)
             if not result:
-                return
+                self.controller_options(self.zgui_i)
             bound_devices = []
             for ml in result:
                 cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(ml[0])

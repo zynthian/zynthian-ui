@@ -2081,7 +2081,7 @@ class zynthian_state_manager:
                 for zctrl in zctrls:
                     mcstate["zynmidi"]["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
         """
-         
+
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None, restore_midi_learn=True):

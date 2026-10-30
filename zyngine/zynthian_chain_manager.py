@@ -1633,14 +1633,13 @@ class zynthian_chain_manager:
         if chain_id is None:
             chain_id = 0xff
 
-        # Remove existing bindings except zynstep
-        mask = ZMIP_STEP_INDEX << 16
-        for key in list(self.midi_cc_binding):
-            if (key & mask) != mask and zctrl in self.midi_cc_binding[key]:
-                a, b, c, d = self.unpack_midi_bind_key(key)
-                self.remove_midi_learn(zctrl, a, b, c, d)
-
-        if zmip != ZMIP_STEP_INDEX:
+        # Remove existing zynstep binding
+        if zmip == ZMIP_STEP_INDEX:
+            mask = ZMIP_STEP_INDEX << 16
+            for key in list(self.midi_cc_binding):
+                if key & mask == mask and zctrl in self.midi_cc_binding[key]:
+                    self._remove_midi_learn(zctrl, key)
+        else:
             key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
             if key in self.midi_cc_binding:
                 if zctrl not in self.midi_cc_binding[key]:
@@ -1657,24 +1656,17 @@ class zynthian_chain_manager:
             else:
                 self.midi_cc_binding[key] = [zctrl]
 
-    def remove_midi_learn(self, zctrl, midi_cc, midi_chan, zmip, chain_id=None):
+    def _remove_midi_learn(self, zctrl, key):
         """ Remove a midi learn binding for a zctrl
 
         zctrl : Controller object
-        midi_cc : CC number of CC message
-        midi_chan : MIDI channel
-        zmip : ZMIP of MIDI device
-        chain_id : Id of chain to bind (Optional: Default - None (or 0xFF) for global binding)
+        key : 32-bit packed key
         """
 
-        if chain_id is None:
-            chain_id == 0xff
-        key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
         try:
-            if zctrl in self.midi_cc_binding[key]:
-                self.midi_cc_binding[key].remove(zctrl)
-                if not self.midi_cc_binding[key]:
-                    del self.midi_cc_binding[key]
+            self.midi_cc_binding[key].remove(zctrl)
+            if not self.midi_cc_binding[key]:
+                del self.midi_cc_binding[key]
         except:
             pass
 
@@ -1697,7 +1689,7 @@ class zynthian_chain_manager:
         except:
             exists = False
         if exists:
-            self.remove_midi_learn(zctrl, midi_cc, midi_chan, zmip, chain_id)
+            self._remove_midi_learn(zctrl, key)
         else:
             self.add_midi_learn(zctrl, midi_cc, midi_chan, zmip, chain_id)
 
@@ -1822,7 +1814,7 @@ class zynthian_chain_manager:
             return
 
         key = self.chain_manager.pack_midi_bind_key(cc_num, midi_chan, zmip, 0)
-        
+
         # Handle global CC binding
         try:
             zctrls = self.midi_cc_binding[key | (0xff << 24)]
@@ -1832,7 +1824,7 @@ class zynthian_chain_manager:
             pass
 
         # Handle active chain CC binding
-        key |= (chain_id << 24)        
+        key |= (chain_id << 24)
         try:
             # Channel-bond
             try:
