@@ -1822,7 +1822,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.legend_strip_midi_bg, fill=self.legend_bg_color_hl)
         self.left_canvas.itemconfig("fader_overlay", fill=self.fader_color)
         self.right_canvas.itemconfig("fader_overlay", fill=self.fader_color)
-        if self.highlighted_strip.chain.is_audio():
+        if self.highlighted_strip.chain.zynmixer_proc:
             self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.fader_overlay, fill=self.fader_color_hl)
         self.highlight_launcher()
 
