@@ -55,10 +55,17 @@ python3 -m unittest discover -s zynlibs/zynseq/tests -v
   - `MidiSource`: sends MIDI events at exact frame times.
   - `Recorder`: records MIDI events and audio clicks (e.g. metronome beats) with
     their frame times, and calls per-cycle hooks to sample the library state.
+  - All clients count frame time discontinuities (cycles lost by xruns) and can
+    `stall()` a cycle to cause an xrun.
 - `test_ext_clock.py`: External clock synchronization (PLL) tests. MIDI clock with
   optional jitter is sent to `zynseq:clock_in`. Tests check zynseq's tempo, its MIDI
   clock output phase against the ideal input clock, and metronome beat and bar
-  alignment after MIDI START.
+  alignment after MIDI START, also with lost clock pulses and xruns.
+
+Xrun tests need real time processing, not freewheel: a client connected to the
+library input blocks a cycle, so the library skips cycles as in a real xrun. Don't
+block the client sending the events under test: JACK would deliver its previous
+buffer again, duplicating events, which doesn't happen with a real MIDI input.
 
 The process order is set by connections: `MidiSource` => library => `Recorder`, so
 everything happens in the same cycle and the recorder sees the library output of

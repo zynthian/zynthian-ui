@@ -36,6 +36,7 @@
 
 import os
 import sys
+import time
 import ctypes
 import random
 import logging
@@ -67,6 +68,7 @@ METRO_PEEP_LEN = 1693  # Length in samples of metronome bar start click (metrono
 server = None
 runner = None
 source = None
+staller = None
 recorder = None
 probe = None
 lib = None
@@ -94,7 +96,7 @@ class TempoProbe:
 
 
 def setUpModule():
-    global server, runner, source, recorder, probe, lib
+    global server, runner, source, staller, recorder, probe, lib
     if not os.path.isfile(LIB_PATH):
         raise unittest.SkipTest(f"{LIB_PATH} not found. Build zynseq first.")
     server = JackTestServer("zyntest", RATE, PERIOD)
@@ -103,19 +105,21 @@ def setUpModule():
     lib.init(b"zyntest_seq")
     runner = FreewheelRunner(server)
     source = MidiSource(server)
+    staller = MidiSource(server, "zyntest_staller")  # Used to cause xruns of zynseq
     recorder = Recorder(server, midi_ports=("clock",), audio_ports=("metronome",))
     probe = TempoProbe()
     recorder.hooks.append(probe)
-    for client in (runner, source, recorder):
+    for client in (runner, source, staller, recorder):
         client.activate()
     # Connections set the process order: source => zynseq => recorder
     source.port.connect("zyntest_seq:clock_in")
+    staller.port.connect("zyntest_seq:input")
     recorder.midi_ports["clock"].connect("zyntest_seq:clock")
     recorder.audio_ports["metronome"].connect("zyntest_seq:metronome")
 
 
 def tearDownModule():
-    for client in (runner, source, recorder):
+    for client in (runner, source, staller, recorder):
         if client:
             client.close()
     if server:
@@ -222,8 +226,11 @@ class TestExtClock(unittest.TestCase):
                 # Each input pulse must produce exactly 'ratio' output pulses => no skipped or repeated ticks
                 self.assertAlmostEqual(count, expected, delta=1.0, msg="Skipped or repeated clock pulses")
 
-    def check_beats(self, ideal, first_pulse, beats=8, beats_per_bar=4, bpm=DEFAULT_TEMPO):
-        """Check metronome beats are aligned to input pulses, with bar start at first_pulse"""
+    def check_beats(self, ideal, first_pulse, beats=8, beats_per_bar=4, bpm=DEFAULT_TEMPO, first_beat=0):
+        """Check metronome beats are aligned to input pulses, from first_pulse
+
+        first_beat: Beat index (since bar start) of first_pulse
+        """
         frames_per_tick = 60.0 * RATE / (bpm * PPQN_INTERNAL)
         clicks = [c for c in recorder.clicks["metronome"] if c[0] >= ideal[first_pulse] - 1]
         self.assertGreaterEqual(len(clicks), beats, "Missing metronome beats")
@@ -235,7 +242,7 @@ class TestExtClock(unittest.TestCase):
                 # Beat is on first internal tick at or after the pulse (+/-1 frame rounding)
                 self.assertTrue(-1 <= frame - pulse_frame <= frames_per_tick + 1,
                                 f"Beat {n} at {frame - pulse_frame:.1f} frames from pulse")
-                self.assertEqual(is_bar, n % beats_per_bar == 0, f"Beat {n} bar start mismatch")
+                self.assertEqual(is_bar, (first_beat + n) % beats_per_bar == 0, f"Beat {n} bar start mismatch")
 
     # ----------------------------------------------------------------------------
     # Tests
@@ -337,6 +344,49 @@ class TestExtClock(unittest.TestCase):
         ideal, clock = clock_pulses(start, [(8.0, 80)])
         self.play([(start - 100, MIDI_START)] + clock, ideal[-1])
         self.check_beats(ideal, 0, bpm=80)
+
+    def test_12_missing_pulses(self):
+        # Isolated lost pulses (e.g. dropped MIDI bytes) must not shift beats nor change tempo
+        lib.setMetronomeMode(METRO_MODE_ON)
+        start = self.start_frame()
+        ideal, clock = clock_pulses(start, [(12.0, 120)])
+        first = PPQN_MIDI * 4
+        lost = {first + 30, first + 100, first + 101, first + 170}  # Single and double gaps
+        events = [ev for i, ev in enumerate(clock) if i not in lost]
+        self.play(events + [(int(ideal[first]) - 100, MIDI_START)], ideal[-1])
+        self.check_beats(ideal, first, beats=16)
+        tempos = np.array([t for f, t in probe.tempo if ideal[first] <= f < ideal[-1]])
+        self.assertLessEqual(np.max(np.abs(tempos - 120)), 0.5, "Tempo changed by lost pulses")
+
+    def check_xrun(self, stall):
+        """Cycles lost by an xrun must not shift beats
+
+        A client connected to zynseq input blocks a cycle for 'stall' seconds, so zynseq skips cycles (losing clock
+        pulses and internal ticks), as in a real xrun. It needs real time processing (not freewheel).
+        """
+        lib.setMetronomeMode(METRO_MODE_ON)
+        start = self.start_frame()
+        ideal, clock = clock_pulses(start, [(14.0, 120)])
+        first = PPQN_MIDI * 2
+        source.schedule(clock + [(int(ideal[first]) - 100, MIDI_START)])
+        runner.run(int(ideal[0]) - runner.frame_time + server.seconds(4.0))
+        recorder.discontinuities = 0
+        xrun_frame = runner.frame_time
+        staller.stall(stall)
+        time.sleep(0.3)
+        self.assertGreater(recorder.discontinuities, 0, "No xrun happened")
+        runner.run(int(ideal[-1]) - runner.frame_time + server.seconds(0.5))
+        # Beats aligned again 2 seconds after the xrun
+        beat = int(np.ceil((np.searchsorted(ideal, xrun_frame + server.seconds(2.0)) - first) / PPQN_MIDI))
+        self.check_beats(ideal, first + beat * PPQN_MIDI, beats=8, first_beat=beat)
+        tempos = np.array([t for f, t in probe.tempo if xrun_frame + server.seconds(2.0) <= f < ideal[-1]])
+        self.assertLessEqual(np.max(np.abs(tempos - 120)), 0.5, "Tempo not recovered after xrun")
+
+    def test_13_xrun(self):
+        self.check_xrun(0.02)  # About 4 jack periods, 1 clock pulse lost
+
+    def test_14_long_xrun(self):
+        self.check_xrun(0.15)  # About 28 jack periods, 7 clock pulses lost
 
 
 if __name__ == "__main__":

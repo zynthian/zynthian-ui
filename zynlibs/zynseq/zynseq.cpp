@@ -118,8 +118,10 @@ uint32_t g_nExtClockPPQN              = PPQN_MIDI; // Quantity of PPQN of the ex
 #define EXT_CLK_BW_ACQUIRE 2.0      // Loop bandwidth (Hz) during acquisition
 #define EXT_CLK_BW_LOCKED 0.5       // Loop bandwidth (Hz) when locked (lower = more jitter rejection, slower tempo tracking)
 #define EXT_CLK_ACQUIRE_BEATS 2     // Quantity of beats to use acquisition bandwidth
-#define EXT_CLK_TIMEOUT_PULSES 4    // Quantity of missing pulses to drop lock
+#define EXT_CLK_TIMEOUT_PULSES 8    // Quantity of missing pulses to drop lock
 #define EXT_CLK_RESYNC_PULSES 3     // Quantity of consecutive large phase errors (same sign) to resync period, e.g. tempo jump
+#define EXT_CLK_GAP_TOLERANCE 0.25  // Max distance (in periods) of a pulse interval from a whole number of periods to detect lost pulses
+#define EXT_CLK_BURST 0.25          // Pulse intervals shorter than this (in periods) are pulses delivered late, e.g. after xrun
 struct EXT_CLK_PLL {
     uint8_t state = EXT_CLK_IDLE;
     uint32_t count = 0;             // Quantity of pulses since (re)acquisition
@@ -132,6 +134,8 @@ struct EXT_CLK_PLL {
     bool errLate = false;           // True if large phase errors are late pulses
     bool realign = false;           // True to align next pulse to beat (after MIDI START)
     bool anchored = false;          // True if targetTick was anchored to a beat before lock (MIDI START)
+    uint32_t gapCount = 0;          // Quantity of consecutive pulse intervals of about a whole number (>1) of periods
+    uint32_t lastMissing = 0;       // Quantity of lost pulses counted at last pulse
 };
 EXT_CLK_PLL g_extClk;
 volatile bool g_bExtClockLocked = false; // True if internal clock is locked to external clock
@@ -200,10 +204,42 @@ int64_t onExtClock(double dFrame, double dTickPos) {
         g_extClk.anchored = false;
         g_extClk.count = 0;
         g_extClk.errCount = 0;
+        g_extClk.gapCount = 0;
+        g_extClk.lastMissing = 0;
         g_extClk.state = EXT_CLK_LOCKED;
         g_bExtClockLocked = true;
         DPRINTF("External clock locked\n");
+    } else if ((dFrame - g_extClk.lastFrame) < EXT_CLK_BURST * g_extClk.period) {
+        // Pulse delivered together with previous one, e.g. after xrun => count it, but don't use its timing
+        if (g_extClk.lastMissing) {
+            // Previous pulse was delivered late, it wasn't after lost pulses
+            g_extClk.targetTick -= g_extClk.lastMissing * dRatio;
+            g_extClk.nextFrame -= g_extClk.lastMissing * g_extClk.period;
+        }
+        g_extClk.lastMissing = 0;
+        g_extClk.gapCount = 0;
+        g_extClk.nextFrame += g_extClk.period;
+        g_extClk.lastFrame = dFrame;
     } else {
+        // Interval of about a whole number of periods => lost pulses (e.g. dropped MIDI bytes or xrun). Consecutive
+        // gaps are a tempo change (e.g. half tempo), so the lost pulses counted on the first gap are discounted.
+        double dPulses = (dFrame - g_extClk.lastFrame) / g_extClk.period;
+        double dWhole = floor(dPulses + 0.5);
+        uint32_t nMissing = 0;
+        if (dWhole >= 2 && dWhole <= EXT_CLK_TIMEOUT_PULSES && fabs(dPulses - dWhole) <= EXT_CLK_GAP_TOLERANCE) {
+            if (++g_extClk.gapCount == 1) {
+                nMissing = dWhole - 1;
+                g_extClk.nextFrame += nMissing * g_extClk.period;
+                g_extClk.targetTick += nMissing * dRatio;
+            } else if (g_extClk.lastMissing) {
+                g_extClk.nextFrame -= g_extClk.lastMissing * g_extClk.period;
+                g_extClk.targetTick -= g_extClk.lastMissing * dRatio;
+            }
+        } else {
+            g_extClk.gapCount = 0;
+        }
+        g_extClk.lastMissing = nMissing;
+
         double dError = dFrame - g_extClk.nextFrame;
         // Large phase error => tempo jump, lost pulse or heavy jitter
         if (fabs(dError) > 0.25 * g_extClk.period) {
@@ -392,7 +428,7 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
     g_vTicks.clear();
     pInputBuffer = jack_port_get_buffer(g_pClockInputPort, nFrames);
     for (jack_nframes_t i = 0; i < jack_midi_get_event_count(pInputBuffer); ++i) {
-        if (jack_midi_event_get(&midiEvent, pInputBuffer, i))
+        if (jack_midi_event_get(&midiEvent, pInputBuffer, i) || midiEvent.size == 0)
             continue;
 
         switch (midiEvent.buffer[0]) {
@@ -402,8 +438,11 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
                 for (; dNextIntClockFrame < dClkFrame; dNextIntClockFrame += g_dFramesPerTick)
                     g_vTicks.push_back(dNextIntClockFrame - nNow);
                 // Internal (fractional) tick position at this pulse
-                double dTickPos = double(nTickTime + g_vTicks.size()) - (dNextIntClockFrame - dClkFrame) / g_dFramesPerTick;
+                double dFramesPerTick = g_dFramesPerTick;
+                double dTickPos = double(nTickTime + g_vTicks.size()) - (dNextIntClockFrame - dClkFrame) / dFramesPerTick;
                 int64_t nBeatTick = onExtClock(dClkFrame, dTickPos);
+                // Retime the pending fraction of next tick to the new tick rate
+                dNextIntClockFrame = dClkFrame + (dNextIntClockFrame - dClkFrame) * g_dFramesPerTick / dFramesPerTick;
                 if (nBeatTick >= 0) {
                     // First pulse after START => next beat is bar start
                     nNextBeatTime = nBeatTick;
@@ -423,6 +462,8 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
             }
             case MIDI_POSITION: {
                 // Rx song position on clock port - reset to bar boundary, e.g. used by bar clock signal
+                if (midiEvent.size < 3)
+                    break;
                 uint16_t pos = midiEvent.buffer[1] + (midiEvent.buffer[2] << 7);
                 if (pos == 0) {
                     g_nBeat = 1;
@@ -810,6 +851,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void* /*pArgs*/) {
         return 0;
     g_nSampleRate = nFrames;
     updateClockTiming();
+    g_bExtClockReset = true; // External clock periods are in frames
     return 0;
 }
 

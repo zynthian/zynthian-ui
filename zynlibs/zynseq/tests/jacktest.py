@@ -99,11 +99,24 @@ class TestClient:
         self.server = server
         self.client = jack.Client(name, servername=server.name, no_start_server=True)
         self.frame_time = 0  # Frame time of the last processed cycle
+        self.discontinuities = 0  # Quantity of frame time jumps, e.g. cycles lost by xruns
+        self._next_frame = None
+        self._stall = 0
         self.client.set_process_callback(self._process)
 
     def _process(self, nframes):
         self.frame_time = self.client.last_frame_time
+        if self._next_frame is not None and self.frame_time != self._next_frame:
+            self.discontinuities += 1
+        self._next_frame = self.frame_time + nframes
         self.process(self.frame_time, nframes)
+        if self._stall:
+            time.sleep(self._stall)
+            self._stall = 0
+
+    def stall(self, secs):
+        """Block the next process cycle for some time, to cause an xrun (only when not in freewheel mode)"""
+        self._stall = secs
 
     def process(self, frame, nframes):
         pass
