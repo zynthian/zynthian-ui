@@ -1764,7 +1764,7 @@ class zynthian_chain_manager:
 
     def get_zynstep_mapped_zctrl(self, midi_chan, cc_num):
         try:
-            key = (ZMIP_STEP_INDEX << 16) | (midi_chan << 8) | cc_num
+            key = self.pack_midi_bind_key(cc_num, midi_chan, ZMIP_STEP_INDEX, 0xff)
             return self.midi_cc_binding[key][0]
         except:
             return None
@@ -1813,7 +1813,7 @@ class zynthian_chain_manager:
                     logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
-        key = self.chain_manager.pack_midi_bind_key(cc_num, midi_chan, zmip, 0)
+        key = self.pack_midi_bind_key(cc_num, midi_chan, zmip, 0)
 
         # Handle global CC binding
         try:
