@@ -111,6 +111,31 @@ uint32_t g_nTick                      = 0;         // Current tick within bar
 uint32_t g_nBarStartTick              = 0;         // Quantity of ticks from start of song to start of current bar
 uint32_t g_nExtClockPPQN              = PPQN_MIDI; // Quantity of PPQN of the external clock
 
+// External clock synchronisation (2nd order DLL/PLL)
+#define EXT_CLK_IDLE 0              // No external clock
+#define EXT_CLK_FIRST 1             // First external clock pulse received
+#define EXT_CLK_LOCKED 2            // Locked to external clock
+#define EXT_CLK_BW_ACQUIRE 2.0      // Loop bandwidth (Hz) during acquisition
+#define EXT_CLK_BW_LOCKED 0.5       // Loop bandwidth (Hz) when locked (lower = more jitter rejection, slower tempo tracking)
+#define EXT_CLK_ACQUIRE_BEATS 2     // Quantity of beats to use acquisition bandwidth
+#define EXT_CLK_TIMEOUT_PULSES 4    // Quantity of missing pulses to drop lock
+#define EXT_CLK_RESYNC_PULSES 3     // Quantity of consecutive large phase errors (same sign) to resync period, e.g. tempo jump
+struct EXT_CLK_PLL {
+    uint8_t state = EXT_CLK_IDLE;
+    uint32_t count = 0;             // Quantity of pulses since (re)acquisition
+    double lastFrame = 0.0;         // Frame (since jack epoch) of last received pulse
+    double nextFrame = 0.0;         // Predicted frame of next pulse (filtered)
+    double period = 0.0;            // Filtered pulse period in frames
+    double targetTick = 0.0;        // Internal tick position expected at next pulse
+    uint32_t errCount = 0;          // Quantity of consecutive pulses with large phase error of same sign
+    double errStartFrame = 0.0;     // Frame of last good pulse before large phase errors
+    bool errLate = false;           // True if large phase errors are late pulses
+    bool realign = false;           // True to align next pulse to beat (after MIDI START)
+};
+EXT_CLK_PLL g_extClk;
+volatile bool g_bExtClockLocked = false; // True if internal clock is locked to external clock
+volatile bool g_bExtClockReset = false;  // True to request reset of external clock PLL
+
 float g_fSwingAmount = 0.0; // Swing amount, range from 0 to 1, but values over 0.5 are not "MPC swing"
 float g_fHumanTime = 0.0;   // Timing Humanization, range from 0 to FLOAT_MAX
 float g_fHumanVelo = 0.0;   // Velocity Humanization, range from 0 to FLOAT_MAX
@@ -138,6 +163,111 @@ void enableDebug(bool bEnable) {
 // Convert tempo to frames per clock
 void updateClockTiming() {
     g_dFramesPerTick = 60.0 * g_nSampleRate / (g_dTempo * PPQN_INTERNAL);
+}
+
+/*  Process external clock pulse (PLL)
+    dFrame: Frame (since jack epoch) of received pulse
+    dTickPos: Internal (fractional) tick position at dFrame
+    returns: Tick that should be aligned to beat (after MIDI START) or -1
+
+    A 2nd order DLL filters the pulse timestamps, estimating the pulse period and predicting the
+    time of next pulse. Internal tick rate is then adjusted so that internal tick position reaches
+    the target position (targetTick + PPQN_INTERNAL / ext PPQN) at the predicted time of next pulse.
+    This locks phase and frequency without skipping or repeating internal ticks.
+*/
+int64_t onExtClock(double dFrame, double dTickPos) {
+    int64_t nBeatTick = -1;
+    double dRatio = double(PPQN_INTERNAL) / g_nExtClockPPQN; // Internal ticks per external pulse
+    double dMinPeriod = 60.0 * g_nSampleRate / (500.0 * g_nExtClockPPQN);
+    double dMaxPeriod = 60.0 * g_nSampleRate / (10.0 * g_nExtClockPPQN);
+
+    if (g_extClk.state == EXT_CLK_IDLE) {
+        g_extClk.state = EXT_CLK_FIRST;
+        g_extClk.lastFrame = dFrame;
+        return nBeatTick;
+    }
+
+    if (g_extClk.state == EXT_CLK_FIRST) {
+        double dPeriod = dFrame - g_extClk.lastFrame;
+        g_extClk.lastFrame = dFrame;
+        if (dPeriod < dMinPeriod || dPeriod > dMaxPeriod)
+            return nBeatTick;
+        g_extClk.period = dPeriod;
+        g_extClk.nextFrame = dFrame + dPeriod;
+        g_extClk.targetTick = dTickPos;
+        g_extClk.count = 0;
+        g_extClk.errCount = 0;
+        g_extClk.state = EXT_CLK_LOCKED;
+        g_bExtClockLocked = true;
+        DPRINTF("External clock locked\n");
+    } else {
+        double dError = dFrame - g_extClk.nextFrame;
+        // Large phase error => tempo jump, lost pulse or heavy jitter => use acquisition bandwidth
+        if (fabs(dError) > 0.25 * g_extClk.period) {
+            g_extClk.count = 0;
+            if (g_extClk.errCount == 0 || g_extClk.errLate != (dError > 0)) {
+                // Start of large error sequence
+                g_extClk.errCount = 0;
+                g_extClk.errStartFrame = g_extClk.lastFrame;
+                g_extClk.errLate = (dError > 0);
+            }
+            ++g_extClk.errCount;
+        } else {
+            g_extClk.errCount = 0;
+        }
+        if (g_extClk.errCount >= EXT_CLK_RESYNC_PULSES) {
+            // Persistent phase error => tempo jump => resync period from raw pulses
+            double dPeriod = (dFrame - g_extClk.errStartFrame) / g_extClk.errCount;
+            g_extClk.period = dPeriod;
+            g_extClk.nextFrame = dFrame + dPeriod;
+            g_extClk.errCount = 0;
+            DPRINTF("External clock resync\n");
+        } else {
+            if (dError > 0.5 * g_extClk.period)
+                dError = 0.5 * g_extClk.period;
+            else if (dError < -0.5 * g_extClk.period)
+                dError = -0.5 * g_extClk.period;
+            // DLL update
+            double dBw = (g_extClk.count < EXT_CLK_ACQUIRE_BEATS * g_nExtClockPPQN) ? EXT_CLK_BW_ACQUIRE : EXT_CLK_BW_LOCKED;
+            double dOmega = 2.0 * M_PI * dBw * g_extClk.period / g_nSampleRate;
+            if (dOmega > 0.4)
+                dOmega = 0.4; // Keep loop stable with low ext PPQN
+            g_extClk.nextFrame += g_extClk.period + M_SQRT2 * dOmega * dError;
+            g_extClk.period += dOmega * dOmega * dError;
+        }
+        if (g_extClk.period < dMinPeriod)
+            g_extClk.period = dMinPeriod;
+        else if (g_extClk.period > dMaxPeriod)
+            g_extClk.period = dMaxPeriod;
+        g_extClk.lastFrame = dFrame;
+        ++g_extClk.count;
+    }
+
+    if (g_extClk.realign) {
+        // Align this pulse to next internal tick, which becomes the beat
+        g_extClk.realign = false;
+        g_extClk.targetTick = ceil(dTickPos);
+        nBeatTick = int64_t(g_extClk.targetTick);
+    }
+
+    // Internal tick rate to reach next target position at predicted time of next pulse
+    g_extClk.targetTick += dRatio;
+    double dTicks = g_extClk.targetTick - dTickPos;
+    if (dTicks < 0.5 * dRatio)
+        dTicks = 0.5 * dRatio;
+    else if (dTicks > 1.5 * dRatio)
+        dTicks = 1.5 * dRatio;
+    double dFramesPerTick = (g_extClk.nextFrame - dFrame) / dTicks;
+    if (dFramesPerTick < dMinPeriod / dRatio)
+        dFramesPerTick = dMinPeriod / dRatio;
+    else if (dFramesPerTick > dMaxPeriod / dRatio)
+        dFramesPerTick = dMaxPeriod / dRatio;
+    g_dFramesPerTick = dFramesPerTick;
+
+    // Reported tempo from filtered period (smooth)
+    g_dTempo = 60.0 * g_nSampleRate / (g_extClk.period * g_nExtClockPPQN);
+    g_seqMan.setTempo(g_dTempo);
+    return nBeatTick;
 }
 
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* /*args*/) {
@@ -196,7 +326,6 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
     // Transport & Clock
     static uint64_t nNow = 0;
     static jack_nframes_t nLastNow32 = 0;
-    static uint64_t nLastExtClockFrame = 0; // Frames since jack epoch of last external clock
     static double dNextIntClockFrame = 0.0; // Frames since jack epoch of next internal clock
     static uint32_t nTickTime = 0; // Quantity of elapsed ticks since tick epoch that next event will be processed
     static uint32_t nBeatsPerBar = g_nBeatsPerBar; // Sequencer's live beats per bar, updated from g_nBeatsPerBar on bar boundary
@@ -235,7 +364,25 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
     if (dNextIntClockFrame < nNow)
         dNextIntClockFrame = nNow;
 
+    // External clock PLL reset / timeout
+    if (g_bExtClockReset) {
+        g_bExtClockReset = false;
+        g_extClk.state = EXT_CLK_IDLE;
+    }
+    if (g_extClk.state != EXT_CLK_IDLE) {
+        double dTimeout = (g_extClk.state == EXT_CLK_LOCKED) ? EXT_CLK_TIMEOUT_PULSES * g_extClk.period : 60.0 * g_nSampleRate / (10.0 * g_nExtClockPPQN);
+        if (nNow - g_extClk.lastFrame > dTimeout)
+            g_extClk.state = EXT_CLK_IDLE;
+    }
+    if (g_extClk.state != EXT_CLK_LOCKED && g_bExtClockLocked) {
+        // Lost external clock => free run at last tempo
+        g_bExtClockLocked = false;
+        updateClockTiming();
+        DPRINTF("External clock lost\n");
+    }
+
     // MIDI Clock input
+    g_vTicks.clear();
     pInputBuffer = jack_port_get_buffer(g_pClockInputPort, nFrames);
     for (jack_nframes_t i = 0; i < jack_midi_get_event_count(pInputBuffer); ++i) {
         if (jack_midi_event_get(&midiEvent, pInputBuffer, i))
@@ -243,16 +390,19 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
 
         switch (midiEvent.buffer[0]) {
             case MIDI_CLOCK: {
-                uint32_t nExpectedTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
-                // First update tempo to get current clock period
-                double dTempo = 60.0 * g_nSampleRate / (double(g_nExtClockPPQN) * (nNow + midiEvent.time - nLastExtClockFrame));
-                setTempo(dTempo);
-                nLastExtClockFrame = nNow + midiEvent.time;
-                uint32_t nTicksBeforeClk = midiEvent.time / g_dFramesPerTick;
-                int32_t nTickDelta = nTicksBeforeClk - nExpectedTicksBeforeClk;
-                // Ensure not negative result (uint32_t)
-                if (nTickDelta >= 0 || nNextBeatTime >= uint32_t(-nTickDelta))
-                    nNextBeatTime += nTickDelta;
+                double dClkFrame = double(nNow + midiEvent.time);
+                // Populate internal ticks before this pulse at current rate
+                for (; dNextIntClockFrame < dClkFrame; dNextIntClockFrame += g_dFramesPerTick)
+                    g_vTicks.push_back(dNextIntClockFrame - nNow);
+                // Internal (fractional) tick position at this pulse
+                double dTickPos = double(nTickTime + g_vTicks.size()) - (dNextIntClockFrame - dClkFrame) / g_dFramesPerTick;
+                int64_t nBeatTick = onExtClock(dClkFrame, dTickPos);
+                if (nBeatTick >= 0) {
+                    // First pulse after START => next beat is bar start
+                    nNextBeatTime = nBeatTick;
+                    g_nBeat = nBeatsPerBar;
+                    g_nBar = g_bTransportRolling ? 0 : 1;
+                }
                 break;
             }
             case MIDI_START: {
@@ -260,6 +410,7 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
                 g_nBar = 1;
                 g_nBeat = 1;
                 g_nBarStartTick = 0;
+                g_extClk.realign = true; // Next pulse is first beat
                 DPRINTF("START\n");
                 break;
             }
@@ -276,7 +427,6 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
     }
 
     // Populate remaining ticks in this period, at current tempo
-   g_vTicks.clear();
     for (; dNextIntClockFrame < nNow + nFrames; dNextIntClockFrame += g_dFramesPerTick) {
         g_vTicks.push_back(dNextIntClockFrame - nNow);
     }
@@ -515,7 +665,8 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
             // Check for sequenced timebase changes (from patterns)
             if (g_seqMan.isTempoChanged()) {
                 float tempo = g_seqMan.getTempo();
-                setTempo(tempo);
+                if (!g_bExtClockLocked)
+                    setTempo(tempo);
             }
             if (g_seqMan.isTimeSigChanged()) {
                 uint8_t newBpb = g_seqMan.getTimeSig(true);
@@ -3016,6 +3167,8 @@ void transportToggle(uint8_t id) {
 }
 
 void setTempo(double tempo) {
+    if (g_bExtClockLocked)
+        return; // Tempo is driven by external clock
     if (tempo >= 10.0 && tempo < 500.0) {
         g_dTempo = tempo;
         updateClockTiming();
@@ -3083,6 +3236,7 @@ void setExtClockPPQN(uint8_t ppqn) {
         g_nExtClockPPQN = ppqn;
     else
         g_nExtClockPPQN = 1;
+    g_bExtClockReset = true;
 }
 
 #include <chrono>
