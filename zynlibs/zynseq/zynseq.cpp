@@ -131,6 +131,7 @@ struct EXT_CLK_PLL {
     double errStartFrame = 0.0;     // Frame of last good pulse before large phase errors
     bool errLate = false;           // True if large phase errors are late pulses
     bool realign = false;           // True to align next pulse to beat (after MIDI START)
+    bool anchored = false;          // True if targetTick was anchored to a beat before lock (MIDI START)
 };
 EXT_CLK_PLL g_extClk;
 volatile bool g_bExtClockLocked = false; // True if internal clock is locked to external clock
@@ -184,17 +185,19 @@ int64_t onExtClock(double dFrame, double dTickPos) {
     if (g_extClk.state == EXT_CLK_IDLE) {
         g_extClk.state = EXT_CLK_FIRST;
         g_extClk.lastFrame = dFrame;
-        return nBeatTick;
-    }
-
-    if (g_extClk.state == EXT_CLK_FIRST) {
+        g_extClk.anchored = false;
+    } else if (g_extClk.state == EXT_CLK_FIRST) {
         double dPeriod = dFrame - g_extClk.lastFrame;
         g_extClk.lastFrame = dFrame;
-        if (dPeriod < dMinPeriod || dPeriod > dMaxPeriod)
+        if (dPeriod < dMinPeriod || dPeriod > dMaxPeriod) {
+            g_extClk.anchored = false;
             return nBeatTick;
+        }
         g_extClk.period = dPeriod;
         g_extClk.nextFrame = dFrame + dPeriod;
-        g_extClk.targetTick = dTickPos;
+        // If previous pulse was anchored to beat, keep counting from it. Phase error is corrected by the loop.
+        g_extClk.targetTick = g_extClk.anchored ? g_extClk.targetTick + dRatio : dTickPos;
+        g_extClk.anchored = false;
         g_extClk.count = 0;
         g_extClk.errCount = 0;
         g_extClk.state = EXT_CLK_LOCKED;
@@ -202,9 +205,8 @@ int64_t onExtClock(double dFrame, double dTickPos) {
         DPRINTF("External clock locked\n");
     } else {
         double dError = dFrame - g_extClk.nextFrame;
-        // Large phase error => tempo jump, lost pulse or heavy jitter => use acquisition bandwidth
+        // Large phase error => tempo jump, lost pulse or heavy jitter
         if (fabs(dError) > 0.25 * g_extClk.period) {
-            g_extClk.count = 0;
             if (g_extClk.errCount == 0 || g_extClk.errLate != (dError > 0)) {
                 // Start of large error sequence
                 g_extClk.errCount = 0;
@@ -221,6 +223,7 @@ int64_t onExtClock(double dFrame, double dTickPos) {
             g_extClk.period = dPeriod;
             g_extClk.nextFrame = dFrame + dPeriod;
             g_extClk.errCount = 0;
+            g_extClk.count = 0; // Use acquisition bandwidth
             DPRINTF("External clock resync\n");
         } else {
             if (dError > 0.5 * g_extClk.period)
@@ -244,11 +247,15 @@ int64_t onExtClock(double dFrame, double dTickPos) {
     }
 
     if (g_extClk.realign) {
-        // Align this pulse to next internal tick, which becomes the beat
+        // Align this pulse to next internal tick, which becomes the beat. It may happen before lock (clock started
+        // with MIDI START), while internal clock is free running.
         g_extClk.realign = false;
         g_extClk.targetTick = ceil(dTickPos);
+        g_extClk.anchored = (g_extClk.state != EXT_CLK_LOCKED);
         nBeatTick = int64_t(g_extClk.targetTick);
     }
+    if (g_extClk.state != EXT_CLK_LOCKED)
+        return nBeatTick;
 
     // Internal tick rate to reach next target position at predicted time of next pulse
     g_extClk.targetTick += dRatio;
