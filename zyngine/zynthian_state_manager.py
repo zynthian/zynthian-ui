@@ -1472,7 +1472,7 @@ class zynthian_state_manager:
 
                 if restore_midi_learn:
                     # Current (correct) chain MIDI-learn state
-                    self.chain_manager.clean_midi_learn(chain_id)
+                    self.chain_manager.clean_midi_binding(chain_id)
 
         if mute_pause:
             # Wait for soft mutes to apply before changing settings

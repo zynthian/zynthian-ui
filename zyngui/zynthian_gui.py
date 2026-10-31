@@ -2225,17 +2225,17 @@ class zynthian_gui:
     def cuia_midi_unlearn_mixer(self, params=None):
         for chain in self.chain_manager.chains.values():
             if chain.zynmixer_proc:
-                self.chain_manager.clean_midi_learn(chain.zynmixer_proc)
+                self.chain_manager.clean_midi_binding(chain.zynmixer_proc)
 
     def cuia_midi_unlearn_node(self, params=None):
         if params and len(params) > 1:
-            self.chain_manager.clear_midi_learn([params[0], params[1]])
+            self.chain_manager.clear_midi_binding([params[0], params[1]])
 
     def cuia_midi_unlearn_chain(self, params=None):
         if params and len(params) > 0:
-            self.chain_manager.clean_midi_learn(params[0])
+            self.chain_manager.clean_midi_binding(params[0])
         else:
-            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain.chain_id)
+            self.chain_manager.clean_midi_binding(self.chain_manager.active_chain.chain_id)
 
     # -------------------------------------------------------------------
     # Z2 knob touch

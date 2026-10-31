@@ -573,7 +573,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                         else:
                             self.plot_midi_bind(f"{cc}")
                     case "zynstep":
-                        self.plot_midi_bind(f"{cc}")
+                        self.plot_midi_bind(f"{chan + 1}#{cc}")
             else:
                 self.erase_midi_bind()
                 return False

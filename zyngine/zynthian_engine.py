@@ -655,7 +655,7 @@ class zynthian_engine(zynthian_basic_engine):
                 if symbol in symbols:
                     zctrl.reset(self, symbol, full=False)
                 else:
-                    self.state_manager.chain_manager.clear_midi_learn(processor, symbol)
+                    self.state_manager.chain_manager.clear_midi_binding(processor, symbol, True)
                     del processor.controllers_dict[symbol]
             # Regenerate / update controller dictionary
             for ctrl in self._ctrls:

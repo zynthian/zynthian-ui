@@ -247,7 +247,7 @@ class zynthian_engine_puredata(zynthian_engine):
             amidi_ports = self.get_amidi_clients()
             self.start()
             for symbol in processor.controllers_dict:
-                self.state_manager.chain_manager.clear_midi_learn(processor, symbol)
+                self.state_manager.chain_manager.clear_midi_binding(processor, symbol, True)
             processor.refresh_controllers()
             sleep(2.0)
             amidi_ports = list(set(self.get_amidi_clients()) - set(amidi_ports))
