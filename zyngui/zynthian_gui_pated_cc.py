@@ -70,18 +70,17 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def __init__(self):
         self.row0 = 8
         self.cc_num = 1
-        self.zctrl = None
+        self.zctrls = []
         self.interpolateCC = True
         self.show_all_cc_num = False
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
 
-    def set_cc_num(self, cc_num, allow_unassigned=False):
-        zctrl = self.zyngui.chain_manager.get_zynstep_mapped_zctrl(self.channel, cc_num)
-        if allow_unassigned or zctrl:
+    def set_cc_num(self, cc_num, zctrls, allow_unassigned=False):
+        if allow_unassigned or zctrls:
             self.cc_num = cc_num
-            self.zctrl = zctrl
+            self.zctrls = zctrls
             self.set_title()
             self.interpolateCC = self.zynseq.libseq.getInterpolateCC(cc_num)
             self.redraw_pending = 2
@@ -93,16 +92,22 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             cc_num = 0
         else:
             cc_num = self.cc_num
+
+        zctrls = self.zyngui.chain_manager.get_automate_zctrls(self.channel)
+        if not zctrls:
+            return
+        ccs = list(zctrls)
         if dval > 0:
-            while cc_num < 127:
-                cc_num += 1
-                if self.set_cc_num(cc_num, allow_unassigned=self.show_all_cc_num):
-                    break
+            ccs = [cc for cc in ccs if cc > cc_num]
+            if not ccs:
+                return
+            cc_num = min(ccs)
         elif dval < 0:
-            while cc_num > 1:
-                cc_num -= 1
-                if self.set_cc_num(cc_num, allow_unassigned=self.show_all_cc_num):
-                    break
+            ccs = [cc for cc in ccs if cc < cc_num]
+            if not ccs:
+                return
+            cc_num = max(ccs)
+        self.set_cc_num(cc_num, zctrls[cc_num])
 
     # Function to get name of this view
     def get_name(self):
@@ -110,9 +115,10 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     def get_title(self):
         title = f"{super().get_title()}: CC{self.cc_num}"
-        # Get CC title from zynstep mapped zctrl
-        if self.zctrl:
-            title = f"{title} ({self.zctrl.name})"
+        # Get CC title from automation mapped zctrl
+        if self.zctrls:
+            for zctrl in self.zctrls:
+                title += f" ({zctrl.name})"
         else:
             try:
                 title = f"{title} (MIDI {CC_NAMES[self.cc_num]})"

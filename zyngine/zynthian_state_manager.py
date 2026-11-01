@@ -809,7 +809,7 @@ class zynthian_state_manager:
                             self.all_notes_off()
                         else:
                             if self.midi_learn_zctrl:
-                                self.chain_manager.add_midi_learn(self.midi_learn_zctrl, ccnum, chan, izmip, self.midi_learn_state)
+                                self.chain_manager.add_midi_binding(self.midi_learn_zctrl, ccnum, chan, izmip, self.midi_learn_state)
                     # Master Note CUIA with ZynSwitch emulation
                     elif evtype == 0x8 or evtype == 0x9:
                         note = str(ev[1] & 0x7F)
@@ -2166,7 +2166,7 @@ class zynthian_state_manager:
                                 chain_id = (key >> 16) & 0xff
                                 if chain_id == 0xff:
                                     chain_id = None
-                                self.chain_manager.add_midi_learn(zctrl, cc, chan, izmip, chain_id)
+                                self.chain_manager.add_midi_binding(zctrl, cc, chan, izmip, chain_id)
             self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
 
         else:
