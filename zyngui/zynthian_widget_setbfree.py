@@ -28,12 +28,40 @@ class zynthian_widget_setbfree(zynthian_widget_base.zynthian_widget_base):
                                          width=1,
                                          bd=0,
                                          highlightthickness=0,
-                                         bg='#000' #zynthian_gui_config.color_panel_bg
+                                         bg='#000'
                                          )
         self.drawbar_nums = {}
         self.drawbar_values = {}
         for i in range(9):
             self.drawbar(i)
+        self.drag = {"item": None, "y": 0, 'barnum': None}
+        self.widget_canvas.bind("<ButtonPress-1>", self.on_press)
+        self.widget_canvas.bind("<B1-Motion>", self.on_motion)
+        self.widget_canvas.bind("<ButtonRelease-1>", self.on_release)
+
+    def on_press(self, event):
+        # the handle under mouse, if any
+        for item in reversed(self.widget_canvas.find_overlapping(event.x, event.y, event.x, event.y)):
+            tags = self.widget_canvas.gettags(item)
+            if "handle" in tags:
+                self.drag.update(item=item)
+                for tag in tags:
+                    if tag.startswith('bar'):
+                        try:
+                            self.drag.update(barnum=int(tag[3:]))
+                        except Exception as e:
+                            logging.error(e)
+                return
+
+    def on_motion(self, event):
+        if self.drag is not None and self.drag["item"]:
+            perc = max(0, event.y) / self.height
+            val = (1 - perc) * 127
+            barid = self.drawbars[self.drag['barnum']][0]
+            self.processor.controllers_dict[barid].set_value(val)
+
+    def on_release(self, event):
+        self.drag["item"] = None
 
     def on_size(self, event):
         super().on_size(event)
@@ -74,7 +102,7 @@ class zynthian_widget_setbfree(zynthian_widget_base.zynthian_widget_base):
                           border + ((i+1) * width) - 2, self.height)
             # handle
             canvas.create_rectangle(border + i*width + 1, 8 * step_height,
-                                    border + ((i+1)*width -1), self.height, outline=self.outline, fill=color, tags=tag)
+                                    border + ((i+1)*width -1), self.height, outline=self.outline, fill=color, tags=(tag,"handle"))
             canvas.create_text((0.5 * width + border + 1 + (i * width), 8.5 * step_height),
                                text=drawbar[2],
                                fill=self.black if drawbar[1] == self.white else self.white,
