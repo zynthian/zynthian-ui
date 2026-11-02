@@ -30,8 +30,8 @@ class zynthian_widget_setbfree(zynthian_widget_base.zynthian_widget_base):
                                          highlightthickness=0,
                                          bg='#000' #zynthian_gui_config.color_panel_bg
                                          )
-        self.drawbar_rects = []
         self.drawbar_nums = {}
+        self.drawbar_values = {}
         for i in range(9):
             self.drawbar(i)
 
@@ -85,18 +85,22 @@ class zynthian_widget_setbfree(zynthian_widget_base.zynthian_widget_base):
                 num = canvas.create_text((0.5 * width + border + 1 + (i * width), step * step_height + 0.5 * step_height), fill='grey', text=8 - step, tags=tag)
                 nums.append(num)
             self.drawbar_nums[i] = nums
+            self.drawbar_values[i] = None # Force redraw
                 
         except Exception as e:
             logging.error(e);
         
     def move_drawbar(self, i):
+        # (full out) 7 - 23 - 39 - 55 - 71 - 87 - 103 - 119 - 127 (full in)
+        drawbar = self.drawbars[i]
+        value = self.processor.controllers_dict[drawbar[0]].value
+        if self.drawbar_values.get(i, None) == value:
+            return
+        self.drawbar_values[i] = value
+        valuex = self.processor.controllers_dict[drawbar[0]].get_value2index()
         border = 2
         canvas = self.widget_canvas
         width = (self.width - 2 * border) // 9
-        drawbar = self.drawbars[i]
-        # (full out) 7 - 23 - 39 - 55 - 71 - 87 - 103 - 119 - 127 (full in)
-        value = self.processor.controllers_dict[drawbar[0]].value
-        valuex = self.processor.controllers_dict[drawbar[0]].get_value2index()
         
         num = 8 - valuex # (value - 7) // 14
         try:
