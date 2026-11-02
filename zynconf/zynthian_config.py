@@ -198,7 +198,7 @@ def load_config(set_env=True, fpath=None):
 
     # Load config varnames
     varnames = []
-    pattern = re.compile("^export ([^\s]*?)=")
+    pattern = re.compile(r"^export ([^\s]*?)=")
     for line in lines:
         res = pattern.match(line)
         if res:
@@ -239,7 +239,7 @@ def save_config(config, updsys=False, fpath=None):
     # Find and replace lines to update
     updated = []
     add_row = 0
-    pattern = re.compile("^export ([^\s]*?)=")
+    pattern = re.compile(r"^export ([^\s]*?)=")
     for i, line in enumerate(lines):
         res = pattern.match(line)
         if res:

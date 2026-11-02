@@ -629,8 +629,8 @@ class zynthian_engine_setbfree(zynthian_engine):
             with open(fpath) as f:
                 pgm_list = []
                 lines = f.readlines()
-                ptrn1 = re.compile("^([\d]+)[\s]*\{[\s]*name\=\"([^\"]+)\"")
-                ptrn2 = re.compile("[\s]*[\{\}\,]+[\s]*")
+                ptrn1 = re.compile("^([\\d]+)[\\s]*\\{[\\s]*name\\=\"([^\"]+)\"")
+                ptrn2 = re.compile(r"[\s]*[\{\}\,]+[\s]*")
                 i = 0
                 for line in lines:
                     # Test with first pattern

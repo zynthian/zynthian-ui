@@ -211,7 +211,7 @@ def get_pianoteq_binary_info():
         'jackname': 'Pianoteq'
     }
     if check_pianoteq_binary():
-        version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
+        version_pattern = re.compile(r" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
         stage_pattern = re.compile(" stage ", re.IGNORECASE)
         pro_pattern = re.compile(" pro ", re.IGNORECASE)
         trial_pattern = re.compile(" trial ", re.IGNORECASE)
@@ -259,7 +259,7 @@ def get_pianoteq_binary_info():
         if info['product'] == "STANDARD":
             lkey = get_pianoteq_config_value('LKey')
             if len(lkey) > 0:
-                lkey_product_pattern = re.compile(" Pianoteq \d* (\w*)")
+                lkey_product_pattern = re.compile(r" Pianoteq \d* (\w*)")
                 m = lkey_product_pattern.search(lkey[0])
                 if m:
                     info['product'] = m.group(1).upper()

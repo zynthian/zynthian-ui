@@ -299,7 +299,7 @@ class zynthian_engine_sfz(zynthian_engine):
     # Opcode parsing and support detection
     #-------------------------------------------------------------------------
 
-    ''' Not used currently!
+    r''' Not used currently!
 
     @staticmethod
     def get_supported_opcode_patterns(download=False):
