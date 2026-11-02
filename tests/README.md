@@ -218,6 +218,7 @@ zyncoder / zynlibs (C/C++):
 30. zynmixer: `toggleSolo()` / `togglePFL()` read `mute` instead of `solo` / `pfl`.
 31. zynmixer: after any solo, `end()` (atexit) `free()`s JACK port buffers → the process crashes on exit. Proven in a
     child process (`test_exit.py`); the session fixture neutralises it so the suite itself exits cleanly.
+    Fixed by "zynmixer: fix invalid free and stale buffers with solo, sends and period changes" (no xfail).
 
 ## Roadmap
 

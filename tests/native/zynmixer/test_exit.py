@@ -30,9 +30,5 @@ def test_exit_is_clean(zynmixer, jack_server):
     assert run(jack_server, solo=False).returncode == 0
 
 
-@pytest.mark.xfail(strict=True, reason="mixer.c: once a strip is soloed onJackProcess sets g_soloBufferA/B to the "
-                                       "JACK solo port buffers ('populate the trunk directly'); end(), run by "
-                                       "atexit, then free()s those JACK-owned pointers -> SIGSEGV/abort at exit "
-                                       "(and the buffers malloc'ed in init() leak)")
 def test_exit_after_solo_is_clean(zynmixer, jack_server):
     assert run(jack_server, solo=True).returncode == 0
