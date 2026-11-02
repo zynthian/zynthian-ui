@@ -824,7 +824,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
 
     float* data_in = (float*)malloc(size);
     if (!data_in) {
-        fprintf(stderr,"loadClip(): Can't reserve memory (%d bytes) to load sample data.\n", size);
+        fprintf(stderr,"loadClip(): Can't reserve memory (%zu bytes) to load sample data.\n", size);
         sf_close(sndfile);
         return 0;
     }
@@ -833,7 +833,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
     sf_close(sndfile);
 
     if (count != frames) {
-        fprintf(stderr,"loadClip(): Error reading %d frames of sample data.\n", frames);
+        fprintf(stderr,"loadClip(): Error reading %lld frames of sample data.\n", (long long)frames);
         free(data_in);
         return 0;
     }
@@ -1125,7 +1125,7 @@ int saveFile(const char* dst_path, float *data[], int samplerate, int channels, 
     // Interleave into buffer data_out
     float *data_out = malloc(frames * channels * sizeof(float));
     if (!data_out) {
-        fprintf(stderr, "saveFile(): Failed to reserve memory (%d bytes).\n", frames * channels * sizeof(float));
+        fprintf(stderr, "saveFile(): Failed to reserve memory (%zu bytes).\n", (size_t)(frames * channels * sizeof(float)));
         return 1;
     }
     for (int ch = 0; ch < channels; ch++) {
