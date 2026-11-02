@@ -66,6 +66,11 @@ class zynthian_basic_engine:
         self.proc_exit = False
         self.command = command
         self.command_env = os.environ.copy()
+        # Engines' interactive shells are driven through pexpect. With a terminal type set
+        # (from a terminal or a desktop session; ZynthianOS's systemd service has none),
+        # readline switches on bracketed paste and prefixes its prompt with "\x1b[?2004h",
+        # so the prompt never matches (fluidsynth timed out on postmarketOS).
+        self.command_env['TERM'] = "dumb"
         self.command_prompt = prompt
         self.command_cwd = cwd
         self.ignore_not_on_gui = False
