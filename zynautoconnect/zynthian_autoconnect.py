@@ -719,8 +719,11 @@ def midi_autoconnect():
             busy_idevs.append(devnum)
 
             # Enable external MIDI-clock sync for the configured device
-            if devices_in[devnum].aliases[0] == ext_clock_device_name:
-                ext_clock_zmip = devnum
+            try:
+                if ext_clock_device_name and devices_in[devnum].aliases[0] == ext_clock_device_name:
+                    ext_clock_zmip = devnum
+            except Exception as e:
+                logger.debug(f"Can't check for external clock device => {e}")
 
             # Try to connect ctrldev driver's RT MIDI processor between input device and zmip
             try:
@@ -764,7 +767,10 @@ def midi_autoconnect():
                 if devices_out[i] is None:
                     devnum = i
                     devices_out[devnum] = hwdp
-                    devices_out_name[devnum] = hwdp.aliases[0]
+                    try:
+                        devices_out_name[devnum] = hwdp.aliases[0]
+                    except:
+                        devices_out_name[devnum] = hwdp.name
                     logger.debug(f"Connected MIDI-out device {devnum}: {hwdp.name}")
                     break
         if devnum is not None:
@@ -879,7 +885,11 @@ def midi_autoconnect():
         if idev >= max_num_devs:
             break
         if port:
-            if port.aliases[0] in zynseq_input_exclude_ports:
+            try:
+                excluded_port = port.aliases[0] in zynseq_input_exclude_ports
+            except:
+                excluded_port = port.name in zynseq_input_exclude_ports
+            if excluded_port:
                 lib_zyncore.zmop_set_route_from(state_manager.get_zmop_step_index(), idev, 0)
             else:
                 lib_zyncore.zmop_set_route_from(state_manager.get_zmop_step_index(), idev, 1)

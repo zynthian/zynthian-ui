@@ -610,9 +610,10 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
     # Custom plugin info
     # ------------------------------------------------------------------------------
 
-    if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
+    rbpi_version = os.environ.get('RBPI_VERSION', '')
+    if "Raspberry Pi 4" in rbpi_version:
         rpi = "RPi4"
-    elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
+    elif "Raspberry Pi 3" in rbpi_version:
         rpi = "RPi3"
     else:
         rpi = "RPi2"
@@ -696,7 +697,6 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
             'breath': [2, 64],
             'volume': [7, 98],
             'panning': [10, 64],
-            'expression': [11, 127],
             'modulation wheel': [1, 0],
             'expression': [11, 64],
             'filter cutoff': [74, 64],
