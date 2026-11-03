@@ -567,7 +567,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         options = {}
         if zynthian_gui_config.touch_navigation or zynthian_gui_config.layout["name"] == "V4":
             if self.get_name() == "pated note":
-                options['Edit CC'] = 'Toggle Editor'
+                if self.zyngui.chain_manager.get_automate_zctrls(self.channel):
+                    options['Edit CC'] = 'Toggle Editor'
             else:
                 options['Edit Notes'] = 'Toggle Editor'
         options[f"Length ({self.get_pattern_length()})"] = 'Length'

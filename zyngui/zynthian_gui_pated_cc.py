@@ -65,9 +65,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # Function to initialise class
     def __init__(self):
         self.row0 = 8
-        self.cc_num = 1
-        self.zctrls = [] # List of zctrl objects being automated by currently displayed graph
-        self.avail_zctrls = [] # List of lists of zctrls that are configured as automatable
+        self.cc_num = None
+        self.index = None # Index of selected available zctrls
+        self.avail_zctrls = {} # Dict of lists of zctrls that are configured as automatable, indexed by CC
         self.interpolateCC = True
         self.show_all_cc_num = False
         self.marker_width = 5
@@ -86,37 +86,30 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         if midi_out:
             for i in range(128):
                 self.avail_zctrls[i + 128] = [self.zyngui.chain_manager.midi_output_cc_objs[i]]
-        return super().build_view()
-
-    def set_cc_num(self, cc_num, zctrls):
-        if zctrls:
-            self.cc_num = cc_num
-            self.zctrls = zctrls
-            self.set_title()
-            self.interpolateCC = self.zynseq.libseq.getInterpolateCC(cc_num)
-            self.redraw_pending = 2
-            return True
-        return False
+        if not self.avail_zctrls:
+            return # Can't automate without any params or CC.
+        self.nudge_cc_num()
+        retval = super().build_view()
+        return retval
 
     def nudge_cc_num(self, dval=0):
-        if dval == 0:
-            cc_num = 0
-        else:
-            cc_num = self.cc_num
         if not self.avail_zctrls:
             return
+        index = self.index
+        if index is None:
+            index = 0
         ccs = list(self.avail_zctrls)
-        if dval > 0:
-            ccs = [cc for cc in ccs if cc > cc_num]
-            if not ccs:
-                return
-            cc_num = min(ccs)
-        elif dval < 0:
-            ccs = [cc for cc in ccs if cc < cc_num]
-            if not ccs:
-                return
-            cc_num = max(ccs)
-        self.set_cc_num(cc_num, self.avail_zctrls[cc_num])
+        try:
+            index = max(0, index + dval)
+            self.cc_num = ccs[index]
+            self.index = index
+            self.set_title()
+            self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
+            self.redraw_pending = 2
+            return True
+        except:
+            pass
+        return False
 
     # Function to get name of this view
     def get_name(self):
@@ -125,15 +118,12 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def get_title(self):
         title = f"{super().get_title()}: "
         # Get CC title from automation mapped zctrl
-        if self.zctrls:
-            for zctrl in self.zctrls:
+        try:
+            for zctrl in self.avail_zctrls[self.cc_num]:
                 title += f" ({zctrl.name})"
-        else:
-            try:
-                title = f"{title} (MIDI {CC_NAMES[self.cc_num]})"
-            except:
-                pass
-        self.tts_title = f"Pattern editor. CC {self.cc_num}"
+        except:
+            pass
+        self.tts_title = f"Pattern CC editor. {title}"
         return title
 
     def set_edit_mode(self, mode):

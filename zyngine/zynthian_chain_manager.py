@@ -85,6 +85,27 @@ engine2class = {
     'CL': zynthian_engine_clippy
 }
 
+CC_NAMES = {
+    1: "ModWheel",
+    2: "Breath",
+    5: "Portamento",
+    7: "Volume",
+    8: "Balance",
+    10: "Pan",
+    11: "Expression",
+    64: "Sustain Pedal",
+    66: "Sostenuto Pedal",
+    67: "Soft Pedal",
+    71: "Resonance",
+    72: "Release",
+    73: "Attack",
+    74: "Cutoff",
+    91: "Reverb",
+    92: "Tremolo",
+    93: "Chorus",
+    94: "Detune"
+}
+
 # ----------------------------------------------------------------------------
 # MIDI Binding for MIDI output Class
 # ----------------------------------------------------------------------------
@@ -94,6 +115,8 @@ class zynthian_midi_output_cc_binding:
     def __init__(self, cc):
         self.midi_cc = cc
         self.name = f"CC#{cc}"
+        if cc in CC_NAMES:
+            self.name += f"-{CC_NAMES[cc]}"
 
     def midi_control_change(self, val):
         #TODO: Implement send CC to MIDI outputs
