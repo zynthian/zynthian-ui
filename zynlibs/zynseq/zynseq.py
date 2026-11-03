@@ -597,6 +597,48 @@ class zynseq(zynthian_engine):
             res[event_key_buffer[i]] = True
         return res
 
+    def get_automated_patterns(self, cc, chan):
+        """ Get a list of patterns that have automation of the defined CC
+
+        cc: CC number of automated CC
+        chan: MIDI channel of automated CC
+
+        Returns: List of pattern indices that contain the automation
+        """
+
+        patterns = []
+        steps = self.libseq.getSteps()
+        for phrase in range(self.phrases):
+            index = self.get_pattern(self.scene, phrase, chan, 0, 0)
+            if index is None:
+                continue
+            self.libseq.selectPattern(index)
+            for step in range(steps):
+                if self.libseq.getControlDuration(step, cc):
+                    patterns.append(index)
+                    break
+        return patterns
+
+    def remove_automated_patterns(self, cc, chan):
+        """ Remove control automation from pattern
+
+        cc: CC number of automated CC
+        chan: MIDI channel of automated CC
+        """
+
+        patterns = []
+        steps = self.libseq.getSteps()
+        for phrase in range(self.phrases):
+            index = self.get_pattern(self.scene, phrase, chan, 0, 0)
+            if index is None:
+                continue
+            self.libseq.selectPattern(index)
+            for step in range(steps):
+                if self.libseq.getControlDuration(step, cc):
+                    patterns.append(index)
+                    break
+        return patterns
+
     # -------------------------------------------------------------------
     # MIDI transport & clock settings
     # -------------------------------------------------------------------

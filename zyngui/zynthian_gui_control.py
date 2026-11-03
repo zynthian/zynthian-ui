@@ -943,7 +943,16 @@ class zynthian_gui_control(zynthian_gui_selector):
                 zctrl = param
                 chan = zctrl.processor.midi_chan
                 if chan is not None and chan < 16:
-                    self.chain_manager.toggle_automate_zctrl(zctrl)
+                    try:
+                        cc = self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False)[0][0] & 0x7f
+                        patterns = self.zyngui.state_manager.zynseq.get_automated_patterns(cc, chan)
+                        if patterns:
+                            self.zyngui.show_confirm(f"Disable and remove automation from {len(patterns)} patterns?", self.do_disable_automate, [zctrl, cc, patterns])
+                            return
+                        else:
+                            self.chain_manager.toggle_automate_zctrl(zctrl)
+                    except:
+                        self.chain_manager.toggle_automate_zctrl(zctrl)
                 self.controller_options(None, keep_selection=True)
             elif parts[0] == "Unlearn":
                 if param:
@@ -974,6 +983,19 @@ class zynthian_gui_control(zynthian_gui_selector):
                 }
                 self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
                 self.zyngui.show_screen('option')
+
+    def do_disable_automate(self, params):
+        """ Disable automate and remove automation from patterns
+
+        params: List of [zctrl, automate cc, list of pattern indicies]
+        """
+
+        zctrl, cc, patterns = params
+        self.chain_manager.toggle_automate_zctrl(zctrl)
+        for pattern in patterns:
+            self.state_manager.zynseq.libseq.selectPattern(pattern)
+            self.state_manager.zynseq.libseq.clearControl(cc)
+        self.controller_options(None, keep_selection=True)
 
     def midi_device_cb(self, option, param):
         key = param["key"]
