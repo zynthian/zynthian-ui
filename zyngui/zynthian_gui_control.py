@@ -750,7 +750,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def midi_unlearn(self, param=None):
         if param:
-            self.chain_manager.clean_midi_binding(param)
+            self.chain_manager.clear_midi_binding(param.processor, param.symbol)
         else:
             self.chain_manager.clean_midi_binding(self.zyngui.get_current_processor())
         self.refresh_midi_bind()

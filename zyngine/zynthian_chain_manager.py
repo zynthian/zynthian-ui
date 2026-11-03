@@ -1716,22 +1716,41 @@ class zynthian_chain_manager:
         else:
             self.add_midi_binding(zctrl, midi_cc, midi_chan, zmip, chain_id)
 
-    def clear_midi_binding(self, proc, symbol, automate=False):
-        """Removes all midi bindings from a zctrl
+    def clear_midi_binding(self, proc, symbol):
+        """Removes all midi bindings from a zctrl, including automation only if no patterns automated by this control
 
         proc : Processor object
         symbol : Control symbol
-        automate : True to clear automate binding (Optional: Default - False)
         """
 
         zctrl = proc.controllers_dict.get(symbol)
         if zctrl is None:
             return
 
+        automate = None
         for key in list(self.midi_cc_binding):
-            cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
-            if not automate and zmip == ZMIP_STEP_INDEX:
+            if zctrl not in self.midi_cc_binding[key]:
                 continue
+            cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
+            if zmip == ZMIP_STEP_INDEX:
+                automate = [cc, chan, key]
+                continue
+            zctrls = self.midi_cc_binding[key]
+            try:
+                zctrls.remove(zctrl)
+            except:
+                pass
+            if not zctrls:
+                self.midi_cc_binding.pop(key)
+
+        if automate is None:
+            return
+        try:
+            cc, chan, key = automate
+            remove_automate = self.state_manager.zynseq.get_automated_patterns(cc, chan) == []
+        except:
+            remove_automate = True
+        if remove_automate:
             zctrls = self.midi_cc_binding[key]
             try:
                 zctrls.remove(zctrl)
