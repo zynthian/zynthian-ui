@@ -86,6 +86,20 @@ engine2class = {
 }
 
 # ----------------------------------------------------------------------------
+# MIDI Binding for MIDI output Class
+# ----------------------------------------------------------------------------
+
+class zynthian_midi_output_cc_binding:
+
+    def __init__(self, cc):
+        self.midi_cc = cc
+        self.name = f"CC#{cc}"
+
+    def midi_control_change(self, val):
+        #TODO: Implement send CC to MIDI outputs
+        pass
+
+# ----------------------------------------------------------------------------
 # Zynthian Chain Manager Class
 # ----------------------------------------------------------------------------
 
@@ -118,6 +132,9 @@ class zynthian_chain_manager:
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
         self.midi_cc_binding = {} # Lists of zctrls indexed by 24-bit [chain,zmip,chan,cc]
+        self.midi_output_cc_objs = []
+        for i in range(128):
+            self.midi_output_cc_objs.append(zynthian_midi_output_cc_binding(i))
         self.rebuild_optimisation_cache()
 
     # ------------------------------------------------------------------------
@@ -1728,31 +1745,48 @@ class zynthian_chain_manager:
                     result.append([key, "global"])
         return result
 
-    def toggle_automate_zctrl(self, zctrl, chan):
+    def enable_automate_zctrl(self, zctrl):
+        # Add automation MIDI binding
+
+        try:
+            chan = zctrl.processor.midi_chan
+        except:
+            return # Can't do anything without a valid zctl and midi chan
+
+        result = self.get_midi_binding_from_zctrl(zctrl)
+        automate_cc = None
+        for ml in result:
+            if ml[1] == "automate":
+                automate_cc = ml[0]
+                break
+        if automate_cc is None:
+            for cc in range(128):
+                key = self.pack_midi_bind_key(cc, chan, ZMIP_STEP_INDEX, 0xff)
+                if key in self.midi_cc_binding:
+                    continue
+                self.midi_cc_binding[key] = [zctrl]
+                automate_cc = cc
+                break
+        if automate_cc is None:
+            logging.warning(f"No more CC available for automation on channel {chan}")
+            return
+
+    def disable_automate_zctrl(self, zctrl):
+        result = self.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False)
+        for ml in result:
+            self._remove_midi_binding(zctrl, ml[0])
+        return True
+
+    def toggle_automate_zctrl(self, zctrl):
         """ Toggle automation MIDI binding of a zctrl
 
         zctrl: Controller to add
-        chan: MIDI channel
-
-        Returns: True on success. False if there are no MIDI CC/Chan avail in pool.
         """
 
-        if not isinstance(zctrl, zynthian_controller):
-            return False
-        result = self.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False)
-        if result:
-            for ml in result:
-                self._remove_midi_binding(zctrl, ml[0])
-            return True
-
-        # Find an available mapping
-        for cc in range(128):
-            key = self.pack_midi_bind_key(cc, chan, ZMIP_STEP_INDEX, 0xff)
-            if key in self.midi_cc_binding:
-                continue
-            self.midi_cc_binding[key] = [zctrl]
-            return True
-        return False
+        if self.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False):
+            self.disable_automate_zctrl(zctrl)
+        else:
+            self.enable_automate_zctrl(zctrl)
 
     def get_automate_zctrls(self, chan):
         """ Get a dictionary of automated zctrls, indexed by MIDI CC

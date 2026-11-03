@@ -284,6 +284,16 @@ void enableMidiRecord(bool enable);
 */
 bool isMidiRecord();
 
+/** @brief  Add a MIDI learned CC to automation CC mapping for current record session
+    @param  learned_key the learned CC 32-bit packed key [chain_id, zmip, chan, cc]
+    @param  automate_cc the automation CC
+*/
+void addLearnMapping(uint32_t learned_key, uint8_t automate_cc);
+
+/** @brief  Clear MIDI automation CC mapping for current record session
+*/
+void clearLearnMapping();
+
 /** @brief  Add note to selected pattern
     @param  step Index of step at which to add note
     @param  note MIDI note number

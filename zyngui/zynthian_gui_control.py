@@ -721,13 +721,16 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.enter_midi_learn(mlmode, False)
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
+        #TODO: MIDI learning should be done by state or chain manager, not GUI.
         curproc = self.zyngui.get_current_processor()
         zctrl = self.zyngui.state_manager.get_midi_learn_zctrl()
         self.chain_manager.clear_midi_binding(curproc, zctrl.symbol)
         if self.midi_learning == MIDI_LEARNING_CHAIN and curproc:
             self.chain_manager.add_midi_binding(zctrl, midi_cc, chan, zmip, curproc.chain_id)
+            self.chain_manager.enable_automate_zctrl(zctrl)
         elif self.midi_learning == MIDI_LEARNING_GLOBAL:
             self.chain_manager.add_midi_binding(zctrl, midi_cc, chan, zmip)
+            self.chain_manager.enable_automate_zctrl(zctrl)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -940,7 +943,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 zctrl = param
                 chan = zctrl.processor.midi_chan
                 if chan is not None and chan < 16:
-                    self.chain_manager.toggle_automate_zctrl(zctrl, chan)
+                    self.chain_manager.toggle_automate_zctrl(zctrl)
                 self.controller_options(None, keep_selection=True)
             elif parts[0] == "Unlearn":
                 if param:

@@ -419,7 +419,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         #logging.debug(f"BANK: {bank}, SEQUENCE: {sequence}")
         if seq_name:
             try:
-                synth_chain = self.zyngui.chain_manager.get_synth_chain(self.channel)
+                synth_chain = self.chain_manager.get_synth_chain(self.channel)
                 chain_name = synth_chain.get_title()
             except:
                 chain_name = ""
@@ -1225,6 +1225,20 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             midi_record = not self.midi_record
             self.midi_record = midi_record
         self.zynseq.libseq.enableMidiRecord(midi_record)
+        if midi_record:
+            # Rebuild libseq learn mapping
+            self.zynseq.libseq.clearLearnMapping()
+            try:
+                processors = self.chain_manager.get_processors(self.chain_manager.active_chain.chain_id)
+                for proc in processors:
+                    for zctrl in proc.controllers_dict.values():
+                        ml_a = self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False, max_results=1)
+                        if ml_a:
+                            automate_cc = ml_a[0][0] & 0x7f
+                            for ml in self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_automate=False):
+                                self.state_manager.zynseq.libseq.addLearnMapping(ml[0], automate_cc)
+            except Exception as e:
+                logging.warning(e)
         self.save_pattern_snapshot(now=True, force=False)
 
     # -------------------------------------------------------------------------

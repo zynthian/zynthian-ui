@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Base Class
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -24,14 +24,10 @@
 #
 # ******************************************************************************
 
-import os
-import tkinter
 import logging
 import tkinter.font as tkfont
 
 # Zynthian specific modules
-from zynlibs.zynseq import zynseq
-from zynlibs.zynsmf import zynsmf
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_pated_base import *
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -70,15 +66,30 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def __init__(self):
         self.row0 = 8
         self.cc_num = 1
-        self.zctrls = []
+        self.zctrls = [] # List of zctrl objects being automated by currently displayed graph
+        self.avail_zctrls = [] # List of lists of zctrls that are configured as automatable
         self.interpolateCC = True
         self.show_all_cc_num = False
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
 
-    def set_cc_num(self, cc_num, zctrls, allow_unassigned=False):
-        if allow_unassigned or zctrls:
+    def build_view(self):
+        self.avail_zctrls = self.zyngui.chain_manager.get_automate_zctrls(self.channel)
+        midi_chains = self.zyngui.chain_manager.get_chain_ids_by_midi_chan(self.channel)
+        midi_out = False
+        for chain_id in midi_chains:
+            chain = self.zyngui.chain_manager.chains[chain_id]
+            if chain.midi_thru:
+                midi_out = True
+                break
+        if midi_out:
+            for i in range(128):
+                self.avail_zctrls[i + 128] = [self.zyngui.chain_manager.midi_output_cc_objs[i]]
+        return super().build_view()
+
+    def set_cc_num(self, cc_num, zctrls):
+        if zctrls:
             self.cc_num = cc_num
             self.zctrls = zctrls
             self.set_title()
@@ -92,11 +103,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             cc_num = 0
         else:
             cc_num = self.cc_num
-
-        zctrls = self.zyngui.chain_manager.get_automate_zctrls(self.channel)
-        if not zctrls:
+        if not self.avail_zctrls:
             return
-        ccs = list(zctrls)
+        ccs = list(self.avail_zctrls)
         if dval > 0:
             ccs = [cc for cc in ccs if cc > cc_num]
             if not ccs:
@@ -107,14 +116,14 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             if not ccs:
                 return
             cc_num = max(ccs)
-        self.set_cc_num(cc_num, zctrls[cc_num])
+        self.set_cc_num(cc_num, self.avail_zctrls[cc_num])
 
     # Function to get name of this view
     def get_name(self):
         return "pated cc"
 
     def get_title(self):
-        title = f"{super().get_title()}: CC{self.cc_num}"
+        title = f"{super().get_title()}: "
         # Get CC title from automation mapped zctrl
         if self.zctrls:
             for zctrl in self.zctrls:

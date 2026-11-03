@@ -253,6 +253,7 @@ class zynseq(zynthian_engine):
             self.libseq.getPatternAt.restype = ctypes.c_uint32
             self.libseq.convertPattern.argtypes = [ctypes.c_char_p]
             self.libseq.convertPattern.restype = ctypes.c_char_p
+            self.libseq.addLearnMapping.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
 
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
