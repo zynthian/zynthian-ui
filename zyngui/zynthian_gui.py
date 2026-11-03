@@ -2043,7 +2043,7 @@ class zynthian_gui:
             chain_id = self.chain_manager.active_chain.chain_id
 
         if chain_id is not None:
-            self.screens['chain_options'].setup(chain_id)
+            self.screens['chain_options'].set_chain(self.chain_manager.get_chain(chain_id))
             self.show_screen('chain_options')
 
     cuia_layer_options = cuia_chain_options
