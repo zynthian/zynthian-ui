@@ -165,9 +165,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             case _:
                 super().menu_cb(option, params)
 
-    def send_controller_value(self, zctrl):
-        super().send_controller_value(zctrl)
-
     # -------------------------------------------------------------------------
     # Pattern management
     # -------------------------------------------------------------------------

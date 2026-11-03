@@ -46,11 +46,12 @@
 #
 # ******************************************************************************
 
-import unittest
-from zyncoder.zyncore import lib_zyncore
 import os
 import sys
 import logging
+
+import unittest
+from zyncoder.zyncore import lib_zyncore
 
 sys.path.append(os.environ.get('ZYNTHIAN_UI_DIR'))
 
@@ -412,5 +413,8 @@ if __name__ == '__main__':
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     logging.getLogger().setLevel(level=logging.DEBUG)
 
-    lib_zyncore_init()
+    # lib_zyncore was imported before initialising the library, so get it again
+    from zyncoder import zyncore
+    zyncore.lib_zyncore_init()
+    lib_zyncore = zyncore.get_lib_zyncore()
     unittest.main()

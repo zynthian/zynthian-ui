@@ -34,6 +34,7 @@ from zynlibs.zynseq import zynseq
 from zyngui import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
+from zyngine.zynthian_chain_manager import MAX_NUM_MIDI_CHANS
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Pro MK3

@@ -11,7 +11,6 @@ import time
 import filecmp
 import binascii
 from zynlibs.zynseq import zynseq
-from zynlibs.zynseq.zynseq import libseq
 
 client = jack.Client("riban")
 midi_in = client.midi_inports.register("midi_in")

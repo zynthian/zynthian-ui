@@ -2,12 +2,17 @@
 # -*- coding: utf-8 -*-
 # Unit tests for zynaudioplayer
 # Tests use two letters to define order of groups and two digit integer to define order within group
+#
+# WARNING: These tests are outdated. They use the library API before multiple players were supported
+# (camelCase functions without player id, e.g. getDuration()), and test.wav doesn't exist. They need
+# to be rewritten for the current API, e.g. using the JACK test helpers in zynlibs/zynseq/tests.
 
 import unittest
 import jack
 from time import sleep
 
 import zynaudioplayer
+from zynaudioplayer import libaudioplayer
 
 client = jack.Client("zynaudioplayer_unittest")
 
@@ -41,7 +46,7 @@ class TestLibZynAudioPlayer(unittest.TestCase):
 
     def test_aa03_position(self):
         self.assertTrue(zynaudioplayer.load("./test.wav"))
-        libsmf.setPosition(2000)
+        libaudioplayer.setPosition(2000)
         self.assertEqual(libaudioplayer.getPosition(), 2000)
 
     def test_aa04_channels(self):
