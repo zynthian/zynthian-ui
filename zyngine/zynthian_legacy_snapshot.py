@@ -134,10 +134,17 @@ class zynthian_legacy_snapshot:
                 except:
                     pass
                 if "midi_cc" in chain_config:
+                    # Chain MIDI CC mapping => base state (zs3-0) processor controllers.
+                    # Processor ids are converted to int below. Reuse the existing key, whatever its type, so
+                    # a processor is never duplicated. New keys are strings, as when loaded from JSON.
+                    zs3 = self.snapshot.setdefault("zs3", {}).setdefault("zs3-0", {})
+                    zs3.setdefault("processors", {})
                     for cc, cfg in chain_config["midi_cc"].items():
-                        proc_id = int(cfg[0])
+                        proc_id = str(int(cfg[0]))
+                        proc_id = next((k for k in zs3["processors"] if str(k) == proc_id), proc_id)
                         symbol = cfg[1]
                         zs3["processors"].setdefault(proc_id, {"controllers":{}})
+                        zs3["processors"][proc_id].setdefault("controllers", {})
                         zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
                         zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [chain_id, None, int(cc), 0])
 
