@@ -25,19 +25,25 @@
  */
 
 #include "clippy.h"
-#include <unistd.h> // provides usleep
-#include <string.h> // provides memset, memcpy, strcpy
-#include <jack/jack.h> // provides jack API
+
+#include <math.h>       // provides pow for dB calcs
+#include <unistd.h>     // provides usleep
+#include <string.h>     // provides memset, memcpy, strcpy
+#include <stdatomic.h>  // provides atomic variables
+#include <jack/jack.h>  // provides jack API
 #include <jack/midiport.h> // provides jack midi port API
-#include <sndfile.h>   // provides sound file manipulation
+#include <sndfile.h>    // provides sound file manipulation
 #include <samplerate.h> // provides samplerate convertor
 #include <rubberband/rubberband-c.h> // provides time stretch
-#include <math.h> // provides pow for dB calcs
 
 
 #define FX_NONE 0
 #define FX_FADE_IN 1
 #define FX_FADE_OUT 2
+
+// ----------------------------------------------------------------------------
+// Data types & struct definition
+// ----------------------------------------------------------------------------
 
 typedef struct {
     uint8_t state;          // Clip state
@@ -67,6 +73,21 @@ typedef struct {
     int current_clip_id;     // Index of currently playing clip
     Clip* starting_clip;     // Pointer to the starting clip
     int starting_clip_id;    // Index of starting clip
+
+    //------------------------------------------------------------
+    // Deferred actions executed at safe points of jack process
+    // instead of using blocking mutex
+    //------------------------------------------------------------
+
+    // Deferred swap at the end of cycle
+    Clip* swap_new_clip;     // Pointer to the clip to swap at the end of jack cycle
+    int swap_clip_id;        // Index of clip to swap at the end of jack cycle
+
+    int unload_clip_id;      // Index of clip to unload at the end of jack cycle
+
+    // Deferred state change
+    int pending_state;       // State to change at the end of jack cycle
+
 } Player;
 
 typedef union {
@@ -79,13 +100,33 @@ typedef union {
     };
 } MidiMsg;
 
+// ----------------------------------------------------------------------------
 // Global variables
+// ----------------------------------------------------------------------------
+
 jack_nframes_t samplerate = 48000;
 jack_nframes_t buffersize = 1024;
 static jack_port_t* midi_input_port;
 static jack_client_t* jack_client;
 static volatile uint8_t mutex = 0;
-Player* players[16]; // Up to 16 players, 1 per MIDI channel
+_Atomic(Player*) players[16]; // Up to 16 players, 1 per MIDI channel
+
+int player_to_remove = -1;
+
+// ----------------------------------------------------------------------------
+// Private function prototypes
+// ----------------------------------------------------------------------------
+
+uint8_t freeClip(Clip* clip);
+void swapClip(Player* player, uint8_t id, Clip* new_clip);
+
+void swapClipWait(Player* player, uint8_t id, Clip* new_clip);
+void setPlayerStateWait(Player* player, uint8_t state);
+void removePlayerWait(uint8_t player_i);
+
+// ----------------------------------------------------------------------------
+// Mutex management
+// ----------------------------------------------------------------------------
 
 static void inline getMutex() {
     while (mutex)
@@ -96,6 +137,24 @@ static void inline getMutex() {
 static void inline releaseMutex() {
     mutex = 0;
 }
+
+
+// ----------------------------------------------------------------------------
+// Helper Functions
+// ----------------------------------------------------------------------------
+
+float toDb(float val) {
+    return 20.0 * log10(val);
+}
+
+float fromDb(float val) {
+    return pow(10.0, val / 20.0);
+}
+
+
+// ----------------------------------------------------------------------------
+// Jack RT process
+// ----------------------------------------------------------------------------
 
 float* out_buff_a[16];
 float* out_buff_b[16];
@@ -112,7 +171,7 @@ jack_nframes_t process_clip(uint8_t channel, Clip* clip, jack_nframes_t frames, 
     if (pos >= clip->frames)
         return 0;
     // Last fragment
-    if (pos + frames >= clip->frames)
+    if (pos >= clip->frames - frames)
         frames = clip->frames - pos;
 
     float gain;
@@ -145,6 +204,12 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
         usleep(10);
     mutex = 1;
 
+    // Execute deferred player removal safely
+    if (player_to_remove >= 0) {
+        players[player_to_remove] = NULL;
+        player_to_remove = -1;
+    }
+
     void* midi_buffer = jack_port_get_buffer(midi_input_port, frames);
     jack_nframes_t numMidiEvents = jack_midi_get_event_count(midi_buffer);
     jack_midi_event_t event;
@@ -167,8 +232,11 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                         break;
                     if (event.buffer[1] == 0) {
                         // Note 0 stops playback
-                        if (player->state == STATE_PLAYING || player->state == STATE_STARTING)
+                        if (player->state == STATE_PLAYING) {
                             player->state = STATE_STOPPING;
+                        } else {
+                            player->state == STATE_READY;
+                        }
                     } else {
                         if (player->state == STATE_READY || player->state == STATE_PLAYING) {
                             // Set starting clip
@@ -184,8 +252,11 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                                 }
                                 // else if the clip is NULL => STOP
                                 else {
-                                    if (player->state == STATE_PLAYING || player->state == STATE_PLAYING)
+                                    if (player->state == STATE_PLAYING) {
                                         player->state = STATE_STOPPING;
+                                    } else {
+                                        player->state == STATE_READY;
+                                    }
                                 }
                             }
                         }
@@ -231,6 +302,28 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
     for (uint8_t channel = 0; channel < 16; channel++) {
         player = players[channel];
         if (!player) continue;
+
+        // Execute pending swap clip operation
+        if (player->swap_clip_id >= 0) {
+            swapClip(player, player->swap_clip_id, player->swap_new_clip);
+            player->swap_clip_id = -1;
+        }
+        // Execute pending unload clip operation
+        if (player->unload_clip_id >= 0) {
+            if (player->current_clip_id == player->unload_clip_id) {
+                player->current_clip = NULL;
+                player->current_clip_id = -1;
+            }
+            player->clips[player->unload_clip_id] = NULL;
+            player->unload_clip_id = -1;
+        }
+        // Execute pending state change
+        if (player->pending_state >= 0 && player->pending_state < STATE_COUNT) {
+            player->state = (uint8_t)player->pending_state;
+            player->pending_state = -1;
+        }
+
+        // Prepare audio output buffers
         out_buff_a[channel] = jack_port_get_buffer(player->jack_out_a, frames);
         out_buff_b[channel] = jack_port_get_buffer(player->jack_out_b, frames);
         memset(out_buff_a[channel], 0, frames * sizeof(float));
@@ -274,91 +367,23 @@ static int process(jack_nframes_t frames, __attribute__((unused)) void* arg) {
                 player->state = STATE_READY;
         }
     }
+
     mutex = 0;
     return 0;
 }
 
-void reset() {
-    getMutex();
-    for (uint8_t ch = 0; ch < 16; ch++) {
-        Player* player = players[ch];
-        if (!player)
-            continue;
-        player->state=STATE_LOAD;
-        for (uint8_t id = 0; id < MAX_CLIPS; ++id) {
-            Clip* clip = player->clips[id];
-            if (clip) {
-                releaseMutex();
-                loadClip(ch, id + 1, clip->path, clip->nbeats, clip->start,
-                         clip->end, clip->quality, clip->tempo, clip->tempo_lock);
-                getMutex();
-            }
-        }
-        player->state=STATE_READY;
-    }
-    releaseMutex();
-}
+// ----------------------------------------------------------------------------
+// Jack Audio management functions
+// ----------------------------------------------------------------------------
 
-void changeTempo(float tempo) {
-    // Start by playing ones
-    int ids[16];
-    for (uint8_t ch = 0; ch < 16; ch++) {
-        Player* player = players[ch];
-        if (!player) {
-            ids[ch] = -1;
-            continue;
-        }
-        if (player->current_clip_id >= 0) {
-            ids[ch] = player->current_clip_id;
-        } else {
-            ids[ch] = 0;
-        }
-    }
-    // Reload all clips, recalculating timestretch with new tempo
-    for (uint8_t i = 0; i < MAX_CLIPS; i++) {
-        for (uint8_t ch = 0; ch < 16; ch++) {
-            Player* player = players[ch];
-            if (!player || ids[ch] < 0)
-                continue;
-            uint8_t id = (ids[ch] + i) % MAX_CLIPS;
-            Clip* clip = player->clips[id];
-            // Don't process clips with tempo=0 (no timestretch) or locked tempo.
-            if (clip && !clip->tempo_lock && clip->tempo > 0 && tempo != clip->tempo) {
-                loadClip(ch, id + 1, clip->path, clip->nbeats, clip->start, clip->end, clip->quality, tempo, clip->tempo_lock);
-            }
-        }
-    }
-}
+void reset();
 
-void idlePlayers() {
-    for (uint8_t ch = 0; ch < 16; ch++) {
-        Player* player = players[ch];
-        if (!player || !player->current_clip || player->state != STATE_PLAYING) continue;
-        if (!player->current_clip->tempo_lock && player->current_clip->tempo > 0) {
-            getMutex();
-            player->state = STATE_IDLE;
-            releaseMutex();
-        }
-    }
-}
-
-void changeClipTempo(uint8_t channel, uint8_t id, float tempo) {
-    if (channel > 16 || id >= MAX_CLIPS) return;
-    Player* player = players[channel];
-    if (!player) return;
-    Clip* clip = player->clips[id];
-    if (clip && tempo != clip->tempo) {
-        // Reload clip, recalculating timestretch with new tempo
-        loadClip(channel, id + 1, clip->path, clip->nbeats, clip->start, clip->end, clip->quality, tempo, clip->tempo_lock);
-    }
-}
-
-void setClipTempoLock(uint8_t channel, uint8_t id, uint8_t tempo_lock) {
-    if (channel > 16 || id >= MAX_CLIPS) return;
-    Player* player = players[channel];
-    if (!player) return;
-    Clip* clip = player->clips[id];
-    if (clip) clip->tempo_lock = tempo_lock;
+void end() {
+    for (uint8_t i = 0; i < 16; ++i)
+        removePlayer(i);
+    if (jack_client)
+        jack_client_close(jack_client);
+    jack_client = NULL;
 }
 
 static int onBufferSize(jack_nframes_t frames, __attribute__((unused)) void* arg) {
@@ -373,18 +398,10 @@ static int onSamplerate(jack_nframes_t frames, __attribute__((unused)) void* arg
     return 0;
 }
 
-void end() {
-    for (uint8_t i = 0; i < 16; ++i)
-        removePlayer(i);
-    if (jack_client)
-        jack_client_close(jack_client);
-    jack_client = NULL;
-}
-
 /** @brief  Initialise the library
-    @param  jackname Requested jack client name
-    @retval int Error code
-*/
+ *    @param  jackname Requested jack client name
+ *    @retval int Error code
+ */
 int init() {
     int error = ERROR_SUCCESS;
     if (jack_client)
@@ -425,10 +442,159 @@ int init() {
 }
 
 /** @brief  Get the jack client name
-    @retval const char* Jack name
-*/
+ *    @retval const char* Jack name
+ */
 const char* getJackname() {
     return jack_get_client_name(jack_client);
+}
+
+// ----------------------------------------------------------------------------
+// Private Management Functions
+// ----------------------------------------------------------------------------
+
+// Swap the clip atomically so the audio thread never sees a NULL or freed clip.
+void swapClipWait(Player* player, uint8_t id, Clip* new_clip) {
+    Clip* old_clip = player->clips[id];
+    // Set pending swap clip at the end of jack cycle
+    player->swap_clip_id = id;
+    player->swap_new_clip = new_clip;
+    // Wait until jack process has swapped the clip
+    while (player->swap_clip_id >= 0) usleep(1000);
+    // Free old clip's memory
+    free(old_clip);
+}
+
+// Swap the specified clip by a new one.
+// This is called from jack process, so it shouldn't contain
+// any blocking operation (malloc, free, etc.)
+void swapClip(Player* player, uint8_t id, Clip* new_clip) {
+    Clip* old_clip = player->clips[id];
+    player->clips[id] = new_clip;
+    // Redirect any pending start that referred to the clip being replaced
+    if (old_clip && player->starting_clip == old_clip)
+        player->starting_clip = new_clip;
+    // Replace current clip if needed
+    if (id == player->current_clip_id) {
+        player->current_clip = new_clip;
+        // Ensure playing position is in-range
+        if (player->play_pos >= new_clip->frames) {
+            player->play_pos = 0;
+        }
+        // Re-sync if playing.
+        if (player->state == STATE_IDLE)
+            player->state = STATE_SYNCYNG;
+    }
+}
+
+uint8_t freeClip(Clip* clip) {
+    if (clip != NULL) {
+        for (int i=0; i < clip->channels; i++)
+            free(clip->data[i]);
+        free(clip);
+    }
+    return ERROR_SUCCESS;
+}
+
+void unloadClipWait(Player* player, uint8_t id) {
+    // Set pending clip to unload at the end of jack cycle
+    player->unload_clip_id = id;
+    // Wait until jack process has swapped the clip
+    while (player->unload_clip_id >= 0) usleep(1000);
+}
+
+void setPlayerStateWait(Player* player, uint8_t state) {
+    // Set pending state change at the end of jack cycle
+    player->pending_state = state;
+    // Wait until jack process has swapped the clip
+    while (player->pending_state >= 0) usleep(1000);
+}
+
+void removePlayerWait(uint8_t player_i) {
+    // Set pending player to remove at the beginning of jack cycle
+    player_to_remove = player_i;
+    // Wait until jack process has removed the player
+    while (player_to_remove >= 0) usleep(1000);
+}
+
+// ----------------------------------------------------------------------------
+// Public Management Functions
+// ----------------------------------------------------------------------------
+
+void reset() {
+    for (uint8_t ch = 0; ch < 16; ch++) {
+        Player* player = players[ch];
+        if (!player)
+            continue;
+        setPlayerStateWait(player, STATE_LOAD);
+        for (uint8_t id = 0; id < MAX_CLIPS; ++id) {
+            Clip* clip = player->clips[id];
+            if (clip) {
+                loadClip(ch, id + 1, clip->path, clip->nbeats, clip->start,
+                         clip->end, clip->quality, clip->tempo, clip->tempo_lock);
+            }
+        }
+        setPlayerStateWait(player, STATE_READY);
+    }
+}
+
+void changeTempo(float tempo) {
+    // Start by playing ones
+    int ids[16];
+    for (uint8_t ch = 0; ch < 16; ch++) {
+        Player* player = players[ch];
+        if (!player) {
+            ids[ch] = -1;
+            continue;
+        }
+        if (player->current_clip_id >= 0) {
+            ids[ch] = player->current_clip_id;
+        } else {
+            ids[ch] = 0;
+        }
+    }
+    // Reload all clips, recalculating timestretch with new tempo
+    for (uint8_t i = 0; i < MAX_CLIPS; i++) {
+        for (uint8_t ch = 0; ch < 16; ch++) {
+            Player* player = players[ch];
+            if (!player || ids[ch] < 0)
+                continue;
+            uint8_t id = (ids[ch] + i) % MAX_CLIPS;
+            Clip* clip = player->clips[id];
+            // Don't process clips with tempo=0 (no timestretch) or locked tempo.
+            if (clip && !clip->tempo_lock && clip->tempo > 0 && tempo != clip->tempo) {
+                loadClip(ch, id + 1, clip->path, clip->nbeats, clip->start, clip->end, clip->quality, tempo, clip->tempo_lock);
+            }
+        }
+    }
+}
+
+void idlePlayers() {
+    for (uint8_t ch = 0; ch < 16; ch++) {
+        Player* player = players[ch];
+        if (!player || !player->current_clip || player->state != STATE_PLAYING) continue;
+        if (!player->current_clip->tempo_lock && player->current_clip->tempo > 0) {
+            setPlayerStateWait(player, STATE_IDLE);
+        }
+    }
+}
+
+void changeClipTempo(uint8_t channel, uint8_t id, float tempo) {
+    if (channel > 16 || id >= MAX_CLIPS) return;
+    Player* player = players[channel];
+    if (!player) return;
+    Clip* clip = player->clips[id];
+    if (clip && tempo != clip->tempo) {
+        // Reload clip, recalculating timestretch with new tempo
+        loadClip(channel, id + 1, clip->path, clip->nbeats, clip->start, clip->end, clip->quality, tempo, clip->tempo_lock);
+    }
+}
+
+void setClipTempoLock(uint8_t channel, uint8_t id, uint8_t tempo_lock) {
+    if (channel > 16 || id >= MAX_CLIPS) return;
+    Player* player = players[channel];
+    if (!player) return;
+    Clip* clip = player->clips[id];
+    if (clip) clip->tempo_lock = tempo_lock;
 }
 
 uint8_t addPlayer(uint8_t channel) {
@@ -454,10 +620,12 @@ uint8_t addPlayer(uint8_t channel) {
     for (uint32_t id = 0; id < MAX_CLIPS; ++id)
         player->clips[id] = NULL;
     player->current_clip_id = -1;
+    player->starting_clip = NULL;
+    player->swap_clip_id = -1;
+    player->unload_clip_id = -1;
+    player->pending_state = -1;
     player->state = STATE_READY;
-    getMutex();
-    players[channel] = player;
-    releaseMutex();
+    atomic_store(&players[channel], player);
     return channel;
 }
 
@@ -467,9 +635,7 @@ uint8_t removePlayer(uint8_t channel) {
     Player* player = players[channel];
     if(player == NULL)
         return ERROR_CREATE;
-    getMutex();
-    players[channel] = NULL;
-    releaseMutex();
+    removePlayerWait(channel);
     for (uint32_t id = 0; id < MAX_CLIPS; ++id) {
         if (player->clips[id]) {
             for (int i=0; i < player->clips[id]->channels; i++)
@@ -490,9 +656,7 @@ uint8_t idlePlayerClip(uint8_t channel, uint8_t clip) {
     if(player == NULL)
         return ERROR_CREATE;
     if (player->current_clip_id == clip && player->state == STATE_PLAYING) {
-        getMutex();
-        player->state = STATE_IDLE;
-        releaseMutex();
+        setPlayerStateWait(player, STATE_IDLE);
     }
     return ERROR_SUCCESS;
 }
@@ -623,7 +787,7 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
         }
         note++;
     }
-    if (note > MAX_CLIPS) {
+    if (note >= MAX_CLIPS) {
         fprintf(stderr,"loadClip(): Note %d out of range.\n", note);
         return 0;
     }
@@ -848,6 +1012,8 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
     // Create & setup new clip with the processed sample data
     //---------------------------------------------------------------
 
+    uint8_t id = note - 1;
+
     // Create a new clip instance
     Clip* clip = NULL;
     clip = malloc(sizeof(Clip));
@@ -884,31 +1050,9 @@ uint8_t loadClip(uint8_t channel, uint8_t note, const char* path, uint16_t nbeat
     clip->tempo_lock = tempo_lock;
     clip->state = STATE_READY;
 
-    // Re-sync if playing
-    // Swap the clip atomically so the audio thread never sees a NULL or freed clip
-    uint8_t id = note - 1;
-    getMutex();
-    Clip* old_clip = player->clips[id];
-    player->clips[id] = clip;
-    // Redirect any pending start that referred to the clip being replaced
-    if (old_clip && player->starting_clip == old_clip)
-        player->starting_clip = clip;
-    if (player->current_clip_id == id) {
-        player->current_clip = clip;
-        // Old play position is meaningless for the new clip so re-sync or clamp it
-        if (player->state == STATE_PLAYING || player->state == STATE_IDLE) {
-            if (clip->tempo > 0 && !clip->tempo_lock)
-                player->state = STATE_SYNCYNG; // Wait for next beat sync
-            else if (player->play_pos >= clip->frames)
-                player->play_pos = 0;          // Restart rather than going silent
-        }
-    }
-    releaseMutex();
-    if (old_clip) {
-        for (int i = 0; i < old_clip->channels; i++)
-            free(old_clip->data[i]);
-        free(old_clip);
-    }
+    swapClipWait(player, id, clip);
+
+    //fprintf(stderr, "loadClip(channel=%u, note=%u, path=%s) id=%u\n", channel, note, path, id);
     return note;
 }
 
@@ -924,25 +1068,8 @@ uint8_t unloadClip(uint8_t channel, uint8_t note) {
     Clip* clip = player->clips[id];
     if(clip == NULL)
         return ERROR_RANGE;
-    if (player->current_clip_id == id) {
-        getMutex();
-        player->current_clip = NULL;
-        player->current_clip_id = -1;
-        releaseMutex();
-    }
-    player->clips[id] = NULL;
-    for (int i=0; i < clip->channels; i++)
-        free(clip->data[i]);
-    free(clip);
-    return ERROR_SUCCESS;
-}
-
-float toDb(float val) {
-    return 20.0 * log10(val);
-}
-
-float fromDb(float val) {
-    return pow(10.0, val / 20.0);
+    unloadClipWait(player, id);
+    return freeClip(clip);
 }
 
 uint8_t setGain(uint8_t channel, uint8_t id, float gain) {
