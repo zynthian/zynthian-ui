@@ -136,7 +136,7 @@ struct EXT_CLK_PLL {
     bool realign = false;           // True to align next pulse to beat (after MIDI START)
     bool anchored = false;          // True if targetTick was anchored to a beat before lock (MIDI START)
     uint32_t gapCount = 0;          // Quantity of consecutive pulse intervals of about a whole number (>1) of periods
-    uint32_t lastMissing = 0;       // Quantity of lost pulses counted at last pulse
+    uint32_t pendingMissing = 0;    // Quantity of pulses counted as lost on last gap, not yet received late
 };
 EXT_CLK_PLL g_extClk;
 volatile bool g_bExtClockLocked = false; // True if internal clock is locked to external clock
@@ -206,40 +206,43 @@ int64_t onExtClock(double dFrame, double dTickPos) {
         g_extClk.count = 0;
         g_extClk.errCount = 0;
         g_extClk.gapCount = 0;
-        g_extClk.lastMissing = 0;
+        g_extClk.pendingMissing = 0;
         g_extClk.state = EXT_CLK_LOCKED;
         g_bExtClockLocked = true;
         DPRINTF("External clock locked\n");
     } else if ((dFrame - g_extClk.lastFrame) < EXT_CLK_BURST * g_extClk.period) {
-        // Pulse delivered together with previous one, e.g. after xrun => count it, but don't use its timing
-        if (g_extClk.lastMissing) {
-            // Previous pulse was delivered late, it wasn't after lost pulses
-            g_extClk.targetTick -= g_extClk.lastMissing * dRatio;
-            g_extClk.nextFrame -= g_extClk.lastMissing * g_extClk.period;
+        // Pulse delivered together with previous one, e.g. pulses delayed by an xrun are delivered together.
+        // Count it, but don't use its timing.
+        if (g_extClk.pendingMissing) {
+            // It's one of the pulses counted as lost on last gap, delivered late => it was already counted
+            --g_extClk.pendingMissing;
+            g_extClk.targetTick -= dRatio;
+        } else {
+            g_extClk.nextFrame += g_extClk.period;
         }
-        g_extClk.lastMissing = 0;
         g_extClk.gapCount = 0;
-        g_extClk.nextFrame += g_extClk.period;
         g_extClk.lastFrame = dFrame;
     } else {
-        // Interval of about a whole number of periods => lost pulses (e.g. dropped MIDI bytes or xrun). Consecutive
-        // gaps are a tempo change (e.g. half tempo), so the lost pulses counted on the first gap are discounted.
+        // Interval of about a whole number of periods => lost pulses (e.g. dropped MIDI bytes or xrun). They may be
+        // delivered late (pendingMissing), together with next pulses. Consecutive gaps are a tempo change (e.g. half
+        // tempo), so the lost pulses counted on the first gap are discounted.
         double dPulses = (dFrame - g_extClk.lastFrame) / g_extClk.period;
         double dWhole = floor(dPulses + 0.5);
-        uint32_t nMissing = 0;
         if (dWhole >= 2 && dWhole <= EXT_CLK_TIMEOUT_PULSES && fabs(dPulses - dWhole) <= EXT_CLK_GAP_TOLERANCE) {
             if (++g_extClk.gapCount == 1) {
-                nMissing = dWhole - 1;
+                uint32_t nMissing = dWhole - 1;
                 g_extClk.nextFrame += nMissing * g_extClk.period;
                 g_extClk.targetTick += nMissing * dRatio;
-            } else if (g_extClk.lastMissing) {
-                g_extClk.nextFrame -= g_extClk.lastMissing * g_extClk.period;
-                g_extClk.targetTick -= g_extClk.lastMissing * dRatio;
+                g_extClk.pendingMissing = nMissing;
+            } else if (g_extClk.pendingMissing) {
+                g_extClk.nextFrame -= g_extClk.pendingMissing * g_extClk.period;
+                g_extClk.targetTick -= g_extClk.pendingMissing * dRatio;
+                g_extClk.pendingMissing = 0;
             }
         } else {
             g_extClk.gapCount = 0;
+            g_extClk.pendingMissing = 0;
         }
-        g_extClk.lastMissing = nMissing;
 
         double dError = dFrame - g_extClk.nextFrame;
         // Large phase error => tempo jump, lost pulse or heavy jitter

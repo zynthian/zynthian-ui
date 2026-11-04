@@ -358,6 +358,34 @@ class TestExtClock(unittest.TestCase):
         tempos = np.array([t for f, t in probe.tempo if ideal[first] <= f < ideal[-1]])
         self.assertLessEqual(np.max(np.abs(tempos - 120)), 0.5, "Tempo changed by lost pulses")
 
+    def check_late_pulses(self, lost, delayed):
+        """Pulses lost and/or delayed, e.g. by an xrun, must not shift beats
+
+        After pulse 'first + 30', 'lost' pulses are not sent and the next 'delayed' pulses are sent together with the
+        following pulse, in the same frame, as MIDI drivers deliver pulses delayed by an xrun.
+        """
+        lib.setMetronomeMode(METRO_MODE_ON)
+        start = self.start_frame()
+        ideal, clock = clock_pulses(start, [(12.0, 120)])
+        first = PPQN_MIDI * 4
+        gap = first + 30
+        late_frame = clock[gap + lost + delayed][0]
+        events = []
+        for i, (frame, data) in enumerate(clock):
+            if gap <= i < gap + lost:
+                continue
+            if gap + lost <= i < gap + lost + delayed:
+                frame = late_frame
+            events.append((frame, data))
+        self.play(events + [(int(ideal[first]) - 100, MIDI_START)], ideal[-1])
+        self.check_beats(ideal, first, beats=16)
+
+    def test_15_lost_and_delayed_pulses(self):
+        self.check_late_pulses(lost=3, delayed=1)
+
+    def test_16_delayed_pulses(self):
+        self.check_late_pulses(lost=0, delayed=4)
+
     def check_xrun(self, stall):
         """Cycles lost by an xrun must not shift beats
 
