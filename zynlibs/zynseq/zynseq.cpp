@@ -66,6 +66,7 @@ jack_port_t* g_pClockOutputPort;      // Pointer to the JACK MIDI clock output p
 jack_port_t* g_pClippyOutputPort;     // Pointer to the JACK MIDI output port feeding clippy
 jack_port_t* g_pMetronomePort;        // Pointer to the JACK metronome audio output port
 jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
+volatile bool g_bJackShutdown = false; // True if jack server has shut down (client must not be used)
 jack_nframes_t g_nSampleRate = 48000; // Quantity of samples per second
 uint32_t g_nXruns = 0;
 
@@ -855,6 +856,10 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void* /*pArgs*/) {
     return 0;
 }
 
+void onJackShutdown(void* /*pArgs*/) {
+    g_bJackShutdown = true;
+}
+
 int onJackXrun(void* /*pArgs*/) {
     DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
     // g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
@@ -863,6 +868,14 @@ int onJackXrun(void* /*pArgs*/) {
 
 void end() {
     DPRINTF("zynseq exit\n");
+    // Stop jack client before global objects (e.g. g_vTicks) are destroyed at exit, so process callback can't use them.
+    // end() is registered with atexit() in init(), after global objects are constructed, so it runs before their destructors.
+    // If jack server has already shut down, the client can't be used anymore.
+    if (g_pJackClient && !g_bJackShutdown) {
+        jack_deactivate(g_pJackClient);
+        jack_client_close(g_pJackClient);
+    }
+    g_pJackClient = NULL;
     freeState();
 }
 
@@ -934,6 +947,7 @@ void init(char* name) {
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
     jack_set_sample_rate_callback(g_pJackClient, onJackSampleRateChange, 0);
     jack_set_port_connect_callback(g_pJackClient, onJackConnect, 0);
+    jack_on_shutdown(g_pJackClient, onJackShutdown, 0);
     //jack_set_xrun_callback(g_pJackClient, onJackXrun, 0);
 
     if (jack_activate(g_pJackClient)) {
