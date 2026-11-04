@@ -155,6 +155,7 @@ class zynthian_chain_manager:
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
         self.midi_cc_binding = {} # Lists of zctrls indexed by 24-bit [chain,zmip,chan,cc]
+        self._automate_cc_filter = set() # Set of (chan, cc) of parameter automation CC currently blocked from MIDI outputs in zynmidirouter
         self.midi_output_cc_objs = []
         for i in range(128):
             self.midi_output_cc_objs.append(zynthian_midi_output_cc_binding(i))
@@ -1678,6 +1679,7 @@ class zynthian_chain_manager:
                 self.midi_cc_binding[key].append(zctrl)
         else:
             self.midi_cc_binding[key] = [zctrl]
+        self.update_automate_cc_filter()
 
     def _remove_midi_binding(self, zctrl, key):
         """ Remove a midi learn binding for a zctrl
@@ -1692,6 +1694,24 @@ class zynthian_chain_manager:
                 del self.midi_cc_binding[key]
         except:
             pass
+        self.update_automate_cc_filter()
+
+    def update_automate_cc_filter(self):
+        """ Block parameter automation CC from being routed to MIDI outputs """
+
+        automate = set()
+        for key in self.midi_cc_binding:
+            cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
+            if zmip == ZMIP_STEP_INDEX and chan < 16 and cc < 128:
+                automate.add((chan, cc))
+        try:
+            for chan, cc in automate - self._automate_cc_filter:
+                lib_zyncore.zmip_set_cc_ui_only(ZMIP_STEP_INDEX, chan, cc, 1)
+            for chan, cc in self._automate_cc_filter - automate:
+                lib_zyncore.zmip_set_cc_ui_only(ZMIP_STEP_INDEX, chan, cc, 0)
+            self._automate_cc_filter = automate
+        except Exception as e:
+            logging.warning(f"Failed to update automation CC filter in zynmidirouter: {e}")
 
     def toggle_midi_binding(self, zctrl, midi_cc, midi_chan, zmip, chain_id=None):
         """ Add or remove a midi learn binding for a zctrl
@@ -1758,6 +1778,7 @@ class zynthian_chain_manager:
                 pass
             if not zctrls:
                 self.midi_cc_binding.pop(key)
+            self.update_automate_cc_filter()
 
     def get_midi_binding_from_zctrl(self, zctrl, filter_chain=True, filter_global=True, filter_automate=True, max_results=None):
         """ Get list of MIDI learn binding for a zctrl
@@ -1787,31 +1808,104 @@ class zynthian_chain_manager:
                     result.append([key, "global"])
         return result
 
+    def get_spare_automate_cc(self, chan, exclude=()):
+        """ Get the lowest CC that is available for parameter automation on a MIDI channel
+
+        chan: MIDI channel
+        exclude: Sequence of CC numbers that must not be used (Optional)
+
+        Returns: CC number or None if there are no spare CC
+        """
+
+        zynseq = self.state_manager.zynseq
+        for cc in range(128):
+            if cc in exclude:
+                continue
+            if self.pack_midi_bind_key(cc, chan, ZMIP_STEP_INDEX, 0xff) in self.midi_cc_binding:
+                continue
+            try:
+                if zynseq.is_cc_used(cc, chan):
+                    continue
+            except Exception as e:
+                logging.warning(f"Failed to check if CC{cc} is used on channel {chan}: {e}")
+            return cc
+        return None
+
+    def is_automate_cc(self, chan, cc):
+        """ Check if a CC is used for parameter automation on a MIDI channel
+
+        chan: MIDI channel
+        cc: CC number
+
+        Returns: True if used
+        """
+
+        return self.pack_midi_bind_key(cc, chan, ZMIP_STEP_INDEX, 0xff) in self.midi_cc_binding
+
+    def reassign_automate_cc(self, chan, cc):
+        """ Move parameter automation from a CC to the next spare CC
+
+        chan: MIDI channel
+        cc: CC number of the parameter automation to move
+
+        Returns: New CC number or None if there is no spare CC or nothing is automated with the CC
+        """
+
+        key = self.pack_midi_bind_key(cc, chan, ZMIP_STEP_INDEX, 0xff)
+        if key not in self.midi_cc_binding:
+            return None
+        new_cc = self.get_spare_automate_cc(chan, exclude=(cc,))
+        if new_cc is None:
+            logging.warning(f"No more CC available for automation on channel {chan}")
+            return None
+        self.state_manager.zynseq.move_cc(cc, new_cc, chan)
+        self.midi_cc_binding[self.pack_midi_bind_key(new_cc, chan, ZMIP_STEP_INDEX, 0xff)] = self.midi_cc_binding.pop(key)
+        self.update_automate_cc_filter()
+        logging.debug(f"Moved automation on channel {chan} from CC{cc} to CC{new_cc}")
+        return new_cc
+
+    def claim_output_cc(self, chan, cc):
+        """ Make a CC available for MIDI output automation on a MIDI channel
+
+        chan: MIDI channel
+        cc: CC number
+
+        Returns: True if the CC is available for MIDI output, False if parameter automation could not be moved
+        """
+
+        if not self.is_automate_cc(chan, cc):
+            return True
+        return self.reassign_automate_cc(chan, cc) is not None
+
     def enable_automate_zctrl(self, zctrl):
-        # Add automation MIDI binding
+        """ Add automation MIDI binding to a zctrl using the next spare CC on its MIDI channel
+
+        zctrl: Controller object
+
+        Returns: CC number of automation or None if failed
+        """
 
         try:
             chan = zctrl.processor.midi_chan
         except:
             return # Can't do anything without a valid zctl and midi chan
+        if chan is None:
+            return
 
         result = self.get_midi_binding_from_zctrl(zctrl)
         automate_cc = None
         for ml in result:
             if ml[1] == "automate":
-                automate_cc = ml[0]
+                automate_cc = ml[0] & 0xff
                 break
         if automate_cc is None:
-            for cc in range(128):
-                key = self.pack_midi_bind_key(cc, chan, ZMIP_STEP_INDEX, 0xff)
-                if key in self.midi_cc_binding:
-                    continue
-                self.midi_cc_binding[key] = [zctrl]
-                automate_cc = cc
-                break
-        if automate_cc is None:
-            logging.warning(f"No more CC available for automation on channel {chan}")
-            return
+            automate_cc = self.get_spare_automate_cc(chan)
+            if automate_cc is None:
+                logging.warning(f"No more CC available for automation on channel {chan}")
+                return
+            self.midi_cc_binding[self.pack_midi_bind_key(automate_cc, chan, ZMIP_STEP_INDEX, 0xff)] = [zctrl]
+            self.update_automate_cc_filter()
+        return automate_cc
 
     def disable_automate_zctrl(self, zctrl):
         result = self.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False)

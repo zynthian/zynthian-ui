@@ -1227,20 +1227,24 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             self.midi_record = midi_record
         self.zynseq.libseq.enableMidiRecord(midi_record)
         if midi_record:
-            # Rebuild libseq learn mapping
-            self.zynseq.libseq.clearLearnMapping()
-            try:
-                processors = self.chain_manager.get_processors(self.chain_manager.active_chain.chain_id)
-                for proc in processors:
-                    for zctrl in proc.controllers_dict.values():
-                        ml_a = self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False, max_results=1)
-                        if ml_a:
-                            automate_cc = ml_a[0][0] & 0x7f
-                            for ml in self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_automate=False):
-                                self.state_manager.zynseq.libseq.addLearnMapping(ml[0], automate_cc)
-            except Exception as e:
-                logging.warning(e)
+            self.update_learn_mapping()
         self.save_pattern_snapshot(now=True, force=False)
+
+    def update_learn_mapping(self):
+        """ Rebuild libseq mapping of learned CC to automation CC, used when recording MIDI """
+
+        self.zynseq.libseq.clearLearnMapping()
+        try:
+            processors = self.chain_manager.get_processors(self.chain_manager.active_chain.chain_id)
+            for proc in processors:
+                for zctrl in proc.controllers_dict.values():
+                    ml_a = self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False, max_results=1)
+                    if ml_a:
+                        automate_cc = ml_a[0][0] & 0x7f
+                        for ml in self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_automate=False):
+                            self.state_manager.zynseq.libseq.addLearnMapping(ml[0], automate_cc)
+        except Exception as e:
+            logging.warning(e)
 
     # -------------------------------------------------------------------------
     # Touch event management

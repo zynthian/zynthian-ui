@@ -65,17 +65,26 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # Function to initialise class
     def __init__(self):
         self.row0 = 8
-        self.cc_num = None
-        self.index = None # Index of selected available zctrls
+        self.cc_num = None # MIDI CC number (0..127) of selected entry
+        self.cc_output = False # True if selected entry is a MIDI output CC, False if parameter automation
+        self.index = None # Index of selected entry in avail_entries
         self.avail_zctrls = {} # Dict of lists of zctrls that are configured as automatable, indexed by CC
+        self.avail_entries = [] # List of tuples (CC, is MIDI output) that may be edited: parameter automation first then MIDI output
         self.interpolateCC = True
         self.show_all_cc_num = False
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
 
-    def build_view(self):
+    def build_avail_entries(self):
+        """ Build list of editable CC: parameter automation then MIDI output CC
+
+        MIDI output CC use the valid CC range 0..127. A MIDI output CC may have the same number as a
+        parameter automation CC. The parameter automation is moved to a spare CC when MIDI output events are added.
+        """
+
         self.avail_zctrls = self.zyngui.chain_manager.get_automate_zctrls(self.channel)
+        self.avail_entries = [(cc, False) for cc in self.avail_zctrls]
         midi_chains = self.zyngui.chain_manager.get_chain_ids_by_midi_chan(self.channel)
         midi_out = False
         for chain_id in midi_chains:
@@ -84,24 +93,43 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 midi_out = True
                 break
         if midi_out:
-            for i in range(128):
-                self.avail_zctrls[i + 128] = [self.zyngui.chain_manager.midi_output_cc_objs[i]]
-        if not self.avail_zctrls:
+            self.avail_entries += [(cc, True) for cc in range(128)]
+
+    def select_entry(self, cc, output):
+        """ Select an entry in the list of editable CC
+
+        cc: CC number
+        output: True for MIDI output CC, False for parameter automation
+        Returns: True if entry found and selected
+        """
+
+        try:
+            self.index = self.avail_entries.index((cc, output))
+        except ValueError:
+            return False
+        self.cc_num, self.cc_output = self.avail_entries[self.index]
+        return True
+
+    def build_view(self):
+        self.build_avail_entries()
+        if not self.avail_entries:
             return # Can't automate without any params or CC.
+        if self.cc_num is None or not self.select_entry(self.cc_num, self.cc_output):
+            self.index = None
+        self.set_title_ts = 0
         self.nudge_cc_num()
         retval = super().build_view()
         return retval
 
     def nudge_cc_num(self, dval=0):
-        if not self.avail_zctrls:
+        if not self.avail_entries:
             return
         index = self.index
         if index is None:
             index = 0
-        ccs = list(self.avail_zctrls)
         try:
             index = max(0, index + dval)
-            self.cc_num = ccs[index]
+            self.cc_num, self.cc_output = self.avail_entries[index]
             self.index = index
             self.set_title()
             self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
@@ -111,16 +139,59 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             pass
         return False
 
+    def output_blocked(self):
+        # True if selected MIDI output CC has the same number as parameter automation
+        return self.cc_output and self.cc_num in self.avail_zctrls
+
+    def claim_output_cc(self):
+        """ Make selected MIDI output CC available for MIDI output events
+
+        Returns: True if CC is available for MIDI output events
+        """
+
+        if not self.output_blocked():
+            return True
+        self.save_pattern_snapshot(now=True, force=False)
+        new_cc = self.zyngui.chain_manager.reassign_automate_cc(self.channel, self.cc_num)
+        if new_cc is None:
+            self.zyngui.show_info("No spare CC to move parameter automation to", 2000)
+            return False
+        if self.midi_record:
+            self.update_learn_mapping()
+        self.build_avail_entries()
+        self.select_entry(self.cc_num, True)
+        self.save_pattern_snapshot(now=True, force=True)
+        self.set_title()
+        self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
+        self.redraw_pending = 2
+        return True
+
+    def add_cc_event(self, step, row):
+        """ Add a CC event to the pattern at the selected CC
+
+        step: Step index
+        row: Value
+        Returns: True if event added
+        """
+
+        if self.cc_output and not self.claim_output_cc():
+            return False
+        self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+        return True
+
     # Function to get name of this view
     def get_name(self):
         return "pated cc"
 
     def get_title(self):
         title = f"{super().get_title()}: "
-        # Get CC title from automation mapped zctrl
+        # Get CC title from automation mapped zctrl or MIDI output CC
         try:
-            for zctrl in self.avail_zctrls[self.cc_num]:
-                title += f" ({zctrl.name})"
+            if self.cc_output:
+                title += f" ({self.zyngui.chain_manager.midi_output_cc_objs[self.cc_num].name})"
+            else:
+                for zctrl in self.avail_zctrls[self.cc_num]:
+                    title += f" ({zctrl.name})"
         except:
             pass
         self.tts_title = f"Pattern CC editor. {title}"
@@ -141,6 +212,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     def get_menu_options(self):
         menu_options = super().get_menu_options()
+        if self.output_blocked():
+            return menu_options
         # Pattern Options
         options = {}
         if self.interpolateCC:
@@ -185,6 +258,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     # Function to clear CC events on pattern
     def clear_pattern_cc(self, params=None):
+        if self.output_blocked():
+            return
         self.zyngui.show_confirm(f"Clear CC{self.cc_num} in pattern {self.pattern}?", self.do_clear_pattern_cc)
 
     # Function to actually clear CC events
@@ -221,7 +296,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         # If there is no CC point, add a new CC point
         val = self.get_cc_value(step)
         if val is None:
-            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+            self.add_cc_event(step, row)
         # else, change CC value
         else:
             self.zynseq.libseq.setControlValue(step, self.cc_num, row, row)
@@ -251,7 +326,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         # If there is no CC point, add a new CC point
         val = self.get_cc_value(step)
         if val is None:
-            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+            self.add_cc_event(step, row)
         # else, change CC value
         else:
             self.zynseq.libseq.setControlValue(step, self.cc_num, row, row)
@@ -301,6 +376,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         return [x1, y1, x2, y2]
 
     def get_cc_value(self, step):
+        if self.output_blocked():
+            return None
         val = self.zynseq.libseq.getControlValue(step, self.cc_num)
         if val <= 127:
             return val
@@ -452,8 +529,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def toggle_event(self, step, row):
         val = self.get_cc_value(step)
         if val is None:
-            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
-            return self.cc_num
+            if self.add_cc_event(step, row):
+                return self.cc_num
+            return None
         else:
             self.zynseq.libseq.removeControl(step, self.cc_num)
             return None
