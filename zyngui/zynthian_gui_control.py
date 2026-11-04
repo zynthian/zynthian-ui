@@ -897,18 +897,19 @@ class zynthian_gui_control(zynthian_gui_selector):
             result = self.chain_manager.get_midi_binding_from_zctrl(param, filter_automate=False)
             if not result:
                 self.controller_options(None, True)
+                return
             bound_devices = []
             for ml in result:
                 cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(ml[0])
                 bound_devices.append(zmip)
             for i, port in enumerate(zynautoconnect.devices_in):
                 try:
-                    if port:
+                    if port and port.name not in ("zynseq:output", "CV/Gate"):
                         key = self.chain_manager.pack_midi_bind_key(cc, chan, i, chain_id)
                         if i in bound_devices:
-                            options[f"\u2612 {port.aliases[0]}"] = {"key":key, "zctrl":param}
+                            options[f"\u2612 {port.aliases[1]}"] = {"key":key, "zctrl":param}
                         else:
-                            options[f"\u2610 {port.aliases[0]}"] = {"key":key, "zctrl":param}
+                            options[f"\u2610 {port.aliases[1]}"] = {"key":key, "zctrl":param}
                 except Exception as e:
                     logging.warning(e)
             self.zyngui.screens['option'].config(f"MIDI devices bound to CC {cc}", options, self.midi_device_cb)

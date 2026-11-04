@@ -1733,8 +1733,28 @@ class zynthian_chain_manager:
             exists = False
         if exists:
             self._remove_midi_binding(zctrl, key)
+            if not self.get_midi_binding_from_zctrl(zctrl, filter_automate=False, max_results=1):
+                self.remove_unused_automate(zctrl)
         else:
             self.add_midi_binding(zctrl, midi_cc, midi_chan, zmip, chain_id)
+
+    def remove_unused_automate(self, zctrl):
+        """ Remove automation binding from a zctrl if no patterns are automated by it
+
+        zctrl : Controller object
+        """
+
+        result = self.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False, max_results=1)
+        if not result:
+            return
+        key = result[0][0]
+        cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
+        try:
+            remove_automate = self.state_manager.zynseq.get_automated_patterns(cc, chan) == []
+        except:
+            remove_automate = True
+        if remove_automate:
+            self._remove_midi_binding(zctrl, key)
 
     def clear_midi_binding(self, proc, symbol):
         """Removes all midi bindings from a zctrl, including automation only if no patterns automated by this control
@@ -1747,13 +1767,11 @@ class zynthian_chain_manager:
         if zctrl is None:
             return
 
-        automate = None
         for key in list(self.midi_cc_binding):
             if zctrl not in self.midi_cc_binding[key]:
                 continue
             cc, chan, zmip, chain_id = self.unpack_midi_bind_key(key)
             if zmip == ZMIP_STEP_INDEX:
-                automate = [cc, chan, key]
                 continue
             zctrls = self.midi_cc_binding[key]
             try:
@@ -1763,22 +1781,7 @@ class zynthian_chain_manager:
             if not zctrls:
                 self.midi_cc_binding.pop(key)
 
-        if automate is None:
-            return
-        try:
-            cc, chan, key = automate
-            remove_automate = self.state_manager.zynseq.get_automated_patterns(cc, chan) == []
-        except:
-            remove_automate = True
-        if remove_automate:
-            zctrls = self.midi_cc_binding[key]
-            try:
-                zctrls.remove(zctrl)
-            except:
-                pass
-            if not zctrls:
-                self.midi_cc_binding.pop(key)
-            self.update_automate_cc_filter()
+        self.remove_unused_automate(zctrl)
 
     def get_midi_binding_from_zctrl(self, zctrl, filter_chain=True, filter_global=True, filter_automate=True, max_results=None):
         """ Get list of MIDI learn binding for a zctrl
