@@ -894,7 +894,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zyngui.show_screen('midi_cc_range')
         elif option == "Learned MIDI Inputs":
             options = {}
-            result = self.chain_manager.get_midi_binding_from_zctrl(param)
+            result = self.chain_manager.get_midi_binding_from_zctrl(param, filter_automate=False)
             if not result:
                 self.controller_options(None, True)
             bound_devices = []
