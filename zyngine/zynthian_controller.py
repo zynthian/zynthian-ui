@@ -215,6 +215,8 @@ class zynthian_controller:
             self.envelope = options['envelope']
         if 'filter' in options and options['filter'] is not None:
             self.filter = options['filter']
+        if 'drawbar' in options and options['drawbar'] is not None:
+            self.drawbar = options['drawbar']
         if 'is_bypass' in options:
             self.is_bypass = options['is_bypass']
         if 'bypass_value' in options:

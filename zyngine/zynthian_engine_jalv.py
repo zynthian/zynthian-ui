@@ -521,7 +521,8 @@ class zynthian_engine_jalv_base(zynthian_engine):
                         'not_on_gui': info['not_on_gui'],
                         'display_priority': display_priority,
                         'envelope': info['envelope'],
-                        'filter': info['filter']
+                        'filter': info['filter'],
+                        'drawbar': info['drawbar']
                     })
 
                 if info['is_bypass']:
