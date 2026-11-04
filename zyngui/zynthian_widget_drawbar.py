@@ -1,8 +1,7 @@
 import tkinter
 import logging
 from zyngui import zynthian_widget_base
-from zyngine.zynthian_engine_setbfree import *
-from zyngui import zynthian_gui_config
+
 
 class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
     DRAWBAR_SLOTS = 9
@@ -34,12 +33,12 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
                          None]
 
         self.widget_canvas = tkinter.Canvas(self,
-                                         height=1,
-                                         width=1,
-                                         bd=0,
-                                         highlightthickness=0,
-                                         bg='#000'
-                                         )
+                                            height=1,
+                                            width=1,
+                                            bd=0,
+                                            highlightthickness=0,
+                                            bg='#000'
+                                            )
         self.drawbar_nums = {}
         self.drawbar_values = {}
         self.drag = {"item": None, "y": 0, 'barnum': None, 'value': None}
@@ -95,16 +94,19 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
 
     def set_processor(self, processor):
         super().set_processor(processor)
-        drawbar_ctrls = [k for k, v in self.processor.controllers_dict.items() if hasattr(v, 'drawbar')]
+        drawbar_ctrls = [k for k, v in self.processor.controllers_dict.items()
+                         if hasattr(v, 'drawbar')]
         if (len(drawbar_ctrls) > 0):
             self.drawbars = drawbar_ctrls
 
     def show(self):
         super().show()
-        
+
     def on_press(self, event):
         # the drag area under mouse, if any
-        for item in reversed(self.widget_canvas.find_overlapping(event.x, event.y, event.x, event.y)):
+        canvas = self.widget_canvas
+        for item in reversed(canvas.find_overlapping(event.x, event.y,
+                                                     event.x, event.y)):
             tags = self.widget_canvas.gettags(item)
             if "track" in tags:
                 for tag in tags:
@@ -113,7 +115,8 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
                             barnum = int(tag[4:])
                             ctrl = self._drawbar_ctrl(barnum)
                             y = max(0, min(self.height, event.y))
-                            self.drag.update(item=item, y=y, barnum=barnum, value=ctrl.value)
+                            self.drag.update(item=item, y=y,
+                                             barnum=barnum, value=ctrl.value)
                         except Exception as e:
                             logging.error(e)
                         return
@@ -125,7 +128,8 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
             # Start from the position corresponding to the value when pressed,
             # then apply the pointer delta in position units.
             start_position = self._value_to_position(ctrl, self.drag['value'])
-            delta_position = ((y - self.drag['y']) / self.height) * self.DRAWBAR_MAX
+            delta_position = ((y - self.drag['y']) /
+                              self.height) * self.DRAWBAR_MAX
             position = start_position + delta_position
             ctrl.set_value(self._position_to_value(ctrl, position))
 
@@ -140,42 +144,42 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
 
     def refresh_gui(self):
         super().refresh_gui()
-        monitors = self.monitors or {}
         canvas = self.widget_canvas
         canvas.pack(anchor=tkinter.CENTER, expand=False)
         for i in range(len(self.drawbars)):
             self.move_drawbar(i)
 
     def moveto_group(self, tag, y):
-        _, y1, _, _ = self.widget_canvas.bbox(tag)          # current top‑left of the group
-        self.widget_canvas.move(tag, 0 # x - x1
-                                , y - y1)          # shift by the needed delta
-            
+        # current top‑left of the group
+        _, y1, _, _ = self.widget_canvas.bbox(tag)
+        self.widget_canvas.move(tag, 0, y - y1)
+
     def draw_drawbar(self, i):
         canvas = self.widget_canvas
         tag = f"bar{i}"
         tags = (tag, "drawbar")
         width = (self.width - 2 * self.border) // max(self.DRAWBAR_SLOTS, len(self.drawbars))
         track = canvas.create_rectangle(0, 0, 0, 0,
-                                       outline="#333", fill="#000", tags=(f"drag{i}", "track", "drawbar"))
+                                        width=2,
+                                        outline="#333", fill="#000",
+                                        tags=(f"drag{i}", "track", "drawbar"))
         rect = canvas.create_rectangle(0, 0, 0, 0,
                                        outline=self.outline, fill="#000", tags=tags)
         step_height = self.height / self.DRAWBAR_POSITIONS
 
-        drawbar = self.drawbars[i]
         color, text = self.drawbar_settings[i]
 
         try:
             # position / size drag area
-            canvas.coords(track, self.border + i*width, -1,
-                          self.border + ((i+1) * width) , self.height + 1)
+            canvas.coords(track, self.border + i * width, -1,
+                          self.border + ((i+1) * width), self.height + 1)
             # position / size drawbar
             canvas.coords(rect, self.border + 2 + i*width, self.DRAWBAR_Y_OFFSET,
                           self.border + ((i+1) * width) - 2, self.height + self.DRAWBAR_Y_OFFSET)
             # handle starts in the full-out position, at the bottom
             canvas.create_rectangle(self.border + i*width + 1,
                                     self.DRAWBAR_MAX * step_height + self.DRAWBAR_Y_OFFSET,
-                                    self.border + ((i+1)*width -1),
+                                    self.border + ((i + 1) * width - 1),
                                     self.height + self.DRAWBAR_Y_OFFSET,
                                     outline=self.outline, fill=color,
                                     tags=(*tags, ))
@@ -191,11 +195,11 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
                                          fill='grey', text=self.DRAWBAR_MAX - step, tags=tags)
                 nums.append(num)
             self.drawbar_nums[i] = nums
-            self.drawbar_values[i] = None # Force redraw
-                
+            self.drawbar_values[i] = None  # Force redraw
+
         except Exception as e:
-            logging.error(e);
-        
+            logging.error(e)
+
     def move_drawbar(self, i):
         ctrl = self._drawbar_ctrl(i)
         value = ctrl.value
@@ -216,4 +220,3 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
                 canvas.itemconfig(text, fill=self.white if label_number == number else "grey")
         except Exception as e:
             logging.error(e)
-            
