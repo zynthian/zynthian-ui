@@ -2926,7 +2926,7 @@ class StutterVelfxControl(BaseControl):
 # --------------------------------------------------------------------------
 class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad):
 
-    dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
+    dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2", "APC Key 25 mk2 Control"]
     driver_name = 'AKAI APC Key25 MK2'
     driver_description = 'Full Zynthian Integration for AKAI APC Key25 mk2'
     unroute_from_chains = 0b1111111111111111

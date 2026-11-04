@@ -74,6 +74,57 @@ class fake_port:
             pass
 
 # -------------------------------------------------------------------------------
+# Patch the jack library when running under pipewire
+# -------------------------------------------------------------------------------
+
+def patch_jack_library():
+    # 1. Capture the original, official read-only property logic
+    original_aliases_getter = jack.Port.aliases
+
+    # 2. Define a custom getter that checks for our injected fallback aliases
+    def patched_aliases_getter(self):
+        # Check if we manually force-injected aliases onto this specific port instance
+        if hasattr(self, '_forced_aliases'):
+            return self._forced_aliases
+
+        # Otherwise, fallback cleanly to standard library behavior
+        return original_aliases_getter.__get__(self, jack.Port)
+
+    # 3. Define a custom setter to gracefully consume `port.aliases = [...]` calls
+    def patched_aliases_setter(self, value):
+        if isinstance(value, list):
+            self._forced_aliases = value
+        else:
+            raise TypeError("Aliases must be provided as a list of strings.")
+
+    # 4. Inject the new writable property directly into the base library
+    jack.Port.aliases = property(patched_aliases_getter, patched_aliases_setter)
+
+    # 5. Patch the set_alias/unset_alias methods to avoid pw-jack failure loops
+    def patched_set_alias(self, alias):
+        if not hasattr(self, '_forced_aliases'):
+            # Initialize with current system ones if empty
+            self._forced_aliases = original_aliases_getter.__get__(self, jack.Port)
+        if alias not in self._forced_aliases and len(self._forced_aliases) < 2:
+            self._forced_aliases.append(alias)
+        return 0  # Return success code
+
+    def patched_unset_alias(self, alias):
+        if hasattr(self, '_forced_aliases') and alias in self._forced_aliases:
+            self._forced_aliases.remove(alias)
+        return 0  # Return success code
+
+    jack.Port.set_alias = patched_set_alias
+    jack.Port.unset_alias = patched_unset_alias
+
+
+# Patch jack library when running under PipeWire
+if "pipewire" in jack.version_string().lower():
+    print("[*] Detected PipeWire backend. Patching jack library ...")
+    patch_jack_library()
+
+
+# -------------------------------------------------------------------------------
 # Define some Constants and Global Variables
 # -------------------------------------------------------------------------------
 
@@ -719,11 +770,8 @@ def midi_autoconnect():
             busy_idevs.append(devnum)
 
             # Enable external MIDI-clock sync for the configured device
-            try:
-                if ext_clock_device_name and devices_in[devnum].aliases[0] == ext_clock_device_name:
-                    ext_clock_zmip = devnum
-            except Exception as e:
-                logger.debug(f"Can't check for external clock device => {e}")
+            if ext_clock_device_name and devices_in[devnum].aliases[0] == ext_clock_device_name:
+                ext_clock_zmip = devnum
 
             # Try to connect ctrldev driver's RT MIDI processor between input device and zmip
             try:
@@ -767,10 +815,7 @@ def midi_autoconnect():
                 if devices_out[i] is None:
                     devnum = i
                     devices_out[devnum] = hwdp
-                    try:
-                        devices_out_name[devnum] = hwdp.aliases[0]
-                    except:
-                        devices_out_name[devnum] = hwdp.name
+                    devices_out_name[devnum] = hwdp.aliases[0]
                     logger.debug(f"Connected MIDI-out device {devnum}: {hwdp.name}")
                     break
         if devnum is not None:
@@ -885,11 +930,7 @@ def midi_autoconnect():
         if idev >= max_num_devs:
             break
         if port:
-            try:
-                excluded_port = port.aliases[0] in zynseq_input_exclude_ports
-            except:
-                excluded_port = port.name in zynseq_input_exclude_ports
-            if excluded_port:
+            if port.aliases[0] in zynseq_input_exclude_ports:
                 lib_zyncore.zmop_set_route_from(state_manager.get_zmop_step_index(), idev, 0)
             else:
                 lib_zyncore.zmop_set_route_from(state_manager.get_zmop_step_index(), idev, 1)
@@ -1535,8 +1576,10 @@ def update_midi_port_aliases(port):
             else:
                 port.set_alias(alias1)
     except:
-        logger.warning(f"Unable to set alias for port {port.name}")
-        return False
+        #logger.warning(f"Unable to set alias for port {port.name}")
+        # Do the trick for pw-jack
+        port.aliases = [alias1, alias2]
+        return True
     return True
 
 
