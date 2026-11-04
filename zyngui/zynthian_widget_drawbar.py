@@ -160,7 +160,6 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
         tags = (tag, "drawbar")
         width = (self.width - 2 * self.border) // max(self.DRAWBAR_SLOTS, len(self.drawbars))
         track = canvas.create_rectangle(0, 0, 0, 0,
-                                        width=2,
                                         outline="#333", fill="#000",
                                         tags=(f"drag{i}", "track", "drawbar"))
         rect = canvas.create_rectangle(0, 0, 0, 0,
