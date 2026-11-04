@@ -186,6 +186,14 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def get_title(self):
         title = f"{super().get_title()}: "
         # Get CC title from automation mapped zctrl or MIDI output CC
+        title += self.get_automation_name()
+        self.tts_title = f"Pattern CC editor. {title}"
+        return title
+
+    def get_automation_name(self):
+        """ Get the name of the automated parameter or CC for the currently selected automation"""
+
+        title = ""
         try:
             if self.cc_output:
                 title += f" ({self.zyngui.chain_manager.midi_output_cc_objs[self.cc_num].name})"
@@ -194,7 +202,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                     title += f" ({zctrl.name})"
         except:
             pass
-        self.tts_title = f"Pattern CC editor. {title}"
         return title
 
     def set_edit_mode(self, mode):
@@ -217,9 +224,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         # Pattern Options
         options = {}
         if self.interpolateCC:
-            options[f"\u2612 Interpolate CC{self.cc_num} values"] = 'Interpolate CC OFF'
+            options[f"\u2612 Interpolate values {self.get_automation_name()}"] = 'Interpolate CC OFF'
         else:
-            options[f"\u2610 Interpolate CC{self.cc_num} values"] = 'Interpolate CC ON'
+            options[f"\u2610 Interpolate values {self.get_automation_name()}"] = 'Interpolate CC ON'
         menu_options['_PATTERN'].update(options)
         # Pattern Edit
         options = {}
