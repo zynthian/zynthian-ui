@@ -715,6 +715,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         "ctrl_screens": {
             '_default_synth': ['modulation wheel'],
             'Calf Monosynth': ['modulation wheel'],
+            'Calf Organ': [],
             'Dexed': [],
             'Fabla': [],
             'Foo YC20 Organ': [],
