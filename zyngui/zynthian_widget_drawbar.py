@@ -5,8 +5,10 @@ from zyngine.zynthian_engine_setbfree import *
 from zyngui import zynthian_gui_config
 
 class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
+    DRAWBAR_SLOTS = 9
     DRAWBAR_POSITIONS = 9
     DRAWBAR_MAX = DRAWBAR_POSITIONS - 1
+    DRAWBAR_Y_OFFSET = -2
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -96,10 +98,6 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
         drawbar_ctrls = [k for k, v in self.processor.controllers_dict.items() if hasattr(v, 'drawbar')]
         if (len(drawbar_ctrls) > 0):
             self.drawbars = drawbar_ctrls
-            # drawbars = [None] * len(drawbar_ctrls)
-            # for i, db in enumerate(drawbar_ctrls):
-            #     drawbars[i] = db
-            # self.drawbars = drawbars
 
     def show(self):
         super().show()
@@ -122,8 +120,8 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
         if self.drag is not None and self.drag["item"]:
             ctrl = self._drawbar_ctrl(self.drag['barnum'])
             y = max(0, min(self.height, event.y))
-            # Full-out (position 8) at the top, full-in (position 0) at the bottom.
-            position = (1 - y / self.height) * self.DRAWBAR_MAX
+            # Full-in (position 0) at the top, full-out (position 8) at the bottom.
+            position = (y / self.height) * self.DRAWBAR_MAX
             ctrl.set_value(self._position_to_value(ctrl, position))
 
     def on_release(self, event):
@@ -152,7 +150,7 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
         canvas = self.widget_canvas
         tag = f"bar{i}"
         tags = (tag, "drawbar")
-        width = (self.width - 2 * self.border) // len(self.drawbars)
+        width = (self.width - 2 * self.border) // max(self.DRAWBAR_SLOTS, len(self.drawbars))
         rect = canvas.create_rectangle(0, 0, 0, 0,
                                        outline=self.outline, fill="#000", tags=tags)
         step_height = self.height / self.DRAWBAR_POSITIONS
@@ -162,22 +160,24 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
 
         try:
             # position / size drawbar
-            canvas.coords(rect, self.border + 2 + i*width, 0,
-                          self.border + ((i+1) * width) - 2, self.height)
-            # handle starts in the full-in position, at the bottom
-            canvas.create_rectangle(self.border + i*width + 1, self.DRAWBAR_MAX * step_height,
-                                    self.border + ((i+1)*width -1), self.height,
+            canvas.coords(rect, self.border + 2 + i*width, self.DRAWBAR_Y_OFFSET,
+                          self.border + ((i+1) * width) - 2, self.height + self.DRAWBAR_Y_OFFSET)
+            # handle starts in the full-out position, at the bottom
+            canvas.create_rectangle(self.border + i*width + 1,
+                                    self.DRAWBAR_MAX * step_height + self.DRAWBAR_Y_OFFSET,
+                                    self.border + ((i+1)*width -1),
+                                    self.height + self.DRAWBAR_Y_OFFSET,
                                     outline=self.outline, fill=color,
                                     tags=(*tags, f"handle{i}", "handle"))
             canvas.create_text((0.5 * width + self.border + 1 + (i * width),
-                                (self.DRAWBAR_MAX + 0.5) * step_height),
+                                (self.DRAWBAR_MAX + 0.5) * step_height + self.DRAWBAR_Y_OFFSET),
                                text=text,
                                fill=self.black if color == self.white else self.white,
                                tags=tags)
             nums = []
             for step in range(self.DRAWBAR_MAX):
                 num = canvas.create_text((0.5 * width + self.border + 1 + (i * width),
-                                          (step + 0.5) * step_height),
+                                          (step + 0.5) * step_height + self.DRAWBAR_Y_OFFSET),
                                          fill='grey', text=self.DRAWBAR_MAX - step, tags=tags)
                 nums.append(num)
             self.drawbar_nums[i] = nums
@@ -198,9 +198,9 @@ class zynthian_widget_drawbar(zynthian_widget_base.zynthian_widget_base):
         position = self._value_to_position(ctrl, value)
 
         try:
-            # Full-out (position 8) at the top, full-in (position 0) at the bottom.
+            # Full-in (position 0) at the top, full-out (position 8) at the bottom.
             self.moveto_group(f"bar{i}",
-                              ((self.DRAWBAR_MAX - position) * -step_height) - 2)
+                              (position - self.DRAWBAR_MAX) * step_height + self.DRAWBAR_Y_OFFSET)
             number = round(position)
             for x, text in enumerate(self.drawbar_nums[i]):
                 label_number = self.DRAWBAR_MAX - x
