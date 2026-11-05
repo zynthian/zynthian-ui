@@ -253,6 +253,21 @@ class zynseq(zynthian_engine):
             self.libseq.convertPattern.restype = ctypes.c_char_p
             self.libseq.addLearnMapping.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
 
+            # Functions returning uint8_t: without restype ctypes reads an int, whose upper bits
+            # aren't defined; "no value" (255) came back as -1, so getControlValue() <= 127 was
+            # true for steps without a CC event
+            for func in ("getNoteVelocity", "getControlValue", "getControlValueEnd", "getNoteStutterSpeed",
+                         "getNoteStutterVelfx", "getNoteStutterRamp", "getNotePlayFreq", "getNoteStutterFreq",
+                         "getProgramChange", "getNoteAtIndex", "getInputRest", "getTonic", "getRefNote",
+                         "getQuantizeNotes", "getScene", "getNumScenes", "getTrackOutput", "getChannel",
+                         "getSequenceMode", "getPlayState", "getSequenceRepeat", "getSequenceGroup",
+                         "getTimeSigAt", "getMidiLearnSequence", "getBpb", "getDefaultBpb", "getMetronomeMode",
+                         "getExtClockPPQN", "getNumPhrases", "getPhraseBPB"):
+                try:
+                    getattr(self.libseq, func).restype = ctypes.c_uint8
+                except AttributeError:
+                    pass   # declared in zynseq.h but not in every build (getMidiLearnSequence)
+
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
             self.libseq.getSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
