@@ -611,7 +611,8 @@ class zynthian_gui_mixer_strip():
         # Fader background defines height of fader
         self.fader_bg = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_bg_color, width=0, tags=("fader", f"fader_{id}"))
 
-        # Audio mixer elements
+        # Audio mixer elements. They are not created if the chain has no mixer processor when the strip is created.
+        self.fader_overlay = None
         if self.chain.zynmixer_proc:
             # Separator
             if self.launcher_mode:
@@ -1822,7 +1823,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.legend_strip_midi_bg, fill=self.legend_bg_color_hl)
         self.left_canvas.itemconfig("fader_overlay", fill=self.fader_color)
         self.right_canvas.itemconfig("fader_overlay", fill=self.fader_color)
-        if self.highlighted_strip.chain.zynmixer_proc:
+        if self.highlighted_strip.fader_overlay is not None:
             self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.fader_overlay, fill=self.fader_color_hl)
         self.highlight_launcher()
 
