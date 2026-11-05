@@ -435,7 +435,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
         # Update header breadcrumb
         self.set_select_path()
         if self.zyngui.tts:
-            self.zyngui.tts.announce(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
+            try:
+                self.zyngui.tts.announce(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
+            except:
+                pass
 
     def zynpot_cb(self, i, dval):
         if not self.shown:
