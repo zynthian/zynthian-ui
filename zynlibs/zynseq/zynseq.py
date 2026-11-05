@@ -538,6 +538,8 @@ class zynseq(zynthian_engine):
     # Returns: True on success
     def save_pattern(self, patnum, filename):
         try:
+            # self.state is only read on some changes (snapshots): edits since then were missing
+            self.refresh_state(send=False)
             state = {
                 "schema_version": self.state_manager.get_schema(),
                 "patn": self.state["patns"][str(patnum)]
