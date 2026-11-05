@@ -149,7 +149,7 @@ class event_data(ctypes.Structure):
 
     def set_values(self, pos, os, dur, cmd, v1s, v2s, v1e, v2e, sspd, svfx, srmp, pf, sf, pc, sc):
         self.position = pos
-        self.osffset = os
+        self.offset = os
         self.duration = dur
         self.command = cmd
         self.val1_start = v1s
