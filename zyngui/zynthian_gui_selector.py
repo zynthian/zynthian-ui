@@ -184,8 +184,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def show(self):
         super().show()
-        if self.zyngui.tts and len(self.list_data) > 0:
-            self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+        if self.zyngui.tts:
+            try:
+                self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+            except:
+                pass
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -309,7 +312,10 @@ class zynthian_gui_selector(zynthian_gui_base):
         no_div = new_index == index
         self._select_listbox(new_index, see=see)
         if self.shown and self.zyngui.tts:
-            tts_text = self.list_data[new_index][2] + tts
+            try:
+                tts_text = self.list_data[new_index][2] + tts
+            except:
+                return
             if self.last_tts == tts_text:
                 return
             self.last_tts = tts_text
@@ -550,6 +556,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def tts_info(self):
         super().tts_info()
-        self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+        try:
+            self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+        except:
+            pass
 
 # ------------------------------------------------------------------------------

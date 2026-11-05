@@ -1629,9 +1629,7 @@ class zynthian_state_manager:
 
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
-            chain_state = {
-                "midi_learn": {}
-            }
+            chain_state = {}
             if chain_id in omit_chains:
                 chain_state["restore"] = False
             if chain.is_midi():
@@ -1662,13 +1660,6 @@ class zynthian_state_manager:
                             out = [i, port_name]
                             break
                 chain_state["audio_out"].append(out)
-            # Add chain MIDI mapping
-            for key, zctrls in self.chain_manager.midi_cc_binding.items():
-                if chain_id == (key >> 16) & 0xff:
-                    key_low = key & 0xff7f
-                    chain_state["midi_learn"][key_low] = []
-                    for zctrl in zctrls:
-                        chain_state["midi_learn"][key_low].append([zctrl.processor.id, zctrl.symbol])
             if chain_state:
                 chain_states[chain_id] = chain_state
         if chain_states:
