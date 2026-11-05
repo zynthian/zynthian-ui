@@ -67,6 +67,7 @@ jack_port_t* g_pClockOutputPort;      // Pointer to the JACK MIDI clock output p
 jack_port_t* g_pClippyOutputPort;     // Pointer to the JACK MIDI output port feeding clippy
 jack_port_t* g_pMetronomePort;        // Pointer to the JACK metronome audio output port
 jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
+volatile bool g_bJackShutdown = false; // True if jack server has shut down (client must not be used)
 jack_nframes_t g_nSampleRate = 48000; // Quantity of samples per second
 uint32_t g_nXruns = 0;
 
@@ -137,7 +138,7 @@ struct EXT_CLK_PLL {
     bool realign = false;           // True to align next pulse to beat (after MIDI START)
     bool anchored = false;          // True if targetTick was anchored to a beat before lock (MIDI START)
     uint32_t gapCount = 0;          // Quantity of consecutive pulse intervals of about a whole number (>1) of periods
-    uint32_t lastMissing = 0;       // Quantity of lost pulses counted at last pulse
+    uint32_t pendingMissing = 0;    // Quantity of pulses counted as lost on last gap, not yet received late
 };
 EXT_CLK_PLL g_extClk;
 volatile bool g_bExtClockLocked = false; // True if internal clock is locked to external clock
@@ -207,40 +208,43 @@ int64_t onExtClock(double dFrame, double dTickPos) {
         g_extClk.count = 0;
         g_extClk.errCount = 0;
         g_extClk.gapCount = 0;
-        g_extClk.lastMissing = 0;
+        g_extClk.pendingMissing = 0;
         g_extClk.state = EXT_CLK_LOCKED;
         g_bExtClockLocked = true;
         DPRINTF("External clock locked\n");
     } else if ((dFrame - g_extClk.lastFrame) < EXT_CLK_BURST * g_extClk.period) {
-        // Pulse delivered together with previous one, e.g. after xrun => count it, but don't use its timing
-        if (g_extClk.lastMissing) {
-            // Previous pulse was delivered late, it wasn't after lost pulses
-            g_extClk.targetTick -= g_extClk.lastMissing * dRatio;
-            g_extClk.nextFrame -= g_extClk.lastMissing * g_extClk.period;
+        // Pulse delivered together with previous one, e.g. pulses delayed by an xrun are delivered together.
+        // Count it, but don't use its timing.
+        if (g_extClk.pendingMissing) {
+            // It's one of the pulses counted as lost on last gap, delivered late => it was already counted
+            --g_extClk.pendingMissing;
+            g_extClk.targetTick -= dRatio;
+        } else {
+            g_extClk.nextFrame += g_extClk.period;
         }
-        g_extClk.lastMissing = 0;
         g_extClk.gapCount = 0;
-        g_extClk.nextFrame += g_extClk.period;
         g_extClk.lastFrame = dFrame;
     } else {
-        // Interval of about a whole number of periods => lost pulses (e.g. dropped MIDI bytes or xrun). Consecutive
-        // gaps are a tempo change (e.g. half tempo), so the lost pulses counted on the first gap are discounted.
+        // Interval of about a whole number of periods => lost pulses (e.g. dropped MIDI bytes or xrun). They may be
+        // delivered late (pendingMissing), together with next pulses. Consecutive gaps are a tempo change (e.g. half
+        // tempo), so the lost pulses counted on the first gap are discounted.
         double dPulses = (dFrame - g_extClk.lastFrame) / g_extClk.period;
         double dWhole = floor(dPulses + 0.5);
-        uint32_t nMissing = 0;
         if (dWhole >= 2 && dWhole <= EXT_CLK_TIMEOUT_PULSES && fabs(dPulses - dWhole) <= EXT_CLK_GAP_TOLERANCE) {
             if (++g_extClk.gapCount == 1) {
-                nMissing = dWhole - 1;
+                uint32_t nMissing = dWhole - 1;
                 g_extClk.nextFrame += nMissing * g_extClk.period;
                 g_extClk.targetTick += nMissing * dRatio;
-            } else if (g_extClk.lastMissing) {
-                g_extClk.nextFrame -= g_extClk.lastMissing * g_extClk.period;
-                g_extClk.targetTick -= g_extClk.lastMissing * dRatio;
+                g_extClk.pendingMissing = nMissing;
+            } else if (g_extClk.pendingMissing) {
+                g_extClk.nextFrame -= g_extClk.pendingMissing * g_extClk.period;
+                g_extClk.targetTick -= g_extClk.pendingMissing * dRatio;
+                g_extClk.pendingMissing = 0;
             }
         } else {
             g_extClk.gapCount = 0;
+            g_extClk.pendingMissing = 0;
         }
-        g_extClk.lastMissing = nMissing;
 
         double dError = dFrame - g_extClk.nextFrame;
         // Large phase error => tempo jump, lost pulse or heavy jitter
@@ -863,6 +867,10 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void* /*pArgs*/) {
     return 0;
 }
 
+void onJackShutdown(void* /*pArgs*/) {
+    g_bJackShutdown = true;
+}
+
 int onJackXrun(void* /*pArgs*/) {
     DPRINTF("zynseq detected XRUN %u\n", ++g_nXruns);
     // g_bTimebaseChanged = true; // Discontinuity so need to recalculate timebase parameters
@@ -871,6 +879,14 @@ int onJackXrun(void* /*pArgs*/) {
 
 void end() {
     DPRINTF("zynseq exit\n");
+    // Stop jack client before global objects (e.g. g_vTicks) are destroyed at exit, so process callback can't use them.
+    // end() is registered with atexit() in init(), after global objects are constructed, so it runs before their destructors.
+    // If jack server has already shut down, the client can't be used anymore.
+    if (g_pJackClient && !g_bJackShutdown) {
+        jack_deactivate(g_pJackClient);
+        jack_client_close(g_pJackClient);
+    }
+    g_pJackClient = NULL;
     freeState();
 }
 
@@ -942,6 +958,7 @@ void init(char* name) {
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
     jack_set_sample_rate_callback(g_pJackClient, onJackSampleRateChange, 0);
     jack_set_port_connect_callback(g_pJackClient, onJackConnect, 0);
+    jack_on_shutdown(g_pJackClient, onJackShutdown, 0);
     //jack_set_xrun_callback(g_pJackClient, onJackXrun, 0);
 
     if (jack_activate(g_pJackClient)) {

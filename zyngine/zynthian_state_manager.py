@@ -23,6 +23,7 @@
 #
 # ****************************************************************************
 
+import os
 import ctypes
 import logging
 import traceback
@@ -83,6 +84,8 @@ class zynthian_state_manager:
         """
 
         logging.info("Creating state manager")
+
+        self.root_access = bool(os.getuid() == 0)
 
         self.busy = set()  # Set of clients indicating they are busy doing something (may be used by UI to show progress)
         self.busy_message = None
@@ -2445,6 +2448,8 @@ class zynthian_state_manager:
     # ---------------------------------------------------------------------------
 
     def start_vncserver(self, save_config=True):
+        if not self.root_access:
+            return
         # Start VNC for Zynthian-UI
         self.start_busy("start_vncserver", "starting VNC")
 
@@ -2490,6 +2495,8 @@ class zynthian_state_manager:
         self.end_busy("start_vncserver")
 
     def stop_vncserver(self, save_config=True):
+        if not self.root_access:
+            return
         self.start_busy("stop_vncserver", "stopping VNC")
 
         # Stop VNC for Zynthian-UI
@@ -2557,6 +2564,8 @@ class zynthian_state_manager:
         if zynconf.is_service_active(service):
             zynthian_gui_config.midi_netump_enabled = 1
             return
+        if not self.root_access:
+            return
         self.start_busy("start_netump", "starting NetUMP MIDI 2.0")
         logging.info("STARTING Network MIDI 2.0")
         try:
@@ -2581,6 +2590,8 @@ class zynthian_state_manager:
         service = "jacknetumpd"
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_netump_enabled = 0
+            return
+        if not self.root_access:
             return
         self.start_busy("stop_netump", "stopping Network MIDI 2.0")
         logging.info("STOPPING Network MIDI 2.0")
@@ -2613,6 +2624,8 @@ class zynthian_state_manager:
         if zynconf.is_service_active(service):
             zynthian_gui_config.midi_rtpmidi_enabled = 1
             return
+        if not self.root_access:
+            return
         self.start_busy("start_rtpmidi", "starting RTP-MIDI")
         logging.info("STARTING RTP-MIDI")
         try:
@@ -2638,6 +2651,8 @@ class zynthian_state_manager:
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_rtpmidi_enabled = 0
             return
+        if not self.root_access:
+            return
         self.start_busy("stop_rtpmidi", "stopping RTP-MIDI")
         logging.info("STOPPING RTP-MIDI")
         try:
@@ -2661,6 +2676,8 @@ class zynthian_state_manager:
         service = "qmidinet"
         if zynconf.is_service_active(service):
             zynthian_gui_config.midi_network_enabled = 1
+            return
+        if not self.root_access:
             return
         self.start_busy("start_qmidinet", "starting QMidiNet")
         logging.info("STARTING QMidiNet")
@@ -2686,6 +2703,8 @@ class zynthian_state_manager:
         service = "qmidinet"
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_network_enabled = 0
+            return
+        if not self.root_access:
             return
         self.start_busy("stop_qmidinet", "stopping QMidiNet")
         logging.info("STOPPING QMidiNet")
@@ -2717,6 +2736,8 @@ class zynthian_state_manager:
         if zynconf.is_service_active(service):
             zynthian_gui_config.midi_touchosc_enabled = 1
             return
+        if not self.root_access:
+            return
         self.start_busy("start_touchosc2midi", "starting Touch-OSC")
         logging.info("STARTING touchosc2midi")
         try:
@@ -2741,6 +2762,8 @@ class zynthian_state_manager:
         service = "touchosc2midi"
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_touchosc_enabled = 0
+            return
+        if not self.root_access:
             return
         self.start_busy("stop_touchosc2midi", "stopping Touch-OSC")
         logging.info("STOPPING touchosc2midi")
@@ -2804,6 +2827,8 @@ class zynthian_state_manager:
             zynthian_gui_config.bluetooth_enabled = 1
             self.select_bluetooth_controller(zynthian_gui_config.ble_controller)
             return
+        if not self.root_access:
+            return
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
         try:
@@ -2829,6 +2854,8 @@ class zynthian_state_manager:
         service = "bluetooth"
         if not zynconf.is_service_active(service):
             zynthian_gui_config.bluetooth_enabled = 0
+            return
+        if not self.root_access:
             return
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
@@ -2860,6 +2887,8 @@ class zynthian_state_manager:
         if zynconf.is_service_active(service):
             zynthian_gui_config.midi_aubionotes_enabled = 1
             return
+        if not self.root_access:
+            return
         self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
         try:
@@ -2886,7 +2915,8 @@ class zynthian_state_manager:
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_aubionotes_enabled = 0
             return
-
+        if not self.root_access:
+            return
         self.start_busy("stop_aubionotes", "stopping AubioNotes")
         logging.info("STOPPING aubionotes")
         try:

@@ -167,7 +167,7 @@ class zynthian_gui_chain_manager(zynthian_gui_base):
             proc = node["proc"]
         if proc == "chain_options":
             if node["chain_id"] == 0:
-                self.zyngui.screens["chain_options"].set_chain(0)
+                self.zyngui.screens["chain_options"].set_chain(self.chain_manager.get_chain(0))
                 self.zyngui.show_screen(proc)
             else:
                 self.start_moving_chain()

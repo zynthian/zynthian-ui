@@ -499,22 +499,13 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     row = note // 8
                     midi_chan = self.get_filtered_midi_chan_by_index(pos)
                     try:
-                        active_chain = self.chain_manager.active_chain.chain_id
-                        #midi_out = active_chain.midi_out
                         midi_chan = self.get_filtered_midi_chan_by_index(pos)
-
-                        print("NOTE MODE:", midi_out, midi_chan, note, vel)
-
+                        logging.debug(f"Pro MK2: Note mode: chan={midi_chan}, note={note}, vel={vel}")
                         if midi_chan is not None:
                             lib_zyncore.dev_send_note_on(self.idev_out, midi_chan, note, vel)
-                            #self.last_press = (note, midi_chan, midi_out)
+                            self.last_press = (note, midi_chan, self.idev_out)
                     except Exception as e:
-                        print("Note mode error:", e)
-                    print("OUT:", active_chain.midi_out,
-                        "CHAN:", active_chain.midi_chan,
-                        "NOTE:", note)
-                    print("NOTE MODE HIT", note, vel)
-                    print("RAW:", ev)
+                        logging.error(f"Pro MK2: Note mode error: {e}")
                     return True
                 
                 elif self.mode == MODE_DEVICE:

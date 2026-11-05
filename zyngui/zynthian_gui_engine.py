@@ -437,7 +437,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         if self.zyngui.tts:
             try:
                 self.zyngui.tts.announce(f"Category: {self.engine_cats[cat_index]}, Engine: {self.list_data[self.index][2]}")
-            except:
+            except IndexError:
                 pass
 
             
@@ -519,7 +519,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         self.zyngui.tts.announce(f"Category: {self.engine_cats[self.cat_index]}", False, False, False)
         try:
             self.zyngui.tts.announce(f"Engine: {self.list_data[self.index][2]}", False, False, False)
-        except:
+        except IndexError:
             pass
         complex = ["No", "Minimal", "Low", "Medium", "High", "Maximum"][eng_info["COMPLEX"]]
         self.zyngui.tts.announce(f"{eng_info['QUALITY']} stars. {complex} complexity. {eng_info['DESCR']}", False, False, False)

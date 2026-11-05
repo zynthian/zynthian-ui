@@ -123,7 +123,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'labels': ['off', 'on']
                 }),
                 'ms': zynthian_controller(self, 'ms', {
-                    'name': "MS",
+                    'name': "M+S",
                     'short_name': "M+S",
                     'is_toggle': True,
                     'value_max': 1,
@@ -131,7 +131,6 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'value': processor.zynmixer.get_ms(processor.mixer_chan),
                     'labels': ['off', 'on'],
                     'processor': processor,
-                    'name': "M+S"
                 }),
                 'phase': zynthian_controller(self, 'phase', {
                     'name': "Ø",

@@ -64,7 +64,6 @@ class zynthian_ctrldev_notes_filter(zynthian_ctrldev_base):
 
         @client.set_process_callback
         def process(frames):
-            filter_enabled =
             outport.clear_buffer()
             if self.filter_enabled.value:
                return
@@ -91,10 +90,10 @@ class zynthian_ctrldev_notes_filter(zynthian_ctrldev_base):
     # HERE YOU SHOULD IMEPLEMENT THE REST OF DRIVER METHODS
 
     def enable_note_filter(self):
-        self.filter_enabled = 1
+        self.filter_enabled.value = 1
 
     def disable_note_filter(self):
-        self.filter_enabled = 0
+        self.filter_enabled.value = 0
 
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F

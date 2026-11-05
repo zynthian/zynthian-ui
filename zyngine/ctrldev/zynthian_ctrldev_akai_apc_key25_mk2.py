@@ -1089,7 +1089,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         is_empty = all(self._zynseq.is_pattern_empty(pattern) for pattern in self._get_sequence_patterns(phrase, chan))
         if is_empty:
-            color = COLOR.COLOR_BLACK
+            color = COLORS.COLOR_BLACK
         else:
             color = zynthian_gui_config.LAUNCHER_COLOUR[chan][self.driver.apc_color_variant]
 
@@ -2926,7 +2926,7 @@ class StutterVelfxControl(BaseControl):
 # --------------------------------------------------------------------------
 class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad):
 
-    dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
+    dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2", "APC Key 25 mk2 Control"]
     driver_name = 'AKAI APC Key25 MK2'
     driver_description = 'Full Zynthian Integration for AKAI APC Key25 mk2'
     unroute_from_chains = 0b1111111111111111
@@ -2990,12 +2990,12 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
     def init(self):
         super().init()
-        for signal, subsignal, callback in self._signals:
-            zynsigman.register(signal, subsignal, callback)
+        for sig, subsignal, callback in self._signals:
+            zynsigman.register(sig, subsignal, callback)
 
     def end(self):
-        for signal, subsignal, callback in self._signals:
-            zynsigman.unregister(signal, subsignal, callback)
+        for sig, subsignal, callback in self._signals:
+            zynsigman.unregister(sig, subsignal, callback)
         self._current_handler.set_active(False)
         super().end()
         zynthian_ctrldev_zynpad.end(self)

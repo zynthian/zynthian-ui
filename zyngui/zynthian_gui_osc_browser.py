@@ -54,9 +54,6 @@ class zynthian_gui_osc_browser(zynthian_gui_selector):
         self.index = 1
         super().build_view()
 
-    def select_action(self, i):
-        pass
-
     def get_osc_paths(self, path=''):
         self.list_data = []
         if path == 'root':
