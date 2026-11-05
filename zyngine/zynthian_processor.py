@@ -368,6 +368,9 @@ class zynthian_processor:
             preset_id = preset_info[0]
             preset_name = preset_info[2]
             preset_index = self.find_preset_index_by_id(preset_id)
+            # Favourites are keyed by the id's string (zynthian_engine.toggle_preset_fav); some
+            # engines' ids are lists (FluidSynth), which can't be dict keys
+            preset_id = str(preset_id)
         else:
             return False
 
