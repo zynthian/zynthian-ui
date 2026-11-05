@@ -427,8 +427,16 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         duration = self.zynseq.libseq.getControlDuration(step, self.cc_num)
         offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
         val2 = self.zynseq.libseq.getControlValueEnd(step, self.cc_num)
-        coord = self.get_cell(step, row, duration, offset, row - val2)
-        self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
+        steps_to_end = self.n_steps - (step + offset)
+        if self.interpolateCC and 0 < steps_to_end < duration:
+            val_end = row + (val2 - row) * steps_to_end / duration
+            coord = self.get_cell(step, row, steps_to_end, offset, row - val_end)
+            self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
+            coord_wrap = self.get_cell(0, val_end, duration - steps_to_end, 0, val_end - val2)
+            self.grid_canvas.create_line(coord_wrap, fill="white", width=2, tags=("ccevent", f"step{step}"))
+        else:
+            coord = self.get_cell(step, row, duration, offset, row - val2)
+            self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
         if self.interpolateCC:
             coord[2] = coord[0] + self.marker_width
             coord[3] = coord[1] + self.marker_width

@@ -626,33 +626,28 @@ void Pattern::setControlValue(uint32_t step, uint8_t control, uint8_t valueStart
 }
 
 void Pattern::joinControlEvents(uint8_t control) {
-    if (m_vEvents.size() < 2)
-        return;
-    int32_t pos0 = -1;
-    uint8_t valueStart0;
-    uint8_t duration;
-    uint8_t valueEnd;
-    auto it = m_vEvents.begin();
-    auto it_prev = m_vEvents.begin();
-    for (; it != m_vEvents.end(); ++it) {
-        if ((*it)->getCommand() == MIDI_CONTROL && (*it)->getValue1start() == control) {
-            if (pos0 >= 0) {
-                duration = (*it)->getPosition() - (*it_prev)->getPosition();
-                valueEnd = (*it)->getValue2start();
-                (*it_prev)->setValue2end(valueEnd);
-                (*it_prev)->setDuration(duration);
-                //fprintf(stderr, "Join CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it_prev)->getPosition(), duration, (*it_prev)->getValue2start(), valueEnd);
-            } else {
-                pos0 = (*it)->getPosition();
-                valueStart0 = (*it)->getValue2start();
-            }
-            it_prev = it;
+    StepEvent* pFirst = nullptr;
+    StepEvent* pPrev = nullptr;
+    for (StepEvent* pEvent : m_vEvents) {
+        if (pEvent->getCommand() != MIDI_CONTROL || pEvent->getValue1start() != control)
+            continue;
+        if (pPrev) {
+            pPrev->setValue2end(pEvent->getValue2start());
+            pPrev->setDuration(pEvent->getPosition() - pPrev->getPosition());
+        } else {
+            pFirst = pEvent;
         }
+        pPrev = pEvent;
     }
-    duration = getSteps() - (*it_prev)->getPosition() + pos0;
-    (*it_prev)->setValue2end(valueStart0);
-    (*it_prev)->setDuration(duration);
-    //fprintf(stderr, "Join CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it_prev)->getPosition(), duration, (*it_prev)->getValue2start(), valueEnd);
+    if (!pFirst)
+        return;
+    if (pFirst == pPrev) {
+        pFirst->setValue2end(pFirst->getValue2start());
+        pFirst->setDuration(1);
+        return;
+    }
+    pPrev->setValue2end(pFirst->getValue2start());
+    pPrev->setDuration(getSteps() - pPrev->getPosition() + pFirst->getPosition());
 }
 
 void Pattern::stepControlEvents(uint8_t control) {
