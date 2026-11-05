@@ -184,8 +184,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def show(self):
         super().show()
-        if self.zyngui.tts and len(self.list_data) > 0:
-            self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+        if self.zyngui.tts:
+            try:
+                self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+            except IndexError:
+                pass
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -550,6 +553,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 
     def tts_info(self):
         super().tts_info()
-        self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+        try:
+            self.zyngui.tts.announce(self.list_data[self.index][2], False, False, False)
+        except IndexError:
+            pass
 
 # ------------------------------------------------------------------------------
