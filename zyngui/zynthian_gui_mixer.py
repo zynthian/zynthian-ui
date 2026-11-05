@@ -2299,7 +2299,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.pated.refresh_sequence_info()
         self.pated.load_pattern(self.zynseq.libseq.getPattern(self.zynseq.scene, self.zynseq.phrase, self.zynseq.chan, 0, 0))
         #pated.enable_sequence()
-        self.zyngui.show_screen("pattern_editor")
+        self.zyngui.show_screen("pated")
         return True
 
     def edit_audio_clip(self, chain, phrase):

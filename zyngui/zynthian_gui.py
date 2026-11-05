@@ -675,6 +675,8 @@ class zynthian_gui:
             except:
                 logging.warning("Mixer view not yet created!")
                 screen = "mixer"
+        elif screen == "pated":
+            screen = self.screens["pattern_editor"].get_editor_screen()
         elif screen == "mixer":
             self.screens[screen].set_launcher_mode(False)
         elif screen == "launcher":
@@ -1924,7 +1926,7 @@ class zynthian_gui:
         """
 
         if self.current_screen == "mixer" and self.screens["mixer"].launcher_mode:
-            self.show_screen("pattern_editor")
+            self.show_screen("pated")
         else:
             self.show_screen_reset("launcher")
 

@@ -237,6 +237,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
+    SCREEN_NAME = None
+    last_editor = None
 
     # Function to initialise class
     def __init__(self):
@@ -467,8 +469,27 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         else:
             self.set_title()
 
+    def get_editor_screen(self):
+        """ Get the name of the editor screen to show when the pattern editor is requested
+
+        Returns: Name of the screen to show
+        """
+
+        editor = zynthian_gui_pated_base.last_editor
+        if editor is None or editor is self:
+            return self.SCREEN_NAME
+        try:
+            editor.refresh_sequence_info()
+            if editor.can_automate():
+                editor.load_pattern(self.pattern)
+                return editor.SCREEN_NAME
+        except Exception as e:
+            logging.warning(f"Can't show last pattern editor: {e}")
+        return self.SCREEN_NAME
+
     # Function to show GUI
     def build_view(self):
+        zynthian_gui_pated_base.last_editor = self
         self.zynseq.libseq.selectSequence(self.zynseq.scene, self.phrase, self.sequence)
         # Temporarily set sequence to loop - do not update cache which is used to restore configured state on hide
         self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, 255)

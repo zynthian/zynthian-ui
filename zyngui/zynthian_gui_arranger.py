@@ -704,7 +704,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.screens['pattern_editor'].scene = 0
             self.zyngui.screens['pattern_editor'].sequence = 0
             self.zynseq.libseq.enableMidiRecord(False)
-            self.zyngui.show_screen("pattern_editor")
+            self.zyngui.show_screen("pated")
             return True
 
     # Function to handle pattern click

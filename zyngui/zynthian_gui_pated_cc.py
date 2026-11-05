@@ -61,6 +61,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 128
+    SCREEN_NAME = "pated_cc"
 
     # Function to initialise class
     def __init__(self):
