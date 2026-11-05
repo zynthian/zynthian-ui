@@ -1372,6 +1372,11 @@ class zynthian_chain_manager:
                 break
 
         if chain_id is None:
+            # A processor without chain (audio player, tempo, ALSA mixer): remove it from its
+            # engine, as zynthian_chain.remove_processor does, so the engine is stopped when unused.
+            # Otherwise the audio player's file thread outlived the interpreter and crashed at exit.
+            if processor.engine:
+                processor.engine.remove_processor(processor)
             success = True
         else:
             success = self.chains[chain_id].remove_processor(processor)

@@ -75,8 +75,13 @@ except Exception as e:
     libaudioplayer = None
     logging.error(f"Can't initialise zynaudioplayer library: {e}")
 
+def init():
+    """Open the library's jack client if it isn't open (after stop())"""
+    return libaudioplayer.init(cb_handler)
+
 def stop():
-    libaudioplayer.lib_stop()
+    """Close the library's jack client (stop() in player.c; there is no lib_stop)"""
+    libaudioplayer.stop()
     # dlclose(libaudioplayer._id)
 
 def is_codec_supported(codec):
