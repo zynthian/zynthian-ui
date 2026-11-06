@@ -246,6 +246,9 @@ class zynthian_gui_control(zynthian_gui_selector):
             elif hasattr(zctrl, "filter"):
                 self.screen_type = "filter"
                 break
+            elif hasattr(zctrl, "drawbar"):
+                self.screen_type = "drawbar"
+                break
             elif zctrl.is_path and zctrl.path_file_types and (set(zctrl.path_file_types) & {"wav", "aiff", "flac", "mp3", "ogg"}):
                 self.screen_type = "audio_file"
                 self.widget_zctrl = zctrl
