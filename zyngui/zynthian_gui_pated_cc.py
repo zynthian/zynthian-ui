@@ -95,6 +95,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 break
         if midi_out:
             self.avail_entries += [(cc, True) for cc in range(128)]
+        else:
+            self.avail_entries += [(64, True)]
 
     def select_entry(self, cc, output):
         """ Select an entry in the list of editable CC

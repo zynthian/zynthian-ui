@@ -1663,22 +1663,31 @@ class zynthian_chain_manager:
             return
         if midi_chan is None:
             midi_chan = 0xff # Allow for any MIDI channel (I don't think this is used)
+        zmips = []
+        if zmip is None:
+            for i in range(ZMIP_STEP_INDEX + 1):
+                zmips.append(i)
+        else:
+            zmips = [zmip]
         if chain_id is None:
             chain_id = 0xff # No chain so global binding
 
         # Remove existing automate binding
-        if zmip == ZMIP_STEP_INDEX:
+        if ZMIP_STEP_INDEX in zmips:
             mask = ZMIP_STEP_INDEX << 16
             for key in list(self.midi_cc_binding):
                 if key & mask == mask and zctrl in self.midi_cc_binding[key]:
                     self._remove_midi_binding(zctrl, key)
 
-        key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
-        if key in self.midi_cc_binding:
-            if zctrl not in self.midi_cc_binding[key]:
-                self.midi_cc_binding[key].append(zctrl)
-        else:
-            self.midi_cc_binding[key] = [zctrl]
+        for zmip in zmips:
+            key = self.pack_midi_bind_key(midi_cc, midi_chan, zmip, chain_id)
+            if zmip == ZMIP_STEP_INDEX:
+                key |= 0xff000000
+            if key in self.midi_cc_binding:
+                if zctrl not in self.midi_cc_binding[key]:
+                    self.midi_cc_binding[key].append(zctrl)
+            else:
+                self.midi_cc_binding[key] = [zctrl]
         self.update_automate_cc_filter()
 
     def _remove_midi_binding(self, zctrl, key):
@@ -1821,6 +1830,7 @@ class zynthian_chain_manager:
         """
 
         zynseq = self.state_manager.zynseq
+        exclude = exclude + (64,) # Sustain pedal is always available for automation.
         for cc in range(128):
             if cc in exclude:
                 continue

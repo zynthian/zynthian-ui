@@ -480,9 +480,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             return self.SCREEN_NAME
         try:
             editor.refresh_sequence_info()
-            if editor.can_automate():
-                editor.load_pattern(self.pattern)
-                return editor.SCREEN_NAME
+            editor.load_pattern(self.pattern)
+            return editor.SCREEN_NAME
         except Exception as e:
             logging.warning(f"Can't show last pattern editor: {e}")
         return self.SCREEN_NAME
@@ -557,14 +556,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         else:
             return bars_text + beats_text
 
-    def can_automate(self):
-        if self.chain_manager.get_automate_zctrls(self.channel):
-            return True
-        for chain_id in self.chain_manager.get_chain_ids_by_midi_chan(self.channel):
-            if self.chain_manager.chains[chain_id].midi_thru:
-                return True
-        return False
-
     def get_menu_options(self):
         menu_options = {}
         # Global Options
@@ -596,8 +587,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         options = {}
         if zynthian_gui_config.touch_navigation or zynthian_gui_config.layout["name"] == "V4":
             if self.get_name() == "pated note":
-                if self.can_automate():
-                    options['Edit CC'] = 'Toggle Editor'
+                options['Edit CC'] = 'Toggle Editor'
             else:
                 options['Edit Notes'] = 'Toggle Editor'
         options[f"Length ({self.get_pattern_length()})"] = 'Length'

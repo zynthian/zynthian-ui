@@ -669,7 +669,10 @@ class zynthian_engine(zynthian_basic_engine):
                     zctrl = zynthian_controller(self, ctrl[0], options)
                     processor.controllers_dict[zctrl.symbol] = zctrl
                     if zctrl.midi_cc is not None and processor.midi_autolearn and zctrl.midi_autolearn:
-                        self.state_manager.chain_manager.add_midi_binding(zctrl, zctrl.midi_cc)
+                        try:
+                            self.state_manager.chain_manager.add_midi_binding(zctrl, zctrl.midi_cc, processor.midi_chan, None, processor.chain.chain_id)
+                        except AttributeError:
+                            pass
 
         return processor.controllers_dict
 
