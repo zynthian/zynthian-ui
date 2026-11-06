@@ -267,6 +267,16 @@ class zynseq(zynthian_engine):
                     getattr(self.libseq, func).restype = ctypes.c_uint8
                 except AttributeError:
                     pass   # declared in zynseq.h but not in every build (getMidiLearnSequence)
+            # Functions returning bool: the same (only the low byte is defined)
+            for func in ("isModified", "setState", "load", "undoPattern", "redoPattern", "undoPatternAll",
+                         "redoPatternAll", "isMidiRecord", "addNote", "addControl", "addProgramChange",
+                         "isPatternModified", "isPatternEmpty", "getInterpolateCC", "setScene", "addPattern",
+                         "isMuted", "isEmpty", "hasSequenceChanged", "selectSequence", "isSolo",
+                         "isChannelEnabled"):
+                try:
+                    getattr(self.libseq, func).restype = ctypes.c_bool
+                except AttributeError:
+                    pass
 
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
