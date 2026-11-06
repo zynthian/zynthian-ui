@@ -1012,7 +1012,10 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not self.zyngui.tts:
             return
         self.zyngui.tts.announce(f"View: {self.tts_title}")
-        self.zyngui.tts.announce(f"Page: {self.list_data[self.index][2]}", False, False, False)
+        try:
+            self.zyngui.tts.announce(f"Page: {self.list_data[self.index][2]}", False, False, False)
+        except IndexError:
+            pass
         for i, zgui_ctrl in enumerate(self.zgui_controllers):
             if zgui_ctrl and zgui_ctrl.zctrl:
                 self.zyngui.tts.announce(f"Control {i+1}: {zgui_ctrl.zctrl.name}: {zgui_ctrl.zctrl.get_value2label()}", False, False, False)
