@@ -934,6 +934,8 @@ class zynthian_processor:
                         zctrl.set_value(ctrl_state["value"], True)
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
+                    if "midi_cc_mode" in ctrl_state:
+                        zctrl.midi_cc_mode = ctrl_state['midi_cc_mode']
                     if "midi_cc_debounce" in ctrl_state:
                         zctrl.midi_cc_debounce = ctrl_state['midi_cc_debounce']
                     if "midi_cc_val1" in ctrl_state:
