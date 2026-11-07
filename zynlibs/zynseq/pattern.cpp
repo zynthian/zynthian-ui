@@ -872,7 +872,8 @@ void Pattern::setInterpolateCC(uint8_t ccnum, bool flag) {
 
 void Pattern::setInterpolateCCDefaults() {
     int ccnum;
-    for (ccnum=0; ccnum<128; ccnum++) m_bInterpolateCC[ccnum] = true;
+    for (ccnum=0; ccnum<128; ccnum++)
+        m_bInterpolateCC[ccnum] = true;
     m_bInterpolateCC[64] = false;
     m_bInterpolateCC[66] = false;
     m_bInterpolateCC[67] = false;

@@ -1657,6 +1657,10 @@ const char* getState() {
             jPatn["tonic"] = pPattern->getTonic();
             jPatn["refNote"] = pPattern->getRefNote();
             jPatn["zoom"] = pPattern->getZoom();
+            json jCcnum = json::array();
+            for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
+                jCcnum.push_back(pPattern->getInterpolateCC(ccnum));
+            jPatn["ccnum"] = jCcnum;
             jPatn["quantize"] = pPattern->getQuantizeNotes();
             jPatn["swingDiv"] = pPattern->getSwingDiv();
             jPatn["swing"] = pPattern->getSwingAmount();
