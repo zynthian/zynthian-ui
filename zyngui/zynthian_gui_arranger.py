@@ -1211,7 +1211,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
     def zynpot_cb(self, i, dval):
         if super().zynpot_cb(i, dval):
             return
-        if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
+        if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source == "Internal":
             # Tempo change
             self.zynseq.nudge_tempo(dval)
             self.set_title("Tempo: {:.1f}".format(
