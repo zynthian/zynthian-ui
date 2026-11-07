@@ -123,16 +123,6 @@ class zynthian_legacy_snapshot:
     def version_4(self):
         # Convert snapshot from schema V4 to V5
 
-        self.snapshot.setdefault("midi", {"midi_capture": {}, "midi_playback": {}})
-        try:
-            names = self.snapshot["midi_profile_state"].pop("port_names")
-            for uid, name in names.items():
-                if name.lower().endswith("in"):
-                    self.snapshot["midi"]["midi_capture"][uid] = name
-                else:
-                    self.snapshot["midi"]["midi_playback"][uid] = name
-        except:
-            pass
         mixer_map = {16: zynthian_state_manager.MAIN_MIXBUS_ID} # Map of "MI" mixer proc id indexed by old mixer chan
         if "chains" in self.snapshot:
             # Get list of used processor ids:

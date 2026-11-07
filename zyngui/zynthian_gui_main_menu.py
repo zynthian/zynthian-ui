@@ -38,10 +38,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
         super().__init__()
         self.get_config = self._get_config
         self.title = "Main Menu"
-        if zynthian_gui_config.check_wiring_layout(("V5", "Z2")) or zynthian_gui_config.screen_width < 800:
-            self.columns = 3
-        else:
-            self.columns = 4
+        self.columns = zynthian_gui_config.main_menu_columns
 
     def build_view(self):
         zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynsigman.SS_AUDIO_RECORDER_STATE, self.update_status_audio_recording)

@@ -1623,6 +1623,7 @@ class zynthian_state_manager:
         self.zs3[zs3_id] = {
             "title": title,
             "active_chain": self.chain_manager.active_chain.chain_id,
+            "active_phrase": self.zynseq.phrase,
             "global": {}
         }
         if restore_midi_learn:
