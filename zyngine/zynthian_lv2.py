@@ -712,7 +712,38 @@ def get_engines_by_type():
 # ------------------------------------------------------------------------------
 
 
+# UI classes zynthian knows, in order of preference (see zynthian_engine_jalv)
+UI_CLASSES = ("Qt5UI", "Qt4UI", "GtkUI", "X11UI")
+
+
 def get_plugin_ui(plugin):
+    # The UIs the plugin declares whose binary is installed (packagers may build a plugin without
+    # its GUI and leave the UI in the TTL)
+    try:
+        uis = plugin.get_uis()
+        declared = False
+        installed = set()
+        for ui in uis:
+            declared = True
+            binary = ui.get_binary_uri()
+            path = urllib.parse.unquote(str(binary)[7:]) if binary is not None else ""
+            if not path or not os.path.isfile(path):
+                continue
+            for cls in ui.get_classes():
+                installed.add(str(cls).rsplit("#", 1)[-1])
+        if declared:
+            for res in UI_CLASSES:
+                if res in installed:
+                    logging.debug(f"Plugin '{plugin.get_name()}' => Detected UI type: {res}")
+                    return res
+            logging.debug(f"Plugin '{plugin.get_name()}' declares no installed UI of a known type")
+            return None
+    except Exception as e:
+        logging.debug(f"Can't get the UIs of plugin {plugin.get_name()} from lilv => {e}")
+    return get_plugin_ui_from_ttl(plugin)
+
+
+def get_plugin_ui_from_ttl(plugin):
     for uri in plugin.get_data_uris():
         try:
             with open(urllib.parse.unquote(str(uri)[7:])) as f:
