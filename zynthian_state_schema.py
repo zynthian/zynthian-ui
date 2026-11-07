@@ -58,12 +58,16 @@ ZynthianState = {
             "midi_thru": True, # True if chain passes MIDI
             "audio_thru": False, # True if chain passes audio
             "zmop_index": 1, # Index of zynmidirouter midi output (zmop) this chain uses
+            "cc_route": [], # Optional list of MIDI CC to be routed directly to engine
             "slots": [  # List of slots in chain in serial slot order
                 {  # Dictionary of processors in first slot
                     "1": "PT",  # Processor type indexed by processor id
                 }, # ... more processors in this slot
             ], # ... More slots
-            "cc_route": [] # Optional list of MIDI CC to be routed directly to engine
+            "zctrls": [ # List of pinned "Chain Controls"
+                (3, "cutoff"), # Processor index, symbol
+                # ... More zctrls
+            ],
         }, # ... More chains
     },
     "zs3": {  # Dictionary of ZS3's indexed by chan/prog or ZS3-x
@@ -73,19 +77,19 @@ ZynthianState = {
             "active_chain": 1, # Active chain id
             "active_phrase": 0, # Index of last selected phrase
             "restore_midi_learn": False, # Optional restore midi CC binding (Default: False)
-            "bank_subdir_info": None, # Bank subdirectory info list
-            "preset_subdir_info": None, # Preset subdirectory info list
-            "current_screen_index": 0, # Index of control screen last shown
             "processors": {  # Dictionary of processor settings
                 "1": {  # Processor id:1
                     "restore": True, # Optional False to omit from processor parameters from restore (Default: True)
                     "bank_info": ["HB Steinway D", 0, "Grand Steinway D (Hamburg)", "D4:A", "HB Steinway Model D"], # Bank id
+                    "bank_subdir_info": None, # Bank subdirectory info list
+                    "preset_subdir_info": None, # Preset subdirectory info list
+                    "current_screen_index": 0, # Index of control screen last shown
                     "preset_info": None,  # Preset id
                     "controllers": {  # Optional dictionary of controllers (overrides preset default value)
                         "volume": {  # Indexed by controller symbol
-                            "value": 96,  # Controller value
-                            "midi_cc_val1": 12, # Optional CC range minimum, value when controler value is 0
-                            "midi_cc_val2": 96, # Optional CC range maximum, value when controler value is 127
+                            "value": 96,  # Controller value (may be None to use default controller value)
+                            "midi_cc_val1": 12, # Optional CC range minimum, value when controller value is 0
+                            "midi_cc_val2": 96, # Optional CC range maximum, value when controller value is 127
                             "midi_cc_momentary_switch": 1, # Optional momentary toggle
                             "midi_cc_debounce": 1 # Optional toggle debounce
                         }, # ... More controllers
@@ -173,7 +177,7 @@ ZynthianState = {
                 "tonic": 0, # Root note for scale
                 "refNote": 51,
                 "zoom": 0, # Grid zoom
-                "ccnum": [0, 1, ...], # Interpolate CC numbers
+                "ccnum": [False, True, ...], # List of 128 flags indicating whether to interpolate CC
                 "quantize": 0, # Amount to quantize
                 "swingDiv": 1, # Swing divisor
                 "swing": 0.0, # Amount of swing to apply to pattern
