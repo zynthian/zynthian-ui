@@ -1708,11 +1708,13 @@ class zynthian_chain_manager:
             if merge:
                 chain_id = None
             chain_id = self.add_chain_from_state(chain_id, chain_state)
+            self.state_manager.step_busy_progress()
             if "slots" in chain_state:
                 slot = 0
                 for slot_state in chain_state["slots"]:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
                     for proc_id, eng_code in slot_state.items():
+                        self.state_manager.step_busy_progress()
                         if proc_id == str(zynthian_state_manager.MAIN_MIXBUS_ID):
                             continue  # Do not replace main mixbus audio mixer processor
                         try:

@@ -93,6 +93,7 @@ class zynthian_state_manager:
         self.busy_success = None
         self.busy_details = None
         self.busy_ts = None
+        self.busy_progress = None  # (title, done, total) of a long task with known steps (snapshot loading)
         self.start_busy("zynthian_state_manager")
 
         self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/snapshots"
@@ -414,11 +415,13 @@ class zynthian_state_manager:
             self.busy_warning = None
             self.busy_success = None
             self.busy_details = None
+            self.busy_progress = None
             zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_BUSY, state=False)
         #logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
 
     def clear_busy(self):
         self.busy.clear()
+        self.busy_progress = None
         self.busy_message = None
         self.busy_error = None
         self.busy_warning = None
@@ -511,6 +514,19 @@ class zynthian_state_manager:
         res = self.busy_success
         self.busy_success = None
         return res
+
+    def set_busy_progress(self, title, total):
+        """Start counting the steps of a long task (shown as a progress bar by the UI)
+        title : What is being done, shown instead of the changing busy messages
+        total : Number of steps (step_busy_progress calls) expected
+        """
+        self.busy_progress = (title, 0, max(1, total))
+
+    def step_busy_progress(self):
+        """One step of the task started with set_busy_progress done (nothing if none)"""
+        if self.busy_progress:
+            title, done, total = self.busy_progress
+            self.busy_progress = (title, min(done + 1, total), total)
 
     def set_busy_details(self, details):
         """Set busy details text
@@ -1108,6 +1124,13 @@ class zynthian_state_manager:
             self.set_busy_details("fixing legacy snapshot")
             converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
+            if load_chains:
+                # Progress: adding each chain and processor, restoring each processor's state
+                n_chains = len(state.get("chains", {}))
+                n_procs = sum(len(slot) for chain in state.get("chains", {}).values()
+                              for slot in chain.get("slots", []))
+                n_states = len(state.get("zs3", {}).get("zs3-0", {}).get("processors", {}))
+                self.set_busy_progress("Loading snapshot", n_chains + n_procs + n_states)
 
             if load_sequences:
                 self.clean_sequences()
@@ -1502,6 +1525,7 @@ class zynthian_state_manager:
                     if id < 0 or processor.chain_id in restored_chains:
                         self.set_busy_details(f"restoring {processor.get_basepath()} state")
                         processor.set_state(proc_state)
+                    self.step_busy_progress()
                 except Exception as e:
                     logging.error(f"Failed to restore processor {proc_id} state => {e}")
 
