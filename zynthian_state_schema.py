@@ -164,7 +164,7 @@ ZynthianState = {
         "1/2": {},  # ZS3 for channel 1, program change 2
         "zs3-1": {},  # Manually saved ZS3 without assigned program change
     }, # ... Other ZS3
-    "last_zs3_id": "zs3-1", # Name of zs3 loaded when snapshot saved
+    "last_zs3_id": "zs3-1", # Id of the last recalled ZS3
     "zynseq": {
         "tempo": 120.0, # Default tempo in BPM
         "bpb": 4, # Default beats per bar (time signature)

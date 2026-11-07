@@ -1197,6 +1197,8 @@ class zynthian_state_manager:
                 zs3 = self.sanitize_zs3_from_json(state["zs3"])
                 if not merge:
                     self.zs3 = zs3
+                if self.last_zs3_id not in self.zs3:
+                    self.last_zs3_id = None
                 self.load_zs3(zs3["zs3-0"], autoconnect=False)
                 try:
                     mute |= state['zs3']['zs3-0']['processors'][MAIN_MIXBUS_ID]['controllers']['mute']["value"]
@@ -1393,6 +1395,7 @@ class zynthian_state_manager:
         """
 
         active_phrase = 0
+        is_live_state = not isinstance(zs3_id, str)
         if isinstance(zs3_id, str):
             # Try loading exact match
             try:
@@ -1416,7 +1419,7 @@ class zynthian_state_manager:
 
         restored_chains = []
         restored_cc_mapping = []
-        restore_midi_learn = zs3_id == "zs3-0" or zs3_state.get("restore_midi_learn", False)
+        restore_midi_learn = is_live_state or zs3_id == "zs3-0" or zs3_state.get("restore_midi_learn", False)
         mute_pause = False
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
@@ -1571,9 +1574,7 @@ class zynthian_state_manager:
                 except:
                     pass
 
-        if zs3_id == 'zs3-0':
-            self.last_zs3_id = None
-        else:
+        if not is_live_state:
             self.last_zs3_id = zs3_id
         self.zynseq.select_phrase(active_phrase, True)
         zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, zs3_id=zs3_id)
@@ -1761,12 +1762,8 @@ class zynthian_state_manager:
         except:
             pass
 
-        if zs3_id == 'zs3-0':
-            self.last_zs3_id = None
-        else:
+        if zs3_id != 'zs3-0':
             self.last_zs3_id = zs3_id
-            # Jofemodo: this has not sense from my POV
-            #self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
         zynsigman.send(zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, zs3_id=zs3_id)
 
     def delete_zs3(self, zs3_id):
