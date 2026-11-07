@@ -24,33 +24,36 @@
 ZynthianState = {
     "schema_version": 6,  # Version of state (snapshot) model
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
-    "midi_profile_state": {  # MIDI Profile TODO: Document midi profile
-        "MASTER_BANK_CHANGE_UP": "",
-        "SYS_ENABLED": "1", # Does not seem to be used
-        "MASTER_PROGRAM_CHANGE_DOWN": "",
-        "SINGLE_ACTIVE_CHANNEL": "0", # Does not seem to be used
-        "RTPMIDI_ENABLED": "0",
-        "TOUCHOSC_ENABLED": "0",
-        "PORTS": "DISABLED_IN=\\nENABLED_OUT=ttymidi:MIDI_out,QmidiNet:in_1\\nENABLED_FB=",
-        "MASTER_CHANNEL": "0",
-        "NETWORK_ENABLED": "0",
-        "FILTER_RULES": "",
-        "PROG_CHANGE_ZS3": "1",
-        "MASTER_PROGRAM_CHANGE_UP": "",
-        "BANK_CHANGE": "0",
-        "CC_AUTOMODE": "0",
-        "MASTER_BANK_CHANGE_CCNUM": "0",
-        "MASTER_BANK_CHANGE_DOWN": "",
-        "PRESET_PRELOAD_NOTEON": "1",
-        "AUBIONOTES_ENABLED": "0",
-        "FINE_TUNING": "440",
-        "MASTER_PROGRAM_CHANGE_TYPE": "Custom",
-        "PLAY_LOOP": "0", # Does not seem to be used
-        "FILTER_OUTPUT": "0",  # Does not seem to be used
-        "port_names": {  # Dictionary of MIDI port friendly names indexed by port uid
-            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",  # Friendly name mapped by uid
-        } # ... More ports
-    },
+    "midi_profile_state": {  # Every ZYNTHIAN_MIDI_* environment variable at save time, with the prefix removed. All values are strings
+        "ACTIVE_CHANNEL": "0", # "1" sends MIDI on the active chain's channel to all chains sharing that channel. "0" sends to the active chain only
+        "USB_BY_PORT": "0", # "1" identifies USB MIDI devices by device name and physical USB port
+        "PROG_CHANGE_ZS3": "1", # "1" MIDI program change loads a ZS3. "0" selects a preset instead
+        "BANK_CHANGE": "0", # "1" MIDI bank select (CC0) changes the bank of the chain's first processor
+        "FINE_TUNING": "440", # Global tuning reference in Hz (default 440)
+        "FILTER_RULES": "", # MIDI filter rules script. Newlines are stored as a literal \n
+        "CHANPRESS_CC": "0", # CC number that channel pressure is mapped to. "0" disables
+        "NETWORK_ENABLED": "0", # "1" enables the QMidiNet network MIDI service
+        "NETUMP_ENABLED": "0", # "1" enables the network UMP service
+        "RTPMIDI_ENABLED": "0", # "1" enables the RTP-MIDI service (jackrtpmidid)
+        "TOUCHOSC_ENABLED": "0", # "1" enables the TouchOSC to MIDI bridge (touchosc2midi)
+        "BLE_ENABLED": "0", # "1" enables Bluetooth (BLE MIDI)
+        "BLE_CONTROLLER": "", # Address of the Bluetooth controller to use. "" for default
+        "AUBIONOTES_ENABLED": "0", # "1" enables the aubionotes audio to MIDI service
+        "TRANSPORT_CLOCK_SOURCE": "Internal", # Transport clock source. Default "Internal"
+        "PLAY_LOOP": "0", # "1" loops playback in the MIDI recorder
+        "MASTER_CHANNEL": "0", # Master channel features MIDI channel, 1-based. "0" disables
+        "MASTER_CHANGE_TYPE": "Roland", # Preset name for the master up/down messages. Read into config but not otherwise used
+        "MASTER_PROGRAM_CHANGE_UP": "", # 4 hex digits, "#" = master channel. Loads the next snapshot program. "" disables
+        "MASTER_PROGRAM_CHANGE_DOWN": "", # As MASTER_PROGRAM_CHANGE_UP, loads the previous snapshot program
+        "MASTER_BANK_CHANGE_UP": "", # 6 hex digits (3-byte message), "#" = master channel. Selects the next snapshot bank. "" disables
+        "MASTER_BANK_CHANGE_DOWN": "", # As MASTER_BANK_CHANGE_UP, selects the previous snapshot bank
+        "MASTER_BANK_CHANGE_CCNUM": "0", # CC number on the master channel that selects the snapshot bank (code default 32)
+        "MASTER_NOTE_CUIA": "", # Optional "note:CUIA" mappings separated by a literal \n. If absent, built-in defaults apply
+        "port_names": {  # Friendly names indexed by port uid. Restored as the second alias of matching hardware ports
+            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",
+            # ... More ports
+        }
+    },    
     "chains": {  # Dictionary of chains indexed by chain id (id=0 is main mixbus chain)
         "1": {  # Chain 1
             "title": "My first chain",  # Optional chain title
