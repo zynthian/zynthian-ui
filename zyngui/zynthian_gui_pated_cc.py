@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Base Class
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -24,14 +24,10 @@
 #
 # ******************************************************************************
 
-import os
-import tkinter
 import logging
 import tkinter.font as tkfont
 
 # Zynthian specific modules
-from zynlibs.zynseq import zynseq
-from zynlibs.zynsmf import zynsmf
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_pated_base import *
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -40,33 +36,175 @@ from zyngui.zynthian_gui_base import zynthian_gui_base
 # Zynthian Step-Sequencer Pattern CC Editor GUI Class
 # ------------------------------------------------------------------------------
 
+CC_NAMES = {
+    1: "ModWheel",
+    2: "Breath",
+    5: "Portamento",
+    7: "Volume",
+    8: "Balance",
+    10: "Pan",
+    11: "Expression",
+    64: "Sustain Pedal",
+    66: "Sostenuto Pedal",
+    67: "Soft Pedal",
+    71: "Resonance",
+    72: "Release",
+    73: "Attack",
+    74: "Cutoff",
+    91: "Reverb",
+    92: "Tremolo",
+    93: "Chorus",
+    94: "Detune"
+}
 
 class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 128
+    SCREEN_NAME = "pated_cc"
 
     # Function to initialise class
     def __init__(self):
         self.row0 = 8
-        self.cc_num = 64
+        self.cc_num = None # MIDI CC number (0..127) of selected entry
+        self.cc_output = False # True if selected entry is a MIDI output CC, False if parameter automation
+        self.index = None # Index of selected entry in avail_entries
+        self.avail_zctrls = {} # Dict of lists of zctrls that are configured as automatable, indexed by CC
+        self.avail_entries = [] # List of tuples (CC, is MIDI output) that may be edited: parameter automation first then MIDI output
         self.interpolateCC = True
+        self.show_all_cc_num = False
         self.marker_width = 5
         super().__init__()
         self.marker_width = self.width // 150
+
+    def build_avail_entries(self):
+        """ Build list of editable CC: parameter automation then MIDI output CC
+
+        MIDI output CC use the valid CC range 0..127. A MIDI output CC may have the same number as a
+        parameter automation CC. The parameter automation is moved to a spare CC when MIDI output events are added.
+        """
+
+        self.avail_zctrls = self.zyngui.chain_manager.get_automate_zctrls(self.channel)
+        self.avail_entries = [(cc, False) for cc in self.avail_zctrls]
+        midi_chains = self.zyngui.chain_manager.get_chain_ids_by_midi_chan(self.channel)
+        midi_out = False
+        for chain_id in midi_chains:
+            chain = self.zyngui.chain_manager.chains[chain_id]
+            if chain.midi_thru:
+                midi_out = True
+                break
+        if midi_out:
+            self.avail_entries += [(cc, True) for cc in range(128)]
+        else:
+            self.avail_entries += [(64, True)]
+
+    def select_entry(self, cc, output):
+        """ Select an entry in the list of editable CC
+
+        cc: CC number
+        output: True for MIDI output CC, False for parameter automation
+        Returns: True if entry found and selected
+        """
+
+        try:
+            self.index = self.avail_entries.index((cc, output))
+        except ValueError:
+            return False
+        self.cc_num, self.cc_output = self.avail_entries[self.index]
+        return True
+
+    def build_view(self):
+        self.build_avail_entries()
+        if not self.avail_entries:
+            return # Can't automate without any params or CC.
+        if self.cc_num is None or not self.select_entry(self.cc_num, self.cc_output):
+            self.index = None
+        self.set_title_ts = 0
+        self.nudge_cc_num()
+        retval = super().build_view()
+        return retval
+
+    def nudge_cc_num(self, dval=0):
+        if not self.avail_entries:
+            return
+        index = self.index
+        if index is None:
+            index = 0
+        try:
+            index = max(0, index + dval)
+            self.cc_num, self.cc_output = self.avail_entries[index]
+            self.index = index
+            self.set_title()
+            self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
+            self.redraw_pending = 2
+            return True
+        except:
+            pass
+        return False
+
+    def output_blocked(self):
+        # True if selected MIDI output CC has the same number as parameter automation
+        return self.cc_output and self.cc_num in self.avail_zctrls
+
+    def claim_output_cc(self):
+        """ Make selected MIDI output CC available for MIDI output events
+
+        Returns: True if CC is available for MIDI output events
+        """
+
+        if not self.output_blocked():
+            return True
+        self.save_pattern_snapshot(now=True, force=False)
+        new_cc = self.zyngui.chain_manager.reassign_automate_cc(self.channel, self.cc_num)
+        if new_cc is None:
+            self.zyngui.show_info("No spare CC to move parameter automation to", 2000)
+            return False
+        if self.midi_record:
+            self.update_learn_mapping()
+        self.build_avail_entries()
+        self.select_entry(self.cc_num, True)
+        self.save_pattern_snapshot(now=True, force=True)
+        self.set_title()
+        self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
+        self.redraw_pending = 2
+        return True
+
+    def add_cc_event(self, step, row):
+        """ Add a CC event to the pattern at the selected CC
+
+        step: Step index
+        row: Value
+        Returns: True if event added
+        """
+
+        if self.cc_output and not self.claim_output_cc():
+            return False
+        self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+        return True
 
     # Function to get name of this view
     def get_name(self):
         return "pated cc"
 
     def get_title(self):
-        title = f"{super().get_title()}: CC{self.cc_num}"
-        # Get CC title from zynstep mapped zctrl
-        midi_chan = self.zynseq.libseq.getChannel(self.zynseq.scene, self.phrase, self.sequence, 0)
-        zctrl = self.zyngui.chain_manager.get_zynstep_mapped_zctrl(midi_chan, self.cc_num)
-        if zctrl:
-            title = f"{title} ({zctrl.name})"
-        self.tts_title = f"Pattern editor. CC {self.cc_num}"
+        title = f"{super().get_title()}: "
+        # Get CC title from automation mapped zctrl or MIDI output CC
+        title += self.get_automation_name()
+        self.tts_title = f"Pattern CC editor. {title}"
+        return title
+
+    def get_automation_name(self):
+        """ Get the name of the automated parameter or CC for the currently selected automation"""
+
+        title = ""
+        try:
+            if self.cc_output:
+                title += f" ({self.zyngui.chain_manager.midi_output_cc_objs[self.cc_num].name})"
+            else:
+                for zctrl in self.avail_zctrls[self.cc_num]:
+                    title += f" ({zctrl.name})"
+        except:
+            pass
         return title
 
     def set_edit_mode(self, mode):
@@ -84,12 +222,14 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     def get_menu_options(self):
         menu_options = super().get_menu_options()
+        if self.output_blocked():
+            return menu_options
         # Pattern Options
         options = {}
         if self.interpolateCC:
-            options[f"\u2612 Interpolate CC{self.cc_num} values"] = 'Interpolate CC OFF'
+            options[f"\u2612 Interpolate values {self.get_automation_name()}"] = 'Interpolate CC OFF'
         else:
-            options[f"\u2610 Interpolate CC{self.cc_num} values"] = 'Interpolate CC ON'
+            options[f"\u2610 Interpolate values {self.get_automation_name()}"] = 'Interpolate CC ON'
         menu_options['_PATTERN'].update(options)
         # Pattern Edit
         options = {}
@@ -113,9 +253,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             case _:
                 super().menu_cb(option, params)
 
-    def send_controller_value(self, zctrl):
-        super().send_controller_value(zctrl)
-
     # -------------------------------------------------------------------------
     # Pattern management
     # -------------------------------------------------------------------------
@@ -128,6 +265,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     # Function to clear CC events on pattern
     def clear_pattern_cc(self, params=None):
+        if self.output_blocked():
+            return
         self.zyngui.show_confirm(f"Clear CC{self.cc_num} in pattern {self.pattern}?", self.do_clear_pattern_cc)
 
     # Function to actually clear CC events
@@ -155,13 +294,16 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             self.disable_param_editor()
 
         # Get cell coordinates
-        row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
-        step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+        row = int((self.grid_height - self.grid_canvas.canvasy(event.y) + 1) / self.row_height - self.row0 - 1)
+        if self.interpolateCC:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width + 0.5)
+        else:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
 
         # If there is no CC point, add a new CC point
         val = self.get_cc_value(step)
         if val is None:
-            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+            self.add_cc_event(step, row)
         # else, change CC value
         else:
             self.zynseq.libseq.setControlValue(step, self.cc_num, row, row)
@@ -182,13 +324,16 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # event: Mouse event
     def on_grid_drag(self, event):
         # Get cell coordinates
-        row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
-        step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+        row = int((self.grid_height - self.grid_canvas.canvasy(event.y) + 1) / self.row_height - self.row0 - 1)
+        if self.interpolateCC:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width + 0.5)
+        else:
+            step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
 
         # If there is no CC point, add a new CC point
         val = self.get_cc_value(step)
         if val is None:
-            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+            self.add_cc_event(step, row)
         # else, change CC value
         else:
             self.zynseq.libseq.setControlValue(step, self.cc_num, row, row)
@@ -238,6 +383,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         return [x1, y1, x2, y2]
 
     def get_cc_value(self, step):
+        if self.output_blocked():
+            return None
         val = self.zynseq.libseq.getControlValue(step, self.cc_num)
         if val <= 127:
             return val
@@ -280,8 +427,16 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         duration = self.zynseq.libseq.getControlDuration(step, self.cc_num)
         offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
         val2 = self.zynseq.libseq.getControlValueEnd(step, self.cc_num)
-        coord = self.get_cell(step, row, duration, offset, row - val2)
-        self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
+        steps_to_end = self.n_steps - (step + offset)
+        if self.interpolateCC and 0 < steps_to_end < duration:
+            val_end = row + (val2 - row) * steps_to_end / duration
+            coord = self.get_cell(step, row, steps_to_end, offset, row - val_end)
+            self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
+            coord_wrap = self.get_cell(0, val_end, duration - steps_to_end, 0, val_end - val2)
+            self.grid_canvas.create_line(coord_wrap, fill="white", width=2, tags=("ccevent", f"step{step}"))
+        else:
+            coord = self.get_cell(step, row, duration, offset, row - val2)
+            self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
         if self.interpolateCC:
             coord[2] = coord[0] + self.marker_width
             coord[3] = coord[1] + self.marker_width
@@ -389,8 +544,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def toggle_event(self, step, row):
         val = self.get_cc_value(step)
         if val is None:
-            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
-            return self.cc_num
+            if self.add_cc_event(step, row):
+                return self.cc_num
+            return None
         else:
             self.zynseq.libseq.removeControl(step, self.cc_num)
             return None
@@ -407,6 +563,16 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def refresh_status(self):
         super().refresh_status()
 
+    def cuia_v5_zynpot_switch(self, params):
+        i = params[0]
+        t = params[1].upper()
+        if i == 0 and t == 'B':
+            self.show_all_cc_num = not self.show_all_cc_num
+            self.nudge_cc_num()
+            return True
+        else:
+            return super().cuia_v5_zynpot_switch(params)
+
     # Function to handle zynpots value change
     #   i: Zynpot index [0..n]
     #   dval: Current value of zyncoder
@@ -414,17 +580,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         #logging.debug(f"DVAL {i} => {dval}")
         if zynthian_gui_base.zynpot_cb(self, i, dval):
             return True
-
         if i == self.ctrl_order[0]:
             if self.edit_mode == EDIT_MODE_NONE:
-                self.cc_num += dval
-                if self.cc_num < 1:
-                    self.cc_num = 1
-                elif self.cc_num > 127:
-                    self.cc_num = 127
-                self.set_title()
-                self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
-                self.redraw_pending = 2
+                self.nudge_cc_num(dval)
                 return True
         elif i == self.ctrl_order[2]:
             if self.edit_mode == EDIT_MODE_NONE:

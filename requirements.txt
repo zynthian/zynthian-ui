@@ -15,4 +15,5 @@ hwmon
 vcgencmd
 tkinterweb
 pyliblo3
+numpy
 

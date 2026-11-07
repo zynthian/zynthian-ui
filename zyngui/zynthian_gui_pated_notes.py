@@ -170,6 +170,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
+    SCREEN_NAME = "pattern_editor"
 
     # Function to initialise class
     def __init__(self):
@@ -284,6 +285,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         options['Transpose pattern'] = 'Transpose pattern'
         options.update(menu_options['EDIT'])
         options['Clear pattern notes'] = 'Clear pattern notes'
+        options['Load pattern'] = 'Load pattern'
+        options['Save pattern'] = 'Save pattern'
+        options['Import from SMF'] = 'Import from SMF'
+        options['Export to SMF'] = 'Export to SMF'
         menu_options['EDIT'] = options
         return menu_options
 

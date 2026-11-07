@@ -237,6 +237,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
+    SCREEN_NAME = None
+    last_editor = None
 
     # Function to initialise class
     def __init__(self):
@@ -419,7 +421,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         #logging.debug(f"BANK: {bank}, SEQUENCE: {sequence}")
         if seq_name:
             try:
-                synth_chain = self.zyngui.chain_manager.get_synth_chain(self.channel)
+                synth_chain = self.chain_manager.get_synth_chain(self.channel)
                 chain_name = synth_chain.get_title()
             except:
                 chain_name = ""
@@ -467,8 +469,26 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         else:
             self.set_title()
 
+    def get_editor_screen(self):
+        """ Get the name of the editor screen to show when the pattern editor is requested
+
+        Returns: Name of the screen to show
+        """
+
+        editor = zynthian_gui_pated_base.last_editor
+        if editor is None or editor is self:
+            return self.SCREEN_NAME
+        try:
+            editor.refresh_sequence_info()
+            editor.load_pattern(self.pattern)
+            return editor.SCREEN_NAME
+        except Exception as e:
+            logging.warning(f"Can't show last pattern editor: {e}")
+        return self.SCREEN_NAME
+
     # Function to show GUI
     def build_view(self):
+        zynthian_gui_pated_base.last_editor = self
         self.zynseq.libseq.selectSequence(self.zynseq.scene, self.phrase, self.sequence)
         # Temporarily set sequence to loop - do not update cache which is used to restore configured state on hide
         self.zynseq.libseq.setSequenceRepeat(self.zynseq.scene, self.phrase, self.sequence, 255)
@@ -596,10 +616,6 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                 if paste is not None and paste[0] == "PAT" and paste[3] != self.pattern:
                     name = self.zynseq.get_sequence_name(self.zynseq.scene, paste[1], paste[2])
                     options[f"Paste {name} from clipboard #{i + 1}"] = ('Paste pattern', i)
-        options['Load pattern'] = 'Load pattern'
-        options['Save pattern'] = 'Save pattern'
-        options['Import from SMF'] = 'Import from SMF'
-        options['Export to SMF'] = 'Export to SMF'
         options['Clear pattern ALL'] = 'Clear pattern ALL'
         menu_options['EDIT'] = options
         return menu_options
@@ -1229,7 +1245,25 @@ class zynthian_gui_pated_base(zynthian_gui_base):
             midi_record = not self.midi_record
             self.midi_record = midi_record
         self.zynseq.libseq.enableMidiRecord(midi_record)
+        if midi_record:
+            self.update_learn_mapping()
         self.save_pattern_snapshot(now=True, force=False)
+
+    def update_learn_mapping(self):
+        """ Rebuild libseq mapping of learned CC to automation CC, used when recording MIDI """
+
+        self.zynseq.libseq.clearLearnMapping()
+        try:
+            processors = self.chain_manager.get_processors(self.chain_manager.active_chain.chain_id)
+            for proc in processors:
+                for zctrl in proc.controllers_dict.values():
+                    ml_a = self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_chain=False, filter_global=False, max_results=1)
+                    if ml_a:
+                        automate_cc = ml_a[0][0] & 0x7f
+                        for ml in self.chain_manager.get_midi_binding_from_zctrl(zctrl, filter_automate=False):
+                            self.state_manager.zynseq.libseq.addLearnMapping(ml[0], automate_cc)
+        except Exception as e:
+            logging.warning(e)
 
     # -------------------------------------------------------------------------
     # Touch event management
@@ -1998,7 +2032,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         i = params[0]
         t = params[1].upper()
         if i == 0:
-            if t == 'S' or t == 'B':
+            if t == 'S':
                 self.zyngui.toggle_pated()
                 return True
         elif i == 1:

@@ -23,6 +23,7 @@
 #
 # ******************************************************************************
 
+import math
 import tkinter
 import logging
 
@@ -72,6 +73,30 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         self.plot_width = self.width - self.m_l - self.m_r
         self.plot_height = self.height - self.m_b - self.m_t
 
+        self.build_curve_table()
+
+    def build_curve_table(self):
+        n = 16 # Curve_steps
+        k = 1.0 # Curve strength
+        if k < 1e-3:
+            self.curve_table = [(i / n, i / n) for i in range(1, n)]
+        else:
+            norm = 1.0 - math.exp(-k)
+            self.curve_table = [(i / n, (1.0 - math.exp(-k * i / n)) / norm) for i in range(1, n)]
+
+    def curve_points(self, x_start, y_start, x_end, y_end):
+        dx = x_end - x_start
+        dy = y_end - y_start
+        min_width = 4
+        if abs(dx) < min_width or dy == 0:
+            return [x_end, y_end]
+        pts = []
+        for t, g in self.curve_table:
+            pts.append(x_start + dx * t)
+            pts.append(y_start + dy * g)
+        pts.append(x_end)
+        pts.append(y_end)
+        return pts
 
     def on_size(self, event):
         if event.width == self.width and event.height == self.height:
@@ -138,25 +163,21 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
             x = x0 = self.m_l
             y = y0 = self.m_b + self.plot_height
             x1 = x0 + self.plot_width
-            y1 = self.m_b
             coords = [x0, y0]
             self.envelope_click_ranges = []
+            release_pts = None
 
             for i, zctrl in enumerate(self.zctrls):
                 rv = envelope_values[i]
+                pts = []
                 match zctrl.envelope:
                     case "release":
                         x = x1 - rv * self.dx
-                        drag_window = [x, y,
-                                       x1, y0,
-                                       x, y0]
+                        release_pts = self.curve_points(x, y, x1, y0)
+                        drag_window = [x, y] + release_pts + [x, y0]
                         self.envelope_click_ranges.append(x)
                         if coords[-2] == x1:
                             coords[-2] = x   # Fix fade if it exists
-                        # self.widget_canvas.coords(self.release_line, x, y, x, y0)
-                        # self.widget_canvas.itemconfig(self.release_line, state="normal")
-                        # self.widget_canvas.coords(self.release_label, x-3, y)
-                        # self.widget_canvas.itemconfig(self.release_label, state="normal")
                     case "sustain":
                         y = y0 - rv * self.dy
                         drag_window = [x, y0, x, y, x_release, y_fade, x_release, y0]
@@ -169,22 +190,30 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
                         drag_window += [x, y_offset, x, y]
                     case _:
                         _x = x
-                        drag_window = [x, y]
+                        _y = y
                         x += rv * self.dx
                         if zctrl.envelope == "attack":
                             y = y0 - self.dy
                         elif zctrl.envelope == "decay":
                             y = y_sustain
-                        drag_window += [x, y, x, y0, _x, y0]
+                        if zctrl.envelope in ("attack", "decay"):
+                            pts = self.curve_points(_x, _y, x, y)
+                        drag_window = [_x, _y] + (pts if pts else [x, y]) + [x, y0, _x, y0]
                         self.envelope_click_ranges.append(x)
-                coords.append(x)
-                coords.append(y)
+                if pts:
+                    coords += pts
+                else:
+                    coords.append(x)
+                    coords.append(y)
                 if self.drag_zctrl == zctrl:
                     self.widget_canvas.coords(self.drag_polygon, drag_window)
 
             x = self.m_l + self.plot_width
-            coords.append(x)
-            coords.append(y0)
+            if release_pts:
+                coords += release_pts
+            else:
+                coords.append(x)
+                coords.append(y0)
             self.envelope_click_ranges.append(x)
             self.widget_canvas.coords(self.envelope_polygon, coords)
             # Highlight dragged section

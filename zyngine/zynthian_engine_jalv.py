@@ -329,7 +329,7 @@ class zynthian_engine_jalv_base(zynthian_engine):
         logging.info("Getting Controller List from LV2 Plugin ...")
         zctrls = {}
         self.bypass_zctrl = None
-        for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
+        for info in zynthian_lv2.get_plugin_ports(self.plugin_url):
             symbol = info['symbol']
 
             if not self.customize_lv2_controller(info):
@@ -363,7 +363,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                         'name': info['name'],
                         'group_symbol': info['group_symbol'],
                         'group_name': info['group_name'],
-                        #'graph_path': info['index'],
                         'value': info['value'],
                         'labels': labels,
                         'ticks': values,
@@ -393,7 +392,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                             'name': info['name'],
                             'group_symbol': info['group_symbol'],
                             'group_name': info['group_name'],
-                            #'graph_path': info['index'],
                             'value': val,
                             'labels': ['off', 'on'],
                             'ticks': [int(info['range']['min']), int(info['range']['max'])],
@@ -416,7 +414,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                             'name': info['name'],
                             'group_symbol': info['group_symbol'],
                             'group_name': info['group_name'],
-                            #'graph_path': info['index'],
                             'value': int(info['value']),
                             'value_default': int(info['value']),
                             'value_min': int(info['range']['min']),
@@ -441,7 +438,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                         'name': info['name'],
                         'group_symbol': info['group_symbol'],
                         'group_name': info['group_name'],
-                        #'graph_path': info['index'],
                         'value': val,
                         'labels': ['off', 'on'],
                         'ticks': [info['range']['min'], info['range']['max']],
@@ -465,7 +461,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                         'name': info['name'],
                         'group_symbol': info['group_symbol'],
                         'group_name': info['group_name'],
-                        #'graph_path': info['index'],
                         'value': val,
                         'labels': ['trig'],
                         'value_default': val,
@@ -485,7 +480,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                         'name': info['name'],
                         'group_symbol': info['group_symbol'],
                         'group_name': info['group_name'],
-                        #'graph_path': info['index'],
                         'value': None,
                         'value_default': None,
                         'value_min': None,
@@ -505,7 +499,6 @@ class zynthian_engine_jalv_base(zynthian_engine):
                         'name': info['name'],
                         'group_symbol': info['group_symbol'],
                         'group_name': info['group_name'],
-                        #'graph_path': info['index'],
                         'value': float(info['value']),
                         'value_default': float(info['value']),
                         'value_min': float(info['range']['min']),
@@ -617,9 +610,10 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
     # Custom plugin info
     # ------------------------------------------------------------------------------
 
-    if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
+    rbpi_version = os.environ.get('RBPI_VERSION', '')
+    if "Raspberry Pi 4" in rbpi_version:
         rpi = "RPi4"
-    elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
+    elif "Raspberry Pi 3" in rbpi_version:
         rpi = "RPi3"
     else:
         rpi = "RPi2"
@@ -703,7 +697,6 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
             'breath': [2, 64],
             'volume': [7, 98],
             'panning': [10, 64],
-            'expression': [11, 127],
             'modulation wheel': [1, 0],
             'expression': [11, 64],
             'filter cutoff': [74, 64],

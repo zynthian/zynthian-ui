@@ -630,7 +630,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         cmd, idev, val = params
         try:
             if cmd == "scroll_mode":
-                self.zyngui.state_manager.ctrldev_manager.drivers[idev].set_scroll_mode(cal)
+                self.zyngui.state_manager.ctrldev_manager.drivers[idev].set_scroll_mode(val)
         except:
             logging.warning(f"Failed to set ctrldev option for device {idev}: {cmd}({val}) ")
         self.show_options()

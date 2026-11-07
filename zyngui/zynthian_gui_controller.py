@@ -555,22 +555,32 @@ class zynthian_gui_controller(tkinter.Canvas):
                 self.plot_midi_bind("X", zynthian_gui_config.color_alt2)
             elif self.zctrl == self.zyngui.state_manager.zctrl_y:
                 self.plot_midi_bind("Y", zynthian_gui_config.color_alt2)
-            elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
-                key = midi_learn_params[0]
-                cc = key & 0xff
-                match midi_learn_params[1]:
-                    case "abs":
-                        #zmip = (key >> 16) & 0xff
-                        chan = (key >> 8) & 0xff
-                        self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_ml)
-                    case "chain":
-                        chan = (key >> 8) & 0xff
+            elif midi_learn_params := self.zyngui.chain_manager.get_midi_binding_from_zctrl(self.zctrl):
+                automate = ""
+                key = None
+                bind_type = 0
+                for ml in midi_learn_params:
+                    match ml[1]:
+                        case "automate":
+                            automate = "A:"
+                        case "chain":
+                            key = ml[0]
+                            bind_type = 1
+                        case "global":
+                            key = ml[0]
+                            bind_type = 2
+                if key is not None:
+                    cc, chan, zmip, chain_id = self.zyngui.chain_manager.unpack_midi_bind_key(key)
+                match bind_type:
+                    case 2: # global
+                        self.plot_midi_bind(f"{automate}{chan + 1}#{cc}", zynthian_gui_config.color_ml)
+                    case 1: #chain
                         if chan < 16:
-                            self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_hl)
+                            self.plot_midi_bind(f"{automate}{chan + 1}#{cc}", zynthian_gui_config.color_hl)
                         else:
-                            self.plot_midi_bind(f"{cc}")
-                    case "zynstep":
-                        self.plot_midi_bind(f"{cc}")
+                            self.plot_midi_bind(f"{automate}{cc}")
+                    case _:
+                        self.plot_midi_bind(automate)
             else:
                 self.erase_midi_bind()
                 return False

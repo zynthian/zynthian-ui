@@ -136,35 +136,61 @@ class zynthian_engine_sfz(zynthian_engine):
 
         try:
             with open(sfzpath, "r") as fh:
-                sfz = fh.read()
+                sfz_text = fh.read()
                 # logging.debug(f"Loaded SFZ file {sfzpath} =>\n{sfz}")
         except Exception as e:
             logging.error(f"Can't load SFZ file '{sfzpath}' => {e}")
             return False
 
+        # Compile all regex patterns (Case-Insensitive)
+        label_pattern = re.compile(r'\blabel_cc(\d{1,3})\s*=\s*([^=\r\n]+)', re.I)
+        value_pattern = re.compile(r'\bset_(hd)?cc(\d{1,3})\s*=\s*(-?\d+(?:\.\d+)?)', re.I)
+        dynamic_pattern = re.compile(r'\b[a-zA-Z0-9_]+_(?:hd)?cc(\d{1,3})\s*=', re.I)
+
+        # Internal tracking storage
+        cc_labels = {}
+        cc_values = {}
+        all_discovered_ccs = set()
+
+        # Pass 1: Parse explicit labels, values, and harvest initial CCs
+        for match in label_pattern.finditer(sfz_text):
+            cc_num = int(match.group(1))
+            if 0 <= cc_num <= 127:
+                cc_labels[cc_num] = match.group(2).strip()
+                all_discovered_ccs.add(cc_num)
+
+        for match in value_pattern.finditer(sfz_text):
+            cc_num = int(match.group(2))
+            if 0 <= cc_num <= 127:
+                # Parse as float if a decimal point is present, otherwise integer
+                val_str = match.group(3)
+                cc_values[cc_num] = float(val_str) if '.' in val_str else int(val_str)
+                all_discovered_ccs.add(cc_num)
+
+        # Pass 2: Harvest CC numbers hidden inside dynamic control opcodes
+        for match in dynamic_pattern.finditer(sfz_text):
+            cc_num = int(match.group(1))
+            if 0 <= cc_num <= 127:
+                all_discovered_ccs.add(cc_num)
+
+        # Construct the final dictionary output ordered by CC number
         cc_config = {}
-        pat1 = re.compile(r"\sset_cc(\d+)=(\d+)", re.MULTILINE)
-        pat2 = re.compile(r"\sset_hdcc(\d+)=([\d\.]+)", re.MULTILINE)
-        pat3 = re.compile(r"^label_cc(\d+)=([^\/\n]+)$", re.MULTILINE)
-        pat4 = re.compile(r"cc\d+", re.IGNORECASE)
-        for m in pat1.finditer(sfz):
-            try:
-                cc_config[int(m[1])] = ["", int(m[2])]
-            except:
-                pass
-        for m in pat2.finditer(sfz):
-            try:
-                cc_config[int(m[1])] = ["", int(127 * float(m[2]))]
-            except:
-                pass
-        for m in pat3.finditer(sfz):
-            try:
-                # Sanitize label
-                parts = list(filter(lambda x: x.strip(), m[2].split(" ")))
-                parts = list(filter(lambda x: not pat4.match(x), parts))
-                cc_config[int(m[1])][0] = " ".join(parts)
-            except:
-                cc_config[m[1]] = [m[2], 0]
+        for cc in sorted(list(all_discovered_ccs)):
+            # 1. Fetch raw label or apply the default fallback rule
+            title = cc_labels.get(cc, None)
+
+            if title:
+                # Title Sanitization: Clean up comments and erratic spacing
+                # Cut off the string if there is an inline comment (// or #)
+                # Strip trailing/leading spaces, tabs, and newlines
+                title = re.split(r'//|#', title)[0].strip()
+            else:
+                title = f"cc {cc}"
+
+            # Apply value fallback rule
+            value = cc_values.get(cc, 0)
+            cc_config[cc] = (title, value)
+
         #logging.debug(f"Parsed CCs => \n{cc_config}")
 
         ctrl_group = []

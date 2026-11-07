@@ -312,7 +312,10 @@ class zynthian_gui_selector(zynthian_gui_base):
         no_div = new_index == index
         self._select_listbox(new_index, see=see)
         if self.shown and self.zyngui.tts:
-            tts_text = self.list_data[new_index][2] + tts
+            try:
+                tts_text = self.list_data[new_index][2] + tts
+            except:
+                return
             if self.last_tts == tts_text:
                 return
             self.last_tts = tts_text
