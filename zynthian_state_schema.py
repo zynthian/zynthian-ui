@@ -65,7 +65,7 @@ ZynthianState = {
                 }, # ... more processors in this slot
             ], # ... More slots
             "zctrls": [ # List of pinned "Chain Controls"
-                (3, "cutoff"), # Processor index, symbol
+                (3, "cutoff"), # Processor id, symbol
                 # ... More zctrls
             ],
         }, # ... More chains
@@ -87,12 +87,12 @@ ZynthianState = {
                     "preset_info": None,  # Preset id
                     "controllers": {  # Optional dictionary of controllers (overrides preset default value)
                         "volume": {  # Indexed by controller symbol
-                            "value": 96,  # Controller value (may be None to use default controller value)
+                            "value": 96,  # Controller value
                             "midi_cc_val1": 12, # Optional CC range minimum, value when controller value is 0
                             "midi_cc_val2": 96, # Optional CC range maximum, value when controller value is 127
                             "midi_cc_momentary_switch": 1, # Optional momentary toggle
                             "midi_cc_debounce": 1, # Optional toggle debounce
-                            "midi_cc_mode": 0 # Optional CC control mode
+                            "midi_cc_mode": 0 # Optional CC control mode (0=abslute, 1-3=relative modes)
                         }, # ... More controllers
                     }, # ... Other parameters
                 }, # ... Other controllers
@@ -121,7 +121,7 @@ ZynthianState = {
                     "ctrldev_state": {}, # Optional dictionary, specific to each controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
-                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 24-bit hex encoded (chain (ff for global), MIDI chan, CC)
+                    "midi_learn": {  # Dictionary of MIDI CC binding, indexed by 24-bit hex encoded (chain (ff for global), MIDI chan (ff for any channel), CC)
                         "ff0021": [  # List of control bindings to this CC
                             [
                                 1, # Processor id
@@ -131,7 +131,7 @@ ZynthianState = {
                     } # ... Other bindings
                 }, # ... Other devices
                 "zynmidi": { # Internal / GUI MIDI config
-                    "midi_learn": { # Same as physical MIDI input midi_learn
+                    "midi_learn": { # Same as physical MIDI input midi_learn (not implemented)
                     }
                 }
             },

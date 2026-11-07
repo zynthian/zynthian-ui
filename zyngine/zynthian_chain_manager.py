@@ -154,7 +154,7 @@ class zynthian_chain_manager:
         self.active_midi_chain = None # Chain currently receiving active MIDI input
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
-        self.midi_cc_binding = {} # Lists of zctrls indexed by 24-bit [chain,zmip,chan,cc]
+        self.midi_cc_binding = {} # Lists of zctrls indexed by 32-bit [chain,zmip,chan,cc]
         self._automate_cc_filter = set() # Set of (chan, cc) of parameter automation CC currently blocked from MIDI outputs in zynmidirouter
         self.midi_output_cc_objs = []
         for i in range(128):
