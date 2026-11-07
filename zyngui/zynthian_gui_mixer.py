@@ -611,7 +611,8 @@ class zynthian_gui_mixer_strip():
         # Fader background defines height of fader
         self.fader_bg = self.canvas.create_rectangle(x, self.fader_y, x + self.width, self.legend_y, fill=self.gui_mixer.fader_bg_color, width=0, tags=("fader", f"fader_{id}"))
 
-        # Audio mixer elements
+        # Audio mixer elements. They are not created if the chain has no mixer processor when the strip is created.
+        self.fader_overlay = None
         if self.chain.zynmixer_proc:
             # Separator
             if self.launcher_mode:
@@ -1822,7 +1823,7 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.legend_strip_midi_bg, fill=self.legend_bg_color_hl)
         self.left_canvas.itemconfig("fader_overlay", fill=self.fader_color)
         self.right_canvas.itemconfig("fader_overlay", fill=self.fader_color)
-        if self.highlighted_strip.chain.is_audio():
+        if self.highlighted_strip.fader_overlay is not None:
             self.highlighted_strip.canvas.itemconfig(self.highlighted_strip.fader_overlay, fill=self.fader_color_hl)
         self.highlight_launcher()
 
@@ -2178,7 +2179,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.zynseq.phrase += 1
             self.build_launchers()
             self.moving_phrase = True
-            self.zyngui.purge_screen_history("option")
+            self.zyngui.wait_show_loading()
+            self.zyngui.prune_screen_history("option", soft=False)
             self.state_manager.end_busy("clone_phrase")
         elif option.startswith("Delete phrase"):
             self.zyngui.show_confirm(f"Remove phrase {params + 1}?", self.remove_phrase, params)
@@ -2287,7 +2289,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         self.state_manager.start_busy("remove_phrase", "Deleting phrase...")
         self.zynseq.remove_phrase(self.zynseq.scene, phrase)
         self.build_launchers()
-        self.zyngui.purge_screen_history("option")
+        self.zyngui.wait_show_loading(0.5)
+        self.zyngui.prune_screen_history("option", soft=False)
         self.state_manager.end_busy("remove_phrase")
 
     def drag_launcher(self, dy):

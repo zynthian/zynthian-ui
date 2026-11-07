@@ -607,6 +607,7 @@ power_save_secs = 60 * get_env_int('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60)
 audio_power_threshold = get_env_int('ZYNTHIAN_UI_AUDIO_POWER_THRESHOLD', -40)
 preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
 mixer_toggle = os.environ.get('ZYNTHIAN_UI_MIXER_TOGGLE', "record")
+main_menu_columns = get_env_int('ZYNTHIAN_UI_MAIN_MENU_COLUMNS', 0)
 
 # ------------------------------------------------------------------------------
 # Audio Options
@@ -871,6 +872,13 @@ if "zynthian_main.py" in sys.argv[0]:
         # Global fonts
         font_listbox = (font_family, int(1.0*font_size))
         font_topbar = (font_family, topbar_fs)
+
+        # Calculate main_menu_columns if not explicitly configured
+        if not main_menu_columns:
+            if screen_width < 800 or check_wiring_layout(("V5", "Z2")):
+                main_menu_columns = 3
+            else:
+                main_menu_columns = 4
 
         # ------------------------------------------------------------------------------
         # Setup Root Frame for the GUI

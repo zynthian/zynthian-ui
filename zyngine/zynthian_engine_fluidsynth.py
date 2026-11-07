@@ -271,11 +271,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
             sfi = self.soundfont_index[bank[0]]
         except:
             if self.load_bank(bank[0], True):
-                sfi = self.soundfont_index[preset[3]]
+                sfi = self.soundfont_index[bank[0]]
                 if processor:
                     processor.refresh_controllers()
             else:
-                logging.debug(f"Can't load bank => {preset[3]}")
+                logging.debug(f"Can't load bank '{bank[0]}'")
                 return False
 
         output = self.proc_cmd("inst {}".format(sfi))
