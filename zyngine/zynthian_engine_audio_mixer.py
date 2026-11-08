@@ -72,7 +72,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 'level': zynthian_controller(self, 'level', {
                     'is_integer': False,
                     'value_max': 1.0,
-                    'value_default': 0.8,
+                    'value_default': 0.7,
                     'value': processor.zynmixer.get_level(processor.mixer_chan),
                     'processor': processor
                 }),

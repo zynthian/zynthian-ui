@@ -133,6 +133,12 @@ jack_default_audio_sample_t* g_mainNormaliseBufferA    = NULL;  // Ponter to mai
 jack_default_audio_sample_t* g_mainNormaliseBufferB    = NULL;  // Ponter to main output normalised buffer used for normalising effects sends to main mixbus
 #endif
 
+static inline float logCurve(float x)
+{
+    x = fmaxf(0.0f, fminf(1.0f, x));
+    return 1.0f - sqrtf(x);
+}
+
 static float convertToDBFS(float raw) {
     if (raw <= 0)
         return -200;
@@ -143,6 +149,25 @@ static float convertToDBFS(float raw) {
     return fValue;
 }
 
+/*
+// Crude IEEE-754 bit approximation.
+static float convertToDBFS(float raw)
+{
+    if (raw <= 1.0e-10f)
+        return -200.0f;
+
+    union {
+        float f;
+        uint32_t i;
+    } v = { .f = raw };
+
+    float log2 = (float)((int32_t)v.i - 0x3f800000)
+               * 1.1920928955078125e-7f;
+
+    float db = log2 * 6.020599913f;
+    return db < -200.0f ? -200.0f : db;
+}
+*/
 
 static int onJackProcess(jack_nframes_t frames, void* args) {
     if (!g_running)
@@ -233,11 +258,11 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 reqLevelB             = 0.0;
             } else {
                 if (strip->reqbalance > 0.0)
-                    reqLevelA = strip->reqlevel * (1 - strip->reqbalance);
+                    reqLevelA = strip->reqlevel * (1.0f - strip->reqbalance);
                 else
                     reqLevelA = strip->reqlevel;
                 if (strip->reqbalance < 0.0)
-                    reqLevelB = strip->reqlevel * (1 + strip->reqbalance);
+                    reqLevelB = strip->reqlevel * (1.0f + strip->reqbalance);
                 else
                     reqLevelB = strip->reqlevel;
                 strip->level   = strip->reqlevel;
@@ -692,13 +717,13 @@ float getGain(uint8_t channel) {
 void setLevel(uint8_t channel, float level) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
-    g_channelStrips[channel]->reqlevel = level;
+    g_channelStrips[channel]->reqlevel = fmaxf(0.0f, level * level);
 }
 
 float getLevel(uint8_t channel) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return 0.0f;
-    return g_channelStrips[channel]->reqlevel;
+    return sqrtf(g_channelStrips[channel]->reqlevel);
 }
 
 void setBalance(uint8_t channel, float balance) {
@@ -987,18 +1012,18 @@ void reset(uint8_t channel) {
 
 float getDpm(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return -200.0f;
+        return 0.0f;
     if (leg)
-        return convertToDBFS(g_channelStrips[channel]->dpmB);
-    return convertToDBFS(g_channelStrips[channel]->dpmA);
+        return logCurve(g_channelStrips[channel]->dpmB);
+    return logCurve(g_channelStrips[channel]->dpmA);
 }
 
 float getDpmHold(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return -200.0f;
+        return 0.0f;
     if (leg)
-        return convertToDBFS(g_channelStrips[channel]->holdB);
-    return convertToDBFS(g_channelStrips[channel]->holdA);
+        return logCurve(g_channelStrips[channel]->holdB);
+    return logCurve(g_channelStrips[channel]->holdA);
 }
 
 void updateDpmStates(dpm_struct* values, uint8_t count) {
@@ -1083,7 +1108,7 @@ int8_t addStrip() {
         }
         strip->gain       = 1.0;
         strip->level      = 0.0;
-        strip->reqlevel   = 0.8;
+        strip->reqlevel   = 0.7;
         strip->balance    = 0.0;
         strip->reqbalance = 0.0;
         strip->mute       = 0;

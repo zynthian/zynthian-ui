@@ -27,6 +27,7 @@
 import logging
 from PIL import Image, ImageTk
 from tkinter import NORMAL, HIDDEN
+from math import log10, pow
 
 from zyngui.zynthian_gui_config import color_panel_bg
 
@@ -184,13 +185,11 @@ class zynthian_gui_dpm():
                 self.parent.itemconfig(self.bg_image, state=NORMAL)
                 self.parent.itemconfig(self.bg_mono, state=HIDDEN)
 
-        k_dpm = max(0.0, max(dpm, self.lowdB) / self.lowdB)
-        k_hold = max(0.0, max(hold, self.lowdB) / self.lowdB)
 
         if self.vertical:
-            y1 = int(self.y0 + self.height * k_dpm)
+            y1 = int(self.y0 + self.height * dpm)
             self.parent.coords(self.overlay, (self.x0, self.y0, self.x1, y1))
-            y1 = int(self.y0 + self.height * k_hold)
+            y1 = int(self.y0 + self.height * hold)
             self.parent.coords(self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
             if y1 <= self.y_over:
                 self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
@@ -205,9 +204,9 @@ class zynthian_gui_dpm():
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
         else:
-            x0 = int(self.width - self.width * k_dpm)
+            x0 = int(self.width - self.width * dpm)
             self.parent.coords(self.overlay, (x0, self.y0, self.x1, self.y1))
-            x0 = int(self.width - self.width * k_hold)
+            x0 = int(self.width - self.width * hold)
             self.parent.coords(self.hold, (x0, self.y0, x0 + self.hold_thickness, self.y1))
             if x0 > self.x_over:
                 self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
@@ -221,7 +220,7 @@ class zynthian_gui_dpm():
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
-        if self.main and dpm >= 0.0:
+        if self.main and dpm <= 1.0:
             self.parent.itemconfig(self.over_indicator, state=NORMAL)
             if self.over_id is not None:
                 self.parent.after_cancel(self.over_id)
@@ -245,7 +244,7 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x1 = l * 0.73 # Under (green) start green-yellow gradient
+        x1 = l * 0.70 # Under (green) start green-yellow gradient
         x2 = l * 0.80 # Start const yellow
         x3 = l * 0.90 # Start yellow-red gradient
         x4 = l * 0.97 # Over (red) start const red

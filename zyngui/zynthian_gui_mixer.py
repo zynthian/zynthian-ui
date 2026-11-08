@@ -30,7 +30,7 @@ import tkinter
 import logging
 #import traceback
 from time import sleep
-from math import log10
+from math import log10, sqrt
 from threading import Timer
 from os.path import basename, splitext
 from PIL import Image, ImageTk, ImageDraw, ImageFont
@@ -1662,9 +1662,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         else:
             self.pending_refresh_queue.add((strip, symbol))
         if symbol == "level":
-            #value = strip.zctrls["level"].value
-            if value > 0:
-                level_db = f"{20 * log10(value):.2f}dB"
+            if value > 0.0:
+                level_db = f"{40 * log10(value):.2f}dB"
             else:
                 level_db = "-∞"
             self.set_title(f"Volume: {level_db} ({strip.chain.get_description(1)})", None, None, 1)
