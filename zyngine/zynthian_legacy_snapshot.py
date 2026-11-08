@@ -76,6 +76,7 @@ class zynthian_legacy_snapshot:
         for version in range(snapshot["schema_version"], SNAPSHOT_SCHEMA_VERSION):
             logging.info(f"Converting snapshot from schema V{version} to V{version+1}")
             getattr(self, f'version_{version}')()
+        self.linuxsampler_sfz_to_sfizz()
         return self.snapshot
 
     def version_5(self):
@@ -162,6 +163,36 @@ class zynthian_legacy_snapshot:
                     for key in ("value", "midi_cc_val1", "midi_cc_val2"):
                         if key in ctrl_cfg:
                             ctrl_cfg[key] = legacy_level_to_fader_level(ctrl_cfg[key])
+
+    def linuxsampler_sfz_to_sfizz(self):
+        """LinuxSampler chains playing SFZ instruments are loaded with sfizz.
+
+        LinuxSampler plays only GIG files (SFZ support was removed from its engine) and sfizz is the
+        SFZ engine, but snapshots made before, among them six factory snapshots, have LS chains with
+        SFZ presets. Both engines are zynthian_engine_sfz: same bank and preset format, same SFZ
+        controllers, so the processor's engine code is all that changes. A processor whose presets
+        aren't all SFZ (GIG; SF2, which LinuxSampler loads by instrument index and FluidSynth by
+        bank/program, so they don't translate) stays on LinuxSampler.
+        Applies to every schema version: current snapshots can have such chains too.
+        """
+
+        presets = {}  # preset files of each processor, in all ZS3s
+        for zs3 in self.snapshot.get("zs3", {}).values():
+            for proc_id, proc_state in zs3.get("processors", {}).items():
+                preset_info = proc_state.get("preset_info")
+                if preset_info:
+                    presets.setdefault(str(proc_id), []).append(str(preset_info[0]))
+        for chain_id, chain_state in self.snapshot.get("chains", {}).items():
+            for slot in chain_state.get("slots", []):
+                for proc_id, eng_code in slot.items():
+                    if eng_code != "LS":
+                        continue
+                    files = presets.get(str(proc_id), [])
+                    if files and all(f.lower().endswith(".sfz") for f in files):
+                        logging.info(f"Chain {chain_id}: LinuxSampler SFZ instrument loaded with sfizz")
+                        slot[proc_id] = "SF"
+                    elif any(f.lower().split("#")[0].endswith((".sf2", ".sf3")) for f in files):
+                        logging.warning(f"Chain {chain_id}: LinuxSampler SF2 instrument stays on LinuxSampler")
 
     def version_4(self):
         # Convert snapshot from schema V4 to V5
