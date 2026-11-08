@@ -175,10 +175,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         if zynthian_gui_config.snapshot_mixer_settings:
             self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots",
-                                   ["Soundcard parameters are saved with snapshot", "meter.png"]))
+                                   ["Soundcard parameters are saved with and restored from snapshots", "meter.png"]))
         else:
             self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Audio Levels on Snapshots",
-                                   ["Soundcard parameters are not saved with snapshot", "meter.png"]))
+                                   ["Soundcard parameters are not saved with snapshots and are ignored when loading", "meter.png"]))
 
         if zynthian_gui_config.enable_dpm:
             self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters",
