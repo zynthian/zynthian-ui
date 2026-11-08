@@ -146,7 +146,12 @@ class zynthian_chain:
     # ----------------------------------------------------------------------------
 
     def set_zmop_options(self):
-        if self.zmop_index is not None and len(self.synth_slots) > 0:
+        # Chains without a zmop (e.g. pure audio chains / Main) must not touch
+        # any router port. Passing None to the C functions would be converted
+        # to zmop index 0 by ctypes and clobber the first chain's flags.
+        if self.zmop_index is None or self.zmop_index < 0:
+            return
+        if len(self.synth_slots) > 0:
             # IMPORTANT!!! Synth chains drop CC & PC messages
             # logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
             lib_zyncore.zmop_set_flag_droppc(self.zmop_index, 1)
@@ -172,6 +177,8 @@ class zynthian_chain:
                     lib_zyncore.zmop_set_midi_chan(iz, self.midi_chan)
                 elif self.midi_chan == 0xffff:
                     lib_zyncore.zmop_set_midi_chan_all(iz)
+            # Reset drop flags in case this zmop index was previously in use
+            self.set_zmop_options()
 
     def free_zmop(self):
         """If already using a zmop, release and reset it
