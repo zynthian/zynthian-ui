@@ -32,6 +32,17 @@ from math import log10, pow
 from zyngui.zynthian_gui_config import color_panel_bg
 
 
+def db_to_norm(db):
+    """Convert a level in dBFS to a normalised meter position
+
+    The library applies a square law to the DPM so the meter position is
+    sqrt(amplitude) which is 10^(dB / 40).
+    Returns: 0.0 (silence) .. 1.0 (0dBFS or above)
+    """
+
+    return pow(10.0, min(0.0, db) / 40.0)
+
+
 class zynthian_gui_dpm():
 
     bg_images = {} # Dict of background images, indexed by (width, length)
@@ -65,7 +76,6 @@ class zynthian_gui_dpm():
         # dB constants
         self.overdB = -3
         self.highdB = -10
-        self.lowdB = -50
         self.zerodB = -10
 
         # Colors
@@ -107,10 +117,6 @@ class zynthian_gui_dpm():
         """ Compute all item coordinates and thresholds based on current geometry """
         x0, y0, x1, y1 = self.x0, self.y0, self.x1, self.y1
         width, height = self.width, self.height
-
-        def db_to_norm(db):
-            db = max(-50, min(0, db))
-            return (db + 50) / 50
 
         if self.vertical:
             self.y_over = int(y1 - height * db_to_norm(self.overdB))
@@ -204,15 +210,15 @@ class zynthian_gui_dpm():
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
         else:
-            x0 = int(self.width - self.width * dpm)
-            self.parent.coords(self.overlay, (x0, self.y0, self.x1, self.y1))
-            x0 = int(self.width - self.width * hold)
-            self.parent.coords(self.hold, (x0, self.y0, x0 + self.hold_thickness, self.y1))
-            if x0 > self.x_over:
+            x = int(self.x1 - self.width * dpm)
+            self.parent.coords(self.overlay, (x, self.y0, self.x1, self.y1))
+            x = int(self.x1 - self.width * hold)
+            self.parent.coords(self.hold, (x, self.y0, x + self.hold_thickness, self.y1))
+            if x > self.x_over:
                 self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
-            elif x0 > self.x_high:
+            elif x > self.x_high:
                 self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
-            elif x0 > self.x_low:
+            elif x > self.x_low:
                 if self.mono:
                     self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_hold_color)
                 else:
@@ -220,7 +226,7 @@ class zynthian_gui_dpm():
             else:
                 self.parent.itemconfig(self.hold, state=HIDDEN)
 
-        if self.main and dpm <= 1.0:
+        if self.main and dpm <= 0.0:
             self.parent.itemconfig(self.over_indicator, state=NORMAL)
             if self.over_id is not None:
                 self.parent.after_cancel(self.over_id)
@@ -244,10 +250,10 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x1 = l * 0.70 # Under (green) start green-yellow gradient
-        x2 = l * 0.80 # Start const yellow
-        x3 = l * 0.90 # Start yellow-red gradient
-        x4 = l * 0.97 # Over (red) start const red
+        x1 = l * db_to_norm(-13.5) # Under (green) start green-yellow gradient
+        x2 = l * db_to_norm(-10) # Start const yellow
+        x3 = l * db_to_norm(-5) # Start yellow-red gradient
+        x4 = l * db_to_norm(-1.5) # Over (red) start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))

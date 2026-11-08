@@ -41,7 +41,7 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
-from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
+from zyngui.zynthian_gui_dpm import zynthian_gui_dpm, db_to_norm
 from zyngine.zynthian_signal_manager import zynsigman
 
 logging.getLogger('PIL').setLevel(logging.WARNING)
@@ -812,10 +812,6 @@ class zynthian_gui_mixer_strip():
         img = Image.new("RGB", (width, height), (r, g, b))
         pixels = img.load()
 
-        def db_to_norm(db):
-            db = max(-50, min(0, db))
-            return (db + 50) / 50
-
         c_low = (0, 200, 0)
         c_zero = (200, 200, 200)
         c_mid = (200, 200, 0)
@@ -847,7 +843,7 @@ class zynthian_gui_mixer_strip():
         dpm = self.chain.zynmixer_proc.zynmixer.dpm[self.chain.zynmixer_proc.mixer_chan]
         self.dpm_a.refresh(dpm.a, dpm.a_hold, dpm.mono)
         self.dpm_b.refresh(dpm.b, dpm.b_hold, dpm.mono)
-        if self.chain.chain_id == 0 and (dpm.a_hold >= 0 or dpm.b_hold >= 0):
+        if self.chain.chain_id == 0 and (dpm.a_hold <= 0.0 or dpm.b_hold <= 0.0):
             self.canvas.itemconfig(self.mute_text, fill="#FF0000")
             if self.over_id is not None:
                 self.canvas.after_cancel(self.over_id)
