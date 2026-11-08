@@ -571,14 +571,18 @@ class zynthian_gui_controller(tkinter.Canvas):
                             bind_type = 2
                 if key is not None:
                     cc, chan, zmip, chain_id = self.zyngui.chain_manager.unpack_midi_bind_key(key)
+                if self.zctrl.midi_cc_mode == -1:
+                    mode = "\u23fa"
+                else:
+                    mode = ""
                 match bind_type:
                     case 2: # global
-                        self.plot_midi_bind(f"{automate}{chan + 1}#{cc}", zynthian_gui_config.color_ml)
+                        self.plot_midi_bind(f"{mode}{automate}{chan + 1}#{cc}", zynthian_gui_config.color_ml)
                     case 1: #chain
                         if chan < 16:
-                            self.plot_midi_bind(f"{automate}{chan + 1}#{cc}", zynthian_gui_config.color_hl)
+                            self.plot_midi_bind(f"{mode}{automate}{chan + 1}#{cc}", zynthian_gui_config.color_hl)
                         else:
-                            self.plot_midi_bind(f"{automate}{cc}")
+                            self.plot_midi_bind(f"{mode}{automate}{cc}")
                     case _:
                         self.plot_midi_bind(automate)
             else:
