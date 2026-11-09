@@ -301,16 +301,14 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         if knob_index < 7:
                             # Knobs 1-7: Regular chains (skip master if it appears in chain list)
                             chain = self.chain_manager.get_chain_by_position(knob_index, midi=False)
-                            if chain and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                                mixer_chan = chain.mixer_chan
-                                current_level = self.zynmixer.get_level(mixer_chan)
-                                new_level = max(0.0, min(1.0, current_level + (delta * 0.01)))
-                                self.zynmixer.set_level(mixer_chan, new_level)
+                            if chain and chain.mixer_chan is not None and chain.mixer_chan < 16 and chain.zynmixer_proc:
+                                # ai_comment: Use the controller (cached value) so the GUI and library stay in sync
+                                zctrl = chain.zynmixer_proc.controllers_dict["level"]
+                                zctrl.set_value(max(0.0, min(1.0, zctrl.value + (delta * 0.01))))
                         else:
-                            # Knob 8: Master channel (mixer channel 16)
-                            current_level = self.zynmixer.get_level(16)
-                            new_level = max(0.0, min(1.0, current_level + (delta * 0.01)))
-                            self.zynmixer.set_level(16, new_level)
+                            # Knob 8: Main level (main chain is addressed as position -1 by the mixer helpers)
+                            current_level = self.get_mixer_param("level", -1)
+                            self.set_mixer_param("level", -1, max(0.0, min(1.0, current_level + (delta * 0.01))))
                     return True
                 elif self.knob_bank == 1:
                     # Bank 1: ZYNPOT 0-3, Arrow L/R, Arrow U/D, Presets, SELECT/BACK

@@ -127,7 +127,8 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
     def get_param(self, cc, midi_chan):
         if cc == 7:
             # Main fader
-            return int(self.zynmixer_bus.get_level(0) * 127)
+            # ai_comment: Read the cached controller value (as for the other strips) instead of calling the library
+            return int(self.get_mixer_param("level", -1) * 127)
         if cc < 16 or cc > 31:
             return None
         strip = midi_chan * 8 + cc % 8

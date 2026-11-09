@@ -41,7 +41,7 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
-from zyngui.zynthian_gui_dpm import zynthian_gui_dpm, db_to_norm
+from zyngui.zynthian_gui_dpm import zynthian_gui_dpm, db_to_norm, DPM_ZERO_DB, DPM_HIGH_DB, DPM_OVER_DB
 from zyngine.zynthian_signal_manager import zynsigman
 
 logging.getLogger('PIL').setLevel(logging.WARNING)
@@ -818,20 +818,21 @@ class zynthian_gui_mixer_strip():
         c_high = (240, 0, 0)
         if width > 7:
             font = ImageFont.truetype("DejaVuSans.ttf", int(width * 0.6))
-            for db in (-40, -30, -20, -16, -13, -10, -7, -4, -1):
+            # Ticks are dBFS. Labels are relative to "0dB" (-18dBFS) reference
+            for db in (-60, -48, -36, -30, -24, DPM_ZERO_DB, -12, -6):
                 y = min(height - 1, height - int(db_to_norm(db) * height))
-                c = c_zero if db == -10 else c_high if db >=-3 else c_mid if db >= -10 else c_low
+                c = c_zero if db == DPM_ZERO_DB else c_high if db >= DPM_OVER_DB else c_mid if db >= DPM_HIGH_DB else c_low
                 if id == "dpm":
-                    if db != -10:
+                    if db != DPM_ZERO_DB:
                         for x in range(width):
                             pixels[x, y] = c
                 elif id == "dpm_lbl":
                     fill = f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
                     draw = ImageDraw.Draw(img)
-                    if db == -10:
+                    if db == DPM_ZERO_DB:
                         draw.text((width, y), "0", fill=fill, font=font, anchor="rm")
                     else:
-                        draw.text((width - 1, y), f"{db+10:+}", fill=fill, font=font, anchor="rm")
+                        draw.text((width - 1, y), f"{int(db - DPM_ZERO_DB):+}", fill=fill, font=font, anchor="rm")
 
         self.bg_images[key] = ImageTk.PhotoImage(img)
         return self.bg_images[key]
@@ -1659,7 +1660,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
             self.pending_refresh_queue.add((strip, symbol))
         if symbol == "level":
             if value > 0.0:
-                level_db = f"{40 * log10(value):.2f}dB"
+                # Use library fader law so the readout always matches the gain applied
+                level_db = f"{strip.chain.zynmixer_proc.zynmixer.level_to_db(value):.2f}dB"
             else:
                 level_db = "-∞"
             self.set_title(f"Volume: {level_db} ({strip.chain.get_description(1)})", None, None, 1)

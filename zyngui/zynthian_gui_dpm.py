@@ -27,20 +27,26 @@
 import logging
 from PIL import Image, ImageTk
 from tkinter import NORMAL, HIDDEN
-from math import log10, pow
 
 from zyngui.zynthian_gui_config import color_panel_bg
+
+
+# Use same constants as zynmixer lib. See lib docs for details
+DPM_RANGE_DB = 72.0
+DPM_ZERO_DB = -18.0 # EBU standard "0dB" reference level
+DPM_HIGH_DB = -18.0 # Level (dB) above which meter is yellow
+DPM_OVER_DB = -3.0 # Level (dB) above which meter is red
 
 
 def db_to_norm(db):
     """Convert a level in dBFS to a normalised meter position
 
-    The library applies a square law to the DPM so the meter position is
-    sqrt(amplitude) which is 10^(dB / 40).
-    Returns: 0.0 (silence) .. 1.0 (0dBFS or above)
+    The meter scale is linear in dB over DPM_RANGE_DB.
+    Returns: 0.0 (DPM_RANGE_DB below full scale or lower) .. 1.0 (0dBFS or above)
     """
 
-    return pow(10.0, min(0.0, db) / 40.0)
+    # ai_comment: Must match logCurve() in zynlibs/zynmixer/mixer.c. 0dBFS => 1.0, -18dBFS => 0.75, -72dBFS => 0.0
+    return max(0.0, min(1.0, 1.0 + db / DPM_RANGE_DB))
 
 
 class zynthian_gui_dpm():
@@ -74,9 +80,9 @@ class zynthian_gui_dpm():
         self.y1 = y0 + height
 
         # dB constants
-        self.overdB = -3
-        self.highdB = -10
-        self.zerodB = -10
+        self.overdB = DPM_OVER_DB
+        self.highdB = DPM_HIGH_DB
+        self.zerodB = DPM_ZERO_DB
 
         # Colors
         self.low_color = "#00AA00"
@@ -250,10 +256,11 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x1 = l * db_to_norm(-13.5) # Under (green) start green-yellow gradient
-        x2 = l * db_to_norm(-10) # Start const yellow
-        x3 = l * db_to_norm(-5) # Start yellow-red gradient
-        x4 = l * db_to_norm(-1.5) # Over (red) start const red
+        # ai_comment: Colour stops are defined in dB so they align with the hold thresholds: yellow from highdB, red from overdB
+        x1 = l * db_to_norm(self.highdB - 4) # Under (green) start green-yellow gradient
+        x2 = l * db_to_norm(self.highdB) # Start const yellow
+        x3 = l * db_to_norm(self.overdB - 6) # Start yellow-red gradient
+        x4 = l * db_to_norm(self.overdB) # Over (red) start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))

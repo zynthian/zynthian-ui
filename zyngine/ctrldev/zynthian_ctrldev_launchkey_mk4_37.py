@@ -159,8 +159,9 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
                     mixer_channel += 8
                     
                 chain = self.chain_manager.get_chain_by_position(mixer_channel - 1, midi=False)
-                if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
-                    self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
+                if chain and chain.mixer_chan is not None and chain.mixer_chan < 17 and chain.zynmixer_proc:
+                    # ai_comment: Set via the controller so its cached value, the GUI and the library stay in sync
+                    chain.zynmixer_proc.controllers_dict["level"].set_value(ccval / 127.0)
                 return True
             elif 24 < ccnum < 29:
                 # Knobs 5-8 for ZYNPOT_ABS

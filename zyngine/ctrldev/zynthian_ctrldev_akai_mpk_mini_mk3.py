@@ -644,8 +644,12 @@ class MixerHandler(ModeHandlerBase):
         mixer_chan = chain.mixer_chan
 
         if type == "level":
-            value = self._zynmixer.get_level(mixer_chan)
-            set_value = self._zynmixer.set_level
+            # ai_comment: Use the controller (cached value) so the GUI and library stay in sync
+            if not chain.zynmixer_proc:
+                return False
+            zctrl = chain.zynmixer_proc.controllers_dict["level"]
+            value = zctrl.value
+            def set_value(c, v): return zctrl.set_value(v)
         elif type == "balance":
             value = self._zynmixer.get_balance(mixer_chan)
             set_value = self._zynmixer.set_balance

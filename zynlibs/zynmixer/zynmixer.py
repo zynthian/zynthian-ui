@@ -67,6 +67,10 @@ class ZynMixer():
         self.lib_zynmixer.setLevel.argtypes = [ctypes.c_uint8, ctypes.c_float]
         self.lib_zynmixer.getLevel.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getLevel.restype = ctypes.c_float
+        self.lib_zynmixer.levelToDb.argtypes = [ctypes.c_float]
+        self.lib_zynmixer.levelToDb.restype = ctypes.c_float
+        self.lib_zynmixer.dbToLevel.argtypes = [ctypes.c_float]
+        self.lib_zynmixer.dbToLevel.restype = ctypes.c_float
 
         self.lib_zynmixer.setGain.argtypes = [ctypes.c_uint8, ctypes.c_float]
         self.lib_zynmixer.getGain.argtypes = [ctypes.c_uint8]
@@ -282,7 +286,7 @@ class ZynMixer():
         channel : int
             Index of the mixer strip
         level : float
-            Value of level (0..1.0)
+            Value of level (0..1.0). Linear fader position: 0 = -inf, 0.75 = 0dB, 1.0 = +10dB (see level_to_db)
         """
 
         if channel is None:
@@ -303,12 +307,46 @@ class ZynMixer():
         Returns
         -------
         float
-            Fader level (0..1.0)
+            Fader level (0..1.0). Linear fader position: 0 = -inf, 0.75 = 0dB, 1.0 = +10dB (see level_to_db)
         """
 
         if channel is None:
             return
         return self.lib_zynmixer.getLevel(channel)
+
+    def level_to_db(self, level):
+        """
+        Converts a fader level (position) to gain in dB using the library's fader law
+
+        Parameters
+        ----------
+        level : float
+            Fader level (0..1.0)
+
+        Returns
+        -------
+        float
+            Gain in dB (-200 for silence)
+        """
+
+        return self.lib_zynmixer.levelToDb(level)
+
+    def db_to_level(self, db):
+        """
+        Converts gain in dB to a fader level (position) using the library's fader law
+
+        Parameters
+        ----------
+        db : float
+            Gain in dB
+
+        Returns
+        -------
+        float
+            Fader level (0..1.0)
+        """
+
+        return self.lib_zynmixer.dbToLevel(db)
 
     def set_balance(self, channel, balance):
         """

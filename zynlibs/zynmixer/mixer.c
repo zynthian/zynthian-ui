@@ -39,6 +39,11 @@
 #define MAX_CHANNELS 99
 #endif
 
+#define DPM_RANGE_DB 72.0f // Linear dB DPM span range. 72dB places the -18dBFS reference at 75%, aligned with fader unity.
+#define FADER_UNITY 0.75f // Fader position that gives unity gain (0dB / -18dBFS)
+#define FADER_HEADROOM_DB 10.0f // Gain at the top of the throw (position 1.0)
+// Exponent chosen so the slope (dB per fader travel) below unity equals the slope above unity, i.e. no kink at 0dB. 0.115129255 = ln(10) / 20
+static const float FADER_EXP = (FADER_HEADROOM_DB / (1.0f - FADER_UNITY) * FADER_UNITY * 0.115129255f);
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -133,10 +138,30 @@ jack_default_audio_sample_t* g_mainNormaliseBufferA    = NULL;  // Ponter to mai
 jack_default_audio_sample_t* g_mainNormaliseBufferB    = NULL;  // Ponter to main output normalised buffer used for normalising effects sends to main mixbus
 #endif
 
+// Convert fader position (0.0..1.0) to linear gain factor
+static float levelToGain(float level) {
+    level = fmaxf(0.0f, fminf(1.0f, level));
+    if (level >= FADER_UNITY)
+        return powf(10.0f, FADER_HEADROOM_DB * (level - FADER_UNITY) / (1.0f - FADER_UNITY) / 20.0f);
+    return powf(level / FADER_UNITY, FADER_EXP);
+}
+
+// Convert linear gain factor to fader position (0.0..1.0)
+static float gainToLevel(float gain) {
+    if (gain <= 0.0f)
+        return 0.0f;
+    if (gain >= 1.0f)
+        return fminf(1.0f, FADER_UNITY + (1.0f - FADER_UNITY) * 20.0f * log10f(gain) / FADER_HEADROOM_DB);
+    return FADER_UNITY * powf(gain, 1.0f / FADER_EXP);
+}
+
+// Convert linear amplitude to inverted meter position with linear dB (log) scale, clamped to aplitude range 0.0..1.0.
 static inline float logCurve(float x)
 {
-    x = fmaxf(0.0f, fminf(1.0f, x));
-    return 1.0f - sqrtf(x);
+    float pos = 0.0f;
+    if (x > 0.0f)
+        pos = 1.0f + 20.0f * log10f(x) / DPM_RANGE_DB;
+    return 1.0f - fmaxf(0.0f, fminf(1.0f, pos));
 }
 
 static float convertToDBFS(float raw) {
@@ -637,7 +662,7 @@ int init() {
 #ifdef MIXBUS
     int8_t id = addStrip(); // Main mixbus
     id = addStrip(); // Aux mixbus
-    setLevel(id, 1.0); // Default unity gain for aux bus
+    setLevel(id, FADER_UNITY); // Default unity gain for aux bus
     setNormalise(id, 1);
     g_mainNormaliseBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
     g_mainNormaliseBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -717,13 +742,28 @@ float getGain(uint8_t channel) {
 void setLevel(uint8_t channel, float level) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
-    g_channelStrips[channel]->reqlevel = fmaxf(0.0f, level * level);
+    g_channelStrips[channel]->reqlevel = levelToGain(level);
 }
 
 float getLevel(uint8_t channel) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return 0.0f;
-    return sqrtf(g_channelStrips[channel]->reqlevel);
+    return gainToLevel(g_channelStrips[channel]->reqlevel);
+}
+
+float levelToDb(float level) {
+    level = fmaxf(0.0f, fminf(1.0f, level));
+    if (level <= 0.0f)
+        return -200.0f;
+    if (level >= FADER_UNITY)
+        return FADER_HEADROOM_DB * (level - FADER_UNITY) / (1.0f - FADER_UNITY);
+    return fmaxf(-200.0f, 20.0f * FADER_EXP * log10f(level / FADER_UNITY));
+}
+
+float dbToLevel(float db) {
+    if (db <= -200.0f)
+        return 0.0f;
+    return gainToLevel(powf(10.0f, db / 20.0f));
 }
 
 void setBalance(uint8_t channel, float balance) {
@@ -999,7 +1039,7 @@ void toggleMS(uint8_t channel) {
 
 void reset(uint8_t channel) {
     setGain(channel, 1.0);
-    setLevel(channel, 0.8);
+    setLevel(channel, dbToLevel(0.0f));
     setBalance(channel, 0.0);
     setMute(channel, 0);
     setMono(channel, 0);

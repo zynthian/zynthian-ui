@@ -65,15 +65,27 @@ float getGain(uint8_t channel);
 
 /** @brief  Set channel level
  *   @param  channel Index of channel
- *   @param  level Channel level (Normalised: 0=-inf, 1.0=0dB)
+ *   @param  level Channel level (Normalised fader position: 0=-inf, 0.75=0dB, 1.0=+10dB. See levelToDb())
  */
 void setLevel(uint8_t channel, float level);
 
 /** @brief  Get channel level
  *   @param  channel Index of channel
- *   @retval float Channel level (Normalised: 0=-inf, 1.0=0dB)
+ *   @retval float Channel level (Normalised fader position: 0=-inf, 0.75=0dB, 1.0=+10dB. See levelToDb())
  */
 float getLevel(uint8_t channel);
+
+/** @brief  Convert fader position to gain in dB using the fader law
+ *   @param  level Fader position (0..1.0)
+ *   @retval float Gain in dB (-200 for silence)
+ */
+float levelToDb(float level);
+
+/** @brief  Convert gain in dB to fader position using the fader law
+ *   @param  db Gain in dB
+ *   @retval float Fader position (0..1.0)
+ */
+float dbToLevel(float db);
 
 /** @brief  Set channel balance
  *   @param  channel Index of channel
