@@ -575,10 +575,12 @@ void print_dpm_info(uint8_t chan) {
         );
 }
 
-void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
-    if (!g_running)
-        return;
-    pthread_mutex_lock(&lock);
+// Routing flags out of date: a connect callback came while removeStrip / removeSend held the lock
+volatile uint8_t g_routingStale = 0;
+
+// Update the strips' routed flags; call with the lock held
+static void updateRouting() {
+    g_routingStale = 0;
     for (uint8_t chan = 0; chan < MAX_CHANNELS; chan++) {
         if (g_channelStrips[chan] == NULL)
             continue;
@@ -591,6 +593,28 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
         else
             g_channelStrips[chan]->outRouted = 0;
     }
+}
+
+// Don't block here: pipewire-jack calls this with the client's process lock held (jack.locked-
+// process), so the process callback that removeStrip / removeSend wait for (holding the lock)
+// would never run. If the lock is taken, they update the routing after releasing it.
+void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
+    if (!g_running)
+        return;
+    if (pthread_mutex_trylock(&lock) != 0) {
+        g_routingStale = 1;
+        return;
+    }
+    updateRouting();
+    pthread_mutex_unlock(&lock);
+}
+
+// After removeStrip / removeSend released the lock
+static void updateStaleRouting() {
+    if (!g_routingStale)
+        return;
+    pthread_mutex_lock(&lock);
+    updateRouting();
     pthread_mutex_unlock(&lock);
 }
 
@@ -1256,6 +1280,7 @@ int8_t removeStrip(uint8_t chan) {
     jack_port_unregister(g_jackClient, pstrip->outPortA);
     jack_port_unregister(g_jackClient, pstrip->outPortB);
     free(pstrip);
+    updateStaleRouting();
 
     return chan;
 }
@@ -1322,6 +1347,7 @@ uint8_t removeSend(uint8_t send) {
     jack_port_unregister(g_jackClient, pstrip->outPortA);
     jack_port_unregister(g_jackClient, pstrip->outPortB);
     free(pstrip);
+    updateStaleRouting();
     return 0;
 #endif
 }
