@@ -164,36 +164,6 @@ static inline float logCurve(float x)
     return 1.0f - fmaxf(0.0f, fminf(1.0f, pos));
 }
 
-static float convertToDBFS(float raw) {
-    if (raw <= 0)
-        return -200;
-    float fValue = 20 * log10f(raw);
-
-    if (fValue < -200)
-        fValue = -200;
-    return fValue;
-}
-
-/*
-// Crude IEEE-754 bit approximation.
-static float convertToDBFS(float raw)
-{
-    if (raw <= 1.0e-10f)
-        return -200.0f;
-
-    union {
-        float f;
-        uint32_t i;
-    } v = { .f = raw };
-
-    float log2 = (float)((int32_t)v.i - 0x3f800000)
-               * 1.1920928955078125e-7f;
-
-    float db = log2 * 6.020599913f;
-    return db < -200.0f ? -200.0f : db;
-}
-*/
-
 static int onJackProcess(jack_nframes_t frames, void* args) {
     if (!g_running)
         return 0;
@@ -1148,7 +1118,7 @@ int8_t addStrip() {
         }
         strip->gain       = 1.0;
         strip->level      = 0.0;
-        strip->reqlevel   = 0.7;
+        strip->reqlevel   = dbToLevel(0.0f);
         strip->balance    = 0.0;
         strip->reqbalance = 0.0;
         strip->mute       = 0;
