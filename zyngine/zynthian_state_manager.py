@@ -2247,6 +2247,7 @@ class zynthian_state_manager:
         try:
             # Set active MIDI channel
             lib_zyncore.set_active_midi_chan(zynthian_gui_config.active_midi_channel)
+            lib_zyncore.set_classic_midi_cc(zynthian_gui_config.classic_midi_cc)
             # Set Global Tuning
             self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
             lib_zyncore.set_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
