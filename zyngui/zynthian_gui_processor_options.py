@@ -186,7 +186,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
     def midi_clean(self):
         if self.processor:
             self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.processor.name}?",
-                                     self.chain_manager.clean_midi_learn, self.processor)
+                                     self.chain_manager.clean_midi_binding, self.processor)
 
     def control_view(self):
         self.zyngui.chain_control(hmode=self.zyngui.SCREEN_HMODE_REPLACE)

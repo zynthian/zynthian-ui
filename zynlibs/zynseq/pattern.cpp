@@ -64,7 +64,8 @@ void Pattern::pastePattern(Pattern* p, int32_t dstep, float doffset, int8_t dnot
     uint32_t nsteps = getSteps();
     for (auto it = p->m_vEvents.begin(); it != p->m_vEvents.end(); ++it) {
         StepEvent* ev = *it;
-        if (ev->m_nCommand != MIDI_NOTE_ON) continue;
+        if (ev->m_nCommand != MIDI_NOTE_ON)
+            continue;
         // Calculate time offset
         int32_t pos = ev->m_nPosition + dstep;
         float offset = ev->m_fOffset + doffset;
@@ -77,7 +78,8 @@ void Pattern::pastePattern(Pattern* p, int32_t dstep, float doffset, int8_t dnot
         }
         // Skip notes out off step-range
         if (truncate) {
-            if (pos < 0 || pos >= nsteps) continue;
+            if (pos < 0 || pos >= nsteps)
+                continue;
         }
         // Circular horizontal overflow
         else {
@@ -93,7 +95,8 @@ void Pattern::pastePattern(Pattern* p, int32_t dstep, float doffset, int8_t dnot
         // Calculate note offset
         int16_t note = int16_t(ev->m_nValue1start) + dnote;
         // Skip notes out of note-range
-        if (note < 0 || note > 127) continue;
+        if (note < 0 || note > 127)
+            continue;
 
         // Add event to this pattern. It will overwrite existing notes in the same position.
         StepEvent pasted_ev = *ev;
@@ -109,10 +112,14 @@ Pattern* Pattern::getPatternSelection(uint32_t step1, uint32_t step2, uint8_t no
     uint32_t nsteps = getSteps();
 
     // Check range of offset parameters
-    if (step1 >= nsteps) step1 = nsteps - 1;
-    if (step2 >= nsteps) step2 = nsteps - 1;
-    if (note1 > 127) note1 = 127;
-    if (note2 > 127) note2 = 127;
+    if (step1 >= nsteps)
+        step1 = nsteps - 1;
+    if (step2 >= nsteps)
+        step2 = nsteps - 1;
+    if (note1 > 127)
+        note1 = 127;
+    if (note2 > 127)
+        note2 = 127;
 
     // Create an empty pattern for the result. The caller must delete when not needed anymore.
     Pattern* res = new Pattern(m_nBeats, m_nStepsPerBeat);
@@ -143,10 +150,14 @@ uint32_t Pattern::getPatternSelectionKeys(uint32_t* ev_keys, uint32_t limit, uin
     uint32_t nsteps = getSteps();
 
     // Check range of offset parameters
-    if (step1 >= nsteps) step1 = nsteps - 1;
-    if (step2 >= nsteps) step2 = nsteps - 1;
-    if (note1 > 127) note1 = 127;
-    if (note2 > 127) note2 = 127;
+    if (step1 >= nsteps)
+        step1 = nsteps - 1;
+    if (step2 >= nsteps)
+        step2 = nsteps - 1;
+    if (note1 > 127)
+        note1 = 127;
+    if (note2 > 127)
+        note2 = 127;
 
     // Copy indexes of note events from argument pattern into this pattern. Ignore other events.
     uint32_t i = 0;
@@ -158,7 +169,8 @@ uint32_t Pattern::getPatternSelectionKeys(uint32_t* ev_keys, uint32_t limit, uin
             continue;
         }
         ev_keys[i++] = ev->m_nValue1start * MAX_STEPS_PATTERN + ev->m_nPosition;
-        if (i >= limit) break;
+        if (i >= limit)
+            break;
     }
     return i;
 }
@@ -504,7 +516,8 @@ bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uin
     if (m_bInterpolateCC[control]) stepControlEvents(control);
     StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration, offset);
     pEvent->setValue2end(valueEnd);
-    if (m_bInterpolateCC[control]) joinControlEvents(control);
+    if (m_bInterpolateCC[control])
+        joinControlEvents(control);
 
     return true;
 }
@@ -606,40 +619,35 @@ void Pattern::setControlValue(uint32_t step, uint8_t control, uint8_t valueStart
                 (*it)->setValue2start(valueStart);
                 (*it)->setValue2end(valueEnd);
                 if (m_bInterpolateCC[control]) joinControlEvents(control);
-                break;
+                    break;
             }
         }
     }
 }
 
 void Pattern::joinControlEvents(uint8_t control) {
-    if (m_vEvents.size() < 2)
-        return;
-    int32_t pos0 = -1;
-    uint8_t valueStart0;
-    uint8_t duration;
-    uint8_t valueEnd;
-    auto it = m_vEvents.begin();
-    auto it_prev = m_vEvents.begin();
-    for (; it != m_vEvents.end(); ++it) {
-        if ((*it)->getCommand() == MIDI_CONTROL && (*it)->getValue1start() == control) {
-            if (pos0 >= 0) {
-                duration = (*it)->getPosition() - (*it_prev)->getPosition();
-                valueEnd = (*it)->getValue2start();
-                (*it_prev)->setValue2end(valueEnd);
-                (*it_prev)->setDuration(duration);
-                //fprintf(stderr, "Join CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it_prev)->getPosition(), duration, (*it_prev)->getValue2start(), valueEnd);
-            } else {
-                pos0 = (*it)->getPosition();
-                valueStart0 = (*it)->getValue2start();
-            }
-            it_prev = it;
+    StepEvent* pFirst = nullptr;
+    StepEvent* pPrev = nullptr;
+    for (StepEvent* pEvent : m_vEvents) {
+        if (pEvent->getCommand() != MIDI_CONTROL || pEvent->getValue1start() != control)
+            continue;
+        if (pPrev) {
+            pPrev->setValue2end(pEvent->getValue2start());
+            pPrev->setDuration(pEvent->getPosition() - pPrev->getPosition());
+        } else {
+            pFirst = pEvent;
         }
+        pPrev = pEvent;
     }
-    duration = getSteps() - (*it_prev)->getPosition() + pos0;
-    (*it_prev)->setValue2end(valueStart0);
-    (*it_prev)->setDuration(duration);
-    //fprintf(stderr, "Join CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it_prev)->getPosition(), duration, (*it_prev)->getValue2start(), valueEnd);
+    if (!pFirst)
+        return;
+    if (pFirst == pPrev) {
+        pFirst->setValue2end(pFirst->getValue2start());
+        pFirst->setDuration(1);
+        return;
+    }
+    pPrev->setValue2end(pFirst->getValue2start());
+    pPrev->setDuration(getSteps() - pPrev->getPosition() + pFirst->getPosition());
 }
 
 void Pattern::stepControlEvents(uint8_t control) {

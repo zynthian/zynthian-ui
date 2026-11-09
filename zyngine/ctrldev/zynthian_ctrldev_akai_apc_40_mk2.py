@@ -432,20 +432,20 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             self.ccnum2zctrls[cc].reset_send_value_cb()
             del self.ccnum2zctrls[cc]
 
-        # Get absolute MIDI learned zctrls
+        # Get global MIDI learned zctrls
         key_base = self.idev << 16
-        for key in list(self.chain_manager.absolute_midi_cc_binding):
+        for key in list(self.chain_manager.midi_cc_binding):
             if key_base == (key & 0xFFFF00):
                 cc = key & 0x7F
                 #logging.debug(f"FOUND ABSOLUTE ZCTRL {key:06x} == {key_base:06x}")
-                self.ccnum2zctrls[cc] = self.chain_manager.absolute_midi_cc_binding[key][0]
+                self.ccnum2zctrls[cc] = self.chain_manager.midi_cc_binding[key][0]
         # Get chain MIDI learned zctrls
         key_base = self.chain_manager.active_chain.chain_id << 16
-        for key in list(self.chain_manager.chain_midi_cc_binding):
+        for key in list(self.chain_manager.midi_cc_binding):
             cc = key & 0x7F
             if key_base == (key & 0xFFFF00) and cc not in self.ccnum2zctrls:
                 #logging.debug(f"FOUND CHAIN ZCTRL {key:06x} == {key_base:06x}")
-                self.ccnum2zctrls[cc] = self.chain_manager.chain_midi_cc_binding[key][0]
+                self.ccnum2zctrls[cc] = self.chain_manager.midi_cc_binding[key][0]
         # Send update to the 8 device knobs
         for i in range(8):
             cc = CC_DEVICE_1 + i

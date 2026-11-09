@@ -4,7 +4,7 @@
 #
 # Legacy snapshots conversion
 #
-# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -31,7 +31,7 @@ import base64
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 from zyngine import zynthian_state_manager
 
-SNAPSHOT_SCHEMA_VERSION = 5
+SNAPSHOT_SCHEMA_VERSION = 6
 
 
 class zynthian_legacy_snapshot:
@@ -78,19 +78,51 @@ class zynthian_legacy_snapshot:
             getattr(self, f'version_{version}')()
         return self.snapshot
 
+    def version_5(self):
+        # Convert snapshot schema V5 to V6
+
+        def add_binding(target, key, bindings):
+            # Merge bindings into target without sharing list references or adding duplicates
+            dest = target.setdefault(key, [])
+            for binding in bindings:
+                binding = list(binding)
+                if binding not in dest:
+                    dest.append(binding)
+
+        for zs3 in self.snapshot.get("zs3", {}).values():
+            # Collect chain bindings (and remove them from the chain config) using the new key format
+            chain_binding = {}
+            for chain_id, chain_cfg in zs3.get("chains", {}).items():
+                midi_learn = chain_cfg.pop("midi_learn", None)
+                if not midi_learn:
+                    continue
+                for key, bindings in midi_learn.items():
+                    try:
+                        new_key = f"{int(chain_id):02X}{int(key):04X}"
+                    except (ValueError, TypeError):
+                        logging.warning(f"Ignoring invalid MIDI learn key '{key}' in chain {chain_id}")
+                        continue
+                    add_binding(chain_binding, new_key, bindings)
+
+            for dev, dev_cfg in zs3.get("midi_capture", {}).items():
+                old_learn = dev_cfg.get("midi_learn", {})
+                new_learn = {}
+                for key, bindings in old_learn.items():
+                    try:
+                        new_key = f"ff{int(key):04X}"
+                    except (ValueError, TypeError):
+                        # Not a decimal int, so assume the key is already in the new hex format
+                        new_key = key
+                    add_binding(new_learn, new_key, bindings)
+                # Chain bindings applied to any device in the old model, so add them to every device
+                if dev not in ("zynseq:output", "CV/Gate", "zynmidi"):
+                    for key, bindings in chain_binding.items():
+                        add_binding(new_learn, key, bindings)
+                dev_cfg["midi_learn"] = new_learn
+
     def version_4(self):
         # Convert snapshot from schema V4 to V5
 
-        self.snapshot.setdefault("midi", {"midi_capture": {}, "midi_playback": {}})
-        try:
-            names = self.snapshot["midi_profile_state"].pop("port_names")
-            for uid, name in names.items():
-                if name.lower().endswith("in"):
-                    self.snapshot["midi"]["midi_capture"][uid] = name
-                else:
-                    self.snapshot["midi"]["midi_playback"][uid] = name
-        except:
-            pass
         mixer_map = {16: zynthian_state_manager.MAIN_MIXBUS_ID} # Map of "MI" mixer proc id indexed by old mixer chan
         if "chains" in self.snapshot:
             # Get list of used processor ids:

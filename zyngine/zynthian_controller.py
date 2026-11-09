@@ -177,6 +177,8 @@ class zynthian_controller:
             self.is_trigger = options['is_trigger']
         if 'midi_cc_momentary_switch' in options:
             self.midi_cc_momentary_switch = options['midi_cc_momentary_switch']
+        if 'midi_cc_mode' in options:
+            self.midi_cc_mode = options['midi_cc_mode']
         if 'midi_cc_debounce' in options:
             self.midi_cc_debounce = options['midi_cc_debounce']
         if 'is_integer' in options:
@@ -638,6 +640,8 @@ class zynthian_controller:
             state['midi_cc_val2'] = self.midi_cc_val2
         if self.midi_cc_momentary_switch:
             state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
+        if self.midi_cc_mode != -1:
+            state['midi_cc_mode'] = self.midi_cc_mode
         if self.midi_cc_debounce:
             state['midi_cc_debounce'] = self.midi_cc_debounce
         return state
