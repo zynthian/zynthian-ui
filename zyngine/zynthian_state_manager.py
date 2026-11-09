@@ -1109,13 +1109,19 @@ class zynthian_state_manager:
 
         self.start_busy("load snapshot", "loading snapshot")
         try:
+            return self._load_snapshot(fpath, load_chains, load_sequences, merge)
+        finally:
+            # Also when loading raises: the busy screen would stay up
+            self.end_busy("load snapshot")
+
+    def _load_snapshot(self, fpath, load_chains, load_sequences, merge):
+        try:
             with open(fpath, "r") as fh:
                 json = fh.read()
                 logging.info(f"Loading snapshot '{fpath}' ...")
                 # logging.debug(f"Snapshot JSON Data =>\n{json}")
         except Exception as e:
             logging.error("Can't load snapshot '%s': %s" % (fpath, e))
-            self.end_busy("load snapshot")
             return None
 
         mute = self.zynmixer_bus.get_mute(0)
@@ -1275,7 +1281,6 @@ class zynthian_state_manager:
         # Signal snapshot loading
         zynsigman.send_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT)
 
-        self.end_busy("load snapshot")
         return state
 
     @staticmethod
