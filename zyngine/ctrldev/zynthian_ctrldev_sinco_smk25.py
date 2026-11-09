@@ -250,7 +250,7 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
         """Called by base class when active chain changes."""
         self._led_dirty.set()
 
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         """Called by base class when a mixer control changes (mute/solo/level).
 
         Attempts a fast single-pad write for the affected channel.
@@ -263,11 +263,12 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
             for pad_idx, (func, chain_idx, cc_num) in enumerate(bank_map):
                 if func != symbol:
                     continue
-                if chain_idx == 7 and func == 'mute' and chan == 16:
+                if chain_idx == 7 and func == 'mute' and chan == 0 and mixbus:
                     self._write_single_pad_led(cc_num)
                     return
                 chain = self.chain_manager.get_chain_by_position(chain_idx, midi=False)
-                if chain and chain.mixer_chan == chan:
+                proc = chain.zynmixer_proc if chain else None
+                if proc and proc.mixer_chan == chan and (proc.eng_code == "MR") == bool(mixbus):
                     self._write_single_pad_led(cc_num)
                     return
         # Fallback: full update
