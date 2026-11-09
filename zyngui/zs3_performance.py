@@ -180,14 +180,12 @@ def performance_state(zs3, zs3_id):
     """Build everything the performance face draws
 
     zs3     : The state manager's zs3 dict
-    zs3_id  : The current ZS3 id, as carried by SS_LOAD_ZS3, or None
+    zs3_id  : The last recalled ZS3 id, i.e. state_manager.last_zs3_id: an id,
+              "zs3-0" for the default state, or None if no ZS3 has been recalled
 
     Titles are returned whole. How much of one fits on screen depends on the
     font and the panel, which this module deliberately cannot see, so the
     screen measures and calls ellipsize() itself.
-
-    For the default state SS_LOAD_ZS3 carries "zs3-0" while last_zs3_id is set
-    to None, so the two disagree; both are accepted here and render the same.
 
     Never raises: an unknown id, an empty snapshot and None are all states this
     screen has to survive mid-performance.

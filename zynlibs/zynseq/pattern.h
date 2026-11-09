@@ -385,7 +385,7 @@ class Pattern {
     */
     uint8_t getStutterSpeed(uint32_t step, uint8_t note);
 
-    /** @brief  Get note stutter velcity speed FX value
+    /** @brief  Get note stutter velocity speed FX value
         @param  position Quantity of steps from start of pattern at which note starts
         @param  note MIDI note number
         @retval uint8_t velocity speed FX (0=None, 1=fadeIn, 2=fadeOut)

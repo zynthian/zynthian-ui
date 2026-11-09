@@ -53,8 +53,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         # ALT mode draws a performance face over the list: the current ZS3's
         # title, large enough to read from across a room, its note, its program
         # change and its position in the stepping order. It is display only,
-        # and holds no state of its own beyond the id last announced by
-        # SS_LOAD_ZS3.
+        # and holds no state of its own beyond a copy of the state manager's
+        # last_zs3_id: None if no ZS3 has been recalled, "zs3-0" for the
+        # default state.
         self.perf_zs3_id = None
         # Set by the options menu's "Move" entry: while it holds a ZS3 id, the
         # knob and arrows slide that ZS3 through the list instead of moving
@@ -169,7 +170,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         super().fill_list()
 
     def cb_load_zs3(self, zs3_id):
-        self.perf_zs3_id = zs3_id
+        self.perf_zs3_id = self.zyngui.state_manager.last_zs3_id
         self.update_performance()
         if self.shown:
             if self.moving_zs3:
@@ -212,7 +213,8 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         if self.shown:
             self.update_list()
             self.disable_midi_learn()
-            self.cb_load_zs3(zs3_id)
+            if zs3_id != "zs3-0":
+                self.cb_load_zs3(zs3_id)
 
     def select_action(self, i, t='S'):
         if self.moving_zs3:
@@ -409,9 +411,8 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
             title = "DEFAULT STATE"
             subtitle = ""
         else:
-            # Nothing loaded: at power on, and after a snapshot load, until the
-            # first step. A statement rather than an affordance, since the
-            # pedal reaches the first ZS3 from here on its own.
+            # Nothing loaded: at power on, and after a snapshot load if no ZS3
+            # had been recalled when it was saved, until the first step.
             title = "NO CUE"
             first_id = zs3_performance.first_cue_id(self.zyngui.state_manager.zs3)
             if first_id:
