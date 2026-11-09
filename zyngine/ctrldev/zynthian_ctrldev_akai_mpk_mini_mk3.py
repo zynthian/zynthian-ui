@@ -641,23 +641,19 @@ class MixerHandler(ModeHandlerBase):
         chain = self._chain_manager.get_chain_by_index(index)
         if chain is None or chain.chain_id == 0:
             return False
-        mixer_chan = chain.mixer_chan
 
-        if type == "level":
-            if not chain.zynmixer_proc:
+        zctrl = None
+        if type in ("level", "balance", "mute"):
+            zctrl = zynthian_ctrldev_zynmixer.get_chain_zctrl(chain, type)
+            if zctrl is None:
                 return False
-            zctrl = chain.zynmixer_proc.controllers_dict["level"]
+
+        if type in ("level", "balance"):
             value = zctrl.value
-            def set_value(c, v): return zctrl.set_value(v)
-        elif type == "balance":
-            value = self._zynmixer.get_balance(mixer_chan)
-            set_value = self._zynmixer.set_balance
         elif type == "mute":
-            value = ccval < 64
-            def set_value(c, v): return self._zynmixer.set_mute(c, v, True)
+            value = int(ccval < 64)
         elif type == "solo":
             value = ccval < 64
-            def set_value(c, v): return chain.set_solo(v)
         elif type == "select":
             return self._chain_manager.set_active_chain_by_id(chain.chain_id)
         else:
@@ -670,7 +666,10 @@ class MixerHandler(ModeHandlerBase):
             value = max(minv, min(value, maxv))
             value /= 100
 
-        set_value(mixer_chan, value)
+        if type == "solo":
+            chain.set_solo(value)
+        else:
+            zctrl.set_value(value)
         return True
 
 

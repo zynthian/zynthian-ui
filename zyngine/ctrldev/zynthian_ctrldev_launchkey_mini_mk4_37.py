@@ -148,11 +148,9 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     if i < 7:
                         # Pads 0-6: Regular chains (skip master channel if it appears in chain list)
                         chain = self.chain_manager.get_chain_by_position(i, midi=False)
-                        
-                        if chain and hasattr(chain, 'mixer_chan') and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                            mixer_chan = chain.mixer_chan
-                            is_soloed = self.zynmixer.get_solo(mixer_chan)
-                            vel = 14 if is_soloed else 118  # Yellow/orange if soloed, dim if not
+                        zctrl = self.get_chain_zctrl(chain, 'solo', max_chan=16, allow_main=False)
+                        if zctrl:
+                            vel = 14 if zctrl.value else 118
                         else:
                             vel = 0  # No chain or master channel - LED off
                     else:
@@ -172,16 +170,13 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         # Pads 0-6: Regular chains (skip master channel if it appears in chain list)
                         chain = self.chain_manager.get_chain_by_position(i, midi=False)
                         
-                        if chain and hasattr(chain, 'mixer_chan') and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                            mixer_chan = chain.mixer_chan
-                            is_muted = self.zynmixer.get_mute(mixer_chan)
-                            vel = 5 if is_muted else 64  # Red if muted, green if unmuted
+                        zctrl = self.get_chain_zctrl(chain, 'mute', max_chan=16, allow_main=False)
+                        if zctrl:
+                            vel = 5 if zctrl.value else 64 
                         else:
                             vel = 0  # No chain or master channel - LED off
                     else:
-                        # Pad 7: Master channel (mixer channel 16)
-                        is_muted = self.zynmixer.get_mute(16)
-                        vel = 5 if is_muted else 64  # Red if muted, green if unmuted
+                        vel = 5 if self.get_mixer_param("mute", -1) else 64
                 except:
                     vel = 0  # Error - LED off
                 
@@ -207,11 +202,9 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     # Top row (96-102): Solo control for chains 0-6 (excluding master)
                     track = note - 96
                     chain = self.chain_manager.get_chain_by_position(track, midi=False)
-                    
-                    if chain and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                        mixer_chan = chain.mixer_chan
-                        current_solo = self.zynmixer.get_solo(mixer_chan)
-                        self.zynmixer.set_solo(mixer_chan, 0 if current_solo else 1)
+                    zctrl = self.get_chain_zctrl(chain, 'solo', max_chan=16, allow_main=False)
+                    if zctrl:
+                        zctrl.toggle()
                         self.update_pad_leds()
                 
                 # Process mute pads (112-119)
@@ -223,15 +216,12 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         # Pads 0-6: Regular chains (skip master if it appears in chain list)
                         chain = self.chain_manager.get_chain_by_position(track, midi=False)
                         
-                        if chain and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                            mixer_chan = chain.mixer_chan
-                            current_mute = self.zynmixer.get_mute(mixer_chan)
-                            self.zynmixer.set_mute(mixer_chan, 0 if current_mute else 1)
+                        zctrl = self.get_chain_zctrl(chain, 'mute', max_chan=16, allow_main=False)
+                        if zctrl:
+                            zctrl.toggle()
                             self.update_pad_leds()
                     else:
-                        # Pad 7: Master channel (mixer channel 16)
-                        current_mute = self.zynmixer.get_mute(16)
-                        self.zynmixer.set_mute(16, 0 if current_mute else 1)
+                        self.toggle_mixer_param("mute", -1)
                         self.update_pad_leds()
                 
                 # Block ALL pad notes (96-119, both on and off) from reaching synths
@@ -301,11 +291,10 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         if knob_index < 7:
                             # Knobs 1-7: Regular chains (skip master if it appears in chain list)
                             chain = self.chain_manager.get_chain_by_position(knob_index, midi=False)
-                            if chain and chain.mixer_chan is not None and chain.mixer_chan < 16 and chain.zynmixer_proc:
-                                zctrl = chain.zynmixer_proc.controllers_dict["level"]
+                            zctrl = self.get_chain_zctrl(chain, "level", max_chan=16, allow_main=False)
+                            if zctrl:
                                 zctrl.set_value(max(0.0, min(1.0, zctrl.value + (delta * 0.01))))
                         else:
-                            # Knob 8: Main level (main chain is addressed as position -1 by the mixer helpers)
                             current_level = self.get_mixer_param("level", -1)
                             self.set_mixer_param("level", -1, max(0.0, min(1.0, current_level + (delta * 0.01))))
                     return True

@@ -431,10 +431,9 @@ class zynthian_ctrldev_mackiecontrol(zynthian_ctrldev_zynmixer):
 			except:
 				bottom_text = ''
 		elif self.encoder_assign == 'pan':  # Get Balance Value
-			mixer_chan = chain.mixer_chan
-			if mixer_chan is not None:
-				balance_value = self.zynmixer.get_balance(mixer_chan)
-				bottom_text = f'{round(balance_value * 100, 0)}%'
+			zctrl = self.get_chain_zctrl(chain, "balance")
+			if zctrl is not None:
+				bottom_text = f'{round(zctrl.value * 100, 0)}%'
 			else:
 				bottom_text = '---'
 

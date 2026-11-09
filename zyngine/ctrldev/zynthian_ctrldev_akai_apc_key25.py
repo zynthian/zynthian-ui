@@ -405,7 +405,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 chain_id = self._get_chain_id_by_sequence(self._zynseq.bank, self._selected_seq)
                 chain = self._chain_manager.chains.get(chain_id)
                 if chain is not None and chain.zynmixer_proc:
-                    mixer_chan = chain.mixer_chan
+                    mixer_chan = chain.zynmixer_proc.mixer_chan
                     cval = ccval / 127
                     zctrl = chain.zynmixer_proc.controllers_dict["level"]
                     curval = zctrl.value

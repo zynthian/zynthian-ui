@@ -681,6 +681,25 @@ class zynthian_chain_manager:
         #        return chain_id
         #return None
 
+    def get_mixer_zctrl(self, chan, symbol, mixbus=False):
+        """ Get the mixer controller for a mixer strip
+        Args:
+            chan: Mixer channel index
+            symbol: Controller symbol
+            mixbus: True for a mixbus channel (main=0, aux=1, fx returns from 2)
+        Returns: Controller or None if there is no such strip or controller
+        """
+
+        if mixbus and chan == 1:
+            chain = self.chains.get(0)
+            symbol = f"aux_{symbol}"
+        else:
+            chain = self.chains.get(self.get_chain_id_by_mixer_chan(chan, mixbus))
+        try:
+            return chain.zynmixer_proc.controllers_dict[symbol]
+        except (AttributeError, KeyError):
+            return None
+
     def get_pos_by_mixer_chan(self, chan, mixbus=False):
         """ Get display position of a chain by the mixer channel
         Args:

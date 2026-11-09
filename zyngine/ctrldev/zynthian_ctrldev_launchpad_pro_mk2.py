@@ -630,7 +630,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                 try:
                     chain = self.chain_manager.get_filtered_chain_by_index(ch)
                     if chain and chain.zynmixer_proc:
-                        mixer_chan = chain.mixer_chan
+                        mixer_chan = chain.zynmixer_proc.mixer_chan
                         val = int(chain.zynmixer_proc.zynmixer.get_send_level(mixer_chan, 0) * 127)
                 except (IndexError, AttributeError):
                     pass
