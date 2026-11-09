@@ -105,7 +105,7 @@ SEQ_MAX_COLUMNS = 8
 LAUNCHER_COLS = 33          # Quantity of launcher columns (16 MIDI channels 16 Clippy + phrase launchers)
 PHRASE_CHANNEL = 32
 
-CHANNEL_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'
+CHANNEL_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
                  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Γ', 'Δ', 'Λ', 'Π', 'Σ', 'Ω']
                  # 'Θ', 'Ξ', 'Φ', 'Ψ',
 
