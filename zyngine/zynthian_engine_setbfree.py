@@ -249,6 +249,9 @@ class zynthian_engine_setbfree(zynthian_engine):
         self.tonewheel_model = None
         self.show_favs_bank = False
 
+        ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
+        self.custom_gui_fpath = f"{ui_dir}/zyngui/zynthian_widget_setbfree.py"
+
         # Process command ...
         #if self.config_remote_display():
         if False:
