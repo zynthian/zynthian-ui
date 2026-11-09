@@ -267,6 +267,10 @@ class zynseq(zynthian_engine):
                     getattr(self.libseq, func).restype = ctypes.c_uint8
                 except AttributeError:
                     pass   # declared in zynseq.h but not in every build (getMidiLearnSequence)
+            # int16_t: the same; a pattern zoom of -1 read as 65535, a pattern never
+            # zoomed as garbage (e.g. 1701077352)
+            self.libseq.getPatternZoom.restype = ctypes.c_int16
+            self.libseq.setPatternZoom.argtypes = [ctypes.c_int16]
             # Functions returning bool: the same (only the low byte is defined)
             for func in ("isModified", "setState", "load", "undoPattern", "redoPattern", "undoPatternAll",
                          "redoPatternAll", "isMidiRecord", "addNote", "addControl", "addProgramChange",
