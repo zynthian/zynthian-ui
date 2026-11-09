@@ -45,7 +45,7 @@ def db_to_norm(db):
     Returns: 0.0 (DPM_RANGE_DB below full scale or lower) .. 1.0 (0dBFS or above)
     """
 
-    # ai_comment: Must match logCurve() in zynlibs/zynmixer/mixer.c. 0dBFS => 1.0, -18dBFS => 0.75, -72dBFS => 0.0
+    # Match logCurve() in zynmixer lib
     return max(0.0, min(1.0, 1.0 + db / DPM_RANGE_DB))
 
 
@@ -256,11 +256,10 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        # ai_comment: Colour stops are defined in dB so they align with the hold thresholds: yellow from highdB, red from overdB
         x1 = l * db_to_norm(self.highdB - 4) # Under (green) start green-yellow gradient
         x2 = l * db_to_norm(self.highdB) # Start const yellow
         x3 = l * db_to_norm(self.overdB - 6) # Start yellow-red gradient
-        x4 = l * db_to_norm(self.overdB) # Over (red) start const red
+        x4 = l * db_to_norm(self.overdB) # Over - start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))

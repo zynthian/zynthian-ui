@@ -407,7 +407,6 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 if chain is not None and chain.zynmixer_proc:
                     mixer_chan = chain.mixer_chan
                     cval = ccval / 127
-                    # ai_comment: Use the controller (cached value) so the GUI and library stay in sync
                     zctrl = chain.zynmixer_proc.controllers_dict["level"]
                     curval = zctrl.value
                     min = 0

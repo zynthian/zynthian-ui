@@ -302,7 +302,6 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                             # Knobs 1-7: Regular chains (skip master if it appears in chain list)
                             chain = self.chain_manager.get_chain_by_position(knob_index, midi=False)
                             if chain and chain.mixer_chan is not None and chain.mixer_chan < 16 and chain.zynmixer_proc:
-                                # ai_comment: Use the controller (cached value) so the GUI and library stay in sync
                                 zctrl = chain.zynmixer_proc.controllers_dict["level"]
                                 zctrl.set_value(max(0.0, min(1.0, zctrl.value + (delta * 0.01))))
                         else:

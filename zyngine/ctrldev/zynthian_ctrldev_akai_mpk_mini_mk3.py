@@ -644,7 +644,6 @@ class MixerHandler(ModeHandlerBase):
         mixer_chan = chain.mixer_chan
 
         if type == "level":
-            # ai_comment: Use the controller (cached value) so the GUI and library stay in sync
             if not chain.zynmixer_proc:
                 return False
             zctrl = chain.zynmixer_proc.controllers_dict["level"]
