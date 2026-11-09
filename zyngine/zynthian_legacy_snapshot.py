@@ -23,6 +23,8 @@
 # ****************************************************************************
 
 import logging
+import os
+import copy
 from math import ceil, log, log10
 from json import JSONDecoder, loads
 import base64
@@ -255,6 +257,8 @@ class zynthian_legacy_snapshot:
                         zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [chain_id, None, int(cc), 0])
 
         if "zs3" in self.snapshot:
+            # Some V4 snapshots have other values beside the ZS3s (e.g. "last_zs3": null)
+            self.snapshot["zs3"] = {k: v for k, v in self.snapshot["zs3"].items() if isinstance(v, dict)}
             for zs3 in self.snapshot["zs3"].values():
                 try:
                     mixer = zs3.pop("mixer")
@@ -381,6 +385,7 @@ class zynthian_legacy_snapshot:
     def version_0(self):
         # Convert legacy snapshots from before we started to use schema versioning
         self.convert_old_legacy()
+        self.convert_old_file_presets()
         self.jackname_counters = {}
         self.aeolus_count = 0
         self.setBfree_count = 0
@@ -417,7 +422,7 @@ class zynthian_legacy_snapshot:
             pass
 
         try:
-            state["midi_profile_state"] = self.snapshot["midi_profile_state"]
+            state["midi_profile_state"] = self.snapshot["midi_profile_state"] or {}  # null in some snapshots
             single_active_channel = state["midi_profile_state"]["SINGLE_ACTIVE_CHANNEL"]
         except:
             single_active_channel = True
@@ -443,6 +448,19 @@ class zynthian_legacy_snapshot:
         if "note_range" in self.snapshot:
             if len(self.snapshot["note_range"]) == 16:
                 note_range_state = self.snapshot["note_range"]
+        if not note_range_state:
+            # Older snapshots: no note ranges, only a transposition in semitones per MIDI channel
+            transpose = self.snapshot.get("transpose")
+            if not isinstance(transpose, list) or len(transpose) != 16:
+                transpose = [0] * 16
+            note_range_state = []
+            for semitones in transpose:
+                if isinstance(semitones, dict):
+                    semitones = semitones.get("halftone_trans", 0)
+                semitones = int(semitones or 0)
+                octaves = int(semitones / 12)
+                note_range_state.append({"note_low": 0, "note_high": 127, "octave_trans": octaves,
+                                         "halftone_trans": semitones - 12 * octaves})
 
         # Get processors
         processors = {}
@@ -460,6 +478,10 @@ class zynthian_legacy_snapshot:
                 continue
 
             midi_chan = layer["midi_chan"]
+            if midi_chan is None:
+                # MOD-UI ("MD") layers of old snapshots: the engine is gone
+                logging.warning(f"Legacy snapshot: layer {layer['engine_name']} without MIDI channel ignored")
+                continue
             chain_id = midi_chan + 1
             if chain_id > 16:
                 chain_id = 0
@@ -557,6 +579,31 @@ class zynthian_legacy_snapshot:
                 if "active_screen_index" in layer and layer["active_screen_index"] >= 0:
                     state["zyngui"]["processors"][proc_id]["active_screen_index"] = layer["active_screen_index"]
 
+        # Layers of several synths on one MIDI channel: a chain has one synth (add_processor() removes
+        # the chain's synth when another is added), so each further synth gets its own chain on the
+        # same MIDI channel, with a free mixer channel and the same note range and transposition.
+        used_mixer_chans = {c["mixer_chan"] for c in chains.values() if c["mixer_chan"] is not None}
+        for chain_id in sorted(chains):
+            chain = chains[chain_id]
+            for jackname in chain["synth_processors"][1:]:
+                mixer_chan = next((i for i in range(16) if i not in used_mixer_chans), None)
+                if mixer_chan is None:
+                    logging.warning(f"Legacy snapshot: no mixer channel left for layer {jackname}, dropped")
+                    continue
+                used_mixer_chans.add(mixer_chan)
+                new_id = max(max(chains) + 1, 17)
+                chains[new_id] = {
+                    "midi_processors": [],
+                    "synth_processors": [jackname],
+                    "audio_processors": [],
+                    "mixer_chan": mixer_chan,
+                    "midi_chan": chain["midi_chan"],
+                    "slots": []
+                }
+                state["zs3"]["zs3-0"]["chains"][new_id] = copy.deepcopy(state["zs3"]["zs3-0"]["chains"][chain_id])
+                logging.info(f"Legacy snapshot: layer {jackname} of chain {chain_id} in its own chain {new_id}")
+            del chain["synth_processors"][1:]
+
         # Create map of audio only channels for 'sidechaining'
         audio_only_chains = {}
         for chain_id, chain in chains.items():
@@ -642,7 +689,7 @@ class zynthian_legacy_snapshot:
                 # Populate last slot
                 for proc in chain["midi_processors"]:
                     last_slot = True
-                    route = self.snapshot["midi_routing"][proc]
+                    route = self.snapshot.get("midi_routing", {}).get(proc, [])
                     for dst in route:
                         if dst in chain["midi_processors"]:
                             last_slot = False
@@ -657,7 +704,7 @@ class zynthian_legacy_snapshot:
                 while proc_count > 0:
                     slot = []
                     for proc in chain["midi_processors"]:
-                        route = self.snapshot["midi_routing"][proc]
+                        route = self.snapshot.get("midi_routing", {}).get(proc, [])
                         for dst in route:
                             if dst in chain["slots"][0]:
                                 slot.append(proc)
@@ -666,8 +713,9 @@ class zynthian_legacy_snapshot:
                                     break
                         if proc_count < 1:
                             break
-                    if slot:
-                        chain["slots"].insert(0, slot)
+                    if not slot:
+                        break  # routes that don't lead to the next slot (loops): would never end
+                    chain["slots"].insert(0, slot)
 
             if chain["midi_processors"] and not chain["synth_processors"] and not chain["audio_processors"]:
                 state["zs3"]["zs3-0"]["chains"][chain_id]["midi_thru"] = True
@@ -768,12 +816,21 @@ class zynthian_legacy_snapshot:
                         "absolute": {},
                         "chain": {}
                     },
-                    "mixer": zs3["mixer"]
+                    "mixer": zs3.get("mixer", {})
                 }
                 self.jackname_counters = {}
                 self.aeolus_count = 0
                 self.setBfree_count = 0
-                for layer in zs3["layers"]:
+                for li, layer in enumerate(zs3["layers"]):
+                    if layer is None:
+                        # A layer this ZS3 doesn't change (converted from per-layer ZS3 lists): build its
+                        # jackname anyway, so the counters of the following layers stay right
+                        try:
+                            base = self.snapshot["layers"][li]
+                            self.build_jackname(base["engine_name"], base["midi_chan"])
+                        except (IndexError, KeyError, TypeError):
+                            pass
+                        continue
                     jackname = self.build_jackname(
                         layer["engine_name"], layer["midi_chan"])
                     if jackname in processors:
@@ -940,61 +997,79 @@ class zynthian_legacy_snapshot:
 
         return jackname
 
+    def convert_old_file_presets(self):
+        """Old LinuxSampler presets are [index, [msb, lsb, prg], title, path, ext]: convert them to
+        the file list format the engines use now, [path, index, title, dir name, file name, ext], in
+        the layers and in the learned ZS3s (the SFZ ones then load with sfizz, see
+        linuxsampler_sfz_to_sfizz)."""
+
+        def fix(layer):
+            if not isinstance(layer, dict) or layer.get("engine_nick") != "LS":
+                return
+            p = layer.get("preset_info")
+            if isinstance(p, list) and len(p) == 5 and isinstance(p[0], int) and isinstance(p[3], str):
+                index, _, title, path, ext = p
+                layer["preset_info"] = [path, index, title, "_", os.path.basename(path), ext]
+
+        for layer in self.snapshot.get("layers", []):
+            fix(layer)
+        for zs3 in self.snapshot.get("learned_zs3", []) or []:
+            for layer in zs3.get("layers", []):
+                fix(layer)
+
     def convert_old_legacy(self):
-        """Convert from older legacy snapshot format state
-        state : Dictionary containing state model
-        Returns : State fixed to newer legacy format
+        """Convert the oldest snapshots, with ZS3 lists per layer (zs3_list: 128 program states per
+        layer and its MIDI channel), to the newer legacy format with a list of learned ZS3s: one ZS3
+        per MIDI channel and program with the states of the layers it sets (None for the others,
+        so the list stays aligned with the snapshot's layers). The ZS3's channel is its active chain.
         """
 
-        newer = True
-        if "layers" in self.snapshot:
-            for layer in self.snapshot["layers"]:
-                if "zs3_list" in layer:
-                    newer = False
-                    break
-        if newer:
-            return self.snapshot
+        if not any(isinstance(layer, dict) and "zs3_list" in layer for layer in self.snapshot.get("layers", [])):
+            return
 
+        learned_zs3 = self.snapshot.setdefault("learned_zs3", [])
         zs3_index = 0
         for midi_chan in range(0, 16):
             for prog_num in range(0, 128):
                 lstates = [None] * len(self.snapshot['layers'])
                 note_range = [None] * 16
-                root_layer_index = None
+                found = False
                 for li, lss in enumerate(self.snapshot['layers']):
-                    if 'zs3_list' in lss and midi_chan == lss['midi_chan']:
+                    if not isinstance(lss, dict) or midi_chan != lss.get('midi_chan'):
+                        continue
+                    try:
                         lstate = lss['zs3_list'][prog_num]
-                        if not lstate:
-                            continue
-                        try:
-                            root_layer_index = self.root_layers.index(
-                                self.layers[li])
-                        except:
-                            pass
-                        lstate['engine_name'] = lss['engine_name']
-                        lstate['engine_nick'] = lss['engine_nick']
-                        lstate['engine_jackname'] = self.layers[li].engine.jackname
-                        lstate['midi_chan'] = midi_chan
+                    except (KeyError, IndexError, TypeError):
+                        continue
+                    if not lstate:
+                        continue
+                    found = True
+                    lstate['engine_name'] = lss['engine_name']
+                    lstate['engine_nick'] = lss['engine_nick']
+                    lstate['midi_chan'] = midi_chan
+                    lstate.setdefault('bank_info', None)
+                    lstate.setdefault('preset_info', None)
+                    lstate.setdefault('controllers_dict', {})
+                    if 'show_fav_presets' in lss:
                         lstate['show_fav_presets'] = lss['show_fav_presets']
-                        if 'active_screen_index' in lstate:
-                            lstate['current_screen_index'] = lstate['active_screen_index']
-                            del lstate['active_screen_index']
-                        if 'note_range' in lstate:
-                            # TODO: Move to ZS3
-                            if lstate['note_range']:
-                                note_range[midi_chan] = lstate['note_range']
-                            del lstate['note_range']
-                        lstates[li] = lstate
+                    if 'active_screen_index' in lstate:
+                        lstate['current_screen_index'] = lstate.pop('active_screen_index')
+                    if 'note_range' in lstate:
+                        if lstate['note_range']:
+                            note_range[midi_chan] = lstate['note_range']
+                        del lstate['note_range']
+                    lstates[li] = lstate
 
-                if root_layer_index is not None:
-                    zs3_new = {
-                        'index': root_layer_index,
+                if found:
+                    learned_zs3.append({
+                        'index': midi_chan,
                         'layers': lstates,
                         'note_range': note_range,
                         'zs3_title': "Legacy ZS3 #{}".format(zs3_index + 1),
                         'midi_learn_chan': midi_chan,
                         'midi_learn_prognum': prog_num
-                    }
-                    self.learned_zs3.append(zs3_new)
-                    # logging.debug("ADDED LEGACY ZS3 #{} => {}".format(zs3_index, zs3_new))
+                    })
                     zs3_index += 1
+        for layer in self.snapshot['layers']:
+            if isinstance(layer, dict):
+                layer.pop('zs3_list', None)

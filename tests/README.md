@@ -188,6 +188,7 @@ Python:
     reported as a howl-round and the connection is refused.
 14. Legacy snapshots V0: crash without `note_range` (oldest files have `transpose`), and on MOD-UI layers with
     `midi_chan: null` (`zynthian_legacy_snapshot.py:432/452`); 15 such files in a local corpus fail to convert.
+    Fixed by "Legacy snapshots: load the oldest formats" (the two tests pass, no xfail).
 15. `convert_state()` leaves `schema_version` unchanged (characterization; harmless for the state manager).
 16. Controller drivers (11, `KNOWN_BROKEN` in `test_ctrldev_drivers.py`): launchkey_mini_mk4_37 cannot load
     (`SS_ZCTRL_SET_VALUE` does not exist); riband and launchkey_mk4_37 override `update_seq_state()` with an

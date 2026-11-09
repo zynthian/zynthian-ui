@@ -206,16 +206,11 @@ def test_v0_note_range_goes_to_the_chain_state(convert):
         (36, 60, -1, 2)
 
 
-@pytest.mark.xfail(strict=True, reason="version_0 indexes note_range[midi_chan] unconditionally; the oldest "
-                                       "snapshots have no 'note_range' (they have 'transpose') -> IndexError, "
-                                       "zynthian_legacy_snapshot.py:452")
 def test_v0_snapshot_without_note_range_converts(convert):
     snap = v0_snapshot(layer("ZY", "ZynAddSubFX", 0))
     del snap["note_range"]
     assert convert(snap)["chains"][1]["midi_chan"] == 0
 
 
-@pytest.mark.xfail(strict=True, reason="version_0 computes `midi_chan + 1` for every layer; MOD-UI layers in old "
-                                       "snapshots have midi_chan None -> TypeError, zynthian_legacy_snapshot.py:432")
 def test_v0_mod_ui_layer_without_midi_channel_converts(convert):
     assert convert(v0_snapshot(layer("MD", "MOD-UI", None), layer("ZY", "ZynAddSubFX", 0))) is not None
