@@ -2424,7 +2424,7 @@ class zynthian_state_manager:
     def set_tempo(self, tempo):
         self.zynseq.set_tempo(tempo)
 
-    def start_midi_playback(self, fpath):
+    def start_midi_playback(self, fpath=None):
         self.stop_midi_playback()
         if fpath is None:
             if self.last_midi_file:
