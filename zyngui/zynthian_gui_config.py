@@ -38,6 +38,28 @@ def get_env_int(env_var, default_val=0):
         #logging.warning(f"Failed to retrieve environmental variable {env_var}")
         return default_val
 
+
+def get_env_float(env_var, default_val=0.0, min_val=None, max_val=None):
+    """ Get a floating point value from an environment variable
+
+        env_var: Name of environment variable
+        default_val: Value to use if variable is not set, is not a number or is out of range
+        min_val: Optional minimum valid value (inclusive)
+        max_val: Optional maximum valid value (inclusive)
+    """
+    raw = os.environ.get(env_var)
+    if raw is None or not raw.strip():
+        return default_val
+    try:
+        val = float(raw)
+    except ValueError:
+        logging.warning(f"Invalid value '{raw}' for {env_var}. Using default {default_val}")
+        return default_val
+    if not (min_val is None or val >= min_val) or not (max_val is None or val <= max_val) or val != val:
+        logging.warning(f"Value {val} for {env_var} is out of range ({min_val}..{max_val}). Using default {default_val}")
+        return default_val
+    return val
+
 # ------------------------------------------------------------------------------
 # Log level and debuging
 # ------------------------------------------------------------------------------
@@ -607,6 +629,13 @@ audio_power_threshold = get_env_int('ZYNTHIAN_UI_AUDIO_POWER_THRESHOLD', -40)
 preset_preload = get_env_int('ZYNTHIAN_UI_PRESET_PRELOAD', 1)
 mixer_toggle = os.environ.get('ZYNTHIAN_UI_MIXER_TOGGLE', "record")
 main_menu_columns = get_env_int('ZYNTHIAN_UI_MAIN_MENU_COLUMNS', 0)
+
+# Mixer digital peak meter (DPM) and fader configuration. Values are dB and seconds.
+dpm_range_db = get_env_float('ZYNTHIAN_MIXER_DPM_RANGE_DB', 72.0, 24.0, 120.0)  # dB span of meter scale below 0dBFS
+dpm_zero_db = get_env_float('ZYNTHIAN_MIXER_DPM_ZERO_DB', -18.0, 6.0 - dpm_range_db, -3.0)  # dBFS of meter "0dB" reference. EBU: -18
+dpm_decay_db_per_s = get_env_float('ZYNTHIAN_MIXER_DPM_DECAY_DB_PER_S', 40.0, 1.0, 200.0)  # Meter fall rate (dB/s)
+dpm_hold_s = get_env_float('ZYNTHIAN_MIXER_DPM_HOLD_S', 1.2, 0.0, 30.0)  # Peak hold time. 0 disables hold
+fader_zero_db = get_env_float('ZYNTHIAN_MIXER_FADER_ZERO_DB', -10.0, -40.0, -1.0)  # Fader "0dB" (unity) position relative to top of fader throw
 
 # ------------------------------------------------------------------------------
 # Audio Options

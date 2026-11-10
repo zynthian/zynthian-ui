@@ -134,10 +134,29 @@ class ZynMixer():
 
         self.lib_zynmixer.updateDpmStates.argtypes = [ctypes.POINTER(DPM), ctypes.c_uint8]
 
+        self.lib_zynmixer.setMeterConfig.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float]
+        self.lib_zynmixer.setMeterConfig.restype = ctypes.c_uint8
+
         self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
 
         self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
         self.dpm = (DPM * self.MAX_NUM_CHANNELS)()
+
+    def set_meter_config(self, range_db: float, decay_db_per_s: float, hold_s: float, fader_zero_db: float):
+        """ Configure meter ballistics and fader law. Call before adding strips.
+        Args:
+            range_db: Linear dB span of the DPM scale, i.e. dB below 0dBFS at the bottom of the meter
+            decay_db_per_s: DPM decay rate in dB per second
+            hold_s: Peak hold time in seconds
+            fader_zero_db: Fader "0dB" (unity gain) reference, as a negative dB value relative to the top of the fader throw, e.g. -10.0 puts unity 10dB below the top
+        Returns:
+            True if configuration was applied, False if the library rejected a value (configuration unchanged)
+        """
+
+        if self.lib_zynmixer.setMeterConfig(range_db, decay_db_per_s, hold_s, -fader_zero_db):
+            return True
+        logging.warning(f"Zynmixer rejected meter configuration (range={range_db}, decay={decay_db_per_s}, hold={hold_s}, fader zero={fader_zero_db}). Using defaults")
+        return False
 
     def norm_to_db(self, value: float):
         """ Convert linear normalized range to dB range.

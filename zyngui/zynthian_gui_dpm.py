@@ -29,14 +29,14 @@ from time import monotonic
 from PIL import Image, ImageTk
 from tkinter import NORMAL, HIDDEN, TclError
 
-from zyngui.zynthian_gui_config import color_panel_bg
+from zyngui.zynthian_gui_config import color_panel_bg, dpm_range_db, dpm_zero_db
 
 
-# Use same constants as zynmixer lib. See lib docs for details
-DPM_RANGE_DB = 72.0
-DPM_ZERO_DB = -18.0 # EBU standard "0dB" reference level
-DPM_HIGH_DB = -18.0 # Level (dB) above which meter is yellow
-DPM_OVER_DB = -3.0 # Level (dB) above which meter is red
+# Range and reference are configurable (see zynthian_gui_config). Range must match the value used by the zynmixer lib
+DPM_RANGE_DB = dpm_range_db # Span of meter scale below 0dBFS. Default 72
+DPM_ZERO_DB = dpm_zero_db # "0dB" reference level. Default -18, the EBU standard
+DPM_HIGH_DB = DPM_ZERO_DB # Level (dB) above which meter is yellow, i.e. the "0dB" reference
+DPM_OVER_DB = -3.0 # Level (dB) above which meter is red. Not configurable
 DPM_OVER_HOLD_S = 4.0 # Time to hold peak indication
 
 
@@ -330,7 +330,7 @@ class zynthian_gui_dpm():
             vertical = True
         x1 = l * db_to_norm(self.highdB - 4) # Under (green) start green-yellow gradient
         x2 = l * db_to_norm(self.highdB) # Start const yellow
-        x3 = l * db_to_norm(self.overdB - 6) # Start yellow-red gradient
+        x3 = max(x2, l * db_to_norm(self.overdB - 6)) # Start yellow-red gradient
         x4 = l * db_to_norm(self.overdB) # Over - start const red
 
         # Create background image
@@ -348,7 +348,7 @@ class zynthian_gui_dpm():
         for x in range(l):
             if x <= x1:
                 # Gradient dark to light green
-                t = x / x1
+                t = x / x1 if x1 else 0.0
                 color = lerp(bg_c1, bg_c2, t)
             elif x < x2:
                 # Gradient green to yellow

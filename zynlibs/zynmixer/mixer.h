@@ -293,6 +293,16 @@ float getDpmHold(uint8_t channel, uint8_t leg);
  */
 void updateDpmStates(dpm_struct* values, uint8_t count);
 
+/** @brief  Configure meter ballistics and fader law
+ *   @param  rangeDb Linear dB span of the DPM scale, i.e. dB below 0dBFS that maps to the bottom of the meter [Default: 72.0]
+ *   @param  decayDbPerS DPM decay rate in dB per second [Default: 40.0]
+ *   @param  holdS Peak hold time in seconds [Default: 1.2]
+ *   @param  faderHeadroomDb Gain in dB at top of fader throw, i.e. how far above unity (fader "0dB") the fader goes. Equal to minus the fader "0dB" reference, e.g. 10.0 for a -10dB reference [Default: 10.0]
+ *   @retval uint8_t 1 on success, 0 if any parameter is out of range (configuration is then unchanged)
+ *   @note   Call before adding strips. Defaults are used until called
+ */
+uint8_t setMeterConfig(float rangeDb, float decayDbPerS, float holdS, float faderHeadroomDb);
+
 /** @brief  Enable / disable peak programme metering
  *   @param enable 1 to enable, 0 to disable
  *   @note  DPM increase CPU processing so may be disabled if this causes issues (like xruns)

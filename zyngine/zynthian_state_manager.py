@@ -145,6 +145,9 @@ class zynthian_state_manager:
 
         self.zynmixer_chan = zynmixer.ZynMixer() # zynmixer used for channel strips
         self.zynmixer_bus = zynmixer.ZynMixer(True) # zynmixer used for buses, e.g main, fx return, etc.
+        for mixer in (self.zynmixer_chan, self.zynmixer_bus):
+            mixer.set_meter_config(zynthian_gui_config.dpm_range_db, zynthian_gui_config.dpm_decay_db_per_s,
+                                   zynthian_gui_config.dpm_hold_s, zynthian_gui_config.fader_zero_db)
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 

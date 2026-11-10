@@ -819,8 +819,8 @@ class zynthian_gui_mixer_strip():
         c_high = (240, 0, 0)
         if width > 7:
             font = ImageFont.truetype("DejaVuSans.ttf", int(width * 0.6))
-            # Ticks are dBFS. Labels are relative to "0dB" (-18dBFS) reference
-            for db in (-60, -48, -36, -30, -24, DPM_ZERO_DB, -12, -6):
+            # Ticks are dBFS. Labels are relative to the "0dB" reference (default -18dBFS)
+            for db in [t for t in (-60, -48, -36, -30, -24, -12, -6) if db_to_norm(t) > 0 and abs(t - DPM_ZERO_DB) >= 3] + [DPM_ZERO_DB]:
                 y = min(height - 1, height - int(db_to_norm(db) * height))
                 c = c_zero if db == DPM_ZERO_DB else c_high if db >= DPM_OVER_DB else c_mid if db >= DPM_HIGH_DB else c_low
                 if id == "dpm":
