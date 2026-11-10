@@ -94,6 +94,8 @@ struct channel_strip {
     float dpmBlast;        // Last peak programme B-leg
     float holdAlast;       // Last peak hold level A-leg
     float holdBlast;       // Last peak hold level B-leg
+    unsigned int holdCountA; // Cycles remaining until peak hold A-leg is released
+    unsigned int holdCountB; // Cycles remaining until peak hold B-leg is released
     uint8_t mute;          // 1 if muted
     uint8_t mono;          // 1 if mono
     uint8_t solo;          // 1 if solo
@@ -125,8 +127,7 @@ int g_stripToDelete = -1;
 struct fx_send* g_fxSends[MAX_CHANNELS];
 int g_sendToDelete = -1;
 #endif
-unsigned int g_nHoldCount     = 0; // Cycles remaining until peak hold is next released
-unsigned int g_nHoldReload    = 0; // Value loaded into g_nHoldCount when peak hold is released
+unsigned int g_nHoldReload    = 0; // Value loaded into a strip's hold counter each time a new peak is latched
 float g_fDpmCycleDecay        = 1.0f; // DPM decay factor applied each jack cycle
 
 jack_nframes_t g_samplerate                     = 48000; // Jack samplerate used to calculate damping factor
@@ -315,6 +316,14 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->dpmB *= g_fDpmCycleDecay;
                 if (strip->dpmB < DPM_FLOOR)
                     strip->dpmB = 0.0f;
+                if (strip->holdCountA)
+                    strip->holdCountA--;
+                else
+                    strip->holdA = strip->dpmA;
+                if (strip->holdCountB)
+                    strip->holdCountB--;
+                else
+                    strip->holdB = strip->dpmB;
             }
             // Iterate samples, scaling each and adding to output and set DPM if any samples louder than current DPM
             for (frame = 0; frame < frames; ++frame) {
@@ -425,18 +434,15 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     fSampleB = fabs(fSampleB);
                     if (fSampleB > strip->dpmB)
                         strip->dpmB = fSampleB;
-
-                    // Update peak hold and scale DPM for damped release
-                    if (strip->dpmA > strip->holdA)
+                    if (strip->dpmA > strip->holdA) {
                         strip->holdA = strip->dpmA;
-                    if (strip->dpmB > strip->holdB)
+                        strip->holdCountA = g_nHoldReload;
+                    }
+                    if (strip->dpmB > strip->holdB) {
                         strip->holdB = strip->dpmB;
+                        strip->holdCountB = g_nHoldReload;
+                    }
                 }
-            }
-            if (g_nHoldCount == 0) {
-                // Only update peak hold each g_nHoldCount cycles
-                strip->holdA = strip->dpmA;
-                strip->holdB = strip->dpmB;
             }
         } else {
             if (strip->enable_dpm) {
@@ -444,6 +450,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->dpmB  = 0.0f;
                 strip->holdA = 0.0f;
                 strip->holdB = 0.0f;
+                strip->holdCountA = 0;
+                strip->holdCountB = 0;
             }
             if (strip->outRouted) {
                 // Silence channel outputs
@@ -459,11 +467,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     g_xf_gain_A = g_reqxf_gain_A;
     g_xf_gain_B = g_reqxf_gain_B;
 #endif
-
-    if (g_nHoldCount == 0)
-        g_nHoldCount = g_nHoldReload;
-    else
-        g_nHoldCount--;
 
     // Mark as deleted the pending-to-delete channel/send
     if (g_stripToDelete >= 0) {
@@ -499,13 +502,14 @@ void print_dpm_info(uint8_t chan) {
     // Debug helper to print current DPM state
     struct channel_strip* strip = g_channelStrips[chan];
     if (strip)
-        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\n",
+        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count A: %u\nHold count B: %u\n",
             strip->dpmA,
             strip->dpmB,
             strip->holdA,
             strip->holdB,
             strip->enable_dpm?"Enabled":"Disabled",
-            g_nHoldCount
+            strip->holdCountA,
+            strip->holdCountB
         );
 }
 
@@ -1082,6 +1086,8 @@ void enableDpm(uint8_t enable) {
             g_channelStrips[chan]->dpmB  = 0.0f;
             g_channelStrips[chan]->holdA = 0.0f;
             g_channelStrips[chan]->holdB = 0.0f;
+            g_channelStrips[chan]->holdCountA = 0;
+            g_channelStrips[chan]->holdCountB = 0;
         }
     }
 }
@@ -1155,6 +1161,8 @@ int8_t addStrip() {
         strip->dpmBlast  = 100.0f;
         strip->holdAlast = 100.0f;
         strip->holdBlast = 100.0f;
+        strip->holdCountA = 0;
+        strip->holdCountB = 0;
         g_channelStrips[chan] = strip;
         if (chan >= g_lastStrip)
             g_lastStrip = chan + 1;

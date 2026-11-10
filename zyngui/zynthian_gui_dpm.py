@@ -246,34 +246,40 @@ class zynthian_gui_dpm():
                 self._overlay_pos = pos
                 cmds.append(f"{path} coords {self.overlay} {self.x0} {self.y0} {self.x1} {pos}")
             hold_pos = int(self.y0 + self.height * hold)
-            if hold_pos != self._hold_pos:
-                self._hold_pos = hold_pos
-                cmds.append(f"{path} coords {self.hold} {self.x0} {hold_pos} {self.x1} {hold_pos + self.hold_thickness}")
-            if hold_pos <= self.y_over:
-                state, fill = NORMAL, self.over_hold_color
-            elif hold_pos <= self.y_high:
-                state, fill = NORMAL, self.high_hold_color
-            elif hold_pos < self.y_low:
-                state, fill = NORMAL, self.mono_color if self.mono else self.low_hold_color
-            else:
+            if pos - hold_pos <= self.hold_thickness:
                 state, fill = HIDDEN, None
+            else:
+                if hold_pos != self._hold_pos:
+                    self._hold_pos = hold_pos
+                    cmds.append(f"{path} coords {self.hold} {self.x0} {hold_pos} {self.x1} {hold_pos + self.hold_thickness}")
+                if hold_pos <= self.y_over:
+                    state, fill = NORMAL, self.over_hold_color
+                elif hold_pos <= self.y_high:
+                    state, fill = NORMAL, self.high_hold_color
+                elif hold_pos < self.y_low:
+                    state, fill = NORMAL, self.mono_color if self.mono else self.low_hold_color
+                else:
+                    state, fill = HIDDEN, None
         else:
             pos = int(self.x1 - self.width * dpm)
             if pos != self._overlay_pos:
                 self._overlay_pos = pos
                 cmds.append(f"{path} coords {self.overlay} {pos} {self.y0} {self.x1} {self.y1}")
             hold_pos = int(self.x1 - self.width * hold)
-            if hold_pos != self._hold_pos:
-                self._hold_pos = hold_pos
-                cmds.append(f"{path} coords {self.hold} {hold_pos} {self.y0} {hold_pos + self.hold_thickness} {self.y1}")
-            if hold_pos > self.x_over:
-                state, fill = NORMAL, self.over_hold_color
-            elif hold_pos > self.x_high:
-                state, fill = NORMAL, self.high_hold_color
-            elif hold_pos > self.x_low:
-                state, fill = NORMAL, self.mono_hold_color if self.mono else self.low_hold_color
-            else:
+            if hold_pos - pos <= self.hold_thickness:
                 state, fill = HIDDEN, None
+            else:
+                if hold_pos != self._hold_pos:
+                    self._hold_pos = hold_pos
+                    cmds.append(f"{path} coords {self.hold} {hold_pos} {self.y0} {hold_pos + self.hold_thickness} {self.y1}")
+                if hold_pos > self.x_over:
+                    state, fill = NORMAL, self.over_hold_color
+                elif hold_pos > self.x_high:
+                    state, fill = NORMAL, self.high_hold_color
+                elif hold_pos > self.x_low:
+                    state, fill = NORMAL, self.mono_hold_color if self.mono else self.low_hold_color
+                else:
+                    state, fill = HIDDEN, None
 
         if state == HIDDEN:
             if self._hold_state != HIDDEN:
