@@ -123,7 +123,7 @@ class zynthian_legacy_snapshot:
                 dev_cfg["midi_learn"] = new_learn
 
         # Convert mixer fader law
-        fader_unity = 0.75  # Must match FADER_UNITY in mixer.c
+        fader_unity = 0.70  # Must match FADER_UNITY in mixer.c
         fader_headroom_db = -zynthian_gui_config.fader_zero_db
         fader_exp = fader_headroom_db / (1.0 - fader_unity) * fader_unity * log(10.0) / 20.0
 

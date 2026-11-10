@@ -33,10 +33,10 @@ from zyngui.zynthian_gui_config import color_panel_bg, dpm_range_db, dpm_zero_db
 
 
 # Range and reference are configurable (see zynthian_gui_config). Range must match the value used by the zynmixer lib
-DPM_RANGE_DB = dpm_range_db # Span of meter scale below 0dBFS. Default 72
+DPM_RANGE_DB = dpm_range_db # Span of meter scale below 0dBFS. Default 60
 DPM_ZERO_DB = dpm_zero_db # "0dB" reference level. Default -18, the EBU standard
 DPM_HIGH_DB = DPM_ZERO_DB # Level (dB) above which meter is yellow, i.e. the "0dB" reference
-DPM_OVER_DB = -3.0 # Level (dB) above which meter is red. Not configurable
+DPM_OVER_DB = -2.0 # Level (dB) above which meter is red. Not configurable
 DPM_OVER_HOLD_S = 4.0 # Time to hold peak indication
 
 

@@ -305,7 +305,7 @@ class ZynMixer():
         channel : int
             Index of the mixer strip
         level : float
-            Value of level (0..1.0). Linear fader position: 0 = -inf, 0.75 = 0dB, 1.0 = +10dB (see level_to_db)
+            Value of level (0..1.0). Linear fader position: 0 = -inf, 0.70 = 0dB, 1.0 = +10dB (see level_to_db)
         """
 
         if channel is None:
@@ -326,7 +326,7 @@ class ZynMixer():
         Returns
         -------
         float
-            Fader level (0..1.0). Linear fader position: 0 = -inf, 0.75 = 0dB, 1.0 = +10dB (see level_to_db)
+            Fader level (0..1.0). Linear fader position: 0 = -inf, 0.70 = 0dB, 1.0 = +10dB (see level_to_db)
         """
 
         if channel is None:

@@ -631,10 +631,10 @@ mixer_toggle = os.environ.get('ZYNTHIAN_UI_MIXER_TOGGLE', "record")
 main_menu_columns = get_env_int('ZYNTHIAN_UI_MAIN_MENU_COLUMNS', 0)
 
 # Mixer digital peak meter (DPM) and fader configuration. Values are dB and seconds.
-dpm_range_db = get_env_float('ZYNTHIAN_MIXER_DPM_RANGE_DB', 72.0, 24.0, 120.0)  # dB span of meter scale below 0dBFS
+dpm_range_db = get_env_float('ZYNTHIAN_MIXER_DPM_RANGE_DB', 60.0, 24.0, 120.0)  # dB span of meter scale below 0dBFS
 dpm_zero_db = get_env_float('ZYNTHIAN_MIXER_DPM_ZERO_DB', -18.0, 6.0 - dpm_range_db, -3.0)  # dBFS of meter "0dB" reference. EBU: -18
-dpm_decay_db_per_s = get_env_float('ZYNTHIAN_MIXER_DPM_DECAY_DB_PER_S', 40.0, 1.0, 200.0)  # Meter fall rate (dB/s)
-dpm_hold_s = get_env_float('ZYNTHIAN_MIXER_DPM_HOLD_S', 1.2, 0.0, 30.0)  # Peak hold time. 0 disables hold
+dpm_decay_db_per_s = get_env_float('ZYNTHIAN_MIXER_DPM_DECAY_DB_PER_S', 30.0, 1.0, 200.0)  # Meter fall rate (dB/s)
+dpm_hold_s = get_env_float('ZYNTHIAN_MIXER_DPM_HOLD_S', 2.0, 0.0, 30.0)  # Peak hold time. 0 disables hold
 fader_zero_db = get_env_float('ZYNTHIAN_MIXER_FADER_ZERO_DB', -10.0, -40.0, -1.0)  # Fader "0dB" (unity) position relative to top of fader throw
 
 # ------------------------------------------------------------------------------

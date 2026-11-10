@@ -40,11 +40,11 @@
 #endif
 
 // DPM and FADER_HEADROOM_DB defaults. They may be changed at run time with setMeterConfig()
-#define DPM_RANGE_DB 72.0f // Linear dB DPM span range. 72dB places the -18dBFS reference at 75%, aligned with fader unity.
-#define DPM_DECAY_DB_PER_S 40.0f // Defines meter decay
-#define DPM_HOLD_S 1.2f // Duration of peak hold in seconds
+#define DPM_RANGE_DB 60.0f // Linear dB DPM span range. 60dB places the -18dBFS reference at 70%, aligned with fader unity.
+#define DPM_DECAY_DB_PER_S 30.0f // Defines meter decay
+#define DPM_HOLD_S 2.0f // Duration of peak hold in seconds
 #define DPM_FLOOR 1.0e-5f // Minimum level for DPM
-#define FADER_UNITY 0.75f // Fader position that gives unity gain (0dB / -18dBFS)
+#define FADER_UNITY 0.70f // Fader position that gives unity gain (0dB / -18dBFS). Must equal 1 - 18 / DPM_RANGE_DB so fader unity aligns with the DPM "0dB" reference
 #define FADER_HEADROOM_DB 10.0f // Gain at the top of the throw (position 1.0)
 // Exponent chosen so the slope (dB per fader travel) below unity equals the slope above unity, i.e. no kink at 0dB. 0.115129255 = ln(10) / 20
 #define FADER_EXP_FOR_HEADROOM(headroom) ((headroom) / (1.0f - FADER_UNITY) * FADER_UNITY * 0.115129255f)
