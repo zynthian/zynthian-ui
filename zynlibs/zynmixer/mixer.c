@@ -40,7 +40,7 @@
 #endif
 
 #define DPM_RANGE_DB 72.0f // Linear dB DPM span range. 72dB places the -18dBFS reference at 75%, aligned with fader unity.
-#define DPM_DECAY_DB_PER_S 15.0f // Defines meter decay
+#define DPM_DECAY_DB_PER_S 40.0f // Defines meter decay
 #define DPM_HOLD_S 1.2f // Duration of peak hold in seconds
 #define DPM_FLOOR 1.0e-5f // Minimum level for DPM
 #define FADER_UNITY 0.75f // Fader position that gives unity gain (0dB / -18dBFS)
