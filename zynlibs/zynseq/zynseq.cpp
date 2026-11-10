@@ -28,6 +28,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <map>
 #include <array>
 #include <cstdint>
 
@@ -86,11 +87,12 @@ bool g_bDirty                       = false;        // True if anything has been
 uint32_t g_nTransportClients        = 0;            // Bitwise flags indicating which clients have requested local transport
 uint8_t g_nTransportState           = STOPPED;      // State of local (non-jack) transport
 bool g_bTransportRolling            = false;        // True if (arranger) transport rolling forward bars
-bool g_bMidiRecord                  = false;        // True to add notes to current pattern from MIDI input
+bool g_bMidiRecord                  = false;        // True to add events to current pattern from MIDI input
 uint8_t g_nSustainValue             = 0;            // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart            = 0;            // Step when sustain pedal was last pressed
 uint32_t g_nLastStepCC              = 0;            // Step when last => WARNING!! Doesn't work if capturing several CC at once!
 uint8_t g_nPlayingSequences         = 0;            // Bitwise flga of playing/starting sequences
+std::map<uint16_t, std::set<uint8_t>> g_amCCmap;    // Map of lists of automation CCs, indexed by learned CC 16-bit packed key [chan,cc]
 
 char g_sName[256];                                  // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest                = 0xFF;         // MIDI note number that creates rest in pattern
@@ -531,6 +533,7 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
             uint32_t nStep = getPatternPlayhead();
             uint8_t nPlayState = g_seqMan.getSequence(g_nScene, g_nPhrase, g_nSequence)->getPlayState();
             uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
+            uint8_t nChannel = midiEvent.buffer[0] & 0x0F;
             uint8_t nNum1 = midiEvent.buffer[1];
             uint8_t nNum2 = midiEvent.buffer[2];
 
@@ -598,12 +601,17 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
                         // Manage rest of CCs
                     } else {
                         // Remove old CCs => "Overdubbing" CC is a mess!
-                        if (g_nLastStepCC < nStep)
-                            g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, nNum1);
-                        // Add new CC event
-                        g_pPattern->addControl(nStep, nNum1, nNum2, nNum2);
-                        g_nLastStepCC = nStep;
-                        setPatternModified(g_pPattern, true, false);
+                        uint16_t key = nChannel << 8 | nNum1;
+                        if (g_amCCmap.find(key) != g_amCCmap.end()) {
+                            for (const auto& cc: g_amCCmap[key]) {
+                                if (g_nLastStepCC < nStep)
+                                    g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, cc);
+                                // Add new CC event
+                                g_pPattern->addControl(nStep, cc, nNum2, nNum2);
+                            }
+                            g_nLastStepCC = nStep;
+                            setPatternModified(g_pPattern, true, false);
+                        }
                     }
                 }
             }
@@ -2019,6 +2027,15 @@ bool isMuted(uint8_t scene, uint8_t phrase, uint8_t sequence, uint32_t track) {
 void enableMidiRecord(bool enable) { g_bMidiRecord = enable; }
 
 bool isMidiRecord() { return g_bMidiRecord; }
+
+void addLearnMapping(uint32_t learned_key, uint8_t automate_cc) {
+    uint16_t key = learned_key & 0xffff;
+    g_amCCmap[key].insert(automate_cc);
+}
+
+void clearLearnMapping() {
+    g_amCCmap.clear();
+}
 
 bool isPatternEmpty(uint32_t pattern) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);

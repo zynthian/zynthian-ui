@@ -170,6 +170,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
     DEFAULT_VIEW_STEPS = 16
     DEFAULT_VIEW_ROWS = 16
+    SCREEN_NAME = "pattern_editor"
 
     # Function to initialise class
     def __init__(self):

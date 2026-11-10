@@ -975,6 +975,13 @@ def get_plugin_ports(plugin_url):
                         filter = flt_param
                         designation = None
 
+            # Detect Drawbar designation
+            drawbar = None
+            if designation:
+                if designation == "http://lv2plug.in/ns/ext/parameters#drawbar":
+                    drawbar = True
+                    designation = None
+
             is_bypass = False
             bypass_value = 0
             if designation:
@@ -1071,6 +1078,7 @@ def get_plugin_ports(plugin_url):
                 'path_preload': False,
                 'envelope': envelope,
                 'filter': filter,
+                'drawbar': drawbar,
                 'is_bypass': is_bypass,
                 'bypass_value': bypass_value,
                 'not_on_gui': not_on_gui,
@@ -1105,6 +1113,7 @@ def get_plugin_ports(plugin_url):
             path_preload = True
             envelope = None
             filter = None
+            drawbar = None
             is_bypass = False
             bypass_value = 0
             sp = []

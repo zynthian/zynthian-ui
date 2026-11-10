@@ -2,8 +2,8 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian State Model Schema
 #
-# Copyright (C) 2022-2025 Fernando Moyano <jofemodo@zynthian.org>
-#                    Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2026 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -22,35 +22,38 @@
 # ******************************************************************************
 
 ZynthianState = {
-    "schema_version": 5,  # Version of state (snapshot) model
+    "schema_version": 6,  # Version of state (snapshot) model
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
-    "midi_profile_state": {  # MIDI Profile TODO: Document midi profile
-        "MASTER_BANK_CHANGE_UP": "",
-        "SYS_ENABLED": "1", # Does not seem to be used
-        "MASTER_PROGRAM_CHANGE_DOWN": "",
-        "SINGLE_ACTIVE_CHANNEL": "0", # Does not seem to be used
-        "RTPMIDI_ENABLED": "0",
-        "TOUCHOSC_ENABLED": "0",
-        "PORTS": "DISABLED_IN=\\nENABLED_OUT=ttymidi:MIDI_out,QmidiNet:in_1\\nENABLED_FB=",
-        "MASTER_CHANNEL": "0",
-        "NETWORK_ENABLED": "0",
-        "FILTER_RULES": "",
-        "PROG_CHANGE_ZS3": "1",
-        "MASTER_PROGRAM_CHANGE_UP": "",
-        "BANK_CHANGE": "0",
-        "CC_AUTOMODE": "0",
-        "MASTER_BANK_CHANGE_CCNUM": "0",
-        "MASTER_BANK_CHANGE_DOWN": "",
-        "PRESET_PRELOAD_NOTEON": "1",
-        "AUBIONOTES_ENABLED": "0",
-        "FINE_TUNING": "440",
-        "MASTER_PROGRAM_CHANGE_TYPE": "Custom",
-        "PLAY_LOOP": "0", # Does not seem to be used
-        "FILTER_OUTPUT": "0",  # Does not seem to be used
-        "port_names": {  # Dictionary of MIDI port friendly names indexed by port uid
-            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",  # Friendly name mapped by uid
-        } # ... More ports
-    },
+    "midi_profile_state": {  # Every ZYNTHIAN_MIDI_* environment variable at save time, with the prefix removed. All values are strings
+        "ACTIVE_CHANNEL": "0", # "1" sends MIDI on the active chain's channel to all chains sharing that channel. "0" sends to the active chain only
+        "USB_BY_PORT": "0", # "1" identifies USB MIDI devices by device name and physical USB port
+        "PROG_CHANGE_ZS3": "1", # "1" MIDI program change loads a ZS3. "0" selects a preset instead
+        "BANK_CHANGE": "0", # "1" MIDI bank select (CC0) changes the bank of the chain's first processor
+        "FINE_TUNING": "440", # Global tuning reference in Hz (default 440)
+        "FILTER_RULES": "", # MIDI filter rules script. Newlines are stored as a literal \n
+        "CHANPRESS_CC": "0", # CC number that channel pressure is mapped to. "0" disables
+        "NETWORK_ENABLED": "0", # "1" enables the QMidiNet network MIDI service
+        "NETUMP_ENABLED": "0", # "1" enables the network UMP service
+        "RTPMIDI_ENABLED": "0", # "1" enables the RTP-MIDI service (jackrtpmidid)
+        "TOUCHOSC_ENABLED": "0", # "1" enables the TouchOSC to MIDI bridge (touchosc2midi)
+        "BLE_ENABLED": "0", # "1" enables Bluetooth (BLE MIDI)
+        "BLE_CONTROLLER": "", # Address of the Bluetooth controller to use. "" for default
+        "AUBIONOTES_ENABLED": "0", # "1" enables the aubionotes audio to MIDI service
+        "TRANSPORT_CLOCK_SOURCE": "Internal", # Transport clock source. Default "Internal"
+        "PLAY_LOOP": "0", # "1" loops playback in the MIDI recorder
+        "MASTER_CHANNEL": "0", # Master channel features MIDI channel, 1-based. "0" disables
+        "MASTER_CHANGE_TYPE": "Roland", # Preset name for the master up/down messages. Read into config but not otherwise used
+        "MASTER_PROGRAM_CHANGE_UP": "", # 4 hex digits, "#" = master channel. Loads the next snapshot program. "" disables
+        "MASTER_PROGRAM_CHANGE_DOWN": "", # As MASTER_PROGRAM_CHANGE_UP, loads the previous snapshot program
+        "MASTER_BANK_CHANGE_UP": "", # 6 hex digits (3-byte message), "#" = master channel. Selects the next snapshot bank. "" disables
+        "MASTER_BANK_CHANGE_DOWN": "", # As MASTER_BANK_CHANGE_UP, selects the previous snapshot bank
+        "MASTER_BANK_CHANGE_CCNUM": "0", # CC number on the master channel that selects the snapshot bank (code default 32)
+        "MASTER_NOTE_CUIA": "", # Optional "note:CUIA" mappings separated by a literal \n. If absent, built-in defaults apply
+        "port_names": {  # Friendly names indexed by port uid. Restored as the second alias of matching hardware ports
+            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",
+            # ... More ports
+        }
+    },    
     "chains": {  # Dictionary of chains indexed by chain id (id=0 is main mixbus chain)
         "1": {  # Chain 1
             "title": "My first chain",  # Optional chain title
@@ -65,7 +68,7 @@ ZynthianState = {
                 }, # ... more processors in this slot
             ], # ... More slots
             "zctrls": [ # List of pinned "Chain Controls"
-                (3, "cutoff"), # Processor index, symbol
+                (3, "cutoff"), # Processor id, symbol
                 # ... More zctrls
             ],
         }, # ... More chains
@@ -87,11 +90,12 @@ ZynthianState = {
                     "preset_info": None,  # Preset id
                     "controllers": {  # Optional dictionary of controllers (overrides preset default value)
                         "volume": {  # Indexed by controller symbol
-                            "value": 96,  # Controller value (may be None to use default controller value)
+                            "value": 96,  # Controller value
                             "midi_cc_val1": 12, # Optional CC range minimum, value when controller value is 0
                             "midi_cc_val2": 96, # Optional CC range maximum, value when controller value is 127
                             "midi_cc_momentary_switch": 1, # Optional momentary toggle
-                            "midi_cc_debounce": 1 # Optional toggle debounce
+                            "midi_cc_debounce": 1, # Optional toggle debounce
+                            "midi_cc_mode": 0 # Optional CC control mode (0=abslute, 1-3=relative modes)
                         }, # ... More controllers
                     }, # ... Other parameters
                 }, # ... Other controllers
@@ -99,14 +103,6 @@ ZynthianState = {
             "chains": {  # Dictionary of chain specific ZS3 config indexed by chain id
                 "1": {  # Chain 1
                     "restore": True, # Optional False to omit chain from restore (default: True)
-                    "midi_learn": { # Dictionary of MIDI CC binding, indexed by 16-bit encoded [MIDI chan << 8 | CC]
-                        "267": [ # List of control bindings to this CC 
-                            [
-                                1, # Processor id
-                                "volume" # Controller symbol
-                            ], # ... Other controllers
-                        ], # ... Other bindings
-                    },
                     "midi_chan": 0, # Override chain MIDI channel
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"],# List of chain jack MIDI output destinations (may include aliases)
@@ -128,8 +124,8 @@ ZynthianState = {
                     "ctrldev_state": {}, # Optional dictionary, specific to each controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
-                    "midi_learn": {  # Dictionary of global/absolute MIDI CC binding, indexed by 16-bit encoded (MIDI chan, CC)
-                        "11": [  # List of control bindings to this CC
+                    "midi_learn": {  # Dictionary of MIDI CC binding, indexed by 24-bit hex encoded (chain (ff for global), MIDI chan (ff for any channel), CC)
+                        "ff0021": [  # List of control bindings to this CC
                             [
                                 1, # Processor id
                                 "volume" # Controller symbol
@@ -138,7 +134,7 @@ ZynthianState = {
                     } # ... Other bindings
                 }, # ... Other devices
                 "zynmidi": { # Internal / GUI MIDI config
-                    "midi_learn": { # Same as physical MIDI input midi_learn
+                    "midi_learn": { # Same as physical MIDI input midi_learn (not implemented)
                     }
                 }
             },

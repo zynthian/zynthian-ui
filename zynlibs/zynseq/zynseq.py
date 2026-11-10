@@ -253,6 +253,7 @@ class zynseq(zynthian_engine):
             self.libseq.getPatternAt.restype = ctypes.c_uint32
             self.libseq.convertPattern.argtypes = [ctypes.c_char_p]
             self.libseq.convertPattern.restype = ctypes.c_char_p
+            self.libseq.addLearnMapping.argtypes = [ctypes.c_uint32, ctypes.c_uint8]
 
             # Sequence functions
             self.libseq.setSequenceTempo.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]
@@ -595,6 +596,145 @@ class zynseq(zynthian_engine):
         for i in range(n):
             res[event_key_buffer[i]] = True
         return res
+
+    def get_channel_patterns(self, chan):
+        """ Get indices of all patterns used by the sequence of a MIDI channel
+
+        chan: MIDI channel
+
+        Returns: List of unique pattern indices
+        """
+
+        patterns = []
+        try:
+            for scene in self.state["scenes"]:
+                for phrase in scene["phrases"]:
+                    try:
+                        seq = phrase["sequences"][chan]
+                    except IndexError:
+                        continue
+                    if not seq:
+                        continue
+                    for track in seq.get("tracks", []):
+                        for index in track.get("patns", {}).values():
+                            if index not in patterns:
+                                patterns.append(index)
+        except Exception as e:
+            logging.warning(f"Failed to get patterns for channel {chan}: {e}")
+        return patterns
+
+    def _selected_pattern_has_cc(self, cc):
+        """ Check if the pattern currently selected in libseq contains events of a CC
+
+        cc: CC number
+        """
+
+        for step in range(self.libseq.getSteps()):
+            if self.libseq.getControlDuration(step, cc):
+                return True
+        return False
+
+    def get_cc_patterns(self, cc, chan):
+        """ Get a list of patterns on a channel that contain events of the defined CC
+
+        cc: CC number
+        chan: MIDI channel
+
+        Returns: List of pattern indices that contain the CC
+        """
+
+        patterns = []
+        selected = self.libseq.getPatternIndex()
+        for index in self.get_channel_patterns(chan):
+            self.libseq.selectPattern(index)
+            if self._selected_pattern_has_cc(cc):
+                patterns.append(index)
+        self.libseq.selectPattern(selected)
+        return patterns
+
+    def is_cc_used(self, cc, chan):
+        """ Check if any pattern on a channel contains events of the defined CC
+
+        cc: CC number
+        chan: MIDI channel
+
+        Returns: True if CC is used
+        """
+
+        used = False
+        selected = self.libseq.getPatternIndex()
+        for index in self.get_channel_patterns(chan):
+            self.libseq.selectPattern(index)
+            if self._selected_pattern_has_cc(cc):
+                used = True
+                break
+        self.libseq.selectPattern(selected)
+        return used
+
+    def move_cc(self, old_cc, new_cc, chan):
+        """ Change the CC number of all events of a CC in all patterns on a channel
+
+        old_cc: CC number of events to change
+        new_cc: CC number to change the events to
+        chan: MIDI channel
+
+        Returns: List of indices of patterns that were changed
+        """
+
+        changed = []
+        selected = self.libseq.getPatternIndex()
+        for index in self.get_channel_patterns(chan):
+            self.libseq.selectPattern(index)
+            events = []
+            for step in range(self.libseq.getSteps()):
+                duration = self.libseq.getControlDuration(step, old_cc)
+                if duration:
+                    events.append((step,
+                                   self.libseq.getControlValue(step, old_cc) & 0xff,
+                                   self.libseq.getControlValueEnd(step, old_cc) & 0xff,
+                                   duration,
+                                   self.libseq.getControlOffset(step, old_cc)))
+            if not events:
+                continue
+            interpolate = bool(self.libseq.getInterpolateCC(old_cc) & 0xff)
+            self.libseq.clearControl(old_cc)
+            for step, value, value_end, duration, offset in events:
+                self.libseq.addControl(step, new_cc, value, value_end, duration, offset)
+            self.libseq.setInterpolateCC(new_cc, interpolate)
+            changed.append(index)
+        self.libseq.selectPattern(selected)
+        return changed
+
+    def get_automated_patterns(self, cc, chan):
+        """ Get a list of patterns that have automation of the defined CC
+
+        cc: CC number of automated CC
+        chan: MIDI channel of automated CC
+
+        Returns: List of pattern indices that contain the automation
+        """
+
+        return self.get_cc_patterns(cc, chan)
+
+    def remove_automated_patterns(self, cc, chan):
+        """ Remove control automation from pattern
+
+        cc: CC number of automated CC
+        chan: MIDI channel of automated CC
+        """
+
+        patterns = []
+        steps = self.libseq.getSteps()
+        for phrase in range(self.phrases):
+            index = self.get_pattern(self.scene, phrase, chan, 0, 0)
+            if index is None:
+                continue
+            self.libseq.selectPattern(index)
+            for step in range(steps):
+                if self.libseq.getControlDuration(step, cc):
+                    patterns.append(index)
+                    break
+        return patterns
 
     # -------------------------------------------------------------------
     # MIDI transport & clock settings
