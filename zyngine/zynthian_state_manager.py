@@ -957,25 +957,12 @@ class zynthian_state_manager:
 
         self.save_zs3("zs3-0", "Last state")
         self.purge_zs3()
-        zs3 = self.zs3
-        if not zynthian_gui_config.snapshot_mixer_settings:
-            # Don't save soundcard audio levels in any ZS3
-            zs3 = {}
-            for zs3_id, zs3_state in self.zs3.items():
-                processors = zs3_state.get("processors")
-                if processors:
-                    zs3_state = zs3_state.copy()
-                    zs3_state["processors"] = {
-                        proc_id: proc_state for proc_id, proc_state in processors.items()
-                        if int(proc_id) != ALSA_ID
-                    }
-                zs3[zs3_id] = zs3_state
         state = {
             'schema_version': SNAPSHOT_SCHEMA_VERSION,
             'last_snapshot_fpath': self.last_snapshot_fpath,
             'midi_profile_state': self.get_midi_profile_state(),
             'chains': self.chain_manager.get_state(),
-            'zs3': zs3,
+            'zs3': self.zs3,
             'last_zs3_id': self.last_zs3_id,
             'gui': {
                 'pinned_chains': self.chain_manager.get_pinned_count()
@@ -1723,9 +1710,6 @@ class zynthian_state_manager:
         # Add processors
         processor_states = {}
         for id, processor in self.chain_manager.processors.items():
-            if id == ALSA_ID and not zynthian_gui_config.snapshot_mixer_settings:
-                # Don't save soundcard audio levels in snapshot
-                continue
             processor_state = {
                 "bank_info": processor.bank_info,
                 "bank_subdir_info": processor.bank_subdir_info,
