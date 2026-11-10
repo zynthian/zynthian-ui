@@ -25,8 +25,9 @@
 # ******************************************************************************
 
 import logging
+from time import monotonic
 from PIL import Image, ImageTk
-from tkinter import NORMAL, HIDDEN
+from tkinter import NORMAL, HIDDEN, TclError
 
 from zyngui.zynthian_gui_config import color_panel_bg
 
@@ -36,6 +37,7 @@ DPM_RANGE_DB = 72.0
 DPM_ZERO_DB = -18.0 # EBU standard "0dB" reference level
 DPM_HIGH_DB = -18.0 # Level (dB) above which meter is yellow
 DPM_OVER_DB = -3.0 # Level (dB) above which meter is red
+DPM_OVER_HOLD_S = 4.0 # Time to hold peak indication
 
 
 def db_to_norm(db):
@@ -47,6 +49,23 @@ def db_to_norm(db):
 
     # Match logCurve() in zynmixer lib
     return max(0.0, min(1.0, 1.0 + db / DPM_RANGE_DB))
+
+
+def run_script(widget, script):
+    """Run a Tcl script.
+    Optimisation abstraction reduces the quantity of tk.eval() calls.
+
+    widget : Any Tk widget (used to reach the Tcl interpreter)
+    script : Tcl script. Does nothing if empty
+    Note: Call from the Tk main thread. tkinter marshals calls made from other threads to the main thread and waits for each one
+    """
+
+    if not script:
+        return
+    try:
+        widget.tk.eval(script)
+    except TclError as e:
+        logging.warning(f"DPM update failed: {e}")
 
 
 class zynthian_gui_dpm():
@@ -98,7 +117,14 @@ class zynthian_gui_dpm():
 
         self.hold_thickness = 1
         self.mono = 0
-        self.over_id = None
+        self.over_visible = False
+        self.over_ts = 0.0
+
+        self._tcl_path = str(parent)
+        self._hold_state = HIDDEN
+        self._hold_fill = self.low_color
+        self._overlay_pos = None
+        self._hold_pos = None
 
         # ---------------------------------------------
         # Compute bounds for initial position
@@ -184,59 +210,99 @@ class zynthian_gui_dpm():
         if self.main:
             self.parent.coords(self.over_indicator, *coords['over'])
 
+        # Items have been repositioned so force overlay and hold to be redrawn on next refresh
+        self._overlay_pos = None
+        self._hold_pos = None
+
     def set_enable(self, enable):
         self.enabled = enable
 
-    def refresh(self, dpm, hold, mono):
+    def get_script(self, dpm, hold, mono):
+        """ Build a Tcl script that updates the meter, containing commands only for items that have changed.
+        Optimisation abstraction reduces the quantity of tk.eval() methods.
+
+        dpm : Normalised level, inverted (1.0 = silence .. 0.0 = full scale), as returned by zynmixer
+        hold : Normalised peak hold level, same scale as dpm
+        mono : True if channel is mono
+        Returns : Tcl script, or empty string if nothing needs to be drawn
+        Note: The script is not run here so that scripts from several meters can be batched into one call into Tcl, see run_script()
+        """
+
+        cmds = []
+        path = self._tcl_path
+
         if mono != self.mono:
             self.mono = mono
             if mono:
-                self.parent.itemconfig(self.bg_image, state=HIDDEN)
-                self.parent.itemconfig(self.bg_mono, state=NORMAL)
+                cmds.append(f"{path} itemconfigure {self.bg_image} -state {HIDDEN}")
+                cmds.append(f"{path} itemconfigure {self.bg_mono} -state {NORMAL}")
             else:
-                self.parent.itemconfig(self.bg_image, state=NORMAL)
-                self.parent.itemconfig(self.bg_mono, state=HIDDEN)
-
+                cmds.append(f"{path} itemconfigure {self.bg_image} -state {NORMAL}")
+                cmds.append(f"{path} itemconfigure {self.bg_mono} -state {HIDDEN}")
 
         if self.vertical:
-            y1 = int(self.y0 + self.height * dpm)
-            self.parent.coords(self.overlay, (self.x0, self.y0, self.x1, y1))
-            y1 = int(self.y0 + self.height * hold)
-            self.parent.coords(self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
-            if y1 <= self.y_over:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
-            elif y1 <= self.y_high:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
-            elif y1 < self.y_low:
-                if self.mono:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_color)
-                else:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.low_hold_color)
+            pos = int(self.y0 + self.height * dpm)
+            if pos != self._overlay_pos:
+                self._overlay_pos = pos
+                cmds.append(f"{path} coords {self.overlay} {self.x0} {self.y0} {self.x1} {pos}")
+            hold_pos = int(self.y0 + self.height * hold)
+            if hold_pos != self._hold_pos:
+                self._hold_pos = hold_pos
+                cmds.append(f"{path} coords {self.hold} {self.x0} {hold_pos} {self.x1} {hold_pos + self.hold_thickness}")
+            if hold_pos <= self.y_over:
+                state, fill = NORMAL, self.over_hold_color
+            elif hold_pos <= self.y_high:
+                state, fill = NORMAL, self.high_hold_color
+            elif hold_pos < self.y_low:
+                state, fill = NORMAL, self.mono_color if self.mono else self.low_hold_color
             else:
-                self.parent.itemconfig(self.hold, state=HIDDEN)
-
+                state, fill = HIDDEN, None
         else:
-            x = int(self.x1 - self.width * dpm)
-            self.parent.coords(self.overlay, (x, self.y0, self.x1, self.y1))
-            x = int(self.x1 - self.width * hold)
-            self.parent.coords(self.hold, (x, self.y0, x + self.hold_thickness, self.y1))
-            if x > self.x_over:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
-            elif x > self.x_high:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
-            elif x > self.x_low:
-                if self.mono:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_hold_color)
-                else:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.low_hold_color)
+            pos = int(self.x1 - self.width * dpm)
+            if pos != self._overlay_pos:
+                self._overlay_pos = pos
+                cmds.append(f"{path} coords {self.overlay} {pos} {self.y0} {self.x1} {self.y1}")
+            hold_pos = int(self.x1 - self.width * hold)
+            if hold_pos != self._hold_pos:
+                self._hold_pos = hold_pos
+                cmds.append(f"{path} coords {self.hold} {hold_pos} {self.y0} {hold_pos + self.hold_thickness} {self.y1}")
+            if hold_pos > self.x_over:
+                state, fill = NORMAL, self.over_hold_color
+            elif hold_pos > self.x_high:
+                state, fill = NORMAL, self.high_hold_color
+            elif hold_pos > self.x_low:
+                state, fill = NORMAL, self.mono_hold_color if self.mono else self.low_hold_color
             else:
-                self.parent.itemconfig(self.hold, state=HIDDEN)
+                state, fill = HIDDEN, None
 
-        if self.main and dpm <= 0.0:
-            self.parent.itemconfig(self.over_indicator, state=NORMAL)
-            if self.over_id is not None:
-                self.parent.after_cancel(self.over_id)
-            self.over_id = self.parent.after(4000, lambda: self.parent.itemconfig(self.over_indicator, state=HIDDEN))
+        if state == HIDDEN:
+            if self._hold_state != HIDDEN:
+                self._hold_state = HIDDEN
+                cmds.append(f"{path} itemconfigure {self.hold} -state {HIDDEN}")
+        elif state != self._hold_state or fill != self._hold_fill:
+            self._hold_state = state
+            self._hold_fill = fill
+            cmds.append(f"{path} itemconfigure {self.hold} -state {NORMAL} -fill {fill}")
+
+        if self.main:
+            if dpm <= 0.0:
+                self.over_ts = monotonic()
+                if not self.over_visible:
+                    self.over_visible = True
+                    cmds.append(f"{path} itemconfigure {self.over_indicator} -state {NORMAL}")
+            elif self.over_visible and monotonic() - self.over_ts >= DPM_OVER_HOLD_S:
+                self.over_visible = False
+                cmds.append(f"{path} itemconfigure {self.over_indicator} -state {HIDDEN}")
+
+        return "\n".join(cmds)
+
+    def refresh(self, dpm, hold, mono):
+        """Update this meter immediately. See get_script() for parameters
+
+        Note: Prefer get_script() and run_script() which optimises for multiple DPM objects
+        """
+
+        run_script(self.parent, self.get_script(dpm, hold, mono))
 
     def get_bg(self, width, height):
         """ Get the tri-colour background image

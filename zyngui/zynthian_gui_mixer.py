@@ -29,7 +29,7 @@ import copy
 import tkinter
 import logging
 #import traceback
-from time import sleep
+from time import sleep, monotonic
 from math import log10, sqrt
 from threading import Timer
 from os.path import basename, splitext
@@ -41,7 +41,7 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
-from zyngui.zynthian_gui_dpm import zynthian_gui_dpm, db_to_norm, DPM_ZERO_DB, DPM_HIGH_DB, DPM_OVER_DB
+from zyngui.zynthian_gui_dpm import zynthian_gui_dpm, db_to_norm, run_script, DPM_ZERO_DB, DPM_HIGH_DB, DPM_OVER_DB, DPM_OVER_HOLD_S
 from zyngine.zynthian_signal_manager import zynsigman
 
 logging.getLogger('PIL').setLevel(logging.WARNING)
@@ -556,7 +556,8 @@ class zynthian_gui_mixer_strip():
         self.x = x
         self.width = width
         self.height = height
-        self.over_id = None
+        self.over_ts = 0.0
+        self.over_active = False
         self.pending_draw_fader_text = False
 
         self.chain = chain
@@ -837,19 +838,27 @@ class zynthian_gui_mixer_strip():
         self.bg_images[key] = ImageTk.PhotoImage(img)
         return self.bg_images[key]
 
-    def draw_dpm(self):
-        """ Function to draw the DPM level meter for a mixer strip
+    def get_dpm_script(self):
+        """ Build a Tcl script to draw the DPM level meter for this mixer strip.
+        Optimisation abstraction reduces the quantity of tk.eval() methods.
+
+        Returns: Tcl script, or empty string if nothing needs drawing
+        Note: The strip's zynmixer dpm states must have been updated first (update_dpm_states)
         """
 
         dpm = self.chain.zynmixer_proc.zynmixer.dpm[self.chain.zynmixer_proc.mixer_chan]
-        self.dpm_a.refresh(dpm.a, dpm.a_hold, dpm.mono)
-        self.dpm_b.refresh(dpm.b, dpm.b_hold, dpm.mono)
-        if self.chain.chain_id == 0 and (dpm.a_hold <= 0.0 or dpm.b_hold <= 0.0):
-            self.canvas.itemconfig(self.mute_text, fill="#FF0000")
-            if self.over_id is not None:
-                self.canvas.after_cancel(self.over_id)
-            self.over_id = self.canvas.after(4000, lambda: self.canvas.itemconfig(self.mute_text, fill=self.gui_mixer.button_txcol))
-
+        cmds = [self.dpm_a.get_script(dpm.a, dpm.a_hold, dpm.mono),
+                self.dpm_b.get_script(dpm.b, dpm.b_hold, dpm.mono)]
+        if self.chain.chain_id == 0:
+            path = str(self.canvas)
+            if dpm.a_hold <= 0.0 or dpm.b_hold <= 0.0:
+                self.over_ts = monotonic()
+                self.over_active = True
+                cmds.append(f"{path} itemconfigure {self.mute_text} -fill #FF0000")
+            elif self.over_active and monotonic() - self.over_ts >= DPM_OVER_HOLD_S:
+                self.over_active = False
+                cmds.append(f"{path} itemconfigure {self.mute_text} -fill {self.gui_mixer.button_txcol}")
+        return "\n".join(c for c in cmds if c)
 
     def draw_balance(self):
         """
@@ -1603,18 +1612,6 @@ class zynthian_gui_mixer(zynthian_gui_base):
 
         if self.shown:
             super().refresh_status()
-            if zynthian_gui_config.enable_dpm:
-                # Update all chains DPM
-                self.zyngui.state_manager.zynmixer_chan.update_dpm_states()
-                self.zyngui.state_manager.zynmixer_bus.update_dpm_states()
-                if zynthian_gui_config.enable_dpm:
-                    for strip in self.chain_strips:
-                        if strip.chain.is_audio():
-                            strip.draw_dpm()
-            else:
-                # Update main chain DPM
-                self.state_manager.zynmixer_bus.update_dpm_states(1)
-                self.chain_strips[-1].draw_dpm()
             if self.beat != self.zynseq.beat:
                 self.beat = self.zynseq.beat
                 self.status_canvas.itemconfig(self.status_timesig, text=f"{self.beat} | {self.bpb}/4")
@@ -1631,6 +1628,51 @@ class zynthian_gui_mixer(zynthian_gui_base):
                     strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
                 elif strip.chain.chain_id == 0:
                     strip.update_clip_progress(self.zynseq.progress[32])
+
+    def _get_visible_x_range(self):
+        """ Get the range of x coordinates of the scrollable (left) canvas that is currently in view
+
+        Returns: (left, right) in canvas coordinates, extended by one strip each side so strips about to scroll into view are kept current.
+                 None if the range could not be determined
+        """
+
+        try:
+            path = str(self.left_canvas)
+            left, width = self.left_canvas.tk.eval(f"list [{path} canvasx 0] [winfo width {path}]").split()
+            width = float(width)
+            if width <= 1:
+                return None # Not yet mapped
+            left = float(left)
+            return left - self.strip_width, left + width + self.strip_width
+        except Exception:
+            return None
+
+    def get_dpm_script(self):
+        """ Build one Tcl script to draw all DPM meters that need drawing.
+        Optimisation abstraction reduces the quantity of tk.eval() methods.
+
+        Returns: Tcl script, or empty string if nothing needs drawing
+        """
+
+        if not self.shown:
+            return ""
+        cmds = [super().get_dpm_script()]
+        if zynthian_gui_config.enable_dpm:
+            # Update all chains DPM
+            self.zyngui.state_manager.zynmixer_chan.update_dpm_states()
+            self.zyngui.state_manager.zynmixer_bus.update_dpm_states()
+            view = self._get_visible_x_range()
+            for strip in self.chain_strips:
+                if not strip.chain.is_audio():
+                    continue
+                if view and strip.canvas is self.left_canvas and (strip.x >= view[1] or strip.x + strip.width <= view[0]):
+                    continue
+                cmds.append(strip.get_dpm_script())
+        elif self.chain_strips:
+            # Update main chain DPM
+            self.state_manager.zynmixer_bus.update_dpm_states(1)
+            cmds.append(self.chain_strips[-1].get_dpm_script())
+        return "\n".join(c for c in cmds if c)
 
     def plot_zctrls(self):
         """Function to refresh display (fast)

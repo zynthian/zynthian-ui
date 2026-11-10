@@ -40,6 +40,9 @@
 #endif
 
 #define DPM_RANGE_DB 72.0f // Linear dB DPM span range. 72dB places the -18dBFS reference at 75%, aligned with fader unity.
+#define DPM_DECAY_DB_PER_S 15.0f // Defines meter decay
+#define DPM_HOLD_S 1.2f // Duration of peak hold in seconds
+#define DPM_FLOOR 1.0e-5f // Minimum level for DPM
 #define FADER_UNITY 0.75f // Fader position that gives unity gain (0dB / -18dBFS)
 #define FADER_HEADROOM_DB 10.0f // Gain at the top of the throw (position 1.0)
 // Exponent chosen so the slope (dB per fader travel) below unity equals the slope above unity, i.e. no kink at 0dB. 0.115129255 = ln(10) / 20
@@ -122,13 +125,20 @@ int g_stripToDelete = -1;
 struct fx_send* g_fxSends[MAX_CHANNELS];
 int g_sendToDelete = -1;
 #endif
-unsigned int g_nDampingCount  = 0;
-unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
-unsigned int g_nHoldCount     = 0;
-float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
+unsigned int g_nHoldCount     = 0; // Cycles remaining until peak hold is next released
+unsigned int g_nHoldReload    = 0; // Value loaded into g_nHoldCount when peak hold is released
+float g_fDpmCycleDecay        = 1.0f; // DPM decay factor applied each jack cycle
 
 jack_nframes_t g_samplerate                     = 48000; // Jack samplerate used to calculate damping factor
 jack_nframes_t g_buffersize                     = 1024;  // Jack buffer size used to calculate damping factor
+
+static void updateDpmTiming(void) {
+    if (g_samplerate == 0 || g_buffersize == 0)
+        return;
+    g_fDpmCycleDecay = powf(10.0f, -DPM_DECAY_DB_PER_S * (float)g_buffersize / (float)g_samplerate / 20.0f);
+    unsigned int nHoldCycles = (unsigned int)(DPM_HOLD_S * (float)g_samplerate / (float)g_buffersize + 0.5f);
+    g_nHoldReload = nHoldCycles > 1 ? nHoldCycles - 1 : 0;
+}
 jack_default_audio_sample_t* g_soloBufferA    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_soloBufferB    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_pflBufferA    = NULL;  // Ponter to buffer used for PFL bus
@@ -298,6 +308,14 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             } else {
                 pChanOutA = pChanOutB = NULL;
             }
+            if (strip->enable_dpm) {
+                strip->dpmA *= g_fDpmCycleDecay;
+                if (strip->dpmA < DPM_FLOOR)
+                    strip->dpmA = 0.0f;
+                strip->dpmB *= g_fDpmCycleDecay;
+                if (strip->dpmB < DPM_FLOOR)
+                    strip->dpmB = 0.0f;
+            }
             // Iterate samples, scaling each and adding to output and set DPM if any samples louder than current DPM
             for (frame = 0; frame < frames; ++frame) {
 #ifdef MIXBUS
@@ -420,11 +438,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->holdA = strip->dpmA;
                 strip->holdB = strip->dpmB;
             }
-            if (g_nDampingCount == 0) {
-                // Only update damping release each g_nDampingCount cycles
-                strip->dpmA *= g_fDpmDecay;
-                strip->dpmB *= g_fDpmDecay;
-            }
         } else {
             if (strip->enable_dpm) {
                 strip->dpmA  = 0.0f;
@@ -447,12 +460,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     g_xf_gain_B = g_reqxf_gain_B;
 #endif
 
-    if (g_nDampingCount == 0)
-        g_nDampingCount = g_nDampingPeriod;
-    else
-        g_nDampingCount--;
     if (g_nHoldCount == 0)
-        g_nHoldCount = g_nDampingPeriod * 20;
+        g_nHoldCount = g_nHoldReload;
     else
         g_nHoldCount--;
 
@@ -490,14 +499,13 @@ void print_dpm_info(uint8_t chan) {
     // Debug helper to print current DPM state
     struct channel_strip* strip = g_channelStrips[chan];
     if (strip)
-        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\nDamping period: %u\n",
+        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\n",
             strip->dpmA,
             strip->dpmB,
             strip->holdA,
             strip->holdB,
             strip->enable_dpm?"Enabled":"Disabled",
-            g_nHoldCount,
-            g_nDampingPeriod
+            g_nHoldCount
         );
 }
 
@@ -524,7 +532,7 @@ int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
     if (nSamplerate == 0)
         return 0;
     g_samplerate     = nSamplerate;
-    g_nDampingPeriod = g_fDpmDecay * nSamplerate / g_buffersize / 15;
+    updateDpmTiming();
     return 0;
 }
 
@@ -535,7 +543,7 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         return 0;
 
     g_buffersize     = nBuffersize;
-    g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
+    updateDpmTiming();
     free(g_soloBufferA);
     free(g_soloBufferB);
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -573,6 +581,9 @@ int init() {
         fprintf(stderr, "libzynmixer: Failed to start channel jack client: %d\n", nStatus);
         exit(1);
     }
+    g_samplerate = jack_get_sample_rate(g_jackClient);
+    g_buffersize = jack_get_buffer_size(g_jackClient);
+    updateDpmTiming();
 #ifdef DEBUG
     fprintf(stderr, "libzynmixer: Registering as '%s'.\n", jack_get_client_name(g_pJackClient));
 #endif

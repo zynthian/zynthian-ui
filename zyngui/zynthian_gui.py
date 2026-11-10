@@ -2884,6 +2884,14 @@ class zynthian_gui:
                     plot_zctrls_func()
                 except Exception as e:
                     logging.error(e)
+            # Refresh DPM meters here to share process in main thread
+            if not self.state_manager.power_save_mode:
+                refresh_dpm_func = getattr(screen_obj, "refresh_dpm", None)
+                if refresh_dpm_func:
+                    try:
+                        refresh_dpm_func()
+                    except Exception as e:
+                        logging.error(e)
 
         if not self.exit_flag:
             zynthian_gui_config.top.after(32, self.plot_zctrls_task)
