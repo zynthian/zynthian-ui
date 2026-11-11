@@ -65,15 +65,27 @@ float getGain(uint8_t channel);
 
 /** @brief  Set channel level
  *   @param  channel Index of channel
- *   @param  level Channel level (Normalised: 0=-inf, 1.0=0dB)
+ *   @param  level Channel level (Normalised fader position: 0=-inf, 1.0=+10dB. See levelToDb())
  */
 void setLevel(uint8_t channel, float level);
 
 /** @brief  Get channel level
  *   @param  channel Index of channel
- *   @retval float Channel level (Normalised: 0=-inf, 1.0=0dB)
+ *   @retval float Channel level (Normalised fader position: 0=-inf, 1.0=+10dB. See levelToDb())
  */
 float getLevel(uint8_t channel);
+
+/** @brief  Convert fader position to gain in dB using the fader law
+ *   @param  level Fader position (0..1.0)
+ *   @retval float Gain in dB (-200 for silence)
+ */
+float levelToDb(float level);
+
+/** @brief  Convert gain in dB to fader position using the fader law
+ *   @param  db Gain in dB
+ *   @retval float Fader position (0..1.0)
+ */
+float dbToLevel(float db);
 
 /** @brief  Set channel balance
  *   @param  channel Index of channel
@@ -280,6 +292,16 @@ float getDpmHold(uint8_t channel, uint8_t leg);
  *  @param  count Quantity of channels to update or 0 for all
  */
 void updateDpmStates(dpm_struct* values, uint8_t count);
+
+/** @brief  Configure meter ballistics and fader law
+ *   @param  rangeDb Linear dB span of the DPM scale, i.e. dB below 0dBFS that maps to the bottom of the meter [Default: 72.0]
+ *   @param  decayDbPerS DPM decay rate in dB per second [Default: 30.0]
+ *   @param  holdS Peak hold time in seconds [Default: 2.0]
+ *   @param  faderHeadroomDb Gain in dB at top of fader throw, i.e. how far above unity (fader "0dB") the fader goes. Equal to minus the fader "0dB" reference, e.g. 10.0 for a -10dB reference [Default: 10.0]
+ *   @retval uint8_t 1 on success, 0 if any parameter is out of range (configuration is then unchanged)
+ *   @note   Call before adding strips. Defaults are used until called
+ */
+uint8_t setMeterConfig(float rangeDb, float decayDbPerS, float holdS, float faderHeadroomDb);
 
 /** @brief  Enable / disable peak programme metering
  *   @param enable 1 to enable, 0 to disable

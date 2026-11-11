@@ -67,6 +67,10 @@ class ZynMixer():
         self.lib_zynmixer.setLevel.argtypes = [ctypes.c_uint8, ctypes.c_float]
         self.lib_zynmixer.getLevel.argtypes = [ctypes.c_uint8]
         self.lib_zynmixer.getLevel.restype = ctypes.c_float
+        self.lib_zynmixer.levelToDb.argtypes = [ctypes.c_float]
+        self.lib_zynmixer.levelToDb.restype = ctypes.c_float
+        self.lib_zynmixer.dbToLevel.argtypes = [ctypes.c_float]
+        self.lib_zynmixer.dbToLevel.restype = ctypes.c_float
 
         self.lib_zynmixer.setGain.argtypes = [ctypes.c_uint8, ctypes.c_float]
         self.lib_zynmixer.getGain.argtypes = [ctypes.c_uint8]
@@ -130,10 +134,29 @@ class ZynMixer():
 
         self.lib_zynmixer.updateDpmStates.argtypes = [ctypes.POINTER(DPM), ctypes.c_uint8]
 
+        self.lib_zynmixer.setMeterConfig.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float]
+        self.lib_zynmixer.setMeterConfig.restype = ctypes.c_uint8
+
         self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
 
         self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
         self.dpm = (DPM * self.MAX_NUM_CHANNELS)()
+
+    def set_meter_config(self, range_db: float, decay_db_per_s: float, hold_s: float, fader_zero_db: float):
+        """ Configure meter ballistics and fader law. Call before adding strips.
+        Args:
+            range_db: Linear dB span of the DPM scale, i.e. dB below 0dBFS at the bottom of the meter
+            decay_db_per_s: DPM decay rate in dB per second
+            hold_s: Peak hold time in seconds
+            fader_zero_db: Fader "0dB" (unity gain) reference, as a negative dB value relative to the top of the fader throw, e.g. -10.0 puts unity 10dB below the top
+        Returns:
+            True if configuration was applied, False if the library rejected a value (configuration unchanged)
+        """
+
+        if self.lib_zynmixer.setMeterConfig(range_db, decay_db_per_s, hold_s, -fader_zero_db):
+            return True
+        logging.warning(f"Zynmixer rejected meter configuration (range={range_db}, decay={decay_db_per_s}, hold={hold_s}, fader zero={fader_zero_db}). Using defaults")
+        return False
 
     def norm_to_db(self, value: float):
         """ Convert linear normalized range to dB range.
@@ -282,7 +305,7 @@ class ZynMixer():
         channel : int
             Index of the mixer strip
         level : float
-            Value of level (0..1.0)
+            Value of level (0..1.0). Linear fader position: 0 = -inf, 1.0 = +10dB (see level_to_db)
         """
 
         if channel is None:
@@ -303,12 +326,46 @@ class ZynMixer():
         Returns
         -------
         float
-            Fader level (0..1.0)
+            Fader level (0..1.0). Linear fader position: 0 = -inf, 1.0 = +10dB (see level_to_db)
         """
 
         if channel is None:
             return
         return self.lib_zynmixer.getLevel(channel)
+
+    def level_to_db(self, level):
+        """
+        Converts a fader level (position) to gain in dB using the library's fader law
+
+        Parameters
+        ----------
+        level : float
+            Fader level (0..1.0)
+
+        Returns
+        -------
+        float
+            Gain in dB (-200 for silence)
+        """
+
+        return self.lib_zynmixer.levelToDb(level)
+
+    def db_to_level(self, db):
+        """
+        Converts gain in dB to a fader level (position) using the library's fader law
+
+        Parameters
+        ----------
+        db : float
+            Gain in dB
+
+        Returns
+        -------
+        float
+            Fader level (0..1.0)
+        """
+
+        return self.lib_zynmixer.dbToLevel(db)
 
     def set_balance(self, channel, balance):
         """

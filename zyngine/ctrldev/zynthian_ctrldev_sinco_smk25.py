@@ -250,7 +250,7 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
         """Called by base class when active chain changes."""
         self._led_dirty.set()
 
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, symbol, value, mixbus=False):
         """Called by base class when a mixer control changes (mute/solo/level).
 
         Attempts a fast single-pad write for the affected channel.
@@ -263,11 +263,12 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
             for pad_idx, (func, chain_idx, cc_num) in enumerate(bank_map):
                 if func != symbol:
                     continue
-                if chain_idx == 7 and func == 'mute' and chan == 16:
+                if chain_idx == 7 and func == 'mute' and chan == 0 and mixbus:
                     self._write_single_pad_led(cc_num)
                     return
                 chain = self.chain_manager.get_chain_by_position(chain_idx, midi=False)
-                if chain and chain.mixer_chan == chan:
+                proc = chain.zynmixer_proc if chain else None
+                if proc and proc.mixer_chan == chan and (proc.eng_code == "MR") == bool(mixbus):
                     self._write_single_pad_led(cc_num)
                     return
         # Fallback: full update
@@ -378,21 +379,19 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
             if cc_num in SOLO_PAD_CCS:
                 track = cc_num - 105  # CC 105–112 → tracks 0–7
                 chain = self.chain_manager.get_chain_by_position(track, midi=False)
-                if chain and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                    cur = self.zynmixer.get_solo(chain.mixer_chan)
-                    self.zynmixer.set_solo(chain.mixer_chan, 0 if cur else 1)
+                zctrl = self.get_chain_zctrl(chain, 'solo', max_chan=16, allow_main=False)
+                if zctrl:
+                    zctrl.toggle()
 
             elif cc_num in MUTE_PAD_CCS:
                 track = cc_num - 89  # CC 89–96 → tracks 0–7
                 if track < 7:
                     chain = self.chain_manager.get_chain_by_position(track, midi=False)
-                    if chain and chain.mixer_chan is not None and chain.mixer_chan < 16:
-                        cur = self.zynmixer.get_mute(chain.mixer_chan)
-                        self.zynmixer.set_mute(chain.mixer_chan, 0 if cur else 1)
+                    zctrl = self.get_chain_zctrl(chain, 'mute', max_chan=16, allow_main=False)
+                    if zctrl:
+                        zctrl.toggle()
                 else:
-                    # Last pad (CC 96) = master mute (mixer channel 16)
-                    cur = self.zynmixer.get_mute(16)
-                    self.zynmixer.set_mute(16, 0 if cur else 1)
+                    self.toggle_mixer_param("mute", -1)
 
             # Write LED immediately — CC Momentary has no hardware LED toggle
             self._write_single_pad_led(cc_num)
@@ -413,19 +412,20 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
         # Master channel (index 7) — always exists for mute
         if chain_idx == 7:
             if func == 'mute':
-                return COLOR_MUTE_ON if self.zynmixer.get_mute(16) else COLOR_MUTE_OFF
+                return COLOR_MUTE_ON if self.get_mixer_param("mute", -1) else COLOR_MUTE_OFF
             else:
                 # No solo for master
                 return COLOR_OFF
 
         chain = self.chain_manager.get_chain_by_position(chain_idx, midi=False)
-        if not chain or chain.mixer_chan is None or chain.mixer_chan >= 16:
+        zctrl = self.get_chain_zctrl(chain, func, max_chan=16, allow_main=False)
+        if zctrl is None:
             return COLOR_OFF
 
         if func == 'solo':
-            return COLOR_SOLO_ON if self.zynmixer.get_solo(chain.mixer_chan) else COLOR_SOLO_OFF
+            return COLOR_SOLO_ON if zctrl.value else COLOR_SOLO_OFF
         else:
-            return COLOR_MUTE_ON if self.zynmixer.get_mute(chain.mixer_chan) else COLOR_MUTE_OFF
+            return COLOR_MUTE_ON if zctrl.value else COLOR_MUTE_OFF
 
     def _write_single_pad_led(self, cc_num):
         """Fast-path: write only the affected pad's RGB + pad 0 RGB + commit.

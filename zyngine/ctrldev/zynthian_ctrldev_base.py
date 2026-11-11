@@ -522,6 +522,39 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         self.zynmixer_bus = state_manager.zynmixer_bus
         self.scroll_h = 0
 
+    @staticmethod
+    def get_chain_mixer_chan(chain):
+        """ Get the mixer strip index of a chain
+
+        chain - Chain object (may be None)
+        Returns - Mixer strip index or None if the chain has no mixer strip
+        """
+
+        try:
+            return chain.zynmixer_proc.mixer_chan
+        except AttributeError:
+            return None
+
+    @staticmethod
+    def get_chain_zctrl(chain, symbol, max_chan=None, allow_main=True):
+        """ Get a mixer controller of a chain
+
+        chain - Chain object (may be None)
+        symbol - Symbol name of the mixer parameter
+        max_chan - If not None, only return a controller if the chain's mixer strip index is below this value
+        allow_main - False to exclude the main chain
+        Returns - Controller or None if the chain has no such controller or is excluded
+        """
+
+        try:
+            if chain.zynmixer_proc is None or (not allow_main and chain.chain_id == 0):
+                return None
+            if max_chan is not None and chain.zynmixer_proc.mixer_chan >= max_chan:
+                return None
+            return chain.zynmixer_proc.controllers_dict[symbol]
+        except (AttributeError, KeyError, TypeError):
+            return None
+
     def init(self):
         super().init()
         # Register for audio mixer changes

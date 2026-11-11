@@ -25,10 +25,47 @@
 # ******************************************************************************
 
 import logging
+from time import monotonic
 from PIL import Image, ImageTk
-from tkinter import NORMAL, HIDDEN
+from tkinter import NORMAL, HIDDEN, TclError
 
-from zyngui.zynthian_gui_config import color_panel_bg
+from zyngui.zynthian_gui_config import color_panel_bg, dpm_range_db, dpm_zero_db
+
+
+# Range and reference are configurable (see zynthian_gui_config). Range must match the value used by the zynmixer lib
+DPM_RANGE_DB = dpm_range_db # Span of meter scale below 0dBFS. Default 72
+DPM_ZERO_DB = dpm_zero_db # "0dB" reference level. Default -18, the EBU standard
+DPM_HIGH_DB = DPM_ZERO_DB # Level (dB) above which meter is yellow, i.e. the "0dB" reference
+DPM_OVER_DB = -2.0 # Level (dB) above which meter is red. Not configurable
+DPM_OVER_HOLD_S = 4.0 # Time to hold peak indication
+
+
+def db_to_norm(db):
+    """Convert a level in dBFS to a normalised meter position
+
+    The meter scale is linear in dB over DPM_RANGE_DB.
+    Returns: 0.0 (DPM_RANGE_DB below full scale or lower) .. 1.0 (0dBFS or above)
+    """
+
+    # Match logCurve() in zynmixer lib
+    return max(0.0, min(1.0, 1.0 + db / DPM_RANGE_DB))
+
+
+def run_script(widget, script):
+    """Run a Tcl script.
+    Optimisation abstraction reduces the quantity of tk.eval() calls.
+
+    widget : Any Tk widget (used to reach the Tcl interpreter)
+    script : Tcl script. Does nothing if empty
+    Note: Call from the Tk main thread. tkinter marshals calls made from other threads to the main thread and waits for each one
+    """
+
+    if not script:
+        return
+    try:
+        widget.tk.eval(script)
+    except TclError as e:
+        logging.warning(f"DPM update failed: {e}")
 
 
 class zynthian_gui_dpm():
@@ -62,10 +99,9 @@ class zynthian_gui_dpm():
         self.y1 = y0 + height
 
         # dB constants
-        self.overdB = -3
-        self.highdB = -10
-        self.lowdB = -50
-        self.zerodB = -10
+        self.overdB = DPM_OVER_DB
+        self.highdB = DPM_HIGH_DB
+        self.zerodB = DPM_ZERO_DB
 
         # Colors
         self.low_color = "#00AA00"
@@ -81,7 +117,14 @@ class zynthian_gui_dpm():
 
         self.hold_thickness = 1
         self.mono = 0
-        self.over_id = None
+        self.over_visible = False
+        self.over_ts = 0.0
+
+        self._tcl_path = str(parent)
+        self._hold_state = HIDDEN
+        self._hold_fill = self.low_color
+        self._overlay_pos = None
+        self._hold_pos = None
 
         # ---------------------------------------------
         # Compute bounds for initial position
@@ -106,10 +149,6 @@ class zynthian_gui_dpm():
         """ Compute all item coordinates and thresholds based on current geometry """
         x0, y0, x1, y1 = self.x0, self.y0, self.x1, self.y1
         width, height = self.width, self.height
-
-        def db_to_norm(db):
-            db = max(-50, min(0, db))
-            return (db + 50) / 50
 
         if self.vertical:
             self.y_over = int(y1 - height * db_to_norm(self.overdB))
@@ -171,61 +210,105 @@ class zynthian_gui_dpm():
         if self.main:
             self.parent.coords(self.over_indicator, *coords['over'])
 
+        # Items have been repositioned so force overlay and hold to be redrawn on next refresh
+        self._overlay_pos = None
+        self._hold_pos = None
+
     def set_enable(self, enable):
         self.enabled = enable
 
-    def refresh(self, dpm, hold, mono):
+    def get_script(self, dpm, hold, mono):
+        """ Build a Tcl script that updates the meter, containing commands only for items that have changed.
+        Optimisation abstraction reduces the quantity of tk.eval() methods.
+
+        dpm : Normalised level, inverted (1.0 = silence .. 0.0 = full scale), as returned by zynmixer
+        hold : Normalised peak hold level, same scale as dpm
+        mono : True if channel is mono
+        Returns : Tcl script, or empty string if nothing needs to be drawn
+        Note: The script is not run here so that scripts from several meters can be batched into one call into Tcl, see run_script()
+        """
+
+        cmds = []
+        path = self._tcl_path
+
         if mono != self.mono:
             self.mono = mono
             if mono:
-                self.parent.itemconfig(self.bg_image, state=HIDDEN)
-                self.parent.itemconfig(self.bg_mono, state=NORMAL)
+                cmds.append(f"{path} itemconfigure {self.bg_image} -state {HIDDEN}")
+                cmds.append(f"{path} itemconfigure {self.bg_mono} -state {NORMAL}")
             else:
-                self.parent.itemconfig(self.bg_image, state=NORMAL)
-                self.parent.itemconfig(self.bg_mono, state=HIDDEN)
-
-        k_dpm = max(0.0, max(dpm, self.lowdB) / self.lowdB)
-        k_hold = max(0.0, max(hold, self.lowdB) / self.lowdB)
+                cmds.append(f"{path} itemconfigure {self.bg_image} -state {NORMAL}")
+                cmds.append(f"{path} itemconfigure {self.bg_mono} -state {HIDDEN}")
 
         if self.vertical:
-            y1 = int(self.y0 + self.height * k_dpm)
-            self.parent.coords(self.overlay, (self.x0, self.y0, self.x1, y1))
-            y1 = int(self.y0 + self.height * k_hold)
-            self.parent.coords(self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
-            if y1 <= self.y_over:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
-            elif y1 <= self.y_high:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
-            elif y1 < self.y_low:
-                if self.mono:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_color)
-                else:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.low_hold_color)
+            pos = int(self.y0 + self.height * dpm)
+            if pos != self._overlay_pos:
+                self._overlay_pos = pos
+                cmds.append(f"{path} coords {self.overlay} {self.x0} {self.y0} {self.x1} {pos}")
+            hold_pos = int(self.y0 + self.height * hold)
+            if pos - hold_pos <= self.hold_thickness:
+                state, fill = HIDDEN, None
             else:
-                self.parent.itemconfig(self.hold, state=HIDDEN)
-
+                if hold_pos != self._hold_pos:
+                    self._hold_pos = hold_pos
+                    cmds.append(f"{path} coords {self.hold} {self.x0} {hold_pos} {self.x1} {hold_pos + self.hold_thickness}")
+                if hold_pos <= self.y_over:
+                    state, fill = NORMAL, self.over_hold_color
+                elif hold_pos <= self.y_high:
+                    state, fill = NORMAL, self.high_hold_color
+                elif hold_pos < self.y_low:
+                    state, fill = NORMAL, self.mono_color if self.mono else self.low_hold_color
+                else:
+                    state, fill = HIDDEN, None
         else:
-            x0 = int(self.width - self.width * k_dpm)
-            self.parent.coords(self.overlay, (x0, self.y0, self.x1, self.y1))
-            x0 = int(self.width - self.width * k_hold)
-            self.parent.coords(self.hold, (x0, self.y0, x0 + self.hold_thickness, self.y1))
-            if x0 > self.x_over:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
-            elif x0 > self.x_high:
-                self.parent.itemconfig(self.hold, state=NORMAL, fill=self.high_hold_color)
-            elif x0 > self.x_low:
-                if self.mono:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.mono_hold_color)
-                else:
-                    self.parent.itemconfig(self.hold, state=NORMAL, fill=self.low_hold_color)
+            pos = int(self.x1 - self.width * dpm)
+            if pos != self._overlay_pos:
+                self._overlay_pos = pos
+                cmds.append(f"{path} coords {self.overlay} {pos} {self.y0} {self.x1} {self.y1}")
+            hold_pos = int(self.x1 - self.width * hold)
+            if hold_pos - pos <= self.hold_thickness:
+                state, fill = HIDDEN, None
             else:
-                self.parent.itemconfig(self.hold, state=HIDDEN)
+                if hold_pos != self._hold_pos:
+                    self._hold_pos = hold_pos
+                    cmds.append(f"{path} coords {self.hold} {hold_pos} {self.y0} {hold_pos + self.hold_thickness} {self.y1}")
+                if hold_pos > self.x_over:
+                    state, fill = NORMAL, self.over_hold_color
+                elif hold_pos > self.x_high:
+                    state, fill = NORMAL, self.high_hold_color
+                elif hold_pos > self.x_low:
+                    state, fill = NORMAL, self.mono_hold_color if self.mono else self.low_hold_color
+                else:
+                    state, fill = HIDDEN, None
 
-        if self.main and dpm >= 0.0:
-            self.parent.itemconfig(self.over_indicator, state=NORMAL)
-            if self.over_id is not None:
-                self.parent.after_cancel(self.over_id)
-            self.over_id = self.parent.after(4000, lambda: self.parent.itemconfig(self.over_indicator, state=HIDDEN))
+        if state == HIDDEN:
+            if self._hold_state != HIDDEN:
+                self._hold_state = HIDDEN
+                cmds.append(f"{path} itemconfigure {self.hold} -state {HIDDEN}")
+        elif state != self._hold_state or fill != self._hold_fill:
+            self._hold_state = state
+            self._hold_fill = fill
+            cmds.append(f"{path} itemconfigure {self.hold} -state {NORMAL} -fill {fill}")
+
+        if self.main:
+            if dpm <= 0.0:
+                self.over_ts = monotonic()
+                if not self.over_visible:
+                    self.over_visible = True
+                    cmds.append(f"{path} itemconfigure {self.over_indicator} -state {NORMAL}")
+            elif self.over_visible and monotonic() - self.over_ts >= DPM_OVER_HOLD_S:
+                self.over_visible = False
+                cmds.append(f"{path} itemconfigure {self.over_indicator} -state {HIDDEN}")
+
+        return "\n".join(cmds)
+
+    def refresh(self, dpm, hold, mono):
+        """Update this meter immediately. See get_script() for parameters
+
+        Note: Prefer get_script() and run_script() which optimises for multiple DPM objects
+        """
+
+        run_script(self.parent, self.get_script(dpm, hold, mono))
 
     def get_bg(self, width, height):
         """ Get the tri-colour background image
@@ -245,10 +328,10 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x1 = l * 0.73 # Under (green) start green-yellow gradient
-        x2 = l * 0.80 # Start const yellow
-        x3 = l * 0.90 # Start yellow-red gradient
-        x4 = l * 0.97 # Over (red) start const red
+        x1 = l * db_to_norm(self.highdB - 4) # Under (green) start green-yellow gradient
+        x2 = l * db_to_norm(self.highdB) # Start const yellow
+        x3 = max(x2, l * db_to_norm(self.overdB - 6)) # Start yellow-red gradient
+        x4 = l * db_to_norm(self.overdB) # Over - start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))
@@ -265,7 +348,7 @@ class zynthian_gui_dpm():
         for x in range(l):
             if x <= x1:
                 # Gradient dark to light green
-                t = x / x1
+                t = x / x1 if x1 else 0.0
                 color = lerp(bg_c1, bg_c2, t)
             elif x < x2:
                 # Gradient green to yellow

@@ -132,6 +132,18 @@ class DebugLock():
         traceback.print_stack(limit=2)
         self.lock.release()
 
+# OSC mixer control names (upper case) mapped to mixer controller symbol and value type
+OSC_MIXER_PARAMS = {
+    "VOLUME": ("level", float),
+    "FADER": ("level", float),
+    "LEVEL": ("level", float),
+    "BALANCE": ("balance", float),
+    "MUTE": ("mute", int),
+    "SOLO": ("solo", int),
+    "MONO": ("mono", int)
+}
+
+
 class zynthian_gui:
 
     # Screen Modes
@@ -424,6 +436,28 @@ class zynthian_gui:
         while self.osc_server and self.osc_server.recv(0):
             pass
 
+    def osc_mixer_control(self, part2, args):
+        """ Handle an OSC mixer control message by setting the strip's mixer controller.
+
+        part2 - Path after "/MIXER/" (upper case)
+        args - OSC arguments
+        """
+
+        try:
+            mixer, _, param = part2.rpartition("/")
+            name = param.rstrip("0123456789")
+            symbol, convert = OSC_MIXER_PARAMS[name]
+            chan = int(param[len(name):])
+            value = convert(args[0])
+        except (KeyError, ValueError, IndexError):
+            logging.warning(f"Invalid OSC mixer control '{part2}' {args}")
+            return
+        zctrl = self.state_manager.chain_manager.get_mixer_zctrl(chan, symbol, mixer == "BUS")
+        if zctrl is None:
+            logging.debug(f"OSC mixer control '{part2}': no such mixer strip or control")
+            return
+        zctrl.set_value(value)
+
     # @liblo.make_method("RELOAD_MIDI_CONFIG", None)
     # @liblo.make_method(None, None)
     def osc_cb_all(self, path, args, types, src):
@@ -468,32 +502,7 @@ class zynthian_gui:
                 self.state_manager.zynmixer_chan.enable_dpm(True)
                 self.state_manager.zynmixer_bus.enable_dpm(True)
             else:
-                mixer, param = part2.split("/")
-                if mixer == "bus":
-                    zynmixer = self.state_manager.zynmixer_bus
-                else:
-                    zynmixer = self.state_manager.zynmixer_chan
-                if param[:6] == "VOLUME":
-                    zynmixer.set_level(
-                        int(part2[6:]), float(args[0]))
-                if param[:5] == "FADER":
-                    zynmixer.set_level(
-                        int(part2[5:]), float(args[0]))
-                if param[:5] == "LEVEL":
-                    zynmixer.set_level(
-                        int(part2[5:]), float(args[0]))
-                elif param[:7] == "BALANCE":
-                    zynmixer.set_balance(
-                        int(part2[7:]), float(args[0]))
-                elif param[:4] == "MUTE":
-                    zynmixer.set_mute(
-                        int(part2[4:]), int(args[0]))
-                elif param[:4] == "SOLO":
-                    zynmixer.set_solo(
-                        int(part2[4:]), int(args[0]))
-                elif param[:4] == "MONO":
-                    zynmixer.set_mono(
-                        int(part2[4:]), int(args[0]))
+                self.osc_mixer_control(part2, args)
         else:
             logging.warning(f"Not supported OSC call '{path}'")
 
@@ -2892,6 +2901,14 @@ class zynthian_gui:
                     plot_zctrls_func()
                 except Exception as e:
                     logging.error(e)
+            # Refresh DPM meters here to share process in main thread
+            if not self.state_manager.power_save_mode:
+                refresh_dpm_func = getattr(screen_obj, "refresh_dpm", None)
+                if refresh_dpm_func:
+                    try:
+                        refresh_dpm_func()
+                    except Exception as e:
+                        logging.error(e)
 
         if not self.exit_flag:
             zynthian_gui_config.top.after(32, self.plot_zctrls_task)

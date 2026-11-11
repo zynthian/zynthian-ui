@@ -404,10 +404,11 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 self._show_screen_briefly(screen="mixer", cuia="SCREEN_MIXER", timeout=1500)
                 chain_id = self._get_chain_id_by_sequence(self._zynseq.bank, self._selected_seq)
                 chain = self._chain_manager.chains.get(chain_id)
-                if chain is not None:
-                    mixer_chan = chain.mixer_chan
+                if chain is not None and chain.zynmixer_proc:
+                    mixer_chan = chain.zynmixer_proc.mixer_chan
                     cval = ccval / 127
-                    curval = self._zynmixer.get_level(mixer_chan)
+                    zctrl = chain.zynmixer_proc.controllers_dict["level"]
+                    curval = zctrl.value
                     min = 0
                     max = 1
                     val = min + (cval * (max - min))
@@ -416,5 +417,5 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     then = self._knobmoves.get(ctrlid)
                     within_time = ((then is not None) and ((now - then) < 0.2))
                     if within_time or (abs(curval - val) < ((max - min) * 0.01)):
-                        self._zynmixer.set_level(mixer_chan, val)
+                        zctrl.set_value(val)
                         self._knobmoves[ctrlid] = now

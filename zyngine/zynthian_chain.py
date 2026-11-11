@@ -84,8 +84,6 @@ class zynthian_chain:
     def reset(self):
         """ Resets chain, removing all processors
 
-        types : list of processor types for pass-through
-        stop_engines : True to stop unused engines
         Does not change midi/audio thru
         """
 

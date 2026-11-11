@@ -24,12 +24,13 @@
 # ****************************************************************************
 
 import logging
-from math import ceil
+from math import ceil, log, log10
 from json import JSONDecoder, loads
 import base64
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 from zyngine import zynthian_state_manager
+from zyngui import zynthian_gui_config
 
 SNAPSHOT_SCHEMA_VERSION = 6
 
@@ -81,6 +82,7 @@ class zynthian_legacy_snapshot:
     def version_5(self):
         # Convert snapshot schema V5 to V6
 
+        # Convert MIDI CC binding
         def add_binding(target, key, bindings):
             # Merge bindings into target without sharing list references or adding duplicates
             dest = target.setdefault(key, [])
@@ -119,6 +121,48 @@ class zynthian_legacy_snapshot:
                     for key, bindings in chain_binding.items():
                         add_binding(new_learn, key, bindings)
                 dev_cfg["midi_learn"] = new_learn
+
+        # Convert mixer fader law
+        fader_unity = 0.75  # Must match FADER_UNITY in mixer.c
+        fader_headroom_db = -zynthian_gui_config.fader_zero_db
+        fader_exp = fader_headroom_db / (1.0 - fader_unity) * fader_unity * log(10.0) / 20.0
+
+        def legacy_level_to_fader_level(level):
+            # Convert a legacy level (linear gain) to a fader position, i.e. gainToLevel() in mixer.c
+            try:
+                gain = float(level)
+            except (ValueError, TypeError):
+                return level
+            if gain <= 0.0:
+                fader_level = 0.0
+            elif gain >= 1.0:
+                # Not expected from legacy snapshots but handle it, clipped to top of throw
+                fader_level = min(1.0, fader_unity + (1.0 - fader_unity) * 20.0 * log10(gain) / fader_headroom_db)
+            else:
+                fader_level = fader_unity * gain ** (1.0 / fader_exp)
+            return round(fader_level, 6)
+
+        # Find the mixer processors (channel strips and mixbuses)
+        mixer_ids = {str(zynthian_state_manager.MAIN_MIXBUS_ID)}
+        for chain_cfg in self.snapshot.get("chains", {}).values():
+            for slot in chain_cfg.get("slots", []):
+                if not isinstance(slot, dict):
+                    continue
+                for proc_id, proc_type in slot.items():
+                    if proc_type in ("MI", "MR"):
+                        mixer_ids.add(str(proc_id))
+
+        for zs3 in self.snapshot.get("zs3", {}).values():
+            for proc_id, proc_cfg in zs3.get("processors", {}).items():
+                if str(proc_id) not in mixer_ids:
+                    continue
+                for symbol in ("level", "aux_level"):
+                    ctrl_cfg = proc_cfg.get("controllers", {}).get(symbol)
+                    if not isinstance(ctrl_cfg, dict):
+                        continue
+                    for key in ("value", "midi_cc_val1", "midi_cc_val2"):
+                        if key in ctrl_cfg:
+                            ctrl_cfg[key] = legacy_level_to_fader_level(ctrl_cfg[key])
 
     def version_4(self):
         # Convert snapshot from schema V4 to V5

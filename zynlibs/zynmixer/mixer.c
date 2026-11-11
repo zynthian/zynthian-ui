@@ -39,6 +39,22 @@
 #define MAX_CHANNELS 99
 #endif
 
+// DPM and FADER_HEADROOM_DB defaults. They may be changed at run time with setMeterConfig()
+#define DPM_RANGE_DB 72.0f // Linear dB DPM span range. 72dB places the -18dBFS reference at 75%, aligned with fader unity.
+#define DPM_DECAY_DB_PER_S 30.0f // Defines meter decay
+#define DPM_HOLD_S 2.0f // Duration of peak hold in seconds
+#define DPM_FLOOR 1.0e-5f // Minimum level for DPM
+#define FADER_UNITY 0.75f // Fader position that gives unity gain (0dB / -18dBFS). Must equal 1 - 18 / DPM_RANGE_DB so fader unity aligns with the DPM "0dB" reference
+#define FADER_HEADROOM_DB 10.0f // Gain at the top of the throw (position 1.0)
+// Exponent chosen so the slope (dB per fader travel) below unity equals the slope above unity, i.e. no kink at 0dB. 0.115129255 = ln(10) / 20
+#define FADER_EXP_FOR_HEADROOM(headroom) ((headroom) / (1.0f - FADER_UNITY) * FADER_UNITY * 0.115129255f)
+
+// Run time configuration of meter ballistics and fader law, see setMeterConfig()
+static float g_dpmRangeDb      = DPM_RANGE_DB;          // Linear dB span of the DPM scale
+static float g_dpmDecayDbPerS  = DPM_DECAY_DB_PER_S;    // DPM decay rate in dB per second
+static float g_dpmHoldS        = DPM_HOLD_S;            // Duration of peak hold in seconds
+static float g_faderHeadroomDb = FADER_HEADROOM_DB;     // Gain (dB) at top of fader throw, i.e. dB above unity
+static float g_faderExp        = FADER_EXP_FOR_HEADROOM(FADER_HEADROOM_DB); // Fader law exponent below unity
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -86,6 +102,8 @@ struct channel_strip {
     float dpmBlast;        // Last peak programme B-leg
     float holdAlast;       // Last peak hold level A-leg
     float holdBlast;       // Last peak hold level B-leg
+    unsigned int holdCountA; // Cycles remaining until peak hold A-leg is released
+    unsigned int holdCountB; // Cycles remaining until peak hold B-leg is released
     uint8_t mute;          // 1 if muted
     uint8_t mono;          // 1 if mono
     uint8_t solo;          // 1 if solo
@@ -117,13 +135,19 @@ int g_stripToDelete = -1;
 struct fx_send* g_fxSends[MAX_CHANNELS];
 int g_sendToDelete = -1;
 #endif
-unsigned int g_nDampingCount  = 0;
-unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
-unsigned int g_nHoldCount     = 0;
-float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
+unsigned int g_nHoldReload    = 0; // Value loaded into a strip's hold counter each time a new peak is latched
+float g_fDpmCycleDecay        = 1.0f; // DPM decay factor applied each jack cycle
 
 jack_nframes_t g_samplerate                     = 48000; // Jack samplerate used to calculate damping factor
 jack_nframes_t g_buffersize                     = 1024;  // Jack buffer size used to calculate damping factor
+
+static void updateDpmTiming(void) {
+    if (g_samplerate == 0 || g_buffersize == 0)
+        return;
+    g_fDpmCycleDecay = powf(10.0f, -g_dpmDecayDbPerS * (float)g_buffersize / (float)g_samplerate / 20.0f);
+    unsigned int nHoldCycles = (unsigned int)(g_dpmHoldS * (float)g_samplerate / (float)g_buffersize + 0.5f);
+    g_nHoldReload = nHoldCycles > 1 ? nHoldCycles - 1 : 0;
+}
 jack_default_audio_sample_t* g_soloBufferA    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_soloBufferB    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_pflBufferA    = NULL;  // Ponter to buffer used for PFL bus
@@ -133,16 +157,31 @@ jack_default_audio_sample_t* g_mainNormaliseBufferA    = NULL;  // Ponter to mai
 jack_default_audio_sample_t* g_mainNormaliseBufferB    = NULL;  // Ponter to main output normalised buffer used for normalising effects sends to main mixbus
 #endif
 
-static float convertToDBFS(float raw) {
-    if (raw <= 0)
-        return -200;
-    float fValue = 20 * log10f(raw);
-
-    if (fValue < -200)
-        fValue = -200;
-    return fValue;
+// Convert fader position (0.0..1.0) to linear gain factor
+static float levelToGain(float level) {
+    level = fmaxf(0.0f, fminf(1.0f, level));
+    if (level >= FADER_UNITY)
+        return powf(10.0f, g_faderHeadroomDb * (level - FADER_UNITY) / (1.0f - FADER_UNITY) / 20.0f);
+    return powf(level / FADER_UNITY, g_faderExp);
 }
 
+// Convert linear gain factor to fader position (0.0..1.0)
+static float gainToLevel(float gain) {
+    if (gain <= 0.0f)
+        return 0.0f;
+    if (gain >= 1.0f)
+        return fminf(1.0f, FADER_UNITY + (1.0f - FADER_UNITY) * 20.0f * log10f(gain) / g_faderHeadroomDb);
+    return FADER_UNITY * powf(gain, 1.0f / g_faderExp);
+}
+
+// Convert linear amplitude to inverted meter position with linear dB (log) scale, clamped to aplitude range 0.0..1.0.
+static inline float logCurve(float x)
+{
+    float pos = 0.0f;
+    if (x > 0.0f)
+        pos = 1.0f + 20.0f * log10f(x) / g_dpmRangeDb;
+    return 1.0f - fmaxf(0.0f, fminf(1.0f, pos));
+}
 
 static int onJackProcess(jack_nframes_t frames, void* args) {
     if (!g_running)
@@ -233,11 +272,11 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 reqLevelB             = 0.0;
             } else {
                 if (strip->reqbalance > 0.0)
-                    reqLevelA = strip->reqlevel * (1 - strip->reqbalance);
+                    reqLevelA = strip->reqlevel * (1.0f - strip->reqbalance);
                 else
                     reqLevelA = strip->reqlevel;
                 if (strip->reqbalance < 0.0)
-                    reqLevelB = strip->reqlevel * (1 + strip->reqbalance);
+                    reqLevelB = strip->reqlevel * (1.0f + strip->reqbalance);
                 else
                     reqLevelB = strip->reqlevel;
                 strip->level   = strip->reqlevel;
@@ -277,6 +316,22 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 memset(pChanOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
             } else {
                 pChanOutA = pChanOutB = NULL;
+            }
+            if (strip->enable_dpm) {
+                strip->dpmA *= g_fDpmCycleDecay;
+                if (strip->dpmA < DPM_FLOOR)
+                    strip->dpmA = 0.0f;
+                strip->dpmB *= g_fDpmCycleDecay;
+                if (strip->dpmB < DPM_FLOOR)
+                    strip->dpmB = 0.0f;
+                if (strip->holdCountA)
+                    strip->holdCountA--;
+                else
+                    strip->holdA = strip->dpmA;
+                if (strip->holdCountB)
+                    strip->holdCountB--;
+                else
+                    strip->holdB = strip->dpmB;
             }
             // Iterate samples, scaling each and adding to output and set DPM if any samples louder than current DPM
             for (frame = 0; frame < frames; ++frame) {
@@ -387,23 +442,15 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     fSampleB = fabs(fSampleB);
                     if (fSampleB > strip->dpmB)
                         strip->dpmB = fSampleB;
-
-                    // Update peak hold and scale DPM for damped release
-                    if (strip->dpmA > strip->holdA)
+                    if (strip->dpmA > strip->holdA) {
                         strip->holdA = strip->dpmA;
-                    if (strip->dpmB > strip->holdB)
+                        strip->holdCountA = g_nHoldReload;
+                    }
+                    if (strip->dpmB > strip->holdB) {
                         strip->holdB = strip->dpmB;
+                        strip->holdCountB = g_nHoldReload;
+                    }
                 }
-            }
-            if (g_nHoldCount == 0) {
-                // Only update peak hold each g_nHoldCount cycles
-                strip->holdA = strip->dpmA;
-                strip->holdB = strip->dpmB;
-            }
-            if (g_nDampingCount == 0) {
-                // Only update damping release each g_nDampingCount cycles
-                strip->dpmA *= g_fDpmDecay;
-                strip->dpmB *= g_fDpmDecay;
             }
         } else {
             if (strip->enable_dpm) {
@@ -411,6 +458,8 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 strip->dpmB  = 0.0f;
                 strip->holdA = 0.0f;
                 strip->holdB = 0.0f;
+                strip->holdCountA = 0;
+                strip->holdCountB = 0;
             }
             if (strip->outRouted) {
                 // Silence channel outputs
@@ -426,15 +475,6 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     g_xf_gain_A = g_reqxf_gain_A;
     g_xf_gain_B = g_reqxf_gain_B;
 #endif
-
-    if (g_nDampingCount == 0)
-        g_nDampingCount = g_nDampingPeriod;
-    else
-        g_nDampingCount--;
-    if (g_nHoldCount == 0)
-        g_nHoldCount = g_nDampingPeriod * 20;
-    else
-        g_nHoldCount--;
 
     // Mark as deleted the pending-to-delete channel/send
     if (g_stripToDelete >= 0) {
@@ -470,14 +510,14 @@ void print_dpm_info(uint8_t chan) {
     // Debug helper to print current DPM state
     struct channel_strip* strip = g_channelStrips[chan];
     if (strip)
-        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count: %u\nDamping period: %u\n",
+        fprintf(stderr, "A: %f\nB: %f\nHold A: %f\nHold B: %f\n%s\nHold count A: %u\nHold count B: %u\n",
             strip->dpmA,
             strip->dpmB,
             strip->holdA,
             strip->holdB,
             strip->enable_dpm?"Enabled":"Disabled",
-            g_nHoldCount,
-            g_nDampingPeriod
+            strip->holdCountA,
+            strip->holdCountB
         );
 }
 
@@ -504,7 +544,7 @@ int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
     if (nSamplerate == 0)
         return 0;
     g_samplerate     = nSamplerate;
-    g_nDampingPeriod = g_fDpmDecay * nSamplerate / g_buffersize / 15;
+    updateDpmTiming();
     return 0;
 }
 
@@ -515,7 +555,7 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
         return 0;
 
     g_buffersize     = nBuffersize;
-    g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
+    updateDpmTiming();
     free(g_soloBufferA);
     free(g_soloBufferB);
     g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -553,6 +593,9 @@ int init() {
         fprintf(stderr, "libzynmixer: Failed to start channel jack client: %d\n", nStatus);
         exit(1);
     }
+    g_samplerate = jack_get_sample_rate(g_jackClient);
+    g_buffersize = jack_get_buffer_size(g_jackClient);
+    updateDpmTiming();
 #ifdef DEBUG
     fprintf(stderr, "libzynmixer: Registering as '%s'.\n", jack_get_client_name(g_pJackClient));
 #endif
@@ -612,7 +655,7 @@ int init() {
 #ifdef MIXBUS
     int8_t id = addStrip(); // Main mixbus
     id = addStrip(); // Aux mixbus
-    setLevel(id, 1.0); // Default unity gain for aux bus
+    setLevel(id, FADER_UNITY); // Default unity gain for aux bus
     setNormalise(id, 1);
     g_mainNormaliseBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
     g_mainNormaliseBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
@@ -692,13 +735,28 @@ float getGain(uint8_t channel) {
 void setLevel(uint8_t channel, float level) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return;
-    g_channelStrips[channel]->reqlevel = level;
+    g_channelStrips[channel]->reqlevel = levelToGain(level);
 }
 
 float getLevel(uint8_t channel) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
         return 0.0f;
-    return g_channelStrips[channel]->reqlevel;
+    return gainToLevel(g_channelStrips[channel]->reqlevel);
+}
+
+float levelToDb(float level) {
+    level = fmaxf(0.0f, fminf(1.0f, level));
+    if (level <= 0.0f)
+        return -200.0f;
+    if (level >= FADER_UNITY)
+        return g_faderHeadroomDb * (level - FADER_UNITY) / (1.0f - FADER_UNITY);
+    return fmaxf(-200.0f, 20.0f * g_faderExp * log10f(level / FADER_UNITY));
+}
+
+float dbToLevel(float db) {
+    if (db <= -200.0f)
+        return 0.0f;
+    return gainToLevel(powf(10.0f, db / 20.0f));
 }
 
 void setBalance(uint8_t channel, float balance) {
@@ -974,7 +1032,7 @@ void toggleMS(uint8_t channel) {
 
 void reset(uint8_t channel) {
     setGain(channel, 1.0);
-    setLevel(channel, 0.8);
+    setLevel(channel, dbToLevel(0.0f));
     setBalance(channel, 0.0);
     setMute(channel, 0);
     setMono(channel, 0);
@@ -987,18 +1045,18 @@ void reset(uint8_t channel) {
 
 float getDpm(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return -200.0f;
+        return 0.0f;
     if (leg)
-        return convertToDBFS(g_channelStrips[channel]->dpmB);
-    return convertToDBFS(g_channelStrips[channel]->dpmA);
+        return logCurve(g_channelStrips[channel]->dpmB);
+    return logCurve(g_channelStrips[channel]->dpmA);
 }
 
 float getDpmHold(uint8_t channel, uint8_t leg) {
     if (channel >= MAX_CHANNELS || g_channelStrips[channel] == NULL)
-        return -200.0f;
+        return 0.0f;
     if (leg)
-        return convertToDBFS(g_channelStrips[channel]->holdB);
-    return convertToDBFS(g_channelStrips[channel]->holdA);
+        return logCurve(g_channelStrips[channel]->holdB);
+    return logCurve(g_channelStrips[channel]->holdA);
 }
 
 void updateDpmStates(dpm_struct* values, uint8_t count) {
@@ -1015,6 +1073,21 @@ void updateDpmStates(dpm_struct* values, uint8_t count) {
             memset(values + i, 0, sizeof(dpm_struct));
         }
     }
+}
+
+uint8_t setMeterConfig(float rangeDb, float decayDbPerS, float holdS, float faderHeadroomDb) {
+    if (!(rangeDb >= 12.0f && rangeDb <= 200.0f) ||
+        !(decayDbPerS >= 0.1f && decayDbPerS <= 1000.0f) ||
+        !(holdS >= 0.0f && holdS <= 60.0f) ||
+        !(faderHeadroomDb > 0.0f && faderHeadroomDb <= 60.0f))
+        return 0;
+    g_dpmRangeDb      = rangeDb;
+    g_dpmDecayDbPerS  = decayDbPerS;
+    g_dpmHoldS        = holdS;
+    g_faderHeadroomDb = faderHeadroomDb;
+    g_faderExp        = FADER_EXP_FOR_HEADROOM(faderHeadroomDb);
+    updateDpmTiming();
+    return 1;
 }
 
 void enableDpm(uint8_t enable) {
@@ -1036,6 +1109,8 @@ void enableDpm(uint8_t enable) {
             g_channelStrips[chan]->dpmB  = 0.0f;
             g_channelStrips[chan]->holdA = 0.0f;
             g_channelStrips[chan]->holdB = 0.0f;
+            g_channelStrips[chan]->holdCountA = 0;
+            g_channelStrips[chan]->holdCountB = 0;
         }
     }
 }
@@ -1083,7 +1158,7 @@ int8_t addStrip() {
         }
         strip->gain       = 1.0;
         strip->level      = 0.0;
-        strip->reqlevel   = 0.8;
+        strip->reqlevel   = dbToLevel(0.0f);
         strip->balance    = 0.0;
         strip->reqbalance = 0.0;
         strip->mute       = 0;
@@ -1109,6 +1184,8 @@ int8_t addStrip() {
         strip->dpmBlast  = 100.0f;
         strip->holdAlast = 100.0f;
         strip->holdBlast = 100.0f;
+        strip->holdCountA = 0;
+        strip->holdCountB = 0;
         g_channelStrips[chan] = strip;
         if (chan >= g_lastStrip)
             g_lastStrip = chan + 1;

@@ -243,10 +243,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             try:
                 pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
-                    if mixbus:
-                        value |= self.state_manager.zynmixer_bus.get_solo(chan)
-                    else:
-                        value |= self.state_manager.zynmixer_chan.get_solo(chan)
+                    zctrl = self.chain_manager.get_mixer_zctrl(chan, "solo", mixbus)
+                    if zctrl is not None:
+                        value |= int(zctrl.value)
                     lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
             except TypeError:
                 pass
@@ -256,10 +255,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             try:
                 pos = self.chain_manager.get_pos_by_mixer_chan(chan, mixbus) - self.scroll_h
                 if 0 <= pos < self.cols:
-                    if mixbus:
-                        value |= self.state_manager.zynmixer_bus.get_pfl(chan)
-                    else:
-                        value |= self.state_manager.zynmixer_chan.get_pfl(chan)
+                    zctrl = self.chain_manager.get_mixer_zctrl(chan, "pfl", mixbus)
+                    if zctrl is not None:
+                        value |= int(zctrl.value)
                     lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_SOLO, value)
             except TypeError:
                 pass

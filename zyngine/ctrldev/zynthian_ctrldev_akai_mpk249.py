@@ -555,11 +555,14 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         if not chain or not chain.zynmixer_proc:
             return
         proc = chain.zynmixer_proc
+        zc = proc.controllers_dict.get("balance")
+        if zc is None:
+            return
         try:
             if KNOB_PAN_VALUE_MODE == "absolute":
                 val = self._cc_to_balance(ccval)
             elif KNOB_PAN_VALUE_MODE == "absolute_delta":
-                current = proc.zynmixer.get_balance(proc.mixer_chan)
+                current = zc.value
                 steps = self._absolute_cc_delta_steps(ccnum, ccval)
                 if KNOB_PAN_EDGE_SNAP and ccval == 127 and steps > 0:
                     val = 1.0
@@ -570,13 +573,10 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 else:
                     val = self._clamp_balance(current + steps * KNOB_PAN_REL_STEP)
             else:
-                current = proc.zynmixer.get_balance(proc.mixer_chan)
+                current = zc.value
                 steps = self._cc_to_relative_steps(ccval)
                 val = self._clamp_balance(current + steps * KNOB_PAN_REL_STEP)
-            proc.zynmixer.set_balance(proc.mixer_chan, val)
-            zc = proc.controllers_dict.get("balance")
-            if zc is not None:
-                zc.set_value(val, send=False)
+            zc.set_value(val)
         except Exception as ex:
             logging.warning(f"MPK249 chain balance: {ex}")
 
@@ -584,11 +584,14 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
         mp = self.state_manager.main_mixbus_proc
         if not mp:
             return
+        zc = mp.controllers_dict.get("balance")
+        if zc is None:
+            return
         try:
             if KNOB_PAN_VALUE_MODE == "absolute":
                 val = self._cc_to_balance(ccval)
             elif KNOB_PAN_VALUE_MODE == "absolute_delta":
-                current = mp.zynmixer.get_balance(mp.mixer_chan)
+                current = zc.value
                 steps = self._absolute_cc_delta_steps(ccnum, ccval)
                 if KNOB_PAN_EDGE_SNAP and ccval == 127 and steps > 0:
                     val = 1.0
@@ -599,13 +602,10 @@ class zynthian_ctrldev_akai_mpk249(zynthian_ctrldev_zynpad, zynthian_ctrldev_zyn
                 else:
                     val = self._clamp_balance(current + steps * KNOB_PAN_REL_STEP)
             else:
-                current = mp.zynmixer.get_balance(mp.mixer_chan)
+                current = zc.value
                 steps = self._cc_to_relative_steps(ccval)
                 val = self._clamp_balance(current + steps * KNOB_PAN_REL_STEP)
-            mp.zynmixer.set_balance(mp.mixer_chan, val)
-            zc = mp.controllers_dict.get("balance")
-            if zc is not None:
-                zc.set_value(val, send=False)
+            zc.set_value(val)
         except Exception as ex:
             logging.warning(f"MPK249 main balance: {ex}")
 
