@@ -2892,7 +2892,7 @@ class zynthian_gui:
 
 
     def plot_zctrls_task(self):
-        # Refresh GUI Controllers & Widgets
+        # Refresh GUI Controllers, Widgets & DPM
         screen_obj = self.get_current_screen_obj()
         if screen_obj:
             plot_zctrls_func = getattr(screen_obj, "plot_zctrls", None)

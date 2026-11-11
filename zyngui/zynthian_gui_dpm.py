@@ -29,26 +29,31 @@ from time import monotonic
 from PIL import Image, ImageTk
 from tkinter import NORMAL, HIDDEN, TclError
 
-from zyngui.zynthian_gui_config import color_panel_bg, dpm_range_db, dpm_zero_db
+from zyngui.zynthian_gui_config import color_panel_bg, dpm_range_db, dpm_zero_db, dpm_small_range_db
 
 
 # Range and reference are configurable (see zynthian_gui_config). Range must match the value used by the zynmixer lib
 DPM_RANGE_DB = dpm_range_db # Span of meter scale below 0dBFS. Default 72
+dpm_small_range_db = dpm_small_range_db # Span of meter scale below 0dBFS while launcher is showing. Default 40
 DPM_ZERO_DB = dpm_zero_db # "0dB" reference level. Default -18, the EBU standard
 DPM_HIGH_DB = DPM_ZERO_DB # Level (dB) above which meter is yellow, i.e. the "0dB" reference
 DPM_OVER_DB = -2.0 # Level (dB) above which meter is red. Not configurable
 DPM_OVER_HOLD_S = 4.0 # Time to hold peak indication
 
 
-def db_to_norm(db):
+def db_to_norm(db, range_db=None):
     """Convert a level in dBFS to a normalised meter position
 
-    The meter scale is linear in dB over DPM_RANGE_DB.
-    Returns: 0.0 (DPM_RANGE_DB below full scale or lower) .. 1.0 (0dBFS or above)
+    db : Level in dBFS
+    range_db : Span of the meter scale below 0dBFS [Default: DPM_RANGE_DB]
+    The meter scale is linear in dB over the range.
+    Returns: 0.0 (range below full scale or lower) .. 1.0 (0dBFS or above)
     """
 
+    if range_db is None:
+        range_db = DPM_RANGE_DB
     # Match logCurve() in zynmixer lib
-    return max(0.0, min(1.0, 1.0 + db / DPM_RANGE_DB))
+    return max(0.0, min(1.0, 1.0 + db / range_db))
 
 
 def run_script(widget, script):
@@ -70,9 +75,9 @@ def run_script(widget, script):
 
 class zynthian_gui_dpm():
 
-    bg_images = {} # Dict of background images, indexed by (width, length)
+    bg_images = {} # Dict of background images, indexed by (width, length, range_db)
 
-    def __init__(self, parent, x0, y0, width, height, vertical=True, tags=(), main=False):
+    def __init__(self, parent, x0, y0, width, height, vertical=True, tags=(), main=False, range_db=None):
         """Initialise digital peak meter
 
         parent : Frame object within which to draw meter
@@ -83,12 +88,14 @@ class zynthian_gui_dpm():
         vertical : True for vertical orientation else horizontal orientation
         tags : Optional list of tags for external control of GUI
         main: True if main chain (0) [Default: False]
+        range_db : Span of the meter scale below 0dBFS [Default: DPM_RANGE_DB]
         """
 
         self.parent = parent
         self.vertical = vertical
         self.tags = tags
         self.main = main
+        self.range_db = DPM_RANGE_DB if range_db is None else range_db
 
         # initial geometry
         self.x0 = x0
@@ -137,8 +144,8 @@ class zynthian_gui_dpm():
         self.bg_image = parent.create_image(*coords['bg_image'], anchor="nw", image=self.get_bg(width, height), tags=tags)
         self.bg_mono = parent.create_rectangle(*coords['overlay'], width=0, fill=self.mono_color, state=HIDDEN)
         self.overlay = parent.create_rectangle(*coords['overlay'], width=0, fill=self.bg_color, tags=tags)
-        self.hold = parent.create_rectangle(*coords['hold'], width=0, fill=self.low_color, tags=tags, state=HIDDEN)
         self.zero_line = parent.create_line(*coords['line'], fill=self.line_color, tags=tags)
+        self.hold = parent.create_rectangle(*coords['hold'], width=0, fill=self.low_color, tags=tags, state=HIDDEN)
         if self.main:
             self.over_indicator = parent.create_rectangle(*coords['over'], width=0, fill="#FF0000", state=HIDDEN)
 
@@ -151,10 +158,10 @@ class zynthian_gui_dpm():
         width, height = self.width, self.height
 
         if self.vertical:
-            self.y_over = int(y1 - height * db_to_norm(self.overdB))
-            self.y_high = int(y1 - height * db_to_norm(self.highdB))
+            self.y_over = int(y1 - height * db_to_norm(self.overdB, self.range_db))
+            self.y_high = int(y1 - height * db_to_norm(self.highdB, self.range_db))
             self.y_low = y1
-            self.y_zero = int(y1 - height * db_to_norm(self.zerodB))
+            self.y_zero = int(y1 - height * db_to_norm(self.zerodB, self.range_db))
 
             coords = {
                 'bg_image': (x0, y0),
@@ -165,10 +172,10 @@ class zynthian_gui_dpm():
             }
 
         else:
-            self.x_over = int(x0 + width * db_to_norm(self.overdB))
-            self.x_high = int(x0 + width * db_to_norm(self.highdB))
+            self.x_over = int(x0 + width * db_to_norm(self.overdB, self.range_db))
+            self.x_high = int(x0 + width * db_to_norm(self.highdB, self.range_db))
             self.x_low = x0
-            self.x_zero = int(x0 + width * db_to_norm(self.zerodB))
+            self.x_zero = int(x0 + width * db_to_norm(self.zerodB, self.range_db))
 
             coords = {
                 'bg_image': (x0, y0),
@@ -183,15 +190,18 @@ class zynthian_gui_dpm():
     # --------------------------------------------------
     # Move method reuses same computation
     # --------------------------------------------------
-    def move(self, x0, y0, width, height):
+    def move(self, x0, y0, width, height, range_db=None):
         """ Move the meter to another part of the screen
         Args:
             x0: New x coordinate
             y0: New y coordinate
             width: New width
             height: New height
+            range_db: New span of the meter scale below 0dBFS [Default: unchanged]
         """
 
+        if range_db is not None:
+            self.range_db = range_db
         self.x0 = x0
         self.y0 = y0
         self.width = width
@@ -230,6 +240,11 @@ class zynthian_gui_dpm():
 
         cmds = []
         path = self._tcl_path
+
+        if self.range_db != DPM_RANGE_DB:
+            scale = DPM_RANGE_DB / self.range_db
+            dpm = min(1.0, dpm * scale)
+            hold = min(1.0, hold * scale)
 
         if mono != self.mono:
             self.mono = mono
@@ -318,8 +333,9 @@ class zynthian_gui_dpm():
         Returns: Background image
         """
 
-        if (width, height) in self.bg_images:
-            return self.bg_images[(width, height)]
+        key = (width, height, self.range_db)
+        if key in self.bg_images:
+            return self.bg_images[key]
         if width > height:
             w = height
             l = width
@@ -328,10 +344,10 @@ class zynthian_gui_dpm():
             w = width
             l = height
             vertical = True
-        x1 = l * db_to_norm(self.highdB - 4) # Under (green) start green-yellow gradient
-        x2 = l * db_to_norm(self.highdB) # Start const yellow
-        x3 = max(x2, l * db_to_norm(self.overdB - 6)) # Start yellow-red gradient
-        x4 = l * db_to_norm(self.overdB) # Over - start const red
+        x1 = l * db_to_norm(self.highdB - 4, self.range_db) # Under (green) start green-yellow gradient
+        x2 = l * db_to_norm(self.highdB, self.range_db) # Start const yellow
+        x3 = max(x2, l * db_to_norm(self.overdB - 6, self.range_db)) # Start yellow-red gradient
+        x4 = l * db_to_norm(self.overdB, self.range_db) # Over - start const red
 
         # Create background image
         img = Image.new("RGB", (width, height), (0, 0, 0))
@@ -370,5 +386,5 @@ class zynthian_gui_dpm():
                 else:
                     pixels[x, y] = (*color, 255)
 
-        self.bg_images[(width, height)] = ImageTk.PhotoImage(img)
-        return self.bg_images[(width, height)]
+        self.bg_images[key] = ImageTk.PhotoImage(img)
+        return self.bg_images[key]
