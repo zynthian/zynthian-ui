@@ -24,9 +24,11 @@
 # ******************************************************************************
 
 import os
+import json
 import ffmpeg
 import logging
 import traceback
+import threading
 import pyliblo3 as liblo
 from time import sleep
 from queue import Empty
@@ -34,6 +36,7 @@ from pathlib import Path
 from time import monotonic
 from datetime import datetime
 from threading import Thread, Lock, Event
+from websocket_server import WebsocketServer
 
 # Zynthian specific modules
 import zynconf
@@ -204,6 +207,13 @@ class zynthian_gui:
         # Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
         self.osc_clients = {}
         self.osc_heartbeat_timeout = 120  # Heartbeat timeout period
+
+        # Websocket config
+        self.websocket_port = zynconf.ServerPort['websocket']
+        self.websocket_server = None
+        self.websocket_engine_thread = None
+        self.websocket_server_thread = None
+        self.websocket_clients = {}
 
         self.prog_change = [0] * 16 # Track last program change for each MIDI channel
 
@@ -433,9 +443,11 @@ class zynthian_gui:
                 logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
                 return
             self.cuia_queue.put_nowait((cuia, args, src))
-            # Run autoconnect if needed # TODO: It is wasteful to run autoconnect after every CUIA message. The action should trigger if necessary
-            zynautoconnect.request_audio_connect()
-            zynautoconnect.request_midi_connect()
+            # Run autoconnect if needed:
+            # It is wasteful to run autoconnect after every CUIA message. The action should trigger if necessary
+            # => NOOOOO!! Each CUIA should call autoconnect when needed
+            #zynautoconnect.request_audio_connect()
+            #zynautoconnect.request_midi_connect()
         elif parts[1] in ("MIXER", "DAWOSC"):
             #TODO: Fix OSC control of zynmixer
             self.state_manager.set_event_flag()
@@ -575,6 +587,9 @@ class zynthian_gui:
 
         # Initialize OSC
         self.osc_init()
+
+        # Initialize WebSocket
+        self.websocket_init()
 
         # Run debug thread
         if zynthian_gui_config.debug_thread:
@@ -3123,6 +3138,8 @@ class zynthian_gui:
                             self.zynswitch_long(i)
                         elif t == 'PR':
                             zynswitch_cuia_ts[i] = None
+                        elif t == 'X':
+                            zynswitch_cuia_ts[i] = None
                         else:
                             zynswitch_cuia_ts[i] = None
                             logging.warning("Unknown Action Type: {}".format(t))
@@ -3175,6 +3192,63 @@ class zynthian_gui:
                 self.state_manager.set_busy_error(f"ERROR CUIA {cuia}: {params}", e)
                 sleep(3)
                 self.state_manager.clear_busy()
+
+    # ------------------------------------------------------------------
+    # Websocket Management
+    # ------------------------------------------------------------------
+
+    def websocket_init(self):
+        # Define callback functions for server events
+        def client_left(client, server):
+            self.websocket_clients.pop(client['id'])
+            logging.debug(f"Websocket disconnected! Total active connections: {len(self.websocket_clients)}")
+
+        def new_client(client, server):
+            self.websocket_clients[client['id']] = client
+            self.wsleds.wsled_state_changed = False
+            logging.debug(f"Websocket connected! Total active connections: {len(self.websocket_clients)}")
+
+        def message_received(client, server, message):
+            try:
+                data = json.loads(message)
+                #logging.info(f"Received from WebSocket client #{client['id']}: {data}")
+                if "cuia" in data:
+                    self.cuia_queue.put_nowait((data['cuia'], data['args'], f"WS#{client['id']}"))
+            except json.JSONDecodeError:
+                # Fallback handler if the browser sends plain unformatted text instead of JSON
+                logging.warning(f"Non-JSON string received from WebSocket client {client['id']}: {message}")
+            except Exception as e:
+                logging.error(f"Error handling browser WebSocket request: {e}")
+
+
+        # Websocket worker thread
+        def worker_thread():
+            # Loop watching wsled state changes, ...
+            while not self.exit_flag:
+                if self.wsleds.wsled_state_changed:
+                    self.wsleds.wsled_state_changed = False
+                    if self.websocket_clients:
+                        payload = json.dumps({"wsled_state": self.wsleds.last_wsled_state})
+                        # Broadcast across all client connections
+                        for client in self.websocket_clients.values():
+                            try:
+                                self.websocket_server.send_message(client, payload)
+                            except Exception:
+                                pass # Ignore broken or dropped socket links
+                # 50ms sleep keeps CPU overhead at near 0%
+                sleep(0.05)
+
+        self.websocket_server = WebsocketServer(host="0.0.0.0", port=self.websocket_port)
+        self.websocket_server.set_fn_client_left(client_left)
+        self.websocket_server.set_fn_new_client(new_client)
+        self.websocket_server.set_fn_message_received(message_received)
+        # Without run_forever, the network port remains totally closed!
+        self.websocket_engine_thread = threading.Thread(target=self.websocket_server.run_forever, name="ZynWSEngine", daemon=True)
+        self.websocket_engine_thread.start()
+        # Worker thread
+        self.websocket_server_thread = threading.Thread(target=worker_thread, name="ZynWSWorker", daemon=True)
+        self.websocket_server_thread.start()
+        logging.info(f"ZYNTHIAN-UI WebSocket server running on port {self.websocket_port}")
 
     # ------------------------------------------------------------------
     # Thread ending on Exit
