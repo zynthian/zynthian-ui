@@ -792,7 +792,7 @@ class zynthian_gui_mixer_strip():
         for pad in self.launchers:
             pad.move(dx, 0)
 
-    def get_bg_img(self, id, width, height):
+    def get_bg_img(self, img_id, width, height):
         """ Get the tri-colour background image
         Args:
             id: An id for the type of image, e.g. fader
@@ -801,7 +801,7 @@ class zynthian_gui_mixer_strip():
         Returns: Background image
         """
 
-        key = (id, width, height)
+        key = (img_id, width, height)
         if key in self.bg_images:
             return self.bg_images[key]
 
@@ -821,11 +821,11 @@ class zynthian_gui_mixer_strip():
             for db in [t for t in (-60, -48, -36, -30, -24, -12, -6) if db_to_norm(t) > 0 and abs(t - DPM_ZERO_DB) >= 3] + [DPM_ZERO_DB]:
                 y = min(height - 1, height - int(db_to_norm(db) * height))
                 c = c_zero if db == DPM_ZERO_DB else c_high if db >= DPM_OVER_DB else c_mid if db >= DPM_HIGH_DB else c_low
-                if id == "dpm":
+                if img_id == "dpm":
                     if db != DPM_ZERO_DB:
                         for x in range(width):
                             pixels[x, y] = c
-                elif id == "dpm_lbl":
+                elif img_id == "dpm_lbl":
                     fill = f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
                     draw = ImageDraw.Draw(img)
                     if db == DPM_ZERO_DB:
