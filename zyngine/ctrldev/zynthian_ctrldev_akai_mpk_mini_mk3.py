@@ -160,9 +160,8 @@ class SysExQueryProgram:
 #  SysEx command for updating a device program/settings
 # --------------------------------------------------------------------------
 class SysExSetProgram:
-    def __init__(self, program=0, name="Zynthian", channels={}, aftertouch=AFTERTOUCH_OFF,
-                 keybed_octave=4, arp={}, tempo_taps=3, tempo=90, joy={},
-                 pads={}, knobs={}, transpose=0x0c):
+    def __init__(self, name, channels, arp, joy, pads, knobs,aftertouch=AFTERTOUCH_OFF,
+                 keybed_octave=4, tempo_taps=3, tempo=90, transpose=0x0c, program=0):
 
         arp_swing = int(arp.get("swing", ARP_SWING_MIN))
         assert 0 <= program <= 8, "Invalid program number: {program} (valid: 0(RAM)-8)."
@@ -554,7 +553,7 @@ class MixerHandler(ModeHandlerBase):
                 return
 
             if ccval == 0:
-                if self._pads_action is not None:
+                if self._pads_action != None:
                     self._pads_action = None
                     return
                 self._chains_bank = 0
@@ -1475,6 +1474,7 @@ class ConfigHandler(ModeHandlerBase):
                 "pc": range(16),
                 "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
             },
+            joy = {},
             knobs={
                 "cc": range(self.CC_KNOB_START, self.CC_KNOB_END + 1),
                 "mode": [

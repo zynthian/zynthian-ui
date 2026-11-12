@@ -208,7 +208,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
         return self.zctrls
 
-    def get_mixer_zctrls(self, device_name=None, ctrl_list=[]):
+    def get_mixer_zctrls(self, device_name, ctrl_list):
         _ctrls = {}
         if device_name:
             device = f"hw:{device_name}"
