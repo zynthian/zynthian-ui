@@ -58,7 +58,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         self.limit = [16] * self.channels
         self.playing_step = [0] * self.channels
         self.note_numbers = [36, 38, 40, 42, 44, 48]
-        
+
         self.display_mode = "euclidean"
         self.allowed_intervals = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 
@@ -66,28 +66,28 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
 
         self.euclidean_patterns = self._generate_euclidean_patterns(self.max_steps)
         self.offset_buf = [[False] * self.max_steps for _ in range(self.channels)]
-        
+
         self.select_ch = 0
         self.zyngui = zynthian_gui_config.zyngui
-        
+
         # --- UI Layout Dimensions ---
         self.canvas_width = 420
-        self.canvas_height = 350 
+        self.canvas_height = 350
         self.control_panel_width = 160
-        self.scale = 2 
+        self.scale = 2
 
         self.graph_x = [4, 77, 150, 4, 77, 150]
         self.graph_y = [20, 20, 20, 110, 110, 110]
 
-        self.x16 = [25, 31, 36, 39, 40, 39, 36, 31, 25, 19, 14, 11, 10, 11, 14, 19]  
+        self.x16 = [25, 31, 36, 39, 40, 39, 36, 31, 25, 19, 14, 11, 10, 11, 14, 19]
         self.y16 = [10, 11, 14, 19, 25, 31, 36, 39, 40, 39, 36, 31, 25, 19, 14, 11]
-        
+
         # --- Drag Interaction State Variables ---
         self.dragging_param = None
         self.dragging_note_ch = None # Specifically for tracking which circle is dragged
         self.drag_start_y = 0
         self.drag_last_y_for_threshold = 0
-        self.drag_threshold = 15 
+        self.drag_threshold = 15
         self.did_drag = False
 
 
@@ -96,18 +96,18 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         self.app_container.pack(expand=True, fill='both')
 
         self.sequencer_frame = tk.Frame(self.app_container, bg="black")
-        self.sequencer_frame.pack(side=tk.LEFT, expand=True, fill='both', padx=5) 
+        self.sequencer_frame.pack(side=tk.LEFT, expand=True, fill='both', padx=5)
 
-        self.canvas = tk.Canvas(self.sequencer_frame, width=self.canvas_width, height=self.canvas_height, 
+        self.canvas = tk.Canvas(self.sequencer_frame, width=self.canvas_width, height=self.canvas_height,
                                bg='black', highlightthickness=0)
         self.canvas.pack(padx=5, pady=5)
 
         self.controls_frame = tk.Frame(self.app_container, bg="#181818", width=self.control_panel_width)
         self.controls_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(0,5), pady=5)
-        self.controls_frame.pack_propagate(False) 
+        self.controls_frame.pack_propagate(False)
 
         self._create_control_panel_widgets()
-        
+
         # Bind drag/click events to the main canvas
         self.canvas.bind("<ButtonPress-1>", self.on_canvas_press)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
@@ -118,7 +118,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         # MODIFIED: Removed manual OSC server creation. This will be handled by the Zynthian engine.
         self.processor = None
         self.osc_target = None
-        
+
         self.update_offset_buffers()
         self.draw_sequencer()
         self.update_animation()
@@ -150,7 +150,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         elif re.match(r"/euclid/(\w+)_(\d+)", path):
              self._handle_channel_param(path, args)
              return True
-        
+
         self.handle_fallback(path, args)
         return False
 
@@ -164,18 +164,18 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         rel_y_model = model_y - MODEL_CENTER_COORD
         rescaled_rel_x = rel_x_model * coord_rescale_factor
         rescaled_rel_y = rel_y_model * coord_rescale_factor
-        
+
         canvas_circle_center_x = base_x_for_channel + (TARGET_EFFECTIVE_RADIUS_UNITS * self.scale)
         canvas_circle_center_y = base_y_for_channel + (TARGET_EFFECTIVE_RADIUS_UNITS * self.scale)
         final_canvas_x = (rescaled_rel_x * self.scale) + canvas_circle_center_x
         final_canvas_y = (rescaled_rel_y * self.scale) + canvas_circle_center_y
-        
+
         return final_canvas_x, final_canvas_y
 
     def _create_control_panel_widgets(self):
         self.control_widgets = {}
         parent = self.controls_frame
-    
+
         label_font = tkFont.Font(family="TkFixedFont", size=10)
         button_font = tkFont.Font(family="TkFixedFont", size=10, weight="bold")
         channel_label_font = tkFont.Font(family="TkFixedFont", size=12, weight="bold")
@@ -193,7 +193,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         self.control_widgets["mode"] = mode_button
 
         # Then create Channel label
-        self.selected_channel_disp_label = tk.Label(parent, text=f"Channel: {self.select_ch + 1}", 
+        self.selected_channel_disp_label = tk.Label(parent, text=f"Channel: {self.select_ch + 1}",
                                              font=channel_label_font, fg="white", bg=parent["bg"])
         self.selected_channel_disp_label.pack(pady=0)
 
@@ -211,22 +211,22 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             row_frame.pack(fill=tk.X, pady=14)
 
             tk.Label(row_frame, text=f"{config['label']}:", font=label_font, fg="#cccccc", bg=parent["bg"], width=7, anchor="w").pack(side=tk.LEFT, padx=(0,10))
-        
+
             value_button = tk.Button(row_frame, text="--", font=button_font, width=8, relief=tk.GROOVE,
                                      bg="#333333", fg="#00ff00", activebackground="#444444", activeforeground="#00ff00")
             value_button.pack(side=tk.LEFT, padx=(0,10))
-        
+
             value_button.bind("<ButtonPress-1>", lambda e, k=param_key: self._on_value_button_press(e, k))
             value_button.bind("<B1-Motion>", lambda e, k=param_key: self._on_value_button_drag(e, k))
             value_button.bind("<ButtonRelease-1>", lambda e, k=param_key: self._on_value_button_release(e, k))
-        
+
             self.control_widgets[param_key] = value_button
-    
+
         self._update_control_panel_display()
 
         mute_button = tk.Button(parent, text="Mute", font=button_font, width=12, relief=tk.GROOVE,
                                 bg="#552222", fg="white", activebackground="#663333")
-        mute_button.pack(side=tk.BOTTOM, fill=tk.X, padx=0, pady=0)       
+        mute_button.pack(side=tk.BOTTOM, fill=tk.X, padx=0, pady=0)
         mute_button.bind("<Button-1>", lambda e: self.toggle_mute())
         self.control_widgets["mute"] = mute_button
 
@@ -263,7 +263,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             if math.sqrt((x - cx) ** 2 + (y - cy) ** 2) <= radius:
                 clicked_ch = i
                 break
-        
+
         if clicked_ch is not None:
             self.dragging_param = "note"
             self.dragging_note_ch = clicked_ch
@@ -279,13 +279,13 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         if abs(delta_y) >= self.drag_threshold:
             direction = -1 if delta_y > 0 else 1
             ch = self.dragging_note_ch
-            
+
             new_val = self.note_numbers[ch] + direction
             self.note_numbers[ch] = max(1, min(new_val, self.max_note))
             if self.osc_target:
                 osc_path = f"/euclid/note_num_{ch + 1}"
                 liblo.send(self.osc_target, osc_path, self.note_numbers[ch])
-            
+
             self.draw_sequencer()
             self.drag_last_y_for_threshold = event.y
 
@@ -299,10 +299,10 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
                         liblo.send(self.osc_target, "/euclid/ch", self.select_ch)
                     self._update_control_panel_display()
                     self.draw_sequencer()
-            
+
             self.dragging_param = None
             self.dragging_note_ch = None
-    
+
     def _on_value_button_press(self, event, param_key):
         self.dragging_param = param_key
         self.drag_start_y = event.y
@@ -313,7 +313,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
     def _on_value_button_drag(self, event, param_key):
         if self.dragging_param != param_key: return
         self.did_drag = True
-        
+
         delta_y = event.y - self.drag_last_y_for_threshold
         if abs(delta_y) >= self.drag_threshold:
             direction = -1 if delta_y > 0 else 1
@@ -324,10 +324,10 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         if self.dragging_param == param_key:
             if not self.did_drag:
                 self._adjust_param_value(param_key, 1) # Treat click as a single increment
-            
+
             event.widget.config(relief=tk.GROOVE, bg="#333333")
             self.dragging_param = None
-    
+
     def _adjust_param_value(self, param_key, direction):
         ch = self.select_ch
         osc_path = ""
@@ -339,13 +339,13 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             self.display_mode = modes[(current_idx + direction + len(modes)) % len(modes)]
             osc_path = "/euclid/mode"
             osc_val = self.display_mode
-     
+
         elif param_key == "length":
             new_val = self.limit[ch] + direction
             self.limit[ch] = max(1, min(new_val, self.max_channel_length))
             osc_path = f"/euclid/limit_{ch + 1}"
             osc_val = self.limit[ch]
-        
+
         elif param_key == "hits":
             new_val = self.hits[ch] + direction
             self.hits[ch] = max(0, min(new_val, self.max_hits))
@@ -381,7 +381,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             liblo.send(self.osc_target, osc_path, int(self.mute[ch]))
         self._update_control_panel_display()
         self.draw_sequencer()
-    
+
     # Master handler for all channel-specific integer parameters
     def _handle_channel_param(self, path, args):
         val = args[0]
@@ -409,7 +409,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             if 1 <= val <= self.max_note: self.note_numbers[ch] = val
         elif param_key == "interval_val":
             if val in self.allowed_intervals: self.interval_value[ch] = val
-        
+
         if ch == self.select_ch:
             self._update_control_panel_display()
         self.draw_sequencer()
@@ -438,17 +438,17 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
 
             for k in range(self.channels):
                 if self.mute[k]: continue
-                
+
                 is_active = False
                 step = self.playing_step[k]
                 if self.display_mode == "polygon": is_active = step in self.get_polygon_vertex_steps(k)
                 elif self.display_mode == "euclidean": is_active = self.offset_buf[k][step % self.max_steps]
                 elif self.display_mode == "interval": is_active = step in self.get_interval_hit_steps(k)
-                
+
                 if is_active:
                     if self.osc_target:
                         liblo.send(self.osc_target, f"/euclid/note/{k}", self.note_numbers[k], 100)
-            
+
             self.draw_sequencer()
 
     def handle_fallback(self, path, args): pass
@@ -536,10 +536,10 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
                         step = (i*self.interval_value[k])%self.limit[k]
                         a = angle_s*step - math.pi/2 - rotation
                         coords.append((cx+math.cos(a)*target_r, cy+math.sin(a)*target_r))
-            
+
             if len(coords) > 1: self.canvas.create_polygon(coords,fill="",outline="white",width=1)
             elif len(coords)==1: self.canvas.create_line(base_x+target_r,base_y+target_r,coords[0][0],coords[0][1],fill="white",width=1)
-            
+
             color = "yellow" if k==self.select_ch else "deepskyblue"
             for x,y in coords: self.canvas.create_oval(x-3,y-3,x+3,y+3,fill=color,outline=color)
 
@@ -556,7 +556,7 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
                 r=25*self.scale; cx,cy=base_x+r,base_y+r
                 a=(2*math.pi/limit)*step-math.pi/2; x,y=cx+math.cos(a)*r,cy+math.sin(a)*r
                 filled = step in (self.get_polygon_vertex_steps(k) if self.display_mode=="polygon" else self.get_interval_hit_steps(k))
-            
+
             if filled: self.canvas.create_oval(x-8,y-8,x+8,y+8,fill="white",outline="white")
             else: self.canvas.create_oval(x-6,y-6,x+6,y+6,outline="white",width=2)
 
@@ -568,11 +568,11 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         for k in range(self.channels):
             cx = self.graph_x[k]*self.scale + radius
             cy = self.graph_y[k]*self.scale + radius
-            
+
             if k == self.select_ch:
                 size=10*self.scale*0.8
                 self.canvas.create_rectangle(cx-size,cy-size,cx+size,cy+size,fill="#555500",outline="yellow",width=2)
-            
+
             self.canvas.create_text(cx,cy,text=f"{self.note_numbers[k]}",fill="#00FF00",font=note_font)
 
             label_y_pos = cy + radius - 115

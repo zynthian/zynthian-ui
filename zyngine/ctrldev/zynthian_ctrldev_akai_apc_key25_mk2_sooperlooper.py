@@ -1420,7 +1420,7 @@ class looper_handler(
             return lambda x: statecolor
 
         return cond_fn
-    
+
     def matrix_function(self, toprow, loopoffset, tracks, storeState, set_syncs):
         matrix = []
         trackLedModeFn = self.get_cell_led_mode_fn(storeState)
@@ -1516,7 +1516,7 @@ class looper_handler(
                 return []
 
         return matrix
-    
+
     def make_loopnum_overlay(self, char, col=0):
         spec = CHARS.get(char)
         if not spec:
@@ -1649,8 +1649,8 @@ class looper_handler(
                 else:
                     return overlay(self.make_loopnum_overlay(firstLoop, 5), pads)
             elif getDeviceSetting("showquant", state):
-                return overlay(self.make_loopnum_overlay(syncSourceChar(getGlob('sync_source', state)), 0), 
-                                self.make_loopnum_overlay(QUANT_CHARS[int(tracks.get(0).get('quantize', 0))], 4), 
+                return overlay(self.make_loopnum_overlay(syncSourceChar(getGlob('sync_source', state)), 0),
+                                self.make_loopnum_overlay(QUANT_CHARS[int(tracks.get(0).get('quantize', 0))], 4),
                                 pads)
             elif getDeviceSetting("showsource", state):
                 return overlay(self.make_loopnum_overlay(syncSourceChar(getGlob('sync_source', state)), 0), pads)
@@ -2513,7 +2513,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2_sooperlooper(zynthian_ctrldev_akai_apc
                     self._current_handler.set_active(True)
 
         return super()._on_midi_event(ev)
-    
+
     def end(self):
         self._sooperlooper_handler.unregister_updates()
         self._sooperlooper_handler.osc_server.stop()

@@ -45,7 +45,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
     PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
     STARTING_COLOUR = 123
     STOPPING_COLOUR = 120
-    
+
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.shift = False
@@ -72,7 +72,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
         super().end()
         # Disable DAW mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
-    
+
     def update_seq_state(self, bank, seq, state, mode, group):
         if self.idev_out is None or bank != self.zynseq.bank:
             return
@@ -109,7 +109,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
         ev_chan = ev[0] & 0x0F
-        
+
         # New block: Handle pad events for the sequencer
         if evtype == 0x9:
             note = ev[1] & 0x7F
@@ -124,7 +124,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
-            
+
             # Button mappings for cleaner code
             button_commands = {
                 0x66: "ARROW_RIGHT",
@@ -133,7 +133,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
                 107: "ARROW_DOWN",
                 118: "BACK"
             }
-            
+
             # The Launchkey's physical shift button uses CC 0x3F.
             if ccnum == 0x3F:
                 self.shift = ccval != 0
@@ -146,7 +146,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
             elif ccnum == 52 and ev_chan == 0:
                 self.mode_cc52 = (ccval != 0)
                 return True
-                
+
             # Consolidated Knob Logic
             elif 20 < ccnum < 25:
                 # Knobs 1-4 for mixer channels
@@ -155,7 +155,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
                     mixer_channel += 4
                 elif self.mode_cc52:
                     mixer_channel += 8
-                    
+
                 chain = self.chain_manager.get_chain_by_position(mixer_channel - 1, midi=False)
                 zctrl = self.get_chain_zctrl(chain, "level", max_chan=17)
                 if zctrl:
@@ -173,7 +173,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
                     if ccval > 0:
                         self.state_manager.send_cuia("TEMPO")
                     return True
-                
+
                 # ZynSwitch logic for button presses and releases
                 zynswitch_index = {74: 0, 75: 1, 76: 3, 77: 2}.get(ccnum)
                 if ccval > 0:
@@ -208,7 +208,7 @@ class zynthian_ctrldev_launchkey_mk4_37(zynthian_ctrldev_zynpad, zynthian_ctrlde
                 else:
                     self.state_manager.send_cuia("TOGGLE_RECORD")
                 return True
-            
+
             # Use the dictionary for the remaining buttons and check for press
             elif ccnum in button_commands and ccval > 0:
                 self.state_manager.send_cuia(button_commands[ccnum])

@@ -646,7 +646,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"],
                                "group_symbol": "input", 'group_name': "Input levels"},
             "ADC_Right_Input": {"name": f"Input 2 Mode", "labels": ["Disabled", "Unbalanced Mono TS",
-                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"], 
+                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"],
                                 "group_symbol": "input", 'group_name': "Input levels"}
         }
 

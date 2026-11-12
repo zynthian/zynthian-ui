@@ -132,7 +132,7 @@ Layout = namedtuple("Layout", [
 
 def compute_layout(nchans, width):
     """ Computes layout
-    
+
     Params
         nchans: Number of channels
         width:  Display width in pixels
@@ -236,7 +236,7 @@ class WaveformCanvas(ModernglTkWindow):
 
     def mark_dirty(self, i0, i1):
         """ Mark a section of data dirty to force update
-        
+
         Params:
             i0: Lower byte range limit
             i1: Upper byte range limit

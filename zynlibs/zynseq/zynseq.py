@@ -440,7 +440,7 @@ class zynseq(zynthian_engine):
             return False
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, phrase=phrase)
-        
+
     def get_phrase_loop_info(self, phrase=None):
         """ Get info for loop that this phrase is within
         Args:

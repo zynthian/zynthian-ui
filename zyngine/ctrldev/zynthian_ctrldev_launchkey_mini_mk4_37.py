@@ -57,7 +57,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
     PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
     STARTING_COLOUR = 123
     STOPPING_COLOUR = 120
-    
+
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.shift = False
@@ -81,7 +81,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         self.update_button_leds()
         # Update pad LEDs immediately
         self.update_pad_leds()
-        
+
         # Register callbacks for real-time updates using zynsigman
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, self.update_pad_leds)
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN, self.update_pad_leds)
@@ -101,7 +101,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         cc_buttons = [104, 105, 0x66, 0x67, 106, 107]
         for cc in cc_buttons:
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, 127)
-        
+
         # Update bank indicator LEDs
         # Button 51 lights for bank 0, button 52 for bank 1, both off for bank 2
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 51, 127 if self.knob_bank == 0 else 0)
@@ -116,28 +116,28 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         super().end()
         # Disable DAW mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
-    
+
     def update_mixer_strip(self, chan, symbol, value):
         """Update pad LEDs when mixer values change (mute/solo)"""
         # Only update if it's a mute or solo change
         if symbol in ['mute', 'solo']:
             self.update_pad_leds()
-    
+
     def on_screen_change(self, screen):
         """Update pad LEDs when screen changes (catches chain add/remove)"""
         # Update LEDs when any screen is shown, as chains may have changed
         self.update_pad_leds()
-    
+
     def update_pad_leds(self):
         """Update pad LEDs based on mixer mute/solo state"""
         if self.idev_out is None:
             return
-        
+
         try:
             # Verify chain_manager and zynmixer are available
             if not hasattr(self, 'chain_manager') or not hasattr(self, 'zynmixer'):
                 return
-            
+
             # Update solo pads (top row: notes 96-103)
             # Pads 0-6: chains 0-6 (excluding master), Pad 7: master channel (no solo for master)
             for i in range(8):
@@ -156,9 +156,9 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         vel = 0
                 except:
                     vel = 0  # Error - LED off
-                
+
                 lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
-            
+
             # Update mute pads (bottom row: notes 112-119)
             # Pads 0-6: chains 0-6 (excluding master), Pad 7: master channel
             for i in range(8):
@@ -167,17 +167,17 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     if i < 7:
                         # Pads 0-6: Regular chains (skip master channel if it appears in chain list)
                         chain = self.chain_manager.get_chain_by_position(i, midi=False)
-                        
+
                         zctrl = self.get_chain_zctrl(chain, 'mute', max_chan=16, allow_main=False)
                         if zctrl:
-                            vel = 5 if zctrl.value else 64 
+                            vel = 5 if zctrl.value else 64
                         else:
                             vel = 0  # No chain or master channel - LED off
                     else:
                         vel = 5 if self.get_mixer_param("mute", -1) else 64
                 except:
                     vel = 0  # Error - LED off
-                
+
                 lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
         except Exception:
             # Silently fail if something goes wrong
@@ -186,13 +186,13 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
     def midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
         ev_chan = ev[0] & 0x0F
-        
+
         # Handle note events (note-on and note-off)
         # Only process pad notes (96-119), let regular keyboard notes pass through
         if evtype == 0x9 or evtype == 0x8:
             note = ev[1] & 0x7F
             vel = ev[2] & 0x7F
-            
+
             # Block ALL pad notes (96-119) from reaching synths by consuming the event
             if 96 <= note <= 119:
                 # Process solo pads (96-102 only, pad 103 is master - no solo)
@@ -204,16 +204,16 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     if zctrl:
                         zctrl.toggle()
                         self.update_pad_leds()
-                
+
                 # Process mute pads (112-119)
                 elif 112 <= note <= 119 and evtype == 0x9 and vel > 0:
                     # Bottom row: Pads 0-6 for chains 0-6 (excluding master), Pad 7 for master
                     track = note - 112
-                    
+
                     if track < 7:
                         # Pads 0-6: Regular chains (skip master if it appears in chain list)
                         chain = self.chain_manager.get_chain_by_position(track, midi=False)
-                        
+
                         zctrl = self.get_chain_zctrl(chain, 'mute', max_chan=16, allow_main=False)
                         if zctrl:
                             zctrl.toggle()
@@ -221,10 +221,10 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     else:
                         self.toggle_mixer_param("mute", -1)
                         self.update_pad_leds()
-                
+
                 # Block ALL pad notes (96-119, both on and off) from reaching synths
                 return True
-            
+
             # All other notes (keyboard) - explicitly route to chains
             else:
                 # Keyboard notes: send them through to the MIDI routing system
@@ -233,7 +233,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
-            
+
             # Navigation button mappings (fire on button press)
             button_commands = {
                 105: "MENU",
@@ -242,7 +242,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                 0x66: "ARROW_RIGHT",
                 0x67: "ARROW_LEFT"
             }
-            
+
             # Buttons 51 and 52: Bank switching (normal), Arrow Up/Down (with shift)
             if ccnum == 51 and ccval > 0:
                 if self.shift:
@@ -258,7 +258,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     self.knob_bank = (self.knob_bank + 1) % 3
                     self.update_button_leds()
                 return True
-            
+
             # Physical shift button (CC 0x3F)
             elif ccnum == 0x3F:
                 self.shift = ccval > 0
@@ -281,10 +281,10 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     # Bank 0: Mixer channel levels
                     # Knobs 1-7: chains 0-6 (excluding master), Knob 8: master channel
                     knob_index = ccnum - 85  # 0-7
-                    
+
                     # Convert relative encoder value to delta (Transport mode: 1/63 = CCW, 127/65 = CW)
                     delta = -1 if ccval < 64 else 1 if ccval > 64 else 0
-                    
+
                     if delta != 0:
                         if knob_index < 7:
                             # Knobs 1-7: Regular chains (skip master if it appears in chain list)
@@ -302,10 +302,10 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         # Knobs 1-4: ZYNPOT 0-3 (Zynthian's main rotary encoders)
                         zynpot_index = ccnum - 85
                         delta = -1 if ccval < 64 else 1 if ccval > 64 else 0
-                        
+
                         if delta != 0:
                             self.state_manager.send_cuia("ZYNPOT", [zynpot_index, delta])
-                        
+
                         return True
                     elif ccnum == 89:
                         # Knob 5: Arrow Left/Right
@@ -318,7 +318,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     elif ccnum == 91:
                         # Knob 7: Preset browsing (previous/next with wraparound)
                         delta = -1 if ccval < 64 else 1 if ccval > 64 else 0
-                        
+
                         if delta != 0:
                             try:
                                 chain = self.state_manager.chain_manager.get_active_chain()
@@ -339,7 +339,7 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                         if current_time - self.last_select_back_time < 0.6:
                             return True
                         self.last_select_back_time = current_time
-                        
+
                         if ccval < 64:
                             self.state_manager.send_cuia("BACK")
                         elif ccval > 64:
@@ -350,14 +350,14 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
                     # Bank 2: CC passthrough (85-92 → 24-31)
                     lib_zyncore.write_zynmidi([0xB0 | ev_chan, ccnum - 61, ccval])
                     return True
-            
+
             # Transport buttons (CC 74-77): ZynSwitch with press duration detection
             # Special case: Shift + CC 76 = TEMPO
             elif ccnum in [74, 75, 76, 77]:
                 if self.shift and ccnum == 76 and ccval > 0:
                     self.state_manager.send_cuia("TEMPO")
                     return True
-                
+
                 zynswitch_index = {74: 0, 75: 1, 76: 3, 77: 2}[ccnum]
                 if ccval > 0:
                     self.press_times[ccnum] = time()
@@ -372,12 +372,12 @@ class zynthian_ctrldev_launchkey_mini_mk4_37(zynthian_ctrldev_zynpad, zynthian_c
             elif ccnum == 0x73 and ccval > 0:
                 self.state_manager.send_cuia("TOGGLE_MIDI_PLAY" if self.shift else "TOGGLE_PLAY")
                 return True
-            
+
             # Record button (CC 0x75): RECORD (normal) / MIDI_RECORD (shift)
             elif ccnum == 0x75 and ccval > 0:
                 self.state_manager.send_cuia("TOGGLE_MIDI_RECORD" if self.shift else "TOGGLE_RECORD")
                 return True
-            
+
             # Navigation buttons: Send CUIA commands on button press
             elif ccnum in button_commands and ccval > 0:
                 self.state_manager.send_cuia(button_commands[ccnum])

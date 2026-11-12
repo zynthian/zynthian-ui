@@ -213,7 +213,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
     def set_preset(self, processor, preset, preload=False):
         self.load_preset_config(preset)
-    
+
         # Set custom GUI path based on two conditions:
         # 1. Organelle is in the preset path, OR
         # 2. Preset config has an 'use_organelle_widget' flag set to True

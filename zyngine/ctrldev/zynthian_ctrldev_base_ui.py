@@ -41,7 +41,7 @@ class ModeHandlerBase(ModeHandlerBase):
         if seq is not None:
             self._select_launcher(*seq)
         zynthian_gui_config.zyngui.screens["launcher"].edit_pattern()
-        
+
     def _select_launcher(self, phrase, midi_chan):
         self._zynseq.select_phrase(phrase)
         pos = self._chain_manager.get_pos_by_midi_chan(midi_chan)

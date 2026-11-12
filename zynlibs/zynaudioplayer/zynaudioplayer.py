@@ -254,7 +254,7 @@ def get_src_quality(id):
 from time import monotonic
 def set_gain(id, gain):
     libaudioplayer.set_gain(id, ctypes.c_float(gain))
-    
+
 # Get playback gain
 # id: Index of player
 # Returns: Playback gain factor [0..2]

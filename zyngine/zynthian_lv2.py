@@ -359,7 +359,7 @@ def get_engine_description(key):
     return description[randrange(4)]
 
 def get_info_from_ttl(bundle_path):
-    """ Get a dictionary of info about each plugin from ttl files in a bundle 
+    """ Get a dictionary of info about each plugin from ttl files in a bundle
     Args:
         path: Path to .lv2 directory
     Returns: Dictionary of info, indexed by plugin uri

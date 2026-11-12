@@ -574,7 +574,7 @@ class MultiTouch(object):
         add - True to append the binding otherwise remove existing bindings (default)
 
         Note that the bindings are applied to items that have this tag at the time of the tag_bind method call.
-        If tags are later removed from those items, the bindings will persist on those items. 
+        If tags are later removed from those items, the bindings will persist on those items.
         If the tag you specify is later applied to items that did not have that tag when you called tag_bind, that binding will not be applied to the newly tagged items.
         """
 
