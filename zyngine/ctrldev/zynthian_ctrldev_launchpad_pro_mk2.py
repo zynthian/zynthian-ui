@@ -242,7 +242,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
         if isinstance(data, str):
             data = [int(x, 16) for x in data.split()]
         msg = bytes([0xF0, 0x00, 0x20, 0x29, 0x02, 0x10] + data + [0xF7])
-        #print("Sysex value", msg.hex(' '))
+        #logging.info("Sysex value", msg.hex(' '))
         lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
         sleep(0.01)
 
@@ -331,7 +331,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
 
         @client.set_shutdown_callback
         def shutdown(status, reason):
-            print("JACK shutdown:", reason, status)
+            logging.info("JACK shutdown:", reason, status)
             event.set()
 
         with client:
@@ -387,7 +387,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     faders = self.build_fader_state_from_mixer(self.fader_mode)
                     self.send_fader_init(faders)
                     self.update_fader_leds()
-                    print(f"idx = {idx}, self.fader_mode = {self.fader_mode}")
+                    logging.info(f"idx = {idx}, self.fader_mode = {self.fader_mode}")
                     if idx == 2:
                         self._feedback.led_on(BTN_VOLUME, self.LEDColors.COLOR_ORANGE)
                     elif idx == 0:
@@ -434,7 +434,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                                 logging.error(f"Error occurred while updating VOL_SEND_LEVEL_CC LED: {e}")
                         elif self.fader_mode == "pan":
                             if ccval in PAN_LEVEL_CC:
-                                print("Pan mode ccval: ", ccval)
+                                logging.info("Pan mode ccval: ", ccval)
                                 idx = PAN_LEVEL_CC.index(ccval)
                                 normalized = idx / 7.0 * 2.0 - 1.0
                             else:
@@ -488,7 +488,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                         try:
                             self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
                         except:
-                            print("Error toggling play state for phrase {}, channel {}".format(phrase, midi_chan))
+                            logging.info("Error toggling play state for phrase {}, channel {}".format(phrase, midi_chan))
                             pass
                     return True
 

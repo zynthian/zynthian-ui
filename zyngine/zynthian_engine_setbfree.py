@@ -687,7 +687,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                             pgm_list.append([i, [0, 0, prg], title, params])
                             i = i + 1
                     except:
-                        # print("Ignored line: %s" % line)
+                        # logging.info("Ignored line: %s" % line)
                         pass
 
         except Exception as err:

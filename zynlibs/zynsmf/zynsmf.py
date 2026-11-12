@@ -114,7 +114,7 @@ def init():
         libsmf.isTrackMuted.argtypes = [ctypes.c_ulong, ctypes.c_uint]
     except Exception as e:
         libsmf = None
-        print(f"Can't initialise zynsmf library: {e}")
+        logging.error(f"Can't initialise zynsmf library: {e}")
 
 
 # Destroy instance of shared library

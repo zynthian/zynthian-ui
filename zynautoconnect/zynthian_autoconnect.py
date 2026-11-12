@@ -119,7 +119,7 @@ def patch_jack_library():
 
 # Patch jack library when running under PipeWire
 if "pipewire" in jack.version_string().lower():
-    print("[*] Detected PipeWire backend. Patching jack library ...")
+    logging.info("[*] Detected PipeWire backend. Patching jack library ...")
     patch_jack_library()
 
 

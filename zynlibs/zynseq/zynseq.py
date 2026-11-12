@@ -276,7 +276,7 @@ class zynseq(zynthian_engine):
 
         except Exception as e:
             self.libseq = None
-            print("Can't initialise zynseq library: %s" % str(e))
+            logging.error("Can't initialise zynseq library: %s" % str(e))
 
         self.zctrl_tempo = zynthian_controller(self, 'bpm', {
             'name': 'BPM',

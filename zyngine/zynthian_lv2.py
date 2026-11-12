@@ -1332,7 +1332,7 @@ if __name__ == '__main__':
 
         elif sys.argv[1] == "ports":
             if len(sys.argv) > 2:
-                print(get_plugin_ports(sys.argv[2]))
+                logging.info(get_plugin_ports(sys.argv[2]))
             else:
                 pass
 
@@ -1364,7 +1364,7 @@ if __name__ == '__main__':
     # get_plugin_ports("http://drumkv1.sourceforge.net/lv2")
 
     # generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
-    # print(get_plugin_presets("Dexed"))
+    # logging.info(get_plugin_presets("Dexed"))
 
     logging.info('Command took {}s'.format(int(round(time.time())) - gstart))
 

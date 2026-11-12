@@ -317,7 +317,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         """
         chain_page = active_chain//8
         chain_index_in_page = active_chain % 8 - 1
-        print(chain_index_in_page)
+        logging.info(chain_index_in_page)
 
         for i in range(SELECT_1.sysex, SELECT_1.sysex + 8):
             self._send_led_sysex(i, 0, 0, 0)

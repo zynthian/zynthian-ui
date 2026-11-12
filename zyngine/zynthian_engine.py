@@ -336,7 +336,7 @@ class zynthian_engine(zynthian_basic_engine):
                             title = str.replace(parts[0], '_', ' ')
                             if dn != '_':
                                 title = dn + '/' + title
-                            # print("filelist => " + title)
+                            # logging.info("filelist => " + title)
                             row = [os.path.join(dp, f), i, title, dn, f, ext]
                             if info:
                                 row.append(info[1])

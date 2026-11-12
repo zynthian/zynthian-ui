@@ -2206,8 +2206,8 @@ class SubModeGroups(ModeHandlerBase):
                 if tracks.get(i).get('state') != SL_STATE_MUTED:
                     current_loop_selection.append(i)
         is_effectively_active = set(current_loop_selection) == set(loops)
-        # print(f"active: {is_effectively_active}")
-        # print(current_loop_selection, loops)
+        # logging.info(f"active: {is_effectively_active}")
+        # logging.info(current_loop_selection, loops)
         if is_effectively_active:
             for i in range(0, len(tracks)):
                 if tracks.get(i) is not None:
@@ -2416,19 +2416,19 @@ class SubModeSessionsSave(ModeHandlerBase):
         confirmpad = getDeviceSetting("confirm-save", self.parent.state)
         if (confirmpad is not None):
             [no, yes] = confirmers(confirmpad, COLS)
-            # print(f"Check whether pad is one of no or yes")
+            # logging.info(f"Check whether pad is one of no or yes")
             if no == pad:
-                # print(f"If no -> unset confirm-save")
+                # logging.info(f"If no -> unset confirm-save")
                 self.parent.dispatch(deviceAction("confirm-save", None))
             if yes == pad:
-                # print(f"If yes -> save, and unset confirm-save")
+                # logging.info(f"If yes -> save, and unset confirm-save")
                 self.parent.dispatch(deviceAction("confirm-save", None))
                 self.save_session(confirmpad)
             return
         sessions = getDeviceSetting("sessions", self.parent.state) or []
         for session in sessions:
             if session[:-7] == "{:02}".format(pad):
-                # print(f"Need to confirm {pad}")
+                # logging.info(f"Need to confirm {pad}")
                 self.parent.dispatch(deviceAction("confirm-save", pad))
                 return
 
