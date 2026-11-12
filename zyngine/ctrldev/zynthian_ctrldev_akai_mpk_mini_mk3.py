@@ -554,7 +554,7 @@ class MixerHandler(ModeHandlerBase):
                 return
 
             if ccval == 0:
-                if self._pads_action != None:
+                if self._pads_action is not None:
                     self._pads_action = None
                     return
                 self._chains_bank = 0

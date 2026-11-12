@@ -2644,7 +2644,7 @@ class StepSeqHandler(ModeHandlerBase):
         note = self._selected_note.note
         duration = None
         for step in range(num_steps):
-            is_old_note = duration != None
+            is_old_note = duration is not None
             if duration is None:
                 duration = self._libseq.getNoteDuration(step, note)
             if not duration:

@@ -72,7 +72,7 @@ class zynthian_ctrldev_generic_hungarian(zynthian_ctrldev_base):
                 return None  # for shorter modes with less then 7 tones
 
             chroma_note_cleaned = key_map[chroma_note]
-            if chroma_note_cleaned == None:  # is black key.
+            if chroma_note_cleaned is None:  # is black key.
                 return None  # discard event
 
             if not 0 <= chroma_note_cleaned < len(scale_targets):  # wrong scale_map values

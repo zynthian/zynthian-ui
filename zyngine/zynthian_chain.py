@@ -824,7 +824,7 @@ class zynthian_chain:
                     slot2 = s
                     par2 = u
 
-        if par1 == None or par2 == None or slot1 == None or slot2 == None:
+        if par1 is None or par2 is None or slot1 is None or slot2 is None:
             logging.error("processor not found")
             return False
         slots[slot1][par1] = processor2

@@ -448,7 +448,7 @@ class zynseq(zynthian_engine):
         Returns: Tuple of phrase loop info (loop_end_phrase, loop_length, repeat_count) or None if not in loop
         """
 
-        if phrase == None:
+        if phrase is None:
             phrase = self.phrase
         i = phrase
         while True:
@@ -474,7 +474,7 @@ class zynseq(zynthian_engine):
         Returns: List of tuples of phrase loop info (loop_end_phrase, loop_length, repeat_count) or None if not in loop
         """
 
-        if phrase == None:
+        if phrase is None:
             phrase = self.phrase
         i = phrase
         res = []

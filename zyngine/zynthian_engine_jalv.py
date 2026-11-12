@@ -1084,7 +1084,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         self.proc_cmd(cmd)
         # Wait for save preset feedback
         i = 0
-        while i < 20 and self.save_preset_uri == None:
+        while i < 20 and self.save_preset_uri is None:
             sleep(0.1)
             i += 1
         return self.save_preset_uri

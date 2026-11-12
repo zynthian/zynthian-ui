@@ -236,7 +236,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         self.envelope_click_value = self.drag_zctrl.value
 
     def on_canvas_drag(self, event):
-        if self.drag_zctrl == None:
+        if self.drag_zctrl is None:
             return
         dx = (event.x - self.last_click.x) / self.dx
         dy = (event.y - self.last_click.y) / self.dy

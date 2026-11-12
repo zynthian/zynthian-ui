@@ -452,14 +452,14 @@ class MultiTouch(object):
                 pinch = abs(event.x - event.gest_pair.x) - abs(event.last_x - event.gest_pair.last_x)
                 # logging.warning(f"H-pinch {pinch}")
                 for ev_handler in self._on_gesture:
-                    if ev_handler.widget == None or ev_handler.widget == event.widget:
+                    if ev_handler.widget is None or ev_handler.widget == event.widget:
                         ev_handler.function(MultitouchTypes.GESTURE_H_PINCH, pinch)
 
             elif event._type == MultitouchTypes.GESTURE_V_PINCH:
                 pinch = abs(event.y - event.gest_pair.y) - abs(event.last_y - event.gest_pair.last_y)
                 # logging.warning(f"V-pinch {pinch}")
                 for ev_handler in self._on_gesture:
-                    if ev_handler.widget == None or ev_handler.widget == event.widget:
+                    if ev_handler.widget is None or ev_handler.widget == event.widget:
                         ev_handler.function(MultitouchTypes.GESTURE_V_PINCH, pinch)
 
             elif event._type == MultitouchTypes.GESTURE_H_DRAG:
@@ -467,7 +467,7 @@ class MultiTouch(object):
                     drag = event.x - event.last_x
                     # logging.warning(f"H-drag {drag}")
                     for ev_handler in self._on_gesture:
-                        if ev_handler.widget == None or ev_handler.widget == event.widget:
+                        if ev_handler.widget is None or ev_handler.widget == event.widget:
                             ev_handler.function(MultitouchTypes.GESTURE_H_DRAG, drag)
 
             elif event._type == MultitouchTypes.GESTURE_V_DRAG:
@@ -475,7 +475,7 @@ class MultiTouch(object):
                     drag = event.y - event.last_y
                     # logging.warning(f"V-drag {drag}")
                     for ev_handler in self._on_gesture:
-                        if ev_handler.widget == None or ev_handler.widget == event.widget:
+                        if ev_handler.widget is None or ev_handler.widget == event.widget:
                             ev_handler.function(MultitouchTypes.GESTURE_V_DRAG, drag)
 
             elif event._type == MultitouchTypes.SINGLE_RELEASE:
