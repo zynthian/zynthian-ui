@@ -172,11 +172,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["Configure hotplug USB audio interfaces.\nWhen enabled, USB audio interfaces will be detected and available. The main audio interface, that must always remain connected, is not included, nor the interface used for ZynVoice.", "audio_options.png"]))
 
         if zynthian_gui_config.snapshot_mixer_settings:
-            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots",
-                                   ["Soundcard parameters are saved with snapshot", "meter.png"]))
+            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Restore Audio Levels",
+                                   ["Soundcard audio levels are restored when loading snapshots or ZS3s", "meter.png"]))
         else:
-            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Audio Levels on Snapshots",
-                                   ["Soundcard parameters are not saved with snapshot", "meter.png"]))
+            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Restore Audio Levels",
+                                   ["Soundcard audio levels are ignored when loading snapshots or ZS3s", "meter.png"]))
 
         if zynthian_gui_config.enable_dpm:
             self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters",
@@ -525,10 +525,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
     def toggle_snapshot_mixer_settings(self):
         if zynthian_gui_config.snapshot_mixer_settings:
-            logging.info("Mixer Settings on Snapshots OFF")
+            logging.info("Restore Audio Levels OFF")
             zynthian_gui_config.snapshot_mixer_settings = False
         else:
-            logging.info("Mixer Settings on Snapshots ON")
+            logging.info("Restore Audio Levels ON")
             zynthian_gui_config.snapshot_mixer_settings = True
 
         # Update Config
