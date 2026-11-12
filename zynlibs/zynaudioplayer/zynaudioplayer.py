@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ********************************************************************
 # ZYNTHIAN PROJECT: Zynaudioplayer Python Wrapper
 #
 # A Python wrapper for zynaudioplayer library
 #
-# Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
 # License: LGPL V3
 #
 # ********************************************************************

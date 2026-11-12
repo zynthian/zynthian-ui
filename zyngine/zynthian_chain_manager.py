@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Chain Manager (zynthian_chain_manager)
 #

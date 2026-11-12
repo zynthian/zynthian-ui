@@ -1,10 +1,9 @@
-﻿# -*- coding: utf-8 -*-
-# ******************************************************************************
+﻿# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_clippy)
 #
 # zynthian_engine implementation for clip launcher
 #
-# Copyright (C) 2015-2026 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2026 Brian Walton <riban@zynthian.org>
 #                         Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************

@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # Zynthian Control Device Driver for SINCO SMK25
 #

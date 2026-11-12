@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ********************************************************************
 # ZYNTHIAN PROJECT: Zynseq Python Wrapper
 #
 # A Python wrapper for zynseq library
 #
-# Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #

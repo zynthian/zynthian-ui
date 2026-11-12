@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 __all__ = [
     "zynthian_controller",
     "zynthian_lv2",

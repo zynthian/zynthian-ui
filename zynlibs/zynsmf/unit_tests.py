@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # Unit tests for zynsmf
 # Tests use two letters to define order of groups and two digit integer to define order within group
 

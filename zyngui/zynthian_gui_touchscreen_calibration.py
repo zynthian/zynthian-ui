@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Touchscreen Calibration Class
 #
-# Copyright (C) 2022-2026 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2022-2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #

@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Multitouch Driver Class
 #
-# Copyright (C) 2023-2025 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2023-2025 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
