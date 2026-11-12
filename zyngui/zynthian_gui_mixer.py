@@ -2883,9 +2883,9 @@ class zynthian_gui_mixer(zynthian_gui_base):
                         cpfc = self.can_paste_from_clipboard(i)
                         if cpfc is None:
                             wsl.blink(leds[wsli], wsl.wscolor_red)
-                        elif cpfc == False:
+                        elif cpfc is False:
                             wsl.blink(leds[wsli], wsl.wscolor_active2)
-                        elif cpfc == True:
+                        elif cpfc is True:
                             wsl.blink(leds[wsli], wsl.wscolor_active)
 
             # Add chain button (F3 in V5)

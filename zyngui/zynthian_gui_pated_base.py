@@ -2172,9 +2172,9 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                         cpfc = self.launcher.can_paste_from_clipboard(i)
                         if cpfc is None:
                             wsl.blink(leds[wsli], wsl.wscolor_red)
-                        elif cpfc == False:
+                        elif cpfc is False:
                             wsl.blink(leds[wsli], wsl.wscolor_active2)
-                        elif cpfc == True:
+                        elif cpfc is True:
                             wsl.blink(leds[wsli], wsl.wscolor_active)
 
             # Block Selection (F3 in V5)
