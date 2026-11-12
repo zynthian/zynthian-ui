@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import logging
+from functools import partial  # needed for function params in mididings process
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
@@ -45,8 +46,8 @@ class zynthian_ctrldev_generic_hungarian(zynthian_ctrldev_base):
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
+        # Imported here so that mididings is only loaded in this forked process, not in the main UI process
         import mididings
-        from functools import partial  # needed for function params in mididings process
 
         #MODES = _MODES
         # scale_targets = MODES["Minor"]

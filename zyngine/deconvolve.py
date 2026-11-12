@@ -14,6 +14,7 @@
 
 import wavio
 import warnings
+from argparse import ArgumentParser
 import numpy as np
 from scipy import signal
 from scipy.io import wavfile
@@ -146,8 +147,6 @@ def limit(data, option=None):
 
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-
     parser = ArgumentParser()
     parser.add_argument('recfile', help='filename with original sweep (channels 1 & 2) and recorded signal (channels 3-n)')
     parser.add_argument('outfile', help='filename for extracted impulse response (channels 3-n)')

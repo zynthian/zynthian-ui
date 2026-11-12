@@ -24,9 +24,11 @@
 import os
 import sys
 import logging
+import inspect
 
 # Zynthian specific modules
 import zynconf
+from zyncoder.zyncore import lib_zyncore_init
 
 
 def get_env_int(env_var, default_val=0):
@@ -77,7 +79,6 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.info("ZYNTHIAN-UI CONFIG ...")
 
 if log_level == logging.DEBUG:
-    import inspect
     def logging_call_stack():
         fnames = []
         stack = list(inspect.stack())
@@ -795,6 +796,8 @@ for i, value in enumerate(LAUNCHER_COLOUR):
 # ------------------------------------------------------------------------------
 
 if "zynthian_main.py" in sys.argv[0]:
+    # Tk and PIL are only needed by the main UI process. This module is also imported by processes
+    # that have no display, such as zynthian_headless.py, so they are not imported at module level.
     import tkinter
     from PIL import Image, ImageTk
 
@@ -935,6 +938,7 @@ if "zynthian_main.py" in sys.argv[0]:
         if touch_navigation:
             # Create touch keypad frame and show it!
             try:
+                # Imported here because zynthian_gui_touchkeypad_v5 imports this module (circular import)
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
                 touch_keypad = zynthian_gui_touchkeypad_v5()
                 set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
@@ -970,12 +974,6 @@ if "zynthian_main.py" in sys.argv[0]:
 
     except Exception as e:
         logging.error("ERROR initializing Tkinter graphic framework => {}".format(e))
-
-    # ------------------------------------------------------------------------------
-    # Initialize ZynCore low-level library
-    # ------------------------------------------------------------------------------
-
-    from zyncoder.zyncore import lib_zyncore_init
 
     # ------------------------------------------------------------------------------
     # Initialize and config control I/O subsystem: switches, analog I/O, ...

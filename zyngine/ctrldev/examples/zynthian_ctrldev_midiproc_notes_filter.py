@@ -25,6 +25,10 @@
 
 import logging
 import multiprocessing as mp
+import struct
+from threading import Event
+
+import jack
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
@@ -46,10 +50,6 @@ class zynthian_ctrldev_notes_filter(zynthian_ctrldev_base):
 
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
-
-        import jack
-        import struct
-        from threading import Event
 
         # First 4 bits of status byte:
         NOTEON = 0x9

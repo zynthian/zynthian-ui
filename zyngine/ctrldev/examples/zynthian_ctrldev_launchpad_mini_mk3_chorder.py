@@ -48,6 +48,7 @@ class zynthian_ctrldev_launchpad_mini_mk3_chorder(zynthian_ctrldev_base):
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
+        # Imported here so that mididings is only loaded in this forked process, not in the main UI process
         import mididings
 
         mididings.config(
