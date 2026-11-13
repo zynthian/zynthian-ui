@@ -29,6 +29,7 @@ import ffmpeg
 import logging
 import traceback
 import threading
+import subprocess
 import pyliblo3 as liblo
 from time import sleep
 from queue import Empty
@@ -3214,15 +3215,74 @@ class zynthian_gui:
     # Websocket Management
     # ------------------------------------------------------------------
 
+    # Map HTML KeyboardEvent.code => X11 keysym name (for xdotool)
+    ws_xkeys = {
+        "Enter": "Return", "NumpadEnter": "KP_Enter", "Escape": "Escape", "Tab": "Tab",
+        "Backspace": "BackSpace", "Delete": "Delete", "Insert": "Insert", "Space": "space",
+        "ArrowUp": "Up", "ArrowDown": "Down", "ArrowLeft": "Left", "ArrowRight": "Right",
+        "Home": "Home", "End": "End", "PageUp": "Prior", "PageDown": "Next",
+        "ShiftLeft": "Shift_L", "ShiftRight": "Shift_R",
+        "ControlLeft": "Control_L", "ControlRight": "Control_R",
+        "AltLeft": "Alt_L", "AltRight": "Alt_R", "MetaLeft": "Super_L", "MetaRight": "Super_R",
+        "CapsLock": "Caps_Lock", "Minus": "minus", "Equal": "equal",
+        "BracketLeft": "bracketleft", "BracketRight": "bracketright", "Backslash": "backslash",
+        "Semicolon": "semicolon", "Quote": "apostrophe", "Backquote": "grave",
+        "Comma": "comma", "Period": "period", "Slash": "slash", "IntlBackslash": "less",
+        "ContextMenu": "Menu"
+    }
+
+    def websocket_key_event(self, action, code):
+        """Inject a keyboard event, coming from a websocket client, into the X display"""
+        if action not in ("down", "up") or not isinstance(code, str):
+            return
+        if code in self.ws_xkeys:
+            keysym = self.ws_xkeys[code]
+        elif len(code) == 4 and code.startswith("Key") and code[3].isalpha():
+            keysym = code[3].lower()
+        elif len(code) == 6 and code.startswith("Digit") and code[5].isdigit():
+            keysym = code[5]
+        elif code.startswith("Numpad") and len(code) == 7 and code[6].isdigit():
+            keysym = "KP_" + code[6]
+        elif code[1:].isdigit() and code[0] == "F" and 1 <= int(code[1:]) <= 24:
+            keysym = code
+        else:
+            logging.debug(f"Unsupported websocket key code '{code}'")
+            return
+        try:
+            subprocess.run(["xdotool", "key" + action, keysym],
+                           timeout=2, check=False,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            logging.error(f"Can't inject websocket key '{code}': {e}")
+
     def websocket_init(self):
+        ws_note_chans = {}  # (client id, note) => MIDI channel of the note_on sent by that client (piano, controller)
+
+        def ws_midi_chan():
+            """MIDI channel of the active chain (None if it has none). The channel sent by clients is ignored."""
+            try:
+                chan = int(self.chain_manager.get_active_chain().midi_chan)
+            except Exception:
+                return None
+            return chan if 0 <= chan <= 15 else None
+
         # Define callback functions for server events
         def client_left(client, server):
-            self.websocket_clients.pop(client['id'])
+            if client:  # None when a connection closes before the websocket handshake (port probes)
+                self.websocket_clients.pop(client['id'], None)
+                # Release the notes this client left held
+                for key in [k for k in ws_note_chans if k[0] == client['id']]:
+                    self.state_manager.zynmidi.note_off(ws_note_chans.pop(key), key[1])
             logging.debug(f"Websocket disconnected! Total active connections: {len(self.websocket_clients)}")
 
         def new_client(client, server):
             self.websocket_clients[client['id']] = client
-            self.wsleds.wsled_state_changed = False
+            # Send the current LED state to the new client, so it doesn't have to wait for a change
+            if self.wsleds.last_wsled_state:
+                try:
+                    server.send_message(client, json.dumps({"wsled_state": self.wsleds.last_wsled_state}))
+                except Exception:
+                    pass
             logging.debug(f"Websocket connected! Total active connections: {len(self.websocket_clients)}")
 
         def message_received(client, server, message):
@@ -3231,6 +3291,37 @@ class zynthian_gui:
                 #logging.info(f"Received from WebSocket client #{client['id']}: {data}")
                 if "cuia" in data:
                     self.cuia_queue.put_nowait((data['cuia'], data['args'], f"WS#{client['id']}"))
+                elif "key" in data:
+                    self.websocket_key_event(data["key"], data.get("code", ""))
+                elif "midi" in data:
+                    # MIDI from the browser (virtual piano, local MIDI controllers). The MIDI channel sent by the
+                    # client is ignored: everything goes to the active chain's channel. The channel used by each
+                    # note_on is remembered so its note_off matches even if the active chain changes meanwhile.
+                    kind = data["midi"]
+                    zynmidi = self.state_manager.zynmidi
+                    if kind == "note_on":
+                        chan = ws_midi_chan()
+                        if chan is not None:
+                            note = int(data["note"]) & 0x7F
+                            ws_note_chans[(client['id'], note)] = chan
+                            lib_zyncore.ui_send_note_on(chan, note, int(data.get("vel", 100)) & 0x7F)
+                    elif kind == "note_off":
+                        note = int(data["note"]) & 0x7F
+                        chan = ws_note_chans.pop((client['id'], note), None)
+                        if chan is not None:
+                            lib_zyncore.ui_send_note_on(chan, note, 0)
+                    else:
+                        chan = ws_midi_chan()
+                        if chan is not None:
+                            val = int(data.get("val", 0))
+                            if kind == "cc":
+                                lib_zyncore.ui_send_ccontrol_change(chan, int(data["ctrl"]) & 0x7F, val & 0x7F)
+                            elif kind == "pitch_bend":      # 14 bit, 8192 = centre
+                                lib_zyncore.ui_send_pitchbend_change(chan, val & 0x3FFF)
+                            elif kind == "program":
+                                zynmidi.set_midi_prg(chan, val & 0x7F)
+                            elif kind == "chan_pressure":
+                                lib_zyncore.ui_send_chan_press(chan, val & 0x7F)
             except json.JSONDecodeError:
                 # Fallback handler if the browser sends plain unformatted text instead of JSON
                 logging.warning(f"Non-JSON string received from WebSocket client {client['id']}: {message}")

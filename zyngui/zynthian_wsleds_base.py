@@ -248,7 +248,7 @@ class zynthian_wsleds_base:
                 logging.exception(traceback.format_exc())
             self.show()
 
-            if self.wsled_state_enabled and (self.zyngui.capture_log or self.ctrldev_manager.need_wsled_state()):
+            if self.wsled_state_enabled and (self.zyngui.capture_log or self.zyngui.websocket_clients or self.ctrldev_manager.need_wsled_state()):
                 try:
                     wsled_state = []
                     for i in range(self.num_leds):
