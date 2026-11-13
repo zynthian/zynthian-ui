@@ -40,6 +40,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         self.prog_chan = self.prog_num = 0
 
     def config(self, id):
+        #TODO: Refactor to remove shadow of Tk config() method.
         self.last_action = None
         self.zs3_id = id
 

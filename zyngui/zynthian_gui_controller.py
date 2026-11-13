@@ -699,6 +699,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         return
 
     def config(self, zctrl):
+        #TODO: Refactor to remove shadow of Tk config() method.
         #logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
 
         self.step = 0  # By default, use adaptative step size based on rotary speed

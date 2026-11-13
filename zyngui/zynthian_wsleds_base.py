@@ -220,6 +220,7 @@ class zynthian_wsleds_base:
     def update(self):
         # Ignore refreshes once end() has lighted-off the LEDs, so a late call
         # from the status thread can't light them up again while exiting.
+        #TODO: Refactor to remove shadow of Tk update() method.
         if self.ended:
             return
 

@@ -112,6 +112,7 @@ class zynthian_gui_midi_cc_range(zynthian_gui_base):
         super().hide()
 
     def config(self, zctrl):
+        #TODO: Refactor to remove shadow of Tk config() method.
         self.zctrl = zctrl
         self.setup_zctrls()
         self.replot = True

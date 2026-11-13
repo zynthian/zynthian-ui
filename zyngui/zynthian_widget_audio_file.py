@@ -515,6 +515,7 @@ class WaveformCanvas(ModernglTkWindow):
             logging.debug(f"Setting viewport to {self.width}x{self.height}")
 
     def update(self):
+        #TODO: Refactor to remove shadow of Tk update() method.
         self.set_viewport()
         if self.touched:
             #logging.debug(f" => DIRTY from {self.dirty_lo} to {self.dirty_hi}")

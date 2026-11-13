@@ -175,6 +175,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
             self.zyngui.screens['help'].set_html(html)
 
     def config(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):
+        #TODO: Refactor to remove shadow of Tk config() method.
         self.list_data = []
         self.root_dirs = []
         self.cb_func = cb_func
