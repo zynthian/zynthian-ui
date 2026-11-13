@@ -1,5 +1,5 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
     License: LGPL V3
 */
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian LV2-plugin management
 #
@@ -361,7 +359,7 @@ def get_engine_description(key):
     return description[randrange(4)]
 
 def get_info_from_ttl(bundle_path):
-    """ Get a dictionary of info about each plugin from ttl files in a bundle 
+    """ Get a dictionary of info about each plugin from ttl files in a bundle
     Args:
         path: Path to .lv2 directory
     Returns: Dictionary of info, indexed by plugin uri
@@ -1334,7 +1332,7 @@ if __name__ == '__main__':
 
         elif sys.argv[1] == "ports":
             if len(sys.argv) > 2:
-                print(get_plugin_ports(sys.argv[2]))
+                logging.info(get_plugin_ports(sys.argv[2]))
             else:
                 pass
 
@@ -1366,7 +1364,7 @@ if __name__ == '__main__':
     # get_plugin_ports("http://drumkv1.sourceforge.net/lv2")
 
     # generate_plugin_presets_cache("http://code.google.com/p/amsynth/amsynth")
-    # print(get_plugin_presets("Dexed"))
+    # logging.info(get_plugin_presets("Dexed"))
 
     logging.info('Command took {}s'.format(int(round(time.time())) - gstart))
 

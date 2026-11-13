@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -30,6 +28,8 @@ from io import BytesIO
 from PIL import Image, ImageTk
 import tkinter.font as tkfont
 
+# Optional: cairosvg is only used to render SVG icons and is not listed in requirements.txt,
+# so cairosvg is None when it (or the cairo library it needs) is not available.
 try:
     import cairosvg
 except:

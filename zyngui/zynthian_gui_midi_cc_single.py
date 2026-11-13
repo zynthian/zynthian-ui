@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -42,6 +41,7 @@ class zynthian_gui_midi_cc_single(zynthian_gui_selector):
         super().__init__('CC', True)
 
     def config(self, cb_func, cc_num, param=None):
+        #TODO: Refactor to remove shadow of Tk config() method.
         self.cb_func = cb_func
         self.cc_num = cc_num
         self.param = param

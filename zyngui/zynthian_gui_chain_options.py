@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -111,7 +109,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
     def fill_listbox(self):
         super().fill_listbox()
         for i, val in enumerate(self.list_data):
-            if val[0] == None:
+            if val[0] is None:
                 self.listbox.itemconfig(
                     i, {'bg': zynthian_gui_config.color_panel_hl, 'fg': zynthian_gui_config.color_tx_off})
 

@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -298,6 +296,8 @@ class zynthian_gui:
 
     def init_wsleds(self):
         # Initialize physical LED controller as master LED controller
+        # The wsleds modules are imported here, only for the detected hardware, because they import
+        # board and neopixel_spi (CircuitPython), which are only usable on the supported boards.
         if zynthian_gui_config.check_wiring_layout(["V5"]):
             from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
             self.wsleds = zynthian_wsleds_v5(self)
@@ -311,6 +311,7 @@ class zynthian_gui:
 
         # Initialize virtual touch keyboard LED controller
         if zynthian_gui_config.touch_keypad:
+            # Imported here for the same reason as above
             from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
             wsleds_v5touch = zynthian_wsleds_v5touch(self)
             if self.wsleds:
@@ -2893,7 +2894,7 @@ class zynthian_gui:
 
 
     def plot_zctrls_task(self):
-        # Refresh GUI Controllers & Widgets
+        # Refresh GUI Controllers, Widgets & DPM
         screen_obj = self.get_current_screen_obj()
         if screen_obj:
             plot_zctrls_func = getattr(screen_obj, "plot_zctrls", None)

@@ -4,7 +4,7 @@
  *
  * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019-2026 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2026 Brian Walton <riban@zynthian.org>
  *
  * ******************************************************************
  *

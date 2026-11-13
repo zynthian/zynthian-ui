@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_alsa_mixer)
 #
@@ -209,7 +208,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
         return self.zctrls
 
-    def get_mixer_zctrls(self, device_name=None, ctrl_list=[]):
+    def get_mixer_zctrls(self, device_name, ctrl_list):
         _ctrls = {}
         if device_name:
             device = f"hw:{device_name}"
@@ -647,7 +646,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"],
                                "group_symbol": "input", 'group_name': "Input levels"},
             "ADC_Right_Input": {"name": f"Input 2 Mode", "labels": ["Disabled", "Unbalanced Mono TS",
-                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"], 
+                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"],
                                 "group_symbol": "input", 'group_name': "Input levels"}
         }
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian State Model Schema
 #
@@ -53,7 +52,7 @@ ZynthianState = {
             "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",
             # ... More ports
         }
-    },    
+    },
     "chains": {  # Dictionary of chains indexed by chain id (id=0 is main mixbus chain)
         "1": {  # Chain 1
             "title": "My first chain",  # Optional chain title
@@ -144,7 +143,7 @@ ZynthianState = {
                 "zctrl_y": [0, "cutoff"], # Optional mapping of y-axis controller [proc_id, symbol]
                 "zynaptik": { # Optional zynaptik configuration
                     "cvin_volts_octave": 1.0, # CV input volts per octave
-                    "cvin_note0": 0, # CV input note 0 
+                    "cvin_note0": 0, # CV input note 0
                     "cvout_volts_octave": 1.0, # CV output volts per octave
                     "cvout_note0": 0 # CV output note 0
                 },

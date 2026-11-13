@@ -1,5 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-# ******************************************************************************
+﻿# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_linuxsampler)
 #
 # zynthian_engine implementation for Linux Sampler

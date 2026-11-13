@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ********************************************************************
 # ZYNTHIAN PROJECT: Zynsfm Python Wrapper
 #
 # A Python wrapper for zynsmf library
 #
-# Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #
@@ -116,7 +114,7 @@ def init():
         libsmf.isTrackMuted.argtypes = [ctypes.c_ulong, ctypes.c_uint]
     except Exception as e:
         libsmf = None
-        print(f"Can't initialise zynsmf library: {e}")
+        logging.error(f"Can't initialise zynsmf library: {e}")
 
 
 # Destroy instance of shared library

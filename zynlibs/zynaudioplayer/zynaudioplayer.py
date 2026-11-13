@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ********************************************************************
 # ZYNTHIAN PROJECT: Zynaudioplayer Python Wrapper
 #
 # A Python wrapper for zynaudioplayer library
 #
-# Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
 # License: LGPL V3
 #
 # ********************************************************************
@@ -256,7 +254,7 @@ def get_src_quality(id):
 from time import monotonic
 def set_gain(id, gain):
     libaudioplayer.set_gain(id, ctypes.c_float(gain))
-    
+
 # Get playback gain
 # id: Index of player
 # Returns: Playback gain factor [0..2]

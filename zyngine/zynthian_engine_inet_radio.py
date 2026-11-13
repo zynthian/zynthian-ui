@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_inetradio)
 #
@@ -619,7 +618,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
                 self.client.send("zynthian\n".encode())
                 self.running= True
                 self.start_proc_poll_thread()
-                
+
             except Exception as err:
                 logging.error(
                     "Can't start engine {} => {}".format(self.name, err))
@@ -794,7 +793,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
         for file in listdir(f"{self.my_data_dir}/capture"):
             if file[-4:].lower() in (".m3u", ".pls"):
                 self.presets["Playlists"].append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4]])
-        
+
         if exists("/dev/sr0"):
             self.presets["Devices"] = [["cdda:///dev/sr0", 2, "CD"]]
             self.banks.append(["Devices", None, "Devices", None])
@@ -845,7 +844,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
             self.connect_timer.cancel()
         self.connect_timer = Timer(2, zynautoconnect.audio_autoconnect)
         self.connect_timer.start()
-        
+
     # ----------------------------------------------------------------------------
     # Controllers Management
     # ----------------------------------------------------------------------------

@@ -1,12 +1,10 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for "Novation Launchpad Pro MK2"
 #
 # Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
-#                         Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -47,7 +45,7 @@ MODE_NOTE = 1     # Note input mode
 MODE_DEVICE = 2     # Device control mode
 MODE_USER = 3    # User settings mode
 
-# Button CC/Note numbers for mode selectors (top right) 
+# Button CC/Note numbers for mode selectors (top right)
 BTN_SESSION = 95   # CC number for session button
 BTN_NOTE = 96      # CC number for note button
 BTN_DEVICE = 97      # CC number for device button
@@ -58,7 +56,7 @@ BTN_DOWN = 0x5C
 BTN_LEFT = 0x5D
 BTN_RIGHT = 0x5E
 
-# Launchpad mode select buttons 
+# Launchpad mode select buttons
 # BTN_SESSION = 0x5F
 # BTN_NOTE = 0x60
 # BTN_DEVICE = 0x61
@@ -75,7 +73,7 @@ STANDALONE_SUB_SELECT_FADER_CC = "2C 02"
 STANDALONE_SUB_SELECT_PROGRAMMER_CC = "2C 03"
 
 # Launchpad ableton sub-mode select CC
-ABLETON_SUB_SELECT_SESSION_CC = "22 00" 
+ABLETON_SUB_SELECT_SESSION_CC = "22 00"
 ABLETON_SUB_SELECT_DRUM_CC = "22 01"
 ABLETON_SUB_SELECT_CHROMATIC_CC = "22 02"
 ABLETON_SUB_SELECT_USER_CC = "22 03" # Drum mode
@@ -113,7 +111,7 @@ BTN_STOP_CLIP = 0x08
 # Volume and pan control levels as dictionary
 FADER_CHANNEL = [0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C] # Same channel values across modes
 VOL_SEND_LEVEL_CC = [0x00, 0x11, 0x22, 0x34, 0x46, 0x59, 0x6C, 0x7F]
-PAN_LEVEL_CC = [0x00, 0x15, 0x2A, 0x3F, 0x40, 0x55, 0x6A, 0x7F] #[0x48, 0x49, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55] 
+PAN_LEVEL_CC = [0x00, 0x15, 0x2A, 0x3F, 0x40, 0x55, 0x6A, 0x7F] #[0x48, 0x49, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55]
 
 # Right column buttons (individual row playback)
 BTN_PLAY_ROW_1 = 0x59
@@ -142,13 +140,13 @@ EV_CONTINUE = 0xFB
 
 # Create range as launchpad pro doesn't have sequential grid CC values
 BTN_PAD_RANGE = [0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,
-                 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 
+                 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E,
                  0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44,
                  0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A,
                  0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30,
                  0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
                  0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C,
-                 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12,       
+                 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12,
 ]
 
 # Grid buttons for UI control
@@ -215,12 +213,12 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
         COLOR_PLAYING = COLOR_GREEN = 88
         COLOR_LIGHT_RED = 116 # 107
         COLOR_RED = 5
-        COLOR_DEEP_RED = 6 # 60, 95 = HOT PINK, 56 = PEACH, 
+        COLOR_DEEP_RED = 6 # 60, 95 = HOT PINK, 56 = PEACH,
         COLOR_LIGHT_BLUE = 91
         COLOR_BLUE = 79
         COLOR_DARK_GREEN = 76 # Match note mode directional button colours
         COLOR_DARK_BLUE = 46 # Match note mode directional button colours
-        COLOR_DEEP_BLUE = 67     
+        COLOR_DEEP_BLUE = 67
 
     def __init__(self, state_manager, idev_in, idev_out=None):
         super().__init__(state_manager, idev_in, idev_out)
@@ -238,13 +236,13 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
         """
         Send arbitrary‑length SysEx payload.    data_bytes: list of integers (0–127)
         """
-        # Convert hex string → list[int]        
+        # Convert hex string → list[int]
         if self.idev_out is None:
             return
         if isinstance(data, str):
             data = [int(x, 16) for x in data.split()]
         msg = bytes([0xF0, 0x00, 0x20, 0x29, 0x02, 0x10] + data + [0xF7])
-        #print("Sysex value", msg.hex(' '))
+        #logging.info("Sysex value", msg.hex(' '))
         lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
         sleep(0.01)
 
@@ -292,13 +290,13 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
             return False
         return status in (0x90, 0x80)
 
-        
+
         def midiproc_task(self, jackname):
-        
+
         Diagnostic JACK MIDI processing task.
         No filtering. All events logged.
         Ensures midi_event() receives proper 3-byte tuples.
-        
+
 
         import jack
         import struct
@@ -333,7 +331,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
 
         @client.set_shutdown_callback
         def shutdown(status, reason):
-            print("JACK shutdown:", reason, status)
+            logging.info("JACK shutdown:", reason, status)
             event.set()
 
         with client:
@@ -344,23 +342,23 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
         self.filter_enabled.value = 1
 
     def disable_note_filter(self):
-        self.filter_enabled.value = 0 
+        self.filter_enabled.value = 0
     """
 
     def midi_event(self, ev):
         """Handle MIDI input from device"""
         if self.state_manager.power_save_mode:
             return True
-        
+
         evtype = (ev[0] >> 4) & 0x0F
         evchan = ev[0] & 0x0F
         now = monotonic()
-        
+
         # Edge (round buttons) handling (use CC instead of velocity)
         if evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
-            
+
             # Mode buttons
             if ccval > 0:
                 if ccnum == BTN_SESSION:
@@ -370,7 +368,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     else:
                         self.state_manager.send_cuia("SCREEN_LAUNCHER")
                     return True
-                elif ccnum == BTN_NOTE: 
+                elif ccnum == BTN_NOTE:
                     self.set_mode(MODE_NOTE)
                     return True
                 elif ccnum == BTN_DEVICE:
@@ -379,7 +377,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                 elif ccnum == BTN_USER:
                     self.set_mode(MODE_USER)
                     return True
-                
+
                 # User mode: fader mode toggle with BTN_SHIFT
                 elif self.mode == MODE_USER and ccnum == BTN_SHIFT:
                     modes = ["volume", "pan", "sends"]
@@ -389,7 +387,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     faders = self.build_fader_state_from_mixer(self.fader_mode)
                     self.send_fader_init(faders)
                     self.update_fader_leds()
-                    print(f"idx = {idx}, self.fader_mode = {self.fader_mode}")
+                    logging.info(f"idx = {idx}, self.fader_mode = {self.fader_mode}")
                     if idx == 2:
                         self._feedback.led_on(BTN_VOLUME, self.LEDColors.COLOR_ORANGE)
                     elif idx == 0:
@@ -414,7 +412,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     self.update_fader_leds()
                     self._feedback.led_on(ccnum, self.LEDColors.COLOR_ORANGE)
                     return True
-                
+
                 # User mode: fader controls
                 elif self.mode == MODE_USER:
                     fader_cc_map = {
@@ -436,7 +434,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                                 logging.error(f"Error occurred while updating VOL_SEND_LEVEL_CC LED: {e}")
                         elif self.fader_mode == "pan":
                             if ccval in PAN_LEVEL_CC:
-                                print("Pan mode ccval: ", ccval)
+                                logging.info("Pan mode ccval: ", ccval)
                                 idx = PAN_LEVEL_CC.index(ccval)
                                 normalized = idx / 7.0 * 2.0 - 1.0
                             else:
@@ -446,7 +444,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                         elif self.fader_mode == "sends":
                             if ccval in VOL_SEND_LEVEL_CC:
                                 try:
-                                    normalized = VOL_SEND_LEVEL_CC.index(ccval) / 7.0    
+                                    normalized = VOL_SEND_LEVEL_CC.index(ccval) / 7.0
                                 except Exception as e:
                                     logging.error(f"Error occurred while updating VOL_SEND_LEVEL_CC LED: {e}")
                             else:
@@ -454,9 +452,9 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                             self.set_mixer_param(f"send_{col}_level", col, normalized)
                             self._feedback.led_on(ccnum, VOL_SEND_LEVEL_CC[int(round(normalized * 7))])
                         return True
-                    else:  # Not a fader in USER mode; ignore other buttons                        
+                    else:  # Not a fader in USER mode; ignore other buttons
                         return True
-                
+
                 # Navigation
                 elif ccnum == BTN_UP:
                     self.state_manager.send_cuia("ARROW_UP")
@@ -474,12 +472,12 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                             self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, zynseq.PHRASE_CHANNEL)
                         except:
                             pass
-        
+
         # Note on handling
         elif evtype == 0x9:
             note = ev[1] & 0x7F
             vel = ev[2] & 0x7F
-            
+
             if vel > 0:
                 if self.mode == MODE_SESSION:
                     # Launcher grid mode
@@ -490,10 +488,10 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                         try:
                             self.zynseq.libseq.togglePlayState(self.zynseq.scene, phrase, midi_chan)
                         except:
-                            print("Error toggling play state for phrase {}, channel {}".format(phrase, midi_chan))
+                            logging.info("Error toggling play state for phrase {}, channel {}".format(phrase, midi_chan))
                             pass
                     return True
-                
+
                 elif self.mode == MODE_NOTE:
                     pos = self.scroll_h + note % 8
                     row = note // 8
@@ -507,7 +505,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     except Exception as e:
                         logging.error(f"Pro MK2: Note mode error: {e}")
                     return True
-                
+
                 elif self.mode == MODE_DEVICE:
                     # Device control mode - route to DeviceHandler
                     col, row = self.get_note_xy(note)
@@ -517,12 +515,12 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     except Exception:
                         logging.exception("DeviceHandler.note_on failed")
                     return True
-        
+
         # Note off handling
         elif evtype == 0x8:
             note = ev[1] & 0x7F
             vel = ev[2] & 0x7F
-            
+
             if self.mode == MODE_NOTE and self.last_press:
                 try:
                     last_note, midi_chan, midi_out = self.last_press
@@ -538,12 +536,12 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                 except Exception:
                     logging.exception("DeviceHandler.note_off failed")
             return True
-        
+
         # SysEx
         elif ev[0] == 0xF0:
             logging.info(f"Received SysEx => {ev.hex(' ')}")
             return True
-        
+
         return False
 
     def light_off(self):
@@ -601,7 +599,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
         """
         if self.idev_out is None:
             return
-        fader_params = [0x2B] 
+        fader_params = [0x2B]
         for (index, fader_type, colour, value) in faders:
             colour = zynthian_gui_config.LAUNCHER_COLOUR[index]["launchpad"]
             if colour < 1:
@@ -642,9 +640,9 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
         """Switch device mode and configure hardware"""
         if new_mode == self.mode:
             return
-        
+
         self.mode = new_mode
-        
+
         if new_mode == MODE_SESSION:
             # Session layout
             self.send_sysex(ABLETON_SUB_SELECT_SESSION_CC)
@@ -652,7 +650,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
             sleep(0.05)
             logging.info("Pro MK2: Session mode")
             self.light_off()
-            self.refresh_pads()            
+            self.refresh_pads()
         elif new_mode == MODE_NOTE:
             # Note/Drum layout
             self.send_sysex(ABLETON_SUB_SELECT_CHROMATIC_CC)
@@ -679,7 +677,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
             self.update_fader_leds()
             self._feedback.led_on(BTN_VOLUME, self.LEDColors.COLOR_ORANGE)
             self._feedback.led_on(BTN_SHIFT, self.LEDColors.COLOR_BLUE)
-            logging.info("Pro MK2: User settings mode")                  
+            logging.info("Pro MK2: User settings mode")
         self.update_mode_leds()
         self.update_navigation_leds()
 
@@ -698,7 +696,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                             self.update_pad(row, col, pad_info)
                     except (KeyError, IndexError, TypeError):
                         # Pad doesn't exist or is empty, skip it
-                        pass           
+                        pass
             # Refresh launcher column (rightmost column)
             for row in range(self.rows):
                 phrase = row + self.scroll_v
@@ -707,7 +705,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                     pad_info["empty"] = False
                     col = self.phrase_launcher_col
                     self.update_pad(row, col, pad_info)
-                except (KeyError, IndexError, TypeError): # Phrase doesn't exist or is empty, skip it                    
+                except (KeyError, IndexError, TypeError): # Phrase doesn't exist or is empty, skip it
                     pass
         except Exception as e:
             logging.error(f"Error refreshing pads: {e}", exc_info=True)
@@ -784,7 +782,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad, zynthian_ctrld
                 self._send_fader_init(led_column, color, 0, value)
         except Exception:
             pass
-    
+
     # FIXME: Pressing BTN_BACK too many times activates this function jumping you out of device mode which is annoying
     # Maybe not required?
     def on_gui_show_screen(self, screen):
@@ -843,9 +841,9 @@ class   FeedbackLEDs:
             BTN_PAN, BTN_SENDS, BTN_DEVICE, BTN_MUTE, BTN_SOLO,
             BTN_RECORD_ARM, BTN_SOFT_KEY_SELECT,BTN_SHIFT, BTN_CLICK,
             BTN_UNDO, BTN_DELETE, BTN_QUANTISE, BTN_DUPLICATE, BTN_DOUBLE,
-            BTN_RECORD, BTN_RECORD_ARM, BTN_TRACK_SELECT, BTN_STOP_CLIP, 
+            BTN_RECORD, BTN_RECORD_ARM, BTN_TRACK_SELECT, BTN_STOP_CLIP,
             BTN_PLAY_ROW_1, BTN_PLAY_ROW_2, BTN_PLAY_ROW_3, BTN_PLAY_ROW_4,
-            BTN_PLAY_ROW_5, BTN_PLAY_ROW_6, BTN_PLAY_ROW_7, BTN_PLAY_ROW_8  
+            BTN_PLAY_ROW_5, BTN_PLAY_ROW_6, BTN_PLAY_ROW_7, BTN_PLAY_ROW_8
         ]
         for btn in buttons:
             self.led_off(btn)
@@ -861,7 +859,7 @@ class   FeedbackLEDs:
         self._timer.remove(led)
         lib_zyncore.dev_send_note_on(self._idev, 0, led, 0)
         if not overlay:
-            self._state[led] = (0, 0)                                                                                                                         
+            self._state[led] = (0, 0)
 
     def led_on(self, led, color=1, channel=0, overlay=False):
         """Turn LED on. `color` maps to velocity/colour and `channel` can select mode."""
@@ -892,9 +890,9 @@ class   FeedbackLEDs:
 
     def clear_delayed(self, led):
         self._timer.remove(led)
-    
+
 class DeviceHandler(ModeHandlerBase):
-    """Device mode handler for Launchpad """  
+    """Device mode handler for Launchpad """
     def __init__(self, state_manager, leds: FeedbackLEDs, colors):
         super().__init__(state_manager)
         self._leds = leds
@@ -928,44 +926,44 @@ class DeviceHandler(ModeHandlerBase):
             BTN_PAD_ZYNPOT_SWITCH_4: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:3,{'B' if is_bold else 'S'}"]),
         }
         self._btn_states = {k: -1 for k in self._btn_actions}
-    
+
     def refresh(self):
         """Update LED state—mode indicator and navigation hints."""
         self._leds.all_off()
-        
+
         # Mode indicator (blinking)
         self._leds.led_flash(BTN_USER)
-        
+
         # Navigation arrows (fixed lighting)
         nav_buttons = [BTN_PAD_UP, BTN_PAD_DOWN, BTN_PAD_LEFT, BTN_PAD_RIGHT]
         for btn in nav_buttons:
             self._leds.led_on(btn, self._colors.COLOR_YELLOW)
         self._leds.led_on(BTN_SEL_YES, self._colors.COLOR_GREEN)
         self._leds.led_on(BTN_BACK_NO, self._colors.COLOR_RED)
-        
+
         # Alt toggle indicator
-        alt_color = (self._colors.COLOR_ALT_OFF if not self._is_alt_active 
+        alt_color = (self._colors.COLOR_ALT_OFF if not self._is_alt_active
                      else self._colors.COLOR_ALT_ON)
         self._leds.led_on(BTN_ALT, alt_color)
         for btn in [BTN_F1, BTN_F2, BTN_F3, BTN_F4]:
             self._leds.led_on(btn, alt_color)
-        
+
         # Function button states
         for btn, state in self._btn_states.items():
-            color = [self._colors.COLOR_STATE_1, 
+            color = [self._colors.COLOR_STATE_1,
                      self._colors.COLOR_STATE_2][state % 2]
             self._leds.led_on(btn, color)
-        
+
         # Play/Record indicators
         if self._is_playing:
             self._leds.led_on(BTN_PAD_PLAY, self._colors.COLOR_PLAYING, LED_ON) #, blink=True
         if self._is_recording:
             self._leds.led_on(BTN_PAD_RECORD, self._colors.COLOR_RED, LED_FLASHING) #, blink=True
-    
+
     def note_on(self, note, velocity, shifted_override=None):
         """Handle button presses"""
         self._on_shifted_override(shifted_override)
-        
+
         if self._is_shifted:
             # Shift-mode: refresh on mode button
             if note == BTN_USER:
@@ -1013,18 +1011,18 @@ class DeviceHandler(ModeHandlerBase):
         # Timed button handling (short/bold press)
         self._btn_timer.is_pressed(note, time.time())
         return True
-    
+
     def note_off(self, note, shifted_override=None):
         """Handle button releases."""
         self._on_shifted_override(shifted_override)
         self._btn_timer.is_released(note)
-    
+
     def cc_change(self, ccnum, ccval):
         """
         Launchpad device mode has no CC controls.
         """
         return False
-    
+
     def on_screen_change(self, screen):
         """Track active screen for button state feedback."""
         screen_map = {
@@ -1050,13 +1048,13 @@ class DeviceHandler(ModeHandlerBase):
         except KeyError:
             pass
         self.refresh()
-    
+
     def on_media_change(self, media, kind, state):
         """Track playback/record state for LED feedback."""
         flags = self._is_playing if kind == "player" else self._is_recording
         flags.add(media) if state else flags.discard(media)
         self.refresh()
-    
+
     def _handle_timed_button(self, btn, press_type):
         """Handle short/bold press logic"""
         if press_type == CONST.PT_LONG:
@@ -1068,14 +1066,14 @@ class DeviceHandler(ModeHandlerBase):
             if cuia:
                 self._state_manager.send_cuia(cuia)
                 return True
-        
+
         actions = self._btn_actions.get(btn)
         if not actions:
             return False
-        
+
         if callable(actions):
             actions = actions(press_type == CONST.PT_BOLD)
-        
+
         idx = -1
         if press_type == CONST.PT_SHORT:
             idx = self._btn_states[btn]
@@ -1083,7 +1081,7 @@ class DeviceHandler(ModeHandlerBase):
         elif press_type == CONST.PT_BOLD:
             # In buttons with 2 functions, the default on bold press is the second
             idx = 1 if len(actions) > 1 else 0
-        
+
         # Split params, if given
         cuia = actions[idx]
         params = []
@@ -1091,7 +1089,7 @@ class DeviceHandler(ModeHandlerBase):
             cuia, params = cuia.split(":")
             params = params.split(",")
             params[0] = int(params[0])
-        
+
         self._state_manager.send_cuia(cuia, params)
         return True
 

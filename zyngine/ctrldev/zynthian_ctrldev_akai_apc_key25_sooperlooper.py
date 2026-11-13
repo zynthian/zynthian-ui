@@ -62,8 +62,8 @@ SETTINGCOLORS = [
         COLORS.COLOR_GREEN,
     ],
     [
-        COLORS.COLOR_YELLOW, # 
-        COLORS.COLOR_RED,    # jack? 
+        COLORS.COLOR_YELLOW, #
+        COLORS.COLOR_RED,    # jack?
         COLORS.COLOR_YELLOW, # 8th
         COLORS.COLOR_GREEN,  # mups
     ],

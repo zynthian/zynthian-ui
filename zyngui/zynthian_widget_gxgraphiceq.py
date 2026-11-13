@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -36,7 +34,7 @@ from zyngui import zynthian_widget_base
 # ------------------------------------------------------------------------------
 
 
-class zynthian_widget_GxGraphicEQ(zynthian_widget_base.zynthian_widget_base):
+class zynthian_widget_gxgraphiceq(zynthian_widget_base.zynthian_widget_base):
 
     def __init__(self, parent):
         super().__init__(parent)

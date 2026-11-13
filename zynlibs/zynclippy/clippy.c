@@ -4,7 +4,7 @@
  *
  * Library providing sample clip launcher as a Jack connected device
  *
- * Copyright (C) 2025 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2025 Brian Walton <riban@zynthian.org>
  *                    Fernando Moyano <jofemodo@zynthian.org>
  *
  * ******************************************************************

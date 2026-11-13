@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian TTS (zynthian_tts)
 #
@@ -107,7 +106,7 @@ class zynthian_tts:
         """
 
         if len(params) < 2:
-            self.osc_uri == None
+            self.osc_uri is None
         elif len(params) < 3:
             self.osc_uri = tuple(params)
             self.osc_path = "/tts"

@@ -14,6 +14,7 @@
 
 import wavio
 import warnings
+from argparse import ArgumentParser
 import numpy as np
 from scipy import signal
 from scipy.io import wavfile
@@ -39,7 +40,7 @@ def filter20_20k(x, sr):
     '''
     filters everything outside of 20 - 20_000 Hz
     '''
-    
+
     nyq = 0.5 * sr
     sos = signal.butter(5, [20.0 / nyq, 20_000.0 / nyq], btype='band', output='sos')
     return signal.sosfilt(sos, x)
@@ -47,12 +48,12 @@ def filter20_20k(x, sr):
 
 def deconvolve(a, b, sr):  # per audio channel
     '''
-    a is the input sweep signal, h the impulse response, and b the microphone-recorded signal. 
-    We have a * h = b (convolution here!). 
-    Let's take the discrete Fourier transform, we have fft(a) * fft(h) = fft(b), 
+    a is the input sweep signal, h the impulse response, and b the microphone-recorded signal.
+    We have a * h = b (convolution here!).
+    Let's take the discrete Fourier transform, we have fft(a) * fft(h) = fft(b),
     then h = ifft(fft(b) / fft(a)).
     '''
-    
+
     a = padarray(a, sr*50, before=sr*10)
     b = padarray(b, sr*50, before=sr*10)
     h = np.zeros_like(b)
@@ -62,7 +63,7 @@ def deconvolve(a, b, sr):  # per audio channel
     ffta = np.fft.rfft(a)
     fftb = np.fft.rfft(b1)
     ffth = fftb / ffta
-    
+
     h1 = np.fft.irfft(ffth)
     h1 = filter20_20k(h1, sr)
 
@@ -146,8 +147,6 @@ def limit(data, option=None):
 
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-
     parser = ArgumentParser()
     parser.add_argument('recfile', help='filename with original sweep (channels 1 & 2) and recorded signal (channels 3-n)')
     parser.add_argument('outfile', help='filename for extracted impulse response (channels 3-n)')

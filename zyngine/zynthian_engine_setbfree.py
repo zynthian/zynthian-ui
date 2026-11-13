@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_setbfree)
 #
@@ -69,31 +68,31 @@ class zynthian_engine_setbfree(zynthian_engine):
     tonewheel_config = {
         "Sin": "",
         "Sqr": """
-			osc.harmonic.1=1.0
-			osc.harmonic.3=0.333333333333
-			osc.harmonic.5=0.2
-			osc.harmonic.7=0.142857142857
-			osc.harmonic.9=0.111111111111
-			osc.harmonic.11=0.090909090909""",
+            osc.harmonic.1=1.0
+            osc.harmonic.3=0.333333333333
+            osc.harmonic.5=0.2
+            osc.harmonic.7=0.142857142857
+            osc.harmonic.9=0.111111111111
+            osc.harmonic.11=0.090909090909""",
         "Tri": """
-			osc.harmonic.1=1.0
-			osc.harmonic.3=-0.111111111111
-			osc.harmonic.5=0.04
-			osc.harmonic.7=-0.02040816326530612
-			osc.harmonic.9=0.012345679012345678
-			osc.harmonic.11=-0.008264462809917356""",
+            osc.harmonic.1=1.0
+            osc.harmonic.3=-0.111111111111
+            osc.harmonic.5=0.04
+            osc.harmonic.7=-0.02040816326530612
+            osc.harmonic.9=0.012345679012345678
+            osc.harmonic.11=-0.008264462809917356""",
         "Saw": """
-			osc.harmonic.1=1.0
+            osc.harmonic.1=1.0
             osc.harmonic.2=-0.5
-			osc.harmonic.3=0.33
-			osc.harmonic.4=-0.25
-			osc.harmonic.5=0.2
-			osc.harmonic.6=-0.16666666666667
-			osc.harmonic.7=0.142857143
+            osc.harmonic.3=0.33
+            osc.harmonic.4=-0.25
+            osc.harmonic.5=0.2
+            osc.harmonic.6=-0.16666666666667
+            osc.harmonic.7=0.142857143
             osc.harmonic.8=-0.125
-			osc.harmonic.9=0.11111111111111
+            osc.harmonic.9=0.11111111111111
             osc.harmonic.10=-0.1
-			osc.harmonic.11=0.909090909091"""
+            osc.harmonic.11=0.909090909091"""
     }
 
     # ---------------------------------------------------------------------------
@@ -688,7 +687,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                             pgm_list.append([i, [0, 0, prg], title, params])
                             i = i + 1
                     except:
-                        # print("Ignored line: %s" % line)
+                        # logging.info("Ignored line: %s" % line)
                         pass
 
         except Exception as err:

@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # Zynthian Control Device Driver for SINCO SMK25
 #
@@ -47,6 +45,7 @@ from time import time, sleep
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 from zyngine.zynthian_signal_manager import zynsigman
 from zyncoder.zyncore import lib_zyncore
+from zynautoconnect import zynthian_autoconnect as za
 
 # ---------------------------------------------------------------------------
 # Knob CC mapping — all on MIDI channel 0 (wire channel 1)
@@ -587,7 +586,6 @@ class zynthian_ctrldev_sinco_smk25(zynthian_ctrldev_zynmixer):
     def _find_sysex_port(self):
         """Find the zmop index for the Private SysEx port (OUT 1)."""
         try:
-            from zynautoconnect import zynthian_autoconnect as za
             in_port = za.devices_in[self.idev]
             if in_port and in_port.aliases:
                 parts = in_port.aliases[0].rsplit(' ', 2)

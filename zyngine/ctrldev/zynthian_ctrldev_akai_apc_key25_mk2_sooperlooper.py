@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -1422,7 +1420,7 @@ class looper_handler(
             return lambda x: statecolor
 
         return cond_fn
-    
+
     def matrix_function(self, toprow, loopoffset, tracks, storeState, set_syncs):
         matrix = []
         trackLedModeFn = self.get_cell_led_mode_fn(storeState)
@@ -1518,7 +1516,7 @@ class looper_handler(
                 return []
 
         return matrix
-    
+
     def make_loopnum_overlay(self, char, col=0):
         spec = CHARS.get(char)
         if not spec:
@@ -1651,8 +1649,8 @@ class looper_handler(
                 else:
                     return overlay(self.make_loopnum_overlay(firstLoop, 5), pads)
             elif getDeviceSetting("showquant", state):
-                return overlay(self.make_loopnum_overlay(syncSourceChar(getGlob('sync_source', state)), 0), 
-                                self.make_loopnum_overlay(QUANT_CHARS[int(tracks.get(0).get('quantize', 0))], 4), 
+                return overlay(self.make_loopnum_overlay(syncSourceChar(getGlob('sync_source', state)), 0),
+                                self.make_loopnum_overlay(QUANT_CHARS[int(tracks.get(0).get('quantize', 0))], 4),
                                 pads)
             elif getDeviceSetting("showsource", state):
                 return overlay(self.make_loopnum_overlay(syncSourceChar(getGlob('sync_source', state)), 0), pads)
@@ -2208,8 +2206,8 @@ class SubModeGroups(ModeHandlerBase):
                 if tracks.get(i).get('state') != SL_STATE_MUTED:
                     current_loop_selection.append(i)
         is_effectively_active = set(current_loop_selection) == set(loops)
-        # print(f"active: {is_effectively_active}")
-        # print(current_loop_selection, loops)
+        # logging.info(f"active: {is_effectively_active}")
+        # logging.info(current_loop_selection, loops)
         if is_effectively_active:
             for i in range(0, len(tracks)):
                 if tracks.get(i) is not None:
@@ -2418,19 +2416,19 @@ class SubModeSessionsSave(ModeHandlerBase):
         confirmpad = getDeviceSetting("confirm-save", self.parent.state)
         if (confirmpad is not None):
             [no, yes] = confirmers(confirmpad, COLS)
-            # print(f"Check whether pad is one of no or yes")
+            # logging.info(f"Check whether pad is one of no or yes")
             if no == pad:
-                # print(f"If no -> unset confirm-save")
+                # logging.info(f"If no -> unset confirm-save")
                 self.parent.dispatch(deviceAction("confirm-save", None))
             if yes == pad:
-                # print(f"If yes -> save, and unset confirm-save")
+                # logging.info(f"If yes -> save, and unset confirm-save")
                 self.parent.dispatch(deviceAction("confirm-save", None))
                 self.save_session(confirmpad)
             return
         sessions = getDeviceSetting("sessions", self.parent.state) or []
         for session in sessions:
             if session[:-7] == "{:02}".format(pad):
-                # print(f"Need to confirm {pad}")
+                # logging.info(f"Need to confirm {pad}")
                 self.parent.dispatch(deviceAction("confirm-save", pad))
                 return
 
@@ -2515,7 +2513,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2_sooperlooper(zynthian_ctrldev_akai_apc
                     self._current_handler.set_active(True)
 
         return super()._on_midi_event(ev)
-    
+
     def end(self):
         self._sooperlooper_handler.unregister_updates()
         self._sooperlooper_handler.osc_server.stop()

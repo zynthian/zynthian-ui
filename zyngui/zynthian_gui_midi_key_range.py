@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -104,6 +103,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
         self.plot_text()
 
     def config(self, chain):
+        #TODO: Refactor to remove shadow of Tk config() method.
         self.chain = chain
         self.zmop_index = self.chain.zmop_index
         if self.zmop_index is not None:

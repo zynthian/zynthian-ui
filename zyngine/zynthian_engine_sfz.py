@@ -1,5 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-# ******************************************************************************
+﻿# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine extensions for SFZ management
 #
 # zynthian_engine extensions for SFZ nanagement

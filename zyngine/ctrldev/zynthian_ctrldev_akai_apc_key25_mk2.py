@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -767,7 +765,7 @@ class MixerHandler(ModeHandlerBase):
         if refresh:
             self.refresh()
             self.refresh_pads()
-            
+
     def refresh_pads(self):
         """Not a full refresh, just the matrix of pads"""
         self.driver._leds.pad_leds_off()
@@ -879,7 +877,7 @@ class MixerHandler(ModeHandlerBase):
 
         if function == FN_SOLO:
             self.driver.toggle_mixer_param('solo', chain_index)
-            
+
             # val = self._zynmixer.get_solo(channel) ^ 1
             # self._zynmixer.set_solo(channel, val, True)
             return True
@@ -936,10 +934,10 @@ class PadMatrixHandler(ModeHandlerBase):
         # If seqman is enabled, ignore row functions
         if self._seqman_func is not None:
             return False
-        
+
         phrase = row + self.driver.scroll_v
         self._zynseq.libseq.togglePlayState(self._zynseq.scene, phrase, 32)
-        
+
         # if row >= self._zynseq.col_in_bank:
         #     return True
         # # @todo: just call the new phrase playing stuff?
@@ -1014,7 +1012,7 @@ class PadMatrixHandler(ModeHandlerBase):
     def refresh(self):
         if not self._libseq.isMidiRecord():
             self._recording_seq = None
-        
+
         phrases = self.driver.zynseq.state["scenes"][self.driver.zynseq.scene]["phrases"]
         max_phrase = len(phrases) - 1
         # for phrase in range(self.driver.scroll_v + 0, self.driver.scroll_v + 6):
@@ -1037,7 +1035,7 @@ class PadMatrixHandler(ModeHandlerBase):
             phrase = self._rows - 1 - row + self.driver.scroll_v
             if phrase > max_phrase:
                 continue
-            
+
             pad_info = phrases[phrase]["sequences"][midi_chan]
             self.update_pad(self._rows - 1 - row, note % 8, pad_info)
 
@@ -1065,7 +1063,7 @@ class PadMatrixHandler(ModeHandlerBase):
             self._stop_pattern_record()
         else:
             self._zynseq.libseq.togglePlayState(self._zynseq.scene, phrase, midi_chan)
-        
+
             # self._libseq.togglePlayState(self._zynseq.bank, seq)
 
         return True
@@ -1275,13 +1273,13 @@ class PadMatrixHandler(ModeHandlerBase):
 
         if self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
-        
+
         playstate = self._libseq.getPlayState(self._zynseq.scene, phrase, midi_chan)
         if playstate == zynseq.SEQ_STOPPED:
             self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
-  
+
         self._recording_seq = seq
         self._update_seq_pad(seq)
 
@@ -1313,7 +1311,7 @@ class PadMatrixHandler(ModeHandlerBase):
         pated = zyngui.screens['pattern_editor']
 
        # pated.do_clear_pattern_all()
-        
+
 #        self._libseq.clearSequence(scene, *seq)
         if seq_len != 0:
             n_tracks = self._libseq.getTracksInSequence(scene, *seq)
@@ -1361,10 +1359,10 @@ class PadMatrixHandler(ModeHandlerBase):
         self._clear_sequence(dst_scene, dst_seq, create_empty=False)
         pattern = self._libseq.getPatternAt(
                         src_scene, *src_seq, 0, 0)
-        
+
         destpattern = self._libseq.getPatternAt(
                         dst_scene, *dst_seq, 0, 0)
-        
+
         self._libseq.copyPattern(pattern, destpattern)
         # self._libseq.copyPattern(paste[2], self.pattern)
        #  self.load_pattern(self.pattern)
@@ -1934,7 +1932,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._zynseq.select_phrase(phrase)
         self._zynseq.libseq.selectSequence(self._zynseq.scene, phrase, chan)
         pattern = self._sequence_patterns[0]
-        
+
         zyngui = zynthian_gui_config.zyngui
         current_screen = zyngui.get_current_screen()
         if current_screen == 'pattern_editor':
@@ -2466,7 +2464,7 @@ class StepSeqHandler(ModeHandlerBase):
         # Avoid turning on the first LED when is stopping
         state = self._libseq.getPlayState(
             self._zynseq.scene, self._selected_seq[0], self._selected_seq[1]) & 0xff
-        
+
         if self._cursor == 0 and state != zynseq.SEQ_PLAYING:
             return
         if self._cursor < self._used_pads:
@@ -2484,7 +2482,7 @@ class StepSeqHandler(ModeHandlerBase):
         if status:
             self._note_pads_function = FN_SELECT_PATTERN
             if False:
-                # Arranger is moot  
+                # Arranger is moot
                 self._previous_screen = self._current_screen
                 self._state_manager.send_cuia("SCREEN_ARRANGER")
                 self._update_ui_arranger(
@@ -2646,7 +2644,7 @@ class StepSeqHandler(ModeHandlerBase):
         note = self._selected_note.note
         duration = None
         for step in range(num_steps):
-            is_old_note = duration != None
+            is_old_note = duration is not None
             if duration is None:
                 duration = self._libseq.getNoteDuration(step, note)
             if not duration:
@@ -2832,7 +2830,7 @@ class BaseControl:
 
         if value is None:
             return
-        
+
         self._set_note_property(note_spec, value)
         self._draw_column(col, value)
         self._play_note(note_spec)
@@ -3010,7 +3008,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler.refresh()
         if self._current_handler == self._mixer_handler:
             self._padmatrix_handler.refresh()
-    
+
     def update_seq_state(self, *args, **kwargs):
         if self._current_handler == self._mixer_handler:
             super().update_seq_state(*args, **kwargs)
@@ -3081,7 +3079,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                         row = 4 - note // 8
                         phrase = self.scroll_v + row
                         chan = self.get_filtered_midi_chan_by_index(pos)
-                        
+
                         if chan is None:
                             return False
                         if chan > 15:
@@ -3096,7 +3094,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                             self._current_handler.set_active(True)
                             self._current_handler.refresh()
                             return True
-                        
+
                         if self._current_handler != self._stepseq_handler:
                             self._current_handler.set_active(False)
                         self._current_handler = self._stepseq_handler

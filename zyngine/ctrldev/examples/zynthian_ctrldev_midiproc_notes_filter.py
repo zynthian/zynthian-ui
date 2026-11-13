@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -7,7 +5,7 @@
 # A simple note filter implemented as a python jack client.
 #
 # Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
-#                         Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -27,6 +25,10 @@
 
 import logging
 import multiprocessing as mp
+import struct
+from threading import Event
+
+import jack
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
@@ -48,10 +50,6 @@ class zynthian_ctrldev_notes_filter(zynthian_ctrldev_base):
 
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
-
-        import jack
-        import struct
-        from threading import Event
 
         # First 4 bits of status byte:
         NOTEON = 0x9

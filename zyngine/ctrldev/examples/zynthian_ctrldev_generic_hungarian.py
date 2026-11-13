@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -7,7 +5,7 @@
 # A simple chorder implemented with mididings.
 #
 # Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
-#                         Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -26,6 +24,7 @@
 # ******************************************************************************
 
 import logging
+from functools import partial  # needed for function params in mididings process
 
 # Zynthian specific modules
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
@@ -47,8 +46,8 @@ class zynthian_ctrldev_generic_hungarian(zynthian_ctrldev_base):
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
+        # Imported here so that mididings is only loaded in this forked process, not in the main UI process
         import mididings
-        from functools import partial  # needed for function params in mididings process
 
         #MODES = _MODES
         # scale_targets = MODES["Minor"]
@@ -74,7 +73,7 @@ class zynthian_ctrldev_generic_hungarian(zynthian_ctrldev_base):
                 return None  # for shorter modes with less then 7 tones
 
             chroma_note_cleaned = key_map[chroma_note]
-            if chroma_note_cleaned == None:  # is black key.
+            if chroma_note_cleaned is None:  # is black key.
                 return None  # discard event
 
             if not 0 <= chroma_note_cleaned < len(scale_targets):  # wrong scale_map values

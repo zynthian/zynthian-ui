@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -440,7 +438,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
             except IndexError:
                 pass
 
-            
+
     def zynpot_cb(self, i, dval):
         if not self.shown:
             return False

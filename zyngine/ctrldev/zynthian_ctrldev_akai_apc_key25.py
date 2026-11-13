@@ -81,7 +81,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
     def _on_midi_event(self, ev):
         evtype = (ev[0] >> 4) & 0x0F
         channel = ev[0] & 0x0F
-            
+
         # Direct keybed to chains
         if (channel == 1):
             return
@@ -102,7 +102,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                 # lib_zyncore.dev_send_note_on(self._idev, mk1_brightness_100, led, color)
             if not overlay:
                 self._state[led] = (color, brightness)
-    
+
     class DeviceHandler(zynthian_ctrldev_akai_apc_key25_mk2.DeviceHandler):
 
         COLS = 8
@@ -250,7 +250,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
                     return True
                 except:
                     return False
-        
+
     class PadMatrixHandler(zynthian_ctrldev_akai_apc_key25_mk2.PadMatrixHandler):
             BRIGHT_OFF = LED_BRIGHT_10
 
@@ -348,7 +348,7 @@ class zynthian_ctrldev_akai_apc_key25(zynthian_ctrldev_akai_apc_key25_mk2):
 
 
         def cc_change(self, ccnum, ccval):
-            
+
             if self._pressed_pads:
                 if self._note_config is not None:
                     return False

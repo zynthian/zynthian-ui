@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -7,7 +5,7 @@
 # A simple chorder for user mode.
 #
 # Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
-#                         Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -50,6 +48,7 @@ class zynthian_ctrldev_launchpad_mini_mk3_chorder(zynthian_ctrldev_base):
     def midiproc_task(self, jackname):
         zynthian_ctrldev_base.midiproc_task_reset_signal_handlers()
 
+        # Imported here so that mididings is only loaded in this forked process, not in the main UI process
         import mididings
 
         mididings.config(

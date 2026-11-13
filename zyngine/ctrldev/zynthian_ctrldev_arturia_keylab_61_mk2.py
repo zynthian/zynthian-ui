@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -109,17 +107,17 @@ SELECT_6 = Button(0x27, 0x1D)
 SELECT_7 = Button(0x28, 0x1E)
 SELECT_8 = Button(0x29, 0x1F)
 SELECT_MULTI = Button(0x2A, 0x33)
- 
+
 
 
 def pad_seq_index_inversion(pad_or_seq_index):
     """
     The pads on the arturia are row major and on the zynthian
     they are column major. This function converts between the two
-    
+
     :param pad_or_seq_index: Description
     """
-    return pad_or_seq_index % 4 * 4 + pad_or_seq_index // 4 
+    return pad_or_seq_index % 4 * 4 + pad_or_seq_index // 4
 
 
 # --------------------------------------------------------------------------
@@ -127,14 +125,14 @@ def pad_seq_index_inversion(pad_or_seq_index):
 # --------------------------------------------------------------------------
 class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
     """
-    The Arturia Keylab 61 Mk2 
+    The Arturia Keylab 61 Mk2
     - has 4x4 pad area
     - pitch shift
     - 61 piano keys
     - track control, global control and transport control buttons
     - and an 8 x mixing set with 8x(1  encoder, 1 fader and 1 toggle button) + 1 master.
-    
-    
+
+
     Resources:
     - https://downloads.arturia.com/products/keylab-49-mkII/manual/keylab-mk2_Manual_1_0_0_EN.pdf
     - https://github.com/bitwig/bitwig-extensions/tree/953f4be03da06dcbfa7efdd42a5e2236c9a3b77e/src/main/java/com/bitwig/extensions/controllers/arturia/keylab/mk2
@@ -144,8 +142,8 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
     dev_ids = ["KeyLab mkII 61 IN 2"]
     driver_name = 'Arturia Keylab 61 Mk2'
     driver_description = 'Full UI integration'
-    # Unroute 9: pads 
-    unroute_from_chains = True # 0b0000001000000000 # allow most channels. 
+    # Unroute 9: pads
+    unroute_from_chains = True # 0b0000001000000000 # allow most channels.
 
     # TODO: Are these colors any good?
     PAD_COLORS = [
@@ -165,10 +163,10 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         logging.info("initializing {} with port in:{} out:{}".format(self.driver_name, idev_in, idev_out))
 
         # Ideally these settings could be customized by user via GUI.
-        # No idea how to do that yet. 
+        # No idea how to do that yet.
         self.record_pressed = False
         self._chain_manager = state_manager.chain_manager
-        
+
         # NOTE: init will call refresh(), so _current_hanlder must be ready!
         super().__init__(state_manager, idev_in, idev_out)
         self.cols = 4
@@ -200,7 +198,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
 
     def refresh(self):
         super().refresh()
-    
+
     def update_metronome(self, mode, volume):
         # zero is off and 5 is silent
         self.setButtonState(GLOBAL_METRO.sysex, mode != 0 and mode != 5)
@@ -242,7 +240,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
 
         self._send_led_sysex(led_id, r, g, b)
 
-       
+
     def midi_event(self, ev):
         """ get a midi event  and do something with it. """
         self._log_midi(ev, self.idev)
@@ -251,10 +249,10 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
             # if we get the switch back into daw mode
             self.refresh()
             return True
-        
+
         evtype = (ev[0] >> 4) & 0x0F
         evchan = ev[0] & 0x0F # exists even if invalid for system messages
-            
+
         # DAW controller MIDI device
         if evtype == 0x9:
             # note on
@@ -262,11 +260,11 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
             _vel = ev[2] & 0x7F
             if note == TRANSPORT_PLAY_PAUSE:
                 # play/pause button
-                # todo should there be one transport toggle? Seems weird these are separate. 
+                # todo should there be one transport toggle? Seems weird these are separate.
                 self.state_manager.send_cuia("TOGGLE_PLAY")
             if note == TRANSPORT_STOP:
                 # play/pause button
-                # todo should there be one transport toggle? Seems weird these are separate. 
+                # todo should there be one transport toggle? Seems weird these are separate.
                 self.state_manager.send_cuia("STOP")
             if note == TRANSPORT_RECORD.note:
                 self.record_pressed = not self.record_pressed
@@ -319,11 +317,11 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         """
         chain_page = active_chain//8
         chain_index_in_page = active_chain % 8 - 1
-        print(chain_index_in_page)
+        logging.info(chain_index_in_page)
 
         for i in range(SELECT_1.sysex, SELECT_1.sysex + 8):
             self._send_led_sysex(i, 0, 0, 0)
-        
+
         self._send_led_sysex(SELECT_1.sysex + chain_index_in_page, 127, 0, 0)
 
 
@@ -357,10 +355,10 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         elif status >= 0x80:
             # Channel Messages
             cmd = status & 0xF0
-            chan = (status & 0x0F) 
+            chan = (status & 0x0F)
             d1 = ev[1] & 0x7F if len(ev) > 1 else 0
             d2 = ev[2] & 0x7F if len(ev) > 2 else 0
-            
+
             if cmd == 0x80: msg_desc = "Note Off Ch={} Note={} Vel={}".format(chan, d1, d2)
             elif cmd == 0x90: msg_desc = "Note {} Ch={} Note={} Vel={}".format("Off" if d2 == 0 else "On", chan, d1, d2)
             elif cmd == 0xA0: msg_desc = "Poly Pressure Ch={} Note={} Val={}".format(chan, d1, d2)
@@ -423,7 +421,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
 
         msg.extend(bytearray.fromhex("00 F7"))
         lib_zyncore.dev_send_midi_event(self.idev_out, bytes(msg), len(msg))
-    
+
     def setButtonState(self, sysex_id, is_on):
         """Sends a SysEx message to set the state of a button LED."""
         if self.idev_out is None:
@@ -436,7 +434,7 @@ class zynthian_ctrldev_arturia_keylab_61_mk2(zynthian_ctrldev_zynpad, zynthian_c
         msg.append(0xF7)
 
         lib_zyncore.dev_send_midi_event(self.idev_out, bytes(msg), len(msg))
-    
+
     def pad_off(self, col, row):
         seq = row * self.cols + col
         if seq < 16:

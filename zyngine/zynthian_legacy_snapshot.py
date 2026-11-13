@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Legacy Snapshots
 #
@@ -819,7 +818,7 @@ class zynthian_legacy_snapshot:
                         try:
                             out.append(processors[aout]['id'])
                         except:
-                            if not aout.startswith("system:playback_"): 
+                            if not aout.startswith("system:playback_"):
                                 out.append(aout)
                             else:
                                 mout = True

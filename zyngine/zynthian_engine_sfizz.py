@@ -1,5 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-# ******************************************************************************
+﻿# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_sfizz)
 #
 # zynthian_engine implementation for Sfizz

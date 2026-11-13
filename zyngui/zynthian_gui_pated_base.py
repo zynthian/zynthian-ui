@@ -1,12 +1,10 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Base Class
 #
 # Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
-#                         Brian Walton <brian@riban.co.uk>
+#                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -2174,9 +2172,9 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                         cpfc = self.launcher.can_paste_from_clipboard(i)
                         if cpfc is None:
                             wsl.blink(leds[wsli], wsl.wscolor_red)
-                        elif cpfc == False:
+                        elif cpfc is False:
                             wsl.blink(leds[wsli], wsl.wscolor_active2)
-                        elif cpfc == True:
+                        elif cpfc is True:
                             wsl.blink(leds[wsli], wsl.wscolor_active)
 
             # Block Selection (F3 in V5)

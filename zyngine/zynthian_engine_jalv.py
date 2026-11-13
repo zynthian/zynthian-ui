@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_jalv)
 #
@@ -643,8 +642,8 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         'http://gareus.org/oss/lv2/tuna#mod': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
         'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_aidax.py",
         'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py",
-        'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
-        'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_GxGraphicEQ.py",
+        'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_gxgraphiceq.py",
+        'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_gxgraphiceq.py",
         'https://dusk-audio.github.io/plugins/chord-analyzer-headless': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
         'https://dusk-audio.github.io/plugins/chord-analyzer-midi': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
         'https://dusk-audio.github.io/plugins/chord-analyzer': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
@@ -1085,7 +1084,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         self.proc_cmd(cmd)
         # Wait for save preset feedback
         i = 0
-        while i < 20 and self.save_preset_uri == None:
+        while i < 20 and self.save_preset_uri is None:
             sleep(0.1)
             i += 1
         return self.save_preset_uri

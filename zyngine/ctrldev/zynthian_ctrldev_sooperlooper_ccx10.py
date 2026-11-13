@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -255,7 +253,7 @@ class zynthian_ctrldev_sooperlooper_ccx10(zynthian_ctrldev_base):
             if state_val in (10, 20):
                 return True
             return False
-            
+
         # Fallback to local tracker if absolute state is somehow missing
         return self.mute_state[loop_index]
 
@@ -371,15 +369,15 @@ class zynthian_ctrldev_sooperlooper_ccx10(zynthian_ctrldev_base):
         current = self._selected_loop_index()
         next_idx = current + 1
         if next_idx >= NUM_LOOPS:
-            next_idx = LOOP1_INDEX + 1  
-            
+            next_idx = LOOP1_INDEX + 1
+
         cdict = self.processor.controllers_dict
         if LOOP_SELECTED_SYMBOL in cdict:
             zctrl = cdict[LOOP_SELECTED_SYMBOL]
             zctrl.set_value(next_idx + 1)
-            zctrl.send_value(True) 
+            zctrl.send_value(True)
             logging.debug(f"FCB1010: _select_next_loop OK -> selected loop {next_idx + 1}")
-            
+
         return next_idx
 
     def _full_reset(self):
@@ -450,17 +448,17 @@ class zynthian_ctrldev_sooperlooper_ccx10(zynthian_ctrldev_base):
 
             if loop_to_finish == LOOP1_INDEX:
                 # Loop 1: Check absolute state and only end recording if it's actually recording.
-                # Bypasses the mute completely. 
+                # Bypasses the mute completely.
                 self._stop_recording_if_active(loop_to_finish)
                 logging.debug("FCB1010: CC_CURRENT_MUTE_RECORD on Loop 1 -> ended recording, bypassing mute.")
             else:
-                # Loops 2-5: Stop recording and mute. 
+                # Loops 2-5: Stop recording and mute.
                 self._stop_recording_if_active(loop_to_finish)
                 self._set_mute(loop_to_finish, True)
 
             new_loop = self._select_next_loop()
             self._record_loop(new_loop)
-            
+
             return True
 
         # ── CC 16 : Mute loops 3,4,5 / Trigger loop 2 from the beginning (quantized)

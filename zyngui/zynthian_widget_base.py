@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -78,6 +76,7 @@ class zynthian_widget_base(tkinter.Frame):
             self.shown = False
 
     def update(self):
+        #TODO: Refactor to remove shadow of Tk update() method.
         if self.shown and self.zyngui_control.shown:
             self.get_monitors()
             #if self.widget_canvas.winfo_ismapped():

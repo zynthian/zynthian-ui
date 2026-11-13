@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 __all__ = [
     "zynthian_gui_config",
     "zynthian_gui_controller",

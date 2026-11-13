@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -902,6 +901,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
 
     def update(self):
         """Update the widget display if it is currently shown."""
+        #TODO: Refactor to remove shadow of Tk update() method.
         if self.shown and self.zyngui_control.shown:
             self.refresh_gui()
 

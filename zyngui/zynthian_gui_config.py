@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -26,9 +24,11 @@
 import os
 import sys
 import logging
+import inspect
 
 # Zynthian specific modules
 import zynconf
+from zyncoder.zyncore import lib_zyncore_init
 
 
 def get_env_int(env_var, default_val=0):
@@ -79,7 +79,6 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.info("ZYNTHIAN-UI CONFIG ...")
 
 if log_level == logging.DEBUG:
-    import inspect
     def logging_call_stack():
         fnames = []
         stack = list(inspect.stack())
@@ -631,7 +630,8 @@ mixer_toggle = os.environ.get('ZYNTHIAN_UI_MIXER_TOGGLE', "record")
 main_menu_columns = get_env_int('ZYNTHIAN_UI_MAIN_MENU_COLUMNS', 0)
 
 # Mixer digital peak meter (DPM) and fader configuration. Values are dB and seconds.
-dpm_range_db = get_env_float('ZYNTHIAN_MIXER_DPM_RANGE_DB', 72.0, 24.0, 120.0)  # dB span of meter scale below 0dBFS
+dpm_range_db = get_env_float('ZYNTHIAN_MIXER_DPM_RANGE_DB', 72.0, 24.0, 120.0)  # dB span of meter scale
+dpm_small_range_db = get_env_float('ZYNTHIAN_MIXER_DPM_SMALL_RANGE_DB', 40.0, 12.0, 120.0)  # dB span of small meter scale
 dpm_zero_db = get_env_float('ZYNTHIAN_MIXER_DPM_ZERO_DB', -18.0, 6.0 - dpm_range_db, -3.0)  # dBFS of meter "0dB" reference. EBU: -18
 dpm_decay_db_per_s = get_env_float('ZYNTHIAN_MIXER_DPM_DECAY_DB_PER_S', 30.0, 1.0, 200.0)  # Meter fall rate (dB/s)
 dpm_hold_s = get_env_float('ZYNTHIAN_MIXER_DPM_HOLD_S', 2.0, 0.0, 30.0)  # Peak hold time. 0 disables hold
@@ -796,6 +796,8 @@ for i, value in enumerate(LAUNCHER_COLOUR):
 # ------------------------------------------------------------------------------
 
 if "zynthian_main.py" in sys.argv[0]:
+    # Tk and PIL are only needed by the main UI process. This module is also imported by processes
+    # that have no display, such as zynthian_headless.py, so they are not imported at module level.
     import tkinter
     from PIL import Image, ImageTk
 
@@ -936,6 +938,7 @@ if "zynthian_main.py" in sys.argv[0]:
         if touch_navigation:
             # Create touch keypad frame and show it!
             try:
+                # Imported here because zynthian_gui_touchkeypad_v5 imports this module (circular import)
                 from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
                 touch_keypad = zynthian_gui_touchkeypad_v5()
                 set_touch_keypad(get_env_int("ZYNTHIAN_TOUCH_SHOWN", 0))
@@ -971,12 +974,6 @@ if "zynthian_main.py" in sys.argv[0]:
 
     except Exception as e:
         logging.error("ERROR initializing Tkinter graphic framework => {}".format(e))
-
-    # ------------------------------------------------------------------------------
-    # Initialize ZynCore low-level library
-    # ------------------------------------------------------------------------------
-
-    from zyncoder.zyncore import lib_zyncore_init
 
     # ------------------------------------------------------------------------------
     # Initialize and config control I/O subsystem: switches, analog I/O, ...

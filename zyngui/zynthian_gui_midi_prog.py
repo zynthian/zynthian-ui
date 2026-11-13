@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
@@ -40,6 +38,7 @@ class zynthian_gui_midi_prog(zynthian_gui_selector):
         super().__init__('Prog', True)
 
     def config(self, prg_num, cb_action):
+        #TODO: Refactor to remove shadow of Tk config() method.
         try:
             self.index = int(prg_num) + 1
         except:

@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020-2023 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2023 Brian Walton <riban@zynthian.org>
  *
  * ******************************************************************
  *

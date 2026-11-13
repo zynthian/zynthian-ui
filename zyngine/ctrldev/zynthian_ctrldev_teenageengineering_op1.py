@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
@@ -8,10 +6,10 @@
 # Designed to work with OP-1 in MIDI Mode:
 # - On OP-1, press Shift+COM
 # - Choose CTRL (Button T2)
-# - Press Shift button to verify knobs are sending relative CC, change with blue 
+# - Press Shift button to verify knobs are sending relative CC, change with blue
 #   encoder if needed.
-# - Press Shift button to verify <> buttons are sending MIDI CC, change 
-#   with white encoder if desired. Set to Octave +- if this behavior is 
+# - Press Shift button to verify <> buttons are sending MIDI CC, change
+#   with white encoder if desired. Set to Octave +- if this behavior is
 #   preferred.
 #
 # Copyright (C) 2026 Bernard Vander Beken <bernard@jawn.net>
@@ -126,7 +124,7 @@ class zynthian_ctrldev_teenageengineering_op1(zynthian_ctrldev_zynmixer):
 
             # Encoder buttons
             # ZynSwitch logic for button presses and releases
-            elif ccnum >= OP1_ENCODER_1_PUSH and ccnum <= OP1_ENCODER_4_PUSH:                
+            elif ccnum >= OP1_ENCODER_1_PUSH and ccnum <= OP1_ENCODER_4_PUSH:
                 # CC to corresonding zynswitch mappings
                 zynswitch_index = {OP1_ENCODER_1_PUSH: 0, OP1_ENCODER_2_PUSH: 1, OP1_ENCODER_3_PUSH: 2, OP1_ENCODER_4_PUSH: 3}.get(ccnum)
 

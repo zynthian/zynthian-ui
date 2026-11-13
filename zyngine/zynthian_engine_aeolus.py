@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_aeolus)
 #
@@ -543,7 +542,7 @@ class zynthian_engine_aeolus(zynthian_engine):
         return res
 
     def all_stops_off(self, processor=None):
-        if processor == None:
+        if processor is None:
             processors = self.processors
         else:
             processors = [processor]

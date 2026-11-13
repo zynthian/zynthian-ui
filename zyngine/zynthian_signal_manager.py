@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Signal Manager (zynthian_signal_manager)
 #
@@ -204,8 +203,7 @@ class zynthian_signal_manager:
                         #logging.debug(f"  => calling {rdata[0].__name__}(...)")
                         rdata[0](**kwargs)
                     except Exception as e:
-                        logging.error(f"Callback '{rdata[0].__name__}(...)' for signal({signal},{subsignal}): {e}")
-                        logging.exception(traceback.format_exc())
+                        logging.exception(f"Callback '{rdata[0].__name__}(...)' for signal({signal},{subsignal}): {e}")
 
     def send(self, signal, subsignal, **kwargs):
         """ Send direct call signal
@@ -237,8 +235,7 @@ class zynthian_signal_manager:
                 # logging.debug(f"  => calling {data[2].__name__}(...)")
                 data[2](**data[3])
             except Exception as e:
-                logging.error(f"Queued callback '{data[2].__name__}(...)' for signal({data[0]},{data[1]}): {e}")
-                logging.exception(traceback.format_exc())
+                logging.exception(f"Queued callback '{data[2].__name__}(...)' for signal({data[0]},{data[1]}): {e}")
 
 # ---------------------------------------------------------------------------
 

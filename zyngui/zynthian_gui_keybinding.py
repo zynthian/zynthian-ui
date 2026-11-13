@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian Keyboard Binding Class
 #
-# Copyright (C) 2019-2023 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2019-2023 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #

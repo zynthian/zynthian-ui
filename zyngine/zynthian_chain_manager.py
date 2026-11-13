@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Chain Manager (zynthian_chain_manager)
 #
@@ -2043,9 +2042,9 @@ class zynthian_chain_manager:
         obj : Object to clean [chain_id | processor | zctrl] (Default: active chain)
         """
 
-        if obj == None:
+        if obj is None:
             obj = self.active_chain.chain_id
-        if obj == None:
+        if obj is None:
             return
 
         if isinstance(obj, zynthian_controller):

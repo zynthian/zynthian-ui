@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8 -*-
 # ********************************************************************
 # ZYNTHIAN PROJECT: Zynseq Python Wrapper
 #
 # A Python wrapper for zynseq library
 #
-# Copyright (C) 2021-2026 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2026 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #
@@ -278,7 +276,7 @@ class zynseq(zynthian_engine):
 
         except Exception as e:
             self.libseq = None
-            print("Can't initialise zynseq library: %s" % str(e))
+            logging.error("Can't initialise zynseq library: %s" % str(e))
 
         self.zctrl_tempo = zynthian_controller(self, 'bpm', {
             'name': 'BPM',
@@ -442,7 +440,7 @@ class zynseq(zynthian_engine):
             return False
         self.phrase = phrase
         zynsigman.send(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_SELECT_PHRASE, phrase=phrase)
-        
+
     def get_phrase_loop_info(self, phrase=None):
         """ Get info for loop that this phrase is within
         Args:
@@ -450,7 +448,7 @@ class zynseq(zynthian_engine):
         Returns: Tuple of phrase loop info (loop_end_phrase, loop_length, repeat_count) or None if not in loop
         """
 
-        if phrase == None:
+        if phrase is None:
             phrase = self.phrase
         i = phrase
         while True:
@@ -476,7 +474,7 @@ class zynseq(zynthian_engine):
         Returns: List of tuples of phrase loop info (loop_end_phrase, loop_length, repeat_count) or None if not in loop
         """
 
-        if phrase == None:
+        if phrase is None:
             phrase = self.phrase
         i = phrase
         res = []
