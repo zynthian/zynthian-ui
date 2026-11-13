@@ -1,0 +1,21 @@
+# Development / test requirements (the full runtime set is in requirements.txt)
+pytest>=8
+pytest-timeout
+ruff
+
+# Minimum third-party packages needed to *import* the core under test (native layer is faked).
+# Bindings that come from OS packages (lilv, dbus, mididings, ...) are stubbed by tests/bootstrap.py
+# when missing, so they are not required here. Pillow is needed by zyngui.
+JACK-Client
+pyalsaaudio
+pexpect
+psutil
+numpy
+oyaml
+Levenshtein
+PyYAML
+requests
+scipy
+pyliblo3
+websocket-client
+pillow

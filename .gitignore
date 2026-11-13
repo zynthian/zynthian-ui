@@ -8,3 +8,6 @@ zynlibs/*/build
 .old
 *.APIKEY
 *.TOKEN
+.pytest_cache
+.ruff_cache
+tests/native/build/

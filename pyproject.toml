@@ -1,0 +1,28 @@
+# Tooling configuration only. The project is not (yet) an installable package.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers --strict-config"
+timeout = 60
+markers = [
+    "unit: pure-Python unit test, no hardware (default)",
+    "integration: several real core objects wired together, native layer faked",
+    "gui: needs Tk and a display (run under xvfb-run)",
+    "jack: needs a running JACK server (ZYNTHIAN_TEST_JACK=1)",
+    "native: needs the compiled zyncoder/zynlibs .so files (ZYNTHIAN_TEST_REAL_ZYNCORE=1)",
+    "hardware: needs a real Zynthian box (ZYNTHIAN_TEST_HARDWARE=1)",
+]
+# Legacy modules contain invalid regex escapes ("\\s" in non-raw strings): noisy now, errors in a future Python.
+# Worth fixing (use raw strings); hidden here so real warnings stay visible.
+filterwarnings = ["ignore::DeprecationWarning", "ignore::SyntaxWarning"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["venv", "venv.bak", "build", "zynagent", "zynlibs/*/build"]
+
+# Lint only what is new, to avoid churn in the legacy code base. Widen later.
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]  # syntax errors / undefined names only

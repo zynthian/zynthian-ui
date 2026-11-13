@@ -22,6 +22,7 @@
 # ********************************************************************
 
 import ctypes
+import logging
 from _ctypes import dlclose
 from os.path import dirname, realpath
 import os
