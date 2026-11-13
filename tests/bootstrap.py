@@ -22,6 +22,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+
+def zyncoder_dir():
+    """The zyncoder source checkout (a separate repo), or None: $ZYNCODER_DIR, ./zyncoder, ../zyncoder."""
+    for cand in (os.environ.get("ZYNCODER_DIR"), REPO_ROOT / "zyncoder", REPO_ROOT.parent / "zyncoder"):
+        if cand and (Path(cand) / "zynmidirouter.h").is_file():
+            return Path(cand)
+    return None
+
 # --- Environment expected by production modules at import time ---------------
 SANDBOX = Path(tempfile.mkdtemp(prefix="zynthian-tests-"))
 atexit.register(shutil.rmtree, SANDBOX, ignore_errors=True)
@@ -97,7 +105,15 @@ def install_fakes():
     if os.environ.get("ZYNTHIAN_TEST_REAL_ZYNCORE") == "1":
         return
     NATIVE.install()
-    import zyncoder  # package only (has no import side effects)
+    try:
+        import zyncoder  # package only (has no import side effects)
+    except ImportError:
+        # `zyncoder` is a separate repository: in a clean clone it is a dangling symlink (or absent).
+        # The fake is all the tests need, so provide an empty package to hang it on.
+        import types
+        zyncoder = types.ModuleType("zyncoder")
+        zyncoder.__path__ = []
+        sys.modules["zyncoder"] = zyncoder
     mod = build_module(FAKE_ZYNCORE)
     sys.modules["zyncoder.zyncore"] = mod
     zyncoder.zyncore = mod

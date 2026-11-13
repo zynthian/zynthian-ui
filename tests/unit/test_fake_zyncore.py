@@ -2,6 +2,8 @@
 
 import sys
 
+import pytest
+
 
 def test_production_import_gets_the_fake(zyncore):
     from zyncoder.zyncore import lib_zyncore
@@ -86,8 +88,11 @@ def test_default_return_follows_ctypes_restype(zyncore):
 def test_router_constants_match_header(zyncore):
     """The fake's import-time constants must mirror zyncoder/zynmidirouter.h."""
     import re
-    from pathlib import Path
-    header = (Path(__file__).resolve().parents[2] / "zyncoder" / "zynmidirouter.h").read_text()
+    from tests.bootstrap import zyncoder_dir
+    src = zyncoder_dir()
+    if src is None:
+        pytest.skip("zyncoder sources not found (set ZYNCODER_DIR)")
+    header = (src / "zynmidirouter.h").read_text()
 
     def define(name):
         return int(re.search(rf"#define\s+{name}\s+(\d+)", header).group(1))

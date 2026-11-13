@@ -7,6 +7,8 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-24.04
+    env:
+      ZYNCODER_DIR: ${{ github.workspace }}/zyncoder-src
     strategy:
       fail-fast: false
       matrix:
