@@ -253,9 +253,8 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
         if os.path.isdir(dpath):
             # Locate sfz files and move all them to first level directory
             try:
-                cmd = f"find \"{dpath}\" -type f -iname *.sfz"
-                sfz_files = check_output(
-                    cmd, shell=True).decode("utf-8").split("\n")
+                cmd = ["find", dpath, "-type", "f", "-iname", "*.sfz"]
+                sfz_files = check_output(cmd).decode("utf-8").split("\n")
                 # Find the "shallower" SFZ file
                 shallower_sfz_file = sfz_files[0]
                 shallower_sfz_deep = shallower_sfz_file.count('/')

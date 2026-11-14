@@ -22,6 +22,7 @@
 # ******************************************************************************
 
 import os
+import subprocess
 import re
 import json
 import glob
@@ -204,7 +205,7 @@ class zynthian_engine(zynthian_basic_engine):
     def config_remote_display(self):
         if 'ZYNTHIAN_X11_SSH' in os.environ and 'SSH_CLIENT' in os.environ and 'DISPLAY' in os.environ:
             return True
-        elif os.system('systemctl -q is-active vncserver1'):
+        elif subprocess.run(["systemctl", "-q", "is-active", "vncserver1"]).returncode:
             return False
         else:
             self.command_env['DISPLAY'] = ':1'

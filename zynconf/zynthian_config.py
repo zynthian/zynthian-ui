@@ -206,7 +206,7 @@ def load_config(set_env=True, fpath=None):
     #logging.debug(f"CONFIG VARNAMES: {varnames}")
 
     # Execute config script and dump environment
-    env = check_output(f"source \"{fpath}\";env", shell=True, universal_newlines=True, executable="/bin/bash")
+    env = check_output(["/bin/bash", "-c", 'source "$1"; env', "bash", fpath], universal_newlines=True)
 
     # Parse environment dump
     config = {}
@@ -309,7 +309,7 @@ def load_plain_envars(fpath, set_env=True):
 def update_sys():
     try:
         os.environ['ZYNTHIAN_FLAG_MASTER'] = "NONE"
-        check_output(os.environ.get('ZYNTHIAN_SYS_DIR') + "/scripts/update_zynthian_sys.sh", shell=True)
+        check_output([os.environ.get('ZYNTHIAN_SYS_DIR') + "/scripts/update_zynthian_sys.sh"])
     except Exception as e:
         logging.error("Updating Sytem Config: %s" % e)
 
@@ -528,21 +528,17 @@ def get_external_storage_dirs(exdpath):
 # -------------------------------------------------------------------------------
 
 def is_process_running(procname):
-    cmd = "ps -e | grep %s" % procname
     try:
-        result = check_output(cmd, shell=True).decode('utf-8', 'ignore')
-        if len(result) > 3:
-            return True
-        else:
-            return False
+        # pgrep exits non-zero (raising CalledProcessError) when nothing matches
+        check_output(["pgrep", procname])
+        return True
     except Exception as e:
         return False
 
 
 def is_service_active(service):
-    cmd = "systemctl is-active %s" % service
     try:
-        result = check_output(cmd, shell=True).decode('utf-8', 'ignore')
+        result = check_output(["systemctl", "is-active", service]).decode('utf-8', 'ignore')
     except Exception as e:
         result = "ERROR: %s" % e
     # loggin.debug("Is service "+str(service)+" active? => "+str(result))

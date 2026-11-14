@@ -932,13 +932,13 @@ class zynthian_state_manager:
             self.last_event_flag = False
             self.last_event_ts = monotonic() - zynthian_gui_config.power_save_secs
             try:
-                check_output("powersave_control.sh on", shell=True)
+                check_output(["powersave_control.sh", "on"])
             except Exception as e:
                 logging.error(e)
         else:
             logging.info("Power Save Mode: OFF")
             try:
-                check_output("powersave_control.sh off", shell=True)
+                check_output(["powersave_control.sh", "off"])
             except Exception as e:
                 logging.error(e)
             self.ctrldev_manager.sleep_off()
@@ -2460,7 +2460,7 @@ class zynthian_state_manager:
             try:
                 logging.info("STARTING VNC-UI SERVICE")
                 self.set_busy_details("starting VNC-UI service")
-                check_output("systemctl start novnc0", shell=True)
+                check_output(["systemctl", "start", "novnc0"])
                 zynthian_gui_config.vncserver_enabled = 1
             except Exception as e:
                 logging.error(e)
@@ -2479,7 +2479,7 @@ class zynthian_state_manager:
             try:
                 logging.info("STARTING VNC-ENGINES SERVICE")
                 self.set_busy_details("starting VNC-ENGINES service")
-                check_output("systemctl start novnc1", shell=True)
+                check_output(["systemctl", "start", "novnc1"])
                 zynthian_gui_config.vncserver_enabled = 1
             except Exception as e:
                 logging.error(e)
@@ -2507,7 +2507,7 @@ class zynthian_state_manager:
             try:
                 logging.info("STOPPING VNC-UI SERVICE")
                 self.set_busy_details("stopping VNC-UI service")
-                check_output("systemctl stop vncserver0", shell=True)
+                check_output(["systemctl", "stop", "vncserver0"])
                 zynthian_gui_config.vncserver_enabled = 0
             except Exception as e:
                 logging.error(e)
@@ -2526,7 +2526,7 @@ class zynthian_state_manager:
             try:
                 logging.info("STOPPING VNC-ENGINES SERVICE")
                 self.set_busy_details("stopping VNC-ENGINES service")
-                check_output("systemctl stop vncserver1", shell=True)
+                check_output(["systemctl", "stop", "vncserver1"])
                 zynthian_gui_config.vncserver_enabled = 0
             except Exception as e:
                 logging.error(e)
@@ -2572,7 +2572,7 @@ class zynthian_state_manager:
         self.start_busy("start_netump", "starting NetUMP MIDI 2.0")
         logging.info("STARTING Network MIDI 2.0")
         try:
-            check_output(f"systemctl start {service}", shell=True)
+            check_output(["systemctl", "start", service])
             zynthian_gui_config.midi_netump_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2599,7 +2599,7 @@ class zynthian_state_manager:
         self.start_busy("stop_netump", "stopping Network MIDI 2.0")
         logging.info("STOPPING Network MIDI 2.0")
         try:
-            check_output(f"systemctl stop {service}", shell=True)
+            check_output(["systemctl", "stop", service])
             zynthian_gui_config.midi_netump_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2632,7 +2632,7 @@ class zynthian_state_manager:
         self.start_busy("start_rtpmidi", "starting RTP-MIDI")
         logging.info("STARTING RTP-MIDI")
         try:
-            check_output(f"systemctl start {service}", shell=True)
+            check_output(["systemctl", "start", service])
             zynthian_gui_config.midi_rtpmidi_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2659,7 +2659,7 @@ class zynthian_state_manager:
         self.start_busy("stop_rtpmidi", "stopping RTP-MIDI")
         logging.info("STOPPING RTP-MIDI")
         try:
-            check_output(f"systemctl stop {service}", shell=True)
+            check_output(["systemctl", "stop", service])
             zynthian_gui_config.midi_rtpmidi_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2685,7 +2685,7 @@ class zynthian_state_manager:
         self.start_busy("start_qmidinet", "starting QMidiNet")
         logging.info("STARTING QMidiNet")
         try:
-            check_output(f"systemctl start {service}", shell=True)
+            check_output(["systemctl", "start", service])
             zynthian_gui_config.midi_network_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2712,7 +2712,7 @@ class zynthian_state_manager:
         self.start_busy("stop_qmidinet", "stopping QMidiNet")
         logging.info("STOPPING QMidiNet")
         try:
-            check_output(f"systemctl stop {service}", shell=True)
+            check_output(["systemctl", "stop", service])
             zynthian_gui_config.midi_network_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2744,7 +2744,7 @@ class zynthian_state_manager:
         self.start_busy("start_touchosc2midi", "starting Touch-OSC")
         logging.info("STARTING touchosc2midi")
         try:
-            check_output(f"systemctl start {service}", shell=True)
+            check_output(["systemctl", "start", service])
             zynthian_gui_config.midi_touchosc_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2771,7 +2771,7 @@ class zynthian_state_manager:
         self.start_busy("stop_touchosc2midi", "stopping Touch-OSC")
         logging.info("STOPPING touchosc2midi")
         try:
-            check_output(f"systemctl stop {service}", shell=True)
+            check_output(["systemctl", "stop", service])
             zynthian_gui_config.midi_touchosc_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2796,11 +2796,11 @@ class zynthian_state_manager:
     # Unblock all soft-blocked bluetooth controllers
     def unblock_bluetooth_controllers(self):
         self.start_busy("Unblock Bluetooth Controllers")
-        for row in check_output("rfkill -n", shell=True, encoding="utf-8").split("\n"):
+        for row in check_output(["rfkill", "-n"], encoding="utf-8").split("\n"):
             parts = row.split()  # ID, type, device, soft blocked, hard blocked
             if len(parts) == 5 and parts[1].strip() == "bluetooth" and parts[3].strip() == "blocked":
                 logging.debug(f"Unblocking {parts[0].strip()}")
-                check_output(f"rfkill unblock {parts[0].strip()}", shell=True)
+                check_output(["rfkill", "unblock", parts[0].strip()])
         self.end_busy("Unblock Bluetooth Controllers")
 
     def select_bluetooth_controller(self, controller):
@@ -2809,7 +2809,7 @@ class zynthian_state_manager:
             return
         self.unblock_bluetooth_controllers()
         proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
-        for addr in check_output("bluetoothctl list", shell=True, timeout=1, encoding="utf-8").split():
+        for addr in check_output(["bluetoothctl", "list"], timeout=1, encoding="utf-8").split():
             if addr.count(":") == 5:
                 proc.stdin.write(f"select {addr}\n")
                 if controller == addr:
@@ -2835,7 +2835,7 @@ class zynthian_state_manager:
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
         try:
-            check_output(f"systemctl start {service}", shell=True, timeout=2)
+            check_output(["systemctl", "start", service], timeout=2)
             sleep(wait)
             zynthian_gui_config.bluetooth_enabled = 1
             self.select_bluetooth_controller(zynthian_gui_config.ble_controller)
@@ -2863,7 +2863,7 @@ class zynthian_state_manager:
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
         try:
-            check_output(f"systemctl stop {service}", shell=True, timeout=1)
+            check_output(["systemctl", "stop", service], timeout=1)
             sleep(wait)
             zynthian_gui_config.bluetooth_enabled = 0
             # Update MIDI profile
@@ -2895,7 +2895,7 @@ class zynthian_state_manager:
         self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
         try:
-            check_output(f"systemctl start {service}", shell=True)
+            check_output(["systemctl", "start", service])
             zynthian_gui_config.midi_aubionotes_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2923,7 +2923,7 @@ class zynthian_state_manager:
         self.start_busy("stop_aubionotes", "stopping AubioNotes")
         logging.info("STOPPING aubionotes")
         try:
-            check_output(f"systemctl stop {service}", shell=True)
+            check_output(["systemctl", "stop", service])
             zynthian_gui_config.midi_aubionotes_enabled = 0
             # Update MIDI profile
             if save_config:

@@ -1278,8 +1278,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         # Try to copy LV2 bundles ...
         if os.path.isdir(dpath):
             # Find manifest.ttl
-            manifest_files = check_output(f"find \"{dpath}\" -type f -iname manifest.ttl",
-                                          shell=True).decode("utf-8").split("\n")
+            manifest_files = check_output(["find", dpath, "-type", "f", "-iname", "manifest.ttl"]).decode("utf-8").split("\n")
             # Copy LV2 bundle directories to destiny ...
             count = 0
             for f in manifest_files:
@@ -1295,9 +1294,9 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
 
         # Else, try to convert from native format ...
         if native_ext and (os.path.isdir(dpath) or ext[1:].lower() == native_ext):
-            preset2lv2_cmd = f"cd /tmp; preset2lv2 {cls.zynapi_get_preset2lv2_format()} \"{dpath}\""
+            preset2lv2_cmd = ["preset2lv2", cls.zynapi_get_preset2lv2_format(), dpath]
             try:
-                res = check_output(preset2lv2_cmd, stderr=STDOUT, shell=True).decode("utf-8")
+                res = check_output(preset2lv2_cmd, stderr=STDOUT, cwd="/tmp").decode("utf-8")
                 for bname in re.compile("Bundle '(.*)' generated").findall(res):
                     bpath = "/tmp/" + bname
                     logging.debug("Copying LV2-Bundle '{}' ...".format(bpath))
@@ -1314,7 +1313,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
                 parts = os.path.split(dpath)
                 shutil.rmtree(native_presets_dir + "/" + parts[1], ignore_errors=True)
                 shutil.move(dpath, native_presets_dir)
-                check_output(f"regenerate_lv2_presets.sh \"{cls.zynapi_instance.plugin_url}\" NO_LV2_CACHE_REGENERATION", shell=True)
+                check_output(["regenerate_lv2_presets.sh", cls.zynapi_instance.plugin_url, "NO_LV2_CACHE_REGENERATION"])
                 cls.refresh_zynapi_instance()
             except:
                 raise Exception("Unknown preset format: {}".format(native_ext))
