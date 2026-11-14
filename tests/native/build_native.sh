@@ -6,8 +6,8 @@
 #                          built by build_zyncore.sh, which can also be run on its own
 #   libzynseq.so, libzynsmf.so, libzynaudioplayer.so, libzynmixer*.so     from zynlibs/
 #
-# Needs cmake, gcc/g++, libjack-dev, liblo-dev (+ libsndfile, libsamplerate, librubberband dev for the audio
-# player). The source trees (and their own build/ dirs) are left untouched.
+# Needs cmake, gcc/g++, libjack-dev, liblo-dev, nlohmann-json3-dev (zynseq) (+ libsndfile, libsamplerate,
+# librubberband dev for the audio player). The source trees (and their own build/ dirs) are left untouched.
 #
 #   tests/native/build_native.sh [path/to/zyncoder]     (default: ../zyncoder next to zynthian-ui)
 #   ONLY="zynseq zynsmf" tests/native/build_native.sh   build just some components
@@ -22,7 +22,9 @@ failed=0
 
 # The zynlibs are built Release, like their own build.sh does: without optimisation libzynaudioplayer has an
 # undefined symbol (`inline` get_player() in player.c) and cannot be loaded.
-RELEASE="-DCMAKE_BUILD_TYPE=Release"
+# Warnings are not errors here: the CMakeLists use -Werror, which fails on distributions whose compiler is
+# hardened (Ubuntu: _FORTIFY_SOURCE makes an ignored fread() result an error) although the code is fine.
+RELEASE="-DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-Wno-error -DCMAKE_C_FLAGS=-Wno-error"
 
 build() {  # build <component> <source dir> <cmake args> <env assignments...>
     local name="$1" src="$2" cmake_args="$3"; shift 3
