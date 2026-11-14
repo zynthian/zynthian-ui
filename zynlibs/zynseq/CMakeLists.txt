@@ -6,7 +6,6 @@ include(CheckLibraryExists)
 find_package(mimalloc QUIET)
 
 link_directories(/usr/local/lib)
-set (CMAKE_BUILD_TYPE Debug)
 
 add_library(zynseq SHARED zynseq.h zynseq.cpp sequencemanager.cpp pattern.cpp sequence.cpp timebase.cpp track.cpp)
 add_definitions(-Werror)
