@@ -22,9 +22,11 @@ failed=0
 
 # The zynlibs are built Release, like their own build.sh does: without optimisation libzynaudioplayer has an
 # undefined symbol (`inline` get_player() in player.c) and cannot be loaded.
-# Warnings are not errors here: the CMakeLists use -Werror, which fails on distributions whose compiler is
-# hardened (Ubuntu: _FORTIFY_SOURCE makes an ignored fread() result an error) although the code is fine.
-RELEASE="-DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-Wno-error -DCMAKE_C_FLAGS=-Wno-error"
+# The CMakeLists use -Werror, which fails on distributions whose compiler is hardened (Ubuntu: _FORTIFY_SOURCE
+# makes an ignored fread() result an error) although the code is fine. -Wno-error alone is not enough (the
+# CMakeLists' later -Werror wins with some GCC versions), so the warning itself is switched off.
+WARN="-Wno-error -Wno-unused-result"
+RELEASE="-DCMAKE_BUILD_TYPE=Release"
 
 build() {  # build <component> <source dir> <cmake args> <env assignments...>
     local name="$1" src="$2" cmake_args="$3"; shift 3
@@ -55,9 +57,9 @@ if [[ " $ONLY " == *" zyncore "* ]]; then
         echo "SKIP  zyncore: no sources at $ZYNCODER"
     fi
 fi
-build zynseq         "$UI/zynlibs/zynseq"          "$RELEASE" X=1
-build zynsmf         "$UI/zynlibs/zynsmf"          "$RELEASE" X=1
-build zynaudioplayer "$UI/zynlibs/zynaudioplayer"  "$RELEASE" X=1
-build zynmixer       "$UI/zynlibs/zynmixer"        "$RELEASE" X=1
+build zynseq         "$UI/zynlibs/zynseq"          "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
+build zynsmf         "$UI/zynlibs/zynsmf"          "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
+build zynaudioplayer "$UI/zynlibs/zynaudioplayer"  "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
+build zynmixer       "$UI/zynlibs/zynmixer"        "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
 ls "$BUILD"/lib*.so
 exit $failed
