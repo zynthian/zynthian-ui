@@ -14,9 +14,9 @@ jobs:
       matrix:
         python-version: ["3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -38,7 +38,7 @@ jobs:
         run: ruff check .
 
       # The zyncoder repo is separate; the real router is built from it (TOUCH_ONLY: no wiringPi / I2C).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: zynthian/zyncoder
           path: zyncoder-src
