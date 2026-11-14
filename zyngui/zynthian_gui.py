@@ -3464,6 +3464,6 @@ class zynthian_gui:
 
     # This should be removed!!
     def get_zynthian_config(self, varname):
-        return eval("zynthian_gui_config.{}".format(varname))
+        return getattr(zynthian_gui_config, varname)
 
 # ------------------------------------------------------------------------------

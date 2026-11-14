@@ -2950,10 +2950,7 @@ class zynthian_state_manager:
     # ---------------------------------------------------------------------------
 
     def get_zynthian_config(self, varname):
-        try:
-            return eval("zynthian_gui_config.{}".format(varname))
-        except:
-            return None
+        return getattr(zynthian_gui_config, varname, None)
 
     def allow_rbpi_headphones(self):
         try:
