@@ -22,13 +22,14 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
-      # Shared libraries needed by the Python bindings, plus what is needed to build the real
-      # libzyncore.so (cmake, gcc) and to run a private dummy JACK server (jackd2) for tests/native.
+      # Shared libraries needed by the Python bindings, plus what tests/native needs: cmake + gcc and the
+      # audio dev libs to build the real native libraries, and jackd2 for a private dummy JACK server.
       - name: System libraries
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            libjack-jackd2-0 libjack-jackd2-dev jackd2 libasound2-dev liblo-dev xvfb cmake build-essential
+            libjack-jackd2-0 libjack-jackd2-dev jackd2 libasound2-dev liblo-dev xvfb cmake build-essential \
+            libsndfile1-dev libsamplerate0-dev librubberband-dev
 
       - name: Python dependencies
         run: python -m pip install -r requirements-dev.txt
@@ -42,8 +43,8 @@ jobs:
           repository: zynthian/zyncoder
           path: zyncoder-src
 
-      - name: Build real libzyncore.so (TOUCH_ONLY)
-        run: tests/native/build_zyncore.sh "$GITHUB_WORKSPACE/zyncoder-src"
+      - name: Build real native libraries (zyncore TOUCH_ONLY, zynseq, zynsmf, zynaudioplayer, zynmixer)
+        run: tests/native/build_native.sh "$GITHUB_WORKSPACE/zyncoder-src"
 
       # Hermetic suite (unit + integration + architecture, native libs faked) plus tests/native, which
       # run the real router on a private `jackd -d dummy` started by the tests themselves.

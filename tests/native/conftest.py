@@ -1,4 +1,4 @@
-"""Fixtures for tests that run the REAL zyncore library (TOUCH_ONLY build) on a private dummy jackd.
+"""Fixtures for tests that run the REAL native libraries on a private dummy jackd.
 
 The library is opened with ``ctypes.CDLL`` directly, bypassing the ``ctypes.cdll.LoadLibrary`` patch that
 tests/bootstrap.py installs for every other test. Nothing here imports ``zyngine`` for the library.
@@ -6,17 +6,12 @@ tests/bootstrap.py installs for every other test. Nothing here imports ``zyngine
 
 import ctypes
 import os
-import sys
 import time
 import uuid
 
 import pytest
 
-from tests.bootstrap import REPO_ROOT
-from tests.native.support import native_skip_reason, zyncore_lib_path
-
-# Reuse the JACK helpers written for zynseq (private jackd -d dummy, freewheel, MIDI source/recorder)
-sys.path.insert(0, str(REPO_ROOT / "zynlibs" / "zynseq" / "tests"))
+from tests.native.support import lib_path, missing_lib_reason, native_skip_reason
 
 pytestmark = [pytest.mark.native, pytest.mark.jack]
 
@@ -28,7 +23,7 @@ class RouterRig:
     """The real ZynMidiRouter, plus a MIDI source/recorder to drive and observe it through JACK."""
 
     def __init__(self, lib, server):
-        from jacktest import FreewheelRunner, MidiSource, Recorder  # noqa: E402 (path set above)
+        from tests.jacktest import FreewheelRunner, MidiSource, Recorder
         self.lib = lib
         self.server = server
         self.src = MidiSource(server)
@@ -111,7 +106,7 @@ def jack_server():
     reason = native_skip_reason()
     if reason:
         pytest.skip(reason)
-    from jacktest import JackTestServer
+    from tests.jacktest import JackTestServer
     saved = os.environ.get("JACK_DEFAULT_SERVER")
     server = JackTestServer(f"zyntest_{os.getpid()}_{uuid.uuid4().hex[:6]}")
     server.start()
@@ -128,7 +123,10 @@ def jack_server():
 @pytest.fixture(scope="session")
 def real_zyncore(jack_server):
     """The compiled library, loaded once (its router state is process-global)."""
-    lib = ctypes.CDLL(str(zyncore_lib_path()))
+    reason = missing_lib_reason("zyncore")
+    if reason:
+        pytest.skip(reason)
+    lib = ctypes.CDLL(str(lib_path("zyncore")))
     lib.read_zynmidi.restype = ctypes.c_uint32
     return lib
 

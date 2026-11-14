@@ -9,10 +9,7 @@
 # optional jitter. Another client records zynseq's MIDI clock output, tempo and
 # metronome clicks, which are compared with the ideal input clock.
 #
-# Run from zynthian-ui directory, with the python venv activated (needs jackd,
-# the JACK-Client and numpy python modules, and a built libzynseq.so):
-#   source venv/bin/activate
-#   python3 -m unittest discover -s zynlibs/zynseq/tests -v
+# Run with: ./run_tests.sh native   (or: python -m pytest tests/native/zynseq/test_ext_clock.py)
 # Set ZYNTEST_LOG=INFO to show the measured values.
 #
 # Copyright (C) 2026 Fernando Moyano <jofemodo@zynthian.org>
@@ -34,24 +31,23 @@
 # ******************************************************************************
 
 import os
-import sys
 import time
-import ctypes
 import random
 import logging
 import unittest
 
 import numpy as np
+import pytest
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from jacktest import JackTestServer, FreewheelRunner, MidiSource, Recorder
+from tests.jacktest import FreewheelRunner, MidiSource, Recorder
+from tests.native.zynseq.conftest import CLIENT
+
+pytestmark = [pytest.mark.native, pytest.mark.jack]
 
 logging.basicConfig(level=os.environ.get("ZYNTEST_LOG", "WARNING"), format="%(message)s")
 log = logging.getLogger(__name__)
 
-LIB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build", "libzynseq.so")
-
-RATE = 48000
+RATE = 48000  # JackTestServer defaults (tests/jacktest.py)
 PERIOD = 256
 PPQN_INTERNAL = 1920
 PPQN_MIDI = 24
@@ -73,17 +69,6 @@ probe = None
 lib = None
 
 
-def load_libzynseq():
-    lib = ctypes.CDLL(LIB_PATH)
-    lib.init.argtypes = [ctypes.c_char_p]
-    lib.getTempo.restype = ctypes.c_double
-    lib.setTempo.argtypes = [ctypes.c_double]
-    lib.setExtClockPPQN.argtypes = [ctypes.c_uint8]
-    lib.setMetronomeMode.argtypes = [ctypes.c_uint8]
-    lib.transportStop.argtypes = [ctypes.c_uint8]
-    return lib
-
-
 class TempoProbe:
     """Recorder hook sampling zynseq tempo on each cycle"""
 
@@ -94,35 +79,29 @@ class TempoProbe:
         self.tempo.append((frame, lib.getTempo()))
 
 
-def setUpModule():
+@pytest.fixture(scope="module", autouse=True)
+def rig(jack_server, zynseq):
+    """Clients driving the shared zynseq library; the unittest class below reads them as module globals."""
     global server, runner, source, staller, recorder, probe, lib
-    if not os.path.isfile(LIB_PATH):
-        raise unittest.SkipTest(f"{LIB_PATH} not found. Build zynseq first.")
-    server = JackTestServer("zyntest", RATE, PERIOD)
-    server.start()
-    lib = load_libzynseq()
-    lib.init(b"zyntest_seq")
+    server = jack_server
+    lib = zynseq
     runner = FreewheelRunner(server)
     source = MidiSource(server)
     staller = MidiSource(server, "zyntest_staller")  # Used to cause xruns of zynseq
     recorder = Recorder(server, midi_ports=("clock",), audio_ports=("metronome",))
     probe = TempoProbe()
     recorder.hooks.append(probe)
-    for client in (runner, source, staller, recorder):
+    clients = (runner, source, staller, recorder)
+    for client in clients:
         client.activate()
     # Connections set the process order: source => zynseq => recorder
-    source.port.connect("zyntest_seq:clock_in")
-    staller.port.connect("zyntest_seq:input")
-    recorder.midi_ports["clock"].connect("zyntest_seq:clock")
-    recorder.audio_ports["metronome"].connect("zyntest_seq:metronome")
-
-
-def tearDownModule():
-    for client in (runner, source, staller, recorder):
-        if client:
-            client.close()
-    if server:
-        server.stop()
+    source.port.connect(f"{CLIENT}:clock_in")
+    staller.port.connect(f"{CLIENT}:input")
+    recorder.midi_ports["clock"].connect(f"{CLIENT}:clock")
+    recorder.audio_ports["metronome"].connect(f"{CLIENT}:metronome")
+    yield
+    for client in clients:
+        client.close()
 
 
 def clock_pulses(start, segments, ppqn=PPQN_MIDI, jitter_ms=0.0, quantize=False, seed=1):
@@ -415,6 +394,3 @@ class TestExtClock(unittest.TestCase):
     def test_14_long_xrun(self):
         self.check_xrun(0.15)  # About 28 jack periods, 7 clock pulses lost
 
-
-if __name__ == "__main__":
-    unittest.main()

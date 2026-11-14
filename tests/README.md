@@ -4,7 +4,7 @@
 ./run_tests.sh                 # hermetic suite, same as CI (≈12 s)
 ./run_tests.sh -k controller   # extra arguments go to pytest
 ./run_tests.sh gui             # under xvfb, so tests marked `gui` run without a display
-./run_tests.sh native          # real zyncore router on a dummy jackd (builds the lib if needed), then legacy zynseq tests
+./run_tests.sh native          # real native libraries (router, zynseq, zynsmf, zynaudioplayer) on a dummy jackd; builds them if needed
 ```
 
 Setup once: `pip install -r requirements-dev.txt` (inside the project `venv`).
@@ -12,9 +12,10 @@ Setup once: `pip install -r requirements-dev.txt` (inside the project `venv`).
 **The default run needs no hardware, no JACK server, no display, no built `.so` files, and never
 starts a process or touches `/zynthian`.** If a test needs one of those it must carry a marker.
 
-Current state: 367 passed (335 hermetic + 32 native), 1 skipped (`moderngl_window` not installed), 2 xfailed
-(strict, circular import). The 32 `tests/native` tests run only when the real library is built and `jackd` is
-installed (otherwise they skip with a reason).
+Current state: 515 passed, 1 skipped, 12 xfailed in ~38 s (340 hermetic + 185 native + 3 more). The strict xfails
+document known defects: 2 circular imports, 9 zynsmf, 1 zynseq.
+The `tests/native` tests run only when the real libraries are built and `jackd` is installed (otherwise they skip
+with a reason).
 
 ## Why the harness is the biggest part
 
@@ -36,8 +37,8 @@ Directories classify by *scope*, markers classify by *environment need*.
 |---|---|---|---:|
 | `tests/unit/` | One module in isolation (controller, MIDI filter, signal manager, the fakes themselves) | nothing | 136 |
 | `tests/integration/` | Real state manager + chain manager wired together, native layer faked; import smoke tests | nothing | 193 |
-| `tests/architecture/` | Static (`ast`) layering rules: core must not import `zyngui`. Imports nothing, so it cannot be affected by side effects | nothing | 7 |
-| `tests/native/` | The **real** `libzyncore.so` (ZynMidiRouter) on a private `jackd -d dummy` | cmake + gcc + libjack-dev + `jackd` | 32 |
+| `tests/architecture/` | Static rules: core must not import `zyngui`; dual-use library/CLI scripts stay runnable. Imports nothing, so it cannot be affected by side effects | nothing | 12 |
+| `tests/native/` | The **real** native libraries (zyncore router, zynseq, zynsmf, zynaudioplayer) on a private `jackd -d dummy` | cmake + gcc + libjack-dev + `jackd` (+ audio dev libs) | 185 |
 | `tests/gui/` | Tk tests | a display (`xvfb-run`) | 2 |
 | `tests/hardware/` | Real Zynthian box (empty for now) | `ZYNTHIAN_TEST_HARDWARE=1` | 0 |
 
@@ -67,52 +68,71 @@ hermetic. No test uses `jack`, `native` or `hardware` yet.
   uniqueness, `get_state` vs the schema (`engine_config` optional), snapshot save/load round-trip, and that
   no real process was started.
 
-### Architecture (7)
+### Architecture (7 + 5 below)
 `test_layering.py` is a ratchet: 16 core files import `zyngui` today (`KNOWN_CORE_TO_UI_IMPORTS`). A new
 violation fails; a stale entry also fails. Also: core must not import GUI toolkits (4 checks) and
 `zynconf` must be a leaf package.
 
-### Native: the real ZynMidiRouter (32, `tests/native/`)
-The hermetic layer fakes `lib_zyncore`, so it can only check *which calls* Python makes. These tests run the
-**real compiled library** and check what the router actually does with MIDI.
+### Native: the real libraries (185, `tests/native/`)
+The hermetic layer fakes the native libraries, so it can only check *which calls* Python makes. These tests run
+the **real compiled libraries** against a real (dummy) JACK server and check what they actually do.
 
-* **Build:** `tests/native/build_zyncore.sh [path/to/zyncoder]` configures zyncoder with
-  `ZYNTHIAN_WIRING_LAYOUT=TOUCH_ONLY` (the repo's own touch-only layout: real `zynmidirouter.c` + `zynmaster.c`,
-  `zyncontrol_none.c`, no wiringPi / I2C / rotaries / switches), out of tree into `tests/native/build/`
-  (git-ignored). The zyncoder checkout and its own `build/` are not touched. Override the library with
-  `ZYNTHIAN_TEST_ZYNCORE_LIB=/path/libzyncore.so`.
-* **JACK:** a private `jackd --no-realtime -d dummy` (unique server name, `JACK_DEFAULT_SERVER` restored at
-  the end) started by the tests, using the helpers of `zynlibs/zynseq/tests/jacktest.py`
-  (`JackTestServer`, `FreewheelRunner`, `MidiSource`, `Recorder`). Process cycles run in freewheel, so a test
-  takes milliseconds and is deterministic. No audio hardware, no real-time privileges.
-* **Loading:** `ctypes.CDLL(path)` directly, which bypasses the `LoadLibrary` patch used by the other tests, so
-  both worlds coexist in one pytest run. `init_zyncore()` / `end_zyncore()` run around every test, so each
-  test starts from a fresh router.
-* **Rig** (`tests/native/conftest.py`, fixture `router`): `router.listen("ch0", ...)` records router outputs;
-  `router.send(bytes, ..., via="dev0_in")` injects MIDI and returns what each listened output got;
-  `router.ui_events()` drains the queue captured for the UI. `listen()` does a handshake because the router
-  only learns about JACK connections through an asynchronous callback and skips outputs it thinks are
-  unconnected (see "gotchas" below).
-* **Covers:** the JACK port set; channel routing (per-chain MIDI channel, active-chain mode with channel
-  translation, note-offs released on the original chain after an active-chain change); input => chain
-  routes; note range and transpose (octave, semitone, global; note-off uses its note-on's transpose); drop
-  flags (CC with per-CC exceptions, PC, notes, SysEx); event filter ignore / map; the **production**
-  `MidiFilterRule` text parser driving the real router; UI capture and UI-reserved channels; direct send
-  through the internal input. It also checks that the constants hard-coded in `FakeZyncore` equal the real
-  library's (`test_fake_zyncore_constants_match_the_real_library`).
-* **Validated by mutation:** 5 deliberate bugs patched into a scratch copy of `zynmidirouter.c` (note-off
-  transpose, note-range upper bound, orphan note-off release, filter ignore, CC drop logic); each was caught
-  by the test aimed at it.
+| Folder / file | Tests | Library | Covers |
+|---|---:|---|---|
+| `test_zynmidirouter.py` | 32 | `libzyncore.so` (zyncoder, TOUCH_ONLY) | ZynMidiRouter: JACK ports, channel routing, active-chain mode, note-off after chain change, input => chain routes, note range / transpose, drop flags, filter ignore/map, the production `MidiFilterRule` parser driving the real router, UI capture, direct send; checks `FakeZyncore`'s constants equal the real library's |
+| `zynseq/test_ext_clock.py` | 16 | `libzynseq.so` | External MIDI clock sync (PLL): tempo, phase error, lost/delayed pulses, xruns, MIDI START alignment (moved from `zynlibs/zynseq/tests`) |
+| `zynseq/test_pattern.py` | 38 | `libzynseq.so` | Pattern editing: geometry, notes, offsets, transpose, copy/clear, CC and program change, undo/redo, state round trip |
+| `zynseq/test_sequence.py` | 22 | `libzynseq.so` | Tracks, patterns, overlap/force, channels, modes, repeat; **playback**: the MIDI on the output port at the right frames, play states, jack transport, repeat, tempo, toggle, stop modes, start-at-sync |
+| `zynsmf/test_smf.py` | 37 | `libzynsmf.so` | SMF parsing (format, tracks, running status, multi-track), event cursor, tempo/duration, add/save/reload, mute, transpose |
+| `zynsmf/test_player.py` | 12 | `libzynsmf.so` | JACK player and recorder: ports, play-state machine with the transport, loop, end of song, recording with timing |
+| `zynaudioplayer/test_player.py` | 28 | `libzynaudioplayer.so` | Players and ports, codecs, file info, play states, levels/gain/track routing, mono, position, crop, loop, speed, notifications, save |
+
+The legacy ad-hoc test scripts (`zynlibs/*/unit_tests.py`, `zynseq/test.py`) were mined for these tests and
+deleted: they targeted APIs that no longer exist and needed files that were never committed.
+
+* **Build:** `tests/native/build_native.sh [path/to/zyncoder]` builds, out of tree into `tests/native/build/`
+  (git-ignored): `libzyncore.so` (by calling `build_zyncore.sh`, which can also be run on its own) from zyncoder with `ZYNTHIAN_WIRING_LAYOUT=TOUCH_ONLY` (the repo's own touch-only
+  layout: real `zynmidirouter.c` + `zynmaster.c`, `zyncontrol_none.c`, no wiringPi / I2C / rotaries), and
+  `libzynseq/zynsmf/zynaudioplayer/zynmixer` from `zynlibs/` (Release, like their own `build.sh`). The source trees and
+  their own `build/` are untouched. `ONLY="zynseq zynsmf" ...` builds just some. Override a library with
+  `ZYNTHIAN_TEST_<NAME>_LIB=/path/libzynseq.so`. A test whose library is not built skips with a reason.
+* **JACK:** one private `jackd --no-realtime -d dummy` per session (unique server name, `JACK_DEFAULT_SERVER`
+  restored at the end), started by `tests/native/conftest.py`, with the helpers of `tests/jacktest.py`
+  (`JackTestServer`, `FreewheelRunner`, `MidiSource`, `Recorder`). MIDI libraries run in **freewheel**, so a test takes
+  milliseconds and is deterministic (time is measured in frames). **zynaudioplayer runs in real time**: its file thread
+  cannot keep up with a freewheeling server, so the test files carry DC / ramp signals and checks use levels, not
+  exact timing (about 12 s for 28 tests).
+* **Loading:** `ctypes.CDLL(path)` directly, which bypasses the `LoadLibrary` patch of the other tests, so both worlds
+  coexist in one pytest run. The libraries keep global state, so each is initialised once per session
+  (`zynseq` client `zyntest_seq`, `zynsmf`, `audioplayer`) and tests reset what they need (`seq` fixture calls
+  `reset()`; the router is `init_zyncore()`/`end_zyncore()` per test).
+* **Rigs:** `router` (`listen`, `send`, `ui_events`; see below), `seq`/`rig` (zynseq), `smf`/`song`/`rig` (zynsmf),
+  `player`/`wavs`/`capture` (zynaudioplayer). Every `ctypes` signature is declared in the folder's `conftest.py`:
+  ctypes passes floats and 64-bit values wrongly without them.
+* **Validated by mutation:** deliberate bugs patched into scratch copies of the C/C++ sources: 5 in the router
+  (note-off transpose, note-range upper bound, orphan note-off release, filter ignore, CC drop) and 4 in zynseq
+  (undo, a steps-per-beat value, endless repeat, note beyond the pattern); each was caught by the test aimed at it.
 * **Gotchas found while building it:**
-  * The port-connect callback is asynchronous, and it was not delivered reliably if freewheel mode was
-    switched on straight after connecting (observed: outputs never became "connected"). `listen()` therefore
-    waits in real time for a canary event on `mod_out`, which is connected last.
-  * `FLAG_ZMOP_NOTERANGE`, `CHAN_TRANSFILTER` and `DIRECTOUT` are on by default, chains start with MIDI
-    channel -1 (nothing flows until a test assigns one), and device inputs start in active-chain mode with
-    `active_chain = -1`.
-  * `zmip_send_*` on a plain device input **segfaults** (see blocker 12), hence the test uses the internal input.
-  * The channel in a `MidiFilterRule` text (`IGNORE CH#0 CC#7`) is passed to the library unchanged: it is
-    0-based, so `CH#0` is MIDI channel 1.
+  * The router learns about JACK connections through an asynchronous callback and skips outputs it thinks are
+    unconnected. `router.listen()` connects a canary output (`mod`) last and waits, in real time, for a canary event.
+  * Router defaults: `NOTERANGE`, `CHAN_TRANSFILTER` and `DIRECTOUT` on, chains start with MIDI channel -1 (nothing
+    flows until a test assigns one), device inputs start in active-chain mode with `active_chain = -1`.
+  * zynseq: `reset()` gives a known state; `isEmpty()` is a cached flag refreshed by `updateSequenceInfo()`; undo
+    history holds snapshots taken *after* each edit; sequence repeat 0 = disabled, 255 = endless; `PPQN` is 1920.
+  * zynsmf: the JACK client is `zynsmf` (ports `midi_out`, `midi_in`); the recorder needs a rolling transport with a
+    timebase master (a stopped transport reports 0 BPM); a failed `load` empties the SMF.
+  * The channel in a `MidiFilterRule` text (`IGNORE CH#0 CC#7`) is passed to the library unchanged: it is 0-based.
+  * The zynlibs must be built Release: at -O0 `libzynaudioplayer.so` has an undefined `get_player` symbol
+    (plain C99 `inline`, `player.c:44`) and cannot be loaded.
+
+### CLI scripts (5, `test_cli_scripts.py`)
+Modules that are libraries *and* programs (first: `zyngine/zynthian_lv2.py`, run as `./zynthian_lv2.py presets`)
+must stay launchable. For each path in `CLI_SCRIPTS`: first line is a Python shebang
+(`#!/usr/bin/env python3` or `#!/usr/bin/python3`) whose interpreter exists; executable bit on disk; mode
+`100755` recorded in git (a fresh clone/deploy gets that, not the disk bit); and the CLI code sits behind
+`if __name__ == '__main__'` so importing the library has no side effects. The scripts are never executed (their
+modes rewrite caches and config files). Mutation-checked: no exec bit, shebang not first, wrong interpreter,
+no main guard and git mode 644 are each caught. Add other dual-use scripts to `CLI_SCRIPTS`.
 
 ### GUI (2)
 A Tk root opens and processes events; a synthetic event reaches a widget. Plumbing only.
@@ -214,13 +234,32 @@ are not exercised and may be removed.
     input's ring buffer to `jack_ringbuffer_write_space` without a NULL check. Only `FLAG_ZMIP_DIRECTIN` inputs
     (internal, UI) have one, so calling it with a normal device index (0..23) segfaults the process.
     Reproduced with the TOUCH_ONLY build. Not covered by a test (a segfault cannot be `xfail`ed in-process).
-13. `ruff` currently reports `F821 undefined name 'logging'` in `zynlibs/zynsmf/zynsmf.py:117` (file modified
-    after the suite was first green; the CI lint step fails until `import logging` is added).
+13. (fixed) `zynlibs/zynsmf/zynsmf.py` used `logging` without importing it (`ruff` F821).
+14. **zynsmf: the JACK player emits no MIDI at all.** `onJackProcess` computes the event offset as
+    `g_dPosition - nNow` (ticks minus an absolute JACK frame time); it wraps to ~4e9, `jack_midi_event_reserve` fails
+    ("time parameter is out of range") and every event is dropped. With the offset forced to 0 in a scratch build the
+    notes come out on time. `test_playback_emits_the_song_on_time` (xfail strict).
+15. **zynsmf: tempo lookup returns the next tempo change**, not the one in effect (`Smf::getMicrosecondsPerQuarterNote`,
+    `smf.cpp:103`), and 120 BPM after the last one. `getTempo()` and `getDuration()` are wrong for any file whose
+    tempo is not 120 BPM (a 60 BPM beat reports 0.5 s). 3 xfail tests.
+16. **zynsmf: `load()` returns true for garbage** (empty file, text, truncated header). xfail.
+17. **zynsmf: `addTempo()` adds the meta event but not the tempo map entry** that `getTempo()` reads. xfail.
+18. **zynsmf: recorder `case MIDI_NOTE_OFF` falls through into `MIDI_NOTE_ON`** (no `break`): released notes stay
+    "held" and `stopRecording()` appends a spurious note-off for each. xfail.
+19. **zynseq: `setStepsPerBeat` never rescales events**: the inner `float fScale` shadows the outer one, so notes keep
+    their step index (they move in musical time when the grid changes). xfail.
+20. `zynseq.h` declares `load`/`save` that the library does not export (stale declarations).
+21. zynaudioplayer: after `set_position()` or `set_crop_start_time()` while stopped, `start_playback()` outputs the
+    file from its beginning although `get_position()` reports the seek target; seeking while playing works.
+    Characterization tests, not marked as defects (intent unclear).
+22. zynseq: `addNote` accepts a duration longer than the pattern (the legacy test expected a rejection); the
+    check is commented out in `pattern.cpp` (`//!@todo Should we limit note length`).
+23. `zynseq.py` (production wrapper, line ~547) appears to call `addPattern` with a different signature than the library exports (6 vs 7 arguments); not verified at runtime.
 
 ## Roadmap
 
-* Native layer: more router coverage (pedals, MIDI learn, tuning pitch-bend, master channel, ZynMaster), and
-  the other zynlibs (zynseq, zynmixer...) with the same rig.
+* Native layer: more router coverage (pedals, MIDI learn, tuning pitch-bend, master channel, ZynMaster), zynmixer
+  (built already, no tests yet), zynseq phrases/scenes/follow actions, zynaudioplayer varispeed and save formats.
 * Phase 1: more unit/golden-file tests (legacy snapshot converter, `ctrldev` driver byte tests).
 * Phase 2: config object injection to remove the `zyngui` imports from core; the layering ratchet and the
   two circular-import `xfail`s show when it works.

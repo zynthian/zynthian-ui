@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-SKIP_NAMES = {"unit_tests", "test", "jacktest", "format_docs"}  # scripts with import-time side effects
+SKIP_NAMES = {"format_docs"}  # scripts with import-time side effects
 
 
 def discover(package):
