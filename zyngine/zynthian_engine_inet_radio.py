@@ -570,7 +570,6 @@ class zynthian_engine_inet_radio(zynthian_engine):
 
         # MIDI Controllers
         self._ctrls = [
-            ['volume', None, 80, 100],
             ['stream', None, 'streaming', ['stopped', 'streaming']],
             ['prev/next', None, '<>', ['<', '<>', '>']],
             ['pause', None, 'playing', ['paused', 'playing']],
@@ -579,7 +578,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
 
         # Controller Screens
         self._ctrl_screens = [
-            ['main', ['volume', 'stream', 'prev/next', 'pause']]
+            ['main', ['stream', 'prev/next', 'pause']]
         ]
 
         udev_context = pyudev.Context()
@@ -823,11 +822,11 @@ class zynthian_engine_inet_radio(zynthian_engine):
         self.monitors_dict['title'] = preset[2]
         if preset[1]:
             self._ctrl_screens = [
-                ['main', ['volume', 'stream', 'prev/next', 'pause']],
+                ['main', ['stream', 'prev/next', 'pause']],
                 ['playlist', ['random']]
             ]
         else:
-            self._ctrl_screens = [['main', ['volume', 'stream', 'prev/next']]]
+            self._ctrl_screens = [['main', ['stream', 'prev/next']]]
         processor.refresh_controllers()
         if preset[2] == "CD":
             processor.controllers_dict["stream"].set_value("stopped")
@@ -852,9 +851,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
     def send_controller_value(self, zctrl):
         if self.proc is None:
             return
-        if zctrl.symbol == "volume":
-                self.proc_cmd(f"volume {zctrl.value * 3}")
-        elif zctrl.symbol == "prev/next":
+        if zctrl.symbol == "prev/next":
             value = zctrl.value - 1
             zctrl.set_value(1, False)
             if self.preset:
