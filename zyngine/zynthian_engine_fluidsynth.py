@@ -475,7 +475,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         if os.path.isdir(dpath):
             # Get list of sf2/sf3 files ...
-            sfx_files = check_output(f"find \"{dpath}\" -type f -iname *.sf2 -o -iname *.sf3", shell=True).decode("utf-8").split("\n")
+            sfx_files = check_output(["find", dpath, "-type", "f", "-iname", "*.sf2", "-o", "-iname", "*.sf3"]).decode("utf-8").split("\n")
 
             # Copy sf2/sf3 files to destiny ...
             count = 0

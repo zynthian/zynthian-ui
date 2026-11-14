@@ -31,7 +31,7 @@ import logging
 import requests
 from time import sleep
 from xml.etree import ElementTree
-from subprocess import Popen, PIPE, check_output
+from subprocess import Popen, PIPE, check_output, run
 
 from zynconf import ServerPort
 from zyngine.zynthian_engine import zynthian_engine
@@ -1035,7 +1035,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
     def zynapi_remove_preset(cls, preset_path):
         if preset_path[-4:].lower() != ".fxp":
             return False
-        os.system(f"rm '{preset_path}'")
+        run(["rm", preset_path])
         return True
 
 
