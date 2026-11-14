@@ -95,21 +95,21 @@ class zynthian_engine_modui(zynthian_engine):
         self.ws_bundle_loaded = False
         if not self.is_service_active("mod-ui"):
             logging.info("STARTING MOD-HOST & MOD-UI services...")
-            check_output(("systemctl start mod-ui"), shell=True)
+            check_output(["systemctl", "start", "mod-ui"])
 
     def stop(self):
         # self.stop_websocket()
         if self.is_service_active("mod-ui"):
             logging.info("STOPPING MOD-HOST & MOD-UI services...")
-            # check_output(("systemctl stop mod-host && systemctl stop browsepy && systemctl stop mod-ui"), shell=True)
-            check_output(
-                ("systemctl stop browsepy && systemctl stop mod-ui"), shell=True)
+            # check_output(["systemctl", "stop", "mod-host"])
+            # check_output raises on failure, preserving the original "&&" semantics
+            check_output(["systemctl", "stop", "browsepy"])
+            check_output(["systemctl", "stop", "mod-ui"])
         self.ws_bundle_loaded = False
 
     def is_service_active(self, service="mod-ui"):
-        cmd = "systemctl is-active "+str(service)
         try:
-            result = check_output(cmd, shell=True).decode('utf-8', 'ignore')
+            result = check_output(["systemctl", "is-active", str(service)]).decode('utf-8', 'ignore')
         except Exception as e:
             result = "ERROR: "+str(e)
         if result.strip() == 'active':

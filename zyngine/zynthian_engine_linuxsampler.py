@@ -243,8 +243,8 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
                 if os.path.isdir(sd):
                     if "sfz" not in cls.preset_fexts:
                         continue
-                    cmd = f"find '{sd}' -maxdepth 1 -type f -name '*.sfz'"
-                    output = check_output(cmd, shell=True).decode('utf8')
+                    cmd = ["find", sd, "-maxdepth", "1", "-type", "f", "-name", "*.sfz"]
+                    output = check_output(cmd).decode('utf8')
                     flist = list(filter(None, output.split('\n')))
                     for f in flist:
                         filehead, filetail = os.path.split(f)
@@ -289,9 +289,8 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
                                 logging.error(f"Can't load instrument cache '{icache_fpath}'")
                         # If not cache, parse soundfont and cache info
                         if not inslist:
-                            cmd = f"gigdump --instrument-names \"{f}\""
-                            inslist = check_output(
-                                cmd, shell=True).decode('utf8')
+                            cmd = ["gigdump", "--instrument-names", f]
+                            inslist = check_output(cmd).decode('utf8')
                             try:
                                 with open(icache_fpath, "w") as fh:
                                     fh.write(inslist)
@@ -580,9 +579,8 @@ class zynthian_engine_linuxsampler(zynthian_engine_sfz):
         if os.path.isdir(dpath) and "sfz" in cls.preset_fexts:
             # Locate sfz files and move all them to first level directory
             try:
-                cmd = "find \"{}\" -type f -iname *.sfz".format(dpath)
-                sfz_files = check_output(
-                    cmd, shell=True).decode("utf-8").split("\n")
+                cmd = ["find", dpath, "-type", "f", "-iname", "*.sfz"]
+                sfz_files = check_output(cmd).decode("utf-8").split("\n")
                 # Find the "shallower" SFZ file
                 shallower_sfz_file = sfz_files[0]
                 for f in sfz_files:

@@ -62,7 +62,8 @@ class zynthian_gui_splash(zynthian_gui_fullscreen_modal):
             boot_file = f"{config_dir}/img/fb_zynthian_boot.jpg"
             fpath = f"{config_dir}/img/fb_zynthian_message.jpg"
 
-            #os.system(f'convert -strip -family \\"{font_family}\\" -pointsize {font_size} -fill white -draw "text {pos_x},{pos_y} \\"{text}\\"" {config_dir}/img/fb_zynthian_boot.jpg {config_dir}/img/fb_zynthian_message.jpg')
+            #subprocess.run(["convert", "-strip", "-family", font_family, "-pointsize", str(font_size), "-fill", "white",
+            #                "-draw", f'text {pos_x},{pos_y} "{text}"', boot_file, fpath])
 
             img = Image.open(boot_file).convert("RGB")
             draw = ImageDraw.Draw(img)

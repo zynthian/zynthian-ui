@@ -309,8 +309,10 @@ class zynthian_engine_sfz(zynthian_engine):
         Returns: List of regex patterns describing supported opcodes
         """
 
+        import subprocess
         patterns = []
-        if download and os.system(f"wget -N -O {SFIZZ_SUPPORTED} {SFIZZ_YAML_URL} > /dev/null 2>&1") != 0:
+        if download and subprocess.run(["wget", "-N", "-O", SFIZZ_SUPPORTED, SFIZZ_YAML_URL],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
             return patterns
 
         try:

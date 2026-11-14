@@ -28,7 +28,8 @@ import logging
 from time import sleep
 from threading import Thread
 from curses import A_HORIZONTAL
-from subprocess import check_output, Popen, PIPE, STDOUT
+from shlex import join as shlex_join
+from subprocess import check_output, run, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
@@ -279,11 +280,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.state_manager.start_busy("admin_commands")
         error_counter = 0
         for cmd in self.commands:
-            logging.info("Executing Command: %s" % cmd)
+            logging.info("Executing Command: %s" % shlex_join(cmd))
             self.zyngui.add_info("EXECUTING:\n", "EMPHASIS")
-            self.zyngui.add_info("{}\n".format(cmd))
+            self.zyngui.add_info("{}\n".format(shlex_join(cmd)))
             try:
-                self.proc = Popen(cmd, shell=True, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
+                self.proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
                 self.zyngui.add_info("RESULT:\n", "EMPHASIS")
                 for line in self.proc.stdout:
                     if re.search("ERROR", line, re.IGNORECASE):
@@ -324,11 +325,11 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def killable_execute_commands(self):
         # self.state_manager.start_busy("admin commands")
         for cmd in self.commands:
-            logging.info("Executing Command: %s" % cmd)
+            logging.info("Executing Command: %s" % shlex_join(cmd))
             self.zyngui.add_info("EXECUTING:\n", "EMPHASIS")
-            self.zyngui.add_info("{}\n".format(cmd))
+            self.zyngui.add_info("{}\n".format(shlex_join(cmd)))
             try:
-                proc = Popen(cmd.split(" "), stdout=PIPE, stderr=PIPE)
+                proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
                 self.child_pid = proc.pid
                 self.zyngui.add_info("\nPID: %s" % self.child_pid)
                 (output, error) = proc.communicate()
@@ -409,7 +410,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def start_rbpi_headphones(self, save_config=True):
         logging.info("STARTING RBPI HEADPHONES")
         try:
-            check_output("systemctl start headphones", shell=True)
+            check_output(["systemctl", "start", "headphones"])
             zynthian_gui_config.rbpi_headphones = 1
             # Update Config
             if save_config:
@@ -427,7 +428,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         logging.info("STOPPING RBPI HEADPHONES")
 
         try:
-            check_output("systemctl stop headphones", shell=True)
+            check_output(["systemctl", "stop", "headphones"])
             zynthian_gui_config.rbpi_headphones = 0
             # Update Config
             if save_config:
@@ -728,9 +729,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
     def test_audio(self):
         logging.info("TESTING AUDIO")
         self.zyngui.show_info("TEST AUDIO")
-        # self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
+        # self.killable_start_command([["mpg123", f"{self.data_dir}/audio/test.mp3"]])
         self.killable_start_command(
-            [f"mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -ao jack {self.data_dir}/files/Audio/Oya.mp3"])
+            [["mplayer", "-nogui", "-noconsolecontrols", "-nolirc", "-nojoystick", "-really-quiet", "-ao", "jack",
+              f"{self.data_dir}/files/Audio/Oya.mp3"]])
         zynautoconnect.request_audio_connect()
 
     def test_midi(self):
@@ -762,12 +764,12 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.last_state_action()
         self.zyngui.show_info("UPDATE SOFTWARE")
         self.zyngui.add_info("Checking for Internet... ")
-        if os.system("ping -c1 -W1 github.com"):
+        if run(["ping", "-c1", "-W1", "github.com"]).returncode:
             self.zyngui.add_info("ERROR: Cannot reach GitHub", "ERROR")
             self.zyngui.hide_info_timer(5000)
             return
         self.zyngui.add_info("SUCCESS\n", "SUCCESS")
-        self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
+        self.start_command([[self.sys_dir + "/scripts/update_zynthian.sh"]])
         self.state_manager.update_available = False
         self.update_available = False
 
@@ -775,7 +777,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         logging.info("UPDATE SYSTEM")
         self.last_state_action()
         self.zyngui.show_info("UPDATE SYSTEM")
-        self.start_command([self.sys_dir + "/scripts/update_system.sh"])
+        self.start_command([[self.sys_dir + "/scripts/update_system.sh"]])
 
     def restart_gui(self):
         logging.info("RESTART ZYNTHIAN-UI")

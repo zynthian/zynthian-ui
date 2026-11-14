@@ -603,7 +603,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
         try:
             cmd = self.sys_dir + "/sbin/get_rbpi_audio_device.sh"
-            self.rbpi_device_name = check_output(cmd, shell=True).decode("utf-8")
+            self.rbpi_device_name = check_output([cmd]).decode("utf-8")
         except:
             self.rbpi_device_name = None
 
