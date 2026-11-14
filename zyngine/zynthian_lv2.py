@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian LV2-plugin management
 #
