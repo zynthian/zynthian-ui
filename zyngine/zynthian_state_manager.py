@@ -1499,6 +1499,9 @@ class zynthian_state_manager:
                     continue
                 try:
                     id = int(proc_id)
+                    if id == ALSA_ID and not zynthian_gui_config.snapshot_mixer_settings:
+                        # Ignore soundcard audio levels from snapshot
+                        continue
                     processor = self.chain_manager.processors[id]
                     if id < 0 or processor.chain_id in restored_chains:
                         self.set_busy_details(f"restoring {processor.get_basepath()} state")
