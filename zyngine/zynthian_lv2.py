@@ -166,6 +166,7 @@ standalone_engine_info = {
     "SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Sampler", True],
     "LS": ["LinuxSampler", "LinuxSampler: GIG", "MIDI Synth", "Sampler", True],
     "CL": ["Clippy", "Clip launcher", "Audio Generator", "Other", True],
+    "SC": ["Slicer", "Slicer - slice player", "MIDI Synth", "Sampler", True],
     "BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
     "AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
     "PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
@@ -257,9 +258,13 @@ def load_engines():
     except Exception as e:
         logging.error('Loading engine config failed: {}'.format(e))
 
-    # Regenerate config file if it doesn't exist or is an older version
+    # Regenerate config file if it doesn't exist, is an older version, or is
+    # missing a standalone engine added by the current code (e.g. SC/Slicer).
     if not os.path.exists(ENGINE_CONFIG_FILE) or 'AE' in engines and "ID" not in engines['AE']:
         generate_engines_config_file(reset_rankings=1)
+    elif any(key not in engines for key in standalone_engine_info):
+        logging.info("Engine cache is missing standalone engines; regenerating")
+        generate_engines_config_file()
 
     # Remove not supported engines
     for key in list(engines.keys()):

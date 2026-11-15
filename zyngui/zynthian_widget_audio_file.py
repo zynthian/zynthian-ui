@@ -118,6 +118,7 @@ DIGIT_GAP_PX = 2             # Horizontal gap between digits within the same num
 DIGIT_BOTTOM_MARGIN_PX = 3   # Gap from the bottom edge of the canvas to the digits
 DIGIT_LINE_GAP_PX = 3        # Gap between the top of a digit and the marker line above it
 MIN_LABEL_GAP_PX = 5         # Minimum pixel gap required between adjacent number labels, else hide next label
+MAX_ACTIVE_SLICES = 16        # Matches the slicer voice count
 
 
 # Single source of truth for the vertex buffer layout
@@ -127,6 +128,7 @@ Layout = namedtuple("Layout", [
     "markers_start", "markers_count",
     "digits_start", "digits_count",
     "crop_start", "loop_start", "cursor_start",
+    "region_start", "region_count",
     "total",
 ])
 
@@ -150,10 +152,13 @@ def compute_layout(nchans, width):
     crop_start = digits_start + digits_count
     loop_start = crop_start + 12
     cursor_start = loop_start + 18
-    total = cursor_start + 6
+    region_start = cursor_start + 6
+    region_count = MAX_ACTIVE_SLICES * 6
+    total = region_start + region_count
     return Layout(axis_start, axis_count, wave_start, wave_count,
                   markers_start, markers_count, digits_start, digits_count,
-                  crop_start, loop_start, cursor_start, total)
+                  crop_start, loop_start, cursor_start,
+                  region_start, region_count, total)
 
 
 class WaveformCanvas(ModernglTkWindow):
@@ -184,6 +189,7 @@ class WaveformCanvas(ModernglTkWindow):
         self.bg_loop_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_ml, -150))
         self.bmarker_color = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.axis_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
+        self.active_region_color = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_on, -120))
 
         super().__init__(*args, **kwargs)
         #self.animate = True
@@ -318,7 +324,9 @@ class WaveformCanvas(ModernglTkWindow):
             self.vbo_data['col'][layout.crop_start:layout.loop_start] = self.bg_crop_color
             self.vbo_data['col'][layout.loop_start:layout.loop_start + 12] = self.lmarker_color
             self.vbo_data['col'][layout.loop_start + 12:layout.cursor_start] = self.bg_loop_color
-            self.vbo_data['col'][layout.cursor_start:] = self.playcur_color
+            self.vbo_data['col'][layout.cursor_start:layout.region_start] = self.playcur_color
+            self.vbo_data['col'][layout.region_start:layout.total] = self.active_region_color
+            self.vbo_data['pos'][layout.region_start:layout.total] = [2.0, 2.0, 0.0]
 
             # Create VBO & VAO in ModernGL
             if self.vbo:
@@ -363,6 +371,11 @@ class WaveformCanvas(ModernglTkWindow):
 
     def set_beat_markers(self, xdata, coldata):
         try:
+            # The marker area has a fixed size, so clamp to avoid overflowing
+            # into the digit-label area when there are many slices.
+            max_markers = self.layout.markers_count // 2
+            xdata = xdata[:max_markers]
+            coldata = coldata[:max_markers]
             i0 = self.layout.markers_start
             i1 = i0 + 2 * len(xdata)
             i2 = i0 + self.layout.markers_count
@@ -489,6 +502,32 @@ class WaveformCanvas(ModernglTkWindow):
         except Exception as e:
             logging.error(f"Can't set cursor position ... => {e}")
 
+    def set_active_regions(self, regions):
+        """Shade active slice ranges. regions is a list of (start_x, end_x) pixels."""
+        try:
+            i0 = self.layout.region_start
+            i1 = i0 + self.layout.region_count
+            self.vbo_data['pos'][i0:i1] = [2.0, 2.0, 0.0]
+            region_vertices = []
+            for x1, x2 in regions[:MAX_ACTIVE_SLICES]:
+                x1 = max(0.0, min(float(x1), self.width))
+                x2 = max(0.0, min(float(x2), self.width))
+                if x2 <= x1:
+                    continue
+                x1 = (2 * x1 / self.width) - 1.0
+                x2 = (2 * x2 / self.width) - 1.0
+                # Keep the fill behind the waveform, crop and loop geometry.
+                region_vertices.extend([
+                    (x1, -1.0, 0.75), (x2, -1.0, 0.75), (x1, 1.0, 0.75),
+                    (x2, -1.0, 0.75), (x2, 1.0, 0.75), (x1, 1.0, 0.75)
+                ])
+            if region_vertices:
+                self.vbo_data['pos'][i0:i0 + len(region_vertices)] = np.array(
+                    region_vertices, dtype=np.float32)
+            self.mark_dirty(i0, i1)
+        except Exception as e:
+            logging.error(f"Can't set active regions ... => {e}")
+
     def redraw(self, reset=True):
         if self.touched:
             if self.vbo and self.dirty_lo is not None:
@@ -543,6 +582,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     ENG_GLOBAL_AP = 2
     ENG_CHAIN_AP = 3
     ENG_SAMPLV1 = 4
+    ENG_SLICER = 5
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -581,10 +621,12 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         self.beats = 0
         self.warp = False
         self.gain = 1
+        self.slice_signature = None
         self.last_cursor_pos = 0
 
         self.bmarker_color1 = hexcolor_to_opengl(zynthian_gui_config.color_tx)
         self.bmarker_color2 = hexcolor_to_opengl(zynthian_gui_config.color_variant(zynthian_gui_config.color_tx, -80))
+        self.active_marker_color = hexcolor_to_opengl(zynthian_gui_config.color_on)  # Playing slice boundaries
         self.font_info = tkinter.font.Font(font=("DejaVu Sans Mono", int(1.0 * zynthian_gui_config.font_size)))
 
         self.rowconfigure(0, weight=1)     # Row 0 (Canvas) expands to fill all remaining space
@@ -616,7 +658,10 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
 
     def set_processor(self, processor):
         super().set_processor(processor)
-        if self.zyngui_control.widget_zctrl:
+        if self.processor and self.processor.eng_code == "SC":
+            # The slicer uses a single file controller (no phrase suffix).
+            self.zctrl = self.processor.controllers_dict.get("file")
+        elif self.zyngui_control.widget_zctrl:
             self.zctrl = self.zyngui_control.widget_zctrl
         else:
             try:
@@ -635,6 +680,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
             if self.processor.eng_code == "CL":
                 self.eng_type = self.ENG_CLIPPY
                 self.clip_info = self.get_clippy_info()
+            elif self.processor.eng_code == "SC":
+                self.eng_type = self.ENG_SLICER
+                self.processor.engine.set_monitored_processor(self.processor)
             elif self.processor.eng_code == "AP":
                 self.processor.engine.set_monitored_processor(self.processor)
                 if self.processor.id < 0:
@@ -662,13 +710,29 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
         super().on_size(event)
 
     def on_canvas_press(self, event):
-        pass
+        if self.eng_type != self.ENG_SLICER or not self.frames or not self.channels:
+            return
+        # Map click position to a source frame and select/audition that slice.
+        try:
+            if self.zoom <= 0:
+                return
+            frame = self.offset + (event.x / self.width) * self.frames / self.zoom
+            slices = self.monitors.get("slices", [])
+            for index, sl in enumerate(slices):
+                if sl["start"] <= frame < sl["end"]:
+                    self.processor.controllers_dict["slice"].set_value(index)
+                    self.processor.engine.audition_selected_slice(self.processor)
+                    break
+        except Exception as e:
+            logging.warning(f"Can't audition slice: {e}")
 
     def on_canvas_drag(self, event):
         pass
 
     def on_canvas_release(self, event):
-        pass
+        if self.eng_type == self.ENG_SLICER:
+            # Like a key release: stops gate and loop slices
+            self.processor.engine.release_audition(self.processor)
 
     def on_wheel(self, event):
         """ Handle mouse wheel events to navigate the graph.
@@ -871,6 +935,35 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                             pass
                     else:
                         cursor_pos = 0.0
+            # Slicer =>
+            case self.ENG_SLICER:
+                zoom = max(1, int(self.monitors.get("zoom", 1)))
+                offset = 0
+                beats = 0
+                crop_start = 0
+                crop_end = self.frames
+                gain = self.monitors.get("gain", 0.0)
+                vzoom = pow(1.26, gain)
+                slices = self.monitors.get("slices", [])
+                selected = next((s for s in slices if s.get("selected")), None)
+                if self.frames and zoom > 1:
+                    view_frames = max(1, self.frames // zoom)
+                    if selected is not None:
+                        center = (int(selected["start"]) + int(selected["end"])) // 2
+                        offset = center - view_frames // 2
+                    offset = max(0, min(offset, max(0, self.frames - view_frames)))
+                self.auto_offset = 0
+                active_notes = tuple(sorted(set(self.monitors.get("active_notes", []))))
+                signature = (
+                    tuple((s["start"], s["end"], s.get("note", 0), s.get("selected", False)) for s in slices),
+                    active_notes
+                )
+                if signature != self.slice_signature:
+                    self.slice_signature = signature
+                    self.update_markers = True
+                playhead_frame = self.monitors.get("playhead_frame")
+                if self.frames and playhead_frame is not None:
+                    cursor_pos = max(0.0, min(float(playhead_frame) / self.frames, 1.0))
             # AudioPlayer =>
             case self.ENG_GLOBAL_AP | self.ENG_CHAIN_AP:
                 if self.samplerate:
@@ -984,6 +1077,8 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 h = self.waveform_height
                 f = self.width / self.frames * self.zoom
                 if self.update_markers:
+                    if self.eng_type != self.ENG_SLICER:
+                        self.widget_canvas.set_active_regions([])
                     # Crop markers
                     x1 = f * (self.crop_start - self.offset)
                     x2 = f * (self.crop_end - self.offset)
@@ -999,6 +1094,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     # Beat markers
                     xdata = []
                     coldata = []
+                    xdata_starts = []
                     if self.beats > 0:  #  and self.warp
                         # Get Beats Per Bar
                         if self.clip_info:
@@ -1036,9 +1132,62 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                                 coldata.append(self.bmarker_color1)
                             else:
                                 coldata.append(self.bmarker_color2)
+                    elif self.eng_type == self.ENG_SLICER:
+                        slices = self.monitors.get("slices", [])
+                        active_notes = set(self.monitors.get("active_notes", []))
+                        active_regions = [
+                            (f * (sl["start"] - self.offset), f * (sl["end"] - self.offset))
+                            for sl in slices if sl.get("note") in active_notes
+                        ]
+                        self.widget_canvas.set_active_regions(active_regions)
+                        normal_x = []
+                        normal_c = []
+                        active_x = []
+                        active_c = []
+                        selected_x = []
+                        selected_c = []
+                        for sl in slices:
+                            start_x = f * (sl["start"] - self.offset)
+                            end_x = f * (sl["end"] - self.offset)
+                            xdata_starts.append(start_x)
+                            if sl.get("selected"):
+                                selected_x.extend((start_x, end_x))
+                                selected_c.extend((self.bmarker_color1, self.bmarker_color1))
+                            elif sl.get("note") in active_notes:
+                                active_x.append(start_x)
+                                active_c.append(self.active_marker_color)
+                            else:
+                                normal_x.append(start_x)
+                                normal_c.append(self.bmarker_color2)
+                        if slices:
+                            # The last slice end is the only end boundary that
+                            # is not also the start of another slice.
+                            last = slices[-1]
+                            if not last.get("selected"):
+                                last_end_x = f * (last["end"] - self.offset)
+                                if last.get("note") in active_notes:
+                                    active_x.append(last_end_x)
+                                    active_c.append(self.active_marker_color)
+                                else:
+                                    normal_x.append(last_end_x)
+                                    normal_c.append(self.bmarker_color2)
+                        # Draw selected boundaries first, then active boundaries,
+                        # then normal boundaries, avoiding duplicate x positions.
+                        xdata.extend(selected_x)
+                        coldata.extend(selected_c)
+                        for x, col in zip(active_x, active_c):
+                            if not any(abs(x - sx) < 0.5 for sx in selected_x):
+                                xdata.append(x)
+                                coldata.append(col)
+                        for x, col in zip(normal_x, normal_c):
+                            if not any(abs(x - sx) < 0.5 for sx in selected_x + active_x):
+                                xdata.append(x)
+                                coldata.append(col)
                     self.widget_canvas.set_beat_markers(xdata, coldata)
                     if self.eng_type in (self.ENG_GLOBAL_AP, self.ENG_CHAIN_AP):
                         self.widget_canvas.set_marker_numbers(xdata[1:], 1)
+                    elif self.eng_type == self.ENG_SLICER:
+                        self.widget_canvas.set_marker_numbers(xdata_starts, self.monitors.get("base_note", 36))
                     else:
                         self.widget_canvas.set_marker_numbers(xdata, 2)
 

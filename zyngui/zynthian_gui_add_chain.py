@@ -55,6 +55,11 @@ class zynthian_gui_add_chain(zynthian_gui_selector_grid):
                 "action": self.zyngui.modify_chain,
                 "action_params": [{"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "engine": "CL", "midi_chan": None, "pos": self.pos}]
             }, {
+                "title": "Slicer",
+                "icon": "slicer.png",
+                "action": self.zyngui.modify_chain,
+                "action_params": [{"type": "MIDI Synth", "midi_thru": False, "audio_thru": False, "engine": "SC", "pos": self.pos}]
+            }, {
                 "title": "MIDI",
                 "icon": "midi_logo.png",
                 "action": self.zyngui.modify_chain,
@@ -83,6 +88,12 @@ class zynthian_gui_add_chain(zynthian_gui_selector_grid):
         if self.zyngui.chain_manager.get_processor_count(eng_code="CL") > 15:
             self.config[2] = {
                 "title": "Clip Launcher\nMax. 16 reached!",
+                "icon": "audio.png",
+                "action": None
+            }
+        if self.zyngui.chain_manager.get_processor_count(eng_code="SC") > 15:
+            self.config[3] = {
+                "title": "Slicer\nMax. 16 reached!",
                 "icon": "audio.png",
                 "action": None
             }

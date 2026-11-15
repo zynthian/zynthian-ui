@@ -82,7 +82,8 @@ engine2class = {
     "MR": zynthian_engine_audio_mixer,
     "MX": zynthian_engine_alsa_mixer,
     "TP": zynthian_engine_tempo,
-    'CL': zynthian_engine_clippy
+    'CL': zynthian_engine_clippy,
+    'SC': zynthian_engine_slicer
 }
 
 # ----------------------------------------------------------------------------
