@@ -3,7 +3,17 @@ project(zynseq)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
-find_package(mimalloc QUIET)
+
+# mimalloc is disabled by default: linked into this library (loaded by Python with ctypes), it replaces
+# new/delete only partially. When libstdc++ was already loaded by another library (e.g. libzyncore),
+# libstdc++ keeps the glibc allocator while code inlined in zynseq uses mimalloc => memory allocated
+# by one is freed by the other => segfault (e.g. mi_free in getState/json::dump with Release builds).
+# TODO: proper RT-safe memory management for the jack process (explicit mimalloc heap/STL allocator
+# or preallocated pools) instead of a global allocator override.
+option(ZYNSEQ_USE_MIMALLOC "Link zynseq with mimalloc (unsafe as global override, see above)" OFF)
+if(ZYNSEQ_USE_MIMALLOC)
+    find_package(mimalloc QUIET)
+endif()
 
 link_directories(/usr/local/lib)
 
