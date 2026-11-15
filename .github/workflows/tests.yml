@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       ZYNCODER_DIR: ${{ github.workspace }}/zyncoder-src
+      ZYNTHIAN_TEST_DATA_REPO: ${{ github.workspace }}/zynthian-data-src
     strategy:
       fail-fast: false
       matrix:
@@ -42,6 +43,14 @@ jobs:
         with:
           repository: zynthian/zyncoder
           path: zyncoder-src
+
+      # Only the example snapshots of zynthian-data (the repo is large): input for the snapshot conversion tests
+      - uses: actions/checkout@v5
+        with:
+          repository: zynthian/zynthian-data
+          path: zynthian-data-src
+          sparse-checkout: snapshots
+          filter: blob:none
 
       - name: Build real native libraries (zyncore TOUCH_ONLY, zynseq, zynsmf, zynaudioplayer, zynmixer)
         run: tests/native/build_native.sh "$GITHUB_WORKSPACE/zyncoder-src"

@@ -13,11 +13,45 @@ import pytest
 # Side effects, must come before any production import: sandbox env + native fakes.
 from tests import bootstrap  # noqa: F401
 from tests.bootstrap import FAKE_ZYNCORE as _FAKE_ZYNCORE, NATIVE as _NATIVE  # noqa: F401
+from tests import write_guard
 
 # Import order matters: zyngine.zynthian_chain_manager / zynthian_legacy_snapshot cannot be the
 # first module imported (circular import, see tests/integration/test_imports.py). Importing the
 # state manager first makes every later import work. Drop this once the cycle is removed.
 import zyngine.zynthian_state_manager  # noqa: E402,F401
+
+
+def pytest_addoption(parser, pluginmanager):
+    # pyproject.toml sets `timeout` (pytest-timeout). Where the plugin is missing (e.g. on a
+    # Zynthian) declare the option so --strict-config does not abort the run; it is then ignored.
+    if not pluginmanager.hasplugin("timeout"):
+        parser.addini("timeout", "per-test timeout in seconds (needs pytest-timeout, ignored without it)")
+
+
+# --- Write guard: a write to a real Zynthian location fails the test -----------
+@pytest.fixture(autouse=True)
+def _write_guard():
+    """tests/write_guard.py refuses the write itself; this makes the test fail even when the
+    production code catches the PermissionError (many `except Exception:` blocks do)."""
+    before = len(write_guard.VIOLATIONS)
+    yield
+    new = write_guard.VIOLATIONS[before:]
+    if new:
+        pytest.fail("write outside the test sandbox refused (it would modify a real Zynthian):\n"
+                    + "\n".join(f"  {event}: {path}" for event, path in new), pytrace=False)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    # Violations outside any test (collection, module import, session fixtures) fail the run too.
+    if write_guard.VIOLATIONS and session.exitstatus == 0:
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
+def pytest_terminal_summary(terminalreporter):
+    if write_guard.VIOLATIONS:
+        terminalreporter.section("write guard", sep="=", red=True, bold=True)
+        for event, path in write_guard.VIOLATIONS:
+            terminalreporter.line(f"refused {event}: {path}")
 
 
 @pytest.fixture

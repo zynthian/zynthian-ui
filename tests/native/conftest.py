@@ -107,17 +107,13 @@ def jack_server():
     if reason:
         pytest.skip(reason)
     from tests.jacktest import JackTestServer
-    saved = os.environ.get("JACK_DEFAULT_SERVER")
-    server = JackTestServer(f"zyntest_{os.getpid()}_{uuid.uuid4().hex[:6]}")
+    # The server outlives the session on purpose and dies with this process (PR_SET_PDEATHSIG): the libraries
+    # close their JACK clients from C exit handlers (zynmixer's atexit(end), zynaudioplayer's destructor...),
+    # which run after pytest has finished and crash if the server is already gone.
+    server = JackTestServer(f"zyntest_{os.getpid()}_{uuid.uuid4().hex[:6]}", die_with_parent=True)
     server.start()
-    try:
-        yield server
-    finally:
-        server.stop()
-        if saved is None:
-            os.environ.pop("JACK_DEFAULT_SERVER", None)
-        else:
-            os.environ["JACK_DEFAULT_SERVER"] = saved
+    yield server
+    # JACK_DEFAULT_SERVER stays set: the loaded libraries are still connected to this server.
 
 
 @pytest.fixture(scope="session")

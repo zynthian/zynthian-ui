@@ -1,6 +1,7 @@
 # Development / test requirements (the full runtime set is in requirements.txt)
 pytest>=8
 pytest-timeout
+pytest-cov          # coverage: ./run_tests.sh --cov=zyngine --cov-report=term-missing
 ruff
 
 # Minimum third-party packages needed to *import* the core under test (native layer is faked).

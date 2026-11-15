@@ -10,7 +10,14 @@
 # See tests/README.md
 
 cd "$(dirname "$0")" || exit 1
-[ -f venv/bin/activate ] && source venv/bin/activate
+# A dev checkout has its own venv; on a Zynthian the system one (/zynthian/venv) has jack & co.
+# Running ON a Zynthian is safe: tests/bootstrap.py ignores the device's ZYNTHIAN_* environment and
+# tests/write_guard.py refuses writes to /zynthian/config & co (see tests/README.md).
+if [ -f venv/bin/activate ]; then
+	source venv/bin/activate
+elif [ -f /zynthian/venv/bin/activate ]; then
+	source /zynthian/venv/bin/activate
+fi
 
 case "$1" in
 	native)

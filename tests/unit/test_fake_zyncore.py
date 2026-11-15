@@ -69,11 +69,11 @@ def test_native_registry_gives_one_fake_per_library(native_libs):
     assert native_libs["libzynmixer.so"] is a
     assert native_libs["libzynseq.so"] is not a
     assert native_libs["libzynaudioplayer.so"].init(None) == 1   # wrapper init succeeds
-    assert native_libs["libzynseq.so"].getPPQN() == 96
+    assert native_libs["libzynseq.so"].getPPQN() == 1920          # what the real library says (see test_fake_parity)
     a.reset(1)
     native_libs.reset()
     assert a.call_count() == 0
-    assert native_libs["libzynseq.so"].getPPQN() == 96           # defaults survive a reset
+    assert native_libs["libzynseq.so"].getPPQN() == 1920         # defaults survive a reset
 
 
 def test_default_return_follows_ctypes_restype(zyncore):

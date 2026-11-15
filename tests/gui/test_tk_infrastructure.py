@@ -18,11 +18,13 @@ def tk_root():
 
 
 def test_tk_root_opens_and_processes_events(tk_root):
+    import time
     fired = []
     tk_root.after(1, lambda: fired.append(True))
-    tk_root.update()
-    tk_root.after(5, lambda: None)
-    tk_root.update()
+    deadline = time.monotonic() + 2  # a timer is only due after its delay: poll, don't race it
+    while not fired and time.monotonic() < deadline:
+        tk_root.update()
+        time.sleep(0.001)
     assert fired == [True]
     assert tk_root.winfo_exists()
 

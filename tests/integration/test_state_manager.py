@@ -109,3 +109,48 @@ def test_snapshot_save_load_roundtrip(state_manager, zynthian_dirs):
     assert state_manager.load_snapshot(path) is not False
     assert chains.get_chain(3) is not None
     assert 3 in chains.get_chain_ids_by_midi_chan(4)
+
+
+# --- slow update callbacks ----------------------------------------------------------------------------------
+def test_slow_update_callback_is_added(state_manager):
+    def cb():
+        pass
+    before = len(state_manager.slow_update_callbacks)
+    state_manager.add_slow_update_callback(1.0, cb)
+    try:
+        assert len(state_manager.slow_update_callbacks) == before + 1
+        assert state_manager.slow_update_callbacks[-1][:2] == [1.0, cb]
+    finally:
+        state_manager.slow_update_callbacks[:] = [c for c in state_manager.slow_update_callbacks if c[1] is not cb]
+
+
+SLOW_UPDATE_BUG = ("zynthian_state_manager.remove_slow_update_callback(): the loop variable `cb` shadows the "
+                   "parameter, so `cb[1] == cb` compares an entry with itself and nothing is ever removed; "
+                   "add_slow_update_callback() therefore duplicates a re-added callback, and drivers that remove "
+                   "theirs on end() (duopiano keep-alive) keep being called")
+
+
+@pytest.mark.xfail(strict=True, reason=SLOW_UPDATE_BUG)
+def test_slow_update_callback_is_removed(state_manager):
+    def cb():
+        pass
+    before = len(state_manager.slow_update_callbacks)
+    state_manager.add_slow_update_callback(1.0, cb)
+    try:
+        state_manager.remove_slow_update_callback(cb)
+        assert len(state_manager.slow_update_callbacks) == before
+    finally:
+        state_manager.slow_update_callbacks[:] = [c for c in state_manager.slow_update_callbacks if c[1] is not cb]
+
+
+@pytest.mark.xfail(strict=True, reason=SLOW_UPDATE_BUG)
+def test_adding_a_slow_update_callback_twice_keeps_one(state_manager):
+    def cb():
+        pass
+    before = len(state_manager.slow_update_callbacks)
+    try:
+        state_manager.add_slow_update_callback(1.0, cb)
+        state_manager.add_slow_update_callback(2.0, cb)
+        assert len(state_manager.slow_update_callbacks) == before + 1
+    finally:
+        state_manager.slow_update_callbacks[:] = [c for c in state_manager.slow_update_callbacks if c[1] is not cb]

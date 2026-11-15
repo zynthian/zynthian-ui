@@ -22,7 +22,10 @@ _DEFAULT_RETURNS = {
     "libzynmixer.so": {"setMeterConfig": 1},
     "libzynmixer_mixbus.so": {"setMeterConfig": 1},
     "libzynseq.so": {
-        "getPPQN": 96,
+        # Same values as the real library after init (checked by tests/native/zynseq/test_fake_parity.py)
+        "getPPQN": 1920,
+        "getTempo": 120.0,
+        "getBpb": 4,
         # Minimal valid sequencer state (what zynseq.refresh_state() parses)
         "getState": b'{"tempo": 120.0, "bpb": 4, "scenes": [{"phrases": [{"sequences": []}]}]}',
     },

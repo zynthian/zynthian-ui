@@ -35,6 +35,14 @@ import jack
 import numpy as np
 
 
+def _terminate_with_parent():
+    """In the jackd child (Linux): ask the kernel to send SIGTERM when the parent process dies."""
+    import ctypes
+    import signal
+    PR_SET_PDEATHSIG = 1
+    ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+
+
 class JackTestServer:
     """Private jackd instance using the dummy backend
 
@@ -42,8 +50,9 @@ class JackTestServer:
     default server (e.g. zynseq) connect to this one.
     """
 
-    def __init__(self, name="zyntest", rate=48000, period=256):
+    def __init__(self, name="zyntest", rate=48000, period=256, die_with_parent=False):
         self.name = name
+        self.die_with_parent = die_with_parent
         self.rate = rate
         self.period = period
         self.proc = None
@@ -53,7 +62,8 @@ class JackTestServer:
             return
         self.proc = subprocess.Popen(["jackd", "--no-realtime", "-n", self.name, "-d", "dummy",
                                       "-r", str(self.rate), "-p", str(self.period)],
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                     preexec_fn=_terminate_with_parent if self.die_with_parent else None)
         os.environ["JACK_DEFAULT_SERVER"] = self.name
         # Wait for server, silencing libjack errors while it is starting
         jack.set_error_function(lambda msg: None)

@@ -11,3 +11,4 @@ zynlibs/*/build
 .pytest_cache
 .ruff_cache
 tests/native/build/
+.coverage
