@@ -13,6 +13,7 @@ scripts=(
   "zynaudioplayer/build.sh"
   "zynmixer/build.sh"
   "zynclippy/build.sh"
+  "zynslicer/build.sh"
 )
 
 overall_success=0
