@@ -43,6 +43,21 @@ _EVENTS = {
 }
 
 
+# audit event -> {path argument index: dir_fd argument index}, for paths relative to a directory
+# descriptor (e.g. shutil.rmtree removes entries with os.rmdir(name, dir_fd=fd))
+_DIR_FD = {
+    "os.remove": {0: 1},
+    "os.rmdir": {0: 1},
+    "os.mkdir": {0: 2},
+    "os.rename": {0: 2, 1: 3},
+    "os.link": {1: 3},
+    "os.symlink": {1: 2},
+    "os.chmod": {0: 2},
+    "os.chown": {0: 3},
+    "os.utime": {0: 3},
+}
+
+
 class WriteGuardError(PermissionError):
     pass
 
@@ -84,6 +99,18 @@ def _as_path(arg):
         return None
 
 
+def _resolve_dir_fd(path, dir_fd):
+    """Make a path relative to a directory descriptor absolute (else it would be checked
+    against the current directory, e.g. a false refusal when a temporary folder has the name
+    of a symlink in the repo)."""
+    if path is None or os.path.isabs(path) or not isinstance(dir_fd, int) or dir_fd < 0:
+        return path
+    try:
+        return os.path.join(os.readlink(f"/proc/self/fd/{dir_fd}"), path)
+    except OSError:
+        return path
+
+
 def _check(event, path):
     if path is None or "__pycache__" in path:  # byte-code caches are harmless
         return
@@ -111,9 +138,14 @@ def _hook(event, args):
         return
     _busy.on = True
     try:
+        dir_fds = _DIR_FD.get(event, {})
         for i in indexes:
             if i < len(args):
-                _check(event, _as_path(args[i]))
+                path = _as_path(args[i])
+                j = dir_fds.get(i)
+                if j is not None and j < len(args):
+                    path = _resolve_dir_fd(path, args[j])
+                _check(event, path)
     finally:
         _busy.on = False
 

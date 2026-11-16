@@ -63,8 +63,8 @@ def test_body_without_html_tag_is_wrapped():
 
 
 def test_is_in_dir(tmp_path):
-    (tmp_path / "help").mkdir()
-    (tmp_path / "help-other").mkdir()
-    assert is_in_dir(str(tmp_path / "help" / "page.html"), str(tmp_path / "help"))
-    assert not is_in_dir(str(tmp_path / "help-other" / "page.html"), str(tmp_path / "help"))
-    assert not is_in_dir("/elsewhere/page.html", str(tmp_path / "help"))
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs-other").mkdir()
+    assert is_in_dir(str(tmp_path / "docs" / "page.html"), str(tmp_path / "docs"))
+    assert not is_in_dir(str(tmp_path / "docs-other" / "page.html"), str(tmp_path / "docs"))
+    assert not is_in_dir("/elsewhere/page.html", str(tmp_path / "docs"))

@@ -76,6 +76,38 @@ def test_writes_to_protected_dirs_are_refused(guarded_dir, op):
     assert (guarded_dir / "keep.txt").read_text() == "original"
 
 
+def test_dir_fd_relative_writes_in_protected_dirs_are_refused(guarded_dir, tmp_path, monkeypatch):
+    """os.remove(name, dir_fd=...) (as used by shutil.rmtree) is checked in the dir_fd's folder, not the cwd."""
+    monkeypatch.chdir(tmp_path)
+    fd = os.open(guarded_dir, os.O_RDONLY)
+    try:
+        with pytest.raises(write_guard.WriteGuardError):
+            os.remove("keep.txt", dir_fd=fd)
+    finally:
+        os.close(fd)
+    assert (guarded_dir / "keep.txt").read_text() == "original"
+
+
+def test_dir_fd_relative_name_matching_a_protected_link_in_cwd_is_allowed(guarded_dir, tmp_path, monkeypatch):
+    """A temporary folder named like a symlink of the cwd that points to a protected folder
+    (e.g. zynthian-ui/help -> ../zynthian-help) must still be removable relative to its parent."""
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    (cwd / "alias").symlink_to(guarded_dir)
+    monkeypatch.chdir(cwd)
+    parent = tmp_path / "old"
+    (parent / "alias").mkdir(parents=True)
+    n = len(write_guard.VIOLATIONS)
+    fd = os.open(parent, os.O_RDONLY)
+    try:
+        os.rmdir("alias", dir_fd=fd)
+    finally:
+        os.close(fd)
+    assert not (parent / "alias").exists()
+    assert len(write_guard.VIOLATIONS) == n
+    assert (guarded_dir / "keep.txt").exists()
+
+
 def test_reading_protected_dirs_is_allowed(guarded_dir):
     n = len(write_guard.VIOLATIONS)
     assert (guarded_dir / "keep.txt").read_text() == "original"
