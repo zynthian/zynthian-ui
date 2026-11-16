@@ -222,3 +222,20 @@ def test_broken_widget_module_returns_none(control, tmp_path):
     assert control.load_widget_module(str(fpath)) is None
     assert control.load_widget_module(str(tmp_path / "zynthian_widget_missing.py")) is None
 
+
+def test_widget_help_page_is_returned(lv2):
+    fpath = add_widget(lv2.user, "helped", [PLUGIN_URI])
+    bundle = os.path.dirname(fpath)
+    manifest = os.path.join(bundle, "manifest.ttl")
+    with open(manifest) as f:
+        ttl = f.read()
+    with open(manifest, "w") as f:
+        f.write(ttl.replace("zyngui:apiVersion 1 .", "zyngui:apiVersion 1 ; zyngui:help <help.html> ."))
+    lv2.z.init_lilv()
+    assert lv2.z.get_plugin_zyngui_widget(PLUGIN_URI)["help"] == os.path.join(bundle, "help.html")
+
+
+def test_widget_without_help_page(lv2):
+    add_widget(lv2.user, "nohelp", [PLUGIN_URI])
+    lv2.z.init_lilv()
+    assert lv2.z.get_plugin_zyngui_widget(PLUGIN_URI)["help"] is None

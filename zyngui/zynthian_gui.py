@@ -974,6 +974,9 @@ class zynthian_gui:
         """
 
         def get_fpath(fpath):
+            # Existing absolute paths (e.g. help pages inside LV2 widget bundles) are used as they are
+            if os.path.isabs(fpath) and os.path.isfile(fpath):
+                return fpath
             html_root = self.screens["help"].help_dir
             for b in ("/", "./"):
                 if fpath.startswith(b):

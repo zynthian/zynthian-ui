@@ -39,4 +39,7 @@ zyngui:help
 	a rdf:Property , owl:ObjectProperty ;
 	rdfs:domain zyngui:widget ;
 	rdfs:label "help page" ;
-	rdfs:comment "Optional HTML help page for the widget." .
+	rdfs:comment """Optional HTML help page for the widget, shown by the zynthian help screen.
+Write plain HTML (a full page or just a fragment): the zynthian-help stylesheet and
+the "help_ui" body class are added automatically, so it looks like the other help
+pages. Stylesheets linked by the page are applied after it and can override it.""" .

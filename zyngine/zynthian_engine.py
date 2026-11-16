@@ -169,6 +169,7 @@ class zynthian_engine(zynthian_basic_engine):
         self.chain_manager = state_manager.chain_manager
 
         self.custom_gui_fpath = None
+        self.custom_gui_help_fpath = None  # Help page (HTML) for the custom GUI, if any
 
         self.type = "MIDI Synth"
         self.nickname = ""

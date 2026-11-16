@@ -881,6 +881,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         """Find the zynthian widget for this plugin: a zyngui:widget UI declared
         in the LV2 data (plugin bundle or extension bundle, built-in or user)."""
         self.custom_gui_generation = zynthian_lv2.lv2_generation
+        self.custom_gui_help_fpath = None
         try:
             widget = zynthian_lv2.get_plugin_zyngui_widget(self.plugin_url)
         except Exception as e:
@@ -889,6 +890,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
             return None
         if widget:
             logging.info(f"Using {'user' if widget['user'] else 'built-in'} zynthian widget <{widget['uri']}> from '{widget['fpath']}'")
+            self.custom_gui_help_fpath = widget['help']
             return widget['fpath']
         return None
 

@@ -366,7 +366,10 @@ class zynthian_gui_chain_control(zynthian_gui_base):
     def get_help_fpath(self):
         if self.subscreen_key == "control":
             proc = self.zyngui.get_current_processor()
-            fpath = f"./help/widgets/{proc.name.lower()}.html"
+            # Help page declared by the processor's widget (e.g. zyngui:help in the LV2 data)
+            fpath = getattr(proc.engine, "custom_gui_help_fpath", None)
+            if not fpath or not Path(fpath).exists():
+                fpath = f"./help/widgets/{proc.name.lower()}.html"
         else:
             fpath = None
         if not fpath or not Path(fpath).exists():

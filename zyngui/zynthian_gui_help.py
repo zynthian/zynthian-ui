@@ -33,6 +33,44 @@ from tkinterweb import HtmlFrame
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
+# Look & feel for help pages from outside zynthian-help
+# ------------------------------------------------------------------------------
+
+
+def apply_help_look(soup, help_dir):
+    """Give a help page from outside zynthian-help (e.g. a widget's help page in its LV2 bundle)
+    the look & feel of the zynthian-help pages:
+    - wrap fragments in a full HTML document,
+    - add the zynthian-help stylesheet before any other one, so page styles can still override it,
+    - add the "help_ui" class to the body.
+
+    soup : BeautifulSoup object of the page
+    help_dir : zynthian-help folder
+    Returns the (possibly new) BeautifulSoup object
+    """
+    if soup.body is None:
+        soup = BeautifulSoup(f"<html><head></head><body>{soup}</body></html>", "html.parser")
+    if soup.html is None:
+        html_tag = soup.new_tag("html")
+        for element in list(soup.contents):
+            html_tag.append(element.extract())
+        soup.append(html_tag)
+    if soup.head is None:
+        soup.html.insert(0, soup.new_tag("head"))
+    link = soup.new_tag("link", rel="stylesheet", href=f"{help_dir}/style.css")
+    soup.head.insert(0, link)
+    classes = soup.body.get("class", [])
+    if "help_ui" not in classes:
+        soup.body["class"] = classes + ["help_ui"]
+    return soup
+
+
+def is_in_dir(fpath, dpath):
+    """True if fpath is inside the folder dpath (resolving links)"""
+    return os.path.realpath(fpath).startswith(os.path.realpath(dpath) + os.sep)
+
+
+# ------------------------------------------------------------------------------
 # Zynthian help view GUI Class
 # ------------------------------------------------------------------------------
 
@@ -150,6 +188,9 @@ class zynthian_gui_help(HtmlFrame):
             self.soup = BeautifulSoup(html, "html.parser")
 
             if fpath != "index:":
+                # Pages from outside zynthian-help (e.g. widget help) get the zynthian-help look & feel
+                if not is_in_dir(fpath, self.help_dir):
+                    self.soup = apply_help_look(self.soup, self.help_dir)
                 for tag in self.soup.find_all("div", attrs={"id": "zynproc-info"}):
                     try:
                         cur_proc = self.zyngui.get_current_processor()

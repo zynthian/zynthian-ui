@@ -1105,7 +1105,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def get_help_fpath(self):
         try:
-            return self.zyngui.get_current_processor().name.lower() + ".html"
+            proc = self.zyngui.get_current_processor()
+            # Help page declared by the processor's widget (e.g. zyngui:help in the LV2 data)
+            fpath = getattr(proc.engine, "custom_gui_help_fpath", None)
+            if fpath and os.path.isfile(fpath):
+                return fpath
+            return proc.name.lower() + ".html"
         except:
             return super().get_help_fpath()
 
