@@ -762,6 +762,8 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         else:
             self.ignore_not_on_gui = False
 
+        self.custom_gui_generation = None
+
         self.native_gui = False
         self.minimize_native_gui = False
         if 'UI' in self.eng_info:
@@ -846,6 +848,9 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
             #logging.debug(f"CTRLS => {self._ctrls}")
             #logging.debug(f"CTRL_SCREENS => {self._ctrl_screens}")
 
+            # Reload LV2 data if bundles were added or updated
+            zynthian_lv2.check_lv2_changes()
+
             # Generate LV2-Plugin Controllers
             self.lv2_monitors_dict = {}
             self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
@@ -875,6 +880,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
     def get_custom_gui_fpath(self):
         """Find the zynthian widget for this plugin: a zyngui:widget UI declared
         in the LV2 data (plugin bundle or extension bundle, built-in or user)."""
+        self.custom_gui_generation = zynthian_lv2.lv2_generation
         try:
             widget = zynthian_lv2.get_plugin_zyngui_widget(self.plugin_url)
         except Exception as e:
@@ -885,6 +891,15 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
             logging.info(f"Using {'user' if widget['user'] else 'built-in'} zynthian widget <{widget['uri']}> from '{widget['fpath']}'")
             return widget['fpath']
         return None
+
+    def refresh_custom_gui(self):
+        """Look for the widget again if LV2 data changed (widget bundle added, removed or updated)"""
+        zynthian_lv2.check_lv2_changes()
+        if self.custom_gui_generation != zynthian_lv2.lv2_generation:
+            fpath = self.get_custom_gui_fpath()
+            if fpath != self.custom_gui_fpath:
+                logging.info(f"Widget for '{self.plugin_name}' changed: {self.custom_gui_fpath} => {fpath}")
+                self.custom_gui_fpath = fpath
 
     # ---------------------------------------------------------------------------
     # Subprocess Management & IPC

@@ -736,6 +736,11 @@ class zynthian_engine(zynthian_basic_engine):
     def get_options(self):
         return self.options
 
+    def refresh_custom_gui(self):
+        """Update custom_gui_fpath if the available widgets changed.
+        Called by the GUI before showing the widget. Engines with dynamic widgets override it."""
+        pass
+
     def get_extended_config(self):
         return None
 

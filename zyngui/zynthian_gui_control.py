@@ -21,6 +21,7 @@
 #
 # ******************************************************************************
 
+import os
 import logging
 import importlib
 from pathlib import Path
@@ -265,32 +266,74 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.mode == 'select':
             super().set_selector(zs_hiden)
 
+    def load_widget_module(self, module_path):
+        """Get the widget module from a file, loading it if not loaded or if the file changed.
+
+        Modules are cached by file path, with the file's modification time and size,
+        so updated widgets are reloaded without restarting the UI (one stat call per use).
+        When a module is reloaded, the widget instances created from the old version are destroyed.
+        Returns the module or None on error.
+        """
+        try:
+            st = os.stat(module_path)
+            fstamp = (st.st_mtime_ns, st.st_size)
+        except OSError as e:
+            logging.error(f"Can't find widget module '{module_path}' => {e}")
+            return None
+        try:
+            module, cached_fstamp = self.modules[module_path]
+            if cached_fstamp == fstamp:
+                return module
+            logging.info(f"Widget module '{module_path}' changed => reloading")
+            self.destroy_widgets(module_path)
+        except KeyError:
+            pass
+        module_name = Path(module_path).stem
+        try:
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        except Exception as e:
+            logging.error(f"Can't load custom widget module '{module_name}' => {e}")
+            self.modules.pop(module_path, None)
+            return None
+        self.modules[module_path] = (module, fstamp)
+        return module
+
+    def destroy_widgets(self, module_path):
+        """Destroy the widget instances created from a module file"""
+        for k in list(self.widgets.keys()):
+            widget = self.widgets[k]
+            if getattr(widget, "zyngui_module_path", None) != module_path:
+                continue
+            logging.debug(f"Destroying widget instance '{k}' from '{module_path}'")
+            if widget == self.current_widget:
+                self.hide_widgets()
+            del self.widgets[k]
+            try:
+                widget.destroy()
+            except Exception as e:
+                logging.warning(f"Can't destroy widget instance '{k}' => {e}")
+
     def show_widget(self, processor):
         self.purge_widgets()
 
         if self.screen_type:
             module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
-        elif processor.engine.custom_gui_fpath:
-            module_path = processor.engine.custom_gui_fpath
         else:
-            self.zyngui.after_idle(self.hide_widgets)
-            return
+            # Widget files can be added, removed or updated while running
+            processor.engine.refresh_custom_gui()
+            module_path = processor.engine.custom_gui_fpath
+            if not module_path:
+                self.zyngui.after_idle(self.hide_widgets)
+                return
 
         module_name = Path(module_path).stem
         if module_name.startswith("zynthian_widget_"):
-            try:
-                module = self.modules[module_name]
-            except:
-                # Load module if not loaded
-                try:
-                    spec = importlib.util.spec_from_file_location(module_name, module_path)
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    self.modules[module_name] = module
-                except Exception as e:
-                    logging.error(f"Can't load custom widget module '{module_name}' => {e}")
-                    self.zyngui.after_idle(self.hide_widgets)
-                    return
+            module = self.load_widget_module(module_path)
+            if module is None:
+                self.zyngui.after_idle(self.hide_widgets)
+                return
 
             # Create new widget if needed
             widget_name = module_name[len("zynthian_widget_"):]
@@ -300,10 +343,21 @@ class zynthian_gui_control(zynthian_gui_selector):
                     widget_name += f"#{processor.id}"
             except:
                 pass
+            # A widget with the same name may come from another file (e.g. a user widget replacing a built-in one)
+            if widget_name in self.widgets and getattr(self.widgets[widget_name], "zyngui_module_path", None) != module_path:
+                widget = self.widgets.pop(widget_name)
+                if widget == self.current_widget:
+                    self.hide_widgets()
+                try:
+                    widget.destroy()
+                except Exception as e:
+                    logging.warning(f"Can't destroy widget instance '{widget_name}' => {e}")
             if widget_name not in self.widgets:
                 try:
                     module_class = getattr(module, module_name)
-                    self.widgets[widget_name] = module_class(self)
+                    widget = module_class(self)
+                    widget.zyngui_module_path = module_path
+                    self.widgets[widget_name] = widget
                 except Exception as e:
                     logging.error(f"Can't create custom widget instance '{widget_name}' => {e}")
                     self.zyngui.after_idle(self.hide_widgets)

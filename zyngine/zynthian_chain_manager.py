@@ -1184,6 +1184,83 @@ class zynthian_chain_manager:
         # Success!! => Return processor
         return processor
 
+    def reload_processor(self, processor):
+        """Reload a processor: stop its engine and start the same engine again, keeping its
+        position in the chain, ID, state (bank, preset & controllers), MIDI-learn and automation
+        bindings. Used to load an updated plugin or widget, or to recover a stuck processor.
+
+        processor : processor object
+        Returns : new processor object or None on failure
+        """
+
+        chain = processor.chain
+        if chain is None or self.processors.get(processor.id) != processor:
+            logging.error(f"Can't reload processor '{processor.id}': not in a chain!")
+            return None
+        eng_code = processor.eng_code
+        # Refresh engine info (the plugin may have been updated) and check it is still available
+        self.get_engine_info()
+        if eng_code not in self.engine_info:
+            logging.error(f"Can't reload processor '{processor.id}': engine '{eng_code}' not available!")
+            return None
+
+        # Save everything needed to restore the processor
+        chain_id = chain.chain_id
+        proc_id = processor.id
+        slots = chain.get_slots_by_type(processor.type)
+        slot_index = chain.get_slot(processor)
+        pos_in_slot = slots[slot_index].index(processor)
+        parallel = len(slots[slot_index]) > 1
+        is_current = chain.current_processor == processor
+        proc_state = processor.get_state()
+        chain_zctrls_state = chain.get_zctrls_state()
+        midi_bindings = []
+        for key, zctrls in self.midi_cc_binding.items():
+            for zctrl in zctrls:
+                if zctrl.processor == processor:
+                    midi_bindings.append((key, zctrl.symbol))
+
+        self.state_manager.start_busy("reload_processor", "Reloading processor", f"reloading {processor.get_basepath()}")
+        try:
+            if not self.remove_processor(chain_id, processor):
+                logging.error(f"Can't reload processor '{proc_id}': can't remove it!")
+                return None
+            # Drop bindings still pointing to the old controllers (automation bindings are kept on remove)
+            for key in list(self.midi_cc_binding):
+                zctrls = [zctrl for zctrl in self.midi_cc_binding[key] if zctrl.processor != processor]
+                if zctrls:
+                    self.midi_cc_binding[key] = zctrls
+                else:
+                    self.midi_cc_binding.pop(key)
+
+            new_processor = self.add_processor(chain_id, eng_code, slot_index, proc_id=proc_id, midi_autolearn=False)
+            if new_processor is None:
+                logging.error(f"Can't reload processor '{proc_id}': can't start engine '{eng_code}'!")
+                return None
+            if parallel and slots[slot_index] == [new_processor]:
+                # add_processor inserts in a new slot => move back into its parallel slot
+                slots.pop(slot_index)
+                slots[slot_index].insert(pos_in_slot, new_processor)
+                chain.rebuild_graph()
+
+            new_processor.set_state(proc_state)
+            for key, symbol in midi_bindings:
+                zctrl = new_processor.controllers_dict.get(symbol)
+                if zctrl is None:
+                    logging.warning(f"Can't restore MIDI binding for '{symbol}': controller not found")
+                    continue
+                zctrls = self.midi_cc_binding.setdefault(key, [])
+                if zctrl not in zctrls:
+                    zctrls.append(zctrl)
+            self.update_automate_cc_filter()
+            chain.set_zctrls_state(chain_zctrls_state)
+            if is_current:
+                chain.set_current_processor(new_processor)
+            logging.info(f"Reloaded processor '{proc_id}' ({eng_code})")
+            return new_processor
+        finally:
+            self.state_manager.end_busy("reload_processor")
+
     def can_move_processor(self, processor):
         """ Can processor be moved?
         Args:

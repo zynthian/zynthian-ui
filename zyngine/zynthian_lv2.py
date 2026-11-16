@@ -193,11 +193,19 @@ except:
 ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+# Touch this file after updating files inside an existing LV2 bundle (e.g. a widget's manifest),
+# so the UI reloads the LV2 data. Adding or removing bundles is detected without it.
+LV2_STAMP_FILE = "{}/lv2.stamp".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 LV2_DIR = "/zynthian/zynthian-plugins/lv2"
 
 engines = None
 engines_by_type = None
 engines_mtime = None
+
+world = None
+lv2_signature = None   # Modification times of LV2_PATH folders & stamp file when LV2 data was loaded
+lv2_generation = 0     # Incremented each time LV2 data is (re)loaded
+zyngui_widget_cache = {}  # Widget lookups indexed by plugin URI, cleared when LV2 data is reloaded
 
 # ------------------------------------------------------------------------------
 # Zynthian widget UI (zyngui:widget). See lv2/zyngui.lv2/zyngui.ttl
@@ -215,8 +223,34 @@ ZYNGUI_BUILTIN_WIDGETS_DIR = os.path.realpath(os.environ.get('ZYNTHIAN_UI_DIR', 
 # ------------------------------------------------------------------------------
 
 
+def get_lv2_signature():
+    """Get a cheap signature of the LV2 data: modification times of the LV2_PATH folders
+    (changed by adding or removing bundles) and of the LV2 stamp file."""
+    lv2_path = os.environ.get('LV2_PATH', "/usr/lib/lv2:/usr/local/lib/lv2")
+    sig = []
+    for fpath in lv2_path.split(":") + [LV2_STAMP_FILE]:
+        try:
+            sig.append(os.stat(fpath).st_mtime_ns)
+        except OSError:
+            sig.append(None)
+    return tuple(sig)
+
+
+def check_lv2_changes():
+    """Reload LV2 data if bundles were added, removed or updated since last load.
+    Cheap (a few stat calls), so it can be called when the UI needs LV2 info.
+    Returns True if LV2 data was reloaded."""
+    if world is not None and get_lv2_signature() == lv2_signature:
+        return False
+    logging.info("LV2 data changed => reloading")
+    init_lilv()
+    return True
+
+
 def init_lilv():
-    global world
+    global world, lv2_signature, lv2_generation
+    # Get signature before loading, so changes done while loading are detected next time
+    lv2_signature = get_lv2_signature()
     world = lilv.World()
     # Disable language filtering
     # world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
@@ -232,6 +266,8 @@ def init_lilv():
     world.ns.doap = lilv.Namespace(world, "http://usefulinc.com/ns/doap#")
     world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
     world.ns.zyngui = lilv.Namespace(world, ZYNGUI_NS)
+    lv2_generation += 1
+    zyngui_widget_cache.clear()
 
 
 # ------------------------------------------------------------------------------
@@ -247,6 +283,7 @@ def get_engines():
     if not mtime or not engines_mtime or engines_mtime != mtime:
         return load_engines()
     else:
+        check_lv2_changes()
         return engines
 
 
@@ -703,6 +740,28 @@ def get_plugin_ui(plugin):
     return None
 
 
+def get_plugin_zyngui_widget(plugin_url):
+    """Get the zynthian widget declared for a plugin as a zyngui:widget LV2 UI.
+
+    The UI can be declared in the plugin's bundle or in any other bundle
+    (extension bundle) on LV2_PATH. If several are declared, the one with the
+    highest supported zyngui:apiVersion wins and, with the same version, user
+    widgets (not in ZYNGUI_BUILTIN_WIDGETS_DIR) win over built-in widgets.
+
+    Results are cached until LV2 data is reloaded (see check_lv2_changes).
+
+    plugin_url : plugin URI
+    Returns a dict {'uri', 'fpath', 'bundle', 'api_version', 'help', 'user'} or None
+    """
+    try:
+        return zyngui_widget_cache[plugin_url]
+    except KeyError:
+        pass
+    res = _find_plugin_zyngui_widget(plugin_url)
+    zyngui_widget_cache[plugin_url] = res
+    return res
+
+
 def get_plugin_uis(plugin):
     """Get the UIs of a plugin, or an empty list if it has none.
 
@@ -722,17 +781,7 @@ def get_plugin_uis(plugin):
     return lilv.UIs(plugin.world, c_uis)
 
 
-def get_plugin_zyngui_widget(plugin_url):
-    """Get the zynthian widget declared for a plugin as a zyngui:widget LV2 UI.
-
-    The UI can be declared in the plugin's bundle or in any other bundle
-    (extension bundle) on LV2_PATH. If several are declared, the one with the
-    highest supported zyngui:apiVersion wins and, with the same version, user
-    widgets (not in ZYNGUI_BUILTIN_WIDGETS_DIR) win over built-in widgets.
-
-    plugin_url : plugin URI
-    Returns a dict {'uri', 'fpath', 'bundle', 'api_version', 'help', 'user'} or None
-    """
+def _find_plugin_zyngui_widget(plugin_url):
     try:
         plugin = world.get_all_plugins()[world.new_uri(plugin_url)]
     except Exception:
