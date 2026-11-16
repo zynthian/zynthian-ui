@@ -26,13 +26,72 @@
 # ******************************************************************************
 
 import os
+import re
+import glob
 import time
+import struct
 import threading
 import subprocess
 from collections import deque
 
 import jack
 import numpy as np
+
+
+JACK_SHM_DIR = "/dev/shm"
+JACK_SHM_REGISTRY = f"{JACK_SHM_DIR}/jack-shm-registry"
+
+
+def reclaim_dead_test_servers(prefix="zyntest", registry=JACK_SHM_REGISTRY, shm_dir=JACK_SHM_DIR):
+    """Free the JACK registry entries of test servers that died without unregistering.
+
+    JACK2 has room for 8 servers in its shared memory registry. A server killed before it can
+    unregister (SIGKILL, killed test run...) leaves its entry, and jackd only reclaims a dead
+    entry when a server with the same name starts. Test servers have unique names, so leaked
+    entries pile up until jackd refuses to start: "Too many servers already active".
+
+    Each server entry is the server's pid (native int) followed by its name, "jack-<uid>:<name>:".
+    Only entries of this user's servers named <prefix>... whose process is dead are cleared
+    (as jackd does when reclaiming), and their leftover semaphores are removed. Leftover shared
+    memory segments of dead servers are released by jackd itself when the next server starts.
+
+    Returns the list of reclaimed server names.
+    """
+    uid = os.getuid()
+    try:
+        fd = os.open(registry, os.O_RDWR)
+    except OSError:
+        return []
+    reclaimed = []
+    try:
+        data = os.pread(fd, os.fstat(fd).st_size, 0)
+        pattern = re.compile(rb"jack-%d:(%s[^\x00:/]*):\x00" % (uid, re.escape(prefix.encode())))
+        for m in pattern.finditer(data):
+            offset = m.start()
+            if offset < 4:
+                continue
+            pid = struct.unpack_from("=i", data, offset - 4)[0]
+            if pid <= 0:
+                continue
+            try:
+                os.kill(pid, 0)
+                continue  # Alive (or another user's process) => keep it
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                continue
+            name = m.group(1).decode()
+            os.pwrite(fd, b"\0" * 4, offset - 4)
+            os.pwrite(fd, b"\0" * (m.end() - offset), offset)
+            for sem in glob.glob(f"{shm_dir}/jack_sem.{uid}_{glob.escape(name)}_*"):
+                try:
+                    os.remove(sem)
+                except OSError:
+                    pass
+            reclaimed.append(name)
+    finally:
+        os.close(fd)
+    return reclaimed
 
 
 def _terminate_with_parent():
@@ -60,6 +119,7 @@ class JackTestServer:
     def start(self, timeout=10):
         if self.proc:
             return
+        reclaim_dead_test_servers()
         self.proc = subprocess.Popen(["jackd", "--no-realtime", "-n", self.name, "-d", "dummy",
                                       "-r", str(self.rate), "-p", str(self.period)],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
