@@ -1,0 +1,12 @@
+# Zynthian widget extension bundle for x42 tuner (tuna.lv2).
+# It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+<http://gareus.org/oss/lv2/tuna#one> ui:ui <http://zynthian.org/plugins/zyngui/tuna#tunaone> .
+<http://gareus.org/oss/lv2/tuna#mod> ui:ui <http://zynthian.org/plugins/zyngui/tuna#tunaone> .
+
+<http://zynthian.org/plugins/zyngui/tuna#tunaone>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_tunaone.py> ;
+	zyngui:apiVersion 1 .

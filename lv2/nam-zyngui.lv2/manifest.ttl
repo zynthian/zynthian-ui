@@ -1,0 +1,11 @@
+# Zynthian widget extension bundle for Neural Amp Modeler (neural_amp_modeler.lv2).
+# It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+<http://github.com/mikeoliphant/neural-amp-modeler-lv2> ui:ui <http://zynthian.org/plugins/zyngui/nam#nam> .
+
+<http://zynthian.org/plugins/zyngui/nam#nam>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_nam.py> ;
+	zyngui:apiVersion 1 .

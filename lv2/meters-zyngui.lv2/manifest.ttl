@@ -1,0 +1,14 @@
+# Zynthian widget extension bundle for x42 meters (meters.lv2).
+# It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+@prefix mtr:    <http://gareus.org/oss/lv2/meters#> .
+
+# One widget, shared by both plugins
+mtr:spectr30mono   ui:ui <http://zynthian.org/plugins/zyngui/meters#spectr30> .
+mtr:spectr30stereo ui:ui <http://zynthian.org/plugins/zyngui/meters#spectr30> .
+
+<http://zynthian.org/plugins/zyngui/meters#spectr30>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_spectr30.py> ;
+	zyngui:apiVersion 1 .

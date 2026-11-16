@@ -200,6 +200,17 @@ engines_by_type = None
 engines_mtime = None
 
 # ------------------------------------------------------------------------------
+# Zynthian widget UI (zyngui:widget). See lv2/zyngui.lv2/zyngui.ttl
+# ------------------------------------------------------------------------------
+
+ZYNGUI_NS = "http://zynthian.org/ns/lv2/zyngui#"
+ZYNGUI_WIDGET_UI = ZYNGUI_NS + "widget"
+ZYNGUI_WIDGET_API_VERSION = 1
+# Built-in widgets live inside zynthian-ui (bundles in lv2/, shared widgets in zyngui/).
+# Widgets from anywhere else (user widgets) take precedence.
+ZYNGUI_BUILTIN_WIDGETS_DIR = os.path.realpath(os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui"))
+
+# ------------------------------------------------------------------------------
 # Lilv LV2 library initialization
 # ------------------------------------------------------------------------------
 
@@ -220,6 +231,7 @@ def init_lilv():
     world.ns.atom = lilv.Namespace(world, "http://lv2plug.in/ns/ext/atom#")
     world.ns.doap = lilv.Namespace(world, "http://usefulinc.com/ns/doap#")
     world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
+    world.ns.zyngui = lilv.Namespace(world, ZYNGUI_NS)
 
 
 # ------------------------------------------------------------------------------
@@ -689,6 +701,57 @@ def get_plugin_ui(plugin):
             pass
     logging.debug(f"Can't find UI for plugin {plugin.get_name()}")
     return None
+
+
+def get_plugin_zyngui_widget(plugin_url):
+    """Get the zynthian widget declared for a plugin as a zyngui:widget LV2 UI.
+
+    The UI can be declared in the plugin's bundle or in any other bundle
+    (extension bundle) on LV2_PATH. If several are declared, the one with the
+    highest supported zyngui:apiVersion wins and, with the same version, user
+    widgets (not in ZYNGUI_BUILTIN_WIDGETS_DIR) win over built-in widgets.
+
+    plugin_url : plugin URI
+    Returns a dict {'uri', 'fpath', 'bundle', 'api_version', 'help', 'user'} or None
+    """
+    try:
+        plugin = world.get_all_plugins()[world.new_uri(plugin_url)]
+    except Exception:
+        return None
+
+    res = None
+    uis = plugin.get_uis()
+    for ui in uis:
+        if not ui.is_a(world.ns.zyngui.widget):
+            continue
+        ui_uri = str(ui.get_uri())
+        try:
+            api_version = int(world.get(ui.get_uri(), world.ns.zyngui.apiVersion, None))
+        except Exception:
+            api_version = 1
+        if api_version > ZYNGUI_WIDGET_API_VERSION:
+            logging.warning(f"Zynthian widget <{ui_uri}> requires API version {api_version} (supported {ZYNGUI_WIDGET_API_VERSION}) => ignored")
+            continue
+        fpath = ui.get_binary_uri().get_path()
+        if not os.path.isfile(fpath):
+            logging.warning(f"Zynthian widget <{ui_uri}> module not found: {fpath}")
+            continue
+        help_node = world.get(ui.get_uri(), world.ns.zyngui.help, None)
+        bundle = ui.get_bundle_uri().get_path()
+        info = {
+            'uri': ui_uri,
+            'fpath': fpath,
+            'bundle': bundle,
+            'api_version': api_version,
+            'help': help_node.get_path() if help_node is not None and help_node.is_uri() else None,
+            'user': not os.path.realpath(fpath).startswith(ZYNGUI_BUILTIN_WIDGETS_DIR + os.sep)
+        }
+        if res:
+            logging.info(f"Plugin <{plugin_url}> has several zynthian widgets: <{res['uri']}>, <{ui_uri}>")
+            if (api_version, info['user']) <= (res['api_version'], res['user']):
+                continue
+        res = info
+    return res
 
 
 def get_plugin_type(plugin):

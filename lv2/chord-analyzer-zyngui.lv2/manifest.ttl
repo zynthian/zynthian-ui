@@ -1,0 +1,13 @@
+# Zynthian widget extension bundle for Dusk Audio Chord Analyzer (3 variants).
+# It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+<https://dusk-audio.github.io/plugins/chord-analyzer> ui:ui <http://zynthian.org/plugins/zyngui/chord-analyzer#chord_analyzer> .
+<https://dusk-audio.github.io/plugins/chord-analyzer-midi> ui:ui <http://zynthian.org/plugins/zyngui/chord-analyzer#chord_analyzer> .
+<https://dusk-audio.github.io/plugins/chord-analyzer-headless> ui:ui <http://zynthian.org/plugins/zyngui/chord-analyzer#chord_analyzer> .
+
+<http://zynthian.org/plugins/zyngui/chord-analyzer#chord_analyzer>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_chord_analyzer.py> ;
+	zyngui:apiVersion 1 .

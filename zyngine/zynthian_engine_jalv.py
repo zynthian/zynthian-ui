@@ -635,21 +635,6 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
         'http://distrho.sf.net/plugins/3BandEQ': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False}
     }
 
-    plugins_custom_gui = {
-        'http://gareus.org/oss/lv2/meters#spectr30mono': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
-        'http://gareus.org/oss/lv2/meters#spectr30stereo': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
-        'http://gareus.org/oss/lv2/tuna#one': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
-        'http://gareus.org/oss/lv2/tuna#mod': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
-        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_aidax.py",
-        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py",
-        'http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_gxgraphiceq.py",
-        'http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_gxgraphiceq.py",
-        'https://dusk-audio.github.io/plugins/chord-analyzer-headless': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
-        'https://dusk-audio.github.io/plugins/chord-analyzer-midi': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
-        'https://dusk-audio.github.io/plugins/chord-analyzer': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_chord_analyzer.py",
-        'http://samplv1.sourceforge.net/lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_audio_file.py"
-    }
-
     # For certain plugins its beneficial to set parameters not set
     # in preset files to their default values, for consistent loading
     # of preset files in the event of the parameter list being
@@ -867,12 +852,7 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
             self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
             # Look for a custom GUI
-            self.custom_gui_fpath = self.get_user_custom_gui()
-            if not self.custom_gui_fpath:
-                try:
-                    self.custom_gui_fpath = self.plugins_custom_gui[self.plugin_url]
-                except:
-                    self.custom_gui_fpath = None
+            self.custom_gui_fpath = self.get_custom_gui_fpath()
 
             # Instance jalv host with the plugin URI
             output = self.start()
@@ -892,15 +872,14 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
     def load_preset_info(self):
         self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
 
-    def get_user_custom_gui(self):
-        pname = self.plugin_name.lower().replace(" ", "_")
-        fpath = self.ui_dir + "/zyngui/widgets_user/zynthian_widget_" + pname + ".py"
-        logging.debug(f"Looking for user custom widget '{fpath}' ...")
-        if os.path.isfile(fpath):
-            logging.debug(f"... found!")
-            return fpath
-        else:
-            return None
+    def get_custom_gui_fpath(self):
+        """Find the zynthian widget for this plugin: a zyngui:widget UI declared
+        in the LV2 data (plugin bundle or extension bundle, built-in or user)."""
+        widget = zynthian_lv2.get_plugin_zyngui_widget(self.plugin_url)
+        if widget:
+            logging.info(f"Using {'user' if widget['user'] else 'built-in'} zynthian widget <{widget['uri']}> from '{widget['fpath']}'")
+            return widget['fpath']
+        return None
 
     # ---------------------------------------------------------------------------
     # Subprocess Management & IPC

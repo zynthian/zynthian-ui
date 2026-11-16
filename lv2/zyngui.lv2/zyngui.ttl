@@ -1,0 +1,42 @@
+@prefix lv2:    <http://lv2plug.in/ns/lv2core#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+<http://zynthian.org/ns/lv2/zyngui>
+	a owl:Ontology ;
+	rdfs:label "Zynthian UI widgets" ;
+	rdfs:comment """
+Zynthian widgets are Python/Tk modules that zynthian-ui loads to display a
+plugin's custom GUI on the Zynthian screen. They are declared with the standard
+LV2 UI mechanism (ui:ui), using zyngui:widget as the UI class. ui:binary points
+to the Python module, named zynthian_widget_<name>.py, which must define a class
+named zynthian_widget_<name> derived from zyngui.zynthian_widget_base.
+
+The plugin's own bundle can declare a widget, or a separate extension bundle can
+do it for an existing plugin. In that case the extension bundle must NOT declare
+the plugin as lv2:Plugin; it adds only the ui:ui triple. A single bundle can
+declare widgets for several plugins, and several plugins can share one widget.
+""" .
+
+zyngui:widget
+	a rdfs:Class , owl:Class ;
+	rdfs:subClassOf ui:UI ;
+	rdfs:label "Zynthian widget" ;
+	rdfs:comment "Python/Tk widget run inside zynthian-ui. ui:binary is the Python module." .
+
+zyngui:apiVersion
+	a rdf:Property , owl:DatatypeProperty ;
+	rdfs:domain zyngui:widget ;
+	rdfs:range xsd:integer ;
+	rdfs:label "API version" ;
+	rdfs:comment "Version of the zynthian_widget_base API the widget was written for." .
+
+zyngui:help
+	a rdf:Property , owl:ObjectProperty ;
+	rdfs:domain zyngui:widget ;
+	rdfs:label "help page" ;
+	rdfs:comment "Optional HTML help page for the widget." .

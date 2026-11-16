@@ -1,0 +1,11 @@
+# Zynthian widget extension bundle for AIDA-X (AIDA-X.lv2).
+# It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+<http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader> ui:ui <http://zynthian.org/plugins/zyngui/aidax#aidax> .
+
+<http://zynthian.org/plugins/zyngui/aidax#aidax>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_aidax.py> ;
+	zyngui:apiVersion 1 .

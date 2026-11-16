@@ -1,0 +1,12 @@
+# Zynthian widget extension bundle for Guitarix graphic EQs (gx_graphiceq.lv2, gx_barkgraphiceq.lv2).
+# It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+<http://guitarix.sourceforge.net/plugins/gx_graphiceq_#_graphiceq_> ui:ui <http://zynthian.org/plugins/zyngui/gxgraphiceq#gxgraphiceq> .
+<http://guitarix.sourceforge.net/plugins/gx_barkgraphiceq_#_barkgraphiceq_> ui:ui <http://zynthian.org/plugins/zyngui/gxgraphiceq#gxgraphiceq> .
+
+<http://zynthian.org/plugins/zyngui/gxgraphiceq#gxgraphiceq>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_gxgraphiceq.py> ;
+	zyngui:apiVersion 1 .
