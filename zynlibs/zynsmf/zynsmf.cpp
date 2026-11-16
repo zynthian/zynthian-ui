@@ -614,7 +614,7 @@ double getTempo(Smf* pSmf, uint32_t nTime) {
 }
 
 void printEvents(Smf* pSmf, size_t nTrack) {
-    printf("Print events for track %lu\n", nTrack);
+    printf("Print events for track %zu\n", nTrack);
     if (!isSmfValid(pSmf))
         return;
     setPosition(pSmf, 0);

@@ -417,9 +417,9 @@ void* file_thread_fn(void* param) {
                             srcData.input_frames = nTotalValid;
                             int rc = src_process(pSrcState, &srcData);
                             if (rc) {
-                                DPRINTF("SRC failed with error %d, %lu frames generated\n", nFramesRead, srcData.output_frames_gen);
+                                DPRINTF("SRC failed with error %d, %ld frames generated\n", nFramesRead, srcData.output_frames_gen);
                             } else {
-                                DPRINTF("SRC suceeded - %lu frames generated, %lu frames used, %lu frames unused\n", srcData.output_frames_gen,
+                                DPRINTF("SRC suceeded - %ld frames generated, %ld frames used, %zu frames unused\n", srcData.output_frames_gen,
                                         srcData.input_frames_used, nUnusedFrames);
                                 nUnusedFrames = nTotalValid - srcData.input_frames_used;
                                 nFramesRead   = srcData.output_frames_gen;

@@ -24,6 +24,7 @@
  * ******************************************************************
  */
 
+#include <cinttypes>
 #include <cstring> // provides strcmp
 #include <set>
 #include <string>
@@ -707,7 +708,7 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
                 nNextBeatTime = nTickTime + PPQN_INTERNAL;
                 nMetronomeFrame = nFrame;
                 bBeat = true;
-                DPRINTF("Beat at tick %d, frame %u (%lu)\n", nTickTime, nFrame, nNow + nFrame);
+                DPRINTF("Beat at tick %d, frame %u (%" PRIu64 ")\n", nTickTime, nFrame, nNow + nFrame);
                 if (++g_nBeat > nBeatsPerBar) {
                     // Bar
                     g_nBeat = 1;
@@ -745,7 +746,7 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
                 if (g_nPlayingSequences != nPlayingSequences) {
                     g_nPlayingSequences = nPlayingSequences;
                     if (!g_nPlayingSequences) {
-                        DPRINTF("No sequences playing now: %lu clock: %u beat: %u tick: %u\n", nNow, nTickTime, g_nBeat, g_nTick);
+                        DPRINTF("No sequences playing now: %" PRIu64 " clock: %u beat: %u tick: %u\n", nNow, nTickTime, g_nBeat, g_nTick);
                         transportStop(TRANSPORT_CLIENT_ZYNSEQ);
                     }
                 }
@@ -847,7 +848,7 @@ int onJackProcess(jack_nframes_t nFrames, void* /*pArgs*/) {
                     pBuffer[1] = it->second.msg.value1;
                 if (nSize > 2)
                     pBuffer[2] = it->second.msg.value2;
-                DPRINTF("Sending MIDI event %x,%x,%x at %lu\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
+                DPRINTF("Sending MIDI event %x,%x,%x at %" PRIu64 "\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nFrame);
             }
             ++it;
         }
