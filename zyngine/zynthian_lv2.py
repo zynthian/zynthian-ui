@@ -703,6 +703,25 @@ def get_plugin_ui(plugin):
     return None
 
 
+def get_plugin_uis(plugin):
+    """Get the UIs of a plugin, or an empty list if it has none.
+
+    The python bindings' plugin.get_uis() raises AssertionError when the plugin has no UIs
+    (lilv returns NULL), leaving a broken object behind, so check the C result first.
+    """
+    try:
+        c_uis = lilv.c.plugin_get_uis(plugin.plugin)
+    except AttributeError:
+        # Bindings internals changed => use the public API
+        try:
+            return plugin.get_uis()
+        except AssertionError:
+            return []
+    if not c_uis:
+        return []
+    return lilv.UIs(plugin.world, c_uis)
+
+
 def get_plugin_zyngui_widget(plugin_url):
     """Get the zynthian widget declared for a plugin as a zyngui:widget LV2 UI.
 
@@ -720,7 +739,7 @@ def get_plugin_zyngui_widget(plugin_url):
         return None
 
     res = None
-    uis = plugin.get_uis()
+    uis = get_plugin_uis(plugin)
     for ui in uis:
         if not ui.is_a(world.ns.zyngui.widget):
             continue

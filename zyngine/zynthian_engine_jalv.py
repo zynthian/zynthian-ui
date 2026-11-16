@@ -875,7 +875,12 @@ class zynthian_engine_jalv(zynthian_engine_jalv_base):
     def get_custom_gui_fpath(self):
         """Find the zynthian widget for this plugin: a zyngui:widget UI declared
         in the LV2 data (plugin bundle or extension bundle, built-in or user)."""
-        widget = zynthian_lv2.get_plugin_zyngui_widget(self.plugin_url)
+        try:
+            widget = zynthian_lv2.get_plugin_zyngui_widget(self.plugin_url)
+        except Exception as e:
+            # A widget problem must never prevent the plugin from loading
+            logging.error(f"Can't get zynthian widget for '{self.plugin_name}' => {e}")
+            return None
         if widget:
             logging.info(f"Using {'user' if widget['user'] else 'built-in'} zynthian widget <{widget['uri']}> from '{widget['fpath']}'")
             return widget['fpath']
