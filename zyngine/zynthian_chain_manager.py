@@ -35,7 +35,6 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_processor import zynthian_processor
-from zyngine import zynthian_state_manager
 from zyngui import zynthian_gui_config
 
 # ----------------------------------------------------------------------------
@@ -1694,6 +1693,10 @@ class zynthian_chain_manager:
         Returns : True on success
         """
 
+        # Not at the top: zynthian_state_manager imports this module, and an import cycle breaks
+        # importing this module first (zynthian-webconf's presets page)
+        from zyngine.zynthian_state_manager import MAIN_MIXBUS_ID
+
         self.state_manager.start_busy("set_chain_state", None, "loading chains")
 
 
@@ -1715,7 +1718,7 @@ class zynthian_chain_manager:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
                     for proc_id, eng_code in slot_state.items():
                         self.state_manager.step_busy_progress()
-                        if proc_id == str(zynthian_state_manager.MAIN_MIXBUS_ID):
+                        if proc_id == str(MAIN_MIXBUS_ID):
                             continue  # Do not replace main mixbus audio mixer processor
                         try:
                             eng_config = engine_config[eng_code]

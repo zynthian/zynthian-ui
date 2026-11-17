@@ -30,10 +30,16 @@ from json import JSONDecoder, loads
 import base64
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
-from zyngine import zynthian_state_manager
 from zyngui import zynthian_gui_config
 
 SNAPSHOT_SCHEMA_VERSION = 6
+
+
+def main_mixbus_id():
+    """zynthian_state_manager.MAIN_MIXBUS_ID, imported on use: zynthian_state_manager imports
+    this module, and the import cycle breaks importing this module first (zynthian-webconf)."""
+    from zyngine.zynthian_state_manager import MAIN_MIXBUS_ID
+    return MAIN_MIXBUS_ID
 
 
 class zynthian_legacy_snapshot:
@@ -145,7 +151,7 @@ class zynthian_legacy_snapshot:
             return round(fader_level, 6)
 
         # Find the mixer processors (channel strips and mixbuses)
-        mixer_ids = {str(zynthian_state_manager.MAIN_MIXBUS_ID)}
+        mixer_ids = {str(main_mixbus_id())}
         for chain_cfg in self.snapshot.get("chains", {}).values():
             for slot in chain_cfg.get("slots", []):
                 if not isinstance(slot, dict):
@@ -199,7 +205,7 @@ class zynthian_legacy_snapshot:
     def version_4(self):
         # Convert snapshot from schema V4 to V5
 
-        mixer_map = {16: zynthian_state_manager.MAIN_MIXBUS_ID} # Map of "MI" mixer proc id indexed by old mixer chan
+        mixer_map = {16: main_mixbus_id()} # Map of "MI" mixer proc id indexed by old mixer chan
         if "chains" in self.snapshot:
             # Get list of used processor ids:
             proc_ids = []
@@ -234,7 +240,7 @@ class zynthian_legacy_snapshot:
                     except:
                         fader_pos = len(chain_config["slots"])
                     if chain_id == "0":
-                        chain_config["slots"].insert(fader_pos, {str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
+                        chain_config["slots"].insert(fader_pos, {str(main_mixbus_id()):"MR"})
                     else:
                         chain_config["slots"].insert(fader_pos, {str(next_id):"MI"})
                         mixer_map[int(mixer_chan)] = int(next_id)

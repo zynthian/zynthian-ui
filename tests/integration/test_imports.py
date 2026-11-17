@@ -69,8 +69,6 @@ def test_state_manager_module_uses_fake_zyncore(zyncore):
 # Import-order independence (fresh interpreter)
 # ---------------------------------------------------------------------------
 
-CYCLE = "circular import (state manager <-> chain manager / legacy snapshot); fix in refactoring phase 2"
-
 FIRST_IMPORTS = [
     "zyngine",
     "zyngine.zynthian_controller",
@@ -84,8 +82,9 @@ FIRST_IMPORTS = [
     "zynautoconnect",
     "zyngui.zynthian_gui_config",
     "zyngui.zynthian_gui_base",
-    pytest.param("zyngine.zynthian_chain_manager", marks=pytest.mark.xfail(strict=True, reason=CYCLE)),
-    pytest.param("zyngine.zynthian_legacy_snapshot", marks=pytest.mark.xfail(strict=True, reason=CYCLE)),
+    # imported first by zynthian-webconf's presets and snapshot pages
+    "zyngine.zynthian_chain_manager",
+    "zyngine.zynthian_legacy_snapshot",
 ]
 
 

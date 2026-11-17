@@ -89,7 +89,7 @@ Directories classify by *scope*, markers by *environment need* (`unit`, `integra
 ### Integration (335)
 | File | Tests | Covers |
 |---|---:|---|
-| `test_imports.py` | 182 | Every core module imports; 14 import-first in a fresh interpreter (2 circular-import xfails); harness hermeticity |
+| `test_imports.py` | 182 | Every core module imports; 14 import-first in a fresh interpreter (the chain manager and legacy snapshot too, since the import cycle with the state manager is broken); harness hermeticity |
 | `test_state_manager.py` | 14 | Construction, chains, signals, `get_state` vs schema, snapshot round trip, slow-update callbacks |
 | `test_chain_manager.py` | 19 | Chain order, `move_chain` (main stays last, signal), navigation limits, MIDI channels (free / by channel / set), MIDI and audio howl-round detection |
 | `test_legacy_snapshot.py` | 25 | Each schema step on small synthetic snapshots: future schema refused, fractional versions, V0 layers → chains (+ note range), V2 CC pass-through, V4 mixer strips → processors / MIDI learn, V5 MIDI-learn key format and the gain → fader-position law |
@@ -225,5 +225,5 @@ zyncoder / zynlibs (C/C++):
 
 * Native: router pedals / MIDI learn / tuning / master channel; zynseq phrases, scenes, follow actions.
 * Engines (most need their external process): base `zynthian_engine` helpers, processor and chain objects.
-* Phase 2: config object injection to remove the `zyngui` imports from core; the layering ratchet and the two
-  circular-import xfails show when it works.
+* Phase 2: config object injection to remove the `zyngui` imports from core; the layering ratchet shows when it works
+  (the state manager import cycle is broken: chain manager and legacy snapshot import it on use).
