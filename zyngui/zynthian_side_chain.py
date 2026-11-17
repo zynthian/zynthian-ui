@@ -296,6 +296,7 @@ class zynthian_side_chain(tkinter.Canvas):
 
         self.rows = len(self.nodes)
         self._draw_graph(proc)
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_LIST, view=self)
 
     def _draw_node(self, node, x, y):
         """ Draw a single node on the canvas.
@@ -500,12 +501,30 @@ class zynthian_side_chain(tkinter.Canvas):
             row = len(self.nodes) - 1
 
         self.selected_index = row
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_SELECT, view=self)
         if type(proc) != str:
             self.zyngui.set_current_processor(proc)
 
         self._draw_selection()
         if action and proc:
             self.node_action(proc, force=action_force)
+
+    # --------------------------------------------------------------------------
+    # State, reported by the "screen_state" websocket feedback
+    # --------------------------------------------------------------------------
+
+    state_key = "chain_blocks"
+
+    def get_state(self, what="all"):
+        if what == "select":
+            return {"selected": self.selected_index}
+        return {"items": [node["title"].replace("\n", " ") for node in self.nodes], "selected": self.selected_index}
+
+    def get_state_parent(self):
+        return self.chain_control
+
+    def is_state_shown(self):
+        return self.chain_control.chain_shown
 
     def select_current_processor(self, action=False):
         self.select_node(proc=self.chain.current_processor, action=action)

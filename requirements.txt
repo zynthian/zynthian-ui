@@ -16,4 +16,5 @@ vcgencmd
 tkinterweb
 pyliblo3
 numpy
+websocket-server
 

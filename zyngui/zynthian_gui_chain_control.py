@@ -89,11 +89,13 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 self.chain_shown = True
                 self.update_layout()
                 self.chain_canvas.grid(row=0, column=0, padx=(0, 2), pady=(0, 0), sticky="NEWS")
+                zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_STATE, view=self)
         else:
             if self.chain_shown:
                 self.chain_shown = False
                 self.update_layout()
                 self.chain_canvas.grid_remove()
+                zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_STATE, view=self)
 
     def toggle_chain(self):
         self.show_chain(not self.chain_shown)
@@ -192,6 +194,7 @@ class zynthian_gui_chain_control(zynthian_gui_base):
             self.subscreen.select_processor(proc)
         elif not self.chain_shown:
             self.show_chain(True)
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_STATE, view=self)
 
     def select_subscreen(self, ssname, proc=None, show_chain=True):
         if ssname == "control":
@@ -382,6 +385,16 @@ class zynthian_gui_chain_control(zynthian_gui_base):
                 page_name = "selector"
             fpath = f"{page_name}.html"
         return fpath
+
+    state_key = "zyngui_chain_control"
+
+    def get_state(self, what="all"):
+        state = {}
+        if self.chain_shown:
+            state[self.chain_canvas.state_key] = self.chain_canvas.get_state()
+        if self.subscreen.state_key:
+            state[self.subscreen.state_key] = self.subscreen.get_state()
+        return state
 
     # --------------------------------------------------------------------------
     # ZynVoice TTS

@@ -30,7 +30,7 @@ import threading
 import subprocess
 import pyliblo3 as liblo
 from time import sleep
-from queue import Empty
+from queue import Empty, SimpleQueue
 from pathlib import Path
 from time import monotonic
 from datetime import datetime
@@ -224,7 +224,27 @@ class zynthian_gui:
         self.websocket_server = None
         self.websocket_engine_thread = None
         self.websocket_server_thread = None
+        self.websocket_sender_thread = None
         self.websocket_clients = {}
+        # Feedback streams clients can subscribe to: {name: function returning the current value (None if no value yet)}
+        self.websocket_feedback_streams = {
+            "wsled_state": lambda: self.wsleds.last_wsled_state,
+            "screen_state": lambda: None  # The full state is sent by the main thread after subscribing
+        }
+        # Feedback queued for the websocket sender thread: (stream, JSON message)
+        self.websocket_queue = SimpleQueue()
+        # Serialize the writes to the websocket connections, done from several threads
+        self.websocket_send_lock = threading.Lock()
+        # "screen_state" feedback: signals are registered only while someone is subscribed
+        self.screen_state_active = False
+        self.screen_state_full = 0  # Send the full state on next update: 1 => if it changed, 2 => always
+        self.screen_state_parts = {}  # Views (or view parts) with changes to send => "list" or "select"
+        self.screen_state_title = False  # Title changed
+        self.screen_state_pending = False  # Update scheduled
+        self.screen_state_traces = []  # Title (breadcrumb) traces => (StringVar, trace id)
+        self.screen_state_sent = {}  # Last state sent, to send only what changes
+        # Feedback streams subscribed by each client: {client id: set of stream names}
+        self.websocket_subscriptions = {}
 
         self.prog_change = [0] * 16 # Track last program change for each MIDI channel
 
@@ -3259,6 +3279,219 @@ class zynthian_gui:
         except Exception as e:
             logging.error(f"Can't inject websocket key '{code}': {e}")
 
+    def websocket_send(self, client, data):
+        """Send a JSON message to a websocket client. Returns False if it can't be sent."""
+        try:
+            payload = json.dumps(data)
+            with self.websocket_send_lock:
+                self.websocket_server.send_message(client, payload)
+            return True
+        except Exception:
+            return False  # Ignore broken or dropped socket links
+
+    def websocket_command(self, client, message):
+        """Handle a text command from a websocket client: /subscribe <stream> ... or /unsubscribe <stream|*> ..."""
+        words = message.split()
+        cmd, streams = words[0], words[1:]
+        subs = self.websocket_subscriptions.setdefault(client['id'], set())
+        if cmd not in ("/subscribe", "/unsubscribe") or not streams:
+            self.websocket_send(client, {"error": f"Bad command '{message}'. Use '/subscribe <stream>' or '/unsubscribe <stream|*>'"})
+            return
+        if cmd == "/subscribe":
+            unknown = [n for n in streams if n not in self.websocket_feedback_streams]
+            for name in streams:
+                if name in self.websocket_feedback_streams and name not in subs:
+                    subs.add(name)
+                    if name == "screen_state":
+                        zynthian_gui_config.top.after_idle(self.screen_state_sync, True)
+                    # Send the current value, so the client doesn't have to wait for a change
+                    value = self.websocket_feedback_streams[name]()
+                    if value:
+                        self.websocket_send(client, {name: value})
+        else:
+            unknown = [n for n in streams if n != "*" and n not in self.websocket_feedback_streams]
+            if "*" in streams:
+                subs.clear()
+            else:
+                subs.difference_update(streams)
+            zynthian_gui_config.top.after_idle(self.screen_state_sync)
+        if unknown:
+            self.websocket_send(client, {"error": f"Unknown feedback stream(s): {' '.join(unknown)}. Available: {' '.join(self.websocket_feedback_streams)}"})
+        self.websocket_send(client, {"subscriptions": sorted(subs)})
+
+    def websocket_has_subscribers(self, stream):
+        return any(stream in subs for subs in list(self.websocket_subscriptions.values()))
+
+    def websocket_broadcast(self, stream, value):
+        """Send the value of a feedback stream to the clients subscribed to it"""
+        if self.websocket_has_subscribers(stream):
+            self.websocket_broadcast_payload(stream, json.dumps({stream: value}))
+
+    def websocket_broadcast_payload(self, stream, payload):
+        """Send a JSON message to the clients subscribed to a feedback stream"""
+        for client_id, subs in list(self.websocket_subscriptions.items()):
+            client = self.websocket_clients.get(client_id)
+            if client and stream in subs:
+                try:
+                    with self.websocket_send_lock:
+                        self.websocket_server.send_message(client, payload)
+                except Exception:
+                    pass  # Ignore broken or dropped socket links
+
+    # --------------------------------------------------------------------------
+    # "screen_state" websocket feedback
+    #
+    # The full state is sent after subscribing and when the screen or the layout of a view changes:
+    #   {"screen": "control", "title": "...", "zyngui_chain_control": {"chain_blocks": {...}, "zyngui_selector": {...}}}
+    # Otherwise, only the changed parts are sent, to be merged with the previous state:
+    #   {"zyngui_chain_control": {"zyngui_selector": {"selected": 4}}}
+    # The views send zynsigman signals when their state changes. Callbacks are registered only while someone is
+    # subscribed, so there is no cost otherwise.
+    # --------------------------------------------------------------------------
+
+    def screen_state_sync(self, full=False):
+        """Main thread: start/stop the screen state feedback, depending on the subscriptions"""
+        active = self.websocket_has_subscribers("screen_state")
+        if active and not self.screen_state_active:
+            self.screen_state_active = True
+            zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.cb_screen_state_full)
+            zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_STATE, self.cb_screen_state_view)
+            zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_LIST, self.cb_screen_state_list)
+            zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_SELECT, self.cb_screen_state_select)
+            for screen_obj in self.screens.values():
+                select_path = getattr(screen_obj, "select_path", None)
+                if select_path is not None and not getattr(screen_obj, "parent", None):
+                    tid = select_path.trace_add("write", self.cb_screen_state_title)
+                    self.screen_state_traces.append((select_path, tid))
+        elif not active and self.screen_state_active:
+            self.screen_state_active = False
+            zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.cb_screen_state_full)
+            zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_STATE, self.cb_screen_state_view)
+            zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_LIST, self.cb_screen_state_list)
+            zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_SELECT, self.cb_screen_state_select)
+            for select_path, tid in self.screen_state_traces:
+                select_path.trace_remove("write", tid)
+            self.screen_state_traces = []
+            self.screen_state_parts = {}
+            self.screen_state_sent = {}
+        if active and full:
+            # New subscriber => always send the full state
+            self.screen_state_full = 2
+            self.screen_state_schedule()
+
+    def cb_screen_state_full(self, **kwargs):
+        self.screen_state_full = max(self.screen_state_full, 1)
+        self.screen_state_schedule()
+
+    def cb_screen_state_view(self, view):
+        if self.get_state_path(view) is not None:
+            self.cb_screen_state_full()
+
+    def cb_screen_state_list(self, view):
+        self.screen_state_parts[view] = "list"
+        self.screen_state_schedule()
+
+    def cb_screen_state_select(self, view):
+        if view not in self.screen_state_parts:
+            self.screen_state_parts[view] = "select"
+            self.screen_state_schedule()
+
+    def cb_screen_state_title(self, *args):
+        self.screen_state_title = True
+        self.screen_state_schedule()
+
+    def screen_state_schedule(self):
+        # Defer the update, so a burst of changes is sent as one message
+        if not self.screen_state_pending:
+            self.screen_state_pending = True
+            zynthian_gui_config.top.after(20, self.screen_state_update)
+
+    def get_state_path(self, view):
+        """Return the list of keys locating the state of a view (or view part), or None if it's not shown"""
+        path = []
+        root = None
+        while view:
+            if not view.state_key or not view.is_state_shown():
+                return None
+            path.insert(0, view.state_key)
+            root = view
+            view = view.get_state_parent()
+        if root is not self.get_current_screen_obj():
+            return None
+        return path
+
+    @staticmethod
+    def get_state_diff(old, new):
+        """Return the values of new that differ from old (nested), or None if some key of old is missing in new"""
+        if old.keys() - new.keys():
+            return None
+        diff = {}
+        for key, value in new.items():
+            old_value = old.get(key)
+            if isinstance(value, dict) and isinstance(old_value, dict):
+                d = zynthian_gui.get_state_diff(old_value, value)
+                if d is None:
+                    return None
+                if d:
+                    diff[key] = d
+            elif old_value != value:
+                diff[key] = value
+        return diff
+
+    def screen_state_update(self):
+        """Main thread: queue the screen state changes for the subscribers"""
+        self.screen_state_pending = False
+        parts, self.screen_state_parts = self.screen_state_parts, {}
+        title, self.screen_state_title = self.screen_state_title, False
+        full, self.screen_state_full = self.screen_state_full, 0
+        if not self.screen_state_active:
+            return
+        try:
+            screen_obj = self.get_current_screen_obj()
+            # The screen may change before its signal arrives (views are filled while showing them)
+            if self.current_screen != self.screen_state_sent.get("screen"):
+                full = max(full, 1)
+            if full:
+                state = {"screen": self.current_screen}
+                if screen_obj:
+                    state["title"] = screen_obj.select_path.get()
+                    if screen_obj.state_key:
+                        state[screen_obj.state_key] = screen_obj.get_state()
+                sent, self.screen_state_sent = self.screen_state_sent, state
+                if full == 1:
+                    # Send only the differences, unless the screen changed or some key was removed
+                    diff = self.get_state_diff(sent, state)
+                    if diff is not None and "screen" not in diff:
+                        state = diff
+            else:
+                # Send only the values that differ from the last sent ones
+                state = {}
+                if title and screen_obj:
+                    title = screen_obj.select_path.get()
+                    if title != self.screen_state_sent.get("title"):
+                        state["title"] = self.screen_state_sent["title"] = title
+                for view, what in parts.items():
+                    path = self.get_state_path(view)
+                    if not path:
+                        continue
+                    node = None
+                    sent = self.screen_state_sent
+                    for key in path:
+                        sent = sent.setdefault(key, {})
+                    for key, value in view.get_state(what).items():
+                        if sent.get(key) != value:
+                            sent[key] = value
+                            if node is None:
+                                node = state
+                                for k in path:
+                                    node = node.setdefault(k, {})
+                            node[key] = value
+            if state:
+                # Serialized here, as later updates modify the dictionaries
+                self.websocket_queue.put(("screen_state", json.dumps({"screen_state": state})))
+        except Exception as e:
+            logging.error(f"Can't get screen state => {e}")
+
     def websocket_init(self):
         ws_note_chans = {}  # (client id, note) => MIDI channel of the note_on sent by that client (piano, controller)
 
@@ -3274,6 +3507,8 @@ class zynthian_gui:
         def client_left(client, server):
             if client:  # None when a connection closes before the websocket handshake (port probes)
                 self.websocket_clients.pop(client['id'], None)
+                self.websocket_subscriptions.pop(client['id'], None)
+                zynthian_gui_config.top.after_idle(self.screen_state_sync)
                 # Release the notes this client left held
                 for key in [k for k in ws_note_chans if k[0] == client['id']]:
                     self.state_manager.zynmidi.note_off(ws_note_chans.pop(key), key[1])
@@ -3281,16 +3516,14 @@ class zynthian_gui:
 
         def new_client(client, server):
             self.websocket_clients[client['id']] = client
-            # Send the current LED state to the new client, so it doesn't have to wait for a change
-            if self.wsleds.last_wsled_state:
-                try:
-                    server.send_message(client, json.dumps({"wsled_state": self.wsleds.last_wsled_state}))
-                except Exception:
-                    pass
+            self.websocket_subscriptions[client['id']] = set()
             logging.debug(f"Websocket connected! Total active connections: {len(self.websocket_clients)}")
 
         def message_received(client, server, message):
             try:
+                if message.lstrip().startswith("/"):
+                    self.websocket_command(client, message.strip())
+                    return
                 data = json.loads(message)
                 #logging.info(f"Received from WebSocket client #{client['id']}: {data}")
                 if "cuia" in data:
@@ -3339,16 +3572,17 @@ class zynthian_gui:
             while not self.exit_flag:
                 if self.wsleds.wsled_state_changed:
                     self.wsleds.wsled_state_changed = False
-                    if self.websocket_clients:
-                        payload = json.dumps({"wsled_state": self.wsleds.last_wsled_state})
-                        # Broadcast across all client connections
-                        for client in self.websocket_clients.values():
-                            try:
-                                self.websocket_server.send_message(client, payload)
-                            except Exception:
-                                pass # Ignore broken or dropped socket links
+                    self.websocket_broadcast("wsled_state", self.wsleds.last_wsled_state)
                 # 50ms sleep keeps CPU overhead at near 0%
                 sleep(0.05)
+
+        # Websocket sender thread: sends the queued feedback. Blocks (no CPU) until there is something to send
+        def sender_thread():
+            while True:
+                item = self.websocket_queue.get()
+                if item is None:
+                    break
+                self.websocket_broadcast_payload(*item)
 
         self.websocket_server = WebsocketServer(host="0.0.0.0", port=self.websocket_port)
         self.websocket_server.set_fn_client_left(client_left)
@@ -3360,6 +3594,9 @@ class zynthian_gui:
         # Worker thread
         self.websocket_server_thread = threading.Thread(target=worker_thread, name="ZynWSWorker", daemon=True)
         self.websocket_server_thread.start()
+        # Sender thread
+        self.websocket_sender_thread = threading.Thread(target=sender_thread, name="ZynWSSender", daemon=True)
+        self.websocket_sender_thread.start()
         logging.info(f"ZYNTHIAN-UI WebSocket server running on port {self.websocket_port}")
 
     # ------------------------------------------------------------------
@@ -3369,6 +3606,7 @@ class zynthian_gui:
     def exit(self, code=0):
         self.exit_code = code
         self.exit_flag = True
+        self.websocket_queue.put(None)  # Ends the websocket sender thread
         self.exit_wait_count = 0
         logging.info("STOPPING ZYNTHIAN-UI...")
         zynthian_gui_config.top.after(1, self.do_exit)

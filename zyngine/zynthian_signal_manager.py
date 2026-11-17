@@ -80,6 +80,9 @@ class zynthian_signal_manager:
     SS_GUI_SHOW_MESSAGE = 5
     SS_GUI_LAUNCHER_MODE = 6
     SS_GUI_VIEW_POS = 7
+    SS_GUI_VIEW_SELECT = 8  # Selected item of a view (or view part) changed => view
+    SS_GUI_VIEW_LIST = 9  # Item list of a view (or view part) changed => view
+    SS_GUI_VIEW_STATE = 10  # Layout or other content of a view changed => view
 
     # MIDI events
     SS_MIDI_ALL = 0

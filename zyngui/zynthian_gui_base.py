@@ -547,6 +547,27 @@ class zynthian_gui_base(tkinter.Frame):
     def set_select_path(self):
         pass
 
+    # --------------------------------------------------------------------------
+    # View state, reported by the "screen_state" websocket feedback
+    # --------------------------------------------------------------------------
+
+    # Key of the view state (None if the view reports no state)
+    state_key = None
+
+    def get_state(self, what="all"):
+        """Return the view state as a JSON serializable dictionary. Called from the main (Tk) thread.
+
+        what: "all" for the full state, "list" for the item list and selection, "select" for the selection only
+        """
+        return {}
+
+    def get_state_parent(self):
+        """Return the view embedding this one, or None"""
+        return self.parent
+
+    def is_state_shown(self):
+        return self.shown
+
     def tts_info(self):
         """ Narrate view status - override to provide more context"""
         if self.tts_title and self.zyngui.tts:
