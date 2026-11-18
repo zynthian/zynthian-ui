@@ -22,6 +22,7 @@
 # ******************************************************************************
 
 import os
+import sys
 import json
 import ffmpeg
 import logging
@@ -141,6 +142,21 @@ OSC_MIXER_PARAMS = {
     "SOLO": ("solo", int),
     "MONO": ("mono", int)
 }
+
+
+class zynthian_websocket_server(WebsocketServer):
+    """Websocket server that doesn't print a traceback for connections failing the handshake.
+
+    Port probes (e.g. webconf checking if the UI websocket is up) and scanners connect and close without
+    sending a request, and websocket_server fails with an AssertionError or a socket error.
+    """
+
+    def handle_error(self, request, client_address):
+        err = sys.exc_info()[1]
+        if isinstance(err, (AssertionError, OSError)):
+            logging.debug(f"Websocket connection from {client_address} failed => {type(err).__name__}: {err}")
+        else:
+            logging.error(f"Websocket connection from {client_address} failed => {type(err).__name__}: {err}", exc_info=True)
 
 
 class zynthian_gui:
@@ -4134,7 +4150,7 @@ class zynthian_gui:
                     break
                 self.websocket_broadcast_payload(*item)
 
-        self.websocket_server = WebsocketServer(host="0.0.0.0", port=self.websocket_port)
+        self.websocket_server = zynthian_websocket_server(host="0.0.0.0", port=self.websocket_port)
         self.websocket_server.set_fn_client_left(client_left)
         self.websocket_server.set_fn_new_client(new_client)
         self.websocket_server.set_fn_message_received(message_received)
