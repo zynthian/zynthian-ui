@@ -17,4 +17,7 @@ tkinterweb
 pyliblo3
 numpy
 websocket-server
+moderngl
+moderngl-window
+pyopengltk
 

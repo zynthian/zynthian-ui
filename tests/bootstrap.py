@@ -69,6 +69,10 @@ for _var, _sub in (("ZYNTHIAN_CONFIG_DIR", "config"), ("ZYNTHIAN_MY_DATA_DIR", "
 if os.environ.get("ZYNTHIAN_TEST_JACK") != "1":
     os.environ["JACK_NO_START_SERVER"] = "1"
 
+# Same OpenGL platform as the zynthian services (zynthian-sys). Under a Wayland desktop session PyOpenGL picks
+# EGL instead, and the Tk OpenGL widgets (moderngl_window / pyopengltk, GLX) fail to import.
+os.environ["PYOPENGL_PLATFORM"] = "x11"
+
 # zyngui.zynthian_gui_config loads config files at import time (a known blocker,
 # see tests/README.md). Provide the minimum it needs in the sandbox.
 _wiring = Path(os.environ["ZYNTHIAN_CONFIG_DIR"]) / "wiring-profiles"
