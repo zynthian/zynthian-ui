@@ -696,15 +696,14 @@ class zynthian_state_manager:
         self.slow_update_callbacks.append([rate, cb, 0])
 
     def remove_slow_update_callback(self, cb):
-        """Add a callback to be called every "rate" seconds
+        """Remove a callback added with add_slow_update_callback
 
-        rate - time in seconds between callbacks
         cb - Callback function
         """
 
-        for cb in self.slow_update_callbacks:
-            if cb[1] == cb:
-                cb.remove(cb)
+        for entry in self.slow_update_callbacks:
+            if entry[1] == cb:
+                self.slow_update_callbacks.remove(entry)
                 break
 
     # ------------------------------------------------------------------
