@@ -100,6 +100,12 @@ class zynthian_gui_confirm(zynthian_gui_fullscreen_modal):
     def zynpot_cb(self, i, dval):
         pass
 
+    # SELECT_ACTION => "Yes", BACK => "No"
+    state_key = "zyngui_confirm"
+
+    def get_state(self, what="all"):
+        return {"text": self.text.get()}
+
     def refresh_loading(self):
         pass
 

@@ -71,6 +71,23 @@ class zynthian_gui_fullscreen_modal(tkinter.Frame):
             self.shown = True
 
     # --------------------------------------------------------------------------
+    # View state, reported by the "screen_state" websocket feedback
+    # --------------------------------------------------------------------------
+
+    # Key of the view state (None if the view reports no state). See zynthian_gui_base.
+    state_key = None
+
+    def get_state(self, what="all"):
+        """Return the view state as a JSON serializable dictionary. Called from the main (Tk) thread."""
+        return {}
+
+    def get_state_parent(self):
+        return None
+
+    def is_state_shown(self):
+        return self.shown
+
+    # --------------------------------------------------------------------------
     # CUIA
     # --------------------------------------------------------------------------
 

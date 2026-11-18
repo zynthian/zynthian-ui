@@ -891,6 +891,7 @@ class zynthian_gui:
         self.current_screen = 'confirm'
         self.hide_screens(exclude='confirm')
         self.screen_lock.release()
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_STATE, view=self.screens['confirm'])
 
     def show_keyboard(self, callback, text="", max_chars=None):
         self.screens['keyboard'].set_mode(OSK_QWERTY)
@@ -3972,6 +3973,12 @@ class zynthian_gui:
             self.screen_state_pending = True
             zynthian_gui_config.top.after(20, self.screen_state_update)
 
+    @staticmethod
+    def get_screen_title(screen_obj):
+        """Title (breadcrumb) of a view. Fullscreen modals have none."""
+        select_path = getattr(screen_obj, "select_path", None)
+        return select_path.get() if select_path is not None else ""
+
     def get_state_path(self, view):
         """Return the list of keys locating the state of a view (or view part), or None if it's not shown"""
         path = []
@@ -4020,7 +4027,7 @@ class zynthian_gui:
             if full:
                 state = {"screen": self.current_screen}
                 if screen_obj:
-                    state["title"] = screen_obj.select_path.get()
+                    state["title"] = self.get_screen_title(screen_obj)
                     if screen_obj.state_key:
                         state[screen_obj.state_key] = screen_obj.get_state()
                 sent, self.screen_state_sent = self.screen_state_sent, state
@@ -4033,7 +4040,7 @@ class zynthian_gui:
                 # Send only the values that differ from the last sent ones
                 state = {}
                 if title and screen_obj:
-                    title = screen_obj.select_path.get()
+                    title = self.get_screen_title(screen_obj)
                     if title != self.screen_state_sent.get("title"):
                         state["title"] = self.screen_state_sent["title"] = title
                 for view, what in parts.items():
