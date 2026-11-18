@@ -28,6 +28,7 @@ from PIL import Image, ImageTk
 
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
+from zyngine.zynthian_signal_manager import zynsigman
 
 
 class zynthian_gui_selector_grid(zynthian_gui_base):
@@ -130,6 +131,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         try:
             self.config[idx] = node
             self._update_node(idx, node)
+            zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_LIST, view=self)
         except:
             logging.error(f"Can't update node '{idx}'")
 
@@ -202,6 +204,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         else:
             self.canvas.configure(scrollregion=(0, 0, 100, 100))
         self._draw_selection()
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_LIST, view=self)
 
     def _draw_selection(self):
         """
@@ -210,6 +213,7 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         self.canvas.itemconfig("node && rect", outline="")
         node_tags = f"node_{self.selected_node} && rect"
         self.canvas.itemconfig(node_tags, outline="yellow", width=2)
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_VIEW_SELECT, view=self)
         if self.shown and self.zyngui.tts:
             self.zyngui.tts.announce(self.config[self.selected_node]["title"])
 
@@ -407,6 +411,19 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
 
     def set_select_path(self):
         self.select_path.set(self.title)
+
+    # --------------------------------------------------------------------------
+    # State, reported by the "screen_state" websocket feedback
+    # --------------------------------------------------------------------------
+
+    state_key = "zyngui_selector_grid"
+
+    def get_state(self, what="all"):
+        if what == "select":
+            return {"selected": self.selected_node}
+        # Empty grid cells are reported as "", so item indexes match the button indexes
+        items = [node["title"].replace("\n", " ") if node else "" for node in self.config or []]
+        return {"items": items, "selected": self.selected_node, "columns": self.columns}
 
     def get_help_fpath(self):
         return "selector_grid.html"
