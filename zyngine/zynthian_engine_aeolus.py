@@ -300,6 +300,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 
     def start(self):
         self.state_manager.start_busy("start_aeolus")
+        try:
+            self._start()
+        finally:
+            # also when Aeolus fails to start: busy forever blocks the UI (and RESTART_UI)
+            self.state_manager.end_busy("start_aeolus")
+
+    def _start(self):
         chain_manager = self.state_manager.chain_manager
         midi_chan = self.processors[0].midi_chan
         proc_i = 0
@@ -353,7 +360,6 @@ class zynthian_engine_aeolus(zynthian_engine):
         # Need to call autoconnect because engine starts later than chain/processor autorouting
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
-        self.state_manager.end_busy("start_aeolus")
 
     def stop(self):
         if self.proc:
