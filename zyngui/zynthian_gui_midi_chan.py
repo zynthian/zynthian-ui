@@ -109,7 +109,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector_info):
             self.zyngui.modify_chain()
         elif self.mode == 'SET':
             self.zyngui.chain_manager.set_midi_chan(
-                self.zyngui.chain_manager.active_chain.chain_id, selchan)
+                self.zyngui.chain_manager.active_chain.chain_id, selchan, send_signal=True)
             zynautoconnect.request_midi_connect(True)
             self.zyngui.close_screen()
 

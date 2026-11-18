@@ -101,6 +101,7 @@ class zynthian_signal_manager:
     SS_RENAME_CHAIN = 6
     SS_ADD_PROCESSOR = 7
     SS_REMOVE_PROCESSOR = 8
+    SS_SET_MIDI_CHAN = 9
 
     # Sequencer
     SS_SEQ_PLAY_STATE = 1

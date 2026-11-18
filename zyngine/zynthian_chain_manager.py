@@ -2161,11 +2161,12 @@ class zynthian_chain_manager:
                 logging.error(f"Can't set preset for CH#{midi_chan}:PC#{midi_prog} => {e}")
         return changed
 
-    def set_midi_chan(self, chain_id, midi_chan):
+    def set_midi_chan(self, chain_id, midi_chan, send_signal=False):
         """Set chain MIDI channel
 
         chain_id : Chain ID
         midi_chan : MIDI channel
+        send_signal : True to send SS_SET_MIDI_CHAN (user action). False when creating chains or loading state.
         """
 
         if chain_id not in self.chains:
@@ -2198,6 +2199,8 @@ class zynthian_chain_manager:
             elif midi_chan == 0xffff:
                 midi_chans = list(range(MAX_NUM_MIDI_CHANS))
         self.rebuild_optimisation_cache()
+        if send_signal:
+            zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_MIDI_CHAN, chain_id=chain_id, midi_chan=midi_chan)
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""

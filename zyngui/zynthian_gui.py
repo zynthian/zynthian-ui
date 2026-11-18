@@ -247,7 +247,8 @@ class zynthian_gui:
             "wsled_state": lambda: self.wsleds.last_wsled_state,
             "screen_state": lambda: None,  # The full state is sent by the main thread after subscribing
             "dpm_global": lambda: None,  # Sent by the DPM sampling task after subscribing
-            "dpm_state": lambda: None
+            "dpm_state": lambda: None,
+            "chain_state": lambda: self.get_chain_state()
         }
         # Feedback queued for the websocket sender thread: (stream, JSON message)
         self.websocket_queue = SimpleQueue()
@@ -265,6 +266,10 @@ class zynthian_gui:
         self.dpm_feedback_active = False
         self.dpm_global_sent = None  # Last main bus levels sent
         self.dpm_state_sent = {}  # Last levels sent for each chain => {chain_id: [a, b, a_hold, b_hold]}
+        # Chain feedback ("chain_state"): signals are registered only while someone is subscribed
+        self.chain_state_active = False
+        self.chain_state_pending = False  # Update queued for the sender thread
+        self.chain_state_json = ""  # Last chain state sent
         # Feedback streams subscribed by each client: {client id: set of stream names}
         self.websocket_subscriptions = {}
 
@@ -3880,6 +3885,8 @@ class zynthian_gui:
                         zynthian_gui_config.top.after_idle(self.screen_state_sync, True)
                     elif name in ("dpm_global", "dpm_state"):
                         new_dpm.append(name)
+                    elif name == "chain_state":
+                        self.chain_state_sync()
                     # Send the current value, so the client doesn't have to wait for a change
                     value = self.websocket_feedback_streams[name]()
                     if value:
@@ -3894,6 +3901,7 @@ class zynthian_gui:
                 subs.difference_update(streams)
             zynthian_gui_config.top.after_idle(self.screen_state_sync)
             zynthian_gui_config.top.after_idle(self.dpm_feedback_sync)
+            self.chain_state_sync()
         if unknown:
             self.websocket_send(client, {"error": f"Unknown feedback stream(s): {' '.join(unknown)}. Available: {' '.join(self.websocket_feedback_streams)}"})
         self.websocket_send(client, {"subscriptions": sorted(subs)})
@@ -4146,6 +4154,94 @@ class zynthian_gui:
             logging.error(f"Can't get DPM feedback => {e}")
         zynthian_gui_config.top.after(self.dpm_feedback_period_ms, self.dpm_feedback_task)
 
+    # --------------------------------------------------------------------------
+    # Chain manager websocket feedback ("chain_state")
+    #
+    # The full chain list is sent after subscribing and on every change (it's small and changes are rare):
+    #   {"chain_state": {"active": 1, "chains": [{"id": 0, "index": 0, "name": "Main", ...}, ...]}}
+    # The chain manager signals are registered only while someone is subscribed. Loading a snapshot or a ZS3
+    # sends a single signal at the end. Some user actions send several (e.g. adding a chain: active chain, add
+    # chain, add processor), so the state is built by the websocket sender thread after a short delay, to
+    # report them once. It's only sent if it changed.
+    # --------------------------------------------------------------------------
+
+    chain_state_signals = (
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_MOVE_CHAIN),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_CHAIN),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_ALL_CHAINS),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_RENAME_CHAIN),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_ADD_PROCESSOR),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_PROCESSOR),
+        (zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_MIDI_CHAN),
+        (zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT),
+        (zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3),
+    )
+
+    def chain_state_sync(self):
+        """Register/unregister the chain manager signals, depending on the subscriptions"""
+        active = self.websocket_has_subscribers("chain_state")
+        if active and not self.chain_state_active:
+            self.chain_state_active = True
+            for signal, subsignal in self.chain_state_signals:
+                zynsigman.register(signal, subsignal, self.cb_chain_state)
+        elif not active and self.chain_state_active:
+            self.chain_state_active = False
+            for signal, subsignal in self.chain_state_signals:
+                zynsigman.unregister(signal, subsignal, self.cb_chain_state)
+            self.chain_state_json = ""
+
+    def cb_chain_state(self, **kwargs):
+        # Queue one update for the sender thread, whatever the quantity of signals
+        if not self.chain_state_pending:
+            self.chain_state_pending = True
+            self.websocket_queue.put(("chain_state", None))
+
+    def send_chain_state(self):
+        """Sender thread: send the chain state to the subscribers, if it changed"""
+        sleep(0.05)  # Report the signals of a single action once
+        self.chain_state_pending = False
+        try:
+            state_json = json.dumps({"chain_state": self.get_chain_state()})
+        except Exception as e:
+            logging.error(f"Can't get chain state => {e}")
+            return
+        if state_json != self.chain_state_json:
+            self.chain_state_json = state_json
+            self.websocket_broadcast_payload("chain_state", state_json)
+
+    def get_chain_state(self):
+        """Return the chain manager state as a JSON serializable dictionary"""
+        chains = []
+        for index, (chain_id, chain) in enumerate(list(self.chain_manager.chains.items())):
+            midi_chan = chain.midi_chan
+            if isinstance(midi_chan, int) and 0 <= midi_chan < 16:
+                midi_chan += 1
+            elif midi_chan == 0xffff:
+                midi_chan = "all"
+            else:
+                midi_chan = None
+            proc = chain.zynmixer_proc
+            if proc is not None and proc.mixer_chan is not None:
+                mixer = {"bus": proc.zynmixer is self.state_manager.zynmixer_bus, "strip": proc.mixer_chan}
+            else:
+                mixer = None
+            chains.append({
+                "id": chain_id,
+                "index": index,  # Position in the mixer (display order), as used by the MIXER CUIA
+                "name": chain.get_name(),
+                "title": chain.title or "",
+                "type": chain.get_type(),
+                "midi_chan": midi_chan,  # 1-16, "all" or None
+                "zmop_index": chain.zmop_index,
+                "mixer": mixer,
+                "audio_thru": bool(chain.audio_thru),
+                "midi_thru": bool(chain.midi_thru)
+            })
+        active = self.chain_manager.active_chain
+        return {"active": active.chain_id if active else None, "chains": chains}
+
     def websocket_init(self):
         ws_note_chans = {}  # (client id, note) => MIDI channel of the note_on sent by that client (piano, controller)
 
@@ -4164,6 +4260,7 @@ class zynthian_gui:
                 self.websocket_subscriptions.pop(client['id'], None)
                 zynthian_gui_config.top.after_idle(self.screen_state_sync)
                 zynthian_gui_config.top.after_idle(self.dpm_feedback_sync)
+                self.chain_state_sync()
                 # Release the notes this client left held
                 for key in [k for k in ws_note_chans if k[0] == client['id']]:
                     self.state_manager.zynmidi.note_off(ws_note_chans.pop(key), key[1])
@@ -4237,7 +4334,10 @@ class zynthian_gui:
                 item = self.websocket_queue.get()
                 if item is None:
                     break
-                self.websocket_broadcast_payload(*item)
+                if item[0] == "chain_state":
+                    self.send_chain_state()
+                else:
+                    self.websocket_broadcast_payload(*item)
 
         self.websocket_server = zynthian_websocket_server(host="0.0.0.0", port=self.websocket_port)
         self.websocket_server.set_fn_client_left(client_left)
