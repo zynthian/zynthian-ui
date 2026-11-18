@@ -1,4 +1,5 @@
-"""zyngine.zynthian_engine_aeolus start(): the busy state ends also when Aeolus fails.
+"""zyngine.zynthian_engine_aeolus start(): the busy state ends also when Aeolus fails, and Aeolus
+gets the port of zynthian's OSC server as its feedback target (-O).
 
 A fake "aeolus" executable on PATH stands in for the engine; the engine object is made without
 __init__ (that reads the stops directory and presets), with only what start() uses."""
@@ -91,5 +92,41 @@ def test_a_failing_aeolus_does_not_leave_zynthian_busy(tmp_path, monkeypatch):
         with pytest.raises(pexpect.EOF):
             eng.start()
         assert eng.state_manager.busy == set()
+    finally:
+        eng.stop()
+
+
+def test_aeolus_gets_the_osc_server_port_as_feedback_target(tmp_path, monkeypatch):
+    # The fake answers on the -O target as Aeolus does (/ready), then prints its prompt
+    fake_aeolus(tmp_path, (
+        "host, port = sys.argv[sys.argv.index('-O') + 1].split(':')\n"
+        "s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\n"
+        "s.sendto(b'/ready\\0\\0,\\0\\0\\0', ('127.0.0.1', int(port)))\n"
+        "print('\\nReady', flush=True)\n"
+        "time.sleep(30)\n"))
+    eng = make_engine(tmp_path, monkeypatch)
+    received = []
+    eng.cb_osc_all = lambda path, args, types, src: received.append(path)
+    try:
+        eng.start()
+        assert isinstance(eng.osc_server_port, int)
+        args = (tmp_path / "args").read_text().split()
+        assert args[args.index("-O") + 1] == f"localhost:{eng.osc_server_port}"
+        assert wait_for(lambda: "/ready" in received), "Aeolus' feedback didn't arrive"
+        assert eng.state_manager.busy == set()
+    finally:
+        eng.stop()
+
+
+def test_a_restarted_aeolus_gets_the_new_osc_server_port(tmp_path, monkeypatch):
+    # stop() frees the OSC server, the next start() opens a new one (another port)
+    fake_aeolus(tmp_path, "print('\\nReady', flush=True)\ntime.sleep(30)\n")
+    eng = make_engine(tmp_path, monkeypatch)
+    try:
+        eng.start()
+        eng.stop()
+        eng.start()
+        args = (tmp_path / "args").read_text().split()
+        assert args[args.index("-O") + 1] == f"localhost:{eng.osc_server_port}"
     finally:
         eng.stop()

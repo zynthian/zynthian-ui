@@ -342,6 +342,8 @@ class zynthian_engine_aeolus(zynthian_engine):
         chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
 
         self.get_current_config()
+        # The OSC server first: its port is Aeolus' feedback target (-O)
+        self.osc_init()
         # self.command = ["aeolus", f"-o {self.osc_target_port}", f"-O localhost:{self.osc_server_port}", f"-S {self.stops_fpath}"]
         self.command = f"aeolus -o {self.osc_target_port} -O localhost:{self.osc_server_port} -S {self.stops_fpath}"
         if not self.config_remote_display():
@@ -349,7 +351,6 @@ class zynthian_engine_aeolus(zynthian_engine):
             self.command += " -t"
         self.command_prompt = "\nReady"
         self.ready = False
-        self.osc_init()
         # self.proc = Popen(self.command, stdout=DEVNULL, stderr=DEVNULL, env=self.command_env)
         self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
         self.proc.delaybeforesend = 0
