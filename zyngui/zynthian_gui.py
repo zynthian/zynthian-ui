@@ -1343,11 +1343,21 @@ class zynthian_gui:
 
     def cuia_help(self, params=None):
         """Show the contextual help screen.
+
+        Category: screens
         """
 
         self.show_help(params)
 
     def cuia_power_save(self, params=None):
+        """Enter or leave the power save mode (screen and LEDs off).
+
+        Category: system
+
+        Keyword Args:
+            mode (int): 0 to leave the power save mode. Any other value, or none, enters the power save mode.
+        """
+
         if params != [0]:
             self.state_manager.reset_event_flag()
             self.state_manager.last_event_ts = monotonic() - zynthian_gui_config.power_save_secs
@@ -1356,6 +1366,8 @@ class zynthian_gui:
 
     def cuia_power(self, params=None):
         """Poweroff the zynthian device.
+
+        Category: system
 
         AI Context:
             Only call this tool with the 'CONFIRM' param when user's command explicitly confirms the action.
@@ -1373,6 +1385,8 @@ class zynthian_gui:
     def cuia_reboot(self, params=None):
         """Reboot the zynthian device.
 
+        Category: system
+
         AI Context:
             Only call this tool with the 'CONFIRM' param when user's command explicitly confirms the action.
             If not sure, call the action without the confirm parameter to ask for confirmation.
@@ -1387,25 +1401,65 @@ class zynthian_gui:
             self.screens['admin'].power()
 
     def cuia_restart_ui(self, params=None):
+        """Restart the zynthian user interface.
+
+        Category: system
+
+        AI Context:
+            Audio is interrupted while the UI restarts. Only call it when the user explicitly asks for it.
+        """
+
         self.screens['admin'].restart_gui()
 
     def cuia_exit_ui(self, params=None):
+        """Exit the zynthian user interface to the console.
+
+        Category: system
+
+        AI Context:
+            The UI stops and is not restarted. Only call it when the user explicitly asks for it.
+        """
+
         self.screens['admin'].exit_to_console()
 
     def cuia_reload_wiring_layout(self, params=None):
+        """Reload the wiring layout (buttons, encoders) from the configuration.
+
+        Category: system
+        """
+
         self.reload_wiring_layout()
 
     def cuia_reload_midi_config(self, params=None):
+        """Reload the MIDI configuration.
+
+        Category: system
+        """
+
         self.state_manager.reload_midi_config()
 
     def cuia_reload_key_binding(self, params=None):
+        """Reload the keyboard bindings from the configuration.
+
+        Category: system
+        """
+
         zynthian_gui_keybinding.load()
 
     def cuia_last_state_action(self, params=None):
+        """Save the last state snapshot, if "restore last state" is enabled, or delete it otherwise.
+
+        Category: system
+
+        It also saves the touch navigation setting and silences the TTS announcements. It's used before powering off or rebooting.
+        """
+
         self.screens['admin'].last_state_action()
 
     def cuia_workflow_capture_start(self, params=None):
         """Starts capturing workflow.
+
+        Category: system
         """
 
         if params:
@@ -1416,12 +1470,16 @@ class zynthian_gui:
 
     def cuia_workflow_capture_stop(self, params=None):
         """Stops capturing workflow.
+
+        Category: system
         """
 
         self.stop_capture_log()
 
     def cuia_workflow_capture_text(self, params=None):
         """Includes a text note into the on-going workflow capture.
+
+        Category: system
         """
 
         self.write_capture_log(f"TEXT: {params[0]}")
@@ -1429,6 +1487,8 @@ class zynthian_gui:
     # ZynVoice TTS actions
     def cuia_tts_announce(self, params=["", True, False, True]):
         """ Announce a TTS message
+
+        Category: tts
 
         Kwywords Args:
             text (str) [REQUIRED]: Text to announce.
@@ -1440,27 +1500,42 @@ class zynthian_gui:
             self.tts.announce(*params)
 
     def cuia_tts_stop(self, params=None):
-        """ Stop current TTS announcement. Clear queue. """
+        """ Stop current TTS announcement. Clear queue. 
+
+        Category: tts
+        """
         if self.tts:
             self.tts._tts.stop()
 
     def cuia_tts_pause(self, params=None):
-        """ Pause current TTS announcement. Do not clear queue. """
+        """ Pause current TTS announcement. Do not clear queue. 
+
+        Category: tts
+        """
         if self.tts:
             self.tts._tts.pause(True)
 
     def cuia_tts_resume(self, params=None):
-        """ Resume paused TTS queue. """
+        """ Resume paused TTS queue. 
+
+        Category: tts
+        """
         if self.tts:
             self.tts._tts.pause(False)
 
     def cuia_tts_toggle_pause(self, params=None):
-        """ Toggle TTS pause """
+        """ Toggle TTS pause 
+
+        Category: tts
+        """
         if self.tts:
             self.tts._tts.pause()
 
     def cuia_tts_toggle_enable(self, params=None):
-        """ Toggle the TTS enabled state """
+        """ Toggle the TTS enabled state 
+
+        Category: tts
+        """
 
         if self.tts:
             zynthian_gui_config.tts_enabled = 0
@@ -1474,7 +1549,10 @@ class zynthian_gui:
             self.screens["tts"].update_list()
 
     def cuia_tts_toggle_playback(self, params=None):
-        """ Stop TTS if playing, else announce context info """
+        """ Stop TTS if playing, else announce context info 
+
+        Category: tts
+        """
         if self.tts:
             if self.tts._tts.playing:
                 self.tts._tts.stop()
@@ -1486,6 +1564,16 @@ class zynthian_gui:
                     self.tts.announce(f"View: {self.current_screen}", replace=True, interrupt=True)
 
     def cuia_tts_register(self, params=None):
+        """Send the TTS announcements to a remote host via OSC.
+
+        Category: tts
+
+        Keyword Args:
+            host (str): IP address of the remote host. Omit all parameters to stop sending.
+            port (int): OSC port of the remote host.
+            path (str): OSC path (default "/tts").
+        """
+
         if self.tts:
             self.tts._tts.register_osc(params)
 
@@ -1493,6 +1581,8 @@ class zynthian_gui:
 
     def cuia_all_notes_off(self, params=None):
         """Stop all playing notes.
+
+        Category: midi
 
 
         AI Context:
@@ -1509,6 +1599,8 @@ class zynthian_gui:
 
     def cuia_all_sounds_off(self, params=None):
         """Stop all playing notes, sequences and audio playback.
+
+        Category: midi
 
         AI Context:
             Call this action when the user say 'silence', 'shut up' or 'stop everything'.
@@ -1527,6 +1619,8 @@ class zynthian_gui:
     def cuia_clean_all(self, params=None):
         """Remove all chains and sequences.
 
+        Category: system
+
         AI Context:
             Only call this tool with confirm='CONFIRM' when user's command explicitly confirms the action.
             If not sure, call the action without the confirm parameter to ask for confirmation.
@@ -1544,41 +1638,58 @@ class zynthian_gui:
 
     def cuia_start_audio_record(self, params=None):
         """Starts the global audio recording.
+
+        Category: transport
         """
 
         self.state_manager.audio_recorder.start_recording()
 
     def cuia_stop_audio_record(self, params=None):
         """Stops the global audio recording.
+
+        Category: transport
         """
 
         self.state_manager.audio_recorder.stop_recording()
 
     def cuia_toggle_audio_record(self, params=None):
         """Toggles the global audio recording.
+
+        Category: transport
         """
 
         self.state_manager.audio_recorder.toggle_recording()
 
     def cuia_start_audio_play(self, params=None):
         """Starts the global audio playback.
+
+        Category: transport
         """
 
         self.state_manager.start_audio_player()
 
     def cuia_stop_audio_play(self, params=None):
         """Stops the global audio playback.
+
+        Category: transport
         """
 
         self.state_manager.stop_audio_player(reset_pos=True)
 
     def cuia_toggle_audio_play(self, params=None):
         """Toggles the global audio playback.
+
+        Category: transport
         """
 
         self.state_manager.toggle_audio_player()
 
     def cuia_audio_file_list(self, params=None):
+        """Show the global audio player view. Same as SCREEN_AUDIO_PLAYER.
+
+        Category: screens
+        """
+
         self.show_screen("audio_player")
         return
 
@@ -1593,12 +1704,16 @@ class zynthian_gui:
 
     def cuia_start_midi_record(self, params=None):
         """Starts the MIDI (SMF) recording.
+
+        Category: transport
         """
 
         self.state_manager.start_midi_record()
 
     def cuia_stop_midi_record(self, params=None):
         """Stops the MIDI (SMF) recording.
+
+        Category: transport
         """
 
         self.state_manager.stop_midi_record()
@@ -1608,6 +1723,8 @@ class zynthian_gui:
 
     def cuia_toggle_midi_record(self, params=None):
         """Toggles the MIDI (SMF) recording.
+
+        Category: transport
         """
 
         self.state_manager.toggle_midi_record()
@@ -1617,18 +1734,24 @@ class zynthian_gui:
 
     def cuia_start_midi_play(self, params=None):
         """Starts the MIDI (SMF) playback.
+
+        Category: transport
         """
 
         self.state_manager.start_midi_playback()
 
     def cuia_stop_midi_play(self, params=None):
         """Stops the MIDI (SMF) playback.
+
+        Category: transport
         """
 
         self.state_manager.stop_midi_playback()
 
     def cuia_toggle_midi_play(self, params=None):
         """Toggles the MIDI (SMF) playback.
+
+        Category: transport
 
         The played SMF file is the currently selected one.
         """
@@ -1637,6 +1760,8 @@ class zynthian_gui:
 
     def cuia_toggle_record(self, params=None):
         """Toggles the contextual recording action.
+
+        Category: transport
 
         The contextual recording action depends of the current screen and the ALT mode status.
         Default is global audio recording. When ALT mode is enabled, the action is MIDI recording (SMF).
@@ -1651,6 +1776,8 @@ class zynthian_gui:
     def cuia_stop(self, params=None):
         """Stops the contextual playback action.
 
+        Category: transport
+
         The contextual playback action depends of the current screen and the ALT mode status.
         Default is global audio playback. When ALT mode is enabled, the action is MIDI playback (SMF).
         If current screen is audio-clip control or pattern editor, playback action is specific.
@@ -1664,6 +1791,8 @@ class zynthian_gui:
     def cuia_toggle_play(self, params=None):
         """Toggles the contextual playback action.
 
+        Category: transport
+
         The contextual playback action depends of the current screen and the ALT mode status.
         Default is global audio playback. When ALT mode is enabled, the action is SMF playback.
         If current screen is audio-clip control or pattern editor, playback action is specific.
@@ -1676,6 +1805,8 @@ class zynthian_gui:
 
     def cuia_tempo(self, params=None):
         """Show the tempo screen.
+
+        Category: screens
         """
 
         self.state_manager.zynseq.tap_tempo()
@@ -1684,6 +1815,8 @@ class zynthian_gui:
 
     def cuia_set_tempo(self, params=None):
         """Sets the global clock tempo (BPM) for the Zynthian framework.
+
+        Category: tempo
 
         AI Context:
             This tool is critical for timing. If the user mentions terms like
@@ -1701,12 +1834,29 @@ class zynthian_gui:
             pass
 
     def cuia_toggle_seq(self, params=None):
+        """Toggle the play state of a sequence (launcher pad) in the current scene.
+
+        Category: transport
+
+        Keyword Args:
+            phrase (int) [REQUIRED]: Index of the phrase containing the sequence.
+            sequence (int) [REQUIRED]: Index of the sequence within the phrase.
+        """
+
         try:
             self.state_manager.zynseq.libseq.togglePlayState(self.state_manager.zynseq.scene, int(params[0]), int(params[1]))
         except (AttributeError, TypeError):
             pass
 
     def cuia_tempo_up(self, params=None):
+        """Increase the global clock tempo (BPM).
+
+        Category: tempo
+
+        Keyword Args:
+            delta (number): BPM to add (default 1).
+        """
+
         if params:
             try:
                 self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() + params[0])
@@ -1717,6 +1867,14 @@ class zynthian_gui:
                 self.state_manager.zynseq.get_tempo() + 1)
 
     def cuia_tempo_down(self, params=None):
+        """Decrease the global clock tempo (BPM).
+
+        Category: tempo
+
+        Keyword Args:
+            delta (number): BPM to subtract (default 1).
+        """
+
         if params:
             try:
                 self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - params[0])
@@ -1726,6 +1884,11 @@ class zynthian_gui:
             self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - 1)
 
     def cuia_tap_tempo(self, params=None):
+        """Tap tempo: call it repeatedly, on the beat, to set the global clock tempo.
+
+        Category: tempo
+        """
+
         self.state_manager.zynseq.tap_tempo()
 
     def cuia_copy(self, params=None):
@@ -1736,6 +1899,19 @@ class zynthian_gui:
 
     # Zynpot & Zynswitch emulation CUIAs (low level)
     def cuia_zynpot(self, params=None):
+        """Turn an encoder (zynpot) by a relative amount.
+
+        Category: navigation
+
+        AI Context:
+            This action emulates turning an encoder knob. Encoder 3 is the select encoder: on list views it moves the selection.
+            The other encoders change the controllers shown on the current view.
+
+        Keyword Args:
+            index (int) [REQUIRED]: Encoder index (0-3).
+            delta (int) [REQUIRED]: Relative change, positive (clockwise) or negative.
+        """
+
         try:
             i = int(params[0])
             d = int(params[1])
@@ -1749,6 +1925,15 @@ class zynthian_gui:
             logging.error(e)
 
     def cuia_zynpot_abs(self, params=None):
+        """Set the controller of an encoder (zynpot) to an absolute value, if the current view supports it.
+
+        Category: navigation
+
+        Keyword Args:
+            index (int) [REQUIRED]: Encoder index (0-3).
+            value (number) [REQUIRED]: Normalized value, from 0.0 to 1.0.
+        """
+
         try:
             self.get_current_screen_obj().zynpot_abs(*params)
         except AttributeError:
@@ -1757,6 +1942,19 @@ class zynthian_gui:
             logging.error(e)
 
     def cuia_zynswitch(self, params=None):
+        """Push a switch (button).
+
+        Category: navigation
+
+        AI Context:
+            This action emulates pushing a hardware button. Switches 0-3 are: 0 -> Menu/Layer, 1 -> Back, 2 -> Snapshot, 3 -> Select.
+            Higher indexes are device specific. Prefer the specific CUIAs (BACK, SELECT_ACTION, MENU, ...) when they exist.
+
+        Keyword Args:
+            index (int) [REQUIRED]: Switch index.
+            action (str) [REQUIRED] enum['S', 'B', 'L', 'P', 'R']: 'S' -> short push, 'B' -> bold push, 'L' -> long push, 'P' -> pressed, 'R' -> released.
+        """
+
         try:
             i = params[0]
             d = params[1]
@@ -1772,6 +1970,8 @@ class zynthian_gui:
     def cuia_arrow_up(self, params=None):
         """Arrow Up action.
 
+        Category: navigation
+
         AI Context:
             This action emulates pushing the UP arrow button.
         """
@@ -1782,6 +1982,8 @@ class zynthian_gui:
 
     def cuia_arrow_down(self, params=None):
         """Arrow Down action.
+
+        Category: navigation
 
         AI Context:
             This action emulates pushing the DOWN arrow button.
@@ -1795,6 +1997,8 @@ class zynthian_gui:
     def cuia_arrow_right(self, params=None):
         """Arrow Right action.
 
+        Category: navigation
+
         AI Context:
             This action emulates pushing the RIGHT arrow button.
         """
@@ -1805,7 +2009,9 @@ class zynthian_gui:
             pass
 
     def cuia_arrow_left(self, params=None):
-        """Arrow Up action.
+        """Arrow Left action.
+
+        Category: navigation
 
         AI Context:
             This action emulates pushing the LEFT arrow button.
@@ -1822,6 +2028,8 @@ class zynthian_gui:
 
     def cuia_back(self, params=None):
         """Back action.
+
+        Category: navigation
 
         Normally closes the current view and showing the previous one.
         If param editor is enabled, exits and back to normal mode.
@@ -1840,10 +2048,13 @@ class zynthian_gui:
     def cuia_select_action(self, params=None):
         """Select action.
 
+        Category: navigation
+
         The select actions normally refers to the selected item.
 
         AI Context:
-            This action emulates pushing the SEL button.
+            This action emulates pushing the SEL button. It performs the action of the selected item,
+            same as ZYNSWITCH 3 with the same action type. Use SELECT to highlight an item before.
             It can be used to confirm actions.
 
         Keyword Args:
@@ -1863,6 +2074,8 @@ class zynthian_gui:
     def cuia_bold_select_action(self, params=None):
         """Bold select action.
 
+        Category: navigation
+
         The bold select actions normally refers to the selected item.
 
         AI Context:
@@ -1874,6 +2087,18 @@ class zynthian_gui:
 
     # Select element in list => it receives an integer parameter!
     def cuia_select(self, params=None):
+        """Highlight an item in the list of the current view, without performing its action.
+
+        Category: navigation
+
+        AI Context:
+            This only moves the selection. Call SELECT_ACTION afterwards to perform the action of the selected item.
+            The item indexes are the positions in the "items" list reported by the "screen_state" websocket feedback.
+
+        Keyword Args:
+            index (int) [REQUIRED]: Index of the item to highlight.
+        """
+
         try:
             self.get_current_screen_obj().select(params[0])
         except (AttributeError, TypeError):
@@ -1881,6 +2106,8 @@ class zynthian_gui:
 
     def cuia_mixer(self, params):
         """ Set the specified mixer parameter to a given value.
+
+        Category: mixer
 
         AI Context:
             This function is used for changing a mixer parameter value in a chain.
@@ -1911,42 +2138,73 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_toggle_screen(self, params=None):
+        """Show a view, or close it if it's already shown.
+
+        Category: screens
+
+        Keyword Args:
+            screen (str) [REQUIRED]: View name, like the "screen" reported by the "screen_state" websocket feedback (mixer, admin, chain_manager, snapshot, zs3, ...).
+        """
+
         if params:
             self.toggle_screen(params[0])
 
     def cuia_show_screen(self, params=None):
+        """Show a view, resetting the view history (BACK won't return to the previous view).
+
+        Category: screens
+
+        Keyword Args:
+            screen (str) [REQUIRED]: View name, like the "screen" reported by the "screen_state" websocket feedback (mixer, admin, chain_manager, snapshot, zs3, ...).
+        """
+
         if params:
             self.show_screen_reset(params[0])
 
     def cuia_screen_admin(self, params=None):
         """Show the admin view.
+
+        Category: screens
         """
 
         self.show_screen("admin")
 
     def cuia_screen_mixer(self, params=None):
+        """Show the mixer view, resetting the view history.
+
+        Category: screens
+        """
+
         self.show_screen_reset("mixer")
 
     def cuia_screen_chain_manager(self, params=None):
         """Show the chain manager view.
+
+        Category: screens
         """
 
         self.show_screen("chain_manager")
 
     def cuia_screen_audio_mixer(self, params=None):
         """Show the audio mixer view.
+
+        Category: screens
         """
 
         self.show_screen_reset("mixer")
 
     def cuia_screen_snapshot(self, params=None):
         """Show the snapshots view.
+
+        Category: screens
         """
 
         self.show_screen("snapshot")
 
     def cuia_screen_zs3(self, params=None):
         """Show the subsnapshots (ZS3) view.
+
+        Category: screens
         """
 
         self.screens["zs3"].enable_midi_learn()
@@ -1954,24 +2212,32 @@ class zynthian_gui:
 
     def cuia_screen_midi_recorder(self, params=None):
         """Show the MIDI recorder/player view.
+
+        Category: screens
         """
 
         self.show_screen("midi_recorder")
 
     def cuia_screen_audio_player(self, params=None):
         """Show the global audio player view.
+
+        Category: screens
         """
 
         self.show_screen("audio_player")
 
     def cuia_screen_alsa_mixer(self, params=None):
         """Show the audio levels (ALSA levels) view.
+
+        Category: screens
         """
 
         self.show_screen("alsa_mixer")
 
     def cuia_screen_launcher(self, params=None):
         """Show the launcher view.
+
+        Category: screens
         """
 
         if self.current_screen == "mixer" and self.screens["mixer"].launcher_mode:
@@ -1980,10 +2246,17 @@ class zynthian_gui:
             self.show_screen_reset("launcher")
 
     def cuia_screen_zynpad(self, params=None):
+        """Show the launcher (zynpad) view.
+
+        Category: screens
+        """
+
         self.show_screen("launcher")
 
     def cuia_screen_pattern_editor(self, params=None):
         """Show the pattern editor view.
+
+        Category: screens
         """
 
         if self.current_screen == "launcher":
@@ -2009,9 +2282,22 @@ class zynthian_gui:
                 pass
 
     def cuia_screen_calibrate(self, params=None):
+        """Show the touchscreen calibration view.
+
+        Category: display
+        """
+
         self.calibrate_touchscreen()
 
     def cuia_screen_clean(self, params=None):
+        """Lock the touchscreen for 10 seconds, so it can be cleaned.
+
+        Category: display
+
+        AI Context:
+            The UI doesn't respond during 10 seconds. Only call it when the user asks for it.
+        """
+
         self.state_manager.start_busy("clean_screen", "Clean screen")
         for i in range(10, 0, -1):
             self.state_manager.set_busy_details(f"Closing in {i}s")
@@ -2019,6 +2305,14 @@ class zynthian_gui:
         self.state_manager.end_busy("clean_screen")
 
     def cuia_refresh_screen(self, params=None):
+        """Rebuild and redraw the current view.
+
+        Category: display
+
+        Keyword Args:
+            screen (str): Only refresh if this is the current view. Omit it to refresh any view.
+        """
+
         if params is None or self.current_screen in params:
             self.screens[self.current_screen].build_view()
             self.screen_lock.acquire()
@@ -2030,18 +2324,34 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_show_navigation_grid(self, params):
+        """Show a grid of buttons, configured by the caller.
+
+        Category: display
+
+        AI Context:
+            Intended for key bindings and internal use. The config parameter is a list of button descriptions.
+
+        Keyword Args:
+            title (str) [REQUIRED]: Title shown in the topbar.
+            config (str) [REQUIRED]: List of dictionaries, each one describing a button.
+        """
+
         if params and len(params) >= 2:
             self.screens["grid_sel"].setup(params[0], params[1])
             self.show_screen("grid_sel")
 
     def cuia_main_menu(self, params=None):
         """Show the main menu.
+
+        Category: screens
         """
 
         self.show_screen("main_menu")
 
     def cuia_add_chain(self, params=None):
         """Show add chain menu.
+
+        Category: screens
         """
 
         pos = self.chain_manager.get_active_chain_index() + 1
@@ -2052,6 +2362,8 @@ class zynthian_gui:
 
     def cuia_chain_control(self, params=None):
         """Show chain control view.
+
+        Category: screens
         """
 
         try:
@@ -2073,6 +2385,8 @@ class zynthian_gui:
 
     def cuia_chain_options(self, params=None):
         """Show chain options.
+
+        Category: screens
         """
 
         if self.is_shown_alsa_mixer():
@@ -2101,6 +2415,8 @@ class zynthian_gui:
 
     def cuia_menu(self, params=None):
         """Show contextual menu.
+
+        Category: navigation
         """
 
         show_menu_func = getattr(self.screens[self.current_screen], "show_menu", None)
@@ -2111,6 +2427,8 @@ class zynthian_gui:
 
     def cuia_bank_preset(self, params=None):
         """Show presets selection view.
+
+        Category: screens
         """
 
         if self.is_shown_alsa_mixer():
@@ -2157,6 +2475,8 @@ class zynthian_gui:
 
     def cuia_preset_fav(self, params=None):
         """Show the favorite presets.
+
+        Category: screens
         """
 
         self.show_favorites()
@@ -2166,6 +2486,17 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_zs3_save(self, params=None):
+        """Save the current state into a subsnapshot (ZS3), overwriting it.
+
+        Category: zs3
+
+        AI Context:
+            This overwrites the ZS3. Only call it when the user explicitly asks to save it.
+
+        Keyword Args:
+            zs3 (int) [REQUIRED]: ZS3 index, as listed in the subsnapshots (ZS3) view. Key bindings may pass a ZS3 id (str) instead.
+        """
+
         if params and len(params) >= 1:
             if isinstance(params[0], int):
                 self.state_manager.save_zs3_by_index(params[0])
@@ -2173,6 +2504,14 @@ class zynthian_gui:
                 self.state_manager.save_zs3(params[0])
 
     def cuia_zs3_load(self, params=None):
+        """Load a subsnapshot (ZS3).
+
+        Category: zs3
+
+        Keyword Args:
+            zs3 (int) [REQUIRED]: ZS3 index, as listed in the subsnapshots (ZS3) view. Key bindings may pass a ZS3 id (str) instead.
+        """
+
         if params and len(params) >= 1:
             if isinstance(params[0], int):
                 self.state_manager.load_zs3_by_index(params[0])
@@ -2180,6 +2519,14 @@ class zynthian_gui:
                 self.state_manager.load_zs3(params[0])
 
     def cuia_zs3_next(self, params=None):
+        """Load the next subsnapshot (ZS3), or the first one if none is loaded.
+
+        Category: zs3
+
+        Keyword Args:
+            cycle (bool): True to go back to the first ZS3 after the last one.
+        """
+
         if params and len(params) >= 1:
             cycle = bool(params[0])
         else:
@@ -2187,6 +2534,14 @@ class zynthian_gui:
         self.state_manager.load_next_zs3(cycle)
 
     def cuia_zs3_prev(self, params=None):
+        """Load the previous subsnapshot (ZS3).
+
+        Category: zs3
+
+        Keyword Args:
+            cycle (bool): True to go to the last ZS3 after the first one.
+        """
+
         if params and len(params) >= 1:
             cycle = bool(params[0])
         else:
@@ -2209,18 +2564,41 @@ class zynthian_gui:
             self.state_manager.enable_learn_cc(params[0], params[1])
 
     def cuia_disable_midi_learn_cc(self, params=None):
+        """Disable the MIDI CC learning.
+
+        Category: midi
+        """
+
         self.state_manager.disable_learn_cc()
 
     def cuia_enable_midi_learn_pc(self, params=None):
+        """Enable the MIDI program change learning, to bind a program change to a subsnapshot (ZS3).
+
+        Category: midi
+
+        Keyword Args:
+            zs3_name (str): Name of the ZS3 to bind. Omit it to learn into a new ZS3.
+        """
+
         if params and len(params) > 0:
             self.state_manager.enable_learn_pc(params[0])
         else:
             self.state_manager.enable_learn_pc("")
 
     def cuia_disable_midi_learn_pc(self, params=None):
+        """Disable the MIDI program change learning.
+
+        Category: midi
+        """
+
         self.state_manager.disable_learn_pc()
 
     def cuia_enable_midi_learn(self, params=None):
+        """Enter the MIDI learn mode on the current view.
+
+        Category: midi
+        """
+
         self.state_manager.set_midi_learn(True)
         try:
             self.get_midi_learn_screen_obj().enter_midi_learn()
@@ -2228,6 +2606,11 @@ class zynthian_gui:
             pass
 
     def cuia_disable_midi_learn(self, params=None):
+        """Leave the MIDI learn mode.
+
+        Category: midi
+        """
+
         self.state_manager.set_midi_learn(False)
         try:
             self.get_midi_learn_screen_obj().exit_midi_learn()
@@ -2235,6 +2618,11 @@ class zynthian_gui:
             pass
 
     def cuia_toggle_midi_learn(self, params=None):
+        """Toggle the MIDI learn mode on the current view.
+
+        Category: midi
+        """
+
         try:
             state = self.get_midi_learn_screen_obj().toggle_midi_learn()
             self.state_manager.set_midi_learn(state)
@@ -2245,6 +2633,14 @@ class zynthian_gui:
                 self.cuia_enable_midi_learn(params)
 
     def cuia_action_midi_unlearn(self, params=None):
+        """Remove the MIDI bindings (MIDI learn) of the current view's selection.
+
+        Category: midi
+
+        AI Context:
+            MIDI bindings are lost. Only call it when the user explicitly asks for it.
+        """
+
         try:
             self.get_midi_learn_screen_obj().midi_unlearn_action()
         except (AttributeError, TypeError):
@@ -2252,18 +2648,45 @@ class zynthian_gui:
 
     # Learn control options
     def cuia_midi_learn_control_options(self, params=None):
+        """Show the options (MIDI learn, unlearn, ...) of a controller of the current view.
+
+        Category: midi
+
+        Keyword Args:
+            index (int) [REQUIRED]: Controller index on the view (0-3).
+        """
+
         scrobj = self.get_midi_learn_screen_obj()
         if scrobj and params and len(params) > 0:
             scrobj.controller_options(params[0])
 
     # Learn control
     def cuia_midi_learn_control(self, params=None):
+        """Start MIDI learning for a controller of the current view: the next MIDI CC received is bound to it.
+
+        Category: midi
+
+        Keyword Args:
+            index (int) [REQUIRED]: Controller index on the view (0-3).
+        """
+
         scrobj = self.get_midi_learn_screen_obj()
         if scrobj and params and len(params) > 0:
             scrobj.midi_learn(params[0])
 
     # Unlearn control
     def cuia_midi_unlearn_control(self, params=None):
+        """Remove the MIDI bindings of a controller of the current view.
+
+        Category: midi
+
+        AI Context:
+            MIDI bindings are lost. Only call it when the user explicitly asks for it.
+
+        Keyword Args:
+            index (int): Controller index on the view (0-3). Omit it to unlearn the controller being learned.
+        """
+
         scrobj = self.get_midi_learn_screen_obj()
         if scrobj:
             if params and len(params) > 0:
@@ -2274,6 +2697,14 @@ class zynthian_gui:
 
     # Unlearn all mixer controls
     def cuia_midi_unlearn_mixer(self, params=None):
+        """Remove the MIDI bindings of all the mixer controls.
+
+        Category: midi
+
+        AI Context:
+            MIDI bindings are lost. Only call it when the user explicitly asks for it.
+        """
+
         for chain in self.chain_manager.chains.values():
             if chain.zynmixer_proc:
                 self.chain_manager.clean_midi_binding(chain.zynmixer_proc)
@@ -2283,6 +2714,17 @@ class zynthian_gui:
             self.chain_manager.clear_midi_binding([params[0], params[1]])
 
     def cuia_midi_unlearn_chain(self, params=None):
+        """Remove all the MIDI bindings of a chain.
+
+        Category: midi
+
+        AI Context:
+            MIDI bindings are lost. Only call it when the user explicitly asks for it.
+
+        Keyword Args:
+            chain_id (int): Chain id. Omit it for the active chain.
+        """
+
         if params and len(params) > 0:
             self.chain_manager.clean_midi_binding(params[0])
         else:
@@ -2292,6 +2734,14 @@ class zynthian_gui:
     # Z2 knob touch
     # -------------------------------------------------------------------
     def cuia_z2_zynpot_touch(self, params=None):
+        """Touch an encoder (Z2 hardware). While MIDI learning, it selects the controller to learn.
+
+        Category: navigation
+
+        Keyword Args:
+            index (int) [REQUIRED]: Encoder index (0-3).
+        """
+
         if params and len(params) > 0:
             try:
                 self.screens[self.current_screen].zctrl_touch(params[0])
@@ -2303,6 +2753,15 @@ class zynthian_gui:
     # V5 knob's switch action defaults
     # -------------------------------------------------------------------
     def cuia_v5_zynpot_switch(self, params):
+        """Push an encoder's switch (V5 hardware).
+
+        Category: navigation
+
+        Keyword Args:
+            index (int) [REQUIRED]: Encoder index (0-3).
+            action (str) [REQUIRED] enum['S', 'B', 'L']: 'S' -> short push, 'B' -> bold push, 'L' -> long push.
+        """
+
         try:
             if self.get_current_screen_obj().cuia_v5_zynpot_switch(params):
                 return True
@@ -2328,6 +2787,15 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_program_change(self, params=None):
+        """Send a MIDI program change.
+
+        Category: midi
+
+        Keyword Args:
+            program (str) [REQUIRED]: Program number (0-127), or "+"/"-" for the next/previous program.
+            chan (int): MIDI channel (0-15). Omit it for the active chain's channel.
+        """
+
         if params and len(params) > 0:
             if len(params) > 1:
                 chan = int(params[1])
@@ -2349,6 +2817,19 @@ class zynthian_gui:
                 self.prog_change[chan] = pgm
 
     def cuia_zyn_cc(self, params=None):
+        """Send a MIDI CC message.
+
+        Category: midi
+
+        AI Context:
+            Intended for key bindings: when the last parameter is 'R' (key released), the release value is sent.
+
+        Keyword Args:
+            chan (int) [REQUIRED]: MIDI channel (0-15).
+            cc (int) [REQUIRED]: CC number (0-127).
+            value (int) [REQUIRED]: CC value (0-127).
+        """
+
         if params and len(params) > 2:
             chan = int(params[0])
             cc = int(params[1])
@@ -2362,30 +2843,55 @@ class zynthian_gui:
     # Common methods to control views derived from zynthian_gui_base
     # -------------------------------------------------------------------
     def cuia_show_cursor(self, params=None):
+        """Show the mouse cursor.
+
+        Category: display
+        """
+
         try:
             zynthian_gui_config.top.config(cursor="arrow")
         except (AttributeError, TypeError):
             pass
 
     def cuia_hide_cursor(self, params=None):
+        """Hide the mouse cursor.
+
+        Category: display
+        """
+
         try:
             zynthian_gui_config.top.config(cursor="none")
         except (AttributeError, TypeError):
             pass
 
     def cuia_show_topbar(self, params=None):
+        """Show the topbar of the current view.
+
+        Category: display
+        """
+
         try:
             self.screens[self.current_screen].show_topbar(True)
         except (AttributeError, TypeError):
             pass
 
     def cuia_hide_topbar(self, params=None):
+        """Hide the topbar of the current view.
+
+        Category: display
+        """
+
         try:
             self.screens[self.current_screen].show_topbar(False)
         except (AttributeError, TypeError):
             pass
 
     def cuia_show_sidebar(self, params=None):
+        """Show the sidebar (controllers) of the current view.
+
+        Category: display
+        """
+
         try:
             self.screens[self.current_screen].show_sidebar(True)
             zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, shown=True)
@@ -2393,6 +2899,11 @@ class zynthian_gui:
             pass
 
     def cuia_hide_sidebar(self, params=None):
+        """Hide the sidebar (controllers) of the current view.
+
+        Category: display
+        """
+
         try:
             self.screens[self.current_screen].show_sidebar(False)
             zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, shown=False)
@@ -2400,6 +2911,11 @@ class zynthian_gui:
             pass
 
     def cuia_toggle_sidebar(self, params=None):
+        """Toggle the sidebar (controllers) of the current view.
+
+        Category: display
+        """
+
         try:
             show = not self.screens[self.current_screen].sidebar_shown
             self.screens[self.current_screen].show_sidebar(show)
@@ -2412,24 +2928,56 @@ class zynthian_gui:
     # -------------------------------------------------------------------
 
     def cuia_zynaptik_cvin_set_volts_octave(self, params):
+        """Set the volts per octave of the zynaptik CV inputs.
+
+        Category: hardware
+
+        Keyword Args:
+            volts (number) [REQUIRED]: Volts per octave.
+        """
+
         try:
             lib_zyncore.zynaptik_cvin_set_volts_octave(float(params[0]))
         except Exception as err:
             logging.debug(err)
 
     def cuia_zynaptik_cvin_set_note0(self, params):
+        """Set the MIDI note of the zynaptik CV inputs for 0 volts.
+
+        Category: hardware
+
+        Keyword Args:
+            note (int) [REQUIRED]: MIDI note number (0-127).
+        """
+
         try:
             lib_zyncore.zynaptik_cvin_set_note0(int(params[0]))
         except Exception as err:
             logging.debug(err)
 
     def cuia_zynaptik_cvout_set_volts_octave(self, params):
+        """Set the volts per octave of the zynaptik CV outputs.
+
+        Category: hardware
+
+        Keyword Args:
+            volts (number) [REQUIRED]: Volts per octave.
+        """
+
         try:
             lib_zyncore.zynaptik_cvout_set_volts_octave(float(params[0]))
         except Exception as err:
             logging.debug(err)
 
     def cuia_zynaptik_cvout_set_note0(self, params):
+        """Set the MIDI note of the zynaptik CV outputs for 0 volts.
+
+        Category: hardware
+
+        Keyword Args:
+            note (int) [REQUIRED]: MIDI note number (0-127).
+        """
+
         try:
             lib_zyncore.zynaptik_cvout_set_note0(int(params[0]))
         except Exception as err:
@@ -2445,6 +2993,8 @@ class zynthian_gui:
             api: Which api to access: "sm" for state manager, "cm" for chain manager
             method: Name of method to call
             params: comma separated list of method parameters
+
+        Category: system
         """
 
         try:
