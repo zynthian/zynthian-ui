@@ -245,7 +245,9 @@ class zynthian_gui:
         # Feedback streams clients can subscribe to: {name: function returning the current value (None if no value yet)}
         self.websocket_feedback_streams = {
             "wsled_state": lambda: self.wsleds.last_wsled_state,
-            "screen_state": lambda: None  # The full state is sent by the main thread after subscribing
+            "screen_state": lambda: None,  # The full state is sent by the main thread after subscribing
+            "dpm_global": lambda: None,  # Sent by the DPM sampling task after subscribing
+            "dpm_state": lambda: None
         }
         # Feedback queued for the websocket sender thread: (stream, JSON message)
         self.websocket_queue = SimpleQueue()
@@ -259,6 +261,10 @@ class zynthian_gui:
         self.screen_state_pending = False  # Update scheduled
         self.screen_state_traces = []  # Title (breadcrumb) traces => (StringVar, trace id)
         self.screen_state_sent = {}  # Last state sent, to send only what changes
+        # DPM feedback ("dpm_global", "dpm_state"): sampled only while someone is subscribed
+        self.dpm_feedback_active = False
+        self.dpm_global_sent = None  # Last main bus levels sent
+        self.dpm_state_sent = {}  # Last levels sent for each chain => {chain_id: [a, b, a_hold, b_hold]}
         # Feedback streams subscribed by each client: {client id: set of stream names}
         self.websocket_subscriptions = {}
 
@@ -3866,15 +3872,20 @@ class zynthian_gui:
             return
         if cmd == "/subscribe":
             unknown = [n for n in streams if n not in self.websocket_feedback_streams]
+            new_dpm = []
             for name in streams:
                 if name in self.websocket_feedback_streams and name not in subs:
                     subs.add(name)
                     if name == "screen_state":
                         zynthian_gui_config.top.after_idle(self.screen_state_sync, True)
+                    elif name in ("dpm_global", "dpm_state"):
+                        new_dpm.append(name)
                     # Send the current value, so the client doesn't have to wait for a change
                     value = self.websocket_feedback_streams[name]()
                     if value:
                         self.websocket_send(client, {name: value})
+            if new_dpm:
+                zynthian_gui_config.top.after_idle(self.dpm_feedback_sync, new_dpm)
         else:
             unknown = [n for n in streams if n != "*" and n not in self.websocket_feedback_streams]
             if "*" in streams:
@@ -3882,6 +3893,7 @@ class zynthian_gui:
             else:
                 subs.difference_update(streams)
             zynthian_gui_config.top.after_idle(self.screen_state_sync)
+            zynthian_gui_config.top.after_idle(self.dpm_feedback_sync)
         if unknown:
             self.websocket_send(client, {"error": f"Unknown feedback stream(s): {' '.join(unknown)}. Available: {' '.join(self.websocket_feedback_streams)}"})
         self.websocket_send(client, {"subscriptions": sorted(subs)})
@@ -4065,6 +4077,75 @@ class zynthian_gui:
         except Exception as e:
             logging.error(f"Can't get screen state => {e}")
 
+    # --------------------------------------------------------------------------
+    # DPM websocket feedback
+    #
+    # "dpm_global": main bus levels => {"dpm_global": [a, b, a_hold, b_hold]}
+    # "dpm_state": levels of every chain with audio => {"dpm_state": {chain_id: [a, b, a_hold, b_hold], ...}}
+    # Levels go from 0.0 (silence, -72dBFS or less) to 1.0 (0dBFS), linear in dB, rounded to 2 decimals.
+    # Peak meters change every audio period, so they are sampled (10Hz), but only while someone is subscribed,
+    # and only the changes are sent: nothing is sent while levels don't change (e.g. silence).
+    # "dpm_state" sends all the chains after subscribing, then only the changed ones (null for removed chains).
+    # --------------------------------------------------------------------------
+
+    dpm_feedback_period_ms = 100
+
+    def dpm_feedback_sync(self, new_subscriptions=()):
+        """Main thread: start/stop the DPM sampling, depending on the subscriptions
+
+        new_subscriptions: DPM streams just subscribed, to send them the full levels on next sample
+        """
+        active = self.websocket_has_subscribers("dpm_global") or self.websocket_has_subscribers("dpm_state")
+        if "dpm_global" in new_subscriptions:
+            self.dpm_global_sent = None
+        if "dpm_state" in new_subscriptions:
+            self.dpm_state_sent = {}
+        if self.websocket_has_subscribers("dpm_state"):
+            self.state_manager.zynmixer_chan.enable_dpm(True)
+            self.state_manager.zynmixer_bus.enable_dpm(True)
+        if active and not self.dpm_feedback_active:
+            self.dpm_feedback_active = True
+            self.dpm_feedback_task()
+        elif not active:
+            self.dpm_feedback_active = False
+            self.dpm_global_sent = None
+            self.dpm_state_sent = {}
+
+    @staticmethod
+    def get_dpm_levels(dpm):
+        return [round(1.0 - dpm.a, 2), round(1.0 - dpm.b, 2), round(1.0 - dpm.a_hold, 2), round(1.0 - dpm.b_hold, 2)]
+
+    def dpm_feedback_task(self):
+        """Main thread task: sample the DPMs and queue the changes for the subscribers"""
+        if not self.dpm_feedback_active or self.exit_flag:
+            return
+        try:
+            zynmixer_bus = self.state_manager.zynmixer_bus
+            if self.websocket_has_subscribers("dpm_state"):
+                self.state_manager.zynmixer_chan.update_dpm_states()
+                zynmixer_bus.update_dpm_states()
+                levels = {}
+                for chain_id, chain in list(self.chain_manager.chains.items()):
+                    proc = chain.zynmixer_proc
+                    if proc is not None and proc.mixer_chan is not None:
+                        levels[str(chain_id)] = self.get_dpm_levels(proc.zynmixer.dpm[proc.mixer_chan])
+                changes = {k: v for k, v in levels.items() if self.dpm_state_sent.get(k) != v}
+                for k in self.dpm_state_sent.keys() - levels.keys():
+                    changes[k] = None  # Removed chain
+                if changes:
+                    self.dpm_state_sent = levels
+                    self.websocket_queue.put(("dpm_state", json.dumps({"dpm_state": changes})))
+            elif self.websocket_has_subscribers("dpm_global"):
+                zynmixer_bus.update_dpm_states(1)
+            if self.websocket_has_subscribers("dpm_global"):
+                levels = self.get_dpm_levels(zynmixer_bus.dpm[0])
+                if levels != self.dpm_global_sent:
+                    self.dpm_global_sent = levels
+                    self.websocket_queue.put(("dpm_global", json.dumps({"dpm_global": levels})))
+        except Exception as e:
+            logging.error(f"Can't get DPM feedback => {e}")
+        zynthian_gui_config.top.after(self.dpm_feedback_period_ms, self.dpm_feedback_task)
+
     def websocket_init(self):
         ws_note_chans = {}  # (client id, note) => MIDI channel of the note_on sent by that client (piano, controller)
 
@@ -4082,6 +4163,7 @@ class zynthian_gui:
                 self.websocket_clients.pop(client['id'], None)
                 self.websocket_subscriptions.pop(client['id'], None)
                 zynthian_gui_config.top.after_idle(self.screen_state_sync)
+                zynthian_gui_config.top.after_idle(self.dpm_feedback_sync)
                 # Release the notes this client left held
                 for key in [k for k in ws_note_chans if k[0] == client['id']]:
                     self.state_manager.zynmidi.note_off(ws_note_chans.pop(key), key[1])
@@ -4265,7 +4347,7 @@ class zynthian_gui:
                     except:
                         pass
 
-            if not self.osc_clients and self.current_screen not in ("root", "mixer", "launcher"):
+            if not self.osc_clients and self.current_screen not in ("root", "mixer", "launcher") and not self.websocket_has_subscribers("dpm_state"):
                 self.state_manager.zynmixer_chan.enable_dpm(False)
                 self.state_manager.zynmixer_bus.enable_dpm(False)
 

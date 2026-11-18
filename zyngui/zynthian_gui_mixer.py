@@ -1567,7 +1567,8 @@ class zynthian_gui_mixer(zynthian_gui_base):
         """ Function to handle hiding display
         """
         if self.shown:
-            if not self.zyngui.osc_clients:
+            # Keep DPM enabled while OSC clients or websocket "dpm_state" subscribers need it
+            if not self.zyngui.osc_clients and not self.zyngui.websocket_has_subscribers("dpm_state"):
                 self.zyngui.state_manager.zynmixer_chan.enable_dpm(False)
                 self.zyngui.state_manager.zynmixer_bus.enable_dpm(False)
             zynsigman.unregister(zynsigman.S_MIXER, zynsigman.SS_ZYNMIXER_SET_VALUE, self.update_control)
