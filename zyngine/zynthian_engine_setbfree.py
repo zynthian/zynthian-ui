@@ -264,6 +264,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 
     def start(self):
         self.state_manager.start_busy("setBfree")
+        try:
+            self._start()
+        finally:
+            # also when setBfree fails to start: busy forever blocks the UI (and RESTART_UI)
+            self.state_manager.end_busy("setBfree")
+
+    def _start(self):
         chain_manager = self.state_manager.chain_manager
 
         # Setup upper manual processor
@@ -345,7 +352,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 
         # Select first chain so that preset selection is on "Upper" manual
         chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
-        self.state_manager.end_busy("setBfree")
 
     def generate_config_file(self):
         # Create default config dir
