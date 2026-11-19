@@ -80,12 +80,13 @@ def _under(path, root):
 
 def is_protected(path):
     """True when writing ``path`` must be refused: the longest matching root decides, so an
-    allowed directory inside a protected one (the repo inside /zynthian) stays writable."""
+    allowed directory inside a protected one (the repo inside /zynthian) stays writable. On a tie the
+    allowed root wins: on a device the inherited ZYNTHIAN_UI_DIR is protected and IS the repo root."""
     path = _norm(path)
     best_len, best_allowed = -1, True
     for roots, allowed in ((_protected, False), (_allowed, True)):
         for root in roots:
-            if _under(path, root) and len(root) > best_len:
+            if _under(path, root) and (len(root) > best_len or (allowed and len(root) == best_len)):
                 best_len, best_allowed = len(root), allowed
     return not best_allowed
 

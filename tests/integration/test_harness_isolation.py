@@ -44,6 +44,12 @@ def test_sandbox_tmp_and_repo_are_writable(tmp_path):
         assert not write_guard.is_protected(path), path
 
 
+def test_allowed_root_wins_a_tie_with_a_protected_one(monkeypatch):
+    # On a device the inherited ZYNTHIAN_UI_DIR (protected) is the repo root itself (allowed).
+    monkeypatch.setattr(write_guard, "_protected", write_guard._protected + (str(REPO),))
+    assert not write_guard.is_protected(REPO / "tests" / "native" / "build" / "x")
+
+
 @pytest.fixture
 def guarded_dir(tmp_path, monkeypatch):
     """A protected directory inside tmp_path (more specific than the allowed /tmp)."""

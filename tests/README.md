@@ -201,7 +201,9 @@ Python:
 zyncoder / zynlibs (C/C++):
 
 18. `zmip_send_midi_event()` on a normal device input dereferences NULL and segfaults (no test: in-process crash).
-19. zynsmf player emits no MIDI at all (`g_dPosition - nNow`: ticks minus absolute frames → offset out of range).
+19. zynsmf player: `g_dPosition - nNow` (ticks minus absolute frames) is negative and converting it to `jack_nframes_t`
+    is undefined: on x86-64 it wraps, the offset is out of range and the player emits no MIDI at all; on ARM64 (Pi) it
+    saturates to 0 and works by luck (the xfail applies on x86 only).
 20. zynsmf tempo lookup returns the next tempo change, so `getTempo()`/`getDuration()` are wrong for non-120 BPM files.
 21. zynsmf `load()` returns true for garbage.
 22. zynsmf `addTempo()` does not update the tempo map.
