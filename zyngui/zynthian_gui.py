@@ -244,7 +244,7 @@ class zynthian_gui:
         self.websocket_clients = {}
         # Feedback streams clients can subscribe to: {name: function returning the current value (None if no value yet)}
         self.websocket_feedback_streams = {
-            "wsled_state": lambda: self.wsleds.last_wsled_state,
+            "wsled_state": lambda: self.wsleds.last_wsled_state if self.wsleds else None,
             "screen_state": lambda: None,  # The full state is sent by the main thread after subscribing
             "dpm_global": lambda: None,  # Sent by the DPM sampling task after subscribing
             "dpm_state": lambda: None,
@@ -4322,7 +4322,7 @@ class zynthian_gui:
         def worker_thread():
             # Loop watching wsled state changes, ...
             while not self.exit_flag:
-                if self.wsleds.wsled_state_changed:
+                if self.wsleds and self.wsleds.wsled_state_changed:
                     self.wsleds.wsled_state_changed = False
                     self.websocket_broadcast("wsled_state", self.wsleds.last_wsled_state)
                 # 50ms sleep keeps CPU overhead at near 0%
