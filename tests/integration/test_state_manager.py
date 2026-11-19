@@ -124,13 +124,10 @@ def test_slow_update_callback_is_added(state_manager):
         state_manager.slow_update_callbacks[:] = [c for c in state_manager.slow_update_callbacks if c[1] is not cb]
 
 
-SLOW_UPDATE_BUG = ("zynthian_state_manager.remove_slow_update_callback(): the loop variable `cb` shadows the "
-                   "parameter, so `cb[1] == cb` compares an entry with itself and nothing is ever removed; "
-                   "add_slow_update_callback() therefore duplicates a re-added callback, and drivers that remove "
-                   "theirs on end() (duopiano keep-alive) keep being called")
+# remove_slow_update_callback() once never removed anything (loop variable shadowed the parameter;
+# fixed in 7ed6003b). These two tests guard against a regression.
 
 
-@pytest.mark.xfail(strict=True, reason=SLOW_UPDATE_BUG)
 def test_slow_update_callback_is_removed(state_manager):
     def cb():
         pass
@@ -143,7 +140,6 @@ def test_slow_update_callback_is_removed(state_manager):
         state_manager.slow_update_callbacks[:] = [c for c in state_manager.slow_update_callbacks if c[1] is not cb]
 
 
-@pytest.mark.xfail(strict=True, reason=SLOW_UPDATE_BUG)
 def test_adding_a_slow_update_callback_twice_keeps_one(state_manager):
     def cb():
         pass
