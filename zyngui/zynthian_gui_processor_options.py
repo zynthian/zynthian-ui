@@ -228,7 +228,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
             if zctrl.is_integer:
                 value = random.randint(zctrl.value_min, zctrl.value_max)
             else:
-                value = random.random() * (zctrl.value_max - zctrl.value_min)
+                value = zctrl.value_min + random.random() * (zctrl.value_max - zctrl.value_min)
             self.last_random[zctrl.symbol] = zctrl.value
             zctrl.set_value(value)
         if refresh:
