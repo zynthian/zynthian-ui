@@ -125,7 +125,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_grid):
             }, {
                 "title": "MIDI\nOutput",
                 "icon": "midi_output.png",
-                "action": self.zyngui.midi_in_config
+                "action": self.zyngui.midi_out_config
             }, {
                 "title": "Tempo",
                 "icon": "metronome.png",
