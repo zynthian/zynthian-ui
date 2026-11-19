@@ -391,9 +391,6 @@ class zynthian_controller:
         except ValueError:
             pass
 
-    def reset_send_value_cb(self):
-        self.send_value_cb = []
-
     def get_path(self):
         if self.osc_path:
             return str(self.osc_path)
