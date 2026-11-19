@@ -1963,7 +1963,8 @@ class zynthian_gui:
         """
 
         try:
-            self.get_current_screen_obj().zynpot_abs(*params)
+            # Parameters sent as strings (CUIA strings, untyped OSC arguments)
+            self.get_current_screen_obj().zynpot_abs(int(params[0]), float(params[1]))
         except AttributeError:
             pass
         except Exception as e:
@@ -2148,15 +2149,24 @@ class zynthian_gui:
             param_value (number or bool) [REQUIRED]: The parameter value. 'level' ranges from 0.0 to 1.0. 'balance' ranges from -1.0 to 1.0. 'gain' ranges from -40 to 40. All the rest are booleans.
         """
         try:
-            if params[0] is None:
-                chain = self.chain_manager.active_chain
-            elif params[0] == -1:
-                chain = self.chain_manager.chains[0]
-            else:
-                chain_id = list(self.chain_manager.chains)[params[0]]
-                chain = self.chain_manager.chains[chain_id]
+            chain_index = params[0]
             action = params[1]
             value = params[2]
+            # Parameters sent as strings (CUIA strings, untyped OSC arguments)
+            if isinstance(chain_index, str):
+                chain_index = None if chain_index.strip().lower() in ("", "none") else int(chain_index)
+            if isinstance(value, str):
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+            if chain_index is None:
+                chain = self.chain_manager.active_chain
+            elif chain_index == -1:
+                chain = self.chain_manager.chains[0]
+            else:
+                chain_id = list(self.chain_manager.chains)[chain_index]
+                chain = self.chain_manager.chains[chain_id]
             chain.zynmixer_proc.controllers_dict[action].set_value(value)
         except Exception as e:
             logging.warning(f"Failed to set mixer - bad params? {params} => {e}")
