@@ -1098,7 +1098,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                     program_name = "???"
                 options[f"CH {chan + 1}: {program_name}"] = f"{fpath}#{chan}"
         if len(options) > 1:
-            self.zyngui.screens['option'].config("SMF Channels", options, self.import_smf_cb)
+            self.zyngui.screens['option'].config("SMF Channels", options,
+                                                 lambda chan_name, fpath: self.import_smf_cb(chan_name, fpath, n_bars))
             self.zyngui.show_screen("option", hmode=self.zyngui.SCREEN_HMODE_NONE)
         elif len(options) == 1:
             opt = list(options.items())[0]
