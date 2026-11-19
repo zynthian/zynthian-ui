@@ -16,6 +16,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.bootstrap import STUBBED_MODULES
 from zyngui import zynthian_gui as gui_module
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui import zynthian_gui, zynthian_websocket_server
@@ -356,6 +357,8 @@ def test_screen_title_of_views_without_breadcrumb():
 
 # --- websocket server ---------------------------------------------------------------------------------------
 
+@pytest.mark.skipif("websocket_server" in STUBBED_MODULES,
+                    reason="needs the websocket-server package (stubbed by tests/bootstrap.py when missing)")
 def test_connections_failing_the_handshake_dont_print_a_traceback(capsys, caplog):
     """Port probes (connect + close) are logged as debug instead of printing socketserver's traceback"""
     server = zynthian_websocket_server(host="127.0.0.1", port=0)
