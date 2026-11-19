@@ -48,3 +48,20 @@ def test_wrapper_calls_only_defined_functions(wrapper):
     used -= {"restype", "argtypes"}
     missing = used - defined_functions(sources)
     assert missing == KNOWN_MISSING.get(wrapper, set())
+
+
+DECLARATION = re.compile(r"^[A-Za-z_][\w \t\*&:<>,]*?\b(\w+)\s*\([^;{]*\)\s*;", re.M)
+
+# library header: the sources defining its functions
+HEADERS = {
+    "zynlibs/zynmixer/mixer.h": ["zynlibs/zynmixer/mixer.c"],
+    "zynlibs/zynseq/zynseq.h": ["zynlibs/zynseq/*.cpp", "zynlibs/zynseq/zynseq.h"],
+    "zynlibs/zynsmf/zynsmf.h": ["zynlibs/zynsmf/*.cpp"],
+}
+
+
+@pytest.mark.parametrize("header", sorted(HEADERS))
+def test_header_declares_only_defined_functions(header):
+    """A declared function the library doesn't define is an undefined symbol for its ctypes users"""
+    declared = set(DECLARATION.findall((REPO_ROOT / header).read_text()))
+    assert declared - defined_functions(HEADERS[header]) == set()
