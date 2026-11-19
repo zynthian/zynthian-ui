@@ -101,12 +101,13 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         self.zs3_waiting_label.grid_forget()
 
     def build_view(self):
+        # Reset before fill_list() (in super().build_view()): it then places the cursor on the last loaded ZS3
+        self.index = 0
         if super().build_view():
             zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.cb_load_zs3)
             zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_SAVE_ZS3, self.cb_save_zs3)
             self.perf_zs3_id = self.zyngui.state_manager.last_zs3_id
             self.show_performance(self.alt_mode)
-            self.index = 0
             return True
         else:
             return False
