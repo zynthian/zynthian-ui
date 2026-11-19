@@ -204,6 +204,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.register_queued(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.on_metronome)
         zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
+        zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.on_zs3)
 
     def end(self):
         super().end()
@@ -211,6 +212,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.on_metronome)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
+        zynsigman.unregister_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.on_zs3)
 
     def light_off(self):
         for led in range(0x28):
@@ -303,6 +305,9 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         pos = max(0, pos - self.scroll_h)
         lib_zyncore.dev_send_note_on(self.idev_out, 0, LED_MASTER, 0)
         lib_zyncore.dev_send_note_on(self.idev_out, pos, LED_TRACK_SEL, 1)
+        self.update_device_encoders()
+
+    def on_zs3(self, *args, **kwargs):
         self.update_device_encoders()
 
     def refresh(self):
