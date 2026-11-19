@@ -85,7 +85,7 @@ class ZynMixer():
 
         self.lib_zynmixer.setMS.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getMS.argtypes = [ctypes.c_uint8]
-        self.lib_zynmixer.getMS.restypes = ctypes.c_uint8
+        self.lib_zynmixer.getMS.restype = ctypes.c_uint8
 
         self.lib_zynmixer.setMono.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
         self.lib_zynmixer.getMono.argtypes = [ctypes.c_uint8]
@@ -555,7 +555,7 @@ class ZynMixer():
             Index of of the mixer strip
         """
 
-        self.lib_zynmixer.togglePfl(channel)
+        self.lib_zynmixer.togglePFL(channel)
 
     def clear_pfl(self):
         self.lib_zynmixer.clearPfl()
@@ -760,12 +760,7 @@ class ZynMixer():
             A list of bools indicating the mono state of each strip
         """
 
-        monos = (ctypes.c_bool * (self.MAX_NUM_CHANNELS))()
-        self.lib_zynmixer.getAllMono(monos)
-        result = []
-        for i in monos:
-            result.append(i)
-        return result
+        return [bool(self.lib_zynmixer.getMono(channel)) for channel in range(self.MAX_NUM_CHANNELS)]
 
     def toggle_mono(self, channel):
         """
@@ -947,7 +942,6 @@ class ZynMixer():
 
     def reset(self):
         for channel in range(self.MAX_NUM_CHANNELS):
-            self.lib_zynmixer.reset(channel, False)
-            self.lib_zynmixer.reset(channel, True)
+            self.lib_zynmixer.reset(channel)
 
 # -------------------------------------------------------------------------------
