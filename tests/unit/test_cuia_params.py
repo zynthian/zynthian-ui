@@ -50,3 +50,13 @@ def test_cuia_zynpot_abs_converts_string_parameters(params):
     gui.get_current_screen_obj = lambda: screen
     gui.cuia_zynpot_abs(params)
     assert calls == [(1, 0.25)]
+
+
+@pytest.mark.parametrize("params, selected", [(None, []), ([], []), ([3], [3]), (["3"], [3]), (["x"], [])])
+def test_cuia_select_without_or_with_a_bad_index_does_nothing(params, selected):
+    gui = zynthian_gui.__new__(zynthian_gui)
+    calls = []
+    screen = SimpleNamespace(select=calls.append)
+    gui.get_current_screen_obj = lambda: screen
+    gui.cuia_select(params)
+    assert calls == selected

@@ -2128,9 +2128,11 @@ class zynthian_gui:
             index (int) [REQUIRED]: Index of the item to highlight.
         """
 
+        if not params:
+            return
         try:
-            self.get_current_screen_obj().select(params[0])
-        except (AttributeError, TypeError):
+            self.get_current_screen_obj().select(int(params[0]))
+        except (AttributeError, TypeError, ValueError):
             pass
 
     def cuia_mixer(self, params):
