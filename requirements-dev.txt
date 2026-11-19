@@ -21,3 +21,4 @@ pyliblo3
 pillow
 beautifulsoup4
 websocket-client
+websocket-server    # zyngui websocket API (tests/unit/test_websocket_feedback.py)
