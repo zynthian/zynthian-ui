@@ -102,6 +102,11 @@ FOLLOW_ACTION_ABSOLUTE  = 2
 
 SEQ_MAX_COLUMNS = 8
 
+# Local transport clients: libzynseq keeps them as bits of a uint32_t, 255 means all of them
+TRANSPORT_CLIENT_IDS = {"zynseq": 1, "metro": 2}  # As in constants.h
+TRANSPORT_CLIENT_ALL = 255
+TRANSPORT_CLIENT_MAX = 31
+
 LAUNCHER_COLS = 33          # Quantity of launcher columns (16 MIDI channels 16 Clippy + phrase launchers)
 PHRASE_CHANNEL = 32
 
@@ -236,6 +241,9 @@ class zynseq(zynthian_engine):
             self.libseq.getNoteStutterChance.restype = ctypes.c_float
 
             self.libseq.getTempo.restype = ctypes.c_double
+            self.libseq.transportStart.argtypes = [ctypes.c_uint8]
+            self.libseq.transportStop.argtypes = [ctypes.c_uint8]
+            self.libseq.transportToggle.argtypes = [ctypes.c_uint8]
             self.libseq.setTempo.argtypes = [ctypes.c_double]
             self.libseq.getTempoAt.restype = ctypes.c_float
             self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint16]
@@ -773,21 +781,35 @@ class zynseq(zynthian_engine):
     # client: Name to register with transport to avoid other clients stopping whilst in use
     def transport_start(self, client):
         if self.libseq:
-            self.libseq.transportStart(bytes(client, "utf-8"))
+            self.libseq.transportStart(self.get_transport_client_id(client))
 
     # Request JACK transport stop
     # client: Name registered with transport when started
     # Note: Transport stops when all registered clients have requested stop
     def transport_stop(self, client):
         if self.libseq:
-            self.libseq.transportStop(bytes(client, "utf-8"))
+            self.libseq.transportStop(self.get_transport_client_id(client))
 
     # Toggle JACK transport
     # client: Name to register or was previously registered with transport when started
 
     def transport_toggle(self, client):
         if self.libseq:
-            self.libseq.transportToggle(bytes(client, "utf-8"))
+            self.libseq.transportToggle(self.get_transport_client_id(client))
+
+    # Get the id of a local transport client, registering a new name with the next free id
+    # client: Client name ("ALL" for all clients)
+    def get_transport_client_id(self, client):
+        if client == "ALL":
+            return TRANSPORT_CLIENT_ALL
+        try:
+            return TRANSPORT_CLIENT_IDS[client]
+        except KeyError:
+            client_id = max(TRANSPORT_CLIENT_IDS.values()) + 1
+            if client_id > TRANSPORT_CLIENT_MAX:
+                raise ValueError(f"Too many transport clients, can't register '{client}'")
+            TRANSPORT_CLIENT_IDS[client] = client_id
+            return client_id
 
     def set_tempo(self, tempo):
         self.zctrl_tempo.set_value(tempo)
