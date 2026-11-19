@@ -50,7 +50,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             logging.error("Can't fill preset list for None processor!")
             return
         # Configure default info text
-        if self.allow_preset_preload:
+        if self.allow_preset_preload():
             if self.processor.engine.allow_timer_preload(None):
                 self.default_info = "Preload enabled."
             else:
