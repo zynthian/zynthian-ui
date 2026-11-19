@@ -6,6 +6,8 @@ client is called ``zynsmf`` (the legacy tests looked for ``zynmidiplayer``), wit
 """
 
 import jack
+import platform
+
 import pytest
 
 from tests.jacktest import FreewheelRunner, MidiSource, Recorder
@@ -156,11 +158,14 @@ def test_start_without_player_attached_does_nothing(zynsmf_lib):
 
 
 # --- the MIDI that comes out ----------------------------------------------------------------------------------
-@pytest.mark.xfail(strict=True, reason="zynsmf.cpp onJackProcess: the event offset is computed as "
-                                       "`g_dPosition - nNow` (a position in ticks minus an absolute JACK frame "
-                                       "time), which wraps to ~4e9 so jack_midi_event_reserve fails and EVERY "
-                                       "event is dropped (JACK logs 'time parameter is out of range'). Forcing "
-                                       "the offset to 0 in a scratch build makes the notes come out on time.")
+# The conversion of the negative double to the unsigned jack_nframes_t is undefined behaviour: x86-64 wraps it,
+# ARM64 (the Raspberry Pi) saturates it to 0, which happens to be a valid offset. So it only fails on x86.
+@pytest.mark.xfail(platform.machine() not in ("aarch64", "arm64"), strict=True,
+                   reason="zynsmf.cpp onJackProcess: the event offset is computed as "
+                          "`g_dPosition - nNow` (a position in ticks minus an absolute JACK frame "
+                          "time); the negative double converted to jack_nframes_t wraps to ~4e9 on x86-64, so "
+                          "jack_midi_event_reserve fails and EVERY event is dropped (JACK logs 'time parameter is "
+                          "out of range'). On ARM64 the conversion saturates to 0 and the notes come out by luck.")
 def test_playback_emits_the_song_on_time(player, rig):
     lib = player.lib
     lib.startPlayback()

@@ -41,7 +41,7 @@ This is enforced, not just intended. A run on a device once **overwrote `/zynthi
 * `tests/integration/test_harness_isolation.py` checks all of it, including a fresh interpreter started with a
   fake device environment whose config files must stay byte-identical.
 
-Current state: **724 passed, 1 skipped, 33 xfailed** (758 tests) in ~90 s on this machine. Every xfail is
+Current state: **786 passed, 31 xfailed** (817 tests) in ~95 s on this machine. Every xfail is
 `strict` and documents a known defect (see "Defects found", below); fixing one turns its test red until the marker
 is removed. Python line coverage of `zyngine`, `zynconf`, `zynautoconnect` and `zynlibs`: 39 % (C code is covered by
 the native tests, not measured).
@@ -182,8 +182,8 @@ Structural (refactoring targets):
 Python:
 
 11. A controller with a single label collapses its range to 127..127 (characterization).
-12. `remove_slow_update_callback()`: the loop variable shadows the parameter; nothing is ever removed, re-adding
-    duplicates, the duopiano keep-alive keeps running after `end()`.
+12. ~~`remove_slow_update_callback()`: the loop variable shadows the parameter; nothing is ever removed, re-adding
+    duplicates, the duopiano keep-alive keeps running after `end()`.~~ **Fixed** in 7ed6003b; the tests now guard it.
 13. `will_midi_howl()` / `will_audio_howl()`: one visited list across branches, so converging paths (no loop) are
     reported as a howl-round and the connection is refused.
 14. Legacy snapshots V0: crash without `note_range` (oldest files have `transpose`), and on MOD-UI layers with
@@ -201,7 +201,9 @@ Python:
 zyncoder / zynlibs (C/C++):
 
 18. `zmip_send_midi_event()` on a normal device input dereferences NULL and segfaults (no test: in-process crash).
-19. zynsmf player emits no MIDI at all (`g_dPosition - nNow`: ticks minus absolute frames → offset out of range).
+19. zynsmf player: `g_dPosition - nNow` (ticks minus absolute frames) is negative and converting it to `jack_nframes_t`
+    is undefined: on x86-64 it wraps, the offset is out of range and the player emits no MIDI at all; on ARM64 (Pi) it
+    saturates to 0 and works by luck (the xfail applies on x86 only).
 20. zynsmf tempo lookup returns the next tempo change, so `getTempo()`/`getDuration()` are wrong for non-120 BPM files.
 21. zynsmf `load()` returns true for garbage.
 22. zynsmf `addTempo()` does not update the tempo map.

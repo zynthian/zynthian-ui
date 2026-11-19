@@ -9,7 +9,12 @@ import types
 
 import pytest
 
-pytestmark = pytest.mark.integration
+from tests.bootstrap import STUBBED_MODULES
+
+# lilv's Python bindings only come from the OS package (python3-lilv, not on pip): when missing, the bootstrap
+# stubs the module and these tests would run against a MagicMock.
+pytestmark = [pytest.mark.integration,
+              pytest.mark.skipif("lilv" in STUBBED_MODULES, reason="python3-lilv not installed (stubbed)")]
 
 PLUGIN_URI = "urn:zyntest:plugin"
 OTHER_PLUGIN_URI = "urn:zyntest:other"
