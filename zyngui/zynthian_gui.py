@@ -2599,9 +2599,31 @@ class zynthian_gui:
             return self.screens[self.current_screen]
 
     def cuia_enable_midi_learn_cc(self, params=None):
-        # TODO: Find zctrl
-        if params and len(params) > 1:
-            self.state_manager.enable_learn_cc(params[0], params[1])
+        """Enable the MIDI CC learning for a controller: the next CC received is bound to it.
+
+        Category: midi
+
+        Keyword Args:
+            processor_id (int) [REQUIRED]: Processor id.
+            symbol (str) [REQUIRED]: Controller symbol.
+        """
+        proc, zctrl = self.get_cuia_zctrl(params)
+        if zctrl:
+            self.state_manager.enable_learn_cc(zctrl)
+
+    def get_cuia_zctrl(self, params):
+        """Find a controller from CUIA params: processor id, controller symbol
+
+        Returns : (processor, zctrl), None for those not found
+        """
+        try:
+            proc = self.chain_manager.processors.get(int(params[0]))
+            zctrl = proc.controllers_dict.get(str(params[1]))
+        except (AttributeError, IndexError, TypeError, ValueError):
+            proc = zctrl = None
+        if zctrl is None:
+            logging.warning(f"No controller for processor id, symbol {params}")
+        return proc, zctrl
 
     def cuia_disable_midi_learn_cc(self, params=None):
         """Disable the MIDI CC learning.
@@ -2750,8 +2772,17 @@ class zynthian_gui:
                 self.chain_manager.clean_midi_binding(chain.zynmixer_proc)
 
     def cuia_midi_unlearn_node(self, params=None):
-        if params and len(params) > 1:
-            self.chain_manager.clear_midi_binding([params[0], params[1]])
+        """Remove the MIDI bindings of a controller.
+
+        Category: midi
+
+        Keyword Args:
+            processor_id (int) [REQUIRED]: Processor id.
+            symbol (str) [REQUIRED]: Controller symbol.
+        """
+        proc, zctrl = self.get_cuia_zctrl(params)
+        if zctrl:
+            self.chain_manager.clear_midi_binding(proc, zctrl.symbol)
 
     def cuia_midi_unlearn_chain(self, params=None):
         """Remove all the MIDI bindings of a chain.

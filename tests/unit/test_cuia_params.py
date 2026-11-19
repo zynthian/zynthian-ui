@@ -60,3 +60,36 @@ def test_cuia_select_without_or_with_a_bad_index_does_nothing(params, selected):
     gui.get_current_screen_obj = lambda: screen
     gui.cuia_select(params)
     assert calls == selected
+
+
+def make_gui_with_processor():
+    gui = zynthian_gui.__new__(zynthian_gui)
+    zctrl = SimpleNamespace(symbol="cutoff")
+    proc = SimpleNamespace(controllers_dict={"cutoff": zctrl})
+    learned, cleared = [], []
+    gui.chain_manager = SimpleNamespace(processors={7: proc},
+                                        clear_midi_binding=lambda p, symbol: cleared.append((p, symbol)))
+    gui.state_manager = SimpleNamespace(enable_learn_cc=learned.append)
+    return gui, proc, zctrl, learned, cleared
+
+
+@pytest.mark.parametrize("params", [[7, "cutoff"], ["7", "cutoff"]])
+def test_cuia_enable_midi_learn_cc_finds_the_controller(params):
+    gui, proc, zctrl, learned, cleared = make_gui_with_processor()
+    gui.cuia_enable_midi_learn_cc(params)
+    assert learned == [zctrl]
+
+
+@pytest.mark.parametrize("params", [[7, "cutoff"], ["7", "cutoff"]])
+def test_cuia_midi_unlearn_node_clears_the_controller(params):
+    gui, proc, zctrl, learned, cleared = make_gui_with_processor()
+    gui.cuia_midi_unlearn_node(params)
+    assert cleared == [(proc, "cutoff")]
+
+
+@pytest.mark.parametrize("params", [None, [], [7], [8, "cutoff"], [7, "resonance"], ["x", "cutoff"]])
+def test_cuia_midi_learn_node_without_such_controller_does_nothing(params):
+    gui, proc, zctrl, learned, cleared = make_gui_with_processor()
+    gui.cuia_enable_midi_learn_cc(params)
+    gui.cuia_midi_unlearn_node(params)
+    assert learned == [] and cleared == []
