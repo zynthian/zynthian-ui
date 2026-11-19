@@ -244,3 +244,39 @@ def test_widget_without_help_page(lv2):
     add_widget(lv2.user, "nohelp", [PLUGIN_URI])
     lv2.z.init_lilv()
     assert lv2.z.get_plugin_zyngui_widget(PLUGIN_URI)["help"] is None
+
+
+def test_widget_folder_created_later_is_detected(lv2, monkeypatch):
+    """A widget folder on LV2_PATH that doesn't exist yet when the LV2 data is loaded (lv2-widgets made later)"""
+    later = lv2.tmp / "lv2-widgets"
+    monkeypatch.setenv("LV2_PATH", f"{lv2.system}:{lv2.user}:{later}")
+    lv2.z.init_lilv()
+    assert lv2.z.get_plugin_zyngui_widget(PLUGIN_URI) is None
+    later.mkdir()
+    fpath = add_widget(later, "late", [PLUGIN_URI])
+    assert lv2.z.check_lv2_changes() is True
+    w = lv2.z.get_plugin_zyngui_widget(PLUGIN_URI)
+    assert w["fpath"] == fpath
+    assert w["user"] is True
+
+
+# --- zynthian-ui's own widget bundles (lv2/) ---------------------------------------------------------------------
+def test_builtin_widget_modules_exist(monkeypatch):
+    """Every zyngui:widget declared in zynthian-ui's lv2/ names a module inside zynthian-ui that exists,
+    wherever zynthian-ui is installed (no absolute /zynthian/zynthian-ui paths)"""
+    import lilv
+    from zyngine import zynthian_lv2 as z
+
+    ui_dir = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    lv2_dir = os.path.join(ui_dir, "lv2")
+    world = lilv.World()
+    monkeypatch.setenv("LV2_PATH", lv2_dir)
+    world.load_all()
+    rdf_type = world.new_uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    ui_binary = world.new_uri("http://lv2plug.in/ns/extensions/ui#binary")
+    widgets = list(world.find_nodes(None, rdf_type, world.new_uri(z.ZYNGUI_WIDGET_UI)))
+    assert len(widgets) >= 7
+    for ui in widgets:
+        fpath = os.path.realpath(world.get(ui, ui_binary, None).get_path())
+        assert os.path.isfile(fpath), f"{ui}: {fpath}"
+        assert fpath.startswith(ui_dir + os.sep), f"{ui}: {fpath}"

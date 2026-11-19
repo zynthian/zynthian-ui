@@ -1,4 +1,5 @@
-# Zynthian widget extension bundle for samplv1 (samplv1.lv2). The widget is shared with other engines and stays in zynthian-ui/zyngui.
+# Zynthian widget extension bundle for samplv1 (samplv1.lv2). The widget is shared with other engines and stays in zynthian-ui/zyngui
+# (relative to this bundle, so it is found wherever zynthian-ui is installed, not only in /zynthian/zynthian-ui).
 # It adds a zyngui:widget UI to existing plugins; it does not declare the plugins.
 @prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
 @prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
@@ -7,5 +8,5 @@
 
 <http://zynthian.org/plugins/zyngui/samplv1#audio_file>
 	a zyngui:widget ;
-	ui:binary <file:///zynthian/zynthian-ui/zyngui/zynthian_widget_audio_file.py> ;
+	ui:binary <../../zyngui/zynthian_widget_audio_file.py> ;
 	zyngui:apiVersion 1 .
