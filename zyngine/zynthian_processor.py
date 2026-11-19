@@ -717,11 +717,12 @@ class zynthian_processor:
                 zctrl.send_midi_cc(mval)
                 # logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(mval), k))
 
-            if zctrl.send_value_cb and callable(zctrl.send_value_cb):
-                try:
-                    zctrl.send_value_cb(zctrl)
-                except Exception as e:
-                    logging.warning(f"Can't send value feedback for {zctrl.symbol} => {e}")
+            for cb in zctrl.send_value_cb:
+                if callable(cb):
+                    try:
+                        cb(zctrl)
+                    except Exception as e:
+                        logging.warning(f"Can't send value feedback for {zctrl.symbol} => {e}")
 
     def send_ctrlfb_midi_cc(self):
         """Send MIDI CC feedback for all configured controllers
@@ -730,11 +731,12 @@ class zynthian_processor:
         """
 
         for k, zctrl in self.controllers_dict.items():
-            if zctrl.send_value_cb and callable(zctrl.send_value_cb):
-                try:
-                    zctrl.send_value_cb(zctrl)
-                except Exception as e:
-                    logging.warning(f"Can't send value feedback for {zctrl.symbol} => {e}")
+            for cb in zctrl.send_value_cb:
+                if callable(cb):
+                    try:
+                        cb(zctrl)
+                    except Exception as e:
+                        logging.warning(f"Can't send value feedback for {zctrl.symbol} => {e}")
 
     def get_group_zctrls(self, group):
         zctrls = []

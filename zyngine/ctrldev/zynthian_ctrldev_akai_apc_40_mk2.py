@@ -389,7 +389,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 val = int((self.get_mixer_param("balance", pos) + 1) * 64)
                 lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
                 try:
-                    self.ccnum2zctrls[cc].reset_send_value_cb()
+                    self.ccnum2zctrls[cc].unregister_send_value_cb(self.send_encoder_feedback)
                     del self.ccnum2zctrls[cc]
                 except:
                     pass
@@ -404,7 +404,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                     val = 0
                 lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
                 try:
-                    self.ccnum2zctrls[cc].reset_send_value_cb()
+                    self.ccnum2zctrls[cc].unregister_send_value_cb(self.send_encoder_feedback)
                     del self.ccnum2zctrls[cc]
                 except:
                     pass
@@ -415,7 +415,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 # Use first chain zctrl (favorite)
                 try:
                     self.ccnum2zctrls[cc] = self.get_filtered_chain_by_index(pos).zctrls[self.user]
-                    self.ccnum2zctrls[cc].set_send_value_cb(self.send_encoder_feedback)
+                    self.ccnum2zctrls[cc].register_send_value_cb(self.send_encoder_feedback)
                     val = self.ccnum2zctrls[cc].get_ctrl_midi_val()
                 except:
                     val = 0
@@ -425,7 +425,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
     def update_device_encoders(self):
         # Reset zctrl callbacks
         for cc in list(self.ccnum2zctrls.keys()):
-            self.ccnum2zctrls[cc].reset_send_value_cb()
+            self.ccnum2zctrls[cc].unregister_send_value_cb(self.send_encoder_feedback)
             del self.ccnum2zctrls[cc]
 
         # Get global MIDI learned zctrls
@@ -446,7 +446,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         for i in range(8):
             cc = CC_DEVICE_1 + i
             try:
-                self.ccnum2zctrls[cc].set_send_value_cb(self.send_encoder_feedback)
+                self.ccnum2zctrls[cc].register_send_value_cb(self.send_encoder_feedback)
                 val = self.ccnum2zctrls[cc].get_ctrl_midi_val()
             except:
                 val = 0

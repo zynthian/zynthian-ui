@@ -127,10 +127,10 @@ def test_send_false_suppresses_engine_notification():
 def test_send_value_callback_is_called_and_errors_are_contained():
     c = make({"value_min": 0, "value_max": 10})
     seen = []
-    c.set_send_value_cb(lambda z: seen.append(z.value))
+    c.register_send_value_cb(lambda z: seen.append(z.value))
     c.set_value(4)
     assert seen == [4]
-    c.set_send_value_cb(lambda z: 1 / 0)
+    c.register_send_value_cb(lambda z: 1 / 0)
     c.set_value(5)  # must not raise
     c.reset_send_value_cb()
     c.set_value(6)
