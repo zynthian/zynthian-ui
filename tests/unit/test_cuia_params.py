@@ -93,3 +93,25 @@ def test_cuia_midi_learn_node_without_such_controller_does_nothing(params):
     gui.cuia_enable_midi_learn_cc(params)
     gui.cuia_midi_unlearn_node(params)
     assert learned == [] and cleared == []
+
+
+@pytest.mark.parametrize("screen, shown", [
+    ("mixer", ["chain_options"]),        # also after a visit to the audio player
+    ("audio_player", ["bank_preset", "menu"]),
+    ("alsa_mixer", []),
+])
+def test_cuia_chain_options_after_leaving_the_audio_player(screen, shown):
+    gui = zynthian_gui.__new__(zynthian_gui)
+    audio_player = SimpleNamespace(id=-3)
+    chain = SimpleNamespace(chain_id=1)
+    gui.state_manager = SimpleNamespace(audio_player=audio_player, alsa_mixer_processor=SimpleNamespace(id=-2))
+    gui.chain_manager = SimpleNamespace(active_chain=chain, get_chain=lambda chain_id: chain)
+    gui.current_processor = audio_player  # left over from the audio player view
+    gui.current_screen = screen
+    calls = []
+    gui.screens = {"chain_options": SimpleNamespace(set_chain=lambda c: None)}
+    gui.show_screen = calls.append
+    gui.cuia_bank_preset = lambda params=None: calls.append("bank_preset")
+    gui.cuia_menu = lambda params=None: calls.append("menu")
+    gui.cuia_chain_options()
+    assert calls == shown

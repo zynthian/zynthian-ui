@@ -2429,9 +2429,10 @@ class zynthian_gui:
         Category: screens
         """
 
-        if self.is_shown_alsa_mixer():
+        # current_processor stays on the special processor after leaving its view: check the screen
+        if self.current_screen == "alsa_mixer":
             return
-        if self.is_shown_audio_player():
+        if self.current_screen == "audio_player":
             self.cuia_bank_preset()
             self.cuia_menu()
             return
