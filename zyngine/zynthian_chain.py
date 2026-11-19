@@ -385,7 +385,13 @@ class zynthian_chain:
 
         if not zynautoconnect.acquire_lock():
             return
+        try:
+            self._rebuild_midi_routes()
+        finally:
+            zynautoconnect.release_lock()
+        zynautoconnect.request_midi_connect()
 
+    def _rebuild_midi_routes(self):
         self.midi_routes = {}
         for i, slot in enumerate(self.midi_slots):
             if i == 0:
@@ -402,6 +408,8 @@ class zynthian_chain:
                 sources.append(prev_proc.get_jackname())
         if self.synth_slots:
             for proc in self.synth_slots[0]:
+                if proc.engine is None:
+                    continue  # Engine not started (yet) or failed
                 # TODO: Should always use engine's get_jackname? => proc.get_jackname(True)
                 dst_jackname = proc.engine.get_jackname()
                 self.midi_routes[dst_jackname] = sources
@@ -416,10 +424,8 @@ class zynthian_chain:
         # MIDI inputs but it is probably as simple to let autoconnect deal with that.
         for slot in self.audio_slots:
             for proc in slot:
-                if proc.eng_code not in ["MI", "MR"]:
+                if proc.eng_code not in ["MI", "MR"] and proc.engine is not None:
                     self.midi_routes[proc.engine.jackname] = sources
-        zynautoconnect.release_lock()
-        zynautoconnect.request_midi_connect()
 
     def rebuild_graph(self):
         """Build dictionary of lists of destinations mapped by source"""
