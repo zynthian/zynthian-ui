@@ -187,8 +187,8 @@ class zynthian_signal_manager:
 
     def unregister_all(self, callback):
         n = 0
-        for i in range(self.last_signal):
-            for j in range(self.last_subsignal):
+        for i in range(self.last_signal + 1):
+            for j in range(self.last_subsignal + 1):
                 for k, rdata in enumerate(self.signal_register[i][j]):
                     if rdata[0] == callback:
                         del self.signal_register[i][j][k]

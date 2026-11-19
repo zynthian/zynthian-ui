@@ -81,6 +81,23 @@ def test_unregister_all(sigman):
     assert calls == []
 
 
+def test_unregister_all_covers_the_last_signal_and_subsignal(sigman):
+    calls = []
+
+    def cb(**kw):
+        calls.append(1)
+
+    last, last_sub = SignalManager.last_signal, SignalManager.last_subsignal
+    sigman.register(last, last_sub, cb)
+    sigman.register(last, 0, cb)
+    sigman.register(0, last_sub, cb)
+    sigman.unregister_all(cb)
+    sigman.send(last, last_sub)
+    sigman.send(last, 0)
+    sigman.send(0, last_sub)
+    assert calls == []
+
+
 def test_failing_callback_does_not_stop_others(sigman):
     got = []
 
