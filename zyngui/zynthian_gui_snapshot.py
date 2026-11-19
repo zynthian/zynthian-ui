@@ -128,6 +128,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         if n_banks == 0:
             os.makedirs(f"{self.sm.snapshot_dir}/000")
             self.bankless_mode = True
+            self.sm.snapshot_bank = "000"
         # If only one bank, choose it.
         elif n_banks == 1:
             self.bankless_mode = True

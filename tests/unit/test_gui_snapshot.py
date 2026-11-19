@@ -20,3 +20,19 @@ def test_deleting_the_current_bank_unselects_it(tmp_path):
     assert not (tmp_path / "001").exists()
     assert screen.sm.snapshot_bank is None
     assert screen.sm.snapshot_dir == str(tmp_path)
+
+
+def test_without_banks_the_first_one_is_created_and_selected(tmp_path):
+    screen = make_screen(tmp_path)
+    screen.check_bankless_mode()
+    assert (tmp_path / "000").is_dir()
+    assert screen.bankless_mode
+    assert screen.sm.snapshot_bank == "000"
+
+
+def test_a_single_bank_is_selected(tmp_path):
+    (tmp_path / "005-Live").mkdir()
+    screen = make_screen(tmp_path)
+    screen.check_bankless_mode()
+    assert screen.bankless_mode
+    assert screen.sm.snapshot_bank == "005-Live"
