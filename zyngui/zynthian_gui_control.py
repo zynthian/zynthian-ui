@@ -557,7 +557,10 @@ class zynthian_gui_control(zynthian_gui_selector):
     # --------------------------------------------------------------------------
 
     def show_menu(self):
-        #curproc = self.zyngui.get_current_processor()
+        curproc = self.zyngui.get_current_processor()
+        # Special processors (ALSA mixer, audio player, tempo) have no processor options: stay
+        if curproc and curproc.id < -1:
+            return True
         self.zyngui.show_screen("processor_options")
         return True
 
