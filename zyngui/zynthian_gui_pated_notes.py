@@ -421,7 +421,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
         # Draw grid and adjust zoom
         self.draw_grid()
-        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+        if self.set_grid_zoom(self.zynseq.libseq.getPatternZoom()):
+            # The zoom changed the number of view rows: center the cursor row again
+            self.selected_cell[1] = int(self.keymap_offset + self.view_rows / 2)
+            self.select_cell()
 
         self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
         self.set_title()
