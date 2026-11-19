@@ -213,6 +213,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
     def show_smf_options(self):
         smf = self.list_data[self.index]
+        # Only MIDI file rows, not the action rows or the headers
+        if not smf[0] or smf[0] in ("START_RECORDING", "STOP_RECORDING", "STOP_PLAYING"):
+            return
         smf_fname = smf[2]
         options = {}
         options["Rename"] = [smf, ["Rename MIDI file", None]]
