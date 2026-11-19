@@ -246,3 +246,20 @@ def test_state_round_trip_restores_patterns(pat):
 
 def test_set_state_rejects_garbage(seq):
     assert not seq.setState(b"this is not json")
+
+
+# --- selected pattern after a reset / state load ---------------------------------------------------------------
+
+@pytest.mark.parametrize("how", ["reset", "setState"])
+def test_selected_pattern_is_cleared_when_the_patterns_are_deleted(pat, how):
+    """reset() and setState() delete every pattern: the selected one must not dangle (freed memory)"""
+    pat.setBeatsInPattern(PATTERN, 7)
+    pat.addNote(0, 60, 100, 1.0, 0.0)
+    assert pat.getSteps() > 0
+    if how == "reset":
+        pat.reset()
+    else:
+        assert pat.setState(pat.getState())
+    # Nothing selected: the getters return their defaults instead of reading the deleted pattern
+    assert pat.getSteps() == 0
+    assert pat.getNoteVelocity(0, 60) == 0
