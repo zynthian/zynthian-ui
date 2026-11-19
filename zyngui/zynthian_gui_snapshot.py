@@ -273,7 +273,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         try:
             shutil.rmtree(f"{self.sm.snapshot_dir}/{bank}")
             if self.sm.snapshot_bank == bank:
-                self.sm.snapshot_dir = None
+                self.sm.snapshot_bank = None
             self.update_list()
         except:
             pass
