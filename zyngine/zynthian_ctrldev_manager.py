@@ -28,11 +28,16 @@ import logging
 import importlib
 import traceback
 from pathlib import Path
+from time import monotonic
 
 # Zynthian specific modules
 import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
+
+# SysEx Identity Request (Universal Non-Realtime, General Information), to any device ID
+SYSEX_ID_REQUEST = bytes.fromhex("F0 7E 7F 06 01 F7")
+IDENTITY_RETRY_SECS = 5  # Least time between identity requests to a device that has not answered
 
 # TODO! GET TO WORK DYNAMIC MODULE LOADING
 DRIVER_DEVELOPMENT = False
@@ -60,12 +65,16 @@ class zynthian_ctrldev_manager():
         self.available_drivers = {}  # Dictionary of lists of available driver classes indexed by device ID
         self.drivers = {}  # Map of device driver instances indexed by zmip
         self.disabled_devices = []  # List of device uid disabled from loading driver
+        self.sysex_drivers = []  # List of (SysEx identity prefix, driver class)
+        self.identities = {}  # SysEx identity of the device on each zmip (bytes from the manufacturer ID to the version), indexed by zmip
+        self.identity_asked = {}  # Time of the last identity request to each zmip, indexed by zmip
         self.update_available_drivers()
 
     def update_available_drivers(self, reload_modules=False):
         """Update map of available driver names"""
 
         self.available_drivers = {"*": []}
+        self.sysex_drivers = []
         if reload_modules:
             self.driver_classes = {}
 
@@ -98,6 +107,132 @@ class zynthian_ctrldev_manager():
                     self.available_drivers[dev_id].append(driver_class)
                 else:
                     self.available_drivers[dev_id] = [driver_class]
+            for sysex_id in getattr(driver_class, "sysex_ids", []):
+                try:
+                    prefix = bytes.fromhex(sysex_id) if isinstance(sysex_id, str) else bytes(sysex_id)
+                except Exception as e:
+                    logging.error(f"Bad SysEx identity '{sysex_id}' in ctrldev driver '{module_name}' => {e}")
+                    continue
+                logging.info(f"Found ctrldev driver '{module_name}' for devices with SysEx identity '{prefix.hex(' ')}'")
+                self.sysex_drivers.append((prefix, driver_class))
+
+    # --------------------------------------------------------------------------
+    # SysEx device identity
+    # --------------------------------------------------------------------------
+
+    @staticmethod
+    def is_external(izmip):
+        """True if izmip is a device port (not the sequencer or another internal port)"""
+
+        try:
+            return izmip is not None and 0 <= izmip < lib_zyncore.zmip_get_seq_index()
+        except Exception:
+            return False
+
+    def request_identity(self, izmip, force=False):
+        """Ask the device on a port for its SysEx identity. Its reply (handled by midi_event) may
+        autoload a driver. Called when it is needed (a new device without a driver for its ID, the
+        MIDI input menu), never periodically.
+
+        izmip : Index of zmip
+        force : True to ask even if the identity is known or was asked for recently
+        returns : True if the request was sent
+        """
+
+        if not self.is_external(izmip):
+            return False
+        if not force:
+            if izmip in self.identities:
+                return False
+            if izmip in self.identity_asked and monotonic() < self.identity_asked[izmip] + IDENTITY_RETRY_SECS:
+                return False
+        izmop = zynautoconnect.dev_in_2_dev_out(izmip)
+        if izmop is None:
+            return False
+        self.identity_asked[izmip] = monotonic()
+        try:
+            lib_zyncore.dev_send_midi_event(izmop, SYSEX_ID_REQUEST, len(SYSEX_ID_REQUEST))
+        except Exception as e:
+            logging.warning(f"Can't send identity request to MIDI device {izmip} => {e}")
+            return False
+        return True
+
+    def forget_identity(self, izmip):
+        """Forget the identity of the device on a port (disconnected)"""
+
+        self.identities.pop(izmip, None)
+        self.identity_asked.pop(izmip, None)
+
+    def get_identity(self, izmip):
+        """Get the SysEx identity of the device on a port
+
+        returns : bytes from the manufacturer ID to the version, or None if unknown
+        """
+
+        return self.identities.get(izmip)
+
+    def get_identity_str(self, izmip):
+        """Get the SysEx identity of the device on a port as text, or None if unknown"""
+
+        identity = self.identities.get(izmip)
+        if identity is None:
+            return None
+        n = 3 if identity[0] == 0 else 1
+        manufacturer = identity[:n].hex(" ").upper()
+        rest = identity[n:]
+        return (f"manufacturer {manufacturer}, family {rest[0:2].hex(' ').upper()}, "
+                f"model {rest[2:4].hex(' ').upper()}, version {rest[4:8].hex(' ').upper()}")
+
+    def get_identity_drivers(self, izmip):
+        """Get the driver classes matching the SysEx identity of the device on a port"""
+
+        identity = self.identities.get(izmip)
+        if identity is None:
+            return []
+        result = []
+        for prefix, driver_class in self.sysex_drivers:
+            if identity.startswith(prefix) and driver_class not in result:
+                result.append(driver_class)
+        return result
+
+    def get_device_drivers(self, izmip):
+        """Get the driver classes available for the device on a port: those for its device ID,
+        those for its SysEx identity, then the generic ones (external devices only)"""
+
+        result = []
+        dev_id = zynautoconnect.get_midi_in_devid(izmip)
+        candidates = list(self.available_drivers.get(dev_id, [])) if dev_id != "*" else []
+        candidates += self.get_identity_drivers(izmip)
+        if self.is_external(izmip):
+            candidates += self.available_drivers.get("*", [])
+        for driver_class in candidates:
+            if driver_class not in result:
+                result.append(driver_class)
+        return result
+
+    def on_identity(self, izmip, ev):
+        """Handle a SysEx identity reply, asked for or not (a device announcing itself at power-on)
+
+        izmip : Index of zmip it came from
+        ev : The SysEx message (F0 7E <device> 06 02 <manufacturer> <family> <model> <version> F7)
+        """
+
+        identity = bytes(ev[5:-1] if ev[-1] == 0xF7 else ev[5:])
+        if len(identity) < 1:
+            return
+        if self.identities.get(izmip) != identity:
+            self.identities[izmip] = identity
+            logging.info(f"MIDI device {izmip} identity: {self.get_identity_str(izmip)}")
+        # Autoload a driver for it, unless one is loaded or the user disabled drivers for it
+        if izmip in self.drivers:
+            return
+        uid = zynautoconnect.get_midi_in_uid(izmip)
+        if uid in self.disabled_devices:
+            return
+        for driver_class in self.get_identity_drivers(izmip):
+            if driver_class.get_sysex_autoload():
+                self.load_driver(izmip, driver_class.__name__)
+                return
 
     def load_driver(self, izmip, driver_name=None):
         """Loads a device driver
@@ -119,12 +254,22 @@ class zynthian_ctrldev_manager():
 
         driver_class = None
         if driver_name is None:  # Autoload
-            if izmip in self.drivers or dev_id not in self.available_drivers:
-                return False  # Don't autoload already loaded or generic driver
-            for cls in self.available_drivers[dev_id]:
-                if cls.get_autoload_flag():
-                    driver_class = cls
-                    break
+            if izmip in self.drivers:
+                return False  # Don't autoload already loaded driver
+            if dev_id != "*":  # Never autoload a generic driver by device ID
+                for cls in self.available_drivers.get(dev_id, []):
+                    if cls.get_autoload_flag():
+                        driver_class = cls
+                        break
+            if driver_class is None:
+                for cls in self.get_identity_drivers(izmip):
+                    if cls.get_sysex_autoload():
+                        driver_class = cls
+                        break
+            if driver_class is None:
+                # Ask the device who it is: a driver for its identity loads when it answers
+                self.request_identity(izmip)
+                return False
         else:
             try:
                 driver_class = self.driver_classes[driver_name]
@@ -267,6 +412,13 @@ class zynthian_ctrldev_manager():
         idev - device index
         ev - bytes with MIDI message data
         """
+
+        # SysEx identity reply (asked for or not): note it, maybe autoload a driver for it
+        if len(ev) >= 6 and ev[0] == 0xF0 and ev[1] == 0x7E and ev[3] == 0x06 and ev[4] == 0x02:
+            try:
+                self.on_identity(idev, ev)
+            except Exception as e:
+                logging.error(f"Can't handle identity reply from MIDI device {idev} => {e}")
 
         # Try device driver ...
         if idev in self.drivers:

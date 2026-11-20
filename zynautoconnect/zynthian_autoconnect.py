@@ -799,6 +799,7 @@ def midi_autoconnect():
                 ext_clock_zmip = -1
             # Unload device drivers
             state_manager.ctrldev_manager.unload_driver(i)
+            state_manager.ctrldev_manager.forget_identity(i)
 
     # Connect MIDI Output Devices
     busy_odevs = []
