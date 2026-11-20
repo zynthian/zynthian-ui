@@ -612,6 +612,7 @@ class zynthian_gui_mixer_strip():
 
         # Audio mixer elements. They are not created if the chain has no mixer processor when the strip is created.
         self.fader_overlay = None
+        self.fader_horizontal = None
         if self.chain.zynmixer_proc:
             # Separator
             if self.launcher_mode:
@@ -717,7 +718,7 @@ class zynthian_gui_mixer_strip():
         self.canvas.tag_bind(f"fader_{id}", "<B1-Motion>", self.on_fader_motion)
         self.canvas.tag_bind(f"fader_{id}", "<Button-4>", self.on_fader_wheel_up)
         self.canvas.tag_bind(f"fader_{id}", "<Button-5>", self.on_fader_wheel_down)
-        if self.chain.zynmixer_proc:
+        if self.fader_horizontal:
             self.canvas.tag_bind(self.fader_horizontal, "<Button-4>", self.on_fader_wheel_up)
             self.canvas.tag_bind(self.fader_horizontal, "<Button-5>", self.on_fader_wheel_down)
         self.canvas.tag_bind(f"balance_{id}", "<Button-4>", self.on_balance_wheel_up)
@@ -870,20 +871,15 @@ class zynthian_gui_mixer_strip():
             x = self.centre_x + balance * self.balance_width + 1
         else:
             x = self.centre_x + balance * self.balance_width - 1
-        self.canvas.coords(self.balance_fg,
-            self.centre_x, self.balance_y,
-            x, self.balance_y + self.balance_height)
+        self.canvas.coords(self.balance_fg, self.centre_x, self.balance_y, x, self.balance_y + self.balance_height)
 
     """Draws the mixer strip level"""
     def draw_level(self):
         level = self.chain.zynmixer_proc.controllers_dict["level"].value
         if level is not None:
-            self.canvas.coords(self.fader_overlay,
-                self.x, self.fader_y + self.gui_mixer.fader_height * (1 - level),
-                self.x + self.fader_width, self.legend_y)
-            self.canvas.coords(self.fader_horizontal,
-                self.x, self.fader_y,
-                self.x + self.wwidth * level, self.fader_y + self.balance_height)
+            self.canvas.coords(self.fader_overlay, self.x, self.fader_y + self.gui_mixer.fader_height * (1 - level), self.x + self.fader_width, self.legend_y)
+            if self.fader_horizontal:
+                self.canvas.coords(self.fader_horizontal, self.x, self.fader_y, self.x + self.wwidth * level, self.fader_y + self.balance_height)
 
     def draw_fader_text(self):
         label_parts = self.chain.get_description(2).split("\n") + [""]

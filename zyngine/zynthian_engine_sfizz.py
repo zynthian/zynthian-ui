@@ -64,17 +64,20 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
 
         self.sfzpath = None
 
-        pi_version = int(os.environ.get("RBPI_VERSION_NUMBER", "4"))
-        if pi_version >= 5:
+        try:
+            pi_version = int(os.environ.get("RBPI_VERSION_NUMBER", "4"))
+            if pi_version >= 5:
+                self.num_voices = 64
+                self.preload_size = 32768  # 8192, 16384, 32768, 65536
+            elif pi_version == 4:
+                self.num_voices = 48
+                self.preload_size = 32768
+            else:
+                self.num_voices = 32
+                self.preload_size = 32768
+        except:
             self.num_voices = 64
-            self.preload_size = 32768  # 8192, 16384, 32768, 65536
-        elif pi_version == 4:
-            self.num_voices = 48
-            self.preload_size = 32768  # 8192, 16384, 32768, 65536
-        else:
-            self.num_voices = 32
-            self.preload_size = 32768  # 8192, 16384, 32768, 65536
-
+            self.preload_size = 32768
 
         self.command = f"sfizz_jack --client_name '{self.jackname}' --preload_size {self.preload_size} --num_voices {self.num_voices}"
         self.command_prompt = "> "
