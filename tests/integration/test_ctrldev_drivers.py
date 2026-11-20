@@ -188,3 +188,16 @@ def test_driver_lifecycle(driver_env, zyncore, module_name):
     assert not leaked, f"end() left threads running: {sorted(t.name for t in leaked)}"
     targets = {args[0] for name, args in zyncore.log if name.startswith("dev_send")}
     assert targets <= {IDEV_OUT}, f"sent device feedback to {targets - {IDEV_OUT}}"
+
+
+def test_apc40_mk2_end_unregisters_its_zs3_handler(driver_env):
+    """init() registers on_zs3 for SS_LOAD_ZS3; end() must remove it (the signal manager has no
+    unregister_queued(): unregister() removes queued handlers too)"""
+    state_manager, zynsigman = driver_env
+    before = registered(zynsigman)
+    driver = load_class("zynthian_ctrldev_akai_apc_40_mk2")(state_manager, IDEV_IN, IDEV_OUT)
+    driver.init()
+    assert any(cb == driver.on_zs3 for cb, _ in zynsigman.signal_register[zynsigman.S_STATE_MAN][zynsigman.SS_LOAD_ZS3])
+    driver.end()
+    assert registered(zynsigman) == before, "signal handlers left registered after end()"
+

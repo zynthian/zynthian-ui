@@ -212,7 +212,7 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
         zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynsigman.SS_AUDIO_PLAYER_STATE, self.on_audio_play)
         zynsigman.unregister(zynsigman.S_STEPSEQ, zynsigman.SS_SEQ_METRO, self.on_metronome)
         zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, self.on_gui_show_screen)
-        zynsigman.unregister_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.on_zs3)
+        zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_ZS3, self.on_zs3)
 
     def light_off(self):
         for led in range(0x28):
