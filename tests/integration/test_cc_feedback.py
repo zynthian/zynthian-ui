@@ -125,7 +125,7 @@ def test_device_cc_reaches_other_ccs_bound_to_the_same_controller(cm):
     assert dev.take() == [(CHAN, 22, 127)]
 
 
-def test_momentary_toggle_result_is_sent_back(cm):
+def test_momentary_toggle_change_is_sent_back(cm):
     dev = Device(cm)
     z = ctrl(toggle=True)
     z.midi_cc_momentary_switch = True
@@ -133,10 +133,29 @@ def test_momentary_toggle_result_is_sent_back(cm):
     dev.take()
     cm.midi_control_change(DEV, CHAN, 21, 127)     # toggles on: the device has 127 already
     assert dev.take() == []
-    cm.midi_control_change(DEV, CHAN, 21, 0)       # release: nothing changes, but the device has 0
-    assert dev.take() == [(CHAN, 21, 127)]
+    cm.midi_control_change(DEV, CHAN, 21, 0)       # release: nothing changes, nothing sent
+    assert dev.take() == []
     cm.midi_control_change(DEV, CHAN, 21, 127)     # toggles off
     assert dev.take() == [(CHAN, 21, 0)]
+
+
+def test_knob_turned_towards_a_toggle_threshold_keeps_its_position(cm):
+    # An APC40 device knob bound to a toggle: below 64 the toggle stays off and the knob must not be
+    # sent 0 at each step, or it never reaches 64
+    dev = Device(cm)
+    z = ctrl(toggle=True)
+    cm.add_midi_binding(z, 21, CHAN, DEV)
+    dev.take()
+    for val in range(1, 64):
+        cm.midi_control_change(DEV, CHAN, 21, val)
+    assert dev.take() == []
+    assert z.value == z.value_min
+    cm.midi_control_change(DEV, CHAN, 21, 64)      # crosses the threshold: toggles on
+    assert z.value == z.value_max
+    assert dev.take() == [(CHAN, 21, 127)]
+    for val in range(65, 128):
+        cm.midi_control_change(DEV, CHAN, 21, val)
+    assert dev.take() == []
 
 
 def test_chain_bindings_follow_the_active_chain(cm):

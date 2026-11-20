@@ -44,8 +44,10 @@
 # sent it or the device sent it, and sends nothing when that value would not change. So a CC that
 # came from the device is not echoed back to it. A continuous controller's value is never sent
 # back to the CC that set it while it is handled (it would differ only by rounding), but a
-# toggle's is when it differs from what the device sent: a momentary switch toggling a
-# controller, or leaving it on at its release, which the device shows as released. A driver that
+# toggle's is when the CC changes it (a momentary switch toggling a controller off with its
+# press, which the device shows as on). A CC that leaves a toggle as it is gets nothing back: a
+# knob turned up towards a toggle's threshold must keep its position, not be sent the toggle's
+# value at each step (an APC40 knob would never reach the threshold). A driver that
 # handles a device's CCs itself (not through the chain manager) can call cc_received() and
 # cc_handled() around that for the same. A callback that returns False has not sent the value (a
 # motor fader being touched): the broker then does not count it as the device's. resend()
@@ -170,7 +172,7 @@ class zynthian_cc_feedback:
     def cc_received(self, zmip, chan, cc, val):
         """A CC has been received and is about to be handled: the device has this value now.
         Until cc_handled(), changes it makes to continuous controllers are not sent back to that
-        CC (their value would only differ by rounding); a toggle's result is, as it can differ
+        CC (their value would only differ by rounding); a change to a toggle is, as it can differ
         from what the device sent (a momentary switch).
 
         zmip : Index of the MIDI input
@@ -185,21 +187,11 @@ class zynthian_cc_feedback:
             self._rx = (zmip, chan, cc)
 
     def cc_handled(self):
-        """The CC passed to cc_received() has been handled. A toggle bound to it whose value now
-        differs from the CC the device sent (the release of a momentary switch, which leaves it
-        as it is) gets its value sent back."""
+        """The CC passed to cc_received() has been handled. Nothing is sent for a controller it
+        left unchanged, even when that differs from what the device sent (a knob turned towards a
+        toggle's threshold keeps its position)."""
 
-        rx, self._rx = self._rx, None
-        if rx is None:
-            return
-        zmip, chan, cc = rx
-        with self._lock:
-            sends = []
-            for dk in ((zmip, chan, cc), (zmip, 0xFF, cc)):
-                for key, zctrl in self._active.get(dk, ()):
-                    if zctrl.is_toggle:
-                        self._queue(sends, key, zctrl)
-        self._run(sends)
+        self._rx = None
 
     # --------------------------------------------------------------------------
     # Internal
