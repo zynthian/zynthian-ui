@@ -220,6 +220,12 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             devs = zynautoconnect.devices_in
         else:
             devs = zynautoconnect.devices_out
+        if self.midi_input:
+            # Ask devices without a known SysEx identity for it (not again for a few seconds), so the
+            # drivers matching it can be offered (and autoloaded) by the time a device is selected
+            for i, dev in enumerate(devs):
+                if dev:
+                    self.zyngui.state_manager.ctrldev_manager.request_identity(i)
         for i, dev in enumerate(devs):
             if dev and len(dev.aliases) > 1:
                 if dev.aliases[0].startswith("USB:"):
@@ -486,23 +492,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
 
                 # Reload drivers => Hot reload the driver classes!
                 #self.zyngui.state_manager.ctrldev_manager.update_available_drivers(reload_modules=False)
-                # Get driver list for the device (dev_id) connected to this slot (idev)
-                dev_id = zynautoconnect.get_midi_in_devid(idev)
-                available_drivers = self.zyngui.state_manager.ctrldev_manager.available_drivers
-                loaded_drivers = self.zyngui.state_manager.ctrldev_manager.drivers
-                # Get available drivers for this device ...
-                device_drivers = []
-                # Specific drivers
-                try:
-                    device_drivers += available_drivers[dev_id]
-                except:
-                    pass
-                # Generic drivers
-                if idev < lib_zyncore.zmip_get_seq_index():
-                    try:
-                        device_drivers += available_drivers["*"]
-                    except:
-                        pass
+                ctrldev_manager = self.zyngui.state_manager.ctrldev_manager
+                loaded_drivers = ctrldev_manager.drivers
+                # Drivers for this device: by its device ID, by its SysEx identity, then the generic ones.
+                # The identity is asked for when the list is shown, so it is normally known by now.
+                ctrldev_manager.request_identity(idev)
+                device_drivers = ctrldev_manager.get_device_drivers(idev)
+                identity = ctrldev_manager.get_identity_str(idev)
+                identity_drivers = ctrldev_manager.get_identity_drivers(idev)
                 driver_options = {}
                 for i, driver_class in enumerate(device_drivers):
                     driver_name = driver_class.get_driver_name()
@@ -510,6 +507,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     if not driver_description:
                         driver_description = "Device driver integrating UI functions and customized workflow."
                     driver_description = f"{ZMIP_ICON_CTRLDEV_DRIVER}: Driver.\n\n{driver_description}"
+                    if driver_class in identity_drivers:
+                        driver_description += f"\n\nMatches the device's SysEx identity ({identity})."
                     if idev in loaded_drivers and type(loaded_drivers[idev]) is driver_class:
                         driver_options[f"\u2612 {driver_name}"] = [
                             ["UNLOAD_DRIVER", driver_class.__name__], [driver_description, "midi_input.png"]]
