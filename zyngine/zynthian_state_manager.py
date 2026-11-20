@@ -2478,7 +2478,7 @@ class zynthian_state_manager:
         # Start VNC for Zynthian-UI
         self.start_busy("start_vncserver", "starting VNC")
 
-        if not zynconf.is_service_active("vncserver0"):
+        if not zynconf.is_service_active("vncserver0") and not zynconf.is_service_active("virtual_zynthian"):
             try:
                 logging.info("STARTING VNC-UI SERVICE")
                 self.set_busy_details("starting VNC-UI service")

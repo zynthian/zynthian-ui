@@ -196,7 +196,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((self.wifi_config, 0, f"Wi-Fi Config ({self.wifi_status})",
                                ["Configure Wi-Fi connections.", "wifi.png"]))
         self.wifi_index = len(self.list_data) - 1
-        if zynconf.is_service_active("vncserver0"):
+        if zynconf.is_service_active("vncserver1"):
             self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server",
                                    ["Display zynthian UI and processors' native GUI via VNC.\n This uses more CPU. It is advised to disable during performance.", "network.png"]))
         else:
