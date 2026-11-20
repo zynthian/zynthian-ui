@@ -126,6 +126,5 @@ def test_device_drivers_list_identity_matches_before_generic_ones(mgr):
     mgr.identities[PORT] = FCB_IDENTITY[5:-1]       # known, without autoloading
     drivers = mgr.get_device_drivers(PORT)
     assert drivers[0].__name__ == FCB
-    assert len(drivers) == len(set(drivers))         # the FCB driver is also generic: listed once
-    assert set(drivers) == set(generic)
+    assert drivers[1:] == [d for d in generic if d is not drivers[0]]   # each listed once
     assert mgr.get_device_drivers(24) == []          # internal port: no generic drivers

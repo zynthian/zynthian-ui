@@ -124,45 +124,32 @@ def test_send_false_suppresses_engine_notification():
     assert c.value == 3 and eng.sent == []
 
 
-def test_send_value_callback_is_called_and_errors_are_contained():
+def test_value_changes_reach_the_feedback_broker_and_errors_are_contained():
     c = make({"value_min": 0, "value_max": 10})
-    seen = []
-    other = []
+    assert c.feedback is None
+    c.set_value(3)  # unbound: nothing to call
 
-    def record(z):
-        seen.append(z.value)
+    class Broker:
+        def __init__(self):
+            self.seen = []
 
-    def record_other(z):
-        other.append(z.value)
+        def value_changed(self, zctrl):
+            self.seen.append(zctrl.value)
 
-    def fail(z):
-        raise ZeroDivisionError
+    class FailingBroker:
+        def value_changed(self, zctrl):
+            raise ZeroDivisionError
 
-    c.register_send_value_cb(record)
+    c.feedback = Broker()
     c.set_value(4)
-    assert seen == [4]
-    # Registering the same callback again does not call it twice
-    c.register_send_value_cb(record)
-    c.set_value(5)
-    assert seen == [4, 5]
-    # A failing callback must not raise, nor stop the callbacks after it
-    c.register_send_value_cb(fail)
-    c.register_send_value_cb(record_other)
-    c.set_value(6)  # must not raise
-    assert seen == [4, 5, 6]
-    assert other == [6]
-    # Unregistering stops only that callback
-    c.unregister_send_value_cb(record)
+    c.set_value(4)      # unchanged: not called
+    c.send_feedback()   # sent again on request
+    assert c.feedback.seen == [4, 4]
+    c.feedback = FailingBroker()
+    c.set_value(6)      # must not raise
+    assert c.value == 6
+    c.feedback = None
     c.set_value(7)
-    assert seen == [4, 5, 6]
-    assert other == [6, 7]
-    # Unregistering one that is not registered is harmless
-    c.unregister_send_value_cb(record)
-    c.unregister_send_value_cb(fail)
-    c.unregister_send_value_cb(record_other)
-    c.set_value(8)
-    assert seen == [4, 5, 6]
-    assert other == [6, 7]
 
 
 def test_reset_value_restores_default():

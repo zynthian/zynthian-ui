@@ -269,14 +269,15 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
             return zctrl.get_ctrl_midi_val()
         return int(zctrl.value)
 
-    def send_feedback(self, chan, ccnum, ccval, zctrl):
+    def send_feedback(self, zctrl, chan, ccnum):
         """CC feedback broker callback"""
 
-        if ccval is None:
+        if zctrl is None:
             return
         # Don't send feedback if fader is touched
         if 21 <= ccnum <= 53 and self.fader_touch_flags[ccnum - 21]:
             return False
+        ccval = self.feedback_value(zctrl)
         #logging.debug(f"Sending feedback to CC{ccnum} => {ccval}")
         lib_zyncore.dev_send_ccontrol_change(self.idev_out, chan, ccnum, ccval)
 

@@ -22,8 +22,15 @@
 # ******************************************************************************
 #
 # A control device driver registers its MIDI input (zmip) with a callback. Whenever a controller
-# bound to a CC of that input changes, the callback gets the channel, the CC and the controller's
-# value as a CC value, so the device can show it (LEDs, LED rings, motor faders, pickup...).
+# bound to a CC of that input changes, the callback gets the controller, the channel and the CC,
+# so the device can show it (LEDs, LED rings, motor faders, pickup...) however it likes. The value
+# the device is sent is given by the value function registered with the callback (by default the
+# controller's MIDI value), which the broker uses to send nothing the device has already; a driver
+# sending something else registers a function giving that.
+#
+# The broker is the only thing told about value changes: while a controller is bound to a
+# registered device, its `feedback` attribute is the broker, and zynthian_controller.send_value()
+# calls feedback.value_changed() with it. Unbound controllers cost nothing.
 #
 # Two kinds of binding are fed back:
 #  - MIDI learn bindings (the chain manager's midi_cc_binding) from that input: global ones, and
@@ -37,7 +44,7 @@
 # so a driver needs no polling and no signal handlers of its own for this:
 #  - a CC that gains a binding (MIDI learn, snapshot or ZS3 load, processor reload, a change of
 #    active chain, set_bindings) gets the controller's current value at once;
-#  - a CC that loses its last binding gets cb(chan, cc, None, None), so a device can clear what it
+#  - a CC that loses its last binding gets cb(None, chan, cc), so a device can clear what it
 #    shows (an LED ring); a driver that does not need it ignores it.
 #
 # The broker remembers the last value each device has for each channel and CC, whether the broker
@@ -95,12 +102,13 @@ class zynthian_cc_feedback:
         """Register a device for feedback of the controllers bound to its CCs
 
         zmip : Index of the device's MIDI input
-        cb : Function called as cb(chan, cc, val, zctrl) when a bound controller changes. chan is
-             the binding's MIDI channel (0-15, or 0xFF for a learned binding on any channel), val
-             its value (0-127). val and zctrl are None when the CC has lost its last binding.
-             Returning False means the value was not sent.
-        value : Function value(zctrl) giving the CC value to send for a controller (Default:
-                its MIDI value, inverted for a reversed range)
+        cb : Function called as cb(zctrl, chan, cc) when a bound controller changes, or the CC gains
+             a binding. chan is the binding's MIDI channel (0-15, or 0xFF for a learned binding
+             on any channel). zctrl is None when the CC has lost its last binding. Returning False
+             means nothing was sent.
+        value : Function value(zctrl) giving the CC value the device is sent for a controller
+                (Default: midi_value). Used to send nothing the device has already, and by the
+                driver through value()
         Nothing is sent until the first change or a call to resend().
         """
 
@@ -234,7 +242,7 @@ class zynthian_cc_feedback:
                     self._last.pop(dk, None)
                     cb = self._devices.get(dk[0])
                     if cb is not None and send:
-                        releases.append((cb, dk[0], dk[1], dk[2], None, None))
+                        releases.append((cb, dk[0], dk[1], dk[2], None, None))  # val, zctrl
             for dk, pairs in active.items():
                 old = {(key, id(zctrl)) for key, zctrl in self._active.get(dk, ())}
                 new = [(key, zctrl) for key, zctrl in pairs if (key, id(zctrl)) not in old]
@@ -246,16 +254,21 @@ class zynthian_cc_feedback:
 
             for zid, (zctrl, keys) in zctrls.items():
                 if zid not in self._zctrls:
-                    zctrl.register_send_value_cb(self._on_value)
+                    zctrl.feedback = self
             for zid, (zctrl, keys) in self._zctrls.items():
-                if zid not in zctrls:
-                    zctrl.unregister_send_value_cb(self._on_value)
+                if zid not in zctrls and zctrl.feedback is self:
+                    zctrl.feedback = None
             self._zctrls = zctrls
             self._active = active
         self._run(releases + sends)
 
-    def _on_value(self, zctrl):
-        """Value change callback of a bound controller"""
+    def value(self, zmip, zctrl):
+        """The CC value a registered device is sent for a controller (its value function)"""
+
+        return self._value.get(zmip, self.midi_value)(zctrl)
+
+    def value_changed(self, zctrl):
+        """A bound controller's value has changed (or is sent again): called by the controller"""
 
         with self._lock:
             entry = self._zctrls.get(id(zctrl))
@@ -318,7 +331,7 @@ class zynthian_cc_feedback:
 
         for cb, zmip, chan, cc, val, zctrl in sends:
             try:
-                if cb(chan, cc, val, zctrl) is False and val is not None:
+                if cb(zctrl, chan, cc) is False and val is not None:
                     # Not sent: the device does not have it
                     with self._lock:
                         if self._last.get((zmip, chan, cc)) == val:
