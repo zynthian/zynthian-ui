@@ -127,14 +127,42 @@ def test_send_false_suppresses_engine_notification():
 def test_send_value_callback_is_called_and_errors_are_contained():
     c = make({"value_min": 0, "value_max": 10})
     seen = []
-    c.set_send_value_cb(lambda z: seen.append(z.value))
+    other = []
+
+    def record(z):
+        seen.append(z.value)
+
+    def record_other(z):
+        other.append(z.value)
+
+    def fail(z):
+        raise ZeroDivisionError
+
+    c.register_send_value_cb(record)
     c.set_value(4)
     assert seen == [4]
-    c.set_send_value_cb(lambda z: 1 / 0)
-    c.set_value(5)  # must not raise
-    c.reset_send_value_cb()
-    c.set_value(6)
-    assert seen == [4]
+    # Registering the same callback again does not call it twice
+    c.register_send_value_cb(record)
+    c.set_value(5)
+    assert seen == [4, 5]
+    # A failing callback must not raise, nor stop the callbacks after it
+    c.register_send_value_cb(fail)
+    c.register_send_value_cb(record_other)
+    c.set_value(6)  # must not raise
+    assert seen == [4, 5, 6]
+    assert other == [6]
+    # Unregistering stops only that callback
+    c.unregister_send_value_cb(record)
+    c.set_value(7)
+    assert seen == [4, 5, 6]
+    assert other == [6, 7]
+    # Unregistering one that is not registered is harmless
+    c.unregister_send_value_cb(record)
+    c.unregister_send_value_cb(fail)
+    c.unregister_send_value_cb(record_other)
+    c.set_value(8)
+    assert seen == [4, 5, 6]
+    assert other == [6, 7]
 
 
 def test_reset_value_restores_default():

@@ -243,13 +243,13 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
                 for symbol, ccnum in self.zctrls2ccnum[proc.bank_name].items():
                     logging.debug(f"Setting Up feedback for {symbol}, CC{ccnum}")
                     zctrl = proc.controllers_dict[symbol]
-                    zctrl.set_send_value_cb(self.send_feedback)
+                    zctrl.register_send_value_cb(self.send_feedback)
                     self.ccnum2zctrls[ccnum] = zctrl
         if self.pianoteq_proc:
             for symbol, ccnum in self.zctrls2ccnum['Pianoteq'].items():
                 logging.debug(f"Setting Up feedback for {symbol}, CC{ccnum}")
                 zctrl = self.pianoteq_proc.controllers_dict[symbol]
-                zctrl.set_send_value_cb(self.send_feedback)
+                zctrl.register_send_value_cb(self.send_feedback)
                 self.ccnum2zctrls[ccnum] = zctrl
 
     def reset_feedback(self):
@@ -260,12 +260,12 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
                 for symbol in self.zctrls2ccnum[proc.bank_name]:
                     zctrl = proc.controllers_dict[symbol]
                     logging.debug(f"Resetting feedback for {zctrl.symbol}")
-                    zctrl.reset_send_value_cb()
+                    zctrl.unregister_send_value_cb(self.send_feedback)
         if self.pianoteq_proc:
             for symbol in self.zctrls2ccnum['Pianoteq']:
                 zctrl = self.pianoteq_proc.controllers_dict[symbol]
                 logging.debug(f"Resetting feedback for {zctrl.symbol}")
-                zctrl.reset_send_value_cb()
+                zctrl.unregister_send_value_cb()
 
     def send_feedback(self, zctrl):
         try:

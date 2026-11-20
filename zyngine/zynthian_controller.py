@@ -113,7 +113,7 @@ class zynthian_controller:
         self.midi_cc_debounce_timer = None
         self.osc_path = None  # OSC path to send value to
         self.graph_path = None  # Complex map of control to engine parameter
-        self.send_value_cb = None  # Called when value changes to send feedback to MIDI controllers
+        self.send_value_cb = []  # List of functions called when value changes to send feedback to MIDI controllers
 
         self.label2value = None  # Dictionary for fast conversion from discrete label to value
         self.value2label = None  # Dictionary for fast conversion from discrete value to label
@@ -381,11 +381,15 @@ class zynthian_controller:
         else:
             return False
 
-    def set_send_value_cb(self, cb_func):
-        self.send_value_cb = cb_func
+    def register_send_value_cb(self, cb_func):
+        if cb_func not in self.send_value_cb:
+            self.send_value_cb.append(cb_func)
 
-    def reset_send_value_cb(self):
-        self.send_value_cb = None
+    def unregister_send_value_cb(self, cb_func):
+        try:
+            self.send_value_cb.remove(cb_func)
+        except ValueError:
+            pass
 
     def get_path(self):
         if self.osc_path:
@@ -522,11 +526,12 @@ class zynthian_controller:
                 except Exception as e:
                     logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
 
-        if self.send_value_cb and callable(self.send_value_cb):
-            try:
-                self.send_value_cb(self)
-            except Exception as e:
-                logging.warning(f"Can't send value change feedback for {self.symbol} => {e}")
+        for cb in self.send_value_cb:
+            if callable(cb):
+                try:
+                    cb(self)
+                except Exception as e:
+                    logging.warning(f"Can't send value change feedback for {self.symbol} => {e}")
 
         if self.is_bypass:
             zynsigman.send_queued(zynsigman.S_PROCESSOR, zynsigman.SS_PROCESSOR_BYPASS, zctrl=self)
