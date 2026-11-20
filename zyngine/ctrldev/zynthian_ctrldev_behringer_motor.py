@@ -265,7 +265,7 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
             for symbol in self.zctrls2ccnum['Pianoteq']:
                 zctrl = self.pianoteq_proc.controllers_dict[symbol]
                 logging.debug(f"Resetting feedback for {zctrl.symbol}")
-                zctrl.unregister_send_value_cb()
+                zctrl.unregister_send_value_cb(self.send_feedback)
 
     def send_feedback(self, zctrl):
         try:

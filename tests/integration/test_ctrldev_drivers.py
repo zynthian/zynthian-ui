@@ -201,3 +201,23 @@ def test_apc40_mk2_end_unregisters_its_zs3_handler(driver_env):
     driver.end()
     assert registered(zynsigman) == before, "signal handlers left registered after end()"
 
+
+def test_behringer_motor_reset_feedback_unregisters_the_pianoteq_callbacks(driver_env):
+    """reset_feedback() removes the driver's feedback callback from the Pianoteq controllers (it called
+    unregister_send_value_cb() without the callback: TypeError)"""
+    from types import SimpleNamespace
+    from zyngine.zynthian_controller import zynthian_controller
+    state_manager, zynsigman = driver_env
+    cls = load_class("zynthian_ctrldev_behringer_motor")
+    driver = cls(state_manager, IDEV_IN, IDEV_OUT)
+    other = []
+    proc = SimpleNamespace(controllers_dict={
+        symbol: zynthian_controller(None, symbol, {"value_min": 0, "value_max": 127})
+        for symbol in cls.zctrls2ccnum["Pianoteq"]})
+    for zctrl in proc.controllers_dict.values():
+        zctrl.register_send_value_cb(other.append)
+    driver.pianoteq_proc = proc
+    driver.setup_feedback()
+    assert all(driver.send_feedback in z.send_value_cb for z in proc.controllers_dict.values())
+    driver.reset_feedback()
+    assert all(z.send_value_cb == [other.append] for z in proc.controllers_dict.values())
