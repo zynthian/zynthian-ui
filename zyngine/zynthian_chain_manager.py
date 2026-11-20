@@ -35,6 +35,7 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_processor import zynthian_processor
+from zyngine.zynthian_cc_feedback import zynthian_cc_feedback
 from zyngine import zynthian_state_manager
 from zyngui import zynthian_gui_config
 
@@ -154,6 +155,7 @@ class zynthian_chain_manager:
         self._pinned_chains = 1 # Quantity of pinned chains (shown pinned to right edge of mixer in UI)
 
         self.midi_cc_binding = {} # Lists of zctrls indexed by 32-bit [chain,zmip,chan,cc]
+        self.cc_feedback = zynthian_cc_feedback(self) # Sends bound controllers' values back to devices
         self._automate_cc_filter = set() # Set of (chan, cc) of parameter automation CC currently blocked from MIDI outputs in zynmidirouter
         self.midi_output_cc_objs = []
         for i in range(128):
@@ -1030,6 +1032,7 @@ class zynthian_chain_manager:
             if chain and chain.midi_chan is not None and chain.midi_chan < 16:
                 self.active_midi_chain = chain
             self.state_manager.zynseq.chan = chain.midi_chan
+            self.cc_feedback.active_chain_changed()
             zynsigman.send_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_SET_ACTIVE_CHAIN, active_chain_id=self.active_chain.chain_id)
             # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
             if isinstance(chain.zmop_index, int):
@@ -1252,7 +1255,7 @@ class zynthian_chain_manager:
                 zctrls = self.midi_cc_binding.setdefault(key, [])
                 if zctrl not in zctrls:
                     zctrls.append(zctrl)
-            self.update_automate_cc_filter()
+            self.midi_bindings_changed()
             chain.set_zctrls_state(chain_zctrls_state)
             if is_current:
                 chain.set_current_processor(new_processor)
@@ -1783,7 +1786,7 @@ class zynthian_chain_manager:
                     self.midi_cc_binding[key].append(zctrl)
             else:
                 self.midi_cc_binding[key] = [zctrl]
-        self.update_automate_cc_filter()
+        self.midi_bindings_changed()
 
     def _remove_midi_binding(self, zctrl, key):
         """ Remove a midi learn binding for a zctrl
@@ -1798,7 +1801,13 @@ class zynthian_chain_manager:
                 del self.midi_cc_binding[key]
         except:
             pass
+        self.midi_bindings_changed()
+
+    def midi_bindings_changed(self):
+        """ Call after any change to midi_cc_binding """
+
         self.update_automate_cc_filter()
+        self.cc_feedback.bindings_changed()
 
     def update_automate_cc_filter(self):
         """ Block parameter automation CC from being routed to MIDI outputs """
@@ -1886,6 +1895,7 @@ class zynthian_chain_manager:
                 self.midi_cc_binding.pop(key)
 
         self.remove_unused_automate(zctrl)
+        self.cc_feedback.bindings_changed()
 
     def get_midi_binding_from_zctrl(self, zctrl, filter_chain=True, filter_global=True, filter_automate=True, max_results=None):
         """ Get list of MIDI learn binding for a zctrl
@@ -1968,7 +1978,7 @@ class zynthian_chain_manager:
             return None
         self.state_manager.zynseq.move_cc(cc, new_cc, chan)
         self.midi_cc_binding[self.pack_midi_bind_key(new_cc, chan, ZMIP_STEP_INDEX, 0xff)] = self.midi_cc_binding.pop(key)
-        self.update_automate_cc_filter()
+        self.midi_bindings_changed()
         logging.debug(f"Moved automation on channel {chan} from CC{cc} to CC{new_cc}")
         return new_cc
 
@@ -2012,7 +2022,7 @@ class zynthian_chain_manager:
                 logging.warning(f"No more CC available for automation on channel {chan}")
                 return
             self.midi_cc_binding[self.pack_midi_bind_key(automate_cc, chan, ZMIP_STEP_INDEX, 0xff)] = [zctrl]
-            self.update_automate_cc_filter()
+            self.midi_bindings_changed()
         return automate_cc
 
     def disable_automate_zctrl(self, zctrl):
@@ -2090,6 +2100,15 @@ class zynthian_chain_manager:
                 except Exception as e:
                     logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
+
+        self.cc_feedback.cc_received(zmip, midi_chan, cc_num, cc_val)
+        try:
+            self._midi_control_change(zmip, midi_chan, cc_num, cc_val)
+        finally:
+            self.cc_feedback.cc_handled()
+
+    def _midi_control_change(self, zmip, midi_chan, cc_num, cc_val):
+        """Send MIDI CC message to the controllers bound to it"""
 
         # Handle global CC binding
         key = self.pack_midi_bind_key(cc_num, midi_chan, zmip, 0xff)

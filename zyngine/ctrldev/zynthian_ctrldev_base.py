@@ -57,6 +57,11 @@ class zynthian_ctrldev_base:
     dev_pated = False		# Can act as a pattern editor device
     enabled = False			# True if device driver is enabled
     autoload_flag = True    # False to prevent autoloading the driver when device is detected
+    # SysEx identities of the devices the driver is for: each the start of the identity reply's data
+    # (manufacturer ID, family, model, version), as bytes or hex text, e.g. "7D 46 43 31 30" (FCB1010 riban).
+    # Lets the driver be found for ports without a device ID, such as DIN-5 ports.
+    sysex_ids = []
+    sysex_autoload = True   # False to prevent autoloading the driver when its SysEx identity is detected
     # True if input device must be unrouted from chains when driver is loaded
     # Alternately specific MIDI channels can be unrouted by specifying a bitwise mask,
     # For instance, use "0b0000000000001111" to unroute MIDI channels 0 to 3.
@@ -71,6 +76,12 @@ class zynthian_ctrldev_base:
         """Returns autoload flag value"""
 
         return cls.autoload_flag
+
+    @classmethod
+    def get_sysex_autoload(cls):
+        """Returns True if the driver autoloads when a device with its SysEx identity is detected"""
+
+        return cls.sysex_autoload and bool(cls.sysex_ids)
 
     def __init__(self, state_manager, idev_in, idev_out=None):
         """Class Constructor

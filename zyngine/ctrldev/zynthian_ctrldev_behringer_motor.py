@@ -150,6 +150,8 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
     ccnum2zctrls = {}
 
     def init(self):
+        # Feedback of the mapped controllers (faders and encoders, MIDI channel 2)
+        self.chain_manager.cc_feedback.register(self.idev, self.send_feedback, self.feedback_value)
         super().init()
         # Register for processor tree changes
         zynsigman.register_queued(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
@@ -158,7 +160,8 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
         zynsigman.register_queued(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_PROCESSOR, self.refresh)
 
     def end(self):
-        self.reset_feedback()
+        self.chain_manager.cc_feedback.unregister(self.idev)
+        self.ccnum2zctrls = {}
         # Unregister from processor tree changes
         zynsigman.unregister(zynsigman.S_STATE_MAN, zynsigman.SS_LOAD_SNAPSHOT, self.refresh)
         zynsigman.unregister(zynsigman.S_CHAIN_MAN, zynsigman.SS_REMOVE_CHAIN, self.refresh)
@@ -224,64 +227,57 @@ class zynthian_ctrldev_behringer_motor(zynthian_ctrldev_base, zynthian_ctrldev_b
             elif evtype == 0xB:
                 ccnum = ev[1] & 0x7F
                 ccval = ev[2] & 0x7F
+                zctrl = self.ccnum2zctrls.get(ccnum)
+                if zctrl is None:
+                    return False
+                feedback = self.chain_manager.cc_feedback
+                feedback.cc_received(self.idev, evchan, ccnum, ccval)
                 try:
-                    zctrl = self.ccnum2zctrls[ccnum]
                     if zctrl.processor == self.pianoteq_proc:
-                        self.ccnum2zctrls[ccnum].midi_control_change(ccval)
+                        zctrl.midi_control_change(ccval)
                     else:
-                        self.ccnum2zctrls[ccnum].set_value(ccval)
-                    return True
-                except:
-                    pass
+                        zctrl.set_value(ccval)
+                except Exception as e:
+                    logging.warning(f"Can't set {zctrl.symbol} from CC{ccnum} => {e}")
+                finally:
+                    feedback.cc_handled()
+                return True
         return False
 
     def setup_feedback(self):
+        """Map the faders and encoders to the setBfree and Pianoteq controllers, for input and,
+        through the CC feedback broker, feedback"""
+
         logging.debug("SETTING UP FADER FEEDBACK")
-        self.ccnum2zctrls = {}
+        ccnum2zctrls = {}
         if self.setbfree_procs:
             for proc in self.setbfree_procs:
                 for symbol, ccnum in self.zctrls2ccnum[proc.bank_name].items():
                     logging.debug(f"Setting Up feedback for {symbol}, CC{ccnum}")
-                    zctrl = proc.controllers_dict[symbol]
-                    zctrl.register_send_value_cb(self.send_feedback)
-                    self.ccnum2zctrls[ccnum] = zctrl
+                    ccnum2zctrls[ccnum] = proc.controllers_dict[symbol]
         if self.pianoteq_proc:
             for symbol, ccnum in self.zctrls2ccnum['Pianoteq'].items():
                 logging.debug(f"Setting Up feedback for {symbol}, CC{ccnum}")
-                zctrl = self.pianoteq_proc.controllers_dict[symbol]
-                zctrl.register_send_value_cb(self.send_feedback)
-                self.ccnum2zctrls[ccnum] = zctrl
+                ccnum2zctrls[ccnum] = self.pianoteq_proc.controllers_dict[symbol]
+        self.ccnum2zctrls = ccnum2zctrls
+        self.chain_manager.cc_feedback.set_bindings(self.idev, {(1, cc): zctrl for cc, zctrl in ccnum2zctrls.items()})
 
-    def reset_feedback(self):
-        logging.debug("RESETTING FADER FEEDBACK")
-        self.ccnum2zctrls = {}
-        if self.setbfree_procs:
-            for proc in self.setbfree_procs:
-                for symbol in self.zctrls2ccnum[proc.bank_name]:
-                    zctrl = proc.controllers_dict[symbol]
-                    logging.debug(f"Resetting feedback for {zctrl.symbol}")
-                    zctrl.unregister_send_value_cb(self.send_feedback)
-        if self.pianoteq_proc:
-            for symbol in self.zctrls2ccnum['Pianoteq']:
-                zctrl = self.pianoteq_proc.controllers_dict[symbol]
-                logging.debug(f"Resetting feedback for {zctrl.symbol}")
-                zctrl.unregister_send_value_cb()
+    def feedback_value(self, zctrl):
+        """CC value sent for a controller: Pianoteq's MIDI value, setBfree's value as it is"""
 
-    def send_feedback(self, zctrl):
-        try:
-            if zctrl.processor == self.pianoteq_proc:
-                ccnum = self.zctrls2ccnum['Pianoteq'][zctrl.symbol]
-                ccval = zctrl.get_ctrl_midi_val()
-            #elif zctrl.processor in self.setbfree_procs:
-            else:
-                ccnum = self.zctrls2ccnum[zctrl.processor.bank_name][zctrl.symbol]
-                # Don't send feedback if fader is touched
-                if 21 <= ccnum <= 53 and self.fader_touch_flags[ccnum - 21]:
-                    return
-                ccval = zctrl.value
-            #logging.debug(f"Sending feedback to CC{ccnum} => {ccval}")
-            lib_zyncore.dev_send_ccontrol_change(self.idev_out, 1, ccnum, ccval)
-        except Exception as e:
-            logging.error(f"Can't find feedback config for zctrl {zctrl.symbol}")
+        if self.pianoteq_proc is not None and zctrl.processor == self.pianoteq_proc:
+            return zctrl.get_ctrl_midi_val()
+        return int(zctrl.value)
+
+    def send_feedback(self, chan, ccnum, ccval, zctrl):
+        """CC feedback broker callback"""
+
+        if ccval is None:
+            return
+        # Don't send feedback if fader is touched
+        if 21 <= ccnum <= 53 and self.fader_touch_flags[ccnum - 21]:
+            return False
+        #logging.debug(f"Sending feedback to CC{ccnum} => {ccval}")
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, chan, ccnum, ccval)
 
 # ------------------------------------------------------------------------------
