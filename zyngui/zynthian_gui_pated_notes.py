@@ -29,7 +29,7 @@ import json
 import tkinter
 import logging
 from math import ceil
-from queue import Queue
+from queue import Queue, Empty
 from xml.dom import minidom
 import tkinter.font as tkfont
 
@@ -512,9 +512,21 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             logging.info(f"MIDI channel {self.channel} has not synth processors.")
 
+    # Discard queued rows that index into a previous (now invalid) keymap
+    def _clear_pending_rows(self):
+        while not self.rows_pending.empty():
+            try:
+                self.rows_pending.get_nowait()
+            except Empty:
+                break
+
     # Function to populate keymap array
     # returns Name of scale / map
     def load_keymap(self):
+        # Queued rows are indices into the *old* keymap. Rebuilding the keymap
+        # (e.g. when edit_pattern() switches to a sequence on another channel)
+        # can make them invalid, so drop them before replacing the keymap.
+        self._clear_pending_rows()
         self.keymap = []
 
         scale = self.zynseq.libseq.getScale()
@@ -1023,6 +1035,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Function to draw a grid row
     # row: Row number (keymap index)
     def draw_row(self, row):
+        # Ignore stale/invalid row indices (e.g. queued against a previous keymap)
+        if row is None or row < 0 or row >= len(self.keymap):
+            return
         # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
         self.zynseq.libseq.isPatternModified()
 
