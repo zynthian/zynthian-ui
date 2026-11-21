@@ -658,80 +658,82 @@ class zynthian_gui:
 
     def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD, params=None):
         self.screen_lock.acquire()
-        self.cancel_screen_timer()
-        # self.current_processor = None
+        close_screen_after_release = False
+        try:
+            self.cancel_screen_timer()
+            # self.current_processor = None
 
-        if screen is None:
-            if self.current_screen:
-                screen = self.get_current_screen()
-            else:
-                screen = "root"
-        if screen == "root":
-            try:
-                if self.screens["mixer"].launcher_mode:
-                    screen = "launcher"
+            if screen is None:
+                if self.current_screen:
+                    screen = self.get_current_screen()
                 else:
+                    screen = "root"
+            if screen == "root":
+                try:
+                    if self.screens["mixer"].launcher_mode:
+                        screen = "launcher"
+                    else:
+                        screen = "mixer"
+                except:
+                    logging.warning("Mixer view not yet created!")
                     screen = "mixer"
-            except:
-                logging.warning("Mixer view not yet created!")
-                screen = "mixer"
-        elif screen == "mixer":
-            self.screens[screen].set_launcher_mode(False)
-        elif screen == "launcher":
-            self.screens[screen].set_launcher_mode(True)
-        elif screen == "alsa_mixer":
-            self.state_manager.alsa_mixer_processor.refresh_controllers(params)
-            self.current_processor = self.state_manager.alsa_mixer_processor
-        elif screen == "tempo":
-            self.state_manager.tempo_processor.refresh_controllers(params)
-            self.current_processor = self.state_manager.tempo_processor
-        elif screen == "audio_player":
-            if self.state_manager.audio_player:
-                self.current_processor = self.state_manager.audio_player
-                # self.state_manager.audio_player.refresh_controllers()
+            elif screen == "mixer":
+                self.screens[screen].set_launcher_mode(False)
+            elif screen == "launcher":
+                self.screens[screen].set_launcher_mode(True)
+            elif screen == "alsa_mixer":
+                self.state_manager.alsa_mixer_processor.refresh_controllers(params)
+                self.current_processor = self.state_manager.alsa_mixer_processor
+            elif screen == "tempo":
+                self.state_manager.tempo_processor.refresh_controllers(params)
+                self.current_processor = self.state_manager.tempo_processor
+            elif screen == "audio_player":
+                if self.state_manager.audio_player:
+                    self.current_processor = self.state_manager.audio_player
+                    # self.state_manager.audio_player.refresh_controllers()
+                else:
+                    logging.error("Audio Player not created!")
+                    return
+            # WARNING! Modified to fix access to Audio Player file list (bank/presets) => Could have side effects!!
+            elif screen == "chain_control":
+                self.current_processor = self.chain_manager.active_chain.current_processor
+
+            if screen not in ("bank", "preset", "option"):
+                self.chain_manager.restore_presets()
+
+            root_screens = ("root", "mixer", "launcher")
+            if screen in root_screens and self.current_screen in root_screens:
+                dummy_show = True
             else:
-                logging.error("Audio Player not created!")
-                self.screen_lock.release()
-                return
-        # WARNING! Modified to fix access to Audio Player file list (bank/presets) => Could have side effects!!
-        elif screen == "chain_control":
-            self.current_processor = self.chain_manager.active_chain.current_processor
+                dummy_show = False
 
-        if screen not in ("bank", "preset", "option"):
-            self.chain_manager.restore_presets()
+            if not dummy_show and not self.screens[screen].build_view():
+                # self.show_screen_reset("mixer")
+                close_screen_after_release = True
+            else:
+                if hmode == zynthian_gui.SCREEN_HMODE_ADD:
+                    if len(self.screen_history) == 0 or self.screen_history[-1] != screen:
+                        self.prune_screen_history(screen)
+                        self.screen_history.append(screen)
+                elif hmode == zynthian_gui.SCREEN_HMODE_REPLACE:
+                    self.screen_history.pop()
+                    self.prune_screen_history(screen)
+                    self.screen_history.append(screen)
+                elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
+                    self.screen_history = [screen]
 
-        root_screens = ("root", "mixer", "launcher")
-        if screen in root_screens and self.current_screen in root_screens:
-            dummy_show = True
-        else:
-            dummy_show = False
-
-        if not dummy_show and not self.screens[screen].build_view():
+                if self.current_screen != screen:
+                    self.current_screen = screen
+                    if not dummy_show:
+                        self.screens[screen].show()
+                    if not dummy_show:
+                        self.hide_screens(exclude=screen)
+                    zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
+        finally:
             self.screen_lock.release()
-            # self.show_screen_reset("mixer")
+
+        if close_screen_after_release:
             self.close_screen()
-            return
-
-        if hmode == zynthian_gui.SCREEN_HMODE_ADD:
-            if len(self.screen_history) == 0 or self.screen_history[-1] != screen:
-                self.prune_screen_history(screen)
-                self.screen_history.append(screen)
-        elif hmode == zynthian_gui.SCREEN_HMODE_REPLACE:
-            self.screen_history.pop()
-            self.prune_screen_history(screen)
-            self.screen_history.append(screen)
-        elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
-            self.screen_history = [screen]
-
-        if self.current_screen != screen:
-            self.current_screen = screen
-            if not dummy_show:
-                self.screens[screen].show()
-            if not dummy_show:
-                self.hide_screens(exclude=screen)
-            zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
-
-        self.screen_lock.release()
 
     def show_modal(self, screen=None):
         self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_ADD)
