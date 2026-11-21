@@ -1107,6 +1107,7 @@ void reset() {
     g_nPhrase = 0;
     g_nSequence = 0;
     g_seqMan.init();
+    g_pPattern = NULL; // init() deleted the patterns
     g_nScene = 0;
     g_nBar = 1;
     g_nBarStartTick = g_nTick;
@@ -1459,6 +1460,7 @@ bool setState(const char* state) {
         uint8_t nLowestScene = 255;
 
         g_seqMan.init();
+        g_pPattern = NULL; // init() deleted the patterns
 
         setTempo(j.value("tempo", g_dTempo)); //!@todo Do we want to reset tempo to default or use previous if not in state?
         setDefaultBpb(j.value("bpb", DEFAULT_BPB));
