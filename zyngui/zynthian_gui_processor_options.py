@@ -66,19 +66,19 @@ class zynthian_gui_processor_options(zynthian_gui_selector_info):
                 self.list_data.append((self.start_move, None, "Move",
                                        ["Move processor position within chain.\n\nUse knob 3 to nudge along chain, moving between parallel and serial positioning. Use knob 4 to move to another chain.", "move_up_down.png"]))
 
-        # Replace and Remove processor
+        # Reload, replace and Remove processor
         if self.processor.eng_code not in ("MI", "MR"):
             if (self.processor.type != "MIDI Synth" or self.processor.engine.get_options()['replace']) and self.processor.eng_code != "CL":
                 self.list_data.append((self.replace, None, f"Replace {self.processor.name}",
                                            ["Replace this processor with another of similar type.\n\nThe engine selection list will show, allowing selection of a new engine type.", "replace_processor.png"]))
 
-            if self.processor.type in ("MIDI Tool", "Audio Effect"):
-                self.list_data.append((self.processor_remove, None, "Remove", ["Remove this processor from the chain.", "delete.png"]))
-
             # Reload LV2 plugin processor
             if self.processor.eng_code.startswith("JV/") and self.processor.chain is not None:
                 self.list_data.append((self.reload, None, f"Reload {self.processor.name}",
                                        ["Reload this processor, keeping its position, preset, parameters and MIDI-learn.\n\nUse it to load an updated plugin or widget, or to recover a plugin that stopped working.", "replace_processor.png"]))
+
+            if self.processor.type in ("MIDI Tool", "Audio Effect"):
+                self.list_data.append((self.processor_remove, None, "Remove", ["Remove this processor from the chain.", "delete.png"]))
 
         #if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
         #    self.list_data.append((self.preset_list, None, "Presets"))
