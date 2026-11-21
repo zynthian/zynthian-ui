@@ -312,46 +312,83 @@ def test_fcb_any_channel_bindings_wait_for_the_identity(fcb, cm, zyncore):
     z = ctrl(value=40)
     cm.add_midi_binding(z, 22, 0xFF, DEV)
     assert ccs_sent(zyncore) == []                  # channel unknown
-    assert fcb.midi_event(identity()) is False      # power-on: everything sent again
-    assert fcb.fcb_chan == CHAN and fcb.fcb_version == (0, 1, 5)
+    fcb.on_sysex(DEV, identity())                   # the pedal powers on
+    assert fcb.channel == CHAN
     assert ccs_sent(zyncore) == [(CHAN, 22, 40)]
     z.set_value(41)
     assert ccs_sent(zyncore) == [(CHAN, 22, 41)]
 
 
-def test_fcb_identity_at_power_on_resends(fcb, cm, zyncore):
-    z = ctrl(value=64)
-    cm.add_midi_binding(z, 21, CHAN, DEV)
-    zyncore.log.clear()
-    fcb.midi_event(identity())
-    assert ccs_sent(zyncore) == [(CHAN, 21, 64)]
-    fcb.midi_event(identity())                      # powered on again
-    assert ccs_sent(zyncore) == [(CHAN, 21, 64)]
+def test_fcb_ignores_identities_from_other_ports_and_devices(fcb, cm, zyncore):
+    z = ctrl(value=40)
+    cm.add_midi_binding(z, 22, 0xFF, DEV)
+    fcb.on_sysex(DEV + 1, identity())               # another port
+    fcb.on_sysex(DEV, bytes.fromhex("F0 7E 00 06 02 41 12 34 56 78 01 02 03 04 F7"))   # another device
+    fcb.on_sysex(DEV, bytes.fromhex("F0 7D 46 43 05 02 01 F7"))                        # not an identity
+    assert fcb.channel is None
+    assert ccs_sent(zyncore) == []
 
 
 def test_fcb_reads_the_identity_the_manager_has(fcb_cls, cm, zyncore):
     mgr = cm.state_manager.ctrldev_manager
-    mgr.identity_replies[DEV] = identity(CHAN, (0, 2, 7))
+    reply = identity(CHAN, (0, 2, 7))
+    mgr.identity_replies[DEV] = reply
     z = ctrl(value=9)
     cm.add_midi_binding(z, 22, 0xFF, DEV)
     zyncore.log.clear()
     driver = fcb_cls(cm.state_manager, DEV, IDEV_OUT)
     driver.init()
     try:
-        assert driver.fcb_chan == CHAN and driver.fcb_version == (0, 2, 7)
+        assert driver.channel == CHAN and driver.version[:3] == (0, 2, 7)
         assert ccs_sent(zyncore) == [(CHAN, 22, 9)]
-        driver.midi_event(identity(CHAN, (0, 2, 7)))   # the reply it was loaded by, passed on: no resend
+        # The reply it was autoloaded by reaches it again (SS_MIDI_SYSEX): no resend
+        driver.on_sysex(DEV, reply)
         assert ccs_sent(zyncore) == []
-        driver.midi_event(identity(CHAN, (0, 2, 7)))   # a later power-on: resend
+        # The pedal power cycled: the same identity again: everything resent
+        driver.on_sysex(DEV, identity(CHAN, (0, 2, 7)))
         assert ccs_sent(zyncore) == [(CHAN, 22, 9)]
     finally:
         driver.end()
 
 
-def test_fcb_leaves_everything_else_to_the_state_manager(fcb, zyncore):
-    assert fcb.midi_event(bytes([0xB0 | CHAN, 21, 127])) is False
-    assert fcb.midi_event(bytes.fromhex("F0 7E 00 06 02 41 12 34 56 78 01 02 03 04 F7")) is False
-    assert fcb.fcb_chan is None
+def test_fcb_power_cycle_resends(fcb, cm, zyncore):
+    z = ctrl(value=64)
+    cm.add_midi_binding(z, 21, CHAN, DEV)
+    zyncore.log.clear()
+    for _ in range(3):              # the same identity each time the pedal powers on
+        fcb.on_sysex(DEV, identity())
+        assert ccs_sent(zyncore) == [(CHAN, 21, 64)]
+
+
+def test_fcb_changed_identity_resends(fcb, cm, zyncore):
+    a, b = ctrl("a", 64), ctrl("b", 5)
+    cm.add_midi_binding(a, 21, CHAN, DEV)
+    cm.add_midi_binding(b, 22, 0xFF, DEV)
+    fcb.on_sysex(DEV, identity(CHAN, (0, 1, 5)))
+    zyncore.log.clear()
+    fcb.on_sysex(DEV, identity(CHAN, (0, 1, 6)))    # new firmware build
+    assert sorted(ccs_sent(zyncore)) == [(CHAN, 21, 64), (CHAN, 22, 5)]
+    fcb.on_sysex(DEV, identity(CHAN + 1, (0, 1, 6)))   # new channel: any-channel bindings follow it
+    assert sorted(ccs_sent(zyncore)) == [(CHAN, 21, 64), (CHAN + 1, 22, 5)]
+
+
+def test_fcb_listens_for_sysex_while_loaded(fcb_cls, cm):
+    from zyngine.zynthian_signal_manager import zynsigman
+
+    def handlers(driver):
+        return [r for r in zynsigman.signal_register[zynsigman.S_MIDI][zynsigman.SS_MIDI_SYSEX]
+                if r[0] == driver.on_sysex]
+
+    driver = fcb_cls(cm.state_manager, DEV, IDEV_OUT)
+    driver.init()
+    assert len(handlers(driver)) == 1
+    driver.end()
+    assert handlers(driver) == []
+
+
+def test_fcb_leaves_midi_to_the_state_manager(fcb, zyncore):
+    assert not fcb.midi_event(bytes([0xB0 | CHAN, 21, 127]))
+    assert not fcb.midi_event(identity())
     assert sysex_sent(zyncore) == []
 
 

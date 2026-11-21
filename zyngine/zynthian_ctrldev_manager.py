@@ -109,13 +109,11 @@ class zynthian_ctrldev_manager():
                 else:
                     self.available_drivers[dev_id] = [driver_class]
             for sysex_id in getattr(driver_class, "sysex_ids", []):
-                try:
-                    prefix = bytes.fromhex(sysex_id) if isinstance(sysex_id, str) else bytes(sysex_id)
-                except Exception as e:
-                    logging.error(f"Bad SysEx identity '{sysex_id}' in ctrldev driver '{module_name}' => {e}")
+                if not isinstance(sysex_id, bytes):
+                    logging.error(f"SysEx identity {sysex_id!r} in ctrldev driver '{module_name}' is not bytes")
                     continue
-                logging.info(f"Found ctrldev driver '{module_name}' for devices with SysEx identity '{prefix.hex(' ')}'")
-                self.sysex_drivers.append((prefix, driver_class))
+                logging.info(f"Found ctrldev driver '{module_name}' for devices with SysEx identity '{sysex_id.hex(' ')}'")
+                self.sysex_drivers.append((sysex_id, driver_class))
 
     # --------------------------------------------------------------------------
     # SysEx device identity
@@ -222,13 +220,13 @@ class zynthian_ctrldev_manager():
         """Handle a SysEx identity reply, asked for or not (a device announcing itself at power-on)
 
         izmip : Index of zmip it came from
-        ev : The SysEx message (F0 7E <device> 06 02 <manufacturer> <family> <model> <version> F7)
+        ev : The SysEx message as bytes (F0 7E <device> 06 02 <manufacturer> <family> <model> <version> F7)
         """
 
-        identity = bytes(ev[5:-1] if ev[-1] == 0xF7 else ev[5:])
+        identity = ev[5:-1] if ev[-1] == 0xF7 else ev[5:]
         if len(identity) < 1:
             return
-        self.identity_replies[izmip] = bytes(ev)
+        self.identity_replies[izmip] = ev
         if self.identities.get(izmip) != identity:
             self.identities[izmip] = identity
             logging.info(f"MIDI device {izmip} identity: {self.get_identity_str(izmip)}")
