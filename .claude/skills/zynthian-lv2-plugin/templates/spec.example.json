@@ -1,0 +1,88 @@
+{
+  "_comment": "Input for new_plugin.py. Only symbol, name and the I/O are required; the rest has defaults. Edit the generated code afterwards, not this file. No level meters: zynthian already shows audio levels; outputs are for plugin-specific data (none here).",
+  "name": "Zyn Gain",
+  "symbol": "zyn_gain",
+  "class": "ZynGain",
+  "uri": "https://zynthian.org/plugins/zyn_gain",
+  "brand_id": "Zynt",
+  "unique_id": "zGai",
+  "description": "Stereo gain and pan",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://zynthian.org",
+  "version": [
+    0,
+    1,
+    0
+  ],
+  "lv2_category": "lv2:UtilityPlugin",
+  "audio_inputs": 2,
+  "audio_outputs": 2,
+  "midi_input": false,
+  "midi_output": false,
+  "is_synth": false,
+  "groups": [
+    {
+      "symbol": "main",
+      "name": "Main"
+    }
+  ],
+  "params": [
+    {
+      "symbol": "gain",
+      "name": "Gain",
+      "min": -24,
+      "max": 24,
+      "def": 0,
+      "unit": "dB",
+      "group": "main"
+    },
+    {
+      "symbol": "pan",
+      "name": "Pan",
+      "min": -1,
+      "max": 1,
+      "def": 0,
+      "group": "main"
+    },
+    {
+      "symbol": "mode",
+      "name": "Mode",
+      "min": 0,
+      "max": 2,
+      "def": 0,
+      "hints": [
+        "integer"
+      ],
+      "enum": [
+        "Clean",
+        "Soft clip",
+        "Hard clip"
+      ],
+      "group": "main"
+    },
+    {
+      "symbol": "mute",
+      "name": "Mute",
+      "min": 0,
+      "max": 1,
+      "def": 0,
+      "hints": [
+        "boolean"
+      ],
+      "group": "main"
+    }
+  ],
+  "outputs": [],
+  "port_extras": {
+    "gain": [
+      "lv2:displayPriority 100"
+    ]
+  },
+  "ui": {
+    "width": 640,
+    "height": 320
+  },
+  "widget": {
+    "half_height": true
+  }
+}

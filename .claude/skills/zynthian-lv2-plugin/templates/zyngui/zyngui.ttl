@@ -1,0 +1,11 @@
+@prefix ui:     <http://lv2plug.in/ns/extensions/ui#> .
+@prefix zyngui: <http://zynthian.org/ns/lv2/zyngui#> .
+
+# Zynthian widget for this plugin (see zynthian-ui/lv2/zyngui.lv2/zyngui.ttl)
+<@@PLUGIN_URI@@> ui:ui <@@WIDGET_URI@@> .
+
+<@@WIDGET_URI@@>
+	a zyngui:widget ;
+	ui:binary <zynthian_widget_@@SYMBOL@@.py> ;
+	zyngui:apiVersion 1 ;
+	zyngui:help <zynthian_widget_@@SYMBOL@@.html> .

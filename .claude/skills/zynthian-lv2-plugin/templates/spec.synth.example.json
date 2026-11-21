@@ -1,0 +1,164 @@
+{
+  "_comment": "Example following the soft rules: groups of 4, ADSR and filter designations (zynthian shows its envelope/filter widgets on those pages). No level meters: zynthian already shows audio levels; outputs are for plugin-specific data (none here).",
+  "name": "Zyn Mono Synth",
+  "symbol": "zyn_mono_synth",
+  "uri": "https://zynthian.org/plugins/zyn_mono_synth",
+  "description": "Monophonic subtractive synth",
+  "lv2_category": "lv2:InstrumentPlugin",
+  "audio_inputs": 0,
+  "audio_outputs": 1,
+  "midi_input": true,
+  "is_synth": true,
+  "groups": [
+    {
+      "symbol": "osc",
+      "name": "Oscillator",
+      "class": "oscillator"
+    },
+    {
+      "symbol": "filter",
+      "name": "Filter",
+      "class": "filter"
+    },
+    {
+      "symbol": "amp_env",
+      "name": "Amp Envelope",
+      "class": "envelope"
+    }
+  ],
+  "params": [
+    {
+      "symbol": "wave",
+      "name": "Waveform",
+      "min": 0,
+      "max": 2,
+      "def": 0,
+      "hints": [
+        "integer"
+      ],
+      "enum": [
+        "Saw",
+        "Square",
+        "Triangle"
+      ],
+      "group": "osc"
+    },
+    {
+      "symbol": "tune",
+      "name": "Tune",
+      "min": -12,
+      "max": 12,
+      "def": 0,
+      "unit": "st",
+      "group": "osc"
+    },
+    {
+      "symbol": "glide",
+      "name": "Glide",
+      "min": 0,
+      "max": 2,
+      "def": 0,
+      "unit": "s",
+      "group": "osc"
+    },
+    {
+      "symbol": "volume",
+      "name": "Volume",
+      "min": -60,
+      "max": 6,
+      "def": -6,
+      "unit": "dB",
+      "group": "osc"
+    },
+    {
+      "symbol": "cutoff",
+      "name": "Cutoff",
+      "min": 20,
+      "max": 20000,
+      "def": 2000,
+      "unit": "Hz",
+      "hints": [
+        "logarithmic"
+      ],
+      "designation": "cutoffFrequency",
+      "group": "filter"
+    },
+    {
+      "symbol": "resonance",
+      "name": "Resonance",
+      "min": 0,
+      "max": 1,
+      "def": 0.2,
+      "designation": "resonance",
+      "group": "filter"
+    },
+    {
+      "symbol": "env_amount",
+      "name": "Env Amount",
+      "min": -1,
+      "max": 1,
+      "def": 0.5,
+      "group": "filter"
+    },
+    {
+      "symbol": "key_track",
+      "name": "Key Track",
+      "min": 0,
+      "max": 1,
+      "def": 0.5,
+      "group": "filter"
+    },
+    {
+      "symbol": "attack",
+      "name": "Attack",
+      "min": 0.001,
+      "max": 5,
+      "def": 0.01,
+      "unit": "s",
+      "hints": [
+        "logarithmic"
+      ],
+      "designation": "attack",
+      "group": "amp_env"
+    },
+    {
+      "symbol": "decay",
+      "name": "Decay",
+      "min": 0.001,
+      "max": 5,
+      "def": 0.3,
+      "unit": "s",
+      "hints": [
+        "logarithmic"
+      ],
+      "designation": "decay",
+      "group": "amp_env"
+    },
+    {
+      "symbol": "sustain",
+      "name": "Sustain",
+      "min": 0,
+      "max": 1,
+      "def": 0.7,
+      "designation": "sustain",
+      "group": "amp_env"
+    },
+    {
+      "symbol": "release",
+      "name": "Release",
+      "min": 0.001,
+      "max": 10,
+      "def": 0.5,
+      "unit": "s",
+      "hints": [
+        "logarithmic"
+      ],
+      "designation": "release",
+      "group": "amp_env"
+    }
+  ],
+  "outputs": [],
+  "widget": {
+    "half_height": true
+  }
+}
