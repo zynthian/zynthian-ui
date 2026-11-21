@@ -68,6 +68,7 @@ class zynthian_ctrldev_manager():
         self.sysex_drivers = []  # List of (SysEx identity prefix, driver class)
         self.identities = {}  # SysEx identity of the device on each zmip (bytes from the manufacturer ID to the version), indexed by zmip
         self.identity_asked = {}  # Time of the last identity request to each zmip, indexed by zmip
+        self.identity_replies = {}  # Last identity reply (whole SysEx message) from each zmip, indexed by zmip
         self.update_available_drivers()
 
     def update_available_drivers(self, reload_modules=False):
@@ -162,6 +163,7 @@ class zynthian_ctrldev_manager():
 
         self.identities.pop(izmip, None)
         self.identity_asked.pop(izmip, None)
+        self.identity_replies.pop(izmip, None)
 
     def get_identity(self, izmip):
         """Get the SysEx identity of the device on a port
@@ -170,6 +172,12 @@ class zynthian_ctrldev_manager():
         """
 
         return self.identities.get(izmip)
+
+    def get_identity_reply(self, izmip):
+        """Get the last identity reply from the device on a port: the whole SysEx message (its byte 2
+        is the device ID, which some devices set to their MIDI channel), or None if none came"""
+
+        return self.identity_replies.get(izmip)
 
     def get_identity_str(self, izmip):
         """Get the SysEx identity of the device on a port as text, or None if unknown"""
@@ -220,6 +228,7 @@ class zynthian_ctrldev_manager():
         identity = bytes(ev[5:-1] if ev[-1] == 0xF7 else ev[5:])
         if len(identity) < 1:
             return
+        self.identity_replies[izmip] = bytes(ev)
         if self.identities.get(izmip) != identity:
             self.identities[izmip] = identity
             logging.info(f"MIDI device {izmip} identity: {self.get_identity_str(izmip)}")

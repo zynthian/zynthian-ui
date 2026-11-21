@@ -32,10 +32,12 @@ class Device:
 
     def __init__(self, cm, zmip=DEV):
         self.sent = []
+        self.broker = cm.cc_feedback
+        self.zmip = zmip
         cm.cc_feedback.register(zmip, self.cb)
 
-    def cb(self, chan, cc, val, zctrl):
-        self.sent.append((chan, cc, val))
+    def cb(self, zctrl, chan, cc):
+        self.sent.append((chan, cc, None if zctrl is None else self.broker.value(self.zmip, zctrl)))
 
     def take(self):
         sent, self.sent = self.sent, []
@@ -86,9 +88,9 @@ def test_removed_binding_stops_feedback(cm):
     dev = Device(cm)
     z = ctrl()
     cm.add_midi_binding(z, 21, CHAN, DEV)
-    assert z.send_value_cb
+    assert z.feedback is cm.cc_feedback
     cm.toggle_midi_binding(z, 21, CHAN, DEV, 0xff)
-    assert not z.send_value_cb
+    assert z.feedback is None
     z.set_value(90)
     assert dev.take() == [(CHAN, 21, 0), (CHAN, 21, None)]    # the value when bound, then released
 
@@ -98,7 +100,7 @@ def test_unregister_releases_the_controllers(cm):
     z = ctrl()
     cm.add_midi_binding(z, 21, CHAN, DEV)
     cm.cc_feedback.unregister(DEV)
-    assert not z.send_value_cb
+    assert z.feedback is None
 
 
 def test_device_cc_is_not_echoed_back(cm):
@@ -204,7 +206,7 @@ def test_driver_bindings(cm):
     b.set_value(9)
     assert dev.take() == []
     cm.cc_feedback.unregister(DEV)
-    assert not a.send_value_cb and not b.send_value_cb
+    assert a.feedback is None and b.feedback is None
 
 
 def test_driver_cc_received_suppresses_the_echo(cm):
@@ -222,10 +224,10 @@ def test_value_function_and_unsent_values(cm):
     sent = []
     held = [True]
 
-    def cb(chan, cc, val, zctrl):
+    def cb(zctrl, chan, cc):
         if held[0]:
             return False
-        sent.append(val)
+        sent.append(cm.cc_feedback.value(DEV, zctrl))
 
     cm.cc_feedback.register(DEV, cb, lambda zctrl: int(zctrl.value) // 2)
     z = ctrl(value=100)
@@ -259,21 +261,22 @@ def test_reversed_range_is_inverted(cm):
 IDEV_OUT = 7
 
 
-def dump(chan=CHAN, bank=1, ccs=range(21, 31), pedal_ccs=(7, 11)):
-    data = [bank, chan + 1, 0, 0, 1, 0, bank, 30, 127, 0]
-    for cc in ccs:
-        data += [0, cc, 127, 0]
-    data += [0, 0, 0, 0, 0, 0] + list(pedal_ccs) + [0, 0, 127, 127]
-    return bytes([0xF0, 0x7D, 0x46, 0x43, chan, 0x02] + data + [0xF7])
+def identity(chan=CHAN, version=(0, 1, 5)):
+    return bytes([0xF0, 0x7E, chan, 0x06, 0x02, 0x7D, 0x46, 0x43, 0x31, 0x30] + list(version) + [0x00, 0xF7])
 
 
 @pytest.fixture
-def fcb(cm, zyncore, monkeypatch):
+def fcb_cls(cm, zyncore):
     from zyngine.ctrldev import zynthian_ctrldev_behringer_fcb1010_riban as mod
-    clock = [1000.0]
-    monkeypatch.setattr(mod, "monotonic", lambda: clock[0])
-    driver = mod.zynthian_ctrldev_behringer_fcb1010_riban(cm.state_manager, DEV, IDEV_OUT)
-    driver.clock = clock
+    mgr = cm.state_manager.ctrldev_manager
+    mgr.forget_identity(DEV)
+    yield mod.zynthian_ctrldev_behringer_fcb1010_riban
+    mgr.forget_identity(DEV)
+
+
+@pytest.fixture
+def fcb(fcb_cls, cm):
+    driver = fcb_cls(cm.state_manager, DEV, IDEV_OUT)
     driver.init()
     yield driver
     driver.end()
@@ -285,68 +288,71 @@ def ccs_sent(zyncore):
     return sent
 
 
-def dumps_asked(zyncore):
-    n = sum(1 for args in zyncore.calls_to("dev_send_midi_event") if bytes(args[1][:6]) == bytes.fromhex("F07D46437F01"))
-    return n
+def sysex_sent(zyncore):
+    return [args for args in zyncore.calls_to("dev_send_midi_event")]
 
 
-def test_fcb_asks_for_a_dump_and_sends_bound_values_once_read(fcb, cm, zyncore):
-    assert dumps_asked(zyncore) == 1
-    z = ctrl(value=127)
-    cm.add_midi_binding(z, 21, CHAN, DEV)
-    assert ccs_sent(zyncore) == []           # channel not known yet
-    assert fcb.midi_event(dump()) is True
-    assert fcb.fcb_chan == CHAN and fcb.bank == 1 and fcb.fcb_version == (0, 0, 1)
-    assert ccs_sent(zyncore) == [(CHAN, 21, 127)]
-    z.set_value(0)
-    assert ccs_sent(zyncore) == [(CHAN, 21, 0)]
-
-
-def test_fcb_sends_only_its_channel_and_any_channel(fcb, cm, zyncore):
-    fcb.midi_event(dump())
+def test_fcb_sends_bound_values_on_their_channel_at_load(fcb_cls, cm, zyncore):
+    a, b = ctrl("a", 127), ctrl("b", 3)
+    cm.add_midi_binding(a, 21, CHAN, DEV)
+    cm.add_midi_binding(b, 22, CHAN + 1, DEV)
     zyncore.log.clear()
-    a, b = ctrl("a"), ctrl("b")
-    cm.add_midi_binding(a, 21, CHAN + 1, DEV)
-    cm.add_midi_binding(b, 22, 0xFF, DEV)
-    a.set_value(5)
-    b.set_value(6)
-    assert ccs_sent(zyncore) == [(CHAN, 22, 0), (CHAN, 22, 6)]
+    driver = fcb_cls(cm.state_manager, DEV, IDEV_OUT)
+    driver.init()
+    try:
+        assert sorted(ccs_sent(zyncore)) == [(CHAN, 21, 127), (CHAN + 1, 22, 3)]
+        assert sysex_sent(zyncore) == []            # no dump, no identity request
+        a.set_value(0)
+        assert ccs_sent(zyncore) == [(CHAN, 21, 0)]
+    finally:
+        driver.end()
 
 
-def test_fcb_identity_at_power_on_resends_and_redumps(fcb, cm, zyncore):
-    fcb.midi_event(dump())
+def test_fcb_any_channel_bindings_wait_for_the_identity(fcb, cm, zyncore):
+    z = ctrl(value=40)
+    cm.add_midi_binding(z, 22, 0xFF, DEV)
+    assert ccs_sent(zyncore) == []                  # channel unknown
+    assert fcb.midi_event(identity()) is False      # power-on: everything sent again
+    assert fcb.fcb_chan == CHAN and fcb.fcb_version == (0, 1, 5)
+    assert ccs_sent(zyncore) == [(CHAN, 22, 40)]
+    z.set_value(41)
+    assert ccs_sent(zyncore) == [(CHAN, 22, 41)]
+
+
+def test_fcb_identity_at_power_on_resends(fcb, cm, zyncore):
     z = ctrl(value=64)
     cm.add_midi_binding(z, 21, CHAN, DEV)
     zyncore.log.clear()
-    identity = bytes.fromhex(f"F0 7E {CHAN:02X} 06 02 7D 46 43 31 30 00 01 05 00 F7")
-    assert fcb.midi_event(identity) is True
-    assert fcb.fcb_version == (0, 1, 5)
-    assert dumps_asked(zyncore) == 1
+    fcb.midi_event(identity())
+    assert ccs_sent(zyncore) == [(CHAN, 21, 64)]
+    fcb.midi_event(identity())                      # powered on again
     assert ccs_sent(zyncore) == [(CHAN, 21, 64)]
 
 
-def test_fcb_leaves_ccs_to_the_state_manager_and_redumps_on_unknown_cc(fcb, zyncore):
-    fcb.midi_event(dump())
+def test_fcb_reads_the_identity_the_manager_has(fcb_cls, cm, zyncore):
+    mgr = cm.state_manager.ctrldev_manager
+    mgr.identity_replies[DEV] = identity(CHAN, (0, 2, 7))
+    z = ctrl(value=9)
+    cm.add_midi_binding(z, 22, 0xFF, DEV)
     zyncore.log.clear()
-    assert fcb.midi_event(bytes([0xB0 | CHAN, 21, 127])) is False    # in the bank: no dump
-    fcb.clock[0] += 5
-    assert fcb.midi_event(bytes([0xB0 | CHAN, 40, 127])) is False    # not in the bank: another bank
-    assert dumps_asked(zyncore) == 1
-    zyncore.log.clear()
-    fcb.midi_event(bytes([0xB0 | CHAN, 41, 127]))                    # within REDUMP_SECS
-    assert dumps_asked(zyncore) == 0
+    driver = fcb_cls(cm.state_manager, DEV, IDEV_OUT)
+    driver.init()
+    try:
+        assert driver.fcb_chan == CHAN and driver.fcb_version == (0, 2, 7)
+        assert ccs_sent(zyncore) == [(CHAN, 22, 9)]
+        driver.midi_event(identity(CHAN, (0, 2, 7)))   # the reply it was loaded by, passed on: no resend
+        assert ccs_sent(zyncore) == []
+        driver.midi_event(identity(CHAN, (0, 2, 7)))   # a later power-on: resend
+        assert ccs_sent(zyncore) == [(CHAN, 22, 9)]
+    finally:
+        driver.end()
 
 
-def test_fcb_asks_again_after_an_unanswered_dump(fcb, zyncore):
-    zyncore.log.clear()
-    fcb.midi_event(bytes([0xB0 | CHAN, 21, 127]))       # dump pending, not timed out: waits for it
-    assert dumps_asked(zyncore) == 0
-    fcb.clock[0] += 5
-    fcb.midi_event(bytes([0xB0 | CHAN, 21, 127]))       # no reply: asked again
-    assert dumps_asked(zyncore) == 1
+def test_fcb_leaves_everything_else_to_the_state_manager(fcb, zyncore):
+    assert fcb.midi_event(bytes([0xB0 | CHAN, 21, 127])) is False
+    assert fcb.midi_event(bytes.fromhex("F0 7E 00 06 02 41 12 34 56 78 01 02 03 04 F7")) is False
     assert fcb.fcb_chan is None
-    fcb.midi_event(dump())
-    assert fcb.fcb_chan == CHAN
+    assert sysex_sent(zyncore) == []
 
 
 def test_fcb_has_no_periodic_task(fcb):
@@ -407,9 +413,9 @@ def test_motor_own_cc_is_not_echoed(motor, zyncore):
 
 def test_motor_end_releases_the_controllers(motor):
     z = motor.proc.controllers_dict["DB 16"]
-    assert z.send_value_cb
+    assert z.feedback is not None
     motor.end()
-    assert not z.send_value_cb
+    assert z.feedback is None
     motor.init()    # for the fixture's end()
 
 

@@ -414,18 +414,19 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
                 val = 0
             lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
 
-    def on_feedback(self, chan, cc, val, zctrl):
+    def on_feedback(self, zctrl, chan, cc):
         """CC feedback broker callback: device knobs (MIDI learned, cleared when unbound) and
         track knobs in user mode"""
 
         if CC_DEVICE_1 <= cc <= CC_DEVICE_8 and chan in (0, 0xFF):
             pass
         elif CC_TRACK_1 <= cc <= CC_TRACK_8 and chan == 0:
-            if val is None and self.enc_mode != ENC_MODE_USER:
+            if zctrl is None and self.enc_mode != ENC_MODE_USER:
                 return    # The knob shows a mixer value now
         else:
             return False
-        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, 0 if val is None else val)
+        val = 0 if zctrl is None else self.chain_manager.cc_feedback.value(self.idev, zctrl)
+        lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, cc, val)
 
     def midi_event(self, ev):
         def relative_to_signed(v):
