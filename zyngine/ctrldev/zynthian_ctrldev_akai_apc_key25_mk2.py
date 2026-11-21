@@ -1089,7 +1089,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         is_empty = all(self._zynseq.is_pattern_empty(pattern) for pattern in self._get_sequence_patterns(phrase, chan))
         if is_empty:
-            color = COLOR.COLOR_BLACK
+            color = COLORS.COLOR_BLACK
         else:
             color = zynthian_gui_config.LAUNCHER_COLOUR[chan][self.driver.apc_color_variant]
 
