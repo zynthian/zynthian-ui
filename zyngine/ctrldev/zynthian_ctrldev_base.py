@@ -57,10 +57,7 @@ class zynthian_ctrldev_base:
     dev_pated = False		# Can act as a pattern editor device
     enabled = False			# True if device driver is enabled
     autoload_flag = True    # False to prevent autoloading the driver when device is detected
-    # SysEx identities of the devices the driver is for: each the start of the identity reply's data
-    # (manufacturer ID, family, model, version), as bytes or hex text, e.g. "7D 46 43 31 30" (FCB1010 riban).
-    # Lets the driver be found for ports without a device ID, such as DIN-5 ports.
-    sysex_ids = []
+    sysex_ids = []          # List of SysEx identities the driver supports (8 octets: DevId, SubId1, SubId2, ManId, Fam1, Fam2, Mod1, Mod2)
     sysex_autoload = True   # False to prevent autoloading the driver when its SysEx identity is detected
     # True if input device must be unrouted from chains when driver is loaded
     # Alternately specific MIDI channels can be unrouted by specifying a bitwise mask,

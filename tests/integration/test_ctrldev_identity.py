@@ -78,8 +78,8 @@ def test_unsolicited_identity_autoloads_the_matching_driver(mgr):
     assert PORT not in mgr.drivers
     mgr.midi_event(PORT, FCB_IDENTITY)
     assert type(mgr.drivers[PORT]).__name__ == FCB
-    # The driver got the identity too (it gives the pedal's channel)
-    assert mgr.drivers[PORT].fcb_chan == 0 and mgr.drivers[PORT].fcb_version == (0, 1, 5)
+    # The driver read the identity it was loaded by (it gives the pedal's channel)
+    assert mgr.drivers[PORT].channel == 0 and mgr.drivers[PORT].version[:3] == (0, 1, 5)
 
 
 def test_identity_of_an_unknown_device_loads_nothing(mgr):
