@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Create a zynthian widget (LV2 extension bundle) for an LV2 plugin that already exists.
 
-usage: new_widget.py --uri URI [--symbol NAME] [--builtin] [--half-height] [--dest DIR] [--host HOST | --local] [--force]
+usage: new_widget.py --uri URI [--symbol NAME] [--builtin] [--half-height] [--dest DIR] [--host HOST | --local]
+                     [--package-name NAME] [--github OWNER/REPO] [--no-git] [--force]
 
   --uri       plugin URI (find it with: zyn_device.sh plugins <filter>)
   --symbol    widget name, [a-z][a-z0-9_]* (default: from the plugin name)
@@ -11,6 +12,10 @@ usage: new_widget.py --uri URI [--symbol NAME] [--builtin] [--half-height] [--de
   --dest      workspace folder (default ~/Zynthian/<symbol>-zyngui): SPEC.md, ports.json and (user widgets) the bundle
   --host      zynthian to read the plugin ports from (default $ZYNTHIAN_HOST or zynthian.lan)
   --local     read the ports with the local lilv instead
+  User widgets only (the workspace is the widget's git repo, with a zynthian package in package/, category Widgets):
+  --package-name  name in the zynthian-packages catalog (default: "<plugin name> Widget")
+  --github    owner/repo on GitHub (default: <gh login>/<symbol>-zyngui)
+  --no-git    don't create the git repo
 
 The generic widget shows every output control port of the plugin as a bar. Edit it afterwards.
 """
@@ -76,6 +81,9 @@ def main():
     ap.add_argument("--host", default=os.environ.get("ZYNTHIAN_HOST", "zynthian.lan"))
     ap.add_argument("--local", action="store_true")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--package-name")
+    ap.add_argument("--github")
+    ap.add_argument("--no-git", action="store_true")
     args = ap.parse_args()
 
     info = get_ports(args.uri, args.host, args.local)
@@ -111,6 +119,7 @@ def main():
         "MONITORS": "\n".join(f"    {p['symbol']!r}: ({p['name']!r}, {float(rng(p, 'min', 0))}, {float(rng(p, 'max', 1))}, "
                               f"{p.get('unit', '')!r}),"
                               for p in outputs) or "    # This plugin has no output control ports: nothing to monitor",
+        "BUNDLE": os.path.basename(bundle), "CATEGORY": "Widgets",
         "CONTROLS_HELP": "<ul>\n" + "\n".join(f"  <li><b>{p['name']}</b>: TODO</li>" for p in inputs) + "\n</ul>",
     }
 
@@ -152,6 +161,33 @@ What it shows, layout, colours, knob/switch handling (if any).
 ## Open questions
 -
 """)
+    if not args.builtin:
+        maker = subprocess.run([os.path.join(HERE, "detect_maker.sh")], capture_output=True, text=True).stdout.strip()
+        github = args.github
+        if not github:
+            res = subprocess.run(["bash", "-c", "timeout 10 gh api user --jq .login 2>/dev/null"],
+                                 capture_output=True, text=True)
+            github = f"{res.stdout.strip() or 'OWNER'}/{sym}-zyngui"
+        package = args.package_name or " ".join(w[:1].upper() + w[1:] for w in f"{info['name']} Widget".split())
+        if re.search(r'[/"\\]', package):
+            fail("--package-name can't contain '/', '\"' or '\\'")
+        pvalues = {**values, "PACKAGE": package, "GITHUB": github, "MAKER": maker or "Zynthian",
+                   "DESCRIPTION": f"Zynthian widget for the {info['name']} LV2 plugin",
+                   "DESCRIPTION_EXTENDED": "TODO: what the widget shows and how to use it (from the help page), simple HTML.",
+                   "SIZE": "TODO (zyn_device.sh package)", "CONTENT": f"zynthian-plugins/lv2-widgets/{os.path.basename(bundle)}"}
+        pkg = os.path.join(workspace, "package")
+        write(os.path.join(pkg, "info.yml"), render(os.path.join(TEMPLATES, "package", "info.yml"), pvalues))
+        write(os.path.join(pkg, f"{package}.sh"), render(os.path.join(TEMPLATES, "package", "widget.sh"), pvalues))
+        os.makedirs(os.path.join(pkg, "Art"), exist_ok=True)
+        write(os.path.join(workspace, ".gitignore"), "__pycache__/\n")
+        write(os.path.join(workspace, "README.md"),
+              f"# {package}\n\n{pvalues['DESCRIPTION']} (<{args.uri}>): a zyngui:widget extension bundle "
+              f"(`{os.path.basename(bundle)}`), installed in `/zynthian/zynthian-plugins/lv2-widgets`.\n\n"
+              f"Install it from webconf (packages, category Widgets), or copy `{os.path.basename(bundle)}` into "
+              "`/zynthian/zynthian-plugins/lv2-widgets/` and show the widget again.\n")
+        print(f"package: '{package}' (Widgets), github '{github}', author '{pvalues['MAKER']}'")
+        if not args.no_git and not os.path.isdir(os.path.join(workspace, ".git")):
+            subprocess.run(["git", "init", "-q"], cwd=workspace, check=True)
     print(f"Created widget bundle {bundle}")
     print(f"  {len(outputs)} outputs to monitor, {len(inputs)} controls; workspace {workspace} (SPEC.md, ports.json)")
     if args.builtin:

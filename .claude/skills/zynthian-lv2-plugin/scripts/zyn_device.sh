@@ -9,6 +9,8 @@
 #   zyn_device.sh install <project_dir>   copy bin/<symbol>.lv2 to zynthian-plugins/lv2, touch lv2.stamp; first time
 #                                         only: regenerate_engines_db.sh + enable it in the engines DB
 #   zyn_device.sh widget <bundle_dir>     install a widget extension bundle into lv2-widgets, touch lv2.stamp
+#   zyn_device.sh package <dir> [png]     fill package/info.yml "size" (installed size of the bundle) and copy a widget
+#                                         screenshot (from shot) as the package image (info.yml "icon", in Art/)
 #   zyn_device.sh shot [:0|:1]            screenshot (zynthian display :0, VNC display :1) -> local PNG path
 #   zyn_device.sh log [minutes]           errors and widget/jalv messages of the UI service
 
@@ -92,6 +94,25 @@ widget)
 	$SSH "bash -c '$ENV; touch \$ZYNTHIAN_CONFIG_DIR/lv2.stamp'"
 	echo "Installed /zynthian/zynthian-plugins/lv2-widgets/$name (lv2.stamp touched): show the widget again to load it."
 	;;
+package)
+	[ -f "$1/package/info.yml" ] || die "usage: package <plugin project or widget workspace> [png]"
+	dir="$(cd "$1" && pwd)"; info="$dir/package/info.yml"
+	if [ -f "$dir/spec.json" ]; then  # plugin: the bundle built on the device (same arch as the users' zynthians)
+		sym="$(project_symbol "$dir")"
+		kb="$($SSH "du -sk $REMOTE_SRC/$sym/bin/$sym.lv2" | cut -f1)" || die "not built on $HOST: run build first"
+	else  # widget workspace: the bundle itself (no binaries)
+		b="$(ls -d "$dir"/*-zyngui.lv2 2>/dev/null | head -1)"; [ -n "$b" ] || die "no *-zyngui.lv2 bundle in $dir"
+		kb="$(du -sk --exclude=__pycache__ "$b" | cut -f1)"
+	fi
+	sed -i "s|^size: .*|size: \"$kb KB\"|" "$info"
+	echo "size: $kb KB"
+	if [ -n "$2" ]; then
+		icon="$(sed -n 's/^icon: *"\(.*\)"/\1/p' "$info")"; [ -n "$icon" ] || die "no icon in $info"
+		mkdir -p "$(dirname "$dir/package/$icon")"
+		cp "$2" "$dir/package/$icon"
+		echo "image: package/$icon"
+	fi
+	;;
 shot)
 	disp="${1:-:0}"; out="$TMPDIR_LOCAL/zynshot_$(date +%H%M%S).png"
 	$SSH "DISPLAY=$disp import -window root /tmp/zynshot.png" || die "screenshot failed (is display $disp running?)"
@@ -104,7 +125,7 @@ log)
 		| grep -iE "error|traceback|exception|widget|jalv|lv2 data" | grep -v "KeyError: 'drawbar'" | tail -60
 	;;
 *)
-	sed -n '2,15p' "$0"
+	sed -n '2,17p' "$0"
 	exit 1
 	;;
 esac

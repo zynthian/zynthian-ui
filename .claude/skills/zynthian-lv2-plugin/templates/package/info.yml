@@ -1,0 +1,11 @@
+title: "@@PACKAGE@@"
+icon: "Art/zui_control_widget_@@SYMBOL@@.png"
+author: "@@MAKER@@"
+license: "@@LICENSE@@"
+source_url: "https://github.com/@@GITHUB@@.git"
+size: "@@SIZE@@"
+content: "@@CONTENT@@"
+description: "@@DESCRIPTION@@.<br/>
+
+@@DESCRIPTION_EXTENDED@@
+"

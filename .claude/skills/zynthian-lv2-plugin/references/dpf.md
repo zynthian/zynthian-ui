@@ -23,6 +23,9 @@ MidiThrough, SendNote) instead of guessing.
     port_extras.json           extra TTL lines per port symbol (zynthian metadata DPF can't express)
   tools/zyngui_bundle.py       post-build step: widget files + manifest + port extras into bin/<symbol>.lv2
   .github/workflows/build.yml  CI: x86_64 + arm64 builds, artifacts, "latest" prerelease, v* releases
+  package/                     zynthian package (info.yml, <Package>.sh, Art/): see SKILL.md step 5. Spec keys:
+                               package.name (default: the name in Title Case), package.category (Plugins),
+                               github (owner/repo; default: gh login/<symbol>)
   spec.json  SPEC.md  README.md  Makefile
 ```
 

@@ -112,7 +112,8 @@ Vocabulary: `http://zynthian.org/ns/lv2/zyngui#` (ontology bundle `zynthian-ui/l
   Widget UI URI: `http://zynthian.org/plugins/zyngui/user/<name>#<name>` (user) or
   `http://zynthian.org/plugins/zyngui/<name>#<name>` (built-in).
 - Locations (all in `LV2_PATH`): built-in widgets `zynthian-ui/lv2/` (zynthian-ui commits), user widgets
-  `/zynthian/zynthian-plugins/lv2-widgets/`, plugins `/zynthian/zynthian-plugins/lv2/`.
+  `/zynthian/zynthian-plugins/lv2-widgets/` (published as zynthian packages, category Widgets), plugins
+  `/zynthian/zynthian-plugins/lv2/`.
 - Precedence: highest supported `zyngui:apiVersion`, then user widgets (files outside zynthian-ui) over built-in.
 - Several plugins sharing one widget: list several `ui:ui` triples to the same UI.
 

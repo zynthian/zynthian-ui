@@ -68,7 +68,8 @@ references already answer.
 
 **Case B (widget for an existing plugin)**:
 1. Plugin URI (find it with `scripts/zyn_device.sh plugins <filter>`), widget symbol, built-in (contribution to
-   zynthian-ui `lv2/`) or user widget (`lv2-widgets`, default).
+   zynthian-ui `lv2/`) or user widget (`lv2-widgets`, default). A user widget is its own project: a git repo
+   (GitHub `<owner>/<symbol>-zyngui`) published as a zynthian package in the Widgets category (step 5).
 2. Read the plugin's ports (`scripts/zyn_device.sh ports <URI>`): what the outputs (monitors) offer, which inputs
    the widget may control. If the data needed isn't there, say so: a widget can't get more than the plugin outputs.
 3. Topics 7 and 9 above. Soft rules 1-3 can't be applied in the widget (the plugin's ports are given), but
@@ -95,9 +96,11 @@ into the plugin repo; update the pin only deliberately, after building and testi
 release; publishes a rolling `latest` prerelease and `v*` releases), a parameter table shared by DSP and GUI
 (`plugins/<symbol>/ParamDefs.hpp`), a passthrough DSP, a generic Cairo GUI (a bar per control and output), a
 generic widget (a bar per output, or the current page's controls when there are no outputs), help page, `SPEC.md`
-and a `Makefile` that also adds the widget to the bundle. Outputs marked `"meter": true` get demo level-meter code:
+a `Makefile` that also adds the widget to the bundle, and `package/` (the zynthian package, step 5). Outputs marked `"meter": true` get demo level-meter code:
 only when the user asked for meters. It builds and runs as-is: build and test it once before changing anything, so later failures are yours.
 After generating, **edit the code directly**; the generator is for the first skeleton only.
+`new_widget.py` (user widgets) creates the workspace as a git repo with the bundle, `SPEC.md`, `ports.json`,
+`README.md` and `package/`.
 
 ## 4. Iterate: build → install → test, in small steps
 
@@ -112,6 +115,33 @@ $SKILL/scripts/zyn_device.sh check <URI>                    # ports, UIs, widget
 
 Widget-only changes don't need a restart nor a reinstall: copy the files and show the widget again (hot reload).
 DSP/port changes need the processor reloaded: chain options → "Reload <plugin>". See `references/testing.md`.
+
+## 5. Publish as a zynthian package
+
+Every plugin project and user-widget repo has a `package/` folder (generated): its entry in the zynthian package
+catalog ([zynthian-packages](https://github.com/zynthian/zynthian-packages), installed from webconf), copied as is to
+`Plugins/<Package>/` (plugins) or `Widgets/<Package>/` (widget bundles):
+
+| File | Content |
+|---|---|
+| `info.yml` | title (= package name), icon, author, license, source_url, size (installed), content (install path), description (first line short, `<br/>`, blank line, extended description in simple HTML) |
+| `<Package>.sh` | `install` / `uninstall` / `installed` / `git_version` / `git_repo`. Plugins: downloads the bundle for the device arch from the **latest GitHub release** (CI tarballs) into `zynthian-plugins/lv2`; first install adds the plugin to the engines DB, enabled. Widgets: the bundle from the **newest `v*` tag** into `zynthian-plugins/lv2-widgets`. `git_version` = newest `v*` tag: webconf offers an update when a new version is tagged, so new versions don't need changes in the catalog |
+| `Art/zui_control_widget_<symbol>.png` | Screenshot of the widget in the zynthian UI (800×480): the package image |
+
+**When the repo is pushed to GitHub for the first time**, prepare the package and then ask the user (the operator)
+to send the PR to zynthian-packages (offer to prepare it: fork, branch with `package/` copied to
+`<Category>/<Package>/`, `gh pr create`; never touch `packages.json`, CI regenerates it):
+1. CI green (plugins). The package installs releases: ask the user for the first tag (`v0.1.0`), and check that the
+   release has the bundles (plugins) or the tag exists (widgets).
+2. `info.yml`: extended description (from the help page), author and license confirmed with the user; size with
+   `zyn_device.sh package <dir>` (plugins: after `build`).
+3. Screenshot: show the widget on the zynthian (zynthian-operator skill; adding the processor needs the user's OK),
+   `zyn_device.sh shot`, look at it, then `zyn_device.sh package <dir> <png>` copies it to `Art/`.
+4. Commit `package/` in the repo; write the PR URL in `SPEC.md`.
+
+After that, **no more PRs unless files in `package/` change**: compare with the catalog
+(`git -C ~/Zynthian/zynthian-packages pull`, then `diff -r package ~/Zynthian/zynthian-packages/<Category>/<Package>`)
+and propose a PR only when they differ. New versions are just tags (and CI releases).
 
 ## Soft rules (apply when they make sense)
 

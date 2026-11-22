@@ -111,6 +111,18 @@ def load_spec(path):
     spec.setdefault("ui", {})
     spec.setdefault("ci", {})
     spec["ci"].setdefault("debian", "trixie")  # GitHub CI container: the zynthian OS Debian release
+    # zynthian package (package/ folder, PR to zynthian-packages): name = folder & script name in the catalog
+    spec.setdefault("package", {})
+    spec["package"].setdefault("name", " ".join(w[:1].upper() + w[1:] for w in spec["name"].split()))
+    spec["package"].setdefault("category", "Plugins")
+    if re.search(r'[/"\\]', spec["package"]["name"]):
+        fail("spec: package.name can't contain '/', '\"' or '\\'")
+    if not spec.get("github"):  # owner/repo on GitHub: CI releases, package downloads
+        res = subprocess.run(["bash", "-c", "timeout 10 gh api user --jq .login 2>/dev/null"],
+                             capture_output=True, text=True)
+        owner = res.stdout.strip() or "OWNER"
+        spec["github"] = f"{owner}/{sym}"
+        print(f"github: '{spec['github']}' (detected; set \"github\" in the spec to change it)")
     spec["ui"].setdefault("width", 640)
     spec["ui"].setdefault("height", 320)
     for key in ("audio_inputs", "audio_outputs"):
@@ -443,6 +455,9 @@ def main():
         "MAKER": spec["maker"], "BRAND_ID": spec["brand_id"], "UNIQUE_ID": spec["unique_id"],
         "DESCRIPTION": spec["description"].replace('"', "'"), "LICENSE": spec["license"],
         "HOMEPAGE": spec["homepage"], "VERSION": ", ".join(str(int(v)) for v in spec["version"]),
+        "PACKAGE": spec["package"]["name"], "CATEGORY": spec["package"]["category"], "GITHUB": spec["github"],
+        "SIZE": "TODO (zyn_device.sh package)", "CONTENT": f"zynthian-plugins/lv2/{sym}.lv2",
+        "DESCRIPTION_EXTENDED": "TODO: what it does and how to use it (from the help page), simple HTML.",
         "LV2_CATEGORY": spec["lv2_category"], "DEBIAN": spec["ci"]["debian"], "YEAR": datetime.date.today().year,
         "AUDIO_IN": int(spec["audio_inputs"]), "AUDIO_OUT": int(spec["audio_outputs"]),
         "IS_SYNTH": int(bool(spec["is_synth"])), "MIDI_IN": int(midi_in), "MIDI_OUT": int(bool(spec["midi_output"])),
@@ -500,6 +515,11 @@ def main():
           open(os.path.join(TEMPLATES, "tools", "zyngui_bundle.py")).read(), 0o755)
     write(os.path.join(dest, ".github", "workflows", "build.yml"),
           render(os.path.join(TEMPLATES, "github", "build.yml"), values))
+    pkg = os.path.join(dest, "package")
+    write(os.path.join(pkg, "info.yml"), render(os.path.join(TEMPLATES, "package", "info.yml"),
+                                                {**values, "DESCRIPTION": values["DESCRIPTION"].rstrip(".")}))
+    write(os.path.join(pkg, f"{spec['package']['name']}.sh"), render(os.path.join(TEMPLATES, "package", "plugin.sh"), values))
+    os.makedirs(os.path.join(pkg, "Art"), exist_ok=True)
     write(os.path.join(dest, "SPEC.md"), render(os.path.join(TEMPLATES, "SPEC.md"), values))
     write(os.path.join(dest, "README.md"), render(os.path.join(TEMPLATES, "README.md"), values))
     write(os.path.join(dest, ".gitignore"), "/bin/\nbuild/\n__pycache__/\n*.o\n*.d\n")

@@ -11,6 +11,7 @@ ssh key auth). Ask the user before the first build/install of a session.
 | `install <project_dir>` | Copy `bin/<symbol>.lv2` to `/zynthian/zynthian-plugins/lv2`, touch `lv2.stamp`. First install only: `regenerate_engines_db.sh` + enable the plugin in the engines DB |
 | `widget <bundle_dir>` | Copy a widget extension bundle to `/zynthian/zynthian-plugins/lv2-widgets`, touch `lv2.stamp` |
 | `check <URI>` | lilv view of the plugin: ports summary, UIs, zynthian widget resolution (which file wins) |
+| `package <dir> [png]` | Fill `package/info.yml` size (plugin: bundle built on the device; widget: the bundle) and copy a screenshot as the package image |
 | `shot [:0\|:1]` | Screenshot of the zynthian display (`:0`) or the VNC display (`:1`, native GUIs) → local PNG path (Read it) |
 | `log [minutes]` | Errors/tracebacks and widget/jalv messages from the UI service log |
 
