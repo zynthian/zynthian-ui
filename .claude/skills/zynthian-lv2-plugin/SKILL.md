@@ -124,8 +124,8 @@ catalog ([zynthian-packages](https://github.com/zynthian/zynthian-packages), ins
 
 | File | Content |
 |---|---|
-| `info.yml` | title (= package name), icon, author, license, source_url, size (installed), content (install path), description (first line short, `<br/>`, blank line, extended description in simple HTML) |
-| `<Package>.sh` | `install` / `uninstall` / `installed` / `git_version` / `git_repo`. Plugins: downloads the bundle for the device arch from the **latest GitHub release** (CI tarballs) into `zynthian-plugins/lv2`; first install adds the plugin to the engines DB, enabled. Widgets: the bundle from the **newest `v*` tag** into `zynthian-plugins/lv2-widgets`. `git_version` = newest `v*` tag: webconf offers an update when a new version is tagged, so new versions don't need changes in the catalog |
+| `info.yml` | title (= package name), icon, author, license (= the plugin's; default GPL-3.0-or-later, with its text in the repo's `LICENSE`, written by the generators for GPL v3: other licenses need their own `LICENSE`), source_url, size (installed), content (install path), description (first line short, `<br/>`, blank line, extended description in simple HTML) |
+| `<Package>.sh` | `install` / `uninstall` / `installed` / `git_version` / `git_repo`. Plugins: downloads the bundle for the device arch from the **latest GitHub release** (CI tarballs) into `zynthian-plugins/lv2`, then enables it with zynthian-sys' `zynengine_tool.py ENABLE <URI>` (the engines DB is managed outside the package scripts). Widgets: the bundle from the **newest `v*` tag** into `zynthian-plugins/lv2-widgets`. `git_version` = newest `v*` tag: webconf offers an update when a new version is tagged, so new versions don't need changes in the catalog. Keep these scripts plain (download, unpack, remove, zynthian tool calls): no embedded code |
 | `Art/zui_control_widget_<symbol>.png` | Screenshot of the widget in the zynthian UI (800×480): the package image |
 
 **When the repo is pushed to GitHub for the first time**, prepare the package and then ask the user (the operator)

@@ -213,7 +213,7 @@ def main():
 
     if cmd == "widget":
         import importlib.util
-        ui_dir = os.environ.get("ZYNTHIAN_UI_DIR", "/zynthian/zynthian-ui")
+        ui_dir = os.environ["ZYNTHIAN_UI_DIR"]
         spec = importlib.util.spec_from_file_location("zl", f"{ui_dir}/zyngine/zynthian_lv2.py")
         zl = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(zl)

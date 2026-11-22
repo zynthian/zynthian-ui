@@ -379,6 +379,14 @@ all: $(TARGETS)
 """
 
 
+def write_license(dest, license_id):
+    """LICENSE file in the repo root: the GPL v3 text (default license); other licenses: the user adds it."""
+    if license_id.startswith("GPL-3.0"):
+        shutil.copyfile(os.path.join(TEMPLATES, "licenses", "GPL-3.0.txt"), os.path.join(dest, "LICENSE"))
+    elif not os.path.exists(os.path.join(dest, "LICENSE")):
+        print(f"WARNING: no LICENSE text for '{license_id}': add the LICENSE file to the repo")
+
+
 def render(path, values):
     with open(path) as f:
         text = f.read()
@@ -522,6 +530,7 @@ def main():
     os.makedirs(os.path.join(pkg, "Art"), exist_ok=True)
     write(os.path.join(dest, "SPEC.md"), render(os.path.join(TEMPLATES, "SPEC.md"), values))
     write(os.path.join(dest, "README.md"), render(os.path.join(TEMPLATES, "README.md"), values))
+    write_license(dest, spec["license"])
     write(os.path.join(dest, ".gitignore"), "/bin/\nbuild/\n__pycache__/\n*.o\n*.d\n")
     spec_out = {k: v for k, v in spec.items() if not k.startswith("_")}
     write(os.path.join(dest, "spec.json"), json.dumps(spec_out, indent=2) + "\n")

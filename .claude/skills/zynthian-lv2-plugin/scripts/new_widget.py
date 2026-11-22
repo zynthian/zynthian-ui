@@ -180,6 +180,8 @@ What it shows, layout, colours, knob/switch handling (if any).
         write(os.path.join(pkg, f"{package}.sh"), render(os.path.join(TEMPLATES, "package", "widget.sh"), pvalues))
         os.makedirs(os.path.join(pkg, "Art"), exist_ok=True)
         write(os.path.join(workspace, ".gitignore"), "__pycache__/\n")
+        with open(os.path.join(TEMPLATES, "licenses", "GPL-3.0.txt")) as f:  # values["LICENSE"]: GPL-3.0-or-later
+            write(os.path.join(workspace, "LICENSE"), f.read())
         write(os.path.join(workspace, "README.md"),
               f"# {package}\n\n{pvalues['DESCRIPTION']} (<{args.uri}>): a zyngui:widget extension bundle "
               f"(`{os.path.basename(bundle)}`), installed in `/zynthian/zynthian-plugins/lv2-widgets`.\n\n"

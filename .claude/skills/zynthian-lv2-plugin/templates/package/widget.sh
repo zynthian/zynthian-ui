@@ -9,8 +9,8 @@ GITHUB="@@GITHUB@@"
 DIRNAME="@@BUNDLE@@"
 
 REPO_URL="https://github.com/$GITHUB.git"
-DST_DIR="${ZYNTHIAN_PLUGINS_DIR:-/zynthian/zynthian-plugins}/lv2-widgets"
-STAMP="${ZYNTHIAN_CONFIG_DIR:-/zynthian/config}/lv2.stamp"
+DST_DIR="$ZYNTHIAN_PLUGINS_DIR/lv2-widgets"
+STAMP="$ZYNTHIAN_CONFIG_DIR/lv2.stamp"
 
 # Version = newest v* tag (webconf offers an update when it changes)
 git_version() {

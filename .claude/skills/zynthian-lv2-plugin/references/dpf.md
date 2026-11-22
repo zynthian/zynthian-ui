@@ -26,7 +26,7 @@ MidiThrough, SendNote) instead of guessing.
   package/                     zynthian package (info.yml, <Package>.sh, Art/): see SKILL.md step 5. Spec keys:
                                package.name (default: the name in Title Case), package.category (Plugins),
                                github (owner/repo; default: gh login/<symbol>)
-  spec.json  SPEC.md  README.md  Makefile
+  spec.json  SPEC.md  README.md  Makefile  LICENSE (GPL v3 text, for the default license)
 ```
 
 Top `make`: `dgl` (DGL Cairo lib) → `plugins` → `gen` (`dpf/utils/generate-ttl.sh`: runs the built plugin to write
