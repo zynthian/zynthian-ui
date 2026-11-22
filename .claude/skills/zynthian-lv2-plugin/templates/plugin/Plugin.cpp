@@ -56,6 +56,8 @@ protected:
         if (index >= kParamCount)
             return;
         const ParamDef& p(kParams[index]);
+        if (p.designation != kParameterDesignationNull)
+            parameter.initDesignation(p.designation);  // bypass: LV2 port "lv2_enabled", inverted by DPF
         parameter.hints = p.hints;
         parameter.name = p.name;
         parameter.symbol = p.symbol;
@@ -96,12 +98,19 @@ protected:
     {
         // Precompute everything that depends on the sample rate here (not in run)
         fMeterDecayPerSample = std::exp(-1.0f / (0.3f * static_cast<float>(sampleRate)));  // ~300 ms decay
+        fBypassStep = 1.0f / (0.01f * static_cast<float>(sampleRate));  // 10 ms bypass crossfade
     }
 
     void activate() override
     {
         for (uint32_t m = 0; m < kMeterCount; ++m)
             fMeterPeak[m] = 0.0f;
+        fBypassMix = isBypassed() ? 1.0f : 0.0f;
+    }
+
+    bool isBypassed() const
+    {
+        return kBypassParam < kParamCount && fValues[kBypassParam < kParamCount ? kBypassParam : 0] > 0.5f;
     }
 
     // TODO: replace this demo DSP (passthrough + output meters) with the algorithm in SPEC.md.
@@ -110,15 +119,28 @@ protected:
     {
 @@RUN_MIDI_BODY@@
 #if DISTRHO_PLUGIN_NUM_OUTPUTS > 0
-        for (uint32_t c = 0; c < DISTRHO_PLUGIN_NUM_OUTPUTS; ++c)
+        // Per sample, reading all the inputs first: hosts may pass the same buffer as input and output.
+        // Bypass (audio effects): crossfade wet -> dry in 10 ms, no clicks. When fully bypassed (fBypassMix == 1)
+        // you may skip the DSP to save CPU, and reset its state (delay lines...) when un-bypassing.
+        const float bypassTarget = isBypassed() ? 1.0f : 0.0f;
+        for (uint32_t i = 0; i < frames; ++i)
         {
-            float* const out = outputs[c];
+            if (fBypassMix != bypassTarget)
+                fBypassMix = bypassTarget > fBypassMix ? std::min(bypassTarget, fBypassMix + fBypassStep)
+                                                       : std::max(bypassTarget, fBypassMix - fBypassStep);
 # if DISTRHO_PLUGIN_NUM_INPUTS > 0
-            const float* const in = inputs[c % DISTRHO_PLUGIN_NUM_INPUTS];
-            if (out != in)
-                std::memcpy(out, in, sizeof(float) * frames);
+            float dry[DISTRHO_PLUGIN_NUM_INPUTS];
+            for (uint32_t c = 0; c < DISTRHO_PLUGIN_NUM_INPUTS; ++c)
+                dry[c] = inputs[c][i];
+            for (uint32_t c = 0; c < DISTRHO_PLUGIN_NUM_OUTPUTS; ++c)
+            {
+                const float in = dry[c % DISTRHO_PLUGIN_NUM_INPUTS];
+                const float wet = in;  // TODO: the processed sample
+                outputs[c][i] = wet + (in - wet) * fBypassMix;
+            }
 # else
-            std::memset(out, 0, sizeof(float) * frames);
+            for (uint32_t c = 0; c < DISTRHO_PLUGIN_NUM_OUTPUTS; ++c)
+                outputs[c][i] = 0.0f;  // TODO: the generated sample
 # endif
         }
 
@@ -147,6 +169,8 @@ private:
     float fValues[kParamCount];
     float fMeterPeak[kMeterCount > 0 ? kMeterCount : 1];
     float fMeterDecayPerSample = 0.0f;
+    float fBypassMix = 0.0f;   // 0 = processed, 1 = dry input (bypassed)
+    float fBypassStep = 0.0f;
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(@@CLASS@@Plugin)
 };

@@ -42,7 +42,13 @@ SYMBOL_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 NS_PARAM = "http://lv2plug.in/ns/ext/parameters#"
 DESIGNATIONS = {"delay", "attack", "hold", "decay", "sustain", "fade", "release",
                 "cutoffFrequency", "resonance", "drawbar"}
-DESIGNATION_ALIASES = {"cutoff": "cutoffFrequency", "cutoff_frequency": "cutoffFrequency"}
+DESIGNATION_ALIASES = {"cutoff": "cutoffFrequency", "cutoff_frequency": "cutoffFrequency", "enabled": "bypass"}
+# Bypass: DPF's kParameterDesignationBypass. The plugin sees 1 = bypassed; DPF exports the LV2 port inverted as
+# symbol "lv2_enabled" (lv2:designation lv2:enabled, 1 = processing), which zynthian uses as the processor's native
+# bypass (zynthian_lv2.py / zynthian_engine_jalv.py: is_bypass, bypass_value 0, labels "inline"/"bypass").
+BYPASS_LV2_SYMBOL = "lv2_enabled"
+# Group for an automatically added bypass: the one with mix/level-like controls (extra rule for audio effects)
+BYPASS_GROUP_RE = re.compile(r"mix|wet|dry|blend|volume|vol|level|gain|output|out|master|amount")
 # Names that usually deserve a designation (soft rule 3)
 DESIGNATION_HINTS = [(re.compile(r"(^|[^a-z])(att|attack)([^a-z]|$)"), "attack"),
                      (re.compile(r"(^|[^a-z])(dec|decay)([^a-z]|$)"), "decay"),
@@ -103,6 +109,8 @@ def load_spec(path):
     spec.setdefault("outputs", [])
     spec.setdefault("port_extras", {})
     spec.setdefault("ui", {})
+    spec.setdefault("ci", {})
+    spec["ci"].setdefault("debian", "trixie")  # GitHub CI container: the zynthian OS Debian release
     spec["ui"].setdefault("width", 640)
     spec["ui"].setdefault("height", 320)
     for key in ("audio_inputs", "audio_outputs"):
@@ -140,12 +148,50 @@ def load_spec(path):
                 fail(f"spec: {p['symbol']}: logarithmic needs min > 0")
             if p.get("designation"):
                 p["designation"] = DESIGNATION_ALIASES.get(p["designation"], p["designation"])
-                if p["designation"] not in DESIGNATIONS:
+                if p["designation"] == "bypass":
+                    if kind != "params" or p["min"] != 0 or p["max"] != 1 or p["def"] != 0:
+                        fail(f"spec: {p['symbol']}: bypass must be an input with min 0, max 1, def 0 (1 = bypassed)")
+                    p.setdefault("hints", [])
+                    if "boolean" not in p["hints"]:
+                        p["hints"].append("boolean")
+                elif p["designation"] not in DESIGNATIONS:
                     fail(f"spec: {p['symbol']}: unknown designation '{p['designation']}' "
-                         f"(valid: {', '.join(sorted(DESIGNATIONS))})")
+                         f"(valid: bypass, {', '.join(sorted(DESIGNATIONS))})")
+    bypass = [p for p in spec["params"] if p.get("designation") == "bypass"]
+    if len(bypass) > 1:
+        fail("spec: only one param can have \"designation\": \"bypass\"")
+    if is_audio_effect(spec) and not bypass:
+        add_bypass(spec)
     spec.setdefault("widget", {})
     spec["widget"].setdefault("half_height", False)
     return spec
+
+
+def is_audio_effect(spec):
+    """Audio in -> process -> audio out (not a synth)"""
+    return int(spec["audio_inputs"]) > 0 and int(spec["audio_outputs"]) > 0 and not spec.get("is_synth")
+
+
+def add_bypass(spec):
+    """Extra rule for audio effects: a native bypass parameter, in the group of the mix/level-like controls
+    (else the last group). The spec can set it explicitly with "designation": "bypass" instead."""
+    group = None
+    for p in spec["params"]:
+        if p.get("group") and BYPASS_GROUP_RE.search(f"{p['symbol']} {p['name']}".lower()):
+            group = p["group"]
+            break
+    if group is None and spec["groups"]:
+        group = spec["groups"][-1]["symbol"]
+    symbol = "bypass"
+    while any(p["symbol"] == symbol for p in spec["params"] + spec["outputs"]):
+        symbol = "_" + symbol
+    param = {"symbol": symbol, "name": "Bypass", "min": 0, "max": 1, "def": 0, "hints": ["boolean"],
+             "designation": "bypass"}
+    if group:
+        param["group"] = group
+    spec["params"].append(param)
+    print(f"bypass: added to group '{group or '-'}' (audio effect; LV2 port '{BYPASS_LV2_SYMBOL}'). "
+          f"To choose the group, add it to the spec with \"designation\": \"bypass\"")
 
 
 def soft_rule_warnings(spec):
@@ -213,7 +259,9 @@ def param_defs(spec):
             "struct ParamDef {",
             "    const char* symbol;", "    const char* name;", "    const char* unit;",
             "    float min, max, def;", "    uint32_t hints;", "    int32_t group;  // GroupId or -1",
-            "    const char* const* enumLabels;", "    uint32_t enumCount;", "};", ""]
+            "    const char* const* enumLabels;", "    uint32_t enumCount;",
+            "    ParameterDesignation designation;  // kParameterDesignationBypass: 1 = bypassed (LV2 port lv2_enabled)",
+            "};", ""]
     for p, _ in allp:
         if p.get("enum"):
             labels = ", ".join(cstr(label) for label in p["enum"])
@@ -232,11 +280,16 @@ def param_defs(spec):
             hints.append("kParameterIsOutput")
         group = group_idx.get(p.get("group"), -1)
         enum = f"kEnum{camel(p['symbol'])}, {len(p['enum'])}" if p.get("enum") else "nullptr, 0"
+        enum += (", kParameterDesignationBypass" if p.get("designation") == "bypass"
+                 else ", kParameterDesignationNull")
         out.append(f"    {{ {cstr(p['symbol'])}, {cstr(p['name'])}, {cstr(p.get('unit', ''))}, "
                    f"{cfloat(p['min'])}, {cfloat(p['max'])}, {cfloat(p['def'])}, "
                    f"{' | '.join(hints)}, {group}, {enum} }},")
     meters = [f"kParam{camel(p['symbol'])}" for p in spec["outputs"] if p.get("meter")]
+    bypass = [f"kParam{camel(p['symbol'])}" for p in spec["params"] if p.get("designation") == "bypass"]
     out += ["};", "",
+            "// Bypass parameter (kParamCount if none): Plugin.cpp crossfades to the dry input while bypassed",
+            f"static const uint32_t kBypassParam = {bypass[0] if bypass else 'kParamCount'};", "",
             "// Outputs filled by the demo meters in Plugin.cpp (peak dB of the audio outputs)",
             f"static const uint32_t kMeterCount = {len(meters)};",
             f"static const uint32_t kMeterParams[kMeterCount > 0 ? kMeterCount : 1] = {{ {', '.join(meters) or '0'} }};",
@@ -390,7 +443,7 @@ def main():
         "MAKER": spec["maker"], "BRAND_ID": spec["brand_id"], "UNIQUE_ID": spec["unique_id"],
         "DESCRIPTION": spec["description"].replace('"', "'"), "LICENSE": spec["license"],
         "HOMEPAGE": spec["homepage"], "VERSION": ", ".join(str(int(v)) for v in spec["version"]),
-        "LV2_CATEGORY": spec["lv2_category"], "YEAR": datetime.date.today().year,
+        "LV2_CATEGORY": spec["lv2_category"], "DEBIAN": spec["ci"]["debian"], "YEAR": datetime.date.today().year,
         "AUDIO_IN": int(spec["audio_inputs"]), "AUDIO_OUT": int(spec["audio_outputs"]),
         "IS_SYNTH": int(bool(spec["is_synth"])), "MIDI_IN": int(midi_in), "MIDI_OUT": int(bool(spec["midi_output"])),
         "UI_WIDTH": int(spec["ui"]["width"]), "UI_HEIGHT": int(spec["ui"]["height"]),
@@ -430,7 +483,11 @@ def main():
     extras = {"_comment": "Extra TTL statements per port symbol (or 'group:<symbol>'), added after the build. "
                           "See references/dpf.md of the zynthian-lv2-plugin skill."}
     for p in spec["params"]:
-        if p.get("designation"):
+        if p.get("designation") == "bypass":
+            if p.get("group"):  # DPF writes no pg:group for designated ports
+                extras.setdefault(BYPASS_LV2_SYMBOL, []).append(
+                    f"<http://lv2plug.in/ns/ext/port-groups#group> <{spec['uri']}#portGroup_{p['group']}>")
+        elif p.get("designation"):
             extras.setdefault(p["symbol"], []).append(f"lv2:designation <{NS_PARAM}{p['designation']}>")
     for g in spec["groups"]:
         if g.get("class"):
@@ -441,6 +498,8 @@ def main():
 
     write(os.path.join(dest, "tools", "zyngui_bundle.py"),
           open(os.path.join(TEMPLATES, "tools", "zyngui_bundle.py")).read(), 0o755)
+    write(os.path.join(dest, ".github", "workflows", "build.yml"),
+          render(os.path.join(TEMPLATES, "github", "build.yml"), values))
     write(os.path.join(dest, "SPEC.md"), render(os.path.join(TEMPLATES, "SPEC.md"), values))
     write(os.path.join(dest, "README.md"), render(os.path.join(TEMPLATES, "README.md"), values))
     write(os.path.join(dest, ".gitignore"), "/bin/\nbuild/\n__pycache__/\n*.o\n*.d\n")

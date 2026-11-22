@@ -49,7 +49,9 @@ references already answer.
 2. **I/O**: audio inputs/outputs (mono/stereo), MIDI in/out, synth or effect.
 3. **Controls** (LV2 input ports): symbol, name, range, default, unit, type (float, integer, toggle, enum,
    logarithmic), designation, and **pages**: zynthian shows controls 4 per page, grouped by port group. Design the
-   pages for the 4 knobs (soft rules 1-3): most used controls on the first page.
+   pages for the 4 knobs (soft rules 1-3): most used controls on the first page. **Audio effects get a bypass
+   control** (see Rules): propose the group it goes in (with mix / dry-wet / level / volume) and count it in that
+   page's 4.
 4. **Outputs for visualization** (LV2 output control ports): the only data the zynthian widget gets, as floats,
    polled ~30 times/s. Arrays (spectrum, waveform) need one output port per value: keep them small (≤ 64).
    Propose only data **specific to this plugin** (grain positions, LFO phase, gain reduction, detected pitch...).
@@ -88,7 +90,9 @@ python3 $SKILL/scripts/new_plugin.py spec.json --dest ~/Zynthian/<symbol>
 python3 $SKILL/scripts/new_widget.py --uri <URI> --symbol <name> [--builtin] [--host zynthian.lan]
 ```
 
-`new_plugin.py` creates a git repo with DPF as a pinned submodule, a parameter table shared by DSP and GUI
+`new_plugin.py` creates a git repo with DPF as a git submodule pinned to a tested commit (never copy DPF's sources
+into the plugin repo; update the pin only deliberately, after building and testing), a GitHub Actions workflow (builds the bundle for x86_64 and arm64 on every push, in the zynthian OS Debian
+release; publishes a rolling `latest` prerelease and `v*` releases), a parameter table shared by DSP and GUI
 (`plugins/<symbol>/ParamDefs.hpp`), a passthrough DSP, a generic Cairo GUI (a bar per control and output), a
 generic widget (a bar per output, or the current page's controls when there are no outputs), help page, `SPEC.md`
 and a `Makefile` that also adds the widget to the bundle. Outputs marked `"meter": true` get demo level-meter code:
@@ -123,7 +127,6 @@ fit, point out the rule and the trade-off once, then follow the user's decision 
 3. **Standard LV2 designations** where they apply (spec key `designation`): `attack`, `decay`, `sustain`,
    `release` (also `delay`, `hold`, `fade`), `cutoffFrequency`, `resonance`. zynthian then shows its built-in
    **envelope** / **filter** widget on that page. So an ADSR group of exactly 4 gets an envelope graph for free.
-   Bypass: DPF's bypass designation (`lv2:enabled`).
 4. **Half-height widget** when the widget is simple (a few meters, a value or two, a small graph): it uses the
    lower half of the screen and the list of pages stays visible above it (spec `"widget": {"half_height": true}`,
    `new_widget.py --half-height`). Suggest it, and ask the user when it isn't obvious.
@@ -136,6 +139,13 @@ fit, point out the rule and the trade-off once, then follow the user's decision 
 - **First copy of a plugin bundle to the device → run `regenerate_engines_db.sh`** and enable the plugin (regenerate
   adds it disabled). `zyn_device.sh install` does both, only when the plugin isn't in the engines DB yet; updates
   don't need it.
+- **Audio effects (audio in → process → audio out, not synths) have a native bypass parameter** (spec
+  `"designation": "bypass"`, boolean, default 0 = processing), in the most fitting group: the one with mix level,
+  dry/wet, volume or similar controls. DPF exports it as the LV2 port `lv2_enabled` (`lv2:designation lv2:enabled`,
+  inverted: 1 = enabled), which zynthian uses as the processor's bypass (chain view, "inline"/"bypass" labels)
+  instead of its own JACK-routing bypass. `new_plugin.py` adds one if the spec lacks it (in the mix/level group,
+  else the last one) and puts it in its group (DPF doesn't export groups of designated ports). The DSP crossfades to
+  the dry input (template code, ~10 ms): keep it click-free.
 - **DSP must be RT-safe**: no allocation, locks, I/O or logging in `run()`; precompute in `activate()` /
   `sampleRateChanged()`; smooth parameter changes that would click.
 - **The plugin must work without any UI**: zynthian runs jalv headless (invalid `DISPLAY`); the native GUI only
@@ -145,4 +155,6 @@ fit, point out the rule and the trade-off once, then follow the user's decision 
 - **Symbols are API**: port symbols are used by zynthian presets, snapshots, MIDI learn and the widget. Settle them
   early; renaming later breaks saved state.
 - Keep `SPEC.md`, the help page and the code consistent at each step; mention what's left open.
-- Commit in the plugin repo at each working step (the user decides about pushing).
+- Commit in the plugin repo at each working step (the user decides about pushing). Once the repo is on GitHub,
+  each push builds it in CI: check the run (`gh run list`, `gh run view --log-failed`) after pushing; a red build
+  is fixed before going on. Releases: tag `vX.Y.Z` (matching `version` in the code) only when the user asks.

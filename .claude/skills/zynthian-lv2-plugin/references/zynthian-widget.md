@@ -11,6 +11,7 @@ pages), next to the 4 controller knobs. For LV2 plugins it's declared in the LV2
 | Plugin → widget | **LV2 output control ports** ("monitors"): jalv's `monitors` command prints them, the engine parses them into `processor.engine.lv2_monitors_dict` (symbol → float) | Requested on every `update()` (~32 ms) while the widget is shown; the reply is asynchronous, so `self.monitors` holds the values of the previous request |
 | Widget → plugin | Input controls: `zctrl = self.processor.controllers_dict["symbol"]`, then `zctrl.set_value(v, True)`, `zctrl.nudge(±n)`, `zctrl.toggle()` | Immediate |
 | Plugin params → widget | `self.processor.controllers_dict["symbol"].value` (current value of an input control) | Read when needed |
+| Bypass | `self.processor.is_bypassed()`, `set_bypass(b)`, `toggle_bypass()` (works for the native `lv2_enabled` port and for zynthian's JACK-routing bypass alike: don't use the port value directly, it's inverted) | Immediate |
 
 Consequences for the spec:
 - Only floats. Arrays need one output port each (spectr30 uses 30). Keep it small; every port is parsed every tick.

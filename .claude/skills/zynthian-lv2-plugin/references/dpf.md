@@ -22,6 +22,7 @@ MidiThrough, SendNote) instead of guessing.
     zyngui.ttl                 zyngui:widget declaration, appended to the bundle's manifest.ttl
     port_extras.json           extra TTL lines per port symbol (zynthian metadata DPF can't express)
   tools/zyngui_bundle.py       post-build step: widget files + manifest + port extras into bin/<symbol>.lv2
+  .github/workflows/build.yml  CI: x86_64 + arm64 builds, artifacts, "latest" prerelease, v* releases
   spec.json  SPEC.md  README.md  Makefile
 ```
 
@@ -48,13 +49,14 @@ plugin binary, so build natively on the target (the zynthian, aarch64): no cross
 | hint `kParameterIsOutput` | `lv2:OutputPort` | **monitor** for the widget (not a controller) |
 | `enumValues` (restricted) | `lv2:enumeration` + `lv2:scalePoint` | selector with labels |
 | `groupId` → `initPortGroup()` | `pg:group` with `lv2:name`/`lv2:symbol` | **control page** title (4 controls per page) |
-| bypass designation (`kParameterDesignationBypass`) | `lv2:designation lv2:enabled` | zynthian bypass |
+| `designation` `kParameterDesignationBypass` (spec `"designation": "bypass"`) | port `lv2_enabled` ("Enabled", `lv2:toggled`, default 1, `lv2:designation lv2:enabled`): DPF inverts it, the plugin sees 1 = bypassed. No `pg:group` from DPF: the generator adds it via port_extras | the processor's native **bypass** (`is_bypass`, `bypass_value` 0, labels inline/bypass), last control of its page. Without it, zynthian adds a JACK-routing "bypass" to audio effects |
 
 DPF can't express some zynthian metadata. The generator adds it to `zyngui/port_extras.json` from these spec keys:
 
 | spec key | TTL added | zynthian |
 |---|---|---|
 | params[].`designation`: `attack`, `decay`, `sustain`, `release`, `delay`, `hold`, `fade`, `cutoffFrequency` (or `cutoff`), `resonance`, `drawbar` | `lv2:designation <http://lv2plug.in/ns/ext/parameters#...>` | the page containing it shows zynthian's built-in **envelope** / **filter** / **drawbar** widget (instead of the plugin's widget) |
+| params[].`designation`: `bypass` (added automatically to audio effects that lack it) | (DPF designation, see above) + the port's `pg:group` | native bypass |
 | groups[].`class`: `envelope`, `filter`, `oscillator`, `control` | `a param:EnvelopeControls` / `FilterControls` / `OscillatorControls` / `ControlGroup` on the group | semantic only (other hosts, documentation) |
 | widget.`half_height`: true | (widget code) `self.rows = self.rows // 2` | see zynthian-widget.md |
 
@@ -103,6 +105,12 @@ designations, group classes, display priorities, scale points. Nekobi is a DPF p
 - Output values for meters: hold peaks with a time-based decay so ~30 Hz polling doesn't miss them.
 - `activate()`, `deactivate()`, `sampleRateChanged()`, `getSampleRate()`: precompute coefficients there.
 - RT-safe: no `new`/`malloc`, locks, I/O or logging in `run()`. Smooth parameters that click (one-pole).
+- Bypass (audio effects): the template crossfades the processed signal to the dry input with `fBypassMix`
+  (0 → 1 in 10 ms, `isBypassed()` reads `fValues[kBypassParam]`). Keep it when writing the DSP: compute `wet`,
+  output `wet + (dry - wet) * fBypassMix`. Fully bypassed, the DSP may be skipped; reset its state (delay lines,
+  filters) when processing resumes, so no stale audio comes out.
+- DPF: a git submodule pinned to a tested commit (`DPF_COMMIT` in `new_plugin.py`); never copy its sources into
+  the plugin repo. Move the pin only on purpose, after building and testing with the new commit.
 - State (non-float data, e.g. file paths): `DISTRHO_PLUGIN_WANT_STATE` + `initState()`/`setState()`/`getState()`.
   zynthian supports LV2 path parameters too: ask before going this way.
 - MIDI out: `DISTRHO_PLUGIN_WANT_MIDI_OUTPUT` + `writeMidiEvent()`. Synth: `DISTRHO_PLUGIN_IS_SYNTH 1`.
@@ -129,3 +137,11 @@ designations, group classes, display priorities, scale points. Nekobi is a DPF p
 - Locally (x86, for compile checks or desktop tests): same packages, `make`; plus `jalv` (with gtk3) to run it.
   The bundle built locally is x86: never copy it to the zynthian.
 - `make clean` cleans DPF too (full rebuild of DGL next time: ~1-2 min on a Pi 5).
+- GitHub Actions (`.github/workflows/build.yml`): on every push and pull request, x86_64 (`ubuntu-24.04`) and
+  arm64 (`ubuntu-24.04-arm`, native: `make gen` runs the plugin) builds inside `debian:<ci.debian>` (spec key,
+  default `trixie` = zynthian OS base), with the DPF submodule at its pinned commit. Artifacts
+  `<symbol>-lv2-<arch>.tar.gz`; pushes to the default branch replace the `latest` prerelease, `v*` tags create a
+  release. arm64 runners are free for public repos only: for a private repo, drop that matrix entry or use a
+  paid/self-hosted runner. When the zynthian OS moves to a new Debian release, update `container:` (and `ci.debian`).
+- The CI arm64 bundle runs on the zynthian (generic aarch64 flags, same Debian): an alternative to building on the
+  device, e.g. for users installing a released version.

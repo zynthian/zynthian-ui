@@ -1,5 +1,5 @@
 {
-  "_comment": "Input for new_plugin.py. Only symbol, name and the I/O are required; the rest has defaults. Edit the generated code afterwards, not this file. No level meters: zynthian already shows audio levels; outputs are for plugin-specific data (none here).",
+  "_comment": "Input for new_plugin.py. Only symbol, name and the I/O are required; the rest has defaults. Edit the generated code afterwards, not this file. No level meters: zynthian already shows audio levels; outputs are for plugin-specific data (none here). Audio effects get a bypass param (designation bypass), in the group of the level/mix controls.",
   "name": "Zyn Gain",
   "symbol": "zyn_gain",
   "class": "ZynGain",
@@ -61,14 +61,15 @@
       "group": "main"
     },
     {
-      "symbol": "mute",
-      "name": "Mute",
+      "symbol": "bypass",
+      "name": "Bypass",
       "min": 0,
       "max": 1,
       "def": 0,
       "hints": [
         "boolean"
       ],
+      "designation": "bypass",
       "group": "main"
     }
   ],

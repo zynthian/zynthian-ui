@@ -50,6 +50,8 @@ ssh key auth). Ask the user before the first build/install of a session.
   offered in the engine list. New plugins are added **disabled**: `install` enables it (marked as user-edited, so
   later regenerations keep it enabled); otherwise enable it in webconf → Engines. Widget-only bundles (lv2-widgets)
   don't need it: they add no plugin.
+- **Missing Cairo/X11 `-dev` packages → DPF silently builds no GUI** (no `<symbol>_ui.so`, no error). The CI
+  workflow fails on it; locally, check `bin/<symbol>.lv2/` (or `pkg-config --modversion cairo x11`).
 - `make gen` runs the plugin to write the TTL: a crash in the plugin constructor breaks the build at that step.
 - DPF's own sources print warnings (`libsofd.c` `-Wformat-overflow`): expected, not yours. The first build compiles
   DGL (~20 s on a Pi 5); later builds only your files.
