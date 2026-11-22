@@ -35,6 +35,7 @@ from time import sleep
 
 import zynconf
 import zynautoconnect
+import zyngine.zynthian_lv2 as zynthian_lv2
 import zyngine.zynthian_controller as zynthian_controller
 
 # --------------------------------------------------------------------------------
@@ -159,6 +160,10 @@ class zynthian_engine(zynthian_basic_engine):
     preset_fexts = []
     root_bank_dirs = []
 
+    # LV2 plugin URI of the engine, if it hosts an LV2 plugin: the key of the zyngui:widget lookup.
+    # Engines with no plugin URI keep their own fixed custom_gui_fpath.
+    plugin_url = None
+
     # ---------------------------------------------------------------------------
     # Initialization
     # ---------------------------------------------------------------------------
@@ -170,6 +175,7 @@ class zynthian_engine(zynthian_basic_engine):
 
         self.custom_gui_fpath = None
         self.custom_gui_help_fpath = None  # Help page (HTML) for the custom GUI, if any
+        self.custom_gui_generation = None  # zynthian_lv2.lv2_generation of the last widget lookup
 
         self.type = "MIDI Synth"
         self.nickname = ""
@@ -737,10 +743,41 @@ class zynthian_engine(zynthian_basic_engine):
     def get_options(self):
         return self.options
 
+    def _widget_plugin_name(self):
+        return getattr(self, "plugin_name", None) or self.plugin_url
+
+    def get_custom_gui_fpath(self):
+        """Find the zynthian widget for this plugin: a zyngui:widget UI declared
+        in the LV2 data (plugin bundle or extension bundle, built-in or user).
+        Needs plugin_url: an engine with none has no widget to look up."""
+        if not self.plugin_url:
+            return None
+        self.custom_gui_generation = zynthian_lv2.lv2_generation
+        self.custom_gui_help_fpath = None
+        try:
+            widget = zynthian_lv2.get_plugin_zyngui_widget(self.plugin_url)
+        except Exception as e:
+            # A widget problem must never prevent the plugin from loading
+            logging.error(f"Can't get zynthian widget for '{self._widget_plugin_name()}' => {e}")
+            return None
+        if widget:
+            logging.info(f"Using {'user' if widget['user'] else 'built-in'} zynthian widget <{widget['uri']}> from '{widget['fpath']}'")
+            self.custom_gui_help_fpath = widget['help']
+            return widget['fpath']
+        return None
+
     def refresh_custom_gui(self):
-        """Update custom_gui_fpath if the available widgets changed.
-        Called by the GUI before showing the widget. Engines with dynamic widgets override it."""
-        pass
+        """Look for the widget again if LV2 data changed (widget bundle added, removed or updated).
+        Called by the GUI before showing the widget. Only engines with a plugin_url look anything up;
+        the others keep their fixed custom_gui_fpath."""
+        if not self.plugin_url:
+            return
+        zynthian_lv2.check_lv2_changes()
+        if self.custom_gui_generation != zynthian_lv2.lv2_generation:
+            fpath = self.get_custom_gui_fpath()
+            if fpath != self.custom_gui_fpath:
+                logging.info(f"Widget for '{self._widget_plugin_name()}' changed: {self.custom_gui_fpath} => {fpath}")
+                self.custom_gui_fpath = fpath
 
     def get_extended_config(self):
         return None
