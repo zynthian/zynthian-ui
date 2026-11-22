@@ -1484,6 +1484,26 @@ class zynthian_gui:
 
         self.screens['admin'].last_state_action()
 
+    def cuia_vnc_start(self, params=None):
+        """Start the VNC service for zynthian UI and processor GUIs.
+
+        Category: system
+
+        In virtualized zynthians it only starts the VNC service for processor's GUIs.
+        """
+
+        self.state_manager.start_vncserver()
+
+    def cuia_vnc_stop(self, params=None):
+        """Stop the VNC service for zynthian UI and processor GUIs.
+
+        Category: system
+
+        In virtualized zynthians it only stops the VNC service for processor's GUIs.
+        """
+
+        self.state_manager.stop_vncserver()
+
     def cuia_workflow_capture_start(self, params=None):
         """Starts capturing workflow.
 
