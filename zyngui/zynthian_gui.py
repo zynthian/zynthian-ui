@@ -3037,17 +3037,37 @@ class zynthian_gui:
             logging.debug(err)
 
     # -------------------------------------------------------------------
+    # Zynseq CUIAs (patterns)
+    # -------------------------------------------------------------------
+
+    def cuia_set_pattern_json(self, params):
+        """Set pattern data from a json string.
+
+        Category: hardware
+
+        Params:
+            patnum (int) [REQUIRED]: Pattern number.
+            json (str) [REQUIRED]: Pattern data in json format (zynlibs/zynseq/pattern.schema.json)
+        """
+
+        try:
+            self.state_manager.zynseq.set_pattern_json(params[0], params[1])
+        except Exception as err:
+            logging.debug(err)
+
+    # -------------------------------------------------------------------
     # CUIA backend API - TODO: Move to non-gui api
     # -------------------------------------------------------------------
 
     def cuia_api(self, params):
-        """ Access the backend API
-        params (tuple):
-            api: Which api to access: "sm" for state manager, "cm" for chain manager
-            method: Name of method to call
-            params: comma separated list of method parameters
+        """Access the backend API.
 
         Category: system
+
+        Params:
+            api (str): Which api to access: "sm" for state manager, "cm" for chain manager.
+            method (str): Name of method to call.
+            method_params: Any further entries are passed positionally to the method.
         """
 
         try:

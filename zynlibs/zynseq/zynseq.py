@@ -270,6 +270,7 @@ class zynseq(zynthian_engine):
 
             self.libseq.convertToJson.restype = ctypes.c_char_p
             self.libseq.getState.restype = ctypes.c_char_p
+            self.libseq.getPatternState.restype = ctypes.c_char_p
 
             self.PPQN = self.libseq.getPPQN()
             self.libseq.init(bytes("zynseq", "utf-8"))
@@ -532,6 +533,26 @@ class zynseq(zynthian_engine):
                 return True
         except:
             pass
+
+    def set_pattern_data(self, patnum, data):
+        """Replace the content of a pattern with a dict (format: pattern.schema.json). Undo/redo history is reset."""
+        self.set_pattern_json(patnum, dumps(data))
+
+    def set_pattern_json(self, patnum, patn_json):
+        """Replace the content of a pattern with a JSON string (format: pattern.schema.json). Undo/redo history is reset."""
+        self.libseq.setPattern(patnum, bytes(patn_json, "utf-8"))
+        self.state["patns"][str(patnum)] = loads(patn_json)
+
+    def get_pattern_data(self, patnum):
+        """Pattern content as a dict. See get_pattern_json()."""
+        return loads(self.get_pattern_json(patnum))
+
+    def get_pattern_json(self, patnum):
+        """Pattern content as a JSON string (format: pattern.schema.json), read from the library (self.state
+        misses the pattern editor's edits and empty patterns)."""
+        patn_json = self.libseq.getPatternState(patnum).decode("utf-8")
+        self.libseq.freeState()
+        return patn_json
 
     # Check if pattern is empty
     # Returns: True is pattern is empty

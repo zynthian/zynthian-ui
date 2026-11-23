@@ -1,8 +1,10 @@
 zynseq file format (RIFF)
 =========================
+
 Version 11
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
+(*) Binary file format has been superded by json format.
 
 RIFF Header: (Version block must be first. If ommitted assume version 0.)
 	Block ID: "vers"

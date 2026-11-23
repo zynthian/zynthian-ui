@@ -25,6 +25,7 @@ SIGNATURES = {
     "reset": (None, []),
     "isModified": (boolean, []),
     "getState": (cstr, []),
+    "getPatternState": (cstr, [u32]),
     "setState": (boolean, [cstr]),
     "setPattern": (None, [u32, cstr]),
     "setTempo": (None, [dbl]),

@@ -109,6 +109,13 @@ void freeState();
 */
 void setPattern(uint32_t id, const char* patn_state);
 
+/** @brief  Get state of a pattern
+    @param  id Pattern index
+    @retval const char* Pattern state as json string (same format as setPattern, see pattern.schema.json)
+    @note   Unlike getState, empty patterns are reported too. Call freeState after use
+*/
+const char* getPatternState(uint32_t id);
+
 /** @brief  Set sequences and patterns
     @param  state State as json string
     @retval bool True on success

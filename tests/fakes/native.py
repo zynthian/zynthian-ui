@@ -28,6 +28,8 @@ _DEFAULT_RETURNS = {
         "getBpb": 4,
         # Minimal valid sequencer state (what zynseq.refresh_state() parses)
         "getState": b'{"tempo": 120.0, "bpb": 4, "scenes": [{"phrases": [{"sequences": []}]}]}',
+        # An empty pattern (what zynseq.get_pattern_data() parses)
+        "getPatternState": b'{"beats": 4, "steps": 16, "events": []}',
     },
 }
 

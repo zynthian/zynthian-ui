@@ -1,6 +1,6 @@
 """zynseq ``setPattern`` / ``setState`` pattern loading on the REAL libzynseq.so.
 
-Both entry points share one implementation (``applyPattern``). What they must guarantee:
+Both entry points share one implementation (``patternFromJson``). What they must guarantee:
 
 * every field of the pattern JSON (zynlibs/zynseq/pattern.schema.json) survives load -> getState;
 * loading REPLACES the pattern, including its undo/redo history (it would describe the previous content),
