@@ -34,6 +34,7 @@ from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf
 from zyngui.zynthian_gui_base import zynthian_gui_base
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
@@ -409,6 +410,36 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     def get_name(self):
         return "pated base"
 
+    # -------------------------------------------------------------------------
+    # View state, reported by the "screen_state" websocket feedback
+    #
+    # "pattern_index", "pattern": pattern content, read from zynseq (format: zynlibs/zynseq/pattern.schema.json)
+    # "cursor": selected cell => step, row (+ "note" in the notes editor; in the CC editor, row is the CC value)
+    # + editor values: phrase, sequence, midi_chan, edit_mode (+ chord_mode / cc_num), see get_editor_state
+    # Signals: SS_GUI_VIEW_LIST when the content or the editor values may have changed (from refresh_status,
+    # that already checks the zynseq modified flag, and the param editor), SS_GUI_VIEW_SELECT when the cursor
+    # moves, SS_GUI_VIEW_STATE when a pattern is loaded. The screen_state feedback only listens (and reads the
+    # pattern from zynseq) while someone is subscribed, and only sends the values that changed.
+    # -------------------------------------------------------------------------
+
+    def get_state(self, what="all"):
+        if what == "select":
+            return {"cursor": self.get_cursor_state()}
+        # Small and cheap, so the editor values (CC number, edit mode, ...) go with every content update too
+        return {"pattern_index": self.pattern, "pattern": self.zynseq.get_pattern_data(self.pattern),
+                "cursor": self.get_cursor_state(), **self.get_editor_state()}
+
+    def get_cursor_state(self):
+        return {"step": self.selected_cell[0], "row": self.selected_cell[1]}
+
+    def get_editor_state(self):
+        """Editor specific values"""
+        return {"phrase": self.phrase, "sequence": self.sequence, "midi_chan": self.channel,
+                "edit_mode": self.edit_mode}
+
+    def send_state_signal(self, ss=zynsigman.SS_GUI_VIEW_LIST):
+        zynsigman.send(zynsigman.S_GUI, ss, view=self)
+
     # Function to set up behaviour of encoders
     def setup_zynpots(self):
         for i in range(zynthian_gui_config.num_zynpots):
@@ -447,6 +478,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
     # Function to enable edit mode => It *MUST* be redefined in child class
     #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]
     def set_edit_mode(self, mode):
+        if mode != self.edit_mode:
+            self.send_state_signal()
         self.edit_mode = mode
         color_fg = zynthian_gui_config.color_header_bg
         color_bg = zynthian_gui_config.color_panel_tx
@@ -751,6 +784,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
                     }, self.add_program_change)
 
     def send_controller_value(self, zctrl):
+        self.send_state_signal()
         match zctrl.symbol:
             case 'zoom':
                 self.set_grid_zoom(zctrl.value)
@@ -898,6 +932,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
         self.set_title()
         self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+        self.send_state_signal(zynsigman.SS_GUI_VIEW_STATE)
 
     def save_pattern_file(self, fname):
         fpath = f"{self.my_patterns_dpath}/{fname}.zpat"
@@ -1910,6 +1945,8 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         if (self.zynseq.libseq.isPatternModified()) and self.redraw_pending < 3:
             self.redraw_pending = 3
         if self.redraw_pending:
+            # Content changes always end in a redraw
+            self.send_state_signal()
             self.draw_grid()
         self.save_pattern_snapshot(now=False, force=False)
 
@@ -2136,6 +2173,23 @@ class zynthian_gui_pated_base(zynthian_gui_base):
 
     def get_alt_mode(self):
         return self.alt_mode
+
+    def cuia_set_pattern_json(self, params):
+        """SET_PATTERN_JSON while a pattern editor is shown: as the global CUIA, but if the edited pattern
+        is replaced, it's reloaded, so the editor (and its screen_state feedback) shows the new content."""
+        try:
+            patnum = int(params[0])
+            self.zynseq.set_pattern_json(patnum, params[1])
+        except Exception as err:
+            logging.error(f"Can't set pattern => {err}")
+            return True
+        if patnum == self.pattern:
+            # Same as do_load_pattern_file()
+            self.load_pattern(patnum)
+            n_beats = self.zynseq.libseq.getBeatsInPattern(patnum)
+            self.zynseq.libseq.setBeatsInPattern(patnum, n_beats)
+            self.changed = False
+        return True
 
     def cuia_toggle_record(self, params=None):
         self.toggle_midi_record()

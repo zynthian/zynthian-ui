@@ -184,6 +184,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def get_name(self):
         return "pated cc"
 
+    state_key = "zyngui_pated_cc"
+
+    def get_editor_state(self):
+        return {**super().get_editor_state(), "cc_num": self.cc_num}
+
     def get_title(self):
         title = f"{super().get_title()}: "
         # Get CC title from automation mapped zctrl or MIDI output CC
@@ -482,6 +487,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         step_changed = step != self.selected_cell[0]
         row_changed = row != self.selected_cell[1]
         self.selected_cell = [step, row]
+        self.send_state_signal(zynsigman.SS_GUI_VIEW_SELECT)
 
         if self.edit_mode == EDIT_MODE_BLOCK:
             return

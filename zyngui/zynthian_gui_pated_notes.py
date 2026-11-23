@@ -214,6 +214,14 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         else:
             return f"{title}: Notes"
 
+    state_key = "zyngui_pated_notes"
+
+    def get_cursor_state(self):
+        return {**super().get_cursor_state(), "note": self.get_evnum_from_row(self.selected_cell[1])}
+
+    def get_editor_state(self):
+        return {**super().get_editor_state(), "chord_mode": self.chord_mode}
+
     def get_evnum_from_row(self, row):
         try:
             return self.keymap[row]["note"]
@@ -337,6 +345,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 super().menu_cb(option, params)
 
     def send_controller_value(self, zctrl):
+        self.send_state_signal()
         match zctrl.symbol:
             case 'human_vel':
                 self.zynseq.libseq.setHumanVelo(1.0 * zctrl.value)
@@ -1243,6 +1252,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             # Step is off left of display
             self.set_step_offset(step)
         self.selected_cell = [step, row]
+        self.send_state_signal(zynsigman.SS_GUI_VIEW_SELECT)
 
         if self.edit_mode == EDIT_MODE_BLOCK:
             return
