@@ -109,16 +109,33 @@ def pated(cls, **attrs):
 
 
 def test_pattern_notes_editor_reports_pattern_cursor_and_editor_values():
-    view, reads = pated(zynthian_gui_pated_notes, keymap=[{"note": 60}, {"note": 62}], chord_mode=1)
+    keymap_state = {"name": "Chromatic", "keys": None}
+    view, reads = pated(zynthian_gui_pated_notes, keymap=[{"note": 60}, {"note": 62}], chord_mode=1,
+                        keymap_state=keymap_state)
     assert view.state_key == "zyngui_pated_notes"
     assert view.get_state() == {"pattern_index": 7, "pattern": PATTERN,
                                 "cursor": {"step": 3, "row": 1, "note": 62},
-                                "phrase": 0, "sequence": 2, "midi_chan": 2, "edit_mode": 0, "chord_mode": 1}
+                                "phrase": 0, "sequence": 2, "midi_chan": 2, "edit_mode": 0, "chord_mode": 1,
+                                "keymap": keymap_state}
     assert view.get_state("list") == view.get_state()
     reads.clear()
     # Cursor moves don't read the pattern from zynseq
     assert view.get_state("select") == {"cursor": {"step": 3, "row": 1, "note": 62}}
     assert reads == []
+
+
+def test_pattern_notes_editor_reports_custom_keymap_names():
+    kit = [{"note": 36, "name": "Kick", "colour": "white"}, {"note": 38, "name": "Snare", "colour": "white"}]
+    libseq = SimpleNamespace(getScale=lambda: 0, getTonic=lambda: 0)
+    view, _ = pated(zynthian_gui_pated_notes, keymap=[])
+    view.zynseq.libseq = libseq
+    view.get_custom_keymap = lambda: ["Drum kit", SimpleNamespace(get_keymap=lambda: kit)]
+    assert view.load_keymap() == "Drum kit"
+    assert view.keymap_state == {"name": "Drum kit", "keys": [[36, "Kick"], [38, "Snare"]]}
+    # Without a custom map it falls back to chromatic: notes are implicit, no keys reported
+    view.get_custom_keymap = lambda: None
+    assert view.load_keymap() == "Chromatic"
+    assert view.keymap_state == {"name": "Chromatic", "keys": None} and len(view.keymap) == 128
 
 
 def test_pattern_cc_editor_reports_the_cc_number():
