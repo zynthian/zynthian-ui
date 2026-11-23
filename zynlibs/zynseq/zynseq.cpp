@@ -1541,12 +1541,13 @@ bool setState(const char* state) {
                         // Backward compatibility =>
                         // Older vangelis sequences used FOLLOW_ACTION_RELATIVE for endless loop.
                         // Currently, endless loop is flagged with repeat=255
-                        if (jSeq.value("followAction", FOLLOW_ACTION_NONE) != FOLLOW_ACTION_NONE) {
-                            pSequence->setRepeat(255);
-                        }
-                        else {
-                            pSequence->setRepeat(jSeq.value("repeat", 1));
-                        }
+                        // Sequences loop by default (repeat=255), so "repeat" may be omitted. An explicit repeat=0
+                        // (disabled) is never overridden: getState() writes followAction=RELATIVE for every
+                        // sequence created by insertPhrase(), including the disabled ones.
+                        uint8_t nRepeat = jSeq.value("repeat", 255);
+                        if (nRepeat != 0 && jSeq.value("followAction", FOLLOW_ACTION_NONE) != FOLLOW_ACTION_NONE)
+                            nRepeat = 255;
+                        pSequence->setRepeat(nRepeat);
                         // Store the follow configuration to apply after all sequences have been created
                         std::array<int16_t, 6> followAction;
                         followAction[0] = nPhrase;
