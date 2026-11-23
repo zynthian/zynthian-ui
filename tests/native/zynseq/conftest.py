@@ -26,6 +26,7 @@ SIGNATURES = {
     "isModified": (boolean, []),
     "getState": (cstr, []),
     "setState": (boolean, [cstr]),
+    "setPattern": (None, [u32, cstr]),
     "setTempo": (None, [dbl]),
     "getTempo": (dbl, []),
     "setExtClockPPQN": (None, [u8]),

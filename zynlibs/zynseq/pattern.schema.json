@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zynthian.org/schemas/zynseq/pattern.schema.json",
+  "title": "zynseq pattern",
+  "description": "Pattern state as accepted by zynseq setPattern(id, json) and produced by getState() under state.patns[<id>]. The pattern id is NOT part of this object: setPattern takes it as a separate argument and getState uses it as the key (a decimal string) of the \"patns\" map. setPattern() first clears the target pattern, then applies the fields below; missing fields take the defaults stated here. setPattern has no error handling: malformed JSON, wrong types or a malformed event array throw a C++ exception that is not caught.",
+  "type": "object",
+  "properties": {
+    "beats": {
+      "description": "Length of the pattern in beats.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 4
+    },
+    "steps": {
+      "description": "TOTAL number of steps in the pattern (beats x steps-per-beat), not steps per beat. setPattern computes stepsPerBeat = steps / beats with integer division, so it should be a multiple of 'beats'. The resulting stepsPerBeat must be one of 1, 2, 3, 4, 6, 8, 12, 24; any other value is silently ignored and the pattern keeps its previous steps-per-beat.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 16
+    },
+    "scale": {
+      "description": "Index of the scale used by the pattern editor (0 = chromatic).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "default": 0
+    },
+    "tonic": {
+      "description": "Tonic (root) of the scale, as a semitone offset 0..11 (C=0).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "default": 0
+    },
+    "refNote": {
+      "description": "Reference note (editor's vertical scroll position). MIDI note number; values >= 128 are ignored.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127,
+      "default": 60
+    },
+    "zoom": {
+      "description": "Editor grid zoom level (int16). Only used by the UI.",
+      "type": "integer",
+      "minimum": -32768,
+      "maximum": 32767,
+      "default": 0
+    },
+    "ccnum": {
+      "description": "Per-controller interpolation flags: entry N tells whether consecutive control-change events of CC number N are interpolated (joined, true) or stepped (false). When present it MUST have exactly 128 entries (shorter arrays throw). When absent, the interpolation flags keep whatever pattern->clear() leaves. The writer emits booleans; any value convertible to boolean is accepted by the reader.",
+      "type": "array",
+      "items": { "type": "boolean" },
+      "minItems": 128,
+      "maxItems": 128
+    },
+    "quantize": {
+      "description": "Note quantize setting applied on input (uint8). 0 = off.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "default": 0
+    },
+    "swingDiv": {
+      "description": "Swing division (uint32), in steps.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 1
+    },
+    "swing": {
+      "description": "Swing amount (float), 0.0 = no swing.",
+      "type": "number",
+      "default": 0.0
+    },
+    "humanTime": {
+      "description": "Humanize amount applied to event timing (float), 0.0 = off.",
+      "type": "number",
+      "default": 0.0
+    },
+    "humanVel": {
+      "description": "Humanize amount applied to note velocity (float), 0.0 = off.",
+      "type": "number",
+      "default": 0.0
+    },
+    "chance": {
+      "description": "Pattern-level play probability in percent. Stored internally as chance/100.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 100
+    },
+    "events": {
+      "description": "Events of the pattern. Order is not significant: they are inserted sorted by position. Events of the same command and value1 that overlap in time replace each other (the first overlapped one passes its stutter/play settings on to the new event), so only non-overlapping events round-trip. Missing or null is treated as an empty list; getState only writes patterns that contain at least one event.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" },
+      "default": []
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "event": {
+      "description": "A step event, encoded as a positional array (NOT an object). Index meaning is given by prefixItems. The writer always emits 15 entries (extended format). The reader also accepts the legacy 11-entry format, where entry 10 is playChance and the stutterRamp / playFreq / stutterChance / stutterFreq entries are absent (these keep the defaults addEvent gives a new event: ramp 0, playFreq 1, stutterChance 100, stutterFreq 1). Any other length below 15 throws; the reader silently ignores entries beyond the 15th, but this schema does not allow them.",
+      "type": "array",
+      "oneOf": [
+        { "minItems": 15, "maxItems": 15, "prefixItems": [
+            { "$ref": "#/$defs/step" }, { "$ref": "#/$defs/offset" }, { "$ref": "#/$defs/duration" },
+            { "$ref": "#/$defs/command" }, { "$ref": "#/$defs/value1start" }, { "$ref": "#/$defs/value1end" },
+            { "$ref": "#/$defs/value2start" }, { "$ref": "#/$defs/value2end" }, { "$ref": "#/$defs/stutterSpeed" },
+            { "$ref": "#/$defs/stutterVelfx" }, { "$ref": "#/$defs/stutterRamp" }, { "$ref": "#/$defs/percent" },
+            { "$ref": "#/$defs/freq" }, { "$ref": "#/$defs/percent" }, { "$ref": "#/$defs/freq" }
+          ], "items": false },
+        { "minItems": 11, "maxItems": 11, "prefixItems": [
+            { "$ref": "#/$defs/step" }, { "$ref": "#/$defs/offset" }, { "$ref": "#/$defs/duration" },
+            { "$ref": "#/$defs/command" }, { "$ref": "#/$defs/value1start" }, { "$ref": "#/$defs/value1end" },
+            { "$ref": "#/$defs/value2start" }, { "$ref": "#/$defs/value2end" }, { "$ref": "#/$defs/stutterSpeed" },
+            { "$ref": "#/$defs/stutterVelfx" }, { "$ref": "#/$defs/percent" }
+          ], "items": false }
+      ]
+    },
+    "step": {
+      "title": "[0] step",
+      "description": "Start position in steps from the start of the pattern (0 .. beats*stepsPerBeat-1). Events at or beyond the pattern length are not guaranteed to be kept.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "offset": {
+      "title": "[1] offset",
+      "description": "Fine offset of the start position, in steps (float, fraction of a step; may be negative for events played slightly early).",
+      "type": "number"
+    },
+    "duration": {
+      "title": "[2] duration",
+      "description": "Duration in steps (float). Meaningful for notes; 1.0 is one step.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "command": {
+      "title": "[3] command",
+      "description": "MIDI command WITHOUT channel, as the status byte's high nibble in the upper bits: 128 (0x80) note off, 144 (0x90) note on, 160 (0xA0) poly pressure, 176 (0xB0) control change, 192 (0xC0) program change, 208 (0xD0) channel pressure, 224 (0xE0) pitch bend. The channel comes from the track/sequence the pattern is used in.",
+      "type": "integer",
+      "enum": [128, 144, 160, 176, 192, 208, 224]
+    },
+    "value1start": {
+      "title": "[4] value1start",
+      "description": "First MIDI data byte at the start of the event: note number (note on/off, poly pressure), CC number (control change), program number, pressure, or pitch-bend LSB.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "value1end": {
+      "title": "[5] value1end",
+      "description": "First MIDI data byte at the end of the event (for values that move during the event, e.g. a note that slides). Normally equal to value1start.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "value2start": {
+      "title": "[6] value2start",
+      "description": "Second MIDI data byte at the start of the event: note velocity (note on), CC value (control change), pitch-bend MSB, etc. NOTE: the array order is value1start, value1end, value2start, value2end.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "value2end": {
+      "title": "[7] value2end",
+      "description": "Second MIDI data byte at the end of the event (e.g. the end value of a control-change ramp).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "stutterSpeed": {
+      "title": "[8] stutterSpeed",
+      "description": "Stutter (note repeat) speed in 'retriggers every 2 steps'. 0 = no stutter. Values above 32 are clamped to 32.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32
+    },
+    "stutterVelfx": {
+      "title": "[9] stutterVelfx",
+      "description": "Velocity effect applied to the stutter retriggers: 0 = none, 1 = fade-out, 2 = fade-in (per the StepEvent field comment; some accessor docs in pattern.h state fadeIn/fadeOut the other way round). Values above 2 are clamped to 2.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "stutterRamp": {
+      "title": "[10] stutterRamp (extended format only)",
+      "description": "Speed ramp applied to the stutter: 0 = none, 1 = ramp-up, 2 = ramp-down (per the StepEvent field comment; accessor docs say 1=down, 2=up). Values above 2 are clamped to 2. In the legacy 11-entry format, entry 10 is the play chance instead.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "percent": {
+      "description": "Probability in percent (0..100); stored internally as value/100. Extended format: entry 11 = playChance, entry 13 = stutterChance. Legacy format: entry 10 = playChance.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "freq": {
+      "description": "Loop-frequency byte (uint8). Extended format: entry 12 = playFreq, entry 14 = stutterFreq. Bit 0 selects play (1) / skip (0) mode and the higher bits hold the loop count N (play/skip every N loops). 0 = never play / never stutter, 1 = every loop (the default).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    }
+  },
+  "examples": [
+    {
+      "beats": 4,
+      "steps": 16,
+      "scale": 0,
+      "tonic": 0,
+      "refNote": 60,
+      "zoom": 0,
+      "quantize": 0,
+      "swingDiv": 1,
+      "swing": 0.0,
+      "humanTime": 0.0,
+      "humanVel": 0.0,
+      "chance": 100,
+      "events": [
+        [0, 0.0, 1.0, 144, 60, 60, 100, 0, 0, 0, 0, 100, 1, 100, 1],
+        [4, 0.0, 2.0, 144, 64, 64, 90, 0, 8, 1, 0, 75, 1, 100, 1],
+        [8, 0.0, 1.0, 176, 74, 74, 20, 100, 0, 0, 0, 100, 1, 100, 1]
+      ]
+    }
+  ]
+}

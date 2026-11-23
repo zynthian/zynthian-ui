@@ -1404,9 +1404,13 @@ const char* convertToJson(const char* filename) {
     return g_pState;
 }
 
-void setPattern(uint32_t id, const char* patn_state) {
-    json jPattern = json::parse(patn_state);
-    Pattern* pPattern = g_seqMan.getPattern(id);
+/** Replace the content of a pattern with the one described by a JSON pattern object
+    (format: see pattern.schema.json). Undo/redo history is reset: it would describe the previous content.
+    @param  pPattern    Pattern to load
+    @param  jPattern    Parsed pattern object (non-const: missing keys / short arrays must keep throwing
+                        json type errors, as they always did, not hit undefined behaviour)
+*/
+static void applyPattern(Pattern* pPattern, json& jPattern) {
     pPattern->clear();
     pPattern->setBeatsInPattern(jPattern.value("beats", 4));
     pPattern->setStepsPerBeat(jPattern.value("steps", 16) / pPattern->getBeatsInPattern());
@@ -1449,6 +1453,12 @@ void setPattern(uint32_t id, const char* patn_state) {
             pEvent->setStutterFreq(jEvent[14]);
         }
     }
+    pPattern->resetSnapshots();
+}
+
+void setPattern(uint32_t id, const char* patn_state) {
+    json jPattern = json::parse(patn_state);
+    applyPattern(g_seqMan.getPattern(id), jPattern);
 }
 
 bool setState(const char* state) {
@@ -1467,51 +1477,7 @@ bool setState(const char* state) {
         if (j.contains("patns")) {
             for (auto& [key, jPattern]: j["patns"].items()) {
                 uint32_t id = std::stoi(key);
-                //!@todo We could reuse setPattern but that means encoding and re-decoding the json
-                Pattern* pPattern = g_seqMan.getPattern(id);
-                pPattern->clear();
-                pPattern->setBeatsInPattern(jPattern.value("beats", 4));
-                pPattern->setStepsPerBeat(jPattern.value("steps", 16) / pPattern->getBeatsInPattern());
-                pPattern->setScale(jPattern.value("scale", 0));
-                pPattern->setTonic(jPattern.value("tonic", 0));
-                pPattern->setRefNote(jPattern.value("refNote", 60));
-                pPattern->setZoom(jPattern.value("zoom", 0));
-                if (jPattern.contains("ccnum")) {
-                    for (uint8_t ccnum = 0; ccnum < 128; ++ccnum)
-                        pPattern->setInterpolateCC(ccnum, jPattern["ccnum"][ccnum]);
-                }
-                pPattern->setQuantizeNotes(jPattern.value("quantize", 0));
-                pPattern->setSwingDiv(jPattern.value("swingDiv", 1));
-                pPattern->setSwingAmount(jPattern.value("swing", 0.0));
-                pPattern->setHumanTime(jPattern.value("humanTime", 0.0));
-                pPattern->setHumanVelo(jPattern.value("humanVel", 0.0));
-                pPattern->setPlayChance(float(jPattern.value("chance", 100)) / 100);
-                for (auto& jEvent: jPattern["events"]) {
-                    uint32_t nStep = jEvent[0];
-                    float fOffset = jEvent[1];
-                    float fDuration = jEvent[2];
-                    uint8_t nCommand = jEvent[3];
-                    uint8_t nValue1start = jEvent[4];
-                    uint8_t nValue2start = jEvent[6];
-                    StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
-                    pEvent->setValue1end(jEvent[5]);
-                    pEvent->setValue2end(jEvent[7]);
-                    pEvent->setStutterSpeed(jEvent[8]);
-                    pEvent->setStutterVelfx(jEvent[9]);
-                    // Legacy format
-                    if (jEvent.size() == 11) {
-                        pEvent->setPlayChance(float(jEvent[10]) / 100);
-                    }
-                    // Extended parameters: stutter speed-ramp, play freq, stutter chance, stutter freq
-                    else {
-                        pEvent->setStutterRamp(jEvent[10]);
-                        pEvent->setPlayChance(float(jEvent[11]) / 100);
-                        pEvent->setPlayFreq(jEvent[12]);
-                        pEvent->setStutterChance(float(jEvent[13]) / 100);
-                        pEvent->setStutterFreq(jEvent[14]);
-                    }
-                }
-                pPattern->resetSnapshots();
+                applyPattern(g_seqMan.getPattern(id), jPattern);
             }
         }
         if (j.contains("scenes")) {

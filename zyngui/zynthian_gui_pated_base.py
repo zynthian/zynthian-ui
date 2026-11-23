@@ -923,8 +923,7 @@ class zynthian_gui_pated_base(zynthian_gui_base):
         # I don't understand why this is needed when steps/beat has changed
         n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
         self.zynseq.libseq.setBeatsInPattern(self.pattern, n_beats)
-        # Reset pattern snapshots => No undo/redo after loading pattern!!
-        self.zynseq.libseq.resetPatternSnapshots()
+        # No undo/redo after loading a pattern: libseq.setPattern() already reset the snapshots
         self.changed = False
 
     # If changed, save snapshot:
