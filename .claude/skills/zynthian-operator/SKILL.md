@@ -96,6 +96,7 @@ The notes editor reports `zyngui_pated_notes`, the CC editor `zyngui_pated_cc` (
   zyngui_pated_notes:
     pattern: 2 events, beats 4, steps 16, scale 0, tonic 0, swing 0.0, ...
       step 0 dur 2: C4(60) vel 100 (stutter 8, chance 75%)
+      step 4 dur 1: <pad name>(36) vel 110
       step 8 dur 1: CC74 10->90
     cursor: step 3, row 1, note 62
     pattern_index: 7
@@ -104,6 +105,7 @@ The notes editor reports `zyngui_pated_notes`, the CC editor `zyngui_pated_cc` (
     midi_chan: 2
     edit_mode: 0
     chord_mode: 0          (CC editor: cc_num instead)
+    keymap: <map name> | 36 <pad name>, 37 <pad name>, ...
 ```
 
 - `pattern` is the content as stored by zynseq, live (edits, MIDI recording). The format, including the
@@ -112,6 +114,10 @@ The notes editor reports `zyngui_pated_notes`, the CC editor `zyngui_pated_cc` (
   (value1 = CC number, value2 start/end = values).
 - `cursor` is the selected cell: `row` is a keymap row in the notes editor (`note` is its MIDI note), the
   CC value in the CC editor.
+- `keymap` (notes editor) is the map of the editor rows: `name` is the scale ("Chromatic", "Major", ...) or
+  the custom map of the chain's instrument (drum kits, sample sets: from the engine or a `.midnam` file),
+  and `keys` lists `[note, name]` for custom maps (null for scales). Use it to pick the notes of a drum kit
+  instead of guessing or reading the instrument files; note events then show the key name.
 - To write a pattern: `pattern` → edit the JSON → `setpattern:N,@file.json`. If N is the pattern shown,
   the editor reloads it and its state updates. Writing replaces the whole pattern and clears its undo
   history: only on the user's request.

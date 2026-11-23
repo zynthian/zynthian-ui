@@ -74,13 +74,22 @@ def note_name(n):
 	return f"{NOTE_NAMES[n % 12]}{n // 12 - 1}" if isinstance(n, int) else str(n)
 
 
-def render_event(ev):
-	"""One zynseq pattern event => compact text (event format: zynlibs/zynseq/pattern.schema.json)"""
+def loop_freq(byte):
+	"""playFreq / stutterFreq byte => text. Bit 0: play (1) / skip (0), higher bits: every N loops"""
+	if byte == 0:
+		return "never"
+	return f"{'play' if byte & 1 else 'skip'} every {byte >> 1} loops"
+
+
+def render_event(ev, key_names=None):
+	"""One zynseq pattern event => compact text (event format: zynlibs/zynseq/pattern.schema.json).
+	key_names: {note: name} from a custom keymap (drum kit pads, ...)"""
 	step, offset, dur, cmd, v1s, v1e, v2s, v2e = ev[:8]
 	pos = f"{step}{offset:+.2f}" if offset else f"{step}"
 	kind = cmd & 0xF0
 	if kind == 0x90:
-		text = f"{note_name(v1s)}({v1s}) vel {v2s}"
+		name = (key_names or {}).get(v1s) or note_name(v1s)
+		text = f"{name}({v1s}) vel {v2s}"
 	elif kind == 0xB0:
 		text = f"CC{v1s} {v2s}" + (f"->{v2e}" if v2e != v2s else "")
 	elif kind == 0xC0:
@@ -90,15 +99,29 @@ def render_event(ev):
 	extra = []
 	if len(ev) >= 15:
 		if ev[8]:
-			extra.append(f"stutter {ev[8]}")
+			fx = {1: " fade-out", 2: " fade-in"}.get(ev[9], "") + {1: " ramp-up", 2: " ramp-down"}.get(ev[10], "")
+			stut = f"stutter {ev[8]}{fx}"
+			if ev[13] != 100:
+				stut += f" {ev[13]}%"
+			if ev[14] != 1:
+				stut += " " + loop_freq(ev[14])
+			extra.append(stut)
 		if ev[11] != 100:
 			extra.append(f"chance {ev[11]}%")
-		if ev[12] > 1:
-			extra.append(f"every {ev[12]}")
+		if ev[12] != 1:
+			extra.append(loop_freq(ev[12]))
 	return f"step {pos} dur {dur:g}: {text}" + (f" ({', '.join(extra)})" if extra else "")
 
 
-def render_pattern(patn, indent, full):
+def render_keymap(keymap, indent):
+	"""Notes editor keymap => one line: its name and, for custom maps, the named notes"""
+	line = f"{indent}keymap: {keymap.get('name')}"
+	if keymap.get("keys"):
+		line += " | " + ", ".join(f"{note} {name}" for note, name in keymap["keys"])
+	return line
+
+
+def render_pattern(patn, indent, full, key_names=None):
 	"""Pattern object => summary line + one line per event"""
 	keys = ("beats", "steps", "scale", "tonic", "swing", "swingDiv", "humanTime", "humanVel", "chance", "quantize")
 	events = patn.get("events") or []
@@ -107,7 +130,7 @@ def render_pattern(patn, indent, full):
 	if interp and any((ev[3] & 0xF0) == 0xB0 for ev in events):
 		out.append(f"{indent}  interpolated CCs: {interp}")
 	shown = events if full or len(events) <= 40 else events[:40]
-	out.extend(f"{indent}  {render_event(ev)}" for ev in shown)
+	out.extend(f"{indent}  {render_event(ev, key_names)}" for ev in shown)
 	if len(shown) < len(events):
 		out.append(f"{indent}  ... {len(events) - len(shown)} more (--full, or the 'pattern' step for the JSON)")
 	return out
@@ -312,7 +335,11 @@ class ZynCtl:
 					if isinstance(v, dict):
 						walk(v, k, indent + "  ")
 			elif name == "pattern" and "events" in node:
-				out.extend(render_pattern(node, indent, self.full))
+				keymap = find_key(s, "keymap") or {}
+				key_names = {note: kname for note, kname in keymap.get("keys") or []}
+				out.extend(render_pattern(node, indent, self.full, key_names))
+			elif name == "keymap":
+				out.append(render_keymap(node, indent))
 			elif not any(isinstance(v, dict) for v in node.values()) and name != "pattern":
 				out.append(f"{indent}{name}: " + ", ".join(f"{k} {v}" for k, v in node.items()))
 			else:
@@ -346,6 +373,8 @@ class ZynCtl:
 				if k == "pattern" and isinstance(v, dict):
 					patn = get_path(self.state, path + (k,)) or {}
 					parts.append(f"pattern {', '.join(v)} changed ({len(patn.get('events') or [])} events)")
+				elif k == "keymap" and isinstance(v, dict):
+					parts.append(render_keymap(get_path(self.state, path + (k,)) or v, "").strip())
 				elif k == "cursor" and isinstance(v, dict):
 					cur = get_path(self.state, path + (k,)) or v
 					parts.append("cursor " + ", ".join(f"{ck} {cv}" for ck, cv in cur.items()))
