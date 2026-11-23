@@ -3,6 +3,7 @@ pytest>=8
 pytest-timeout
 pytest-cov          # coverage: ./run_tests.sh --cov=zyngine --cov-report=term-missing
 ruff
+jsonschema        # zynseq state / pattern schemas (tests/native/zynseq/test_state_schema.py, test_set_pattern.py)
 
 # Minimum third-party packages needed to *import* the core under test (native layer is faked).
 # Bindings that come from OS packages (lilv, dbus, mididings, ...) are stubbed by tests/bootstrap.py

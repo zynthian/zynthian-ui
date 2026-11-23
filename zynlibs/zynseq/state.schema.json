@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zynthian.org/schemas/zynseq/state.schema.json",
+  "title": "zynseq state",
+  "description": "Full zynseq state, as produced by getState() and accepted by setState(). It is what the snapshots store under \"zynseq\". setState() re-initialises the whole sequencer first (every pattern and scene is discarded), then loads what is present: all top-level keys are optional. Patterns are described in pattern.schema.json; getState only writes patterns that contain at least one event. A parse error or a malformed structure makes setState() log the problem, reset the sequencer and return false. 'Written' / 'read' below refer to getState() / setState(): some keys are written for information only and ignored on load, and a few are read but never written.",
+  "type": "object",
+  "properties": {
+    "tempo": {
+      "description": "Main tempo in BPM. When missing, the current tempo is kept.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "bpb": {
+      "description": "Default time signature: beats per bar.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 4
+    },
+    "scene": {
+      "description": "Selected scene (index into 'scenes'). When missing, the lowest scene present in 'scenes' (0 if none).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "patns": {
+      "description": "Patterns, keyed by pattern id (a decimal string). Tracks refer to them by that id. getState() omits the key when there are none; convertToJson() (legacy snapshot conversion) writes null.",
+      "type": ["object", "null"],
+      "patternProperties": {
+        "^[0-9]+$": { "$ref": "pattern.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "scenes": {
+      "description": "Scenes. The index in this array is the scene number. A scene without phrases is written as null.",
+      "type": "array",
+      "items": {
+        "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/scene" }]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "scene": {
+      "type": "object",
+      "properties": {
+        "phrases": {
+          "description": "Phrases of the scene, in order. The index in this array is the phrase number.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/phrase" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "phrase": {
+      "description": "A phrase (a row of the launcher / arranger). It is itself a sequence, on the special channel 32 (the phrase launcher), that contains one child sequence per channel.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 16 },
+        "mode": {
+          "description": "Play mode bit field, same as for sequences. Only applied when present.",
+          "$ref": "#/$defs/playMode"
+        },
+        "bpb": {
+          "description": "Time signature (beats per bar) of the phrase. Zero or negative values are replaced by 4.",
+          "type": "integer",
+          "default": 4
+        },
+        "tempo": {
+          "description": "Tempo of the phrase in BPM. 0 means the phrase has no tempo of its own.",
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "repeat": {
+          "description": "Phrase length in bars. 0 = disabled, 255 = automatic (as long as its longest child sequence). NOTE the default when missing is 1, unlike sequences (255).",
+          "$ref": "#/$defs/repeat",
+          "default": 1
+        },
+        "followAction": { "$ref": "#/$defs/followAction" },
+        "followParam": { "$ref": "#/$defs/followParam" },
+        "playFlags": { "$ref": "#/$defs/playFlags" },
+        "followRepeat": { "$ref": "#/$defs/followRepeat" },
+        "state": { "$ref": "#/$defs/playState" },
+        "sequences": {
+          "description": "Child sequences of the phrase. The index in this array is the sequence number (0..31, the channel they are launched from); at most 32 are used. A missing sequence is written as null.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sequence" }]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sequence": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 16, "default": "" },
+        "mode": {
+          "description": "Play mode bit field.",
+          "$ref": "#/$defs/playMode",
+          "default": 1
+        },
+        "group": {
+          "description": "Group: sequences of the same group are mutually exclusive (starting one stops the others).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "default": 0
+        },
+        "repeat": {
+          "description": "Number of times the sequence plays once started: 0 = disabled (never plays, e.g. the channel has no chain), 1..254 = that many times, 255 = loop forever. When missing, 255 (sequences loop by default). getState() always writes it. An explicit 0 is always kept.",
+          "$ref": "#/$defs/repeat",
+          "default": 255
+        },
+        "followAction": {
+          "description": "Legacy. Child sequences have no follow action of their own any more: the value is NOT kept on load (it always loads as 0). It is only read as a legacy marker for an endless loop: a non-zero value with a non-zero 'repeat' loads as repeat = 255 (older files marked an endless loop with followAction = 1 and followParam = 0). getState() still writes 1 for sequences created by the sequencer.",
+          "$ref": "#/$defs/followAction"
+        },
+        "followParam": { "$ref": "#/$defs/followParam" },
+        "playFlags": {
+          "description": "Read on load, never written for sequences.",
+          "$ref": "#/$defs/playFlags"
+        },
+        "followRepeat": {
+          "description": "Read on load, never written for sequences.",
+          "$ref": "#/$defs/followRepeat"
+        },
+        "state": { "$ref": "#/$defs/playState" },
+        "nBeats": {
+          "description": "Informational, written only: sum of the beats of the patterns of all the tracks. Ignored on load.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "nEvents": {
+          "description": "Informational, written only: sum of the events of the patterns of all the tracks. Ignored on load.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "tracks": {
+          "description": "Tracks of the sequence (normally one; omitted by getState when it has none). The index in this array is the track number.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/track" }
+        },
+        "timebase": {
+          "description": "Timebase events (tempo and time signature changes along the sequence). Optional; written only when the sequence has any.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/timebaseEvent" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "track": {
+      "type": "object",
+      "properties": {
+        "chan": {
+          "description": "MIDI channel (0..15 = channels 1..16).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15,
+          "default": 0
+        },
+        "output": {
+          "description": "JACK output index.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "default": 0
+        },
+        "map": {
+          "description": "Map / scale index applied to the notes of the track.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "default": 0
+        },
+        "patns": {
+          "description": "Patterns of the track: the key is the start position within the track, in sequencer clocks (decimal string; 1920 clocks per beat), the value is the pattern id (a key of the top-level 'patns'). Written only when the track has patterns.",
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "timebaseEvent": {
+      "type": "object",
+      "properties": {
+        "bar": { "description": "Bar at which the event occurs.", "type": "integer", "minimum": 0, "maximum": 65535 },
+        "tick": { "description": "Clock within the bar at which the event occurs (0 for time signature events).", "type": "integer", "minimum": 0, "maximum": 65535 },
+        "type": { "description": "1 = tempo change (value in BPM), 2 = time signature change (value in beats per bar).", "type": "integer", "enum": [1, 2] },
+        "value": { "type": "integer", "minimum": 0, "maximum": 65535 }
+      },
+      "required": ["bar", "tick", "type", "value"],
+      "additionalProperties": false
+    },
+    "playMode": {
+      "description": "Bit field: bits 0..1 = stop mode (0 stop at the end of the sequence, 1 stop at the next sync point, 2 stop immediately); bit 2 = start mode (0 start at the next sync point, 4 start immediately). Default 1 (stop at sync, start at sync).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7
+    },
+    "repeat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "playState": {
+      "description": "Play state when the state was saved. Informational, written only: ignored on load (everything loads stopped). 0 stopped, 1 playing, 2 starting, 3 stopping, 4 forced stop, 5 stopping at sync, 6 child playing, 8 child stopping.",
+      "type": "integer",
+      "enum": [0, 1, 2, 3, 4, 5, 6, 8]
+    },
+    "followAction": {
+      "description": "What to do when the phrase ends: 0 none, 1 relative (go to the phrase 'followParam' phrases away; 0 = loop itself), 2 absolute (go to phrase number 'followParam').",
+      "type": "integer",
+      "enum": [0, 1, 2],
+      "default": 0
+    },
+    "followParam": {
+      "description": "Follow action parameter: relative offset in phrases (may be negative) or absolute phrase number.",
+      "type": "integer",
+      "default": 0
+    },
+    "playFlags": {
+      "description": "Bit field of the play loops to skip.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "followRepeat": {
+      "description": "Number of times a (backward) follow action is repeated. 0 = no limit.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "default": 0
+    }
+  },
+  "examples": [
+    {
+      "tempo": 120.0,
+      "bpb": 4,
+      "scene": 0,
+      "patns": {
+        "1": {
+          "beats": 4, "steps": 16,
+          "events": [[0, 0.0, 1.0, 144, 60, 60, 100, 0, 0, 0, 0, 100, 1, 100, 1]]
+        }
+      },
+      "scenes": [
+        {
+          "phrases": [
+            {
+              "name": "Intro", "mode": 4, "bpb": 4, "tempo": 0.0, "repeat": 255,
+              "followAction": 0, "followParam": 0, "playFlags": 0, "followRepeat": 0, "state": 0,
+              "sequences": [
+                {
+                  "name": "Lead", "mode": 1, "group": 0, "repeat": 255, "followAction": 0, "followParam": 0, "state": 0,
+                  "nBeats": 4, "nEvents": 1,
+                  "tracks": [{ "chan": 0, "output": 0, "map": 0, "patns": { "0": 1 } }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
