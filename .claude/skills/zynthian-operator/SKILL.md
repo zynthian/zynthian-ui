@@ -10,7 +10,7 @@ Drive the zynthian UI with `scripts/zynctl.py` (in this skill's directory). It s
 This is much cheaper and more reliable than screenshots: use screenshots only for views that report no list.
 
 ```
-python3 ~/.claude/skills/zynthian-operator/scripts/zynctl.py [--host HOST] [--full] STEP ...
+python3 .claude/skills/zynthian-operator/scripts/zynctl.py [--host HOST] [--full] STEP ...   # from zynthian-ui/
 ```
 
 Steps run in order on one connection; each one prints what changed, and the full state is printed at the end:
@@ -23,6 +23,8 @@ Steps run in order on one connection; each one prints what changed, and the full
 | `open:LABEL` | `pick:LABEL` + `SELECT_ACTION`: performs the item's action |
 | `wait:MS` | Wait and collect changes (slow actions: loading presets, engines) |
 | `chains` | Print the chain list: id, mixer index, name, type, MIDI channel, zmop, mixer strip |
+| `pattern` | Print the pattern shown in the pattern editor as JSON (to edit it and send it back) |
+| `setpattern:N,JSON` / `setpattern:N,@FILE` | Replace pattern N (`SET_PATTERN_JSON`). Changes the setup! |
 | `dpm[:S]` | Watch the audio levels of every chain for S seconds (default 1) |
 | `dpm_global[:S]` | Watch the main bus levels only |
 | `noteon:N[,VEL]` / `noteoff:N` | Play a MIDI note on the active chain (makes sound!) |
@@ -58,7 +60,8 @@ screen: chain_options | title: 1#Noize Mak3r/Chain Options
 - Confirmation dialogs report `zyngui_confirm` (`text`). Other fullscreen modals (info, loading, keyboard)
   only report the screen name for now.
 - Grid menus report `zyngui_selector_grid` (button titles as items, plus `columns`).
-- Views without a list (mixer, launcher, sequencer, widgets, controller pages) only report the screen and
+- Pattern editors report `zyngui_pated_notes` / `zyngui_pated_cc`: see "Pattern editor" below.
+- Views without a list (mixer, launcher, arranger, widgets, controller pages) only report the screen and
   the title: take a screenshot if you need to see them.
 
 ## Audio levels (DPM)
@@ -74,7 +77,7 @@ dpm_state over 1.0s, dBFS (A/B now | A/B peak hold max):
 ```
 
 - `-inf` is silence (-72dBFS or less). 0.0 is full scale: peaks at 0 mean clipping.
-- Rows are chain **ids** (main bus = 0). Not the number before "#" in titles like "1#Noize Mak3r": that's
+- Rows are chain **ids** (main bus = 0). Not the number before "#" in titles like "1#<chain name>": that's
   the MIDI channel. Use `chains` to map ids to names, MIDI channels and mixer positions.
 - To set levels use the `MIXER` CUIA (category `mixer`, `zynctl.py cuias:mixer`): its `chain_index` is the
   strip position in the mixer (display order, -1 for the main bus), **not** the chain id: take it from the
@@ -82,6 +85,36 @@ dpm_state over 1.0s, dBFS (A/B now | A/B peak hold max):
 - Peak hold lasts ~2 s, so a `dpm` right after a sound still shows its peak.
 - Measuring needs sound: play notes with `noteon`/`noteoff` (active chain), or ask the user to play.
   Always send the `noteoff`.
+
+## Pattern editor
+
+`SCREEN_PATTERN_EDITOR` opens the pattern of the active MIDI chain (from the launcher: the selected pad).
+The notes editor reports `zyngui_pated_notes`, the CC editor `zyngui_pated_cc` (zynthian-ui code with
+`getPatternState` in zynseq or later). `state` prints the pattern decoded, one line per event:
+
+```
+  zyngui_pated_notes:
+    pattern: 2 events, beats 4, steps 16, scale 0, tonic 0, swing 0.0, ...
+      step 0 dur 2: C4(60) vel 100 (stutter 8, chance 75%)
+      step 8 dur 1: CC74 10->90
+    cursor: step 3, row 1, note 62
+    pattern_index: 7
+    phrase: 0
+    sequence: 2
+    midi_chan: 2
+    edit_mode: 0
+    chord_mode: 0          (CC editor: cc_num instead)
+```
+
+- `pattern` is the content as stored by zynseq, live (edits, MIDI recording). The format, including the
+  15-value event arrays, is `zynlibs/zynseq/pattern.schema.json`. Steps are pattern steps; `dur` and
+  offsets are in steps too. Note events are `0x90` (value1 = note, value2 = velocity), CC events `0xB0`
+  (value1 = CC number, value2 start/end = values).
+- `cursor` is the selected cell: `row` is a keymap row in the notes editor (`note` is its MIDI note), the
+  CC value in the CC editor.
+- To write a pattern: `pattern` → edit the JSON → `setpattern:N,@file.json`. If N is the pattern shown,
+  the editor reloads it and its state updates. Writing replaces the whole pattern and clears its undo
+  history: only on the user's request.
 
 ## Navigation CUIAs
 
@@ -123,13 +156,22 @@ Fill this in as you learn it (keep it short).
 - **Confirmation dialog** (`confirm`, reported as `zyngui_confirm` with the question `text`): `SELECT_ACTION`
   answers Yes (performs the action), `BACK` answers No. Read the text before answering; Yes needs the user's OK
   whenever the action changes the setup.
+- **Launcher** (`launcher`, it's the mixer in launcher mode): reports no state yet, so take a screenshot
+  (`DISPLAY=:0 scrot` on the device). It's a grid of pads: one column per MIDI chain, one row per phrase
+  (phrase list on the right). The cursor is a framed cell; ARROW_* move it one cell per push, and it keeps
+  its position across views. `SCREEN_ZYNPAD` always shows the launcher; `SCREEN_LAUNCHER`, from the mixer in
+  launcher mode, opens the pattern editor instead. From the launcher, `SCREEN_PATTERN_EDITOR` opens the
+  pattern of the pad under the cursor; its title names the pad and the chain. Chains, pad names and
+  layout depend on the current setup: read them from the screenshot (and `chains`) every time.
+- **Pattern editors** (`pattern_editor`, `pated_cc`): editing by CUIAs not explored yet. Note what ARROW_*, SELECT_ACTION
+  and the encoders do here as you learn it.
 - **Lists in general**: `SELECT_ACTION` performs the item; `BOLD_SELECT_ACTION` opens its options.
 
 ## Rules
 
 - The real device is the user's instrument. Navigating and highlighting is fine; anything that changes the
   setup (adding/removing chains or processors, loading/saving snapshots or ZS3, presets, MIDI learn, mixer
-  levels, power/reboot/restart) needs the user's explicit request. Follow each CUIA's "AI Guidance".
+  levels, writing patterns, power/reboot/restart) needs the user's explicit request. Follow each CUIA's "AI Guidance".
 - Prefer `pick:` before `SELECT_ACTION`, and check the printed selection before performing an action.
   `open:` refuses to act when the label is ambiguous or not found.
 - Notes make sound on the user's speakers: only play them when the user asked for a level check or agreed.
@@ -143,4 +185,5 @@ Fill this in as you learn it (keep it short).
 - CUIA list: it comes from the `cuia_*` docstrings in `zyngui/zynthian_gui.py` (`Category:` tag, `AI Context:`,
   `Params:`, positional, in order), parsed by `zynagent/zynagent_tools.py`. Document CUIAs there as you learn them.
 - View state: views implement `state_key` / `get_state(what)` and send the `SS_GUI_VIEW_*` zynsignals
-  (see `zynthian_gui_selector.py`). Views without it only report screen and title.
+  (see `zynthian_gui_selector.py`; `zynthian_gui_pated_base.py` for a view without a list). Views without
+  it only report screen and title.
