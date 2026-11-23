@@ -141,6 +141,6 @@ Fill this in as you learn it (keep it short).
 ## Extending
 
 - CUIA list: it comes from the `cuia_*` docstrings in `zyngui/zynthian_gui.py` (`Category:` tag, `AI Context:`,
-  `Keyword Args:`), parsed by `zynagent/zynagent_tools.py`. Document CUIAs there as you learn them.
+  `Params:`, positional, in order), parsed by `zynagent/zynagent_tools.py`. Document CUIAs there as you learn them.
 - View state: views implement `state_key` / `get_state(what)` and send the `SS_GUI_VIEW_*` zynsignals
   (see `zynthian_gui_selector.py`). Views without it only report screen and title.

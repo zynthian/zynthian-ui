@@ -1339,13 +1339,18 @@ class zynthian_gui:
     #
     # Each CUIA function should be documented using the Google Docstring spec.
     #
+    # Each CUIA receives a single "params" argument: None or a list of POSITIONAL
+    # values (not keyword arguments). The "Params:" section lists the entries in the
+    # order they appear in the list; the names are only labels. Optional entries
+    # must be trailing: callers can only omit them from the end of the list.
+    #
     # -------------------------------------------------------------------------
     """A short, one-line summary sentence describing what the function does.
 
     An optional longer paragraph providing additional architectural context,
     behavioral edge cases, or relative processing constraints for the AI.
 
-    Args:
+    Params:
         cutoff (int): Description of the cutoff parameter. Include valid ranges
             or mathematical conversion tips here for the LLM.
         resonance (float): Description of the resonance parameter.
@@ -1382,7 +1387,7 @@ class zynthian_gui:
 
         Category: system
 
-        Keyword Args:
+        Params:
             mode (int): 0 to leave the power save mode. Any other value, or none, enters the power save mode.
         """
 
@@ -1401,7 +1406,7 @@ class zynthian_gui:
             Only call this tool with the 'CONFIRM' param when user's command explicitly confirms the action.
             If not sure, call the action without the confirm parameter to ask for confirmation.
 
-        Keyword Args:
+        Params:
             confirm (str) enum["CONFIRM"]: When value is "CONFIRM", zynthian don't ask for confirmation.
         """
 
@@ -1419,7 +1424,7 @@ class zynthian_gui:
             Only call this tool with the 'CONFIRM' param when user's command explicitly confirms the action.
             If not sure, call the action without the confirm parameter to ask for confirmation.
 
-        Keyword Args:
+        Params:
             confirm (str) enum["CONFIRM"]: When value is "CONFIRM", zynthian don't ask for confirmation.
         """
 
@@ -1538,7 +1543,7 @@ class zynthian_gui:
 
         Category: tts
 
-        Kwywords Args:
+        Params:
             text (str) [REQUIRED]: Text to announce.
             replace (bool): True to clear queue and replace with this text
             urgent (bool): True to play next. False to append to end of queue.
@@ -1616,7 +1621,7 @@ class zynthian_gui:
 
         Category: tts
 
-        Keyword Args:
+        Params:
             host (str): IP address of the remote host. Omit all parameters to stop sending.
             port (int): OSC port of the remote host.
             path (str): OSC path (default "/tts").
@@ -1673,7 +1678,7 @@ class zynthian_gui:
             Only call this tool with confirm='CONFIRM' when user's command explicitly confirms the action.
             If not sure, call the action without the confirm parameter to ask for confirmation.
 
-        Keyword Args:
+        Params:
             confirm (str) enum["CONFIRM"]: When value is "CONFIRM", zynthian don't ask for confirmation.
         """
 
@@ -1871,7 +1876,7 @@ class zynthian_gui:
             'fast', 'slow', or 'groove', evaluate if this tool fits the request.
             Unless a decimal number is explictly soecified, always round up calculations to whole integer steps.
 
-        Keyword Args:
+        Params:
             bpm (number) [REQUIRED]: The exact tempo value in beats per minute. Valid ranges are 10 to 400.
                 Relative Changes: Use small relative changes of 1% and big relative changes of 10%.
         """
@@ -1886,7 +1891,7 @@ class zynthian_gui:
 
         Category: transport
 
-        Keyword Args:
+        Params:
             phrase (int) [REQUIRED]: Index of the phrase containing the sequence.
             sequence (int) [REQUIRED]: Index of the sequence within the phrase.
         """
@@ -1901,7 +1906,7 @@ class zynthian_gui:
 
         Category: tempo
 
-        Keyword Args:
+        Params:
             delta (number): BPM to add (default 1).
         """
 
@@ -1919,7 +1924,7 @@ class zynthian_gui:
 
         Category: tempo
 
-        Keyword Args:
+        Params:
             delta (number): BPM to subtract (default 1).
         """
 
@@ -1955,7 +1960,7 @@ class zynthian_gui:
             This action emulates turning an encoder knob. Encoder 3 is the select encoder: on list views it moves the selection.
             The other encoders change the controllers shown on the current view.
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Encoder index (0-3).
             delta (int) [REQUIRED]: Relative change, positive (clockwise) or negative.
         """
@@ -1977,7 +1982,7 @@ class zynthian_gui:
 
         Category: navigation
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Encoder index (0-3).
             value (number) [REQUIRED]: Normalized value, from 0.0 to 1.0.
         """
@@ -1998,7 +2003,7 @@ class zynthian_gui:
             This action emulates pushing a hardware button. Switches 0-3 are: 0 -> Menu/Layer, 1 -> Back, 2 -> Snapshot, 3 -> Select.
             Higher indexes are device specific. Prefer the specific CUIAs (BACK, SELECT_ACTION, MENU, ...) when they exist.
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Switch index.
             action (str) [REQUIRED] enum['S', 'B', 'L', 'P', 'R']: 'S' -> short push, 'B' -> bold push, 'L' -> long push, 'P' -> pressed, 'R' -> released.
         """
@@ -2105,7 +2110,7 @@ class zynthian_gui:
             same as ZYNSWITCH 3 with the same action type. Use SELECT to highlight an item before.
             It can be used to confirm actions.
 
-        Keyword Args:
+        Params:
             t (string) enum['S', 'B', 'L', 'P']: Action type. The enum values means: 'S' -> short, 'B' -> bold, 'L' -> long, 'P' -> push.
         """
 
@@ -2143,7 +2148,7 @@ class zynthian_gui:
             This only moves the selection. Call SELECT_ACTION afterwards to perform the action of the selected item.
             The item indexes are the positions in the "items" list reported by the "screen_state" websocket feedback.
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Index of the item to highlight.
         """
 
@@ -2162,7 +2167,7 @@ class zynthian_gui:
             The chain can be specified by an index number. If no chain is specified, pass None to use current active chain.
             Internally, chain indexes are 0-based, but users use 1-base.
 
-        Keyword Args:
+        Params:
             chain_index (int) [REQUIRED]: Index of mixer strip in display order. -1 for main mixbus. None for current active chain.
             param_symbol (str) [REQUIRED] enum['level', 'balance', 'gain', 'mute', 'record', 'solo', 'mono', 'pfl', 'ms', 'phase']: The parameter symbol.
             param_value (number or bool) [REQUIRED]: The parameter value. 'level' ranges from 0.0 to 1.0. 'balance' ranges from -1.0 to 1.0. 'gain' ranges from -40 to 40. All the rest are booleans.
@@ -2190,7 +2195,7 @@ class zynthian_gui:
 
         Category: screens
 
-        Keyword Args:
+        Params:
             screen (str) [REQUIRED]: View name, like the "screen" reported by the "screen_state" websocket feedback (mixer, admin, chain_manager, snapshot, zs3, ...).
         """
 
@@ -2202,7 +2207,7 @@ class zynthian_gui:
 
         Category: screens
 
-        Keyword Args:
+        Params:
             screen (str) [REQUIRED]: View name, like the "screen" reported by the "screen_state" websocket feedback (mixer, admin, chain_manager, snapshot, zs3, ...).
         """
 
@@ -2357,7 +2362,7 @@ class zynthian_gui:
 
         Category: display
 
-        Keyword Args:
+        Params:
             screen (str): Only refresh if this is the current view. Omit it to refresh any view.
         """
 
@@ -2379,7 +2384,7 @@ class zynthian_gui:
         AI Context:
             Intended for key bindings and internal use. The config parameter is a list of button descriptions.
 
-        Keyword Args:
+        Params:
             title (str) [REQUIRED]: Title shown in the topbar.
             config (str) [REQUIRED]: List of dictionaries, each one describing a button.
         """
@@ -2541,7 +2546,7 @@ class zynthian_gui:
         AI Context:
             This overwrites the ZS3. Only call it when the user explicitly asks to save it.
 
-        Keyword Args:
+        Params:
             zs3 (int) [REQUIRED]: ZS3 index, as listed in the subsnapshots (ZS3) view. Key bindings may pass a ZS3 id (str) instead.
         """
 
@@ -2556,7 +2561,7 @@ class zynthian_gui:
 
         Category: zs3
 
-        Keyword Args:
+        Params:
             zs3 (int) [REQUIRED]: ZS3 index, as listed in the subsnapshots (ZS3) view. Key bindings may pass a ZS3 id (str) instead.
         """
 
@@ -2571,7 +2576,7 @@ class zynthian_gui:
 
         Category: zs3
 
-        Keyword Args:
+        Params:
             cycle (bool): True to go back to the first ZS3 after the last one.
         """
 
@@ -2586,7 +2591,7 @@ class zynthian_gui:
 
         Category: zs3
 
-        Keyword Args:
+        Params:
             cycle (bool): True to go to the last ZS3 after the first one.
         """
 
@@ -2624,7 +2629,7 @@ class zynthian_gui:
 
         Category: midi
 
-        Keyword Args:
+        Params:
             zs3_name (str): Name of the ZS3 to bind. Omit it to learn into a new ZS3.
         """
 
@@ -2700,7 +2705,7 @@ class zynthian_gui:
 
         Category: midi
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Controller index on the view (0-3).
         """
 
@@ -2714,7 +2719,7 @@ class zynthian_gui:
 
         Category: midi
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Controller index on the view (0-3).
         """
 
@@ -2731,7 +2736,7 @@ class zynthian_gui:
         AI Context:
             MIDI bindings are lost. Only call it when the user explicitly asks for it.
 
-        Keyword Args:
+        Params:
             index (int): Controller index on the view (0-3). Omit it to unlearn the controller being learned.
         """
 
@@ -2769,7 +2774,7 @@ class zynthian_gui:
         AI Context:
             MIDI bindings are lost. Only call it when the user explicitly asks for it.
 
-        Keyword Args:
+        Params:
             chain_id (int): Chain id. Omit it for the active chain.
         """
 
@@ -2786,7 +2791,7 @@ class zynthian_gui:
 
         Category: navigation
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Encoder index (0-3).
         """
 
@@ -2805,7 +2810,7 @@ class zynthian_gui:
 
         Category: navigation
 
-        Keyword Args:
+        Params:
             index (int) [REQUIRED]: Encoder index (0-3).
             action (str) [REQUIRED] enum['S', 'B', 'L']: 'S' -> short push, 'B' -> bold push, 'L' -> long push.
         """
@@ -2839,7 +2844,7 @@ class zynthian_gui:
 
         Category: midi
 
-        Keyword Args:
+        Params:
             program (str) [REQUIRED]: Program number (0-127), or "+"/"-" for the next/previous program.
             chan (int): MIDI channel (0-15). Omit it for the active chain's channel.
         """
@@ -2872,7 +2877,7 @@ class zynthian_gui:
         AI Context:
             Intended for key bindings: when the last parameter is 'R' (key released), the release value is sent.
 
-        Keyword Args:
+        Params:
             chan (int) [REQUIRED]: MIDI channel (0-15).
             cc (int) [REQUIRED]: CC number (0-127).
             value (int) [REQUIRED]: CC value (0-127).
@@ -2980,7 +2985,7 @@ class zynthian_gui:
 
         Category: hardware
 
-        Keyword Args:
+        Params:
             volts (number) [REQUIRED]: Volts per octave.
         """
 
@@ -2994,7 +2999,7 @@ class zynthian_gui:
 
         Category: hardware
 
-        Keyword Args:
+        Params:
             note (int) [REQUIRED]: MIDI note number (0-127).
         """
 
@@ -3008,7 +3013,7 @@ class zynthian_gui:
 
         Category: hardware
 
-        Keyword Args:
+        Params:
             volts (number) [REQUIRED]: Volts per octave.
         """
 
@@ -3022,7 +3027,7 @@ class zynthian_gui:
 
         Category: hardware
 
-        Keyword Args:
+        Params:
             note (int) [REQUIRED]: MIDI note number (0-127).
         """
 
