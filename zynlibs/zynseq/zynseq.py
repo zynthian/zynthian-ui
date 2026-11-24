@@ -516,7 +516,7 @@ class zynseq(zynthian_engine):
                 return
         if patn:
             self.libseq.setPattern(patnum, bytes(patn_str, "utf-8"))
-            self.state["patns"][str(patnum)] = patn
+            self.state.setdefault("patns", {})[str(patnum)] = patn
 
     # Save a zynseq pattern file
     # patnum: Pattern number
@@ -541,7 +541,7 @@ class zynseq(zynthian_engine):
     def set_pattern_json(self, patnum, patn_json):
         """Replace the content of a pattern with a JSON string (format: pattern.schema.json). Undo/redo history is reset."""
         self.libseq.setPattern(patnum, bytes(patn_json, "utf-8"))
-        self.state["patns"][str(patnum)] = loads(patn_json)
+        self.state.setdefault("patns", {})[str(patnum)] = loads(patn_json)
 
     def get_pattern_data(self, patnum):
         """Pattern content as a dict. See get_pattern_json()."""
