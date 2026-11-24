@@ -316,7 +316,10 @@ class zynthian_ctrldev_akai_apc_40_mk2(zynthian_ctrldev_zynpad, zynthian_ctrldev
             chain_id = self.chain_ids_filtered[pos]
             if chain_id == 0:
                 continue
-            proc = self.chain_manager.chains[chain_id].zynmixer_proc
+            try:
+                proc = self.chain_manager.chains[chain_id].zynmixer_proc
+            except KeyError:
+                proc = None
             if proc:
                 for symbol in ("mute", "pfl", "solo", "record", "ab_mixgroup"):
                     mixbus = proc.eng_code == "MR"
