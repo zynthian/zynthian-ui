@@ -69,7 +69,9 @@ references already answer.
 **Case B (widget for an existing plugin)**:
 1. Plugin URI (find it with `scripts/zyn_device.sh plugins <filter>`), widget symbol, built-in (contribution to
    zynthian-ui `lv2/`) or user widget (`lv2-widgets`, default). A user widget is its own project: a git repo
-   (GitHub `<owner>/<symbol>-zyngui`) published as a zynthian package in the Widgets category (step 5).
+   (GitHub `<owner>/<symbol>.zyngui`) published as a zynthian package in the Widgets category (step 5).
+   **Bundle name: propose the target plugin's name with the `.zyngui.lv2` postfix** (`tuna.zyngui.lv2`; widget
+   symbol = plugin name as `[a-z0-9_]`). Older built-in bundles use `-zyngui.lv2`: don't copy that.
 2. Read the plugin's ports (`scripts/zyn_device.sh ports <URI>`): what the outputs (monitors) offer, which inputs
    the widget may control. If the data needed isn't there, say so: a widget can't get more than the plugin outputs.
 3. Topics 7 and 9 above. Soft rules 1-3 can't be applied in the widget (the plugin's ports are given), but

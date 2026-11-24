@@ -101,7 +101,7 @@ package)
 		sym="$(project_symbol "$dir")"
 		kb="$($SSH "du -sk $REMOTE_SRC/$sym/bin/$sym.lv2" | cut -f1)" || die "not built on $HOST: run build first"
 	else  # widget workspace: the bundle itself (no binaries)
-		b="$(ls -d "$dir"/*-zyngui.lv2 2>/dev/null | head -1)"; [ -n "$b" ] || die "no *-zyngui.lv2 bundle in $dir"
+		b="$(ls -d "$dir"/*.zyngui.lv2 2>/dev/null | head -1)"; [ -n "$b" ] || die "no *.zyngui.lv2 bundle in $dir"
 		kb="$(du -sk --exclude=__pycache__ "$b" | cut -f1)"
 	fi
 	sed -i "s|^size: .*|size: \"$kb KB\"|" "$info"

@@ -106,7 +106,7 @@ Vocabulary: `http://zynthian.org/ns/lv2/zyngui#` (ontology bundle `zynthian-ui/l
 
 - **Case A** (own plugin): the triples are appended to the plugin bundle's `manifest.ttl` by the project's
   `make zyngui` step (DPF regenerates `manifest.ttl` on every build). Widget UI URI: `<PLUGIN_URI>#zyngui`.
-- **Case B** (existing plugin): a separate **extension bundle** `<name>-zyngui.lv2/` with only this manifest, the
+- **Case B** (existing plugin): a separate **extension bundle** `<name>.zyngui.lv2/` (`<name>` = the target plugin's name; older built-in ones are `<name>-zyngui.lv2`) with only this manifest, the
   `.py` and the help page. It must NOT declare `<PLUGIN_URI> a lv2:Plugin` (lilv ignores a second declaration),
   and the triples must be in `manifest.ttl` (always loaded). One bundle may declare widgets for several plugins.
   Widget UI URI: `http://zynthian.org/plugins/zyngui/user/<name>#<name>` (user) or

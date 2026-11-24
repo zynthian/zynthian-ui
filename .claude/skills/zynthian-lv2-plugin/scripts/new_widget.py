@@ -6,15 +6,15 @@ usage: new_widget.py --uri URI [--symbol NAME] [--builtin] [--half-height] [--de
 
   --uri       plugin URI (find it with: zyn_device.sh plugins <filter>)
   --symbol    widget name, [a-z][a-z0-9_]* (default: from the plugin name)
-  --builtin   built-in widget: bundle in ~/Zynthian/zynthian-ui/lv2/<symbol>-zyngui.lv2 (a zynthian-ui contribution)
+  --builtin   built-in widget: bundle in ~/Zynthian/zynthian-ui/lv2/<symbol>.zyngui.lv2 (a zynthian-ui contribution)
               default: user widget, installed in /zynthian/zynthian-plugins/lv2-widgets
   --half-height  widget uses the lower half of the screen; the list of pages stays visible above it
-  --dest      workspace folder (default ~/Zynthian/<symbol>-zyngui): SPEC.md, ports.json and (user widgets) the bundle
+  --dest      workspace folder (default ~/Zynthian/<symbol>.zyngui): SPEC.md, ports.json and (user widgets) the bundle
   --host      zynthian to read the plugin ports from (default $ZYNTHIAN_HOST or zynthian.lan)
   --local     read the ports with the local lilv instead
   User widgets only (the workspace is the widget's git repo, with a zynthian package in package/, category Widgets):
   --package-name  name in the zynthian-packages catalog (default: "<plugin name> Widget")
-  --github    owner/repo on GitHub (default: <gh login>/<symbol>-zyngui)
+  --github    owner/repo on GitHub (default: <gh login>/<symbol>.zyngui)
   --no-git    don't create the git repo
 
 The generic widget shows every output control port of the plugin as a bar. Edit it afterwards.
@@ -91,12 +91,12 @@ def main():
     if not re.match(r"^[a-z][a-z0-9_]*$", sym):
         fail(f"invalid widget symbol '{sym}': use --symbol")
 
-    workspace = os.path.abspath(os.path.expanduser(args.dest or f"~/Zynthian/{sym}-zyngui"))
+    workspace = os.path.abspath(os.path.expanduser(args.dest or f"~/Zynthian/{sym}.zyngui"))
     if args.builtin:
-        bundle = os.path.join(UI_DIR, "lv2", f"{sym}-zyngui.lv2")
+        bundle = os.path.join(UI_DIR, "lv2", f"{sym}.zyngui.lv2")
         widget_uri = f"http://zynthian.org/plugins/zyngui/{sym}#{sym}"
     else:
-        bundle = os.path.join(workspace, f"{sym}-zyngui.lv2")
+        bundle = os.path.join(workspace, f"{sym}.zyngui.lv2")
         widget_uri = f"http://zynthian.org/plugins/zyngui/user/{sym}#{sym}"
     for d in (bundle, workspace):
         if os.path.isdir(d) and os.listdir(d) and not args.force:
@@ -167,7 +167,7 @@ What it shows, layout, colours, knob/switch handling (if any).
         if not github:
             res = subprocess.run(["bash", "-c", "timeout 10 gh api user --jq .login 2>/dev/null"],
                                  capture_output=True, text=True)
-            github = f"{res.stdout.strip() or 'OWNER'}/{sym}-zyngui"
+            github = f"{res.stdout.strip() or 'OWNER'}/{sym}.zyngui"
         package = args.package_name or " ".join(w[:1].upper() + w[1:] for w in f"{info['name']} Widget".split())
         if re.search(r'[/"\\]', package):
             fail("--package-name can't contain '/', '\"' or '\\'")
