@@ -24,7 +24,8 @@
 import logging
 
 # Zynthian specific modules
-from zyngine.zynthian_state_manager import ALSA_ID, AUDIO_PLAYER_ID, TEMPO_ID
+from zyngine.zynthian_state_manager import ALSA_ID, AUDIO_PLAYER_ID, MAIN_MIXBUS_ID, TEMPO_ID
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
@@ -57,9 +58,11 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
 
     def fill_list(self):
         self.list_data = []
-        self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Select which elements will be restored from this ZS3.", "zs3_settings.png"]))
-        self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
-        if self.zs3_id != "zs3-0":
+        if self.zs3_id == "zs3-0":
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
+        else:
+            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Select which elements will be restored from this ZS3.", "zs3_settings.png"]))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
             self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_note, 4, "Note", ["Add a note to this ZS3, shown by the ZS3 performance view.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_clone, 5, "Clone", ["Copy this ZS3 to a new one, placed just after it.", "zs3_new.png"]))
@@ -173,17 +176,19 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                 id = int(proc_id)
             except (TypeError, ValueError):
                 continue
-            if id >= 0 or id in shown_proc_ids:
+            if id >= 0 or id == MAIN_MIXBUS_ID or id in shown_proc_ids:
                 continue
             processor = self.zyngui.chain_manager.processors.get(id)
             name = processor.name if processor else global_names.get(id, "Global processor")
-            global_entries.append((id, name, proc_state.get("restore", True)))
+            default_restore = zynthian_gui_config.snapshot_mixer_settings if id == ALSA_ID else True
+            global_entries.append((id, name, proc_state.get("restore", default_restore)))
         if global_entries:
             options["Global"] = None
             toggle_all = "\n\nBold SELECT to toggle all."
             info = "Toggle whether global processor parameters will be restored." + toggle_all
             info_by_id = {
-                ALSA_ID: "Toggle whether audio levels will be restored from this ZS3." + toggle_all,
+                ALSA_ID: ("Toggle whether audio levels will be restored from this ZS3.\n"
+                          "Overrides the global 'Restore Audio Levels' setting." + toggle_all),
                 AUDIO_PLAYER_ID: "Toggle whether the audio player's track and playback position will be restored from this ZS3." + toggle_all,
                 TEMPO_ID: "Toggle whether tempo and metronome settings will be restored from this ZS3." + toggle_all,
             }

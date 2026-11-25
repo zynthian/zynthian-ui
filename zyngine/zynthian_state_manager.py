@@ -1389,13 +1389,18 @@ class zynthian_state_manager:
             zs3_state["restore_midi_learn"] = not zs3_state.get("restore_midi_learn", False)
             return
         try:
-            tstate = zs3_state[type][int(id)]
+            proc_id = int(id)
+            tstate = zs3_state[type][proc_id]
         except:
             return
         try:
             tstate["restore"] = not tstate["restore"]
         except:
-            tstate["restore"] = False
+            if type == "processors" and proc_id == ALSA_ID:
+                # No override yet: invert the global default
+                tstate["restore"] = not zynthian_gui_config.snapshot_mixer_settings
+            else:
+                tstate["restore"] = False
 
 
     def load_zs3(self, zs3_id, autoconnect=True):
@@ -1499,13 +1504,18 @@ class zynthian_state_manager:
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
                 try:
+                    id = int(proc_id)
+                except (TypeError, ValueError):
+                    logging.error(f"Invalid processor ID in ZS3 state: {proc_id}")
+                    continue
+                try:
                     restore_flag = proc_state["restore"]
                 except:
-                    restore_flag = True
+                    # Audio levels use the global setting unless this ZS3 has an override
+                    restore_flag = zynthian_gui_config.snapshot_mixer_settings if id == ALSA_ID else True
                 if not restore_flag:
                     continue
                 try:
-                    id = int(proc_id)
                     processor = self.chain_manager.processors[id]
                     if id < 0 or processor.chain_id in restored_chains:
                         self.set_busy_details(f"restoring {processor.get_basepath()} state")
@@ -1603,8 +1613,6 @@ class zynthian_state_manager:
         if zs3_id is None:
             zs3_id = f"zs3-{index}"
 
-        is_new_zs3 = zs3_id not in self.zs3
-
         if title is None:
             title = self.midi_learn_pc
 
@@ -1697,9 +1705,6 @@ class zynthian_state_manager:
             }
 
             if id in omit_processors:
-                processor_state["restore"] = False
-            elif is_new_zs3 and id in (ALSA_ID, AUDIO_PLAYER_ID, TEMPO_ID):
-                # New ZS3s don't change global processors unless requested
                 processor_state["restore"] = False
 
             # Add controllers
@@ -1839,7 +1844,6 @@ class zynthian_state_manager:
             if "controllers" not in processor_state:
                 processor_state["controllers"] = deepcopy(legacy)
             processor_state.setdefault("processor_type", "MX")
-            processor_state.setdefault("restore", True)
             for zs3_state in state.get("zs3", {}).values():
                 processors = zs3_state.setdefault("processors", {})
                 processors.setdefault(ALSA_ID, deepcopy(processor_state))
@@ -1867,7 +1871,6 @@ class zynthian_state_manager:
                 if ALSA_ID not in processors:
                     migrated = deepcopy(proc_state)
                     migrated.setdefault("processor_type", "MX")
-                    migrated.setdefault("restore", True)
                     processors[ALSA_ID] = migrated
 
     def sanitize_zs3_from_json(self, zs3_state):

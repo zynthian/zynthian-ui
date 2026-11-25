@@ -616,6 +616,7 @@ if touch_navigation:
 # ------------------------------------------------------------------------------
 
 restore_last_state = get_env_int('ZYNTHIAN_UI_RESTORE_LAST_STATE', 0)
+snapshot_mixer_settings = get_env_int('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', 0)
 show_cpu_status = get_env_int('ZYNTHIAN_UI_SHOW_CPU_STATUS', 0)
 visible_mixer_strips = get_env_int('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS', 0)
 visible_launchers = get_env_int('ZYNTHIAN_UI_VISIBLE_LAUNCHERS', 8)

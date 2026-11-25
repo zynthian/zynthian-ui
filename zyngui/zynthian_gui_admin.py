@@ -173,6 +173,14 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio",
                                ["Configure hotplug USB audio interfaces.\nWhen enabled, USB audio interfaces will be detected and available. The main audio interface, that must always remain connected, is not included, nor the interface used for ZynVoice.", "audio_options.png"]))
 
+        restore_levels_info = "Default for restoring soundcard audio levels. ZS3 restore options can override this."
+        if zynthian_gui_config.snapshot_mixer_settings:
+            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Restore Audio Levels",
+                                   [restore_levels_info, "meter.png"]))
+        else:
+            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Restore Audio Levels",
+                                   [restore_levels_info, "meter.png"]))
+
         if zynthian_gui_config.enable_dpm:
             self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters",
                                    ["Peak programme meters are enabled.", "meters.png"]))
@@ -520,6 +528,20 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.enable_param_editor(self, "Toggle Control",
                                  {'labels': ['solo', 'pfl', 'mono', 'phase', 'ms', 'record'], 'value': zynthian_gui_config.mixer_toggle},
                                  self.mixer_toggle_cb)
+
+    def toggle_snapshot_mixer_settings(self):
+        if zynthian_gui_config.snapshot_mixer_settings:
+            logging.info("Restore Audio Levels OFF")
+            zynthian_gui_config.snapshot_mixer_settings = False
+        else:
+            logging.info("Restore Audio Levels ON")
+            zynthian_gui_config.snapshot_mixer_settings = True
+
+        # Update Config
+        zynconf.save_config({
+            "ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS": str(int(zynthian_gui_config.snapshot_mixer_settings))
+        })
+        self.update_list()
 
     def toggle_preset_preload(self):
         if zynthian_gui_config.preset_preload:

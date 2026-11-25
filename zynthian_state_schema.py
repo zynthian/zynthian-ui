@@ -80,7 +80,7 @@ ZynthianState = {
             "restore_midi_learn": False, # Optional restore midi CC binding (Default: False)
             "processors": {  # Dictionary of processor settings
                 "1": {  # Processor id:1
-                    "restore": True, # Optional False to omit processor parameters from restore (Default: True; new ZS3s set False for global processors)
+                    "restore": True, # Optional False to omit processor parameters from restore (Default: True)
                     "bank_info": ["HB Steinway D", 0, "Grand Steinway D (Hamburg)", "D4:A", "HB Steinway Model D"], # Bank id
                     "bank_subdir_info": None, # Bank subdirectory info list
                     "preset_subdir_info": None, # Preset subdirectory info list
