@@ -79,7 +79,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     self.list_data.append((self.zs3_prog_chan, 9, f"Program Change Channel [{self.prog_chan}]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
                 else:
                     self.list_data.append((self.zs3_prog_chan, 9, "Program Change Channel [Any]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
-            else:
+            elif id != "zs3-0":
                 self.list_data.append((self.zs3_prog_num, 8, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
             self.preselect_last_action()
         super().fill_list()
