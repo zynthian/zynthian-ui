@@ -1115,7 +1115,6 @@ class zynthian_state_manager:
             self.set_busy_details("fixing legacy snapshot")
             converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
-            self.migrate_legacy_audio_levels(state)
 
             if load_sequences:
                 self.clean_sequences()
@@ -1832,46 +1831,6 @@ class zynthian_state_manager:
 
         # ZS3 list (subsnapshots)
         self.zs3 = {}
-
-    def migrate_legacy_audio_levels(self, state):
-        """Move legacy ALSA mixer state into the ZS3 processor model"""
-
-        # Very old snapshots stored audio levels in a top-level "alsa_mixer"
-        # section rather than as a global processor.
-        legacy = state.pop("alsa_mixer", None)
-        if isinstance(legacy, dict) and legacy:
-            processor_state = deepcopy(legacy)
-            if "controllers" not in processor_state:
-                processor_state["controllers"] = deepcopy(legacy)
-            processor_state.setdefault("processor_type", "MX")
-            for zs3_state in state.get("zs3", {}).values():
-                processors = zs3_state.setdefault("processors", {})
-                processors.setdefault(ALSA_ID, deepcopy(processor_state))
-
-        # Older processor-based snapshots used -1 for ALSA before the global
-        # processor IDs were renumbered. -1 is now the main mixbus, so only
-        # move state that has unmistakable ALSA controllers.
-        alsa_symbols = ("Digital_", "ADC_", "PGA_")
-        for zs3_state in state.get("zs3", {}).values():
-            processors = zs3_state.get("processors", {})
-            for proc_id in list(processors):
-                try:
-                    id = int(proc_id)
-                except (TypeError, ValueError):
-                    continue
-                if id != MAIN_MIXBUS_ID:
-                    continue
-                proc_state = processors[proc_id]
-                controllers = proc_state.get("controllers", {}) if isinstance(proc_state, dict) else {}
-                if not isinstance(controllers, dict):
-                    continue
-                if not any(isinstance(symbol, str) and symbol.startswith(alsa_symbols) for symbol in controllers):
-                    continue
-                del processors[proc_id]
-                if ALSA_ID not in processors:
-                    migrated = deepcopy(proc_state)
-                    migrated.setdefault("processor_type", "MX")
-                    processors[ALSA_ID] = migrated
 
     def sanitize_zs3_from_json(self, zs3_state):
         """Fix chain & processor ID keys in ZS3 data decoded from JSON"""
