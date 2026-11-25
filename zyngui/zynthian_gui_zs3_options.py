@@ -180,13 +180,18 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             global_entries.append((id, name, proc_state.get("restore", True)))
         if global_entries:
             options["Global"] = None
-            info = "Toggle whether global processor parameters will be restored.\n\nBold SELECT to toggle all."
-            alsa_info = ("Toggle whether audio levels will be restored from this ZS3.\n\n"
-                         "Bold SELECT to toggle all.")
-            for id, name, restore in sorted(global_entries):
+            toggle_all = "\n\nBold SELECT to toggle all."
+            info = "Toggle whether global processor parameters will be restored." + toggle_all
+            info_by_id = {
+                ALSA_ID: "Toggle whether audio levels will be restored from this ZS3." + toggle_all,
+                AUDIO_PLAYER_ID: "Toggle whether the audio player's track and playback position will be restored from this ZS3." + toggle_all,
+                TEMPO_ID: "Toggle whether tempo and metronome settings will be restored from this ZS3." + toggle_all,
+            }
+            display_order = {ALSA_ID: 0, AUDIO_PLAYER_ID: 1, TEMPO_ID: 2}
+            for id, name, restore in sorted(global_entries, key=lambda entry: (display_order.get(entry[0], 99), entry[1])):
                 prefix = "\u2612" if restore else "\u2610"
-                proc_info = alsa_info if id == ALSA_ID else info
-                options[f"{prefix}   ⤷{name} ({id})"] = [f"processors_{id}", [proc_info, None]]
+                proc_info = info_by_id.get(id, info)
+                options[f"{prefix} {name}"] = [f"processors_{id}", [proc_info, None]]
 
         options["Toggle All Mixer"][0] = ",".join(mixer_list)
         prefix = "\u2612" if state.get("restore_midi_learn", False) else "\u2610"
