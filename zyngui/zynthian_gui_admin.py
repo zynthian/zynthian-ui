@@ -173,7 +173,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio",
                                ["Configure hotplug USB audio interfaces.\nWhen enabled, USB audio interfaces will be detected and available. The main audio interface, that must always remain connected, is not included, nor the interface used for ZynVoice.", "audio_options.png"]))
 
-        restore_levels_info = "Default for restoring soundcard audio levels. ZS3 restore options can override this."
+        restore_levels_info = "Default for restoring soundcard audio levels. ZS3 restore options can override this. New ZS3s default to current setting."
         if zynthian_gui_config.snapshot_mixer_settings:
             self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Restore Audio Levels",
                                    [restore_levels_info, "meter.png"]))
