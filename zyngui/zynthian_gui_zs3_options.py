@@ -57,11 +57,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
 
     def fill_list(self):
         self.list_data = []
-        if self.zs3_id == "zs3-0":
-            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
-        else:
-            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Select which elements will be restored from this ZS3.", "zs3_settings.png"]))
-            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
+        self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Select which elements will be restored from this ZS3.", "zs3_settings.png"]))
+        self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state, overwritting this ZS3.", "zs3_overwrite.png"]))
+        if self.zs3_id != "zs3-0":
             self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_note, 4, "Note", ["Add a note to this ZS3, shown by the ZS3 performance view.", "zs3_rename.png"]))
             self.list_data.append((self.zs3_clone, 5, "Clone", ["Copy this ZS3 to a new one, placed just after it.", "zs3_new.png"]))
@@ -78,7 +76,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                     self.list_data.append((self.zs3_prog_chan, 9, f"Program Change Channel [{self.prog_chan}]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
                 else:
                     self.list_data.append((self.zs3_prog_chan, 9, "Program Change Channel [Any]", ["Assign MIDI Program Change channel to this ZS3.", "zs3_overwrite.png"]))
-            elif id != "zs3-0":
+            else:
                 self.list_data.append((self.zs3_prog_num, 8, "Program Change Number [None]", ["Assign MIDI Program Change number to this ZS3.", "zs3_overwrite.png"]))
             self.preselect_last_action()
         super().fill_list()
@@ -183,8 +181,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         if global_entries:
             options["Global"] = None
             info = "Toggle whether global processor parameters will be restored.\n\nBold SELECT to toggle all."
-            alsa_info = ("Toggle whether audio levels will be restored from this ZS3.\n"
-                         "The global 'Restore Audio Levels' setting must also be enabled.\n\n"
+            alsa_info = ("Toggle whether audio levels will be restored from this ZS3.\n\n"
                          "Bold SELECT to toggle all.")
             for id, name, restore in sorted(global_entries):
                 prefix = "\u2612" if restore else "\u2610"
