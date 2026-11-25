@@ -215,10 +215,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         elif param == "midi_learn":
             self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "midi_learn")
             return
-        parts = param.split("_", 1)
-        if len(parts) != 2:
-            return
-        type, id = parts
+        type, id = param.split("_")
         if ct == "S":
             self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, type, id)
         elif ct == "B":
