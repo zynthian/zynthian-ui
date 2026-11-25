@@ -24,6 +24,7 @@
 import logging
 
 # Zynthian specific modules
+from zyngine.zynthian_state_manager import ALSA_ID, AUDIO_PLAYER_ID, TEMPO_ID
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
@@ -164,9 +165,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         # Global processors aren't attached to a chain, so they don't appear in
         # the chain loop above. Show any that have state saved in this ZS3.
         global_names = {
-            self.zyngui.state_manager.ALSA_ID: "Audio Levels",
-            self.zyngui.state_manager.AUDIO_PLAYER_ID: "Audio Player",
-            self.zyngui.state_manager.TEMPO_ID: "Tempo",
+            ALSA_ID: "Audio Levels",
+            AUDIO_PLAYER_ID: "Audio Player",
+            TEMPO_ID: "Tempo",
         }
         global_entries = []
         for proc_id, proc_state in processor_states.items():
@@ -187,7 +188,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                          "Bold SELECT to toggle all.")
             for id, name, restore in sorted(global_entries):
                 prefix = "\u2612" if restore else "\u2610"
-                proc_info = alsa_info if id == self.zyngui.state_manager.ALSA_ID else info
+                proc_info = alsa_info if id == ALSA_ID else info
                 options[f"{prefix}   ⤷{name} ({id})"] = [f"processors_{id}", [proc_info, None]]
 
         options["Toggle All Mixer"][0] = ",".join(mixer_list)
