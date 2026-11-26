@@ -126,15 +126,22 @@ catalog ([zynthian-packages](https://github.com/zynthian/zynthian-packages), ins
 
 | File | Content |
 |---|---|
-| `info.yml` | title (= package name), icon, author, license (= the plugin's; default GPL-3.0-or-later, with its text in the repo's `LICENSE`, written by the generators for GPL v3: other licenses need their own `LICENSE`), source_url, size (installed), content (install path), description (first line short, `<br/>`, blank line, extended description in simple HTML) |
-| `<Package>.sh` | `install` / `uninstall` / `installed` / `git_version` / `git_repo`. Plugins: downloads the bundle for the device arch from the **latest GitHub release** (CI tarballs) into `zynthian-plugins/lv2`, then enables it with zynthian-sys' `zynengine_tool.py ENABLE <URI>` (the engines DB is managed outside the package scripts). Widgets: the bundle from the **newest `v*` tag** into `zynthian-plugins/lv2-widgets`. `git_version` = newest `v*` tag: webconf offers an update when a new version is tagged, so new versions don't need changes in the catalog. Keep these scripts plain (download, unpack, remove, zynthian tool calls): no embedded code |
+| `info.yml` | title (= package name), `version` ("X.Y.Z", only for a release: webconf offers an update when the catalog's is newer), icon, author, license (= the plugin's; default GPL-3.0-or-later, with its text in the repo's `LICENSE`, written by the generators for GPL v3: other licenses need their own `LICENSE`), source_url, size (installed), content (install path), description (first line short, `<br/>`, blank line, extended description in simple HTML) |
+| `<Package>.sh` | A few lines: it sets `PACKAGE_TYPE` (`lv2_plugin` / `lv2_widget`), `GITHUB`, `VERSION` (`"vX.Y.Z"` for a release, `""` while there is no release), `SYMBOL` + `PLUGIN_URI` (plugins) or `BUNDLE` (widgets), and calls `zynpackage_main` of the **zynthian-packages library** (`zynpackage_lib.sh`, at the root of that repo), which implements `install` / `uninstall` / `installed` / `git_version` / `git_repo`. Plugins: the CI bundle for the device arch from the release `VERSION`, or from the rolling `latest` build when empty, into `zynthian-plugins/lv2`, then `zyngine_tool.py -r ENABLE <URI>`. Widgets: the bundle from the tag `VERSION` (or the last commit when empty) into `zynthian-plugins/lv2-widgets`. Keep it plain: new behaviour goes into the library, not into each script. The script needs the zynthian-packages catalog on the machine (`$ZYNTHIAN_DIR/zynthian-packages`): test it on a zynthian, or with `ZYNTHIAN_DIR` pointing to a folder with a clone (the header of the generated script says so) |
 | `Art/zui_control_widget_<symbol>.png` | Screenshot of the widget in the zynthian UI (800×480): the package image |
 
 **When the repo is pushed to GitHub for the first time**, prepare the package and then ask the user (the operator)
 to send the PR to zynthian-packages (offer to prepare it: fork, branch with `package/` copied to
 `<Category>/<Package>/`, `gh pr create`; never touch `packages.json`, CI regenerates it):
-1. CI green (plugins). The package installs releases: ask the user for the first tag (`v0.1.0`), and check that the
-   release has the bundles (plugins) or the tag exists (widgets).
+1. CI green (plugins). **Releases: recommend tagging before the package PR**, and explain why: with a release
+   tag the package installs that exact version and webconf shows the version and offers updates when it changes;
+   without one it installs the latest build (no version, every push is an "update"). Ask for the tag
+   (`vX.Y.Z` = the plugin's version in the code: spec `version`, `getVersion()`), and when the user agrees:
+   `git tag vX.Y.Z && git push --tags`, wait for the CI release (plugins), then
+   `python3 $SKILL/scripts/package_version.py <dir>` (checks the tag, the plugin version and the release bundles;
+   sets `VERSION` in the script and `version` in `info.yml`). If the user prefers no release yet, leave the package
+   as generated (latest build) and say that a tag is the recommended way; remind once more when the package is
+   updated later.
 2. `info.yml`: extended description (from the help page), author and license confirmed with the user; size with
    `zyn_device.sh package <dir>` (plugins: after `build`).
 3. Screenshot: show the widget on the zynthian (zynthian-operator skill; adding the processor needs the user's OK),
@@ -143,7 +150,9 @@ to send the PR to zynthian-packages (offer to prepare it: fork, branch with `pac
 
 After that, **no more PRs unless files in `package/` change**: compare with the catalog
 (`git -C ~/Zynthian/zynthian-packages pull`, then `diff -r package ~/Zynthian/zynthian-packages/<Category>/<Package>`)
-and propose a PR only when they differ. New versions are just tags (and CI releases).
+and propose a PR only when they differ. A new release is a new tag (bump the version in the code first, CI checks that
+it matches), `package_version.py` and so a package PR (the version changes). Latest-build packages need no PRs for
+new builds.
 
 ## Soft rules (apply when they make sense)
 
@@ -189,4 +198,5 @@ fit, point out the rule and the trade-off once, then follow the user's decision 
 - Keep `SPEC.md`, the help page and the code consistent at each step; mention what's left open.
 - Commit in the plugin repo at each working step (the user decides about pushing). Once the repo is on GitHub,
   each push builds it in CI: check the run (`gh run list`, `gh run view --log-failed`) after pushing; a red build
-  is fixed before going on. Releases: tag `vX.Y.Z` (matching `version` in the code) only when the user asks.
+  is fixed before going on. Releases: tag `vX.Y.Z` (matching `version` in the code; CI checks it) only when the user agrees, but recommend it
+  before the first package PR (step 5).
