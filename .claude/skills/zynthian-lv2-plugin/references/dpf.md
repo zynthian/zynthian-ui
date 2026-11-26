@@ -145,7 +145,7 @@ designations, group classes, display priorities, scale points. Nekobi is a DPF p
   default `trixie` = zynthian OS base), with the DPF submodule at its pinned commit. Artifacts
   `<symbol>-lv2-<arch>.tar.gz`; pushes to the default branch replace the `latest` prerelease, `vX.Y.Z` tags create a
   release (the CI fails if the tag doesn't match `getVersion()`; the zynthian package installs the release set with
-  `scripts/package_version.py`, or the `latest` build while there is none). arm64 runners are free for public repos only: for a private repo, drop that matrix entry or use a
+  `tools/package_pr.py`, or the `latest` build while there is none). arm64 runners are free for public repos only: for a private repo, drop that matrix entry or use a
   paid/self-hosted runner. When the zynthian OS moves to a new Debian release, update `container:` (and `ci.debian`).
 - The CI arm64 bundle runs on the zynthian (generic aarch64 flags, same Debian): an alternative to building on the
   device, e.g. for users installing a released version.

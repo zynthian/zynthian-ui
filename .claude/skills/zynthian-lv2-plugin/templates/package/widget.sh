@@ -2,8 +2,7 @@
 # zynthian package script for the @@NAME@@ zynthian widget (zynthian-packages: @@CATEGORY@@/@@PACKAGE@@).
 # A widget UI bundle (zyngui:widget extension bundle, no binaries) for the LV2 plugin <@@PLUGIN_URI@@>.
 # Installs the bundle from its GitHub repository into lv2-widgets: the release tag VERSION, or the last commit of
-# the default branch when there is no release tag yet. A release is set with scripts/package_version.py of the
-# zynthian-lv2-plugin skill (VERSION here, "version" in info.yml).
+# the default branch when there is no release tag yet. A release is set with tools/package_pr.py (VERSION here, "version" in info.yml).
 #
 # The work is done by the zynthian-packages library, so this script needs the catalog on the machine
 # ($ZYNTHIAN_DIR/zynthian-packages): run it on a zynthian, or with ZYNTHIAN_DIR pointing to a folder that has a

@@ -519,8 +519,8 @@ def main():
         extras.setdefault(key, []).extend(lines)
     write(os.path.join(zdir, "port_extras.json"), json.dumps(extras, indent=2) + "\n")
 
-    write(os.path.join(dest, "tools", "zyngui_bundle.py"),
-          open(os.path.join(TEMPLATES, "tools", "zyngui_bundle.py")).read(), 0o755)
+    for tool in ("zyngui_bundle.py", "package_pr.py"):
+        write(os.path.join(dest, "tools", tool), open(os.path.join(TEMPLATES, "tools", tool)).read(), 0o755)
     write(os.path.join(dest, ".github", "workflows", "build.yml"),
           render(os.path.join(TEMPLATES, "github", "build.yml"), values))
     pkg = os.path.join(dest, "package")

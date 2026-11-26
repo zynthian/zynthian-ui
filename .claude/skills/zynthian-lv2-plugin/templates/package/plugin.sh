@@ -1,8 +1,7 @@
 #!/bin/bash
 # zynthian package script for the @@NAME@@ LV2 plugin (zynthian-packages: @@CATEGORY@@/@@PACKAGE@@).
 # Installs the bundle built by the plugin's GitHub CI (x86_64 or arm64): the release VERSION, or the latest build
-# when there is no release tag yet. A release is set with scripts/package_version.py of the zynthian-lv2-plugin
-# skill (VERSION here, "version" in info.yml).
+# when there is no release tag yet. A release is set with tools/package_pr.py (VERSION here, "version" in info.yml).
 #
 # The work is done by the zynthian-packages library, so this script needs the catalog on the machine
 # ($ZYNTHIAN_DIR/zynthian-packages): run it on a zynthian, or with ZYNTHIAN_DIR pointing to a folder that has a

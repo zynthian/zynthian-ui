@@ -27,6 +27,16 @@ Prebuilt bundles for x86_64 and arm64 (zynthian) are built by GitHub Actions (`.
 every push: download them from the `latest` prerelease (default branch) or from a `v*` release, and unpack into the
 LV2 path (on zynthian: `tar -xzf @@SYMBOL@@-lv2-arm64.tar.gz -C /zynthian/zynthian-plugins/lv2`).
 
+## Releases and the zynthian package
+
+`package/` is this plugin's entry in the zynthian package catalog
+([zynthian-packages](https://github.com/zynthian/zynthian-packages)). To publish a release: set the version in the code
+(`getVersion()` in `plugins/@@SYMBOL@@/Plugin.cpp`), commit, tag (`git tag vX.Y.Z && git push --tags`) and wait for the
+CI to build the release. Then `tools/package_pr.py` checks the release, sets it in `package/` (`VERSION` in the package
+script, `version` in `info.yml`) and sends the PR to zynthian-packages from your fork (needs the GitHub CLI `gh`).
+Commit the updated `package/` here too. Options: `--dry-run` (show the changes, send nothing), `--no-pr` (only update
+`package/`), `--latest-build` (no release: install the latest build), `-h`.
+
 Updating DPF is a deliberate change: `git -C dpf fetch && git -C dpf checkout <commit or tag>`, build and test,
 then commit the new submodule pointer (`git add dpf`).
 
