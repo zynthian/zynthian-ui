@@ -955,15 +955,6 @@ def get_plugin_description(plugin):
 # LV2 Bank/Preset management
 # ------------------------------------------------------------------------------
 
-# workaround to fix segfault:
-def generate_presets_cache_workaround():
-    start = int(round(time.time()))
-    for plugin in world.get_all_plugins():
-        if is_plugin_supported(str(plugin.get_uri())):
-            plugin.get_name()
-    logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
-
-
 def generate_all_presets_cache(refresh=True):
     if refresh:
         init_lilv()
@@ -1021,8 +1012,20 @@ def _generate_plugin_presets_cache(plugin):
 
     # Get presets
     presets = plugin.get_related(world.ns.presets.Preset)
+    # Load each preset's data files (rdfs:seeAlso). Many presets usually share the same file
+    # (e.g. a bank file) and each load/unload call is slow, even when there is nothing to do,
+    # so only load a preset if it has files not loaded yet, and unload only those presets.
+    loaded_files = set()
+    loaded_presets = []
     for preset in presets:
-        world.load_resource(preset)
+        preset_files = set()
+        # Collection's Iter is not iterable in comprehensions => use a plain for loop
+        for fnode in world.find_nodes(preset, world.ns.rdfs.seeAlso, None):
+            preset_files.add(str(fnode))
+        if not preset_files <= loaded_files:
+            world.load_resource(preset)
+            loaded_files |= preset_files
+            loaded_presets.append(preset)
 
         label = world.get(preset, world.ns.rdfs.label, None)
         if label is None:
@@ -1058,7 +1061,7 @@ def _generate_plugin_presets_cache(plugin):
 
         logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
 
-    for preset in presets:
+    for preset in loaded_presets:
         world.unload_resource(preset)
 
     # Sort and Remove empty banks
@@ -1536,7 +1539,6 @@ if __name__ == '__main__':
                     generate_plugin_presets_cache(info['URL'], False)
 
         elif sys.argv[1] == "presets":
-            generate_presets_cache_workaround()
             if len(sys.argv) > 2:
                 for plugin_url in sys.argv[2:]:
                     generate_plugin_presets_cache(plugin_url, False)
