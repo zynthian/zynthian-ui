@@ -147,10 +147,15 @@ class zynthian_chain:
 
     def set_zmop_options(self):
         if self.zmop_index is not None and len(self.synth_slots) > 0:
-            # IMPORTANT!!! Synth chains drop CC & PC messages
-            # logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
+            # Synth chains drop PC messages
+            # logging.info(f"Dropping MIDI PC from chain {self.chain_id}")
             lib_zyncore.zmop_set_flag_droppc(self.zmop_index, 1)
-            lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 1)
+            # Synth chains drop CC messages if classic MIDI CC is disabled, otherwise they are routed to the synth
+            if lib_zyncore.get_classic_midi_cc():
+                lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 0)
+            else:
+                # logging.info(f"Dropping MIDI CC from chain {self.chain_id}")
+                lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 1)
         else:
             # Audio & MIDI chains doesn't drop CC & PC messages
             # logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
