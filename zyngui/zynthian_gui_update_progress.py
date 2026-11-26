@@ -7,7 +7,7 @@
 # rendered by zynthian-sys/sbin/zynthian_update_progress.py, the same code that
 # draws it on the framebuffer when the UI is stopped during the update.
 #
-# Copyright (C) 2015-2026 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2026 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -26,6 +26,7 @@
 # ******************************************************************************
 
 import os
+import sys
 import logging
 import tkinter
 import importlib.util
@@ -52,6 +53,9 @@ def update_running():
 def load_progress_module():
     sys_dir = os.environ.get("ZYNTHIAN_SYS_DIR", "/zynthian/zynthian-sys")
     fpath = f"{sys_dir}/sbin/zynthian_update_progress.py"
+    # Don't leave a __pycache__ in the zynthian-sys repository
+    dont_write_bytecode = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
     try:
         spec = importlib.util.spec_from_file_location("zynthian_update_progress", fpath)
         module = importlib.util.module_from_spec(spec)
@@ -60,6 +64,8 @@ def load_progress_module():
     except Exception as e:
         logging.error(f"Can't load update progress renderer '{fpath}': {e}")
         return None
+    finally:
+        sys.dont_write_bytecode = dont_write_bytecode
 
 # ------------------------------------------------------------------------------
 # Zynthian Software Update Progress GUI Class
