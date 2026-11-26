@@ -186,6 +186,7 @@ class zynthian_gui:
 
         self.debug_thread = None
         self.busy_thread = None
+        self.startup_done = False  # Set when the start task has shown the initial screen
         self.control_thread = None
         self.status_thread = None
         self.cuia_thread = None
@@ -721,6 +722,7 @@ class zynthian_gui:
 
         # Show initial screen
         self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
+        self.startup_done = True
 
     def hide_screens(self, exclude=None):
         if not exclude:
@@ -960,7 +962,12 @@ class zynthian_gui:
 
     def close_update_progress(self):
         if self.current_screen == 'update_progress':
-            self.close_screen()
+            try:
+                self.close_screen()
+            except Exception as e:
+                logging.error(f"Can't close update progress screen: {e}")
+            if self.current_screen == 'update_progress':
+                self.show_screen_reset("root")
         else:
             self.screens['update_progress'].hide()
 
@@ -3621,6 +3628,12 @@ class zynthian_gui:
         busy_timeout = 0
         busy_warn_time = 300
         while not self.exit_flag:
+            # Software update running: its progress screen must stay. No busy screens.
+            # (Not during UI startup: the startup loading screen works as usual)
+            if self.startup_done and (self.current_screen == "update_progress" or update_running()):
+                busy_timeout = 0
+                sleep(0.1)
+                continue
             if self.state_manager.is_busy() and (monotonic() - self.state_manager.busy_ts) > 0.1 :
                 busy_timeout += 1
                 busy_message = self.state_manager.get_busy_message()
@@ -4499,7 +4512,8 @@ class zynthian_gui:
         if self.exit_flag:
             return
         try:
-            if self.current_screen != 'update_progress' and update_running():
+            # Not while starting: the start task shows the initial screen when it ends
+            if self.startup_done and self.current_screen != 'update_progress' and update_running():
                 self.show_update_progress()
         except Exception as e:
             logging.error(e)

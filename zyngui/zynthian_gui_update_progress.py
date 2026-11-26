@@ -144,17 +144,27 @@ class zynthian_gui_update_progress(zynthian_gui_fullscreen_modal):
                 return
         self.timer = self.after(REFRESH_PERIOD_MS, self.refresh)
 
-    # Ignore user input while updating
+    # Ignore user input while updating. When it has finished, any button closes the screen.
     def zynpot_cb(self, i, dval):
+        pass
+
+    def refresh_loading(self):
         pass
 
     def zyncoder_read(self):
         pass
 
+    def switch(self, i, t='S'):
+        if not update_running():
+            self.zyngui.close_update_progress()
+        return True
+
     def switch_select(self, t='S'):
-        pass
+        if not update_running():
+            self.zyngui.close_update_progress()
 
     def back_action(self):
-        return True
+        # True => handled (screen stays)
+        return update_running()
 
 # -------------------------------------------------------------------------------
