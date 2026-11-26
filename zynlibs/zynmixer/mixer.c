@@ -123,8 +123,6 @@ struct channel_strip {
 struct fx_send {
     jack_port_t* outPortA; // Jack output port A
     jack_port_t* outPortB; // Jack output port B
-    jack_default_audio_sample_t* bufferA; // Holds audio samples
-    jack_default_audio_sample_t* bufferB; // Holds audio samples
     float level;           // Current fader level 0..1
 };
 
@@ -148,6 +146,10 @@ static void updateDpmTiming(void) {
     unsigned int nHoldCycles = (unsigned int)(g_dpmHoldS * (float)g_samplerate / (float)g_buffersize + 0.5f);
     g_nHoldReload = nHoldCycles > 1 ? nHoldCycles - 1 : 0;
 }
+// Capacity of the mixbus work buffers below, in frames. They are allocated once and never
+// resized: with PipeWire the period can change at any time, and the process callback may
+// run with a new period before the buffer size callback. A longer period is not processed.
+#define MAX_PERIOD_FRAMES 8192
 jack_default_audio_sample_t* g_soloBufferA    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_soloBufferB    = NULL;  // Ponter to buffer used for solo bus
 jack_default_audio_sample_t* g_pflBufferA    = NULL;  // Ponter to buffer used for PFL bus
@@ -183,10 +185,57 @@ static inline float logCurve(float x)
     return 1.0f - fmaxf(0.0f, fminf(1.0f, pos));
 }
 
+// Silence all output ports, for a period that can't be processed
+static void silenceOutputs(jack_nframes_t frames) {
+    jack_port_t* ports[] = {g_pflOutPortA, g_pflOutPortB,
+#ifndef MIXBUS
+        g_soloPortA, g_soloPortB,
+#endif
+    };
+    for (size_t i = 0; i < sizeof(ports) / sizeof(ports[0]); ++i)
+        memset(jack_port_get_buffer(ports[i], frames), 0, frames * sizeof(jack_default_audio_sample_t));
+    for (uint8_t chan = 0; chan < g_lastStrip; ++chan) {
+        struct channel_strip* strip = g_channelStrips[chan];
+        if (strip) {
+            memset(jack_port_get_buffer(strip->outPortA, frames), 0, frames * sizeof(jack_default_audio_sample_t));
+            memset(jack_port_get_buffer(strip->outPortB, frames), 0, frames * sizeof(jack_default_audio_sample_t));
+        }
+    }
+#ifndef MIXBUS
+    for (uint8_t send = 0; send < g_lastSend; ++send) {
+        struct fx_send* psend = g_fxSends[send];
+        if (psend) {
+            memset(jack_port_get_buffer(psend->outPortA, frames), 0, frames * sizeof(jack_default_audio_sample_t));
+            memset(jack_port_get_buffer(psend->outPortB, frames), 0, frames * sizeof(jack_default_audio_sample_t));
+        }
+    }
+#endif
+}
+
 static int onJackProcess(jack_nframes_t frames, void* args) {
     if (!g_running)
         return 0;
+    if (frames > MAX_PERIOD_FRAMES) {
+        static int warned = 0;
+        if (!warned) {
+            fprintf(stderr, "libzynmixer: period of %u frames exceeds the maximum of %u, output silenced\n", frames, MAX_PERIOD_FRAMES);
+            warned = 1;
+        }
+        silenceOutputs(frames);
+        return 0;
+    }
     jack_default_audio_sample_t *pPflInA, *pPflInB, *pPflOutA, *pPflOutB, *pSoloA, *pSoloB, *pInA, *pInB, *pChanOutA, *pChanOutB;
+    // Solo bus this period: mixbus => work buffers fed from the solo trunk, chain mixer => the solo trunk ports.
+    // NULL when nothing is soloed. g_solo is read once: other threads change it.
+    jack_default_audio_sample_t *soloA = NULL, *soloB = NULL;
+    uint8_t solo = g_solo;
+#ifndef MIXBUS
+    // FX sends this period. Port buffers are only valid within this callback, so get them here.
+    // A send added by another thread during the period is used from the next one.
+    struct fx_send* sends[MAX_CHANNELS];
+    jack_default_audio_sample_t *sendA[MAX_CHANNELS], *sendB[MAX_CHANNELS];
+    uint8_t lastSend = g_lastSend;
+#endif
     unsigned int frame;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM, fpreFaderSampleA, fpreFaderSampleB;
 
@@ -198,7 +247,7 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     PFL is treated similarly
 */
 
-    if (g_solo) {
+    if (solo) {
         pSoloA = jack_port_get_buffer(g_soloPortA, frames);
         pSoloB = jack_port_get_buffer(g_soloPortB, frames);
     }
@@ -210,9 +259,11 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
     memset(g_mainNormaliseBufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
     memset(g_mainNormaliseBufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
     // Populate solo buffers from trunk
-    if (g_solo) {
+    if (solo) {
         memcpy(g_soloBufferA, pSoloA, frames * sizeof(jack_default_audio_sample_t));
         memcpy(g_soloBufferB, pSoloB, frames * sizeof(jack_default_audio_sample_t));
+        soloA = g_soloBufferA;
+        soloB = g_soloBufferB;
     }
 
     // Populate PFL output buffers from trunk
@@ -223,20 +274,23 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
 
 #else
     // Clear solo send buffers
-    if (g_solo) {
+    if (solo) {
         memset(pSoloA, 0.0, frames * sizeof(jack_default_audio_sample_t));
         memset(pSoloB, 0.0, frames * sizeof(jack_default_audio_sample_t));
-        g_soloBufferA = pSoloA; // We will populate the trunk directly
-        g_soloBufferB = pSoloB;
+        soloA = pSoloA; // We will populate the trunk directly
+        soloB = pSoloB;
     }
     // Clear PFL buffers
     memset(pPflOutA, 0.0, frames * sizeof(jack_default_audio_sample_t));
     memset(pPflOutB, 0.0, frames * sizeof(jack_default_audio_sample_t));
-    // Clear send buffers.
-    for (uint8_t send = 0; send < MAX_CHANNELS; ++send) {
-        if (g_fxSends[send]) {
-            memset(g_fxSends[send]->bufferA, 0.0, frames * sizeof(jack_default_audio_sample_t));
-            memset(g_fxSends[send]->bufferB, 0.0, frames * sizeof(jack_default_audio_sample_t));
+    // Get and clear send buffers.
+    for (uint8_t send = 0; send < lastSend; ++send) {
+        sends[send] = g_fxSends[send];
+        if (sends[send]) {
+            sendA[send] = jack_port_get_buffer(sends[send]->outPortA, frames);
+            sendB[send] = jack_port_get_buffer(sends[send]->outPortB, frames);
+            memset(sendA[send], 0.0, frames * sizeof(jack_default_audio_sample_t));
+            memset(sendB[send], 0.0, frames * sizeof(jack_default_audio_sample_t));
         }
     }
 #endif
@@ -337,9 +391,9 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
             for (frame = 0; frame < frames; ++frame) {
 #ifdef MIXBUS
                 if (chan == 0) {
-                    if (g_solo) {
-                        fSampleA = g_soloBufferA[frame];
-                        fSampleB = g_soloBufferB[frame];
+                    if (soloA) {
+                        fSampleA = soloA[frame];
+                        fSampleB = soloB[frame];
                     } else {
                         fSampleA = pInA[frame] + g_mainNormaliseBufferA[frame];
                         fSampleB = pInB[frame] + g_mainNormaliseBufferB[frame];
@@ -394,9 +448,9 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                     pChanOutA[frame] += fSampleA;
                     pChanOutB[frame] += fSampleB;
                 }
-                if (strip->solo) {
-                    g_soloBufferA[frame] += fSampleA;
-                    g_soloBufferB[frame] += fSampleB;
+                if (strip->solo && soloA) {
+                    soloA[frame] += fSampleA;
+                    soloB[frame] += fSampleB;
                 }
                 if (strip->pfl) {
                     pPflOutA[frame] += fpreFaderSampleA;
@@ -415,19 +469,19 @@ static int onJackProcess(jack_nframes_t frames, void* args) {
                 }
 #else
                 // Add fx send output frames only for input channels
-                for (uint8_t send = 0; send < g_lastSend; send++) {
-                    if (g_fxSends[send]) {
+                for (uint8_t send = 0; send < lastSend; send++) {
+                    if (sends[send]) {
                         if (strip->sendMode[send] == 0) {
-                            g_fxSends[send]->bufferA[frame] += fSampleA * strip->send[send] * g_fxSends[send]->level;
-                            g_fxSends[send]->bufferB[frame] += fSampleB * strip->send[send] * g_fxSends[send]->level;
+                            sendA[send][frame] += fSampleA * strip->send[send] * sends[send]->level;
+                            sendB[send][frame] += fSampleB * strip->send[send] * sends[send]->level;
                         } else if (strip->sendMode[send] == 1) {
-                            g_fxSends[send]->bufferA[frame] += fpreFaderSampleA * strip->send[send] * g_fxSends[send]->level;
-                            g_fxSends[send]->bufferB[frame] += fpreFaderSampleB * strip->send[send] * g_fxSends[send]->level;
+                            sendA[send][frame] += fpreFaderSampleA * strip->send[send] * sends[send]->level;
+                            sendB[send][frame] += fpreFaderSampleB * strip->send[send] * sends[send]->level;
                         }
-                        if(isinf(g_fxSends[send]->bufferA[frame]))
-                            g_fxSends[send]->bufferA[frame] = 1.0;
-                        if(isinf(g_fxSends[send]->bufferB[frame]))
-                            g_fxSends[send]->bufferB[frame] = 1.0;
+                        if(isinf(sendA[send][frame]))
+                            sendA[send][frame] = 1.0;
+                        if(isinf(sendB[send][frame]))
+                            sendB[send][frame] = 1.0;
                     }
                 }
 #endif
@@ -548,32 +602,14 @@ int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
     return 0;
 }
 
-// WARNING This implementation, without any mutex, probably will cause segmentation fault,
-// but jack's buffersize never changes on-the-fly on zynthian
+// Only the meter damping depends on the period. The work buffers have a fixed capacity
+// (MAX_PERIOD_FRAMES) and port buffers are fetched in each process cycle, so nothing is
+// reallocated here (this may run concurrently with the process callback).
 int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
     if (nBuffersize == 0)
         return 0;
-
     g_buffersize     = nBuffersize;
     updateDpmTiming();
-    free(g_soloBufferA);
-    free(g_soloBufferB);
-    g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    g_soloBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
-#ifdef MIXBUS
-    free(g_mainNormaliseBufferA);
-    free(g_mainNormaliseBufferB);
-    g_mainNormaliseBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    g_mainNormaliseBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
-#else
-    for (uint8_t chan = 0; chan < MAX_CHANNELS; ++chan) {
-        if (g_fxSends[chan]) {
-            //!@todo Do not cache jack_port_get_buffer
-            g_fxSends[chan]->bufferA = jack_port_get_buffer(g_fxSends[chan]->outPortA, g_buffersize);
-            g_fxSends[chan]->bufferB = jack_port_get_buffer(g_fxSends[chan]->outPortB, g_buffersize);
-        }
-    }
-#endif
     return 0;
 }
 
@@ -609,8 +645,6 @@ int init() {
 #endif
     ports_ok |= !(g_soloPortA = jack_port_register(g_jackClient, "solo_a", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0));
     ports_ok |= !(g_soloPortB = jack_port_register(g_jackClient, "solo_b", JACK_DEFAULT_AUDIO_TYPE, solo_port_flags, 0));
-    g_soloBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    g_soloBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
 
     ports_ok |= !(g_pflOutPortA = jack_port_register(g_jackClient, "pfl_out_a", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
     ports_ok |= !(g_pflOutPortB = jack_port_register(g_jackClient, "pfl_out_b", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0));
@@ -657,8 +691,10 @@ int init() {
     id = addStrip(); // Aux mixbus
     setLevel(id, FADER_UNITY); // Default unity gain for aux bus
     setNormalise(id, 1);
-    g_mainNormaliseBufferA = malloc(sizeof(jack_nframes_t) * g_buffersize);
-    g_mainNormaliseBufferB = malloc(sizeof(jack_nframes_t) * g_buffersize);
+    g_soloBufferA = calloc(MAX_PERIOD_FRAMES, sizeof(jack_default_audio_sample_t));
+    g_soloBufferB = calloc(MAX_PERIOD_FRAMES, sizeof(jack_default_audio_sample_t));
+    g_mainNormaliseBufferA = calloc(MAX_PERIOD_FRAMES, sizeof(jack_default_audio_sample_t));
+    g_mainNormaliseBufferB = calloc(MAX_PERIOD_FRAMES, sizeof(jack_default_audio_sample_t));
 #endif
 
 #ifdef DEBUG
@@ -705,9 +741,9 @@ void end() {
     }
 
     // Release dynamically created resources
+#ifdef MIXBUS
     free(g_soloBufferA);
     free(g_soloBufferB);
-#ifdef MIXBUS
     free(g_mainNormaliseBufferA);
     free(g_mainNormaliseBufferB);
 #endif
@@ -1250,9 +1286,6 @@ int8_t addSend() {
                 fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
                 return -1;
             }
-            //!@todo Do not cache jack_port_get_buffer
-            psend->bufferA = jack_port_get_buffer(psend->outPortA, g_buffersize);
-            psend->bufferB = jack_port_get_buffer(psend->outPortB, g_buffersize);
             psend->level = 1.0;
             g_fxSends[send] = psend;
             g_sendCount++;
