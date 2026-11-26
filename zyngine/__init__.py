@@ -21,6 +21,7 @@ __all__ = [
     "zynthian_engine_sooperlooper",
     "zynthian_engine_inet_radio",
     "zynthian_engine_clippy",
+    "zynthian_engine_spotify",
     "zynthian_engine_sysex",
     "zynthian_engine_midi_control",
     "zynthian_midi_filter",
@@ -47,6 +48,7 @@ from zyngine.zynthian_engine_audioplayer import *
 from zyngine.zynthian_engine_sooperlooper import *
 from zyngine.zynthian_engine_inet_radio import *
 from zyngine.zynthian_engine_clippy import *
+from zyngine.zynthian_engine_spotify import *
 from zyngine.zynthian_engine_sysex import *
 from zyngine.zynthian_engine_midi_control import *
 from zyngine.zynthian_midi_filter import *
