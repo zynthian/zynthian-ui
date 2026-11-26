@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "zynthian: attach or restart with debugger",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/zynthian_debug_ctl.sh auto",
+            "problemMatcher": []
+        },
+        {
+            "label": "zynthian: restart with debugger",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/zynthian_debug_ctl.sh on",
+            "problemMatcher": []
+        },
+        {
+            "label": "zynthian: restart with debugger (wait for attach)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/zynthian_debug_ctl.sh wait",
+            "problemMatcher": []
+        },
+        {
+            "label": "zynthian: debugger tunnel",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/zynthian_debug_ctl.sh tunnel",
+            "problemMatcher": []
+        },
+        {
+            "label": "zynthian: restart without debugger",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/zynthian_debug_ctl.sh off",
+            "problemMatcher": []
+        },
+        {
+            "label": "zynthian: follow log",
+            "type": "shell",
+            "command": "ssh -t zynthian-v5 journalctl -fu zynthian",
+            "isBackground": true,
+            "problemMatcher": []
+        }
+    ]
+}

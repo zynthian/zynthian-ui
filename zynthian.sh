@@ -359,7 +359,10 @@ while true; do
 		;;
 		101)
 			#splash_zynthian_message "Exiting..."
-			splash_zynthian_last_message
+			# A low-memory software update stops the UI: its progress display takes over
+			if [[ ! -f "/run/zynthian_update/running" ]]; then
+				splash_zynthian_last_message
+			fi
 			break
 		;;
 		102)
