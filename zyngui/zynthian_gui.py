@@ -3777,6 +3777,7 @@ class zynthian_gui:
 
         zynswitch_cuia_ts = [None] * zynthian_gui_config.num_zynswitches
         zynswitch_repeat = {}
+        zynswitch_wake = set()  # Switches pressed to wake from power save, until released
         zynpot_repeat = {}
         repeat_delay = 3  # Quantity of repeat intervals to delay before triggering auto repeat
         repeat_interval = 0.15  # Auto repeat interval in seconds
@@ -3821,6 +3822,22 @@ class zynthian_gui:
                     # zynswitch has parameters: [switch, action] where action is P(ressed), R(eleased), S(hort), B(old), L(ong), X or Y
                     i = int(params[0])
                     t = params[1]
+                    # A switch pressed during power save wakes the UI. Its push and short actions are
+                    # ignored but bold and long actions still operate.
+                    if self.state_manager.power_save_mode or i in zynswitch_wake:
+                        self.state_manager.set_event_flag()
+                        if t == 'P':
+                            zynswitch_wake.add(i)
+                            zynswitch_cuia_ts[i] = monotonic()
+                            continue
+                        zynswitch_wake.discard(i)
+                        if t == 'R':
+                            if zynswitch_cuia_ts[i] is None:
+                                continue
+                            t = self.zynswitch_timing(int(1000000 * (monotonic() - zynswitch_cuia_ts[i])))
+                        if t == 'S':
+                            zynswitch_cuia_ts[i] = None
+                            continue
                     if t == 'R':
                         if zynswitch_cuia_ts[i] is None:
                             if i in zynswitch_repeat:
