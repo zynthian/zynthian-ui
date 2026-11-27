@@ -27,6 +27,9 @@
  * computed lazily, only up to the first dip, so high notes are cheaper than low ones. Note on after the same note is
  * seen on 1..4 hops (noise filter) above the onset threshold, note off below the release threshold, legato note
  * change when the pitch moves more than 70 cents for as many hops, re-trigger on a sudden level rise (new pluck).
+ * Optional pitch bend: while a note is held, gradual pitch movement within the bend range (e.g. a string bend,
+ * vibrato, slide) is sent as pitch bend instead of a new note; a jump of more than half a semitone between two hops
+ * (hammer-on, new fret) still starts a new note. Pitch bend is reset to centre before each note on.
  *
  * Polyphonic: 2048 point FFT at ~12 kHz (170 ms Hann window, 21 ms hop), MIDI notes 36..96. Spectral peaks above an
  * adaptive noise floor (noise filter sets the margin) are matched to the harmonics of each candidate note. The note
@@ -57,6 +60,10 @@
 #define MONO_INVALID_HOPS 20 // Hops without pitch (above release threshold) before note off
 #define MONO_RETRIG_HOPS 6   // Minimum hops after note on before a re-trigger
 #define MONO_CHANGE_ST 0.7f  // Pitch deviation (semitones) from the held note that may start a new note
+#define MONO_JUMP_ST 0.5f    // Pitch bend: pitch change within one hop that is a new note, not a bend
+#define MONO_BEND_MARGIN_ST 0.5f // Pitch bend: deviation beyond the bend range before a new note
+#define BEND_CENTRE 8192
+#define BEND_MIN_CENTS 2.0f  // Pitch bend: smallest change sent (limits MIDI traffic)
 
 // Polyphonic
 #define POLY_RATE 12000.0f // Target decimated samplerate
@@ -113,6 +120,9 @@ struct a2m_dsp {
     const float* m_a;
     int m_note, m_cand, m_cand_cnt, m_off_cnt, m_invalid, m_age;
     float m_peak, m_hist[2]; // m_hist: levels of the newest 2 hops, 1 and 2 hops ago
+    float m_prev_pitch;      // Pitch on the previous hop (0: none)
+    int m_jump;              // Pitch jumped away from the held note: new note, not a bend
+    int bend_sent;           // Last pitch bend value sent
 
     // Polyphonic
     float bin_hz;
@@ -159,9 +169,17 @@ static void push(out_t* o, uint8_t status, uint8_t note, uint8_t vel) {
     e->data[2] = vel;
 }
 
+static void send_bend(a2m_dsp_t* d, out_t* o, int value) {
+    if (value == d->bend_sent)
+        return;
+    push(o, 0xE0, value & 0x7f, (value >> 7) & 0x7f);
+    d->bend_sent = value;
+}
+
 static int note_on(a2m_dsp_t* d, out_t* o, int note, uint8_t vel) {
     if (note < 0 || note > 127 || d->on[note] || o->count >= NOTE_ON_RESERVE)
         return 0;
+    send_bend(d, o, BEND_CENTRE); // Each note starts unbent
     push(o, 0x90, note, vel);
     d->on[note] = 1;
     ++d->held;
@@ -181,6 +199,20 @@ static void release_all(a2m_dsp_t* d, out_t* o) {
         note_off(d, o, note);
     d->held = 0;
     d->m_note = -1;
+    send_bend(d, o, BEND_CENTRE);
+}
+
+// Pitch bend for a deviation (semitones) from the held note. Small changes are not sent.
+static void mono_bend(a2m_dsp_t* d, out_t* o, float dev) {
+    const float range = d->params.bend_range < 1.0f ? 1.0f : d->params.bend_range;
+    int value = BEND_CENTRE + (int)lrintf(dev / range * BEND_CENTRE);
+    if (value < 0)
+        value = 0;
+    if (value > 16383)
+        value = 16383;
+    const int min_step = (int)(BEND_CENTRE * BEND_MIN_CENTS * 0.01f / range) + 1;
+    if (abs(value - d->bend_sent) >= min_step)
+        send_bend(d, o, value);
 }
 
 // Level (dBFS RMS) to velocity: onset - 12 dB => 1, max(-6 dBFS, onset + 6 dB) => 127
@@ -322,6 +354,8 @@ static void configure(a2m_dsp_t* d) {
         d->m_cand = -1;
         d->m_cand_cnt = d->m_off_cnt = d->m_invalid = d->m_age = 0;
         d->m_hist[0] = d->m_hist[1] = SILENCE_DB;
+        d->m_prev_pitch = 0.0f;
+        d->m_jump = 0;
     }
 }
 
@@ -476,6 +510,7 @@ static void mono_hop(a2m_dsp_t* d, out_t* o) {
     d->m_a = d->m_frame + n - W;
     const float freq = mono_yin(d, 0.3f - 0.2f * nf);
     if (freq <= 0.0f) {
+        d->m_prev_pitch = 0.0f;
         d->m_cand_cnt = 0;
         if (d->m_note >= 0 && ++d->m_invalid > MONO_INVALID_HOPS) {
             note_off(d, o, d->m_note);
@@ -485,6 +520,8 @@ static void mono_hop(a2m_dsp_t* d, out_t* o) {
     }
     d->m_invalid = 0;
     const float pitch = 69.0f + 12.0f * log2f(freq / 440.0f);
+    const float prev_pitch = d->m_prev_pitch;
+    d->m_prev_pitch = pitch;
     int note = (int)lrintf(pitch);
     if (note < 0 || note > 127)
         return;
@@ -493,11 +530,29 @@ static void mono_hop(a2m_dsp_t* d, out_t* o) {
         if (mono_candidate(d, note, lvl, confirm) && note_on(d, o, note, velocity(d->m_peak, onset))) {
             d->m_note = note;
             d->m_age = 0;
+            d->m_jump = 0;
         }
         return;
     }
 
-    if (fabsf(pitch - d->m_note) > MONO_CHANGE_ST) {
+    const float dev = pitch - d->m_note;
+    if (d->params.bend) {
+        // Gradual movement within the bend range is pitch bend, a sudden jump is a new note
+        if (prev_pitch > 0.0f && fabsf(pitch - prev_pitch) > MONO_JUMP_ST)
+            d->m_jump = 1;
+        else if (fabsf(dev) <= MONO_CHANGE_ST)
+            d->m_jump = 0;
+        // Bends slightly beyond the range (overshoot) are clamped, further is a new note
+        if (!d->m_jump && fabsf(dev) <= d->params.bend_range + MONO_BEND_MARGIN_ST) {
+            d->m_cand_cnt = 0;
+            mono_bend(d, o, dev);
+            return;
+        }
+    } else if (d->bend_sent != BEND_CENTRE) {
+        send_bend(d, o, BEND_CENTRE); // Pitch bend disabled while bent
+    }
+
+    if (fabsf(dev) > MONO_CHANGE_ST) {
         // Legato note change
         if (mono_candidate(d, note, lvl, confirm)) {
             note_off(d, o, d->m_note);
@@ -505,6 +560,7 @@ static void mono_hop(a2m_dsp_t* d, out_t* o) {
             if (note_on(d, o, note, velocity(d->m_peak, onset))) {
                 d->m_note = note;
                 d->m_age = 0;
+                d->m_jump = 0;
             }
         }
     } else {
@@ -835,6 +891,9 @@ a2m_dsp_t* a2m_dsp_new(uint32_t rate) {
     d->params.release_db = -50.0f;
     d->params.noise = 50.0f;
     d->params.poly = 0;
+    d->params.bend = 0;
+    d->params.bend_range = 2.0f;
+    d->bend_sent = BEND_CENTRE;
     fft_init(d);
     configure(d);
     return d;

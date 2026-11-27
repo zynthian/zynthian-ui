@@ -14,7 +14,7 @@ from tests.native.support import lib_path, missing_lib_reason
 
 CLIENT = "audio2midi"
 RATE = 48000
-NOTE_ON, NOTE_OFF = 0x90, 0x80
+NOTE_ON, NOTE_OFF, PITCH_BEND = 0x90, 0x80, 0xE0
 
 
 class Event(ctypes.Structure):
@@ -33,6 +33,10 @@ SIGNATURES = {
     "getPolyphonic": (ctypes.c_uint8, []),
     "setNoiseFilter": (None, [ctypes.c_float]),
     "getNoiseFilter": (ctypes.c_float, []),
+    "setPitchBend": (None, [ctypes.c_uint8]),
+    "getPitchBend": (ctypes.c_uint8, []),
+    "setBendRange": (None, [ctypes.c_float]),
+    "getBendRange": (ctypes.c_float, []),
     "analyse": (ctypes.c_uint32, [ctypes.POINTER(ctypes.c_float), ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32,
                                   ctypes.POINTER(Event), ctypes.c_uint32]),
 }
@@ -60,6 +64,8 @@ def a2m(a2m_lib):
         a2m_lib.setReleaseThreshold(-50)
         a2m_lib.setPolyphonic(0)
         a2m_lib.setNoiseFilter(50)
+        a2m_lib.setPitchBend(0)
+        a2m_lib.setBendRange(2)
     defaults()
     yield a2m_lib
     a2m_lib.stop()

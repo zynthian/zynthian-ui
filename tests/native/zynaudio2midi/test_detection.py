@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tests.native.zynaudio2midi.conftest import NOTE_OFF, NOTE_ON, RATE, analyse, noise, note_ons, pluck, silence
+from tests.native.zynaudio2midi.conftest import NOTE_OFF, NOTE_ON, PITCH_BEND, RATE, analyse, noise, note_ons, pluck, silence
 
 
 def sequence(notes, secs=0.7, gap=0.3, rate=RATE, **kwargs):
@@ -194,3 +194,100 @@ def test_poly_ignores_mains_hum(a2m):
     a2m.setPolyphonic(1)
     hum = 0.03 * np.sin(2 * np.pi * 50 * np.arange(2 * RATE) / RATE)  # below the polyphonic range
     assert analyse(a2m, hum) == []
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Pitch bend (monophonic)
+# --------------------------------------------------------------------------------------------------------------------
+
+def glide(*segments, amp=0.2):
+    """Harmonic tone following (start pitch, end pitch, seconds) segments, then silence."""
+    pitch = np.concatenate([np.linspace(p0, p1, int(secs * RATE)) for p0, p1, secs in segments])
+    phase = 2 * np.pi * np.cumsum(440 * 2 ** ((pitch - 69) / 12)) / RATE
+    x = sum(np.sin(h * phase) / h for h in range(1, 6))
+    return np.concatenate([(amp * x / np.max(np.abs(x))).astype(np.float32), silence(0.3)])
+
+
+def notes_and_bends(events, bend_range=2):
+    """([(status, note)] of note on/off, [semitones] of pitch bends)"""
+    notes = [(s, a) for t, s, a, b in events if s != PITCH_BEND]
+    bends = [((b << 7 | a) - 8192) / 8192 * bend_range for t, s, a, b in events if s == PITCH_BEND]
+    return notes, bends
+
+
+STRING_BEND = ((57, 57, 0.3), (57, 59, 0.25), (59, 59, 0.4), (59, 57, 0.25), (57, 57, 0.3))
+
+
+def test_pitch_bend_off_by_default(a2m):
+    assert a2m.getPitchBend() == 0
+    notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)))
+    assert bends == []
+    assert [n for s, n in notes if s == NOTE_ON] == [57, 58, 59, 58, 57]  # Without bend: a note per semitone
+
+
+def test_string_bend_is_one_note_with_pitch_bend(a2m):
+    a2m.setPitchBend(1)
+    notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)))
+    assert notes == [(NOTE_ON, 57), (NOTE_OFF, 57)]
+    assert max(bends) == pytest.approx(2, abs=0.1)  # Up to the bent note...
+    assert abs(bends[-2]) < 0.1                     # ...and back (last event resets to centre at the end)
+    assert bends[-1] == 0
+
+
+def test_bend_range_scales_pitch_bend(a2m):
+    a2m.setPitchBend(1)
+    a2m.setBendRange(12)
+    assert a2m.getBendRange() == 12
+    notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)), bend_range=12)
+    assert notes == [(NOTE_ON, 57), (NOTE_OFF, 57)]
+    assert max(bends) == pytest.approx(2, abs=0.1)
+
+
+def test_hammer_on_is_a_new_note_with_pitch_bend(a2m):
+    a2m.setPitchBend(1)
+    notes, bends = notes_and_bends(analyse(a2m, glide((57, 57, 0.4), (59, 59, 0.4))))
+    assert [n for s, n in notes if s == NOTE_ON] == [57, 59]
+
+
+def test_bend_beyond_range_continues_on_a_new_note(a2m):
+    a2m.setPitchBend(1)
+    events = analyse(a2m, glide((57, 57, 0.3), (57, 61, 0.4), (61, 61, 0.4)))
+    notes, bends = notes_and_bends(events)
+    ons = [n for s, n in notes if s == NOTE_ON]
+    assert ons[0] == 57 and len(ons) == 2
+    # Final sounding pitch (new note + its bend) is the played pitch
+    last_bend = [b for b in bends[:-1]][-1]
+    assert ons[1] + last_bend == pytest.approx(61, abs=0.1)
+
+
+def test_vibrato_with_pitch_bend(a2m):
+    a2m.setPitchBend(1)
+    t = np.arange(int(1.5 * RATE)) / RATE
+    pitch = 69 + 0.4 * np.sin(2 * np.pi * 6 * t)
+    phase = 2 * np.pi * np.cumsum(440 * 2 ** ((pitch - 69) / 12)) / RATE
+    notes, bends = notes_and_bends(analyse(a2m, 0.2 * np.sin(phase)))
+    assert notes == [(NOTE_ON, 69), (NOTE_OFF, 69)]
+    assert max(bends) == pytest.approx(0.4, abs=0.1) and min(bends) == pytest.approx(-0.4, abs=0.1)
+
+
+def test_each_note_starts_unbent(a2m):
+    a2m.setPitchBend(1)
+    signal = np.concatenate([glide((57, 57, 0.2), (57, 58, 0.2)), glide((64, 64, 0.5))])
+    events = analyse(a2m, signal)
+    i = [k for k, e in enumerate(events) if e[1] == NOTE_ON and e[2] == 64][0]
+    t, s, a, b = events[i - 1]
+    assert s == PITCH_BEND and (b << 7 | a) == 8192  # Centre sent just before the 2nd note on
+
+
+def test_polyphonic_mode_sends_no_pitch_bend(a2m):
+    a2m.setPitchBend(1)
+    a2m.setPolyphonic(1)
+    notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)))
+    assert bends == []
+
+
+def test_bend_range_is_clamped(a2m):
+    a2m.setBendRange(0)
+    assert a2m.getBendRange() == 1
+    a2m.setBendRange(48)
+    assert a2m.getBendRange() == 24

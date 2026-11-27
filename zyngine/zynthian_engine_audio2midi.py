@@ -21,6 +21,7 @@
 #
 # ******************************************************************************
 
+import os
 import ctypes
 import logging
 
@@ -35,7 +36,7 @@ JACK_CLIENT_NAME = "audio2midi"  # Ports: "input" (audio), "midi_out" (MIDI)
 
 
 class zynthian_engine_audio2midi(zynthian_engine):
-    """Converts the notes played into an audio input to MIDI note on/off (channel 1).
+    """Converts the notes played into an audio input to MIDI note on/off and optional pitch bend (channel 1).
 
     The converter (JACK client) only runs while enabled (start/stop), so it costs nothing when disabled.
     Its MIDI output is a MIDI input device, like a hardware port.
@@ -77,11 +78,27 @@ class zynthian_engine_audio2midi(zynthian_engine):
             "value_max": 100,
             "value_default": 50,
             "is_integer": True
+        }],
+        ["pitchbend", {
+            "name": "pitch bend",
+            "labels": ["off", "on"],
+            "ticks": [0, 1],
+            "value_min": 0,
+            "value_max": 1,
+            "value_default": 0
+        }],
+        ["bend_range", {
+            "name": "bend range",
+            "value_min": 1,
+            "value_max": 24,
+            "value_default": 2,
+            "is_integer": True
         }]
     ]
 
     _ctrl_screens = [
-        ["Audio ➔ MIDI", ["onset", "release", "polyphonic", "noise"]]
+        ["Audio ➔ MIDI", ["onset", "release", "polyphonic", "noise"]],
+        ["Pitch bend", ["pitchbend", "bend_range"]]
     ]
 
     # ----------------------------------------------------------------------------
@@ -102,6 +119,10 @@ class zynthian_engine_audio2midi(zynthian_engine):
         self.nickname = "AM"
         self.processor = proc
 
+        # Help page of the control view (the default would be named after the processor's name)
+        help_dir = os.environ.get('ZYNTHIAN_HELP_DIR', "/zynthian/zynthian-help")
+        self.custom_gui_help_fpath = f"{help_dir}/common/audio2midi.html"
+
         self.audio_out = []
         self.options['midi_chan'] = False
         self.options['replace'] = False
@@ -111,9 +132,10 @@ class zynthian_engine_audio2midi(zynthian_engine):
             self.lib = ctypes.cdll.LoadLibrary(LIB_PATH)
             self.lib.start.restype = ctypes.c_uint8
             self.lib.isRunning.restype = ctypes.c_uint8
-            for fn in ("setOnsetThreshold", "setReleaseThreshold", "setNoiseFilter"):
+            for fn in ("setOnsetThreshold", "setReleaseThreshold", "setNoiseFilter", "setBendRange"):
                 getattr(self.lib, fn).argtypes = [ctypes.c_float]
-            self.lib.setPolyphonic.argtypes = [ctypes.c_uint8]
+            for fn in ("setPolyphonic", "setPitchBend"):
+                getattr(self.lib, fn).argtypes = [ctypes.c_uint8]
         except Exception as e:
             logging.error(f"Can't load audio to MIDI library => {e}")
             self.lib = None
@@ -200,6 +222,10 @@ class zynthian_engine_audio2midi(zynthian_engine):
             self.lib.setPolyphonic(1 if zctrl.value else 0)
         elif zctrl.symbol == "noise":
             self.lib.setNoiseFilter(zctrl.value)
+        elif zctrl.symbol == "pitchbend":
+            self.lib.setPitchBend(1 if zctrl.value else 0)
+        elif zctrl.symbol == "bend_range":
+            self.lib.setBendRange(zctrl.value)
 
 
 # ******************************************************************************

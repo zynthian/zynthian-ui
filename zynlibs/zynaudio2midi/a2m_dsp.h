@@ -33,7 +33,7 @@
 
 typedef struct {
     uint32_t frame;  // Offset of the event (in samples) from the start of the processed block
-    uint8_t data[3]; // MIDI message (note on / note off, MIDI channel 1)
+    uint8_t data[3]; // MIDI message (note on / note off / pitch bend, MIDI channel 1)
 } a2m_event_t;
 
 typedef struct a2m_dsp a2m_dsp_t;
@@ -44,6 +44,8 @@ typedef struct {
     float release_db; // Note off when the note level falls below this (dBFS RMS), limited to onset_db
     float noise;      // Noise filter 0..100: higher values reject more noise but react slower
     int poly;         // 0: monophonic, 1: polyphonic
+    int bend;         // 1: monophonic pitch bend follows the pitch of the held note (e.g. string bends)
+    float bend_range; // Pitch bend range of the receiving synth in semitones (1..24)
 } a2m_params_t;
 
 /** @brief  Create a DSP instance (not RT safe)
@@ -77,7 +79,7 @@ uint32_t a2m_dsp_process(a2m_dsp_t* dsp, const float* in, uint32_t frames, a2m_e
 
 /** @brief  Send note off for all held notes (RT safe)
  *   @param  dsp DSP instance
- *   @param  ev Buffer for the note-off events (A2M_MAX_EVENTS)
+ *   @param  ev Buffer for the note-off (and pitch bend reset) events (A2M_MAX_EVENTS)
  *   @param  frame Frame offset for the events
  *   @retval uint32_t Quantity of events written to ev
  */

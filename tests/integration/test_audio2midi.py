@@ -41,12 +41,13 @@ def test_global_processor_exists(a2m):
 def test_controllers_and_defaults(a2m):
     sm, proc, lib = a2m
     zctrls = proc.controllers_dict
-    assert list(zctrls) == ["onset", "release", "polyphonic", "noise"]
-    assert (zctrls["onset"].value, zctrls["release"].value, zctrls["polyphonic"].value, zctrls["noise"].value) == \
-        (-40, -50, 0, 50)
+    assert list(zctrls) == ["onset", "release", "polyphonic", "noise", "pitchbend", "bend_range"]
+    assert [zctrls[s].value for s in zctrls] == [-40, -50, 0, 50, 0, 2]
     assert zctrls["polyphonic"].labels == ["mono", "poly"]
-    # One control view page with the 4 controllers
-    assert [s[1] for s in proc.engine._ctrl_screens] == [["onset", "release", "polyphonic", "noise"]]
+    assert zctrls["pitchbend"].labels == ["off", "on"]
+    # Control view pages
+    assert [s[1] for s in proc.engine._ctrl_screens] == [["onset", "release", "polyphonic", "noise"],
+                                                         ["pitchbend", "bend_range"]]
 
 
 def test_defaults_are_sent_to_library(a2m):
@@ -57,6 +58,8 @@ def test_defaults_are_sent_to_library(a2m):
     assert last_call(lib, "setReleaseThreshold") == (-50,)
     assert last_call(lib, "setPolyphonic") == (0,)
     assert last_call(lib, "setNoiseFilter") == (50,)
+    assert last_call(lib, "setPitchBend") == (0,)
+    assert last_call(lib, "setBendRange") == (2,)
 
 
 @pytest.mark.parametrize("symbol, value, fn, expected", [
@@ -64,6 +67,8 @@ def test_defaults_are_sent_to_library(a2m):
     ("release", -60, "setReleaseThreshold", (-60,)),
     ("polyphonic", 1, "setPolyphonic", (1,)),
     ("noise", 80, "setNoiseFilter", (80,)),
+    ("pitchbend", 1, "setPitchBend", (1,)),
+    ("bend_range", 12, "setBendRange", (12,)),
 ])
 def test_controller_change_is_sent_to_library(a2m, symbol, value, fn, expected):
     sm, proc, lib = a2m
@@ -131,3 +136,12 @@ def test_controllers_saved_in_state(a2m):
     procs = sm.zs3["zs3-0"]["processors"]
     assert procs[-5]["controllers"]["onset"]["value"] == -25
     assert procs[-5]["controllers"]["polyphonic"]["value"] == 1
+
+
+def test_help_page(a2m):
+    import os
+    sm, proc, lib = a2m
+    assert proc.engine.custom_gui_help_fpath.endswith("/common/audio2midi.html")
+    repo_page = os.path.join(os.path.dirname(__file__), "..", "..", "help", "common", "audio2midi.html")
+    if os.path.isdir(os.path.join(os.path.dirname(repo_page), "..")):  # zynthian-help checked out next to the UI
+        assert os.path.isfile(repo_page)

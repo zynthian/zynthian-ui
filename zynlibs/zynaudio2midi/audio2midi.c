@@ -43,6 +43,8 @@ static _Atomic float g_onset = -40.0f;
 static _Atomic float g_release = -50.0f;
 static _Atomic float g_noise = 50.0f;
 static atomic_int g_poly = 0;
+static atomic_int g_bend = 0;
+static _Atomic float g_bend_range = 2.0f;
 static atomic_uint g_new_rate = 0; // Samplerate change requested by JACK, applied in process thread
 static atomic_int g_flush = 0;     // 1: stop requested, release notes; 2: notes released
 
@@ -55,6 +57,8 @@ static void get_params(a2m_params_t* p) {
     p->release_db = atomic_load(&g_release);
     p->noise = atomic_load(&g_noise);
     p->poly = atomic_load(&g_poly);
+    p->bend = atomic_load(&g_bend);
+    p->bend_range = atomic_load(&g_bend_range);
 }
 
 static void write_events(void* buffer, uint32_t count, jack_nframes_t frames) {
@@ -165,6 +169,22 @@ void setNoiseFilter(float value) {
 
 float getNoiseFilter() {
     return atomic_load(&g_noise);
+}
+
+void setPitchBend(uint8_t enable) {
+    atomic_store(&g_bend, enable ? 1 : 0);
+}
+
+uint8_t getPitchBend() {
+    return atomic_load(&g_bend);
+}
+
+void setBendRange(float semitones) {
+    atomic_store(&g_bend_range, clampf(semitones, 1.0f, 24.0f));
+}
+
+float getBendRange() {
+    return atomic_load(&g_bend_range);
 }
 
 uint32_t analyse(const float* buffer, uint32_t frames, uint32_t rate, uint32_t block,

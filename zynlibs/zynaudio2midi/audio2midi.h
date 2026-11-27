@@ -3,7 +3,8 @@
  * ZYNTHIAN PROJECT: Audio to MIDI converter (zynaudio2midi)
  *
  * JACK client with one audio input and one MIDI output that converts
- * the notes played into the input to MIDI note on / off (channel 1).
+ * the notes played into the input to MIDI note on / off and, optionally,
+ * pitch bend (channel 1).
  * The JACK client only exists while the converter is started.
  *
  * Copyright (C) 2026 Brian Walton <riban@zynthian.org>
@@ -67,6 +68,19 @@ uint8_t getPolyphonic();
  */
 void setNoiseFilter(float value);
 float getNoiseFilter();
+
+/** @brief  Enable pitch bend (monophonic only): gradual pitch movement of the held note within the bend range,
+ *          e.g. string bends, is sent as pitch bend instead of a new note
+ *   @param  enable 1 to enable
+ */
+void setPitchBend(uint8_t enable);
+uint8_t getPitchBend();
+
+/** @brief  Set the pitch bend range, which must match the receiving synth's
+ *   @param  semitones 1..24 (default 2)
+ */
+void setBendRange(float semitones);
+float getBendRange();
 
 /** @brief  Event produced by analyse() */
 typedef struct {
