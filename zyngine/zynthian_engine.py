@@ -166,7 +166,8 @@ class zynthian_engine(zynthian_basic_engine):
     def __init__(self, state_manager=None):
         super().__init__()
         self.state_manager = state_manager
-        self.chain_manager = state_manager.chain_manager
+        # state_manager is None for API instances, e.g. the alsa_mixer instance used by webconf
+        self.chain_manager = state_manager.chain_manager if state_manager else None
 
         self.custom_gui_fpath = None
         self.custom_gui_help_fpath = None  # Help page (HTML) for the custom GUI, if any
