@@ -289,7 +289,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 tempo_lock = True
 
             # Try to determine sample tempo from file path (not only the filename => it could be in a subdir)
-            regptn = r"(\d+)\s*(?=bpm|BPM)"
+            regptn = r"(\d+(?:\.\d+)?)\s*(?=bpm|BPM)"
             matches = re.findall(regptn, fpath)
             try:
                 file_tempo = float(matches[0])
