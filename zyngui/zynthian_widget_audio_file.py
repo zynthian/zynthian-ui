@@ -544,6 +544,9 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
     ENG_CHAIN_AP = 3
     ENG_SAMPLV1 = 4
 
+    # Path controllers with these file types are shown by this widget (same as zynthian_gui_control.get_screen_type)
+    AUDIO_FILE_TYPES = {"wav", "aiff", "flac", "mp3", "ogg"}
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -623,11 +626,7 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                 note = self.processor.engine.selected_phrase + 1
                 self.zctrl = self.processor.controllers_dict[f"file {note}"]
             except:
-                self.zctrl = None
-                for zctrl in self.processor.controllers_dict.values():
-                    if zctrl.is_path:
-                        self.zctrl = zctrl
-                        break
+                self.zctrl = self.find_audio_path_zctrl()
         # Determine type of engine
         self.eng_type = self.ENG_NONE
         self.clip_info = None
@@ -643,6 +642,23 @@ class zynthian_widget_audio_file(zynthian_widget_base.zynthian_widget_base):
                     self.eng_type = self.ENG_CHAIN_AP
             elif self.processor.eng_code == "JV/samplv1":
                 self.eng_type = self.ENG_SAMPLV1
+
+    def find_audio_path_zctrl(self):
+        """Find the processor's path controller for audio files, used on pages without one.
+
+        A processor may have several path controllers (e.g. samplv1 has tuning scale and keymap files),
+        so prefer the ones declaring audio file types, then the ones declaring no file types.
+        """
+        untyped = None
+        for zctrl in self.processor.controllers_dict.values():
+            if not zctrl.is_path:
+                continue
+            if zctrl.path_file_types:
+                if set(zctrl.path_file_types) & self.AUDIO_FILE_TYPES:
+                    return zctrl
+            elif untyped is None:
+                untyped = zctrl
+        return untyped
 
     def show(self):
         #self.loading = False
