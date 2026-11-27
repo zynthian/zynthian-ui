@@ -187,9 +187,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.stut_chance = 1.0
 
         self.keymap = []  # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
+        self.keymap_name = "Chromatic"  # Name of the current keymap
         self.keymap_offset = 60  # MIDI note number of bottom row in grid
         self.reload_keymap = False  # True when keymap needs reloading
-        self.keymap_state = {}  # Keymap description for the screen state, built by load_keymap()
+
         self.chord_mode = 0  # Chord entry mode. 0 for single note entry
         self.chord_type = 0  # Chord type. Index of CHORD
         self.diatonic_scale_tonic = 0  # Tonic of diatonic scale used for chords
@@ -220,8 +221,16 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def get_cursor_state(self):
         return {**super().get_cursor_state(), "note": self.get_evnum_from_row(self.selected_cell[1])}
 
+    def get_keymap_state(self):
+        # Custom maps (drum kits, ...) name each note: report them, so clients don't have to read the map files
+        if self.zynseq.libseq.getScale() == 0 and self.keymap_name != "Chromatic":
+            keys = [[key["note"], key["name"]] for key in self.keymap if "name" in key]
+        else:
+            keys = None
+        return {"name": self.keymap_name, "keys": keys}
+
     def get_editor_state(self):
-        return {**super().get_editor_state(), "chord_mode": self.chord_mode, "keymap": self.keymap_state}
+        return {**super().get_editor_state(), "chord_mode": self.chord_mode, "keymap": self.get_keymap_state()}
 
     def get_evnum_from_row(self, row):
         try:
@@ -528,14 +537,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Function to populate keymap array
     # returns Name of scale / map
     def load_keymap(self):
-        name = self.build_keymap()
-        # Custom maps (drum kits, ...) name each note: report them, so clients don't have to read the map files
-        if self.zynseq.libseq.getScale() == 0 and name != "Chromatic":
-            keys = [[key["note"], key["name"]] for key in self.keymap if "name" in key]
-        else:
-            keys = None
-        self.keymap_state = {"name": name, "keys": keys}
-        return name
+        self.keymap_name = self.build_keymap()
+        return self.keymap_name
 
     def build_keymap(self):
         self.keymap = []
