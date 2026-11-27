@@ -23,6 +23,7 @@
 # ****************************************************************************
 
 import os
+import re
 import ctypes
 import logging
 import traceback
@@ -74,6 +75,7 @@ ALSA_ID = -2
 AUDIO_PLAYER_ID = -3
 TEMPO_ID = -4
 AUDIO2MIDI_ID = -5
+ROUTER_CHAIN_OUT_RE = re.compile(r"^ZynMidiRouter:ch\d+_out$")  # MIDI router output feeding a chain (zmop)
 AUDIO2MIDI_UID = zynautoconnect.AUDIO2MIDI_UID  # MIDI port UID of the audio to MIDI converter's output 1
 AUDIO2MIDI_UIDS = zynautoconnect.AUDIO2MIDI_UIDS  # MIDI port UID of each output
 
@@ -1468,7 +1470,7 @@ class zynthian_state_manager:
                         lib_zyncore.zmop_set_transpose_semitone(chain.zmop_index, 0)
 
                 if "midi_in" in chain_state:
-                    chain.midi_in = chain_state["midi_in"]
+                    chain.midi_in = self.fix_chain_router_midi_in(chain, chain_state["midi_in"])
                 if "midi_out" in chain_state:
                     chain.midi_out = chain_state["midi_out"]
                 if "audio_in" in chain_state:
@@ -2090,6 +2092,33 @@ class zynthian_state_manager:
         """
 
         return mcstate
+
+    @staticmethod
+    def fix_chain_router_midi_in(chain, midi_in):
+        """Get the MIDI inputs of a chain from its saved state, fed by its own MIDI router output
+
+        A chain's processors are fed by the router output of its zmop ("ZynMidiRouter:chN_out"). The zmop is
+        assigned when the chain is created and may differ from the one in a saved state (e.g. it wasn't free), so
+        a saved router output could be another chain's: the chain would play the other chain's MIDI and not its own.
+
+        chain : Chain object
+        midi_in : MIDI inputs from the saved state
+        Returns : MIDI inputs with any router output replaced by the chain's own (removed if it has no zmop)
+        """
+
+        result = []
+        for src in midi_in:
+            if isinstance(src, str) and ROUTER_CHAIN_OUT_RE.match(src):
+                if chain.zmop_index is None or chain.zmop_index < 0:
+                    logging.warning(f"Chain {chain.chain_id} has no MIDI router output: ignoring MIDI input {src}")
+                    continue
+                own = f"ZynMidiRouter:ch{chain.zmop_index}_out"
+                if src != own:
+                    logging.warning(f"Chain {chain.chain_id} MIDI input {src} isn't its router output: using {own}")
+                src = own
+            if src not in result:
+                result.append(src)
+        return result
 
     def set_midi_capture_state(self, mcstate=None, restore_midi_learn=True):
         """ Set midi input (capture) state: flags, chain routing, etc.
