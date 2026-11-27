@@ -38,6 +38,7 @@ ZynthianState = {
         "BLE_ENABLED": "0", # "1" enables Bluetooth (BLE MIDI)
         "BLE_CONTROLLER": "", # Address of the Bluetooth controller to use. "" for default
         "AUBIONOTES_ENABLED": "0", # "1" enables the aubionotes audio to MIDI service
+        "AUDIO2MIDI_ENABLED": "0", # "1" enables the built-in audio to MIDI converter (global processor)
         "TRANSPORT_CLOCK_SOURCE": "Internal", # Transport clock source. Default "Internal"
         "PLAY_LOOP": "0", # "1" loops playback in the MIDI recorder
         "MASTER_CHANNEL": "0", # Master channel features MIDI channel, 1-based. "0" disables

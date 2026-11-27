@@ -611,6 +611,7 @@ class zynthian_gui:
         # Special Control Screens (processor ID < -1)
         self.screens['tempo'] = self.screens['control']
         self.screens['alsa_mixer'] = self.screens['control']
+        self.screens['audio2midi'] = self.screens['control']
         self.screens['audio_player'] = self.screens['control']
 
         #self.screens['arranger'] = zynthian_gui_arranger()
@@ -764,6 +765,8 @@ class zynthian_gui:
         elif screen == "tempo":
             self.state_manager.tempo_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.tempo_processor
+        elif screen == "audio2midi":
+            self.current_processor = self.state_manager.audio2midi_processor
         elif screen == "audio_player":
             if self.state_manager.audio_player:
                 self.current_processor = self.state_manager.audio_player
@@ -826,6 +829,9 @@ class zynthian_gui:
 
     def is_shown_alsa_mixer(self):
         return self.current_processor == self.state_manager.alsa_mixer_processor
+
+    def is_shown_audio2midi(self):
+        return self.current_processor == self.state_manager.audio2midi_processor
 
     def is_shown_audio_player(self):
         return self.current_processor == self.state_manager.audio_player
@@ -2310,6 +2316,14 @@ class zynthian_gui:
 
         self.show_screen("alsa_mixer")
 
+    def cuia_screen_audio2midi(self, params=None):
+        """Show the audio to MIDI converter controls view.
+
+        Category: screens
+        """
+
+        self.show_screen("audio2midi")
+
     def cuia_screen_launcher(self, params=None):
         """Show the launcher view.
 
@@ -2465,7 +2479,7 @@ class zynthian_gui:
         Category: screens
         """
 
-        if self.is_shown_alsa_mixer():
+        if self.is_shown_alsa_mixer() or self.is_shown_audio2midi():
             return
         if self.is_shown_audio_player():
             self.cuia_bank_preset()
@@ -2507,7 +2521,7 @@ class zynthian_gui:
         Category: screens
         """
 
-        if self.is_shown_alsa_mixer():
+        if self.is_shown_alsa_mixer() or self.is_shown_audio2midi():
             return
         if params:
             try:
@@ -2631,7 +2645,7 @@ class zynthian_gui:
     def get_midi_learn_screen_obj(self):
         if self.current_screen == "chain_control" and self.screens["chain_control"].subscreen_name == "control":
             return self.screens["chain_control"].subscreen
-        elif self.current_screen in ("alsa_mixer", "midi_key_range"):
+        elif self.current_screen in ("alsa_mixer", "audio2midi", "midi_key_range"):
             return self.screens[self.current_screen]
 
     def cuia_enable_midi_learn_cc(self, params=None):
@@ -3148,6 +3162,7 @@ class zynthian_gui:
             "audio_player": [["audio_player"], ["midi_cc_range", "midi_cc_single"]],
             "alsa_mixer": [["alsa_mixer"], ["midi_cc_range", "midi_cc_single"]],
             "tempo": [["tempo"], ["midi_cc_range", "midi_cc_single"]],
+            "audio2midi": [["audio2midi"], ["midi_cc_range", "midi_cc_single"]],
             "pated": [["pattern_editor", "pated_cc"], ["midi_prog"]],
             "snapshot": [["snapshot"], []],
             "zs3": [["zs3"], []]

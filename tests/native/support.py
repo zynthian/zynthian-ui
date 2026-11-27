@@ -2,7 +2,7 @@
 
 Libraries are built out of tree by ``tests/native/build_native.sh`` into ``tests/native/build/``:
 ``libzyncore.so`` (TOUCH_ONLY wiring layout: the real ZynMidiRouter, no wiringPi / I2C), ``libzynseq.so``,
-``libzynsmf.so``, ``libzynaudioplayer.so``, ``libzynmixer.so``. ``ZYNTHIAN_TEST_<NAME>_LIB`` overrides a path.
+``libzynsmf.so``, ``libzynaudioplayer.so``, ``libzynmixer.so``, ``libzynaudio2midi.so``. ``ZYNTHIAN_TEST_<NAME>_LIB`` overrides a path.
 """
 
 import os
