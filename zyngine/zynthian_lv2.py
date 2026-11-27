@@ -36,7 +36,6 @@ import urllib.parse
 import shutil
 import platform
 from subprocess import run, Popen, STDOUT, PIPE
-from rdflib import Graph, Namespace, RDF
 
 from enum import Enum
 from random import randrange
@@ -193,6 +192,8 @@ except:
 ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+# Cache of plugin info extracted from LV2 data, so plugins whose data files didn't change are not parsed by lilv
+LV2_PLUGIN_INFO_CACHE_FILE = "{}/jalv/plugin_info_cache.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 # Touch this file after updating files inside an existing LV2 bundle (e.g. a widget's manifest),
 # so the UI reloads the LV2 data. Adding or removing bundles is detected without it.
 LV2_STAMP_FILE = "{}/lv2.stamp".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
@@ -408,12 +409,75 @@ def get_engine_description(key):
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."]
     return description[randrange(4)]
 
+def is_plugin_supported(plugin_uri):
+    """Check if a plugin works in the detected RBPi version (without loading plugin data)"""
+    return rbpi_version_number >= 5 or plugin_uri not in rpi5_plugins
+
+
+def get_plugin_data_signature(plugin):
+    """Get a cheap signature of the plugin's RDF data files (path, mtime & size).
+    Doesn't load the plugin data: data URIs are known after world.load_all()."""
+    sig = []
+    # Collection's Iter is not iterable in list comprehensions => use a plain for loop
+    for uri in plugin.get_data_uris():
+        fpath = urllib.parse.unquote(str(uri)[7:])
+        try:
+            st = os.stat(fpath)
+            sig.append([fpath, st.st_mtime_ns, st.st_size])
+        except OSError:
+            sig.append([fpath, None, None])
+    return sig
+
+
+def load_plugin_info_cache():
+    try:
+        with open(LV2_PLUGIN_INFO_CACHE_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        logging.warning(f"Can't load LV2 plugin info cache => {e}")
+    return {}
+
+
+def save_plugin_info_cache(cache):
+    try:
+        with open(LV2_PLUGIN_INFO_CACHE_FILE, 'w') as f:
+            json.dump(cache, f, indent=0)
+    except Exception as e:
+        logging.error(f"Can't save LV2 plugin info cache => {e}")
+
+
+def get_plugin_info(plugin, cache):
+    """Get the plugin info needed by the engines DB, using the cache when the plugin data files didn't change.
+    Querying lilv for a plugin loads & parses all its data files (it can take several seconds and
+    hundreds of MB for plugins with big TTL files), so it's avoided whenever possible.
+    plugin : lilv plugin
+    cache : plugin info cache dict, indexed by URI (not modified)
+    Returns a dict {'SIG', 'NAME', 'TYPE', 'CAT', 'UI', 'DESCR'}
+    """
+    sig = get_plugin_data_signature(plugin)
+    info = cache.get(str(plugin.get_uri()))
+    if info and info.get('SIG') == sig:
+        return info
+    return {
+        'SIG': sig,
+        'NAME': str(plugin.get_name()),
+        'TYPE': get_plugin_type(plugin).value,
+        'CAT': get_plugin_cat(plugin),
+        'UI': get_plugin_ui(plugin),
+        'DESCR': get_plugin_description(plugin)
+    }
+
+
 def get_info_from_ttl(bundle_path):
     """ Get a dictionary of info about each plugin from ttl files in a bundle
     Args:
         path: Path to .lv2 directory
     Returns: Dictionary of info, indexed by plugin uri
     """
+    # Imported here because it's slow to import and only needed when installing plugins
+    from rdflib import Graph, Namespace, RDF
 
     info = {}
     g = Graph()
@@ -602,16 +666,19 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
         i += 1
 
     # Add LV2 plugins
+    plugin_info_cache = load_plugin_info_cache()
+    new_plugin_info_cache = {}
     for plugin in world.get_all_plugins():
         try:
-            engine_name = str(plugin.get_name())
             engine_uri = str(plugin.get_uri())
+            # Skip plugins that doesn't work in the detected RBPi version (before loading their data!)
+            if not is_plugin_supported(engine_uri):
+                continue
+            plugin_info = get_plugin_info(plugin, plugin_info_cache)
+            new_plugin_info_cache[engine_uri] = plugin_info
+            engine_name = plugin_info['NAME']
         except Exception as e:
             logging.warning(f"Can't get basic info for plugin => {e}")
-            continue
-
-        # Skip plugins that doesn't work in the detected RBPi version
-        if rbpi_version_number < 5 and engine_uri in rpi5_plugins:
             continue
 
         key = f"JV/{engine_name}"
@@ -624,7 +691,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
                 try:
                     engine_cat = lv2class2engcat[engine_cat]
                 except:
-                    engine_cat = get_plugin_cat(plugin)
+                    engine_cat = plugin_info['CAT']
             engine_index = engines[key]['INDEX']
             engine_descr = engines[key]['DESCR']
             engine_quality = engines[key]['QUALITY']
@@ -637,8 +704,8 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
             hash.update(key.encode())
             engine_id = hash.hexdigest()[:10]
             engine_title = engine_name
-            engine_type = get_plugin_type(plugin).value
-            engine_cat = get_plugin_cat(plugin)
+            engine_type = plugin_info['TYPE']
+            engine_cat = plugin_info['CAT']
             engine_index = 9999
             engine_descr = ""
             engine_quality = 0
@@ -647,7 +714,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 
         if not engine_descr:
             # Get plugin description
-            engine_descr = get_plugin_description(plugin)
+            engine_descr = plugin_info['DESCR']
             # If not, use "Lorem Ipsum" default
             if not engine_descr:
                 engine_descr = get_engine_description(key)
@@ -667,7 +734,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
             'ENABLED': is_engine_enabled(key, False),
             'INDEX': engine_index,
             'URL': engine_uri,
-            'UI': get_plugin_ui(plugin),
+            'UI': plugin_info['UI'],
             'DESCR': engine_descr,
             "QUALITY": engine_quality,
             "COMPLEX": engine_complex,
@@ -675,6 +742,10 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
         }
         logging.debug("LV2 Plugin '{}' => {}".format(
             engine_name, genengines[key]))
+
+    # Save plugin info cache (only the currently installed plugins), if changed
+    if new_plugin_info_cache != plugin_info_cache:
+        save_plugin_info_cache(new_plugin_info_cache)
 
     try:
         # Sort using title, so user can customize order by changing title from webconf
@@ -884,20 +955,13 @@ def get_plugin_description(plugin):
 # LV2 Bank/Preset management
 # ------------------------------------------------------------------------------
 
-# workaround to fix segfault:
-def generate_presets_cache_workaround():
-    start = int(round(time.time()))
-    for plugin in world.get_all_plugins():
-        plugin.get_name()
-    logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
-
-
 def generate_all_presets_cache(refresh=True):
     if refresh:
         init_lilv()
 
     for plugin in world.get_all_plugins():
-        _generate_plugin_presets_cache(plugin)
+        if is_plugin_supported(str(plugin.get_uri())):
+            _generate_plugin_presets_cache(plugin)
 
 
 def generate_plugin_presets_cache(plugin_url, refresh=True):
@@ -948,8 +1012,20 @@ def _generate_plugin_presets_cache(plugin):
 
     # Get presets
     presets = plugin.get_related(world.ns.presets.Preset)
+    # Load each preset's data files (rdfs:seeAlso). Many presets usually share the same file
+    # (e.g. a bank file) and each load/unload call is slow, even when there is nothing to do,
+    # so only load a preset if it has files not loaded yet, and unload only those presets.
+    loaded_files = set()
+    loaded_presets = []
     for preset in presets:
-        world.load_resource(preset)
+        preset_files = set()
+        # Collection's Iter is not iterable in comprehensions => use a plain for loop
+        for fnode in world.find_nodes(preset, world.ns.rdfs.seeAlso, None):
+            preset_files.add(str(fnode))
+        if not preset_files <= loaded_files:
+            world.load_resource(preset)
+            loaded_files |= preset_files
+            loaded_presets.append(preset)
 
         label = world.get(preset, world.ns.rdfs.label, None)
         if label is None:
@@ -985,7 +1061,7 @@ def _generate_plugin_presets_cache(plugin):
 
         logging.debug("Preset {} <{}> => <{}>".format(label, bank, preset))
 
-    for preset in presets:
+    for preset in loaded_presets:
         world.unload_resource(preset)
 
     # Sort and Remove empty banks
@@ -1463,7 +1539,6 @@ if __name__ == '__main__':
                     generate_plugin_presets_cache(info['URL'], False)
 
         elif sys.argv[1] == "presets":
-            generate_presets_cache_workaround()
             if len(sys.argv) > 2:
                 for plugin_url in sys.argv[2:]:
                     generate_plugin_presets_cache(plugin_url, False)

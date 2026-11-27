@@ -730,7 +730,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         # Handle alsa mixer
         default_midi_learning_mode = MIDI_LEARNING_CHAIN
         try:
-            if self.zyngui.get_current_processor().eng_code == "MX":
+            if self.zyngui.get_current_processor().eng_code in ("MX", "AM"):
                 default_midi_learning_mode = MIDI_LEARNING_GLOBAL
         except:
             pass

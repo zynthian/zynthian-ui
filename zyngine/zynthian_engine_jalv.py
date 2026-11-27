@@ -328,7 +328,11 @@ class zynthian_engine_jalv_base(zynthian_engine):
         logging.info("Getting Controller List from LV2 Plugin ...")
         zctrls = {}
         self.bypass_zctrl = None
-        for info in zynthian_lv2.get_plugin_ports(self.plugin_url):
+        ports = list(zynthian_lv2.get_plugin_ports(self.plugin_url))
+        # A port designated lv2:enabled is the plugin's own bypass and takes precedence
+        # over any port that merely looks like a bypass by its symbol.
+        has_designated_bypass = any(info['is_bypass'] for info in ports)
+        for info in ports:
             symbol = info['symbol']
 
             if not self.customize_lv2_controller(info):
@@ -339,10 +343,15 @@ class zynthian_engine_jalv_base(zynthian_engine):
 
             try:
                 if not info['is_bypass'] and self.type == "Audio Effect" and symbol.lower() in ("bypass", "enable"):
-                    # Detect a native bypass/enable toggle that is not designated as it should
-                    info['is_bypass'] = True
-                    # Deduce bypass logic => Assume default (initial) state is NOT bypassed
-                    info['bypass_value'] = int(not info['value'])
+                    if has_designated_bypass:
+                        # Redundant undesignated bypass/enable toggle => hide it so the
+                        # designated one is the only bypass presented
+                        info['not_on_gui'] = True
+                    else:
+                        # Detect a native bypass/enable toggle that is not designated as it should
+                        info['is_bypass'] = True
+                        # Deduce bypass logic => Assume default (initial) state is NOT bypassed
+                        info['bypass_value'] = int(not info['value'])
 
                 display_priority = info['display_priority']
                 if info['group_display_priority'] > 0:
@@ -518,7 +527,11 @@ class zynthian_engine_jalv_base(zynthian_engine):
                     })
 
                 if info['is_bypass']:
-                    self.bypass_zctrl = zctrls[symbol]
+                    if self.bypass_zctrl is None:
+                        self.bypass_zctrl = zctrls[symbol]
+                    else:
+                        # Only one bypass per processor => demote any extra one
+                        zctrls[symbol].is_bypass = False
 
             # If control info is not OK
             except Exception as e:

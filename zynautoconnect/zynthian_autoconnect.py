@@ -139,6 +139,9 @@ xruns = 0						# Quantity of xruns since startup or last reset
 deferred_midi_connect = False
 # True to perform audio connect on next port check cycle
 deferred_audio_connect = False
+# Audio to MIDI converter (global processor): JACK client and the UID of its MIDI port
+AUDIO2MIDI_CLIENT = "audio2midi"
+AUDIO2MIDI_UID = "AUDIO2MIDI:in"
 # List of hardware MIDI  source ports (including network, aubionotes, etc.)
 hw_midi_src_ports = []
 # List of hardware MIDI destination ports (including network, aubionotes, etc.)
@@ -701,7 +704,7 @@ def update_hw_midi_ports(force=False):
             hw_midi_dst_ports += ports
         except:
             pass
-    for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", "aubio"):
+    for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", "aubio", f"{AUDIO2MIDI_CLIENT}:midi_out"):
         try:
             ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
             hw_midi_src_ports += ports
@@ -1187,6 +1190,16 @@ def audio_autoconnect():
                 except:
                     pass
 
+    # Connect inputs to the audio to MIDI converter (mixed into its single input)
+    a2m_input = f"{AUDIO2MIDI_CLIENT}:input"
+    if a2m_input in required_routes:
+        capture_ports = get_audio_capture_ports()
+        for i in state_manager.audio2midi_in:
+            try:
+                required_routes[a2m_input].add(capture_ports[i - 1].name)
+            except:
+                pass
+
     # Remove mod-ui routes
     for dst in list(required_routes.keys()):
         if dst.startswith("mod-monitor:"):
@@ -1488,6 +1501,8 @@ def build_midi_port_name(port):
         return f"NET:touchosc_{port.name.split()[0][6:]}", "TouchOSC"
     elif port.name.startswith("aubio:midi_out"):
         return f"AUBIO:in", "Audio\u2794MIDI"
+    elif port.name == f"{AUDIO2MIDI_CLIENT}:midi_out":
+        return AUDIO2MIDI_UID, "Audio \u2794 MIDI"
     elif port.name.startswith("BLE_MIDI:"):
         return port.aliases[0], port.aliases[1]
 

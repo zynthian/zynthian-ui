@@ -73,6 +73,8 @@ MAIN_MIXBUS_ID = -1
 ALSA_ID = -2
 AUDIO_PLAYER_ID = -3
 TEMPO_ID = -4
+AUDIO2MIDI_ID = -5
+AUDIO2MIDI_UID = zynautoconnect.AUDIO2MIDI_UID  # MIDI port UID of the audio to MIDI converter
 
 class zynthian_state_manager:
 
@@ -153,11 +155,13 @@ class zynthian_state_manager:
         self.zynseq = zynseq.zynseq(self)
         self.alsa_mixer_processor = self.chain_manager.add_processor(None, "MX", None, ALSA_ID)
         self.tempo_processor = self.chain_manager.add_processor(None, "TP", None, TEMPO_ID) #TODO: Use zynseq engine directly
+        self.audio2midi_processor = self.chain_manager.add_processor(None, "AM", None, AUDIO2MIDI_ID)
 
         self.audio_recorder = zynthian_audio_recorder(self)
         self.ctrldev_manager = None
         self.audio_player = None
         self.aubio_in = [1, 2]  # List of aubio inputs
+        self.audio2midi_in = [1]  # List of audio inputs (mixed) of the audio to MIDI converter
 
         # List of lists [rate, cb, schedule] for registered regularly repeating callbacks
         self.slow_update_callbacks = []
@@ -2058,6 +2062,8 @@ class zynthian_state_manager:
             # Aubio state
             if uid == "AUBIO:in":
                 mcstate[uid]["audio_in"] = self.aubio_in
+            elif uid == AUDIO2MIDI_UID:
+                mcstate[uid]["audio_in"] = self.audio2midi_in
             # Add MIDI mapping
             for key, zctrls in self.chain_manager.midi_cc_binding.items():
                 cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(key)
@@ -2109,7 +2115,10 @@ class zynthian_state_manager:
                         pass
                     """
                     try:
-                        self.aubio_in = state["audio_in"]
+                        if uid == AUDIO2MIDI_UID:
+                            self.audio2midi_in = list(state["audio_in"])
+                        else:
+                            self.aubio_in = state["audio_in"]
                     except:
                         pass
                     zynautoconnect.update_midi_in_dev_mode(izmip)
@@ -2262,6 +2271,7 @@ class zynthian_state_manager:
         self.default_touchosc()
         self.default_bluetooth()
         self.default_aubionotes()
+        self.default_audio2midi()
 
     # -------------------------------------------------------------------
     # MIDI profile
@@ -2943,6 +2953,72 @@ class zynthian_state_manager:
             self.start_aubionotes(False)
         else:
             self.stop_aubionotes(False)
+
+    def is_audio2midi_running(self):
+        """Check if the audio to MIDI converter (global processor) is running"""
+        try:
+            return self.audio2midi_processor.engine.is_running()
+        except:
+            return False
+
+    def start_audio2midi(self, save_config=True, wait=0):
+        """Start the audio to MIDI converter
+
+        save_config : True to save enabled state in MIDI profile
+        wait : Seconds to wait before autoconnect
+        """
+        if not self.is_audio2midi_running():
+            logging.info("STARTING audio to MIDI converter")
+            try:
+                if not self.audio2midi_processor.engine.start_converter():
+                    raise Exception("Can't start JACK client")
+            except Exception as e:
+                logging.error(e)
+                self.set_busy_error("ERROR STARTING Audio \u2794 MIDI", e)
+                return
+        zynthian_gui_config.midi_audio2midi_enabled = 1
+        if save_config:
+            self.save_audio2midi_config()
+        sleep(wait)
+        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_audio_connect(True)
+
+    def stop_audio2midi(self, save_config=True, wait=0):
+        """Stop the audio to MIDI converter
+
+        save_config : True to save enabled state in MIDI profile
+        wait : Seconds to wait after stopping
+        """
+        if self.is_audio2midi_running():
+            logging.info("STOPPING audio to MIDI converter")
+            self.audio2midi_processor.engine.stop_converter()
+        zynthian_gui_config.midi_audio2midi_enabled = 0
+        if save_config:
+            self.save_audio2midi_config()
+        sleep(wait)
+        zynautoconnect.request_midi_connect(True)
+
+    def save_audio2midi_config(self):
+        """Save enabled state of the audio to MIDI converter in MIDI profile"""
+        try:
+            zynconf.update_midi_profile({
+                "ZYNTHIAN_MIDI_AUDIO2MIDI_ENABLED": str(zynthian_gui_config.midi_audio2midi_enabled)
+            })
+        except Exception as e:
+            logging.error(f"Can't save audio to MIDI config => {e}")
+
+    def toggle_audio2midi(self, save_config=True, wait=0):
+        if self.is_audio2midi_running():
+            self.stop_audio2midi(save_config, wait)
+        else:
+            self.start_audio2midi(save_config, wait)
+
+    def default_audio2midi(self):
+        """Start/Stop the audio to MIDI converter depending on configuration (disabled by default)"""
+        if zynthian_gui_config.midi_audio2midi_enabled:
+            self.start_audio2midi(False)
+        else:
+            self.stop_audio2midi(False)
 
     # ---------------------------------------------------------------------------
     # Zynthian Config Info

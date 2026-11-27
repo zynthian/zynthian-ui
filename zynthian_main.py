@@ -30,6 +30,20 @@ import logging
 from time import sleep
 from tkinter import EventType
 
+# Optional remote debugger: ZYNTHIAN_DEBUGPY=[host:]port (default host 127.0.0.1).
+# ZYNTHIAN_DEBUGPY_WAIT=1 blocks startup until a debugger client attaches.
+if os.environ.get("ZYNTHIAN_DEBUGPY"):
+    try:
+        import debugpy
+        _dbg_host, _, _dbg_port = os.environ["ZYNTHIAN_DEBUGPY"].rpartition(":")
+        debugpy.listen((_dbg_host or "127.0.0.1", int(_dbg_port)))
+        logging.warning(f"debugpy listening on {_dbg_host or '127.0.0.1'}:{_dbg_port}")
+        if os.environ.get("ZYNTHIAN_DEBUGPY_WAIT") == "1":
+            logging.warning("Waiting for debugger to attach...")
+            debugpy.wait_for_client()
+    except Exception as e:
+        logging.error(f"Can't start debugpy: {e}")
+
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_chain import *

@@ -4,7 +4,7 @@
 #   libzyncore.so          zyncoder, wiring layout TOUCH_ONLY: the real ZynMidiRouter + ZynMaster without
 #                          wiringPi / I2C / rotaries / switches (needs the separate zyncoder repo);
 #                          built by build_zyncore.sh, which can also be run on its own
-#   libzynseq.so, libzynsmf.so, libzynaudioplayer.so, libzynmixer*.so     from zynlibs/
+#   libzynseq.so, libzynsmf.so, libzynaudioplayer.so, libzynmixer*.so, libzynaudio2midi.so     from zynlibs/
 #
 # Needs cmake, gcc/g++, libjack-dev, liblo-dev, nlohmann-json3-dev (zynseq) (+ libsndfile, libsamplerate,
 # librubberband dev for the audio player). The source trees (and their own build/ dirs) are left untouched.
@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UI="$(cd "$HERE/../.." && pwd)"
 ZYNCODER="${1:-${ZYNCODER_DIR:-$UI/../zyncoder}}"
 BUILD="$HERE/build"
-ONLY="${ONLY:-zyncore zynseq zynsmf zynaudioplayer zynmixer}"
+ONLY="${ONLY:-zyncore zynseq zynsmf zynaudioplayer zynmixer zynaudio2midi}"
 mkdir -p "$BUILD"
 failed=0
 
@@ -61,5 +61,6 @@ build zynseq         "$UI/zynlibs/zynseq"          "$RELEASE" CXXFLAGS="${CXXFLA
 build zynsmf         "$UI/zynlibs/zynsmf"          "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
 build zynaudioplayer "$UI/zynlibs/zynaudioplayer"  "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
 build zynmixer       "$UI/zynlibs/zynmixer"        "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
+build zynaudio2midi  "$UI/zynlibs/zynaudio2midi"   "$RELEASE" CXXFLAGS="${CXXFLAGS:-} $WARN" CFLAGS="${CFLAGS:-} $WARN"
 ls "$BUILD"/lib*.so
 exit $failed

@@ -82,6 +82,7 @@ engine2class = {
     "MR": zynthian_engine_audio_mixer,
     "MX": zynthian_engine_alsa_mixer,
     "TP": zynthian_engine_tempo,
+    "AM": zynthian_engine_audio2midi,
     'CL': zynthian_engine_clippy
 }
 
@@ -223,6 +224,14 @@ class zynthian_chain_manager:
             "TYPE": "Global",
             "CAT": None,
             "ENGINE": zynthian_engine_tempo,
+            "ENABLED": False
+        }
+        cls.engine_info["AM"] = {
+            "NAME": "Audio \u2794 MIDI",
+            "TITLE": "Audio \u2794 MIDI",
+            "TYPE": "Global",
+            "CAT": None,
+            "ENGINE": zynthian_engine_audio2midi,
             "ENABLED": False
         }
         # Look for an engine class for each one

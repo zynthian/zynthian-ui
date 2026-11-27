@@ -56,6 +56,7 @@ from zyngui.zynthian_gui_none import zynthian_gui_none
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_help import zynthian_gui_help
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
+from zyngui.zynthian_gui_update_progress import zynthian_gui_update_progress, update_running
 from zyngui.zynthian_gui_loading import zynthian_gui_loading
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
@@ -185,6 +186,7 @@ class zynthian_gui:
 
         self.debug_thread = None
         self.busy_thread = None
+        self.startup_done = False  # Set when the start task has shown the initial screen
         self.control_thread = None
         self.status_thread = None
         self.cuia_thread = None
@@ -568,6 +570,7 @@ class zynthian_gui:
         self.screens['info'] = zynthian_gui_info()
         self.screens['help'] = zynthian_gui_help()
         self.screens['splash'] = zynthian_gui_splash()
+        self.screens['update_progress'] = zynthian_gui_update_progress()
         self.screens['loading'] = zynthian_gui_loading()
         self.screens['option'] = zynthian_gui_option()
         self.screens['confirm'] = zynthian_gui_confirm()
@@ -608,6 +611,7 @@ class zynthian_gui:
         # Special Control Screens (processor ID < -1)
         self.screens['tempo'] = self.screens['control']
         self.screens['alsa_mixer'] = self.screens['control']
+        self.screens['audio2midi'] = self.screens['control']
         self.screens['audio_player'] = self.screens['control']
 
         #self.screens['arranger'] = zynthian_gui_arranger()
@@ -719,6 +723,7 @@ class zynthian_gui:
 
         # Show initial screen
         self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
+        self.startup_done = True
 
     def hide_screens(self, exclude=None):
         if not exclude:
@@ -760,6 +765,8 @@ class zynthian_gui:
         elif screen == "tempo":
             self.state_manager.tempo_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.tempo_processor
+        elif screen == "audio2midi":
+            self.current_processor = self.state_manager.audio2midi_processor
         elif screen == "audio_player":
             if self.state_manager.audio_player:
                 self.current_processor = self.state_manager.audio_player
@@ -822,6 +829,9 @@ class zynthian_gui:
 
     def is_shown_alsa_mixer(self):
         return self.current_processor == self.state_manager.alsa_mixer_processor
+
+    def is_shown_audio2midi(self):
+        return self.current_processor == self.state_manager.audio2midi_processor
 
     def is_shown_audio_player(self):
         return self.current_processor == self.state_manager.audio_player
@@ -947,6 +957,25 @@ class zynthian_gui:
         self.current_screen = 'splash'
         self.hide_screens(exclude='splash')
         self.screen_lock.release()
+
+    def show_update_progress(self):
+        self.screen_lock.acquire()
+        self.cancel_screen_timer()
+        self.screens['update_progress'].show()
+        self.current_screen = 'update_progress'
+        self.hide_screens(exclude='update_progress')
+        self.screen_lock.release()
+
+    def close_update_progress(self):
+        if self.current_screen == 'update_progress':
+            try:
+                self.close_screen()
+            except Exception as e:
+                logging.error(f"Can't close update progress screen: {e}")
+            if self.current_screen == 'update_progress':
+                self.show_screen_reset("root")
+        else:
+            self.screens['update_progress'].hide()
 
     def show_loading(self, title="", details=""):
         self.screens['loading'].set_title(title)
@@ -2287,6 +2316,14 @@ class zynthian_gui:
 
         self.show_screen("alsa_mixer")
 
+    def cuia_screen_audio2midi(self, params=None):
+        """Show the audio to MIDI converter controls view.
+
+        Category: screens
+        """
+
+        self.show_screen("audio2midi")
+
     def cuia_screen_launcher(self, params=None):
         """Show the launcher view.
 
@@ -2442,7 +2479,7 @@ class zynthian_gui:
         Category: screens
         """
 
-        if self.is_shown_alsa_mixer():
+        if self.is_shown_alsa_mixer() or self.is_shown_audio2midi():
             return
         if self.is_shown_audio_player():
             self.cuia_bank_preset()
@@ -2484,7 +2521,7 @@ class zynthian_gui:
         Category: screens
         """
 
-        if self.is_shown_alsa_mixer():
+        if self.is_shown_alsa_mixer() or self.is_shown_audio2midi():
             return
         if params:
             try:
@@ -2608,7 +2645,7 @@ class zynthian_gui:
     def get_midi_learn_screen_obj(self):
         if self.current_screen == "chain_control" and self.screens["chain_control"].subscreen_name == "control":
             return self.screens["chain_control"].subscreen
-        elif self.current_screen in ("alsa_mixer", "midi_key_range"):
+        elif self.current_screen in ("alsa_mixer", "audio2midi", "midi_key_range"):
             return self.screens[self.current_screen]
 
     def cuia_enable_midi_learn_cc(self, params=None):
@@ -3125,6 +3162,7 @@ class zynthian_gui:
             "audio_player": [["audio_player"], ["midi_cc_range", "midi_cc_single"]],
             "alsa_mixer": [["alsa_mixer"], ["midi_cc_range", "midi_cc_single"]],
             "tempo": [["tempo"], ["midi_cc_range", "midi_cc_single"]],
+            "audio2midi": [["audio2midi"], ["midi_cc_range", "midi_cc_single"]],
             "pated": [["pattern_editor", "pated_cc"], ["midi_prog"]],
             "snapshot": [["snapshot"], []],
             "zs3": [["zs3"], []]
@@ -3605,6 +3643,12 @@ class zynthian_gui:
         busy_timeout = 0
         busy_warn_time = 300
         while not self.exit_flag:
+            # Software update running: its progress screen must stay. No busy screens.
+            # (Not during UI startup: the startup loading screen works as usual)
+            if self.startup_done and (self.current_screen == "update_progress" or update_running()):
+                busy_timeout = 0
+                sleep(0.1)
+                continue
             if self.state_manager.is_busy() and (monotonic() - self.state_manager.busy_ts) > 0.1 :
                 busy_timeout += 1
                 busy_message = self.state_manager.get_busy_message()
@@ -4476,6 +4520,19 @@ class zynthian_gui:
     def start_polling(self):
         self.osc_timeout()
         self.plot_zctrls_task()
+        self.update_progress_task()
+
+    def update_progress_task(self):
+        """Show the software update progress screen while an update is running (from any source)"""
+        if self.exit_flag:
+            return
+        try:
+            # Not while starting: the start task shows the initial screen when it ends
+            if self.startup_done and self.current_screen != 'update_progress' and update_running():
+                self.show_update_progress()
+        except Exception as e:
+            logging.error(e)
+        zynthian_gui_config.top.after(2000, self.update_progress_task)
 
     def after(self, msec, func):
         zynthian_gui_config.top.after(msec, func)

@@ -56,6 +56,21 @@ class aubio_inputs():
         self.state_manager.aubio_in = self.audio_in
         zynautoconnect.request_audio_connect()
 
+class audio2midi_inputs():
+    """Audio inputs (mixed) of the audio to MIDI converter, for the audio_in GUI"""
+
+    def __init__(self, state_manager):
+        self.state_manager = state_manager
+        self.audio_in = state_manager.audio2midi_in
+
+    def toggle_audio_in(self, input):
+        if input in self.audio_in:
+            self.audio_in.remove(input)
+        else:
+            self.audio_in.append(input)
+        self.state_manager.audio2midi_in = self.audio_in
+        zynautoconnect.request_audio_connect()
+
 # ------------------------------------------------------------------------------
 # Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
@@ -204,6 +219,18 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             else:
                 self.list_data.append((f"start_{service}", idev, f"\u2610 {name}", [get_info(f"Enable {help_info}", False), icon]))
 
+        def append_audio2midi(idev):
+            """Add the audio to MIDI converter (global processor) to admin list"""
+            name = "Audio \u2794 MIDI"
+            info = "Audio to MIDI converter. Converts notes played into audio inputs to MIDI note on/off (monophonic or polyphonic).\n\n"
+            if self.zyngui.state_manager.is_audio2midi_running():
+                mode = get_mode_str(idev)
+                info = get_info(f"Disable {info}Bold select for controls.\nMenu for options.", False)
+                self.list_data.append(("audio2midi", idev, f"\u2612 {mode}{name}", [info, "midi_audio.png"]))
+            else:
+                info = get_info(f"Enable {info}Bold select for controls.", False)
+                self.list_data.append(("audio2midi", None, f"\u2610 {name}", [info, "midi_audio.png"]))
+
         def atoi(text):
             return int(text) if text.isdigit() else text
 
@@ -215,6 +242,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         usb_devices = []    # USB MIDI ports
         ble_devices = []    # BLE MIDI ports
         aubio_devices = []  # Aubio MIDI ports
+        a2m_devices = []    # Audio to MIDI converter port
         net_devices = {}    # Network MIDI ports, indexed by jack port name
         if self.midi_input:
             devs = zynautoconnect.devices_in
@@ -234,6 +262,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     ble_devices.append((dev.aliases[1], i))
                 elif dev.aliases[0].startswith("AUBIO:"):
                     aubio_devices.append(i)
+                elif dev.aliases[0] == zynautoconnect.AUDIO2MIDI_UID:
+                    a2m_devices.append(i)
                 elif dev.aliases[0].startswith("NET:"):
                     # net_devices[dev.name] = i
                     port = devs[i]
@@ -266,6 +296,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 else:
                     append_service("aubionotes", "Aubionotes (Audio \u2794 MIDI)",
                                    "Aubionotes. Converts audio input to MIDI note on/off commands.", "midi_audio.png")
+            if self.chain:
+                for i in a2m_devices:
+                    append_port(i)
+            else:
+                append_audio2midi(a2m_devices[0] if a2m_devices else None)
 
         # Remove "Internal Devices" title if section is empty
         if len(self.list_data) == nint:
@@ -361,6 +396,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.zyngui.state_manager.stop_bluetooth(wait=wait)
             elif action == "start_bluetooth":
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
+            elif action == "audio2midi" and not self.chain:
+                self.zyngui.state_manager.toggle_audio2midi()
             # Route/Unroute
             elif self.chain:
                 if action == "MIDI Channel":
@@ -397,7 +434,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 self.show_options()
                 return
         elif t == 'B':
-            self.show_options()
+            if self.list_data[i][0] == "audio2midi" and not self.chain:
+                self.zyngui.show_screen("audio2midi")
+            else:
+                self.show_options()
             return
         self.update_list()
 
@@ -532,6 +572,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             options["Advanced"] = None
             if self.list_data[self.index][0].startswith("AUBIO:") or self.list_data[self.index][0].endswith("aubionotes"):
                 options["Select aubio inputs"] = ["AUBIO_INPUTS", ["Select audio inputs to be analized and converted to MIDI.", "midi_audio.png"]]
+            if port.aliases[0] == zynautoconnect.AUDIO2MIDI_UID:
+                options["Audio \u2794 MIDI controls"] = ["AUDIO2MIDI_CONTROLS", ["Onset & release thresholds, mono/poly mode and noise filter.", "midi_audio.png"]]
+                options["Select audio inputs"] = ["AUDIO2MIDI_INPUTS", ["Select audio inputs to be converted to MIDI (mixed).", "midi_audio.png"]]
             options[f"Rename port '{port.aliases[0]}'"] = [port, ["Rename the MIDI port.\nClear name to reset to default name.",  "midi_input.png"]]
             # options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
 
@@ -570,6 +613,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     ain = aubio_inputs(self.zyngui.state_manager)
                     self.zyngui.screens['audio_in'].set_chain(ain)
                     self.zyngui.show_screen('audio_in')
+                    return
+                elif params == "AUDIO2MIDI_INPUTS":
+                    ain = audio2midi_inputs(self.zyngui.state_manager)
+                    self.zyngui.screens['audio_in'].set_chain(ain)
+                    self.zyngui.show_screen('audio_in')
+                    return
+                elif params == "AUDIO2MIDI_CONTROLS":
+                    self.zyngui.show_screen("audio2midi")
                     return
                 elif self.midi_input:
                     idev = self.list_data[self.index][1]
