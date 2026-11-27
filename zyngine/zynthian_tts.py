@@ -66,6 +66,8 @@ ALT_MODE_TXT = ["off","on"]
 ALL_KEYS = list(TTS_DICT) + list(TTS_DICT_DEFER)
 
 SINE_WAVETABLE_SIZE = 1024
+# Progress mode beep period, in worker idle cycles (0.1s)
+PROGRESS_BEEP_CYCLES = 30
 
 class zynthian_tts:
     SINE_WAVETABLE = [int(32767 * math.sin(2 * math.pi * i / SINE_WAVETABLE_SIZE)) for i in range(SINE_WAVETABLE_SIZE)]
@@ -79,6 +81,7 @@ class zynthian_tts:
         self.paused = False
         self.busy = False
         self.busy_timer = None
+        self.progress = None # Percent complete in progress mode, else None
         self.announce_disable = True
         self.pending_beep = None
         self._queue = []
@@ -130,6 +133,8 @@ class zynthian_tts:
             state: True to set busy, else clears busy state.
         """
 
+        if self.progress is not None:
+            return # Progress mode indicates activity itself and must not block announcements
         if state:
             self.stop()
             if not self.busy_timer:
@@ -142,6 +147,23 @@ class zynthian_tts:
             elif self.busy:
                 self.beep(0.4, 600)
             self.busy = False
+
+    def set_progress(self, percent=None):
+        """ Set progress mode: a short beep sounds regularly while not speaking,
+            its pitch rising with the percent complete. Announcements are still spoken
+            and busy state is ignored while in progress mode.
+        Args:
+            percent: Percent complete [0..100] or None to leave progress mode
+        """
+
+        if percent is None:
+            self.progress = None
+            return
+        if self.busy_timer:
+            self.busy_timer.cancel()
+            self.busy_timer = None
+        self.busy = False
+        self.progress = max(0, min(100, percent))
 
     def cb_busy_timer(self):
         self.busy_timer = None
@@ -388,11 +410,18 @@ class zynthian_tts:
                         self._cond.wait(timeout=0.1)
                         with self._lock:
                             self.playing = False
+                        progress = self.progress
                         if self.busy:
                             count += 1
                             if count > 20:
                                 count = 0
                                 self._do_beep((0.2, 440, 0.5))
+                        elif progress is not None:
+                            count += 1
+                            if count > PROGRESS_BEEP_CYCLES:
+                                count = 0
+                                # 330Hz at 0% rising to 880Hz at 100%
+                                self._do_beep((0.1, 330 + 5.5 * progress, 0.4))
                     if self._stop_event.is_set():
                         break
 

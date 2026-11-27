@@ -30,7 +30,7 @@ import sys
 import logging
 import tkinter
 import importlib.util
-from time import monotonic
+from time import monotonic, time
 from PIL import ImageTk
 
 # Zynthian specific modules
@@ -93,6 +93,9 @@ class zynthian_gui_update_progress(zynthian_gui_fullscreen_modal):
         self.finish_time = None
         self.show_time = 0
         self.started = False
+        # Last stage message and hint announced by ZynVoice
+        self.tts_message = None
+        self.tts_hint = None
 
     def show(self):
         if not self.shown:
@@ -104,6 +107,12 @@ class zynthian_gui_update_progress(zynthian_gui_fullscreen_modal):
             self.finish_time = None
             self.show_time = monotonic()
             self.started = False
+            if self.state:
+                self.tts_message = self.state.message
+            self.tts_hint = None
+            if self.zyngui.tts:
+                self.zyngui.tts._tts.set_progress(0)
+                self.zyngui.tts.announce("Software update in progress. Do not power off.")
         super().show()
         if self.timer is None:
             self.refresh()
@@ -112,7 +121,50 @@ class zynthian_gui_update_progress(zynthian_gui_fullscreen_modal):
         if self.timer is not None:
             self.after_cancel(self.timer)
             self.timer = None
+        if self.shown and self.zyngui.tts:
+            self.zyngui.tts._tts.set_progress(None)
         super().hide()
+
+    # --------------------------------------------------------------------------
+    # ZynVoice: each stage change is spoken and a regular beep (pitch rising
+    # with the percent complete) indicates the update is still running.
+    # --------------------------------------------------------------------------
+
+    def tts_update(self):
+        if not self.zyngui.tts or not self.state:
+            return
+        tts = self.zyngui.tts
+        if self.state.finished:
+            tts._tts.set_progress(None)
+        else:
+            tts._tts.set_progress(self.state.percent)
+        if self.state.message != self.tts_message:
+            self.tts_message = self.state.message
+            self.tts_hint = None
+            # Replace any pending stage but let the current phrase finish
+            tts.announce(self.tts_message, replace=True, interrupt=False)
+        # Long stage hints (not the "still working" idle hint: the beep tells that)
+        if self.state.hint and self.state.hint != self.tts_hint:
+            self.tts_hint = self.state.hint
+            tts.announce(self.tts_hint, replace=False, interrupt=False)
+
+    def tts_info(self):
+        """ Announce the current update status (TTS_TOGGLE_PLAYBACK) """
+        if not self.zyngui.tts:
+            return
+        if not self.state:
+            self.zyngui.tts.announce("Software update in progress. Do not power off.")
+            return
+        text = self.state.message
+        if not self.state.finished:
+            text += f". {self.state.percent} percent complete"
+            minutes = int((time() - self.state.start_time) / 60)
+            if minutes > 0:
+                text += f". Running for {minutes} minute{'s' if minutes > 1 else ''}"
+            if self.state.hint:
+                text += f". {self.state.hint}"
+            text += ". Do not power off."
+        self.zyngui.tts.announce(text)
 
     def refresh(self):
         self.timer = None
@@ -126,6 +178,7 @@ class zynthian_gui_update_progress(zynthian_gui_fullscreen_modal):
                 # Before the update starts, the log is from a previous update
                 if self.started:
                     self.state.read_log()
+                    self.tts_update()
                 self.photo = ImageTk.PhotoImage(self.renderer.render(self.state))
                 if self.image_id is None:
                     self.image_id = self.canvas.create_image(0, 0, anchor='nw', image=self.photo)
