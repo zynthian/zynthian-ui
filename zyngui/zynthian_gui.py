@@ -35,7 +35,7 @@ from queue import Empty, SimpleQueue
 from pathlib import Path
 from time import monotonic
 from datetime import datetime
-from threading import Thread, Lock, Event
+from threading import Thread, Lock, RLock, Event
 from websocket_server import WebsocketServer
 
 # Zynthian specific modules
@@ -178,7 +178,7 @@ class zynthian_gui:
         self.screen_history = []
         self.current_screen = None
         self.screen_timer_id = None
-        self.screen_lock = Lock()           # Lock object to avoid concurrence problems when showing/closing screens
+        self.screen_lock = RLock()          # Reentrant lock object to avoid concurrence problems when showing/closing screens
         self.current_processor = None
 
         self.state_manager = zynthian_state_manager()
@@ -839,21 +839,24 @@ class zynthian_gui:
     def close_screen(self, screen=None):
         """ Closes the current screen or optionally the specified screen """
 
-        if screen is None:
-            screen = self.get_current_screen()
-        self.prune_screen_history(screen, soft=False)
-        try:
-            last_screen = self.screen_history.pop()
-        except:
-            last_screen = "root"
+        # Hold the screen lock while history is popped and the previous screen is shown,
+        # so another thread (e.g. busy thread closing loading screen) can't interleave.
+        with self.screen_lock:
+            if screen is None:
+                screen = self.get_current_screen()
+            self.prune_screen_history(screen, soft=False)
+            try:
+                last_screen = self.screen_history.pop()
+            except:
+                last_screen = "root"
 
-        if last_screen not in self.screens:
-            logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
-            last_screen = "root"
-        elif last_screen in ("mixer", "launcher"):
-            last_screen = "root"
-        logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
-        self.show_screen(last_screen)
+            if last_screen not in self.screens:
+                logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
+                last_screen = "root"
+            elif last_screen in ("mixer", "launcher"):
+                last_screen = "root"
+            logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
+            self.show_screen(last_screen)
 
     def reset_screen_history(self):
         self.screen_history = []
@@ -3664,7 +3667,10 @@ class zynthian_gui:
                 # Show loading screen if busy and busy message
                 if self.current_screen != "loading":
                     if busy_message:
-                        self.show_loading(busy_message, busy_details)
+                        with self.screen_lock:
+                            # Re-check under lock: busy may have ended and another screen shown meanwhile
+                            if self.state_manager.is_busy() and self.current_screen != "loading":
+                                self.show_loading(busy_message, busy_details)
                 else:
                     busy_error = self.state_manager.get_busy_error()
                     if busy_error:
@@ -3684,7 +3690,11 @@ class zynthian_gui:
             else:
                 busy_timeout = 0
                 if self.current_screen == "loading":
-                    self.close_screen("loading")
+                    with self.screen_lock:
+                        # Re-check under lock: another thread may have shown a new screen after
+                        # ending busy (e.g. alsa_mixer from audio_in). Don't close that one.
+                        if self.current_screen == "loading" and not self.state_manager.is_busy():
+                            self.close_screen("loading")
 
             try:
                 if self.current_screen:
