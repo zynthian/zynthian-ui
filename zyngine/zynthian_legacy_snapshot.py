@@ -81,6 +81,17 @@ class zynthian_legacy_snapshot:
     def version_5(self):
         # Convert snapshot schema V5 to V6
 
+        # Aubionotes service replaced by the audio to MIDI converter (global processor)
+        mp_state = self.snapshot.get("midi_profile_state")
+        if isinstance(mp_state, dict) and "AUBIONOTES_ENABLED" in mp_state:
+            enabled = mp_state.pop("AUBIONOTES_ENABLED")
+            mp_state.setdefault("AUDIO2MIDI_ENABLED", enabled)
+        for zs3 in self.snapshot.get("zs3", {}).values():
+            midi_capture = zs3.get("midi_capture")
+            if isinstance(midi_capture, dict) and "AUBIO:in" in midi_capture:
+                aubio_cfg = midi_capture.pop("AUBIO:in")
+                midi_capture.setdefault(zynthian_state_manager.AUDIO2MIDI_UID, aubio_cfg)
+
         # Convert MIDI CC binding
         def add_binding(target, key, bindings):
             # Merge bindings into target without sharing list references or adding duplicates

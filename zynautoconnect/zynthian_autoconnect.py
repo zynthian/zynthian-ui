@@ -142,9 +142,9 @@ deferred_audio_connect = False
 # Audio to MIDI converter (global processor): JACK client and the UID of its MIDI port
 AUDIO2MIDI_CLIENT = "audio2midi"
 AUDIO2MIDI_UID = "AUDIO2MIDI:in"
-# List of hardware MIDI  source ports (including network, aubionotes, etc.)
+# List of hardware MIDI  source ports (including network, audio to MIDI, etc.)
 hw_midi_src_ports = []
-# List of hardware MIDI destination ports (including network, aubionotes, etc.)
+# List of hardware MIDI destination ports (including network, etc.)
 hw_midi_dst_ports = []
 hw_audio_dst_ports = []			# List of physical audio output ports
 sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
@@ -704,7 +704,7 @@ def update_hw_midi_ports(force=False):
             hw_midi_dst_ports += ports
         except:
             pass
-    for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", "aubio", f"{AUDIO2MIDI_CLIENT}:midi_out"):
+    for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", f"{AUDIO2MIDI_CLIENT}:midi_out"):
         try:
             ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
             hw_midi_src_ports += ports
@@ -1180,16 +1180,6 @@ def audio_autoconnect():
     except Exception as e:
         logger.warning(e)
 
-    # Connect inputs to aubionotes
-    if zynthian_gui_config.midi_aubionotes_enabled:
-        capture_ports = get_audio_capture_ports()
-        for port in jclient.get_ports("aubio", is_input=True, is_audio=True):
-            for i in state_manager.aubio_in:
-                try:
-                    required_routes[port.name].add(capture_ports[i - 1].name)
-                except:
-                    pass
-
     # Connect inputs to the audio to MIDI converter (mixed into its single input)
     a2m_input = f"{AUDIO2MIDI_CLIENT}:input"
     if a2m_input in required_routes:
@@ -1499,8 +1489,6 @@ def build_midi_port_name(port):
         return f"NET:qmidi_{port.name[9:]}", "QmidiNet"
     elif port.name.endswith(" Client:TouchOSC Bridge"):
         return f"NET:touchosc_{port.name.split()[0][6:]}", "TouchOSC"
-    elif port.name.startswith("aubio:midi_out"):
-        return f"AUBIO:in", "Audio\u2794MIDI"
     elif port.name == f"{AUDIO2MIDI_CLIENT}:midi_out":
         return AUDIO2MIDI_UID, "Audio \u2794 MIDI"
     elif port.name.startswith("BLE_MIDI:"):

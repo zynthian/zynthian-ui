@@ -160,7 +160,6 @@ class zynthian_state_manager:
         self.audio_recorder = zynthian_audio_recorder(self)
         self.ctrldev_manager = None
         self.audio_player = None
-        self.aubio_in = [1, 2]  # List of aubio inputs
         self.audio2midi_in = [1]  # List of audio inputs (mixed) of the audio to MIDI converter
 
         # List of lists [rate, cb, schedule] for registered regularly repeating callbacks
@@ -2059,10 +2058,8 @@ class zynthian_state_manager:
             # Ctrldev driver state
             if uid in ctrldev_state_drivers:
                 mcstate[uid]["ctrldev_state"] = ctrldev_state_drivers[uid]
-            # Aubio state
-            if uid == "AUBIO:in":
-                mcstate[uid]["audio_in"] = self.aubio_in
-            elif uid == AUDIO2MIDI_UID:
+            # Audio to MIDI converter inputs
+            if uid == AUDIO2MIDI_UID:
                 mcstate[uid]["audio_in"] = self.audio2midi_in
             # Add MIDI mapping
             for key, zctrls in self.chain_manager.midi_cc_binding.items():
@@ -2114,13 +2111,11 @@ class zynthian_state_manager:
                     except:
                         pass
                     """
-                    try:
-                        if uid == AUDIO2MIDI_UID:
+                    if uid == AUDIO2MIDI_UID:
+                        try:
                             self.audio2midi_in = list(state["audio_in"])
-                        else:
-                            self.aubio_in = state["audio_in"]
-                    except:
-                        pass
+                        except:
+                            pass
                     zynautoconnect.update_midi_in_dev_mode(izmip)
                     try:
                         # TODO: Use ctrldev_driver=None to disable driver
@@ -2270,7 +2265,6 @@ class zynthian_state_manager:
         self.default_qmidinet()
         self.default_touchosc()
         self.default_bluetooth()
-        self.default_aubionotes()
         self.default_audio2midi()
 
     # -------------------------------------------------------------------
@@ -2893,66 +2887,6 @@ class zynthian_state_manager:
             self.start_bluetooth(False)
         else:
             self.stop_bluetooth(False)
-
-    def start_aubionotes(self, save_config=True, wait=0):
-        service = "aubionotes"
-        if zynconf.is_service_active(service):
-            zynthian_gui_config.midi_aubionotes_enabled = 1
-            return
-        if not self.root_access:
-            return
-        self.start_busy("start_aubionotes", "starting AubioNotes")
-        logging.info("STARTING aubionotes")
-        try:
-            check_output(["systemctl", "start", service])
-            zynthian_gui_config.midi_aubionotes_enabled = 1
-            # Update MIDI profile
-            if save_config:
-                zynconf.update_midi_profile({
-                    "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
-                })
-            # Call autoconnect after a little time
-            sleep(wait)
-            zynautoconnect.request_midi_connect(True)
-            zynautoconnect.request_audio_connect()
-        except Exception as e:
-            logging.error(e)
-            self.set_busy_error("ERROR STARTING AubioNotes", e)
-            sleep(2.0)
-
-        self.end_busy("start_aubionotes")
-
-    def stop_aubionotes(self, save_config=True, wait=0):
-        service = "aubionotes"
-        if not zynconf.is_service_active(service):
-            zynthian_gui_config.midi_aubionotes_enabled = 0
-            return
-        if not self.root_access:
-            return
-        self.start_busy("stop_aubionotes", "stopping AubioNotes")
-        logging.info("STOPPING aubionotes")
-        try:
-            check_output(["systemctl", "stop", service])
-            zynthian_gui_config.midi_aubionotes_enabled = 0
-            # Update MIDI profile
-            if save_config:
-                zynconf.update_midi_profile({
-                    "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
-                })
-            sleep(wait)
-        except Exception as e:
-            logging.error(e)
-            self.set_busy_error("ERROR STOPPING AubioNotes", e)
-            sleep(2.0)
-
-        self.end_busy("stop_aubionotes")
-
-    # Start/Stop AubioNotes depending on configuration
-    def default_aubionotes(self):
-        if zynthian_gui_config.midi_aubionotes_enabled:
-            self.start_aubionotes(False)
-        else:
-            self.stop_aubionotes(False)
 
     def is_audio2midi_running(self):
         """Check if the audio to MIDI converter (global processor) is running"""

@@ -37,7 +37,6 @@ ZynthianState = {
         "TOUCHOSC_ENABLED": "0", # "1" enables the TouchOSC to MIDI bridge (touchosc2midi)
         "BLE_ENABLED": "0", # "1" enables Bluetooth (BLE MIDI)
         "BLE_CONTROLLER": "", # Address of the Bluetooth controller to use. "" for default
-        "AUBIONOTES_ENABLED": "0", # "1" enables the aubionotes audio to MIDI service
         "AUDIO2MIDI_ENABLED": "0", # "1" enables the built-in audio to MIDI converter (global processor)
         "TRANSPORT_CLOCK_SOURCE": "Internal", # Transport clock source. Default "Internal"
         "PLAY_LOOP": "0", # "1" loops playback in the MIDI recorder
@@ -123,7 +122,7 @@ ZynthianState = {
                     "ctrldev_driver": "zynthian_ctrldev_launchkey_mini_mk3", # Name of controller device driver
                     "ctrldev_state": {}, # Optional dictionary, specific to each controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
-                    "audio_in": [0, 1], # Optional list of audio inputs, e.g. for aubio
+                    "audio_in": [0, 1], # Optional list of audio inputs, e.g. for the audio to MIDI converter
                     "midi_learn": {  # Dictionary of MIDI CC binding, indexed by 24-bit hex encoded (chain (ff for global), MIDI chan (ff for any channel), CC)
                         "ff0021": [  # List of control bindings to this CC
                             [

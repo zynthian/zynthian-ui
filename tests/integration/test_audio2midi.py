@@ -120,12 +120,10 @@ def test_audio_inputs_in_midi_capture_state(a2m, fake_autoconnect):
     import zynautoconnect
     sm, proc, lib = a2m
     assert sm.audio2midi_in == [1]
-    aubio_in = list(sm.aubio_in)
     fake_autoconnect.get_midi_in_devid_by_uid.return_value = 3
     sm.set_midi_capture_state({zynautoconnect.AUDIO2MIDI_UID: {"zmip_input_mode": True, "disable_ctrldev": False,
                                                                "routed_chains": [], "audio_in": [2, 3]}})
     assert sm.audio2midi_in == [2, 3]
-    assert sm.aubio_in == aubio_in  # Not mixed up with aubionotes inputs
 
 
 def test_controllers_saved_in_state(a2m):
@@ -145,3 +143,21 @@ def test_help_page(a2m):
     repo_page = os.path.join(os.path.dirname(__file__), "..", "..", "help", "common", "audio2midi.html")
     if os.path.isdir(os.path.join(os.path.dirname(repo_page), "..")):  # zynthian-help checked out next to the UI
         assert os.path.isfile(repo_page)
+
+
+@pytest.mark.parametrize("env, expected", [
+    ({}, 0),
+    ({"ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": "1"}, 1),  # MIDI profile not converted yet
+    ({"ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": "1", "ZYNTHIAN_MIDI_AUDIO2MIDI_ENABLED": "0"}, 0),
+    ({"ZYNTHIAN_MIDI_AUDIO2MIDI_ENABLED": "1"}, 1),
+])
+def test_enable_falls_back_to_aubionotes_setting(monkeypatch, env, expected):
+    from zyngui import zynthian_gui_config
+    for name in ("ZYNTHIAN_MIDI_AUBIONOTES_ENABLED", "ZYNTHIAN_MIDI_AUDIO2MIDI_ENABLED"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    zynthian_gui_config.set_midi_config()
+    assert zynthian_gui_config.midi_audio2midi_enabled == expected
+    monkeypatch.undo()
+    zynthian_gui_config.set_midi_config()

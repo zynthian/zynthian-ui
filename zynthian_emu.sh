@@ -41,29 +41,14 @@ function alsa_in_stop() {
 	killall alsa_in
 }
 
-function aubionotes_start() {
-	# Start aubionotes (audio => MIDI)
-	while [ 1 ]; do 
-		/usr/bin/aubionotes -O complex -t 0.5 -s -88  -p yinfft -l 0.5
-		sleep 1
-	done
-}
-
-function aubionotes_stop() {
-	# Stop aubionotes (audio => MIDI)
-	killall aubionotes
-}
-
 function zynthian_start() {
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		alsa_in_start &
-		aubionotes_start &
 	fi
 }
 
 function zynthian_stop() {
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-		aubionotes_stop
 		alsa_in_stop
 	fi
 }

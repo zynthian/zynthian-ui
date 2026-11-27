@@ -148,6 +148,43 @@ def test_v5_midi_learn_conversion_does_not_duplicate_bindings(convert):
     assert keyboard["ff0007"] == [[2, "level"]]
 
 
+def v5_aubio_snapshot(enabled="1"):
+    snap = v5_snapshot()
+    snap["midi_profile_state"] = {"AUBIONOTES_ENABLED": enabled, "BLE_ENABLED": "0"}
+    snap["zs3"]["zs3-0"]["midi_capture"]["AUBIO:in"] = {
+        "zmip_input_mode": False, "disable_ctrldev": False, "routed_chains": [1], "audio_in": [1, 2],
+        "midi_learn": {"7": [[2, "level"]]}}
+    return snap
+
+
+@pytest.mark.parametrize("enabled", ["0", "1"])
+def test_v5_aubionotes_enable_becomes_audio2midi_enable(convert, enabled):
+    mps = convert(v5_aubio_snapshot(enabled))["midi_profile_state"]
+    assert mps == {"AUDIO2MIDI_ENABLED": enabled, "BLE_ENABLED": "0"}
+
+
+def test_v5_aubionotes_enable_does_not_override_audio2midi_enable(convert):
+    snap = v5_aubio_snapshot("1")
+    snap["midi_profile_state"]["AUDIO2MIDI_ENABLED"] = "0"
+    mps = convert(snap)["midi_profile_state"]
+    assert mps["AUDIO2MIDI_ENABLED"] == "0" and "AUBIONOTES_ENABLED" not in mps
+
+
+def test_v5_aubionotes_midi_input_becomes_audio2midi_input(convert):
+    capture = convert(v5_aubio_snapshot())["zs3"]["zs3-0"]["midi_capture"]
+    assert "AUBIO:in" not in capture
+    a2m = capture["AUDIO2MIDI:in"]
+    assert (a2m["zmip_input_mode"], a2m["routed_chains"], a2m["audio_in"]) == (False, [1], [1, 2])
+    assert a2m["midi_learn"]["ff0007"] == [[2, "level"]]   # MIDI learn converted like any other device
+    assert a2m["midi_learn"]["01004A"] == [[1, "cutoff"]]
+
+
+def test_v5_without_aubionotes_is_unchanged_by_its_conversion(convert):
+    out = convert(v5_snapshot())
+    assert "midi_profile_state" not in out
+    assert set(out["zs3"]["zs3-0"]["midi_capture"]) == {"usb:keyboard", "zynseq:output"}
+
+
 def fader_position(gain, headroom_db=10.0, unity=0.75):
     """mixer.c gainToLevel(), written out independently."""
     if gain <= 0:
