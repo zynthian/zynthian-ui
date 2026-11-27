@@ -113,3 +113,4 @@ class zynthian_widget_@@SYMBOL@@(zynthian_widget_base.zynthian_widget_base):
     # def cuia_arrow_up(self, params=None): ...
     # Example of a control from the widget:
     #   zctrl = self.processor.controllers_dict.get("gain"); zctrl.nudge(dval)
+
