@@ -22,7 +22,6 @@
 # ******************************************************************************
 
 import logging
-from pathlib import Path
 
 # Zynthian specific modules
 from zyngine.zynthian_signal_manager import zynsigman
@@ -366,25 +365,16 @@ class zynthian_gui_chain_control(zynthian_gui_base):
         elif self.zyngui.get_current_screen().endswith("_options"):
             self.zyngui.close_screen()
 
-    def get_help_fpath(self):
+    def get_help_fpath(self, screen):
         if self.subscreen_key == "control":
-            proc = self.zyngui.get_current_processor()
-            # Help page declared by the processor's widget (e.g. zyngui:help in the LV2 data)
-            fpath = getattr(proc.engine, "custom_gui_help_fpath", None)
-            if not fpath or not Path(fpath).exists():
-                fpath = f"./help/widgets/{proc.name.lower()}.html"
-        else:
-            fpath = None
-        if not fpath or not Path(fpath).exists():
-            if self.subscreen_key == "control":
-                if self.chain_shown:
-                    page_name = "chain_config"
-                else:
-                    page_name = "chain_control"
-            else:
-                page_name = "selector"
-            fpath = f"{page_name}.html"
-        return fpath
+            if self.subscreen.param_editor_zctrl:
+                return ["parameter_editor.html"]
+            if self.chain_shown:
+                return ["chain_config.html", "chain_control.html"]
+            # The processor's own page (widget help), else the generic chain control page
+            return self.subscreen.get_processor_help_fpaths() + ["chain_control.html"]
+        # Embedded list views (chain_options, midi_config, audio_in, audio_out) use their own pages
+        return self.subscreen.get_help_fpath(self.subscreen_name or self.subscreen_key)
 
     state_key = "zyngui_chain_control"
 

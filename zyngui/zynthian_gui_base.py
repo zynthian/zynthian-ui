@@ -659,6 +659,16 @@ class zynthian_gui_base(tkinter.Frame):
             return True
         return False
 
+    def get_help_fpath(self, screen):
+        """ Candidate help pages for this view, from the most specific to the most generic.
+            The first one that exists is shown (see zynthian_gui.show_help).
+
+        screen : name of the view shown (several views can share a screen object)
+        """
+        if self.param_editor_zctrl:
+            return ["parameter_editor.html"]
+        return [f"{screen}.html"]
+
     # --------------------------------------------------------------------------
     # Param editor
     # --------------------------------------------------------------------------

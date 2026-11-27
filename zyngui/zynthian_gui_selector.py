@@ -552,10 +552,14 @@ class zynthian_gui_selector(zynthian_gui_base):
             return {"selected": self.index}
         return {"items": [str(row[2]) for row in self.list_data], "selected": self.index}
 
-    def get_help_fpath(self):
+    def get_help_fpath(self, screen):
+        """ Candidate help pages for this view, from the most specific to the most generic
+
+        screen : name of the view shown (several views can share a screen object)
+        """
         if self.param_editor_zctrl:
-            return "parameter_editor.html"
-        return "selector.html"
+            return ["parameter_editor.html"]
+        return [f"{screen}.html", "selector.html"]
 
     # --------------------------------------------------------------------------
     # ZynVoice TTS

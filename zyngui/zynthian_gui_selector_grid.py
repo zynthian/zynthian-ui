@@ -425,5 +425,5 @@ class zynthian_gui_selector_grid(zynthian_gui_base):
         items = [node["title"].replace("\n", " ") if node else "" for node in self.config or []]
         return {"items": items, "selected": self.selected_node, "columns": self.columns}
 
-    def get_help_fpath(self):
-        return "selector_grid.html"
+    def get_help_fpath(self, screen):
+        return [f"{screen}.html", "selector_grid.html"]

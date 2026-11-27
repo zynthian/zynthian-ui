@@ -1081,21 +1081,30 @@ class zynthian_gui:
                     logging.error(f"Help file '{fpath}' doesn't exist.")
             return
 
-        # Get help page for the current view
-        try:
-            # Ask screen object
-            curscreen_obj = self.get_current_screen_obj()
-            fpath = get_fpath(curscreen_obj.get_help_fpath())
-        except:
-            # Else use view name
-            fpath = get_fpath(f"{self.current_screen}.html")
+        # Get help page for the current view: the view gives a list of candidate pages, from the
+        # most specific to the most generic, and the first one that exists is shown.
+        screen = str(self.current_screen)
+        candidates = []
+        curscreen_obj = self.get_current_screen_obj()
+        if callable(getattr(curscreen_obj, "get_help_fpath", None)):
+            try:
+                res = curscreen_obj.get_help_fpath(screen)
+                if isinstance(res, str):
+                    candidates.append(res)
+                elif res:
+                    candidates += [fp for fp in res if fp]
+            except Exception as e:
+                logging.warning(f"Can't get help page for '{screen}' => {e}")
+        # Views without their own lookup (e.g. fullscreen modals) use the view name
+        candidates.append(f"{screen}.html")
 
-        if fpath and Path(fpath).exists():
-            self.screens['help'].load_file(fpath)
-            return
+        for fpath in candidates:
+            fpath = get_fpath(fpath)
+            if fpath and Path(fpath).exists():
+                self.screens['help'].load_file(fpath)
+                return
 
-        topic = str(self.current_screen).split("/")[-1]
-        logging.warning(f"No help for '{topic}'")
+        logging.warning(f"No help for '{screen}' (tried {', '.join(candidates)})")
 
     # TODO: Rename - this is called for various chain manipulation purposes
     def modify_chain(self, status=None):

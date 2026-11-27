@@ -41,6 +41,12 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
                          default_info="Bold to show options.",
                          zsel_hidden=False)
 
+    def get_help_fpath(self, screen):
+        if self.param_editor_zctrl:
+            return ["parameter_editor.html"]
+        # Banks are described in the preset view's page
+        return [f"{screen}.html", "preset.html", "selector.html"]
+
     def fill_list(self):
         if not self.processor:
             logging.error("Can't fill bank list for None processor!")
