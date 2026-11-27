@@ -28,14 +28,16 @@ SIGNATURES = {
     "start": (ctypes.c_uint8, []),
     "stop": (None, []),
     "isRunning": (ctypes.c_uint8, []),
-    "setOnsetThreshold": (None, [ctypes.c_float]),
-    "getOnsetThreshold": (ctypes.c_float, []),
-    "setReleaseThreshold": (None, [ctypes.c_float]),
-    "getReleaseThreshold": (ctypes.c_float, []),
-    "setNoiseFilter": (None, [ctypes.c_float]),
-    "getNoiseFilter": (ctypes.c_float, []),
+    "setOnsetThreshold": (None, [ctypes.c_uint8, ctypes.c_float]),
+    "getOnsetThreshold": (ctypes.c_float, [ctypes.c_uint8]),
+    "setReleaseThreshold": (None, [ctypes.c_uint8, ctypes.c_float]),
+    "getReleaseThreshold": (ctypes.c_float, [ctypes.c_uint8]),
+    "setNoiseFilter": (None, [ctypes.c_uint8, ctypes.c_float]),
+    "getNoiseFilter": (ctypes.c_float, [ctypes.c_uint8]),
     "setOutputActive": (None, [ctypes.c_uint8, ctypes.c_uint8]),
     "getOutputActive": (ctypes.c_uint8, [ctypes.c_uint8]),
+    "setOutputSource": (None, [ctypes.c_uint8, ctypes.c_uint8]),
+    "getOutputSource": (ctypes.c_uint8, [ctypes.c_uint8]),
     "setPolyphonic": (None, [ctypes.c_uint8, ctypes.c_uint8]),
     "getPolyphonic": (ctypes.c_uint8, [ctypes.c_uint8]),
     "setPitchBend": (None, [ctypes.c_uint8, ctypes.c_uint8]),
@@ -65,11 +67,12 @@ def a2m_lib():
 def a2m(a2m_lib):
     """The library with default parameters (restored after each test). No output is active."""
     def defaults():
-        a2m_lib.setOnsetThreshold(-40)
-        a2m_lib.setReleaseThreshold(-50)
-        a2m_lib.setNoiseFilter(50)
-        for output in range(OUTPUTS):
+        for output in range(OUTPUTS):  # channel = output
+            a2m_lib.setOnsetThreshold(output, -40)
+            a2m_lib.setReleaseThreshold(output, -50)
+            a2m_lib.setNoiseFilter(output, 50)
             a2m_lib.setOutputActive(output, 0)
+            a2m_lib.setOutputSource(output, output)
             a2m_lib.setPolyphonic(output, 0)
             a2m_lib.setPitchBend(output, 0)
             a2m_lib.setBendRange(output, 2)
@@ -79,11 +82,17 @@ def a2m(a2m_lib):
     defaults()
 
 
-def analyse_outputs(lib, signal, outputs=0b11, rate=RATE, block=256, signal2=None):
+def analyse_outputs(lib, signal, outputs=0b11, rate=RATE, block=256, signal2=None, sources=None):
     """Run the offline analysis with the given outputs (bitmask) active: {output: [(seconds, status, note, velocity)]}.
 
     ``signal``: input 1 (None: not connected), ``signal2``: input 2 (None: not connected), padded to the same length.
+    ``sources``: input feeding each output (setOutputSource). Default: input 1 feeds both outputs without ``signal2``
+    (like both channels using the same audio input), else input 1 => output 1, input 2 => output 2.
     """
+    if sources is None:
+        sources = (0, 0) if signal2 is None else (0, 1)
+    for output, source in enumerate(sources):
+        lib.setOutputSource(output, source)
     signals = [None if x is None else np.asarray(x, dtype=np.float32) for x in (signal, signal2)]
     frames = max(len(x) for x in signals if x is not None)
     signals = [None if x is None else np.ascontiguousarray(np.pad(x, (0, frames - len(x)))) for x in signals]

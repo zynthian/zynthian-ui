@@ -66,8 +66,8 @@ def test_mono_ignores_noise(a2m):
 def test_mono_ignores_notes_below_onset_threshold(a2m):
     quiet = pluck(57, 1.0, amp=0.003)  # ~ -55 dBFS RMS
     assert analyse(a2m, quiet) == []
-    a2m.setOnsetThreshold(-70)
-    a2m.setReleaseThreshold(-80)
+    a2m.setOnsetThreshold(0, -70)
+    a2m.setReleaseThreshold(0, -80)
     assert note_ons(analyse(a2m, quiet))[0][1] == 57
 
 
@@ -105,7 +105,7 @@ def note_ons_with_velocity(events):
 
 @pytest.mark.parametrize("noise_filter", [0, 50, 100])
 def test_mono_noisy_notes(a2m, noise_filter):
-    a2m.setNoiseFilter(noise_filter)
+    a2m.setNoiseFilter(0, noise_filter)
     signal, _ = sequence([40, 52, 64, 69], secs=0.6, gap=0.25)
     signal += noise(len(signal) / RATE, -40)
     assert [note for t, note in note_ons(analyse(a2m, signal))] == [40, 52, 64, 69]
@@ -113,27 +113,27 @@ def test_mono_noisy_notes(a2m, noise_filter):
 
 def test_noise_filter_delays_note_on(a2m):
     signal = pluck(57, 0.5)
-    a2m.setNoiseFilter(0)
+    a2m.setNoiseFilter(0, 0)
     fast = note_ons(analyse(a2m, signal))[0][0]
-    a2m.setNoiseFilter(100)
+    a2m.setNoiseFilter(0, 100)
     slow = note_ons(analyse(a2m, signal))[0][0]
     assert fast < slow
 
 
 def test_release_threshold_above_onset_is_limited(a2m):
-    a2m.setReleaseThreshold(-10)  # above onset (-40): behaves as -40
+    a2m.setReleaseThreshold(0, -10)  # above onset (-40): behaves as -40
     events = analyse(a2m, np.concatenate([pluck(57, 0.5, decay=0.5), silence(0.5)]))
     assert [(s, n) for t, s, n, v in events] == [(NOTE_ON, 57), (NOTE_OFF, 57)]
 
 
 def test_parameters_are_clamped(a2m):
-    a2m.setOnsetThreshold(10)
-    a2m.setReleaseThreshold(-200)
-    a2m.setNoiseFilter(150)
+    a2m.setOnsetThreshold(0, 10)
+    a2m.setReleaseThreshold(0, -200)
+    a2m.setNoiseFilter(0, 150)
     a2m.setPolyphonic(0, 7)
-    assert a2m.getOnsetThreshold() == 0
-    assert a2m.getReleaseThreshold() == -90
-    assert a2m.getNoiseFilter() == 100
+    assert a2m.getOnsetThreshold(0) == 0
+    assert a2m.getReleaseThreshold(0) == -90
+    assert a2m.getNoiseFilter(0) == 100
     assert a2m.getPolyphonic(0) == 1
 
 

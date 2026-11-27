@@ -5,9 +5,10 @@
  * JACK client with two audio inputs and two MIDI outputs that convert
  * the notes played into the inputs to MIDI note on / off and, optionally,
  * pitch bend (channel 1). Each output has its own mode.
- * With both inputs connected they are 2 independent channels (input 1 =>
- * output 1, input 2 => output 2). With one input connected, it feeds both
- * outputs (one detection). Nothing is analysed while no input is connected
+ * Input 1 feeds output 1 and input 2 feeds output 2 (2 independent channels),
+ * or one input feeds both outputs (setOutputSource: analysed once, e.g. when
+ * both channels use the same audio input). Nothing is analysed for an output
+ * whose input isn't connected
  * or for inactive outputs, so the client costs nothing until it is used.
  * The JACK client only exists while the converter is started.
  *
@@ -51,23 +52,28 @@ void stop();
  */
 uint8_t isRunning();
 
-/** @brief  Set the onset threshold (all outputs): note on when a note's level rises above it
+/* Detection parameters of a channel (0..A2M_NUM_INPUTS-1): its input's detector. */
+
+/** @brief  Set the onset threshold of a channel: note on when a note's level rises above it
+ *   @param  channel Channel index (0..1)
  *   @param  db Level in dBFS RMS (-80..0, default -60)
  */
-void setOnsetThreshold(float db);
-float getOnsetThreshold();
+void setOnsetThreshold(uint8_t channel, float db);
+float getOnsetThreshold(uint8_t channel);
 
-/** @brief  Set the release threshold (all outputs): note off when a note's level falls below it
+/** @brief  Set the release threshold of a channel: note off when a note's level falls below it
+ *   @param  channel Channel index (0..1)
  *   @param  db Level in dBFS RMS (-90..0, default -66), limited to the onset threshold
  */
-void setReleaseThreshold(float db);
-float getReleaseThreshold();
+void setReleaseThreshold(uint8_t channel, float db);
+float getReleaseThreshold(uint8_t channel);
 
-/** @brief  Set the noise filter (all outputs): higher values reject more noise (false notes) but react slower
+/** @brief  Set the noise filter of a channel: higher values reject more noise (false notes) but react slower
+ *   @param  channel Channel index (0..1)
  *   @param  value 0..100 (default 15)
  */
-void setNoiseFilter(float value);
-float getNoiseFilter();
+void setNoiseFilter(uint8_t channel, float value);
+float getNoiseFilter(uint8_t channel);
 
 /** @brief  Activate an output (e.g. when it is routed to a chain). Only active outputs fed by a connected input are
  *          analysed: detection runs once for each mode used by them, so an inactive output costs nothing.
@@ -77,6 +83,14 @@ float getNoiseFilter();
  */
 void setOutputActive(uint8_t output, uint8_t active);
 uint8_t getOutputActive(uint8_t output);
+
+/** @brief  Select the input (detector) feeding an output. Both outputs fed by one input share its detection (analysed
+ *          once, with the detection parameters of that input's channel). Held notes are released when changed.
+ *   @param  output Output index
+ *   @param  input Input index (default: the output's index)
+ */
+void setOutputSource(uint8_t output, uint8_t input);
+uint8_t getOutputSource(uint8_t output);
 
 /** @brief  Select monophonic or polyphonic detection for an output. Held notes are released when changed.
  *          Polyphonic outputs all receive the same notes (pitch bend is monophonic only).

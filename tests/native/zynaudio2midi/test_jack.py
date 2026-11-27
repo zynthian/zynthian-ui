@@ -132,6 +132,7 @@ def test_inactive_output_sends_nothing(rig):
 
 def test_outputs_have_their_own_mode(rig):
     a2m, player, rec, runner = rig
+    a2m.setOutputSource(1, 0)  # both outputs fed by input 1
     a2m.setOutputActive(1, 1)
     a2m.setPolyphonic(1, 1)
     player.play(np.concatenate([sum(pluck(n, 1.0, amp=0.2) for n in (48, 52, 55)), silence(0.4)]))
@@ -142,6 +143,7 @@ def test_outputs_have_their_own_mode(rig):
 
 def test_deactivating_an_output_releases_its_notes(rig):
     a2m, player, rec, runner = rig
+    a2m.setOutputSource(1, 0)
     a2m.setOutputActive(1, 1)
     t = np.arange(48000) / 48000
     player.play((0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32), loop=True)
@@ -160,10 +162,21 @@ def test_nothing_is_detected_without_a_connected_input(rig):
     assert received(rec) == []
 
 
-def test_input_2_alone_feeds_both_outputs(rig):
+def test_an_output_without_its_input_sends_nothing(rig):
+    """Channel 1 with no input: only output 2, fed by input 2, sends notes"""
     a2m, player, rec, runner = rig
     player.client.disconnect(player.port, f"{CLIENT}:input")
     player.client.connect(player.port, f"{CLIENT}:input_2")
+    a2m.setOutputActive(1, 1)
+    player.play(np.concatenate([pluck(57, 0.5, decay=0.5), silence(0.5)]))
+    runner.run_seconds(1.2)
+    assert received(rec) == []
+    assert received(rec, "in_2") == [(NOTE_ON, 57), (NOTE_OFF, 57)]
+
+
+def test_one_input_feeds_both_outputs(rig):
+    a2m, player, rec, runner = rig
+    a2m.setOutputSource(1, 0)
     a2m.setOutputActive(1, 1)
     player.play(np.concatenate([pluck(57, 0.5, decay=0.5), silence(0.5)]))
     runner.run_seconds(1.2)

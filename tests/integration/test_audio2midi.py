@@ -44,31 +44,31 @@ def test_controllers_and_defaults(a2m):
     sm, proc, lib = a2m
     zctrls = proc.controllers_dict
     assert {s: zctrls[s].value for s in zctrls} == {
-        "onset": -60, "release": -66, "noise": 15,
-        "audio_in": 0, "polyphonic": 0, "pitchbend": 1, "bend_range": 2,          # channel 1: mono with pitch bend
-        "audio_in_2": 0, "polyphonic_2": 0, "pitchbend_2": 0, "bend_range_2": 2}  # channel 2: mono
+        "onset": -60, "release": -66, "noise": 15,                                # channel 1
+        "audio_in": 0, "polyphonic": 0, "pitchbend": 1, "bend_range": 2,          #   mono with pitch bend
+        "onset_2": -60, "release_2": -66, "noise_2": 15,                          # channel 2
+        "audio_in_2": 0, "polyphonic_2": 0, "pitchbend_2": 0, "bend_range_2": 2}  #   mono
     for sfx in ("", "_2"):
         assert zctrls[f"polyphonic{sfx}"].labels == ["mono", "poly"]
         assert zctrls[f"pitchbend{sfx}"].labels == ["off", "on"]
     assert zctrls["audio_in"].labels[0] == "none" and zctrls["audio_in_2"].labels[0] == "none"
     # Control view pages: those of channel 1
-    assert proc.engine._ctrl_screens == [["Audio detector (common)", ["onset", "release", "noise"]],
-                                         ["MIDI Output", ["audio_in", "polyphonic", "pitchbend", "bend_range"]]]
+    assert proc.engine._ctrl_screens == [["Audio", ["audio_in", "onset", "release", "noise"]],
+                                         ["MIDI", ["polyphonic", "pitchbend", "bend_range"]]]
     assert proc.name == "Audio \u2794 MIDI 1"
 
 
 def test_control_view_shows_the_pages_of_one_channel(a2m):
     sm, proc, lib = a2m
     proc.engine.set_channel(1)
-    assert list(proc.get_ctrl_screens()) == ["Audio detector (common)", "MIDI Output"]
-    assert [z.symbol for z in proc.get_ctrl_screen("Audio detector (common)")] == ["onset", "release", "noise"]
-    assert [z.symbol for z in proc.get_ctrl_screen("MIDI Output")] == ["audio_in_2", "polyphonic_2", "pitchbend_2",
-                                                                      "bend_range_2"]
+    assert list(proc.get_ctrl_screens()) == ["Audio", "MIDI"]
+    assert [z.symbol for z in proc.get_ctrl_screen("Audio")] == ["audio_in_2", "onset_2", "release_2", "noise_2"]
+    assert [z.symbol for z in proc.get_ctrl_screen("MIDI")] == ["polyphonic_2", "pitchbend_2", "bend_range_2"]
     assert proc.name == "Audio \u2794 MIDI 2"  # title of the control view
     assert proc.get_basepath() == "Audio \u2794 MIDI 2"
     proc.engine.set_channel(0)
     assert proc.name == "Audio \u2794 MIDI 1"
-    assert [z.symbol for z in proc.get_ctrl_screen("MIDI Output")][0] == "audio_in"
+    assert [z.symbol for z in proc.get_ctrl_screen("Audio")][0] == "audio_in"
 
 
 @pytest.mark.parametrize("symbol, channel", [("audio_in", 0), ("audio_in_2", 1)])
@@ -87,27 +87,50 @@ def test_audio_input_controller_sets_the_channel_input(a2m, fake_autoconnect, sy
     assert sm.audio2midi_in == [[], []]
 
 
-@pytest.mark.parametrize("audio_in, labels", [
-    ([[], []], ("none", "none")),
-    ([[2], []], ("none", "same as 1")),  # (channel 1, channel 2) label of the "no input" value
-    ([[], [1]], ("same as 2", "none")),
-    ([[1], [2]], ("same as 2", "same as 1")),
-])
-def test_no_input_label_names_the_channel_feeding_it(a2m, audio_in, labels):
+@pytest.mark.parametrize("audio_in", [[[], []], [[2], []], [[1], [2]]])
+def test_no_input_label_is_none(a2m, audio_in):
     sm, proc, lib = a2m
     sm.audio2midi_in = [list(a) for a in audio_in]
     proc.engine.refresh_audio_in_ctrls()
-    assert proc.controllers_dict["audio_in"].labels[0] == labels[0]
-    assert proc.controllers_dict["audio_in_2"].labels[0] == labels[1]
-
-
-def test_no_input_label_follows_the_other_channel(a2m, fake_autoconnect):
-    sm, proc, lib = a2m
-    proc.controllers_dict["audio_in"].set_value(1, True)
-    assert proc.controllers_dict["audio_in_2"].labels[0] == "same as 1"
-    assert proc.controllers_dict["audio_in_2"].is_dirty  # redrawn
-    proc.controllers_dict["audio_in"].set_value(0, True)
+    assert proc.controllers_dict["audio_in"].labels[0] == "none"
     assert proc.controllers_dict["audio_in_2"].labels[0] == "none"
+
+
+@pytest.mark.parametrize("audio_in, shared", [
+    ([[], []], False),
+    ([[1], []], False),
+    ([[1], [2]], False),
+    ([[2], [2]], True),
+])
+def test_channels_on_the_same_audio_input_share_one_detector(a2m, audio_in, shared):
+    """Output 2 is fed by channel 1's detector (analysed once) while both channels use the same audio input"""
+    sm, proc, lib = a2m
+    sm.audio2midi_in = [list(a) for a in audio_in]
+    proc.engine.refresh_audio_in_ctrls()
+    assert last_call(lib, "setOutputSource") == (1, 0 if shared else 1)
+
+
+def test_different_detection_settings_need_their_own_detector(a2m, fake_autoconnect):
+    sm, proc, lib = a2m
+    zctrls = proc.controllers_dict
+    zctrls["audio_in"].set_value(1, True)
+    zctrls["audio_in_2"].set_value(1, True)
+    assert last_call(lib, "setOutputSource") == (1, 0)
+    for symbol, value in (("onset_2", -40), ("release_2", -50), ("noise_2", 40)):
+        zctrls[symbol].set_value(value, True)
+        assert last_call(lib, "setOutputSource") == (1, 1)
+        zctrls[symbol].set_value(zctrls[symbol.split("_")[0]].value, True)
+        assert last_call(lib, "setOutputSource") == (1, 0)
+
+
+def test_start_sets_the_output_sources(a2m):
+    sm, proc, lib = a2m
+    sm.audio2midi_in = [[1], [1]]
+    lib.log.clear()
+    proc.engine.start_converter()
+    names = [fn for fn, args in lib.log]
+    assert names.index("setOutputSource") < names.index("start")
+    assert last_call(lib, "setOutputSource") == (1, 0)
 
 
 def test_audio_input_controllers_follow_the_capture_state(a2m, fake_autoconnect):
@@ -128,18 +151,22 @@ def test_defaults_are_sent_to_library(a2m):
     sm, proc, lib = a2m
     for zctrl in proc.controllers_dict.values():
         proc.engine.send_controller_value(zctrl)
-    assert last_call(lib, "setOnsetThreshold") == (-60,)
-    assert last_call(lib, "setReleaseThreshold") == (-66,)
-    assert last_call(lib, "setNoiseFilter") == (15,)
+    calls = [(fn, args) for fn, args in lib.log if fn in ("setOnsetThreshold", "setReleaseThreshold", "setNoiseFilter")]
+    assert sorted(calls[-6:]) == [("setNoiseFilter", (0, 15)), ("setNoiseFilter", (1, 15)),
+                                  ("setOnsetThreshold", (0, -60)), ("setOnsetThreshold", (1, -60)),
+                                  ("setReleaseThreshold", (0, -66)), ("setReleaseThreshold", (1, -66))]
     calls = [(fn, args) for fn, args in lib.log if fn in ("setPolyphonic", "setPitchBend", "setBendRange")]
     assert sorted(calls[-6:]) == [("setBendRange", (0, 2)), ("setBendRange", (1, 2)), ("setPitchBend", (0, 1)),
                                   ("setPitchBend", (1, 0)), ("setPolyphonic", (0, 0)), ("setPolyphonic", (1, 0))]
 
 
 @pytest.mark.parametrize("symbol, value, fn, expected", [
-    ("onset", -30, "setOnsetThreshold", (-30,)),
-    ("release", -60, "setReleaseThreshold", (-60,)),
-    ("noise", 80, "setNoiseFilter", (80,)),
+    ("onset", -30, "setOnsetThreshold", (0, -30)),
+    ("release", -60, "setReleaseThreshold", (0, -60)),
+    ("noise", 80, "setNoiseFilter", (0, 80)),
+    ("onset_2", -20, "setOnsetThreshold", (1, -20)),
+    ("release_2", -70, "setReleaseThreshold", (1, -70)),
+    ("noise_2", 40, "setNoiseFilter", (1, 40)),
     ("polyphonic", 1, "setPolyphonic", (0, 1)),
     ("pitchbend", 0, "setPitchBend", (0, 0)),
     ("bend_range", 12, "setBendRange", (0, 12)),
@@ -181,7 +208,8 @@ def test_start_applies_controller_values_first(a2m):
     sm.start_audio2midi()
     names = [fn for fn, args in lib.log]
     assert names.index("setOnsetThreshold") < names.index("start")
-    assert last_call(lib, "setOnsetThreshold") == (-20,)
+    assert last_call(lib, "setOnsetThreshold") == (1, -60)  # channel 2 sent last
+    assert ("setOnsetThreshold", (0, -20)) in lib.log
 
 
 def test_failed_start(a2m):
@@ -215,23 +243,33 @@ def test_audio_inputs_in_midi_capture_state(a2m, fake_autoconnect, uid, index):
     assert sm.audio2midi_in == [[], []]
 
 
-def test_default_input_connects_audio_input_1_when_none_connected(a2m, fake_autoconnect):
-    """Routing an output to a chain with no audio connected to the converter connects audio input 1 to input 1"""
+@pytest.mark.parametrize("output", [0, 1])
+def test_default_input_connects_audio_input_1_to_the_output_channel(a2m, fake_autoconnect, output):
+    """Routing an output to a chain while its channel has no audio input selects audio input 1 for that channel"""
     sm, proc, lib = a2m
     fake_autoconnect.request_audio_connect.reset_mock()
-    assert sm.audio2midi_default_input()
-    assert sm.audio2midi_in == [[1], []]
-    assert proc.controllers_dict["audio_in"].value == 1
+    assert sm.audio2midi_default_input(output)
+    expected = [[], []]
+    expected[output] = [1]
+    assert sm.audio2midi_in == expected
+    assert proc.controllers_dict[("audio_in", "audio_in_2")[output]].value == 1
     fake_autoconnect.request_audio_connect.assert_called()
 
 
-@pytest.mark.parametrize("audio_in", [[[3], []], [[], [2]]])
-def test_default_input_keeps_connected_audio_inputs(a2m, fake_autoconnect, audio_in):
-    """One connected input feeds both outputs"""
+def test_default_inputs_of_both_channels_share_one_detector(a2m, fake_autoconnect):
+    sm, proc, lib = a2m
+    sm.audio2midi_default_input(0)
+    sm.audio2midi_default_input(1)
+    assert sm.audio2midi_in == [[1], [1]]
+    assert last_call(lib, "setOutputSource") == (1, 0)
+
+
+@pytest.mark.parametrize("audio_in, output", [([[3], []], 0), ([[], [2]], 1)])
+def test_default_input_keeps_a_selected_audio_input(a2m, fake_autoconnect, audio_in, output):
     sm, proc, lib = a2m
     sm.audio2midi_in = [list(a) for a in audio_in]
     fake_autoconnect.request_audio_connect.reset_mock()
-    assert not sm.audio2midi_default_input()
+    assert not sm.audio2midi_default_input(output)
     assert sm.audio2midi_in == audio_in
     fake_autoconnect.request_audio_connect.assert_not_called()
 

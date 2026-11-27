@@ -2969,7 +2969,7 @@ class zynthian_state_manager:
         """Set the audio input of a converter channel
 
         channel : Channel (0..1): converter input and output
-        audio_in : Physical audio input (1..), 0 for none (fed by the other channel's input, if it has one)
+        audio_in : Physical audio input (1..), 0 for none
         """
 
         audio_in = [audio_in] if audio_in else []
@@ -2984,17 +2984,18 @@ class zynthian_state_manager:
         except Exception as e:
             logging.warning(f"Can't refresh audio to MIDI controllers => {e}")
 
-    def audio2midi_default_input(self):
-        """Connect the first audio input to the first converter input if no audio input is connected to the converter
-        (one connected input feeds both outputs). Used when the user routes a converter output to a chain, so it works
-        without more setup.
+    def audio2midi_default_input(self, output):
+        """Connect the first audio input to the converter channel of an output if the channel has no audio input.
+        Used when the user routes a converter output to a chain, so it works without more setup. Both channels on the
+        same audio input share one detector (with the same detection settings).
 
+        output : Output / channel (0..1)
         Returns : True if the input was connected
         """
 
-        if any(self.audio2midi_in):
+        if self.audio2midi_in[output]:
             return False
-        self.set_audio2midi_input(0, 1)
+        self.set_audio2midi_input(output, 1)
         return True
 
     def set_audio2midi_in_state(self, uid, state):

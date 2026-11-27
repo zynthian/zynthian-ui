@@ -367,7 +367,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                         lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, route)
                         if zynautoconnect.is_audio2midi_zmip(idev):
                             if route:
-                                self.zyngui.state_manager.audio2midi_default_input()
+                                output = zynautoconnect.get_audio2midi_zmips().index(idev)
+                                self.zyngui.state_manager.audio2midi_default_input(output)
                             self.zyngui.state_manager.update_audio2midi_outputs()
                     else:
                         try:

@@ -40,10 +40,12 @@ static a2m_dsp_t* g_dsp[A2M_NUM_INPUTS] = {NULL}; // A detector for each input
 static a2m_out_t g_out[A2M_NUM_INPUTS];
 
 // Parameters, written by the UI thread, read by the JACK process thread
-static _Atomic float g_onset = -60.0f;
-static _Atomic float g_release = -66.0f;
-static _Atomic float g_noise = 15.0f;
+// Detection parameters of each channel's input (detector)
+static _Atomic float g_onset[A2M_NUM_INPUTS] = {-60.0f, -60.0f};
+static _Atomic float g_release[A2M_NUM_INPUTS] = {-66.0f, -66.0f};
+static _Atomic float g_noise[A2M_NUM_INPUTS] = {15.0f, 15.0f};
 static atomic_int g_active[A2M_NUM_OUTPUTS];
+static atomic_int g_source[A2M_NUM_OUTPUTS] = {0, 1}; // Input (detector) feeding each output
 static atomic_int g_poly[A2M_NUM_OUTPUTS];
 static atomic_int g_bend[A2M_NUM_OUTPUTS] = {1, 0};
 static _Atomic float g_bend_range[A2M_NUM_OUTPUTS] = {2.0f, 2.0f};
@@ -57,10 +59,8 @@ static float clampf(float v, float lo, float hi) {
     return v < lo ? lo : (v > hi ? hi : v);
 }
 
+// Parameters of the outputs (the detection parameters are set by split_params)
 static void get_params(a2m_params_t* p) {
-    p->onset_db = atomic_load(&g_onset);
-    p->release_db = atomic_load(&g_release);
-    p->noise = atomic_load(&g_noise);
     for (int i = 0; i < A2M_NUM_OUTPUTS; ++i) {
         p->out[i].active = atomic_load(&g_active[i]);
         p->out[i].poly = atomic_load(&g_poly[i]);
@@ -69,19 +69,19 @@ static void get_params(a2m_params_t* p) {
     }
 }
 
-/* Parameters of each input's detector from the connected inputs:
- *  both inputs connected: 2 independent channels, input 1 => output 1, input 2 => output 2
- *  one input connected: its detector feeds both outputs (the other channel is "same as" it)
- *  no input connected: nothing is analysed
+/* Parameters of each input's detector: it feeds the outputs it is the source of (setOutputSource), while its input
+ * is connected. By default input 1 => output 1, input 2 => output 2 (2 independent channels). With both outputs fed
+ * by one input, it is analysed once. Each detector uses the detection parameters of its input's channel.
  */
 static void split_params(const a2m_params_t* base, const int* connected, a2m_params_t* p) {
     for (int in = 0; in < A2M_NUM_INPUTS; ++in) {
         p[in] = *base;
-        for (int o = 0; o < A2M_NUM_OUTPUTS; ++o) {
-            int feeds = connected[in] && (o == in || !connected[1 - in]);
-            if (!feeds)
+        p[in].onset_db = atomic_load(&g_onset[in]);
+        p[in].release_db = atomic_load(&g_release[in]);
+        p[in].noise = atomic_load(&g_noise[in]);
+        for (int o = 0; o < A2M_NUM_OUTPUTS; ++o)
+            if (!connected[in] || atomic_load(&g_source[o]) != in)
                 p[in].out[o].active = 0;
-        }
     }
 }
 
@@ -215,28 +215,31 @@ uint8_t isRunning() {
     return g_client != NULL;
 }
 
-void setOnsetThreshold(float db) {
-    atomic_store(&g_onset, clampf(db, -80.0f, 0.0f));
+void setOnsetThreshold(uint8_t channel, float db) {
+    if (channel < A2M_NUM_INPUTS)
+        atomic_store(&g_onset[channel], clampf(db, -80.0f, 0.0f));
 }
 
-float getOnsetThreshold() {
-    return atomic_load(&g_onset);
+float getOnsetThreshold(uint8_t channel) {
+    return channel < A2M_NUM_INPUTS ? atomic_load(&g_onset[channel]) : 0.0f;
 }
 
-void setReleaseThreshold(float db) {
-    atomic_store(&g_release, clampf(db, -90.0f, 0.0f));
+void setReleaseThreshold(uint8_t channel, float db) {
+    if (channel < A2M_NUM_INPUTS)
+        atomic_store(&g_release[channel], clampf(db, -90.0f, 0.0f));
 }
 
-float getReleaseThreshold() {
-    return atomic_load(&g_release);
+float getReleaseThreshold(uint8_t channel) {
+    return channel < A2M_NUM_INPUTS ? atomic_load(&g_release[channel]) : 0.0f;
 }
 
-void setNoiseFilter(float value) {
-    atomic_store(&g_noise, clampf(value, 0.0f, 100.0f));
+void setNoiseFilter(uint8_t channel, float value) {
+    if (channel < A2M_NUM_INPUTS)
+        atomic_store(&g_noise[channel], clampf(value, 0.0f, 100.0f));
 }
 
-float getNoiseFilter() {
-    return atomic_load(&g_noise);
+float getNoiseFilter(uint8_t channel) {
+    return channel < A2M_NUM_INPUTS ? atomic_load(&g_noise[channel]) : 0.0f;
 }
 
 void setOutputActive(uint8_t output, uint8_t active) {
@@ -246,6 +249,15 @@ void setOutputActive(uint8_t output, uint8_t active) {
 
 uint8_t getOutputActive(uint8_t output) {
     return output < A2M_NUM_OUTPUTS ? atomic_load(&g_active[output]) : 0;
+}
+
+void setOutputSource(uint8_t output, uint8_t input) {
+    if (output < A2M_NUM_OUTPUTS && input < A2M_NUM_INPUTS)
+        atomic_store(&g_source[output], input);
+}
+
+uint8_t getOutputSource(uint8_t output) {
+    return output < A2M_NUM_OUTPUTS ? atomic_load(&g_source[output]) : 0;
 }
 
 void setPolyphonic(uint8_t output, uint8_t poly) {

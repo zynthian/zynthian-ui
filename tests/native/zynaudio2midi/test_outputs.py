@@ -82,10 +82,23 @@ def test_events_are_in_time_order(a2m):
 OTHER_MELODY = sequence([64, 59, 55, 50])[0]
 
 
-def test_input_2_alone_feeds_both_outputs(a2m):
-    """Channel 1 "same as 2": output 1 is fed by input 2 while input 1 is not connected"""
+def test_an_output_without_its_input_sends_nothing(a2m):
+    assert analyse_outputs(a2m, MELODY, sources=(0, 1)) == {0: analyse_outputs(a2m, MELODY)[0], 1: []}
+    assert analyse_outputs(a2m, None, signal2=MELODY) == {0: [], 1: analyse_outputs(a2m, MELODY)[1]}
+
+
+@pytest.mark.parametrize("source", [0, 1])
+def test_either_input_can_feed_both_outputs(a2m, source):
     configure(a2m, 1, bend=1)
-    assert analyse_outputs(a2m, None, signal2=MELODY) == analyse_outputs(a2m, MELODY)
+    signals = (MELODY, None) if source == 0 else (None, MELODY)
+    events = analyse_outputs(a2m, signals[0], signal2=signals[1], sources=(source, source))
+    assert events == analyse_outputs(a2m, MELODY)
+
+
+def test_source_of_an_invalid_output_or_input_is_ignored(a2m):
+    a2m.setOutputSource(2, 0)
+    a2m.setOutputSource(0, 2)
+    assert [a2m.getOutputSource(o) for o in (0, 1)] == [0, 1]
 
 
 def test_two_inputs_are_independent_channels(a2m):
@@ -99,3 +112,39 @@ def test_two_inputs_are_independent_channels(a2m):
     assert strip(events[0]) == strip(expected[0]) and strip(events[1]) == strip(expected[1])
     assert {n for t, s, n, v in events[0] if s == NOTE_ON} == {40, 45, 50, 55, 59, 64}
     assert {n for t, s, n, v in events[1] if s == NOTE_ON} == {43, 48, 50, 52, 55, 59}
+
+
+# --- Detection parameters of each channel ----------------------------------------------------------------------------
+
+def test_each_channel_has_its_own_detection_parameters(a2m):
+    """With 2 inputs, a channel's thresholds change only its own output"""
+    expected = analyse_outputs(a2m, MELODY, signal2=MELODY)
+    a2m.setOnsetThreshold(1, 0)  # channel 2 hears nothing
+    events = analyse_outputs(a2m, MELODY, signal2=MELODY)
+    assert events[0] == expected[0] and events[1] == []
+    a2m.setOnsetThreshold(1, -40)
+    a2m.setNoiseFilter(0, 0)  # faster, more sensitive detection on channel 1 only
+    events = analyse_outputs(a2m, MELODY, signal2=MELODY)
+    assert events[1] == expected[1] and events[0] == analyse_outputs(a2m, MELODY)[0]
+
+
+@pytest.mark.parametrize("source", [0, 1])
+def test_one_input_feeding_both_outputs_uses_its_channel_parameters(a2m, source):
+    """One detection: the parameters of the input's channel apply to both outputs, the other's are unused"""
+    signals = (MELODY, None) if source == 0 else (None, MELODY)
+    run = lambda: analyse_outputs(a2m, signals[0], signal2=signals[1], sources=(source, source))  # noqa: E731
+    expected = run()
+    assert expected[0] and expected[1]
+    a2m.setOnsetThreshold(1 - source, 0)  # the other channel
+    assert run() == expected
+    a2m.setOnsetThreshold(source, 0)  # the input's channel
+    assert run() == {0: [], 1: []}
+
+
+def test_detection_parameters_of_an_invalid_channel_are_ignored(a2m):
+    a2m.setOnsetThreshold(2, -10)
+    a2m.setReleaseThreshold(2, -20)
+    a2m.setNoiseFilter(2, 10)
+    assert [a2m.getOnsetThreshold(c) for c in (0, 1)] == [-40, -40]
+    assert [a2m.getReleaseThreshold(c) for c in (0, 1)] == [-50, -50]
+    assert [a2m.getNoiseFilter(c) for c in (0, 1)] == [50, 50]
