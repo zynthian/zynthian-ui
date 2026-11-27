@@ -81,11 +81,11 @@ class zynthian_legacy_snapshot:
     def version_5(self):
         # Convert snapshot schema V5 to V6
 
-        # Aubionotes service replaced by the audio to MIDI converter (global processor)
+        # Aubionotes service replaced by the audio to MIDI converter (global processor), which has no enable
+        # option: it works when its audio input and MIDI output are routed (as aubionotes' were)
         mp_state = self.snapshot.get("midi_profile_state")
-        if isinstance(mp_state, dict) and "AUBIONOTES_ENABLED" in mp_state:
-            enabled = mp_state.pop("AUBIONOTES_ENABLED")
-            mp_state.setdefault("AUDIO2MIDI_ENABLED", enabled)
+        if isinstance(mp_state, dict):
+            mp_state.pop("AUBIONOTES_ENABLED", None)
         for zs3 in self.snapshot.get("zs3", {}).values():
             midi_capture = zs3.get("midi_capture")
             if isinstance(midi_capture, dict) and "AUBIO:in" in midi_capture:

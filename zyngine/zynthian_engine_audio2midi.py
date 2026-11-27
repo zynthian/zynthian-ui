@@ -25,6 +25,7 @@ import os
 import ctypes
 import logging
 
+import zynautoconnect
 from zyngine.zynthian_engine import zynthian_engine
 
 # ------------------------------------------------------------------------------
@@ -32,14 +33,20 @@ from zyngine.zynthian_engine import zynthian_engine
 # ------------------------------------------------------------------------------
 
 LIB_PATH = "/zynthian/zynthian-ui/zynlibs/zynaudio2midi/build/libzynaudio2midi.so"
-JACK_CLIENT_NAME = "audio2midi"  # Ports: "input" (audio), "midi_out" (MIDI)
+JACK_CLIENT_NAME = "audio2midi"  # Ports: "input", "input_2" (audio), "midi_out", "midi_out_2" (MIDI)
+NUM_OUTPUTS = 2
+AUDIO_IN_SYMBOLS = ("audio_in", "audio_in_2")  # Audio input controller of each channel
 
 
 class zynthian_engine_audio2midi(zynthian_engine):
     """Converts the notes played into an audio input to MIDI note on/off and optional pitch bend (channel 1).
 
-    The converter (JACK client) only runs while enabled (start/stop), so it costs nothing when disabled.
-    Its MIDI output is a MIDI input device, like a hardware port.
+    The converter (JACK client) always runs but only analyses what is used: an output routed to a chain (active),
+    fed by a connected audio input. It has 2 channels: converter input 1 feeds output 1, input 2 feeds output 2.
+    A channel without an input is "same as" the other one: the connected input feeds both outputs (shared detection).
+    Its MIDI outputs are MIDI input devices, like hardware ports. Each output has its own mode (mono / poly,
+    pitch bend). Each channel has an audio input controller: the physical audio input of its converter input.
+    The control view shows the pages of one channel (set_channel).
     """
 
     # ---------------------------------------------------------------------------
@@ -52,7 +59,7 @@ class zynthian_engine_audio2midi(zynthian_engine):
             "short_name": "onset",
             "value_min": -80,
             "value_max": 0,
-            "value_default": -40,
+            "value_default": -60,
             "is_integer": True
         }],
         ["release", {
@@ -60,46 +67,78 @@ class zynthian_engine_audio2midi(zynthian_engine):
             "short_name": "release",
             "value_min": -90,
             "value_max": 0,
-            "value_default": -50,
+            "value_default": -66,
             "is_integer": True
-        }],
-        ["polyphonic", {
-            "name": "mode",
-            "labels": ["mono", "poly"],
-            "ticks": [0, 1],
-            "value_min": 0,
-            "value_max": 1,
-            "value_default": 0
         }],
         ["noise", {
             "name": "noise filter",
             "short_name": "noise filter",
             "value_min": 0,
             "value_max": 100,
-            "value_default": 50,
-            "is_integer": True
-        }],
-        ["pitchbend", {
-            "name": "pitch bend",
-            "labels": ["off", "on"],
-            "ticks": [0, 1],
-            "value_min": 0,
-            "value_max": 1,
-            "value_default": 0
-        }],
-        ["bend_range", {
-            "name": "bend range",
-            "value_min": 1,
-            "value_max": 24,
-            "value_default": 2,
+            "value_default": 15,
             "is_integer": True
         }]
     ]
+    # Each output has its own mode. Output 1 defaults to pitch bend (e.g. lead synths), output 2 to none (e.g. pianos).
+    for _output, _bend in ((1, 1), (2, 0)):
+        _sfx = "" if _output == 1 else f"_{_output}"
+        _ctrls += [
+            # Physical audio input of the channel's converter input (0: none, or "same as" the other channel if it has
+            # one). Labels follow the audio inputs found.
+            # Its value is state_manager.audio2midi_in (saved in the MIDI capture state), not restored from here.
+            [f"audio_in{_sfx}", {
+                "name": f"channel {_output} audio input",
+                "short_name": "audio input",
+                "labels": ["none", "1", "2"],
+                "ticks": [0, 1, 2],
+                "value_min": 0,
+                "value_max": 2,
+                "value_default": 0
+            }],
+            [f"polyphonic{_sfx}", {
+                "name": f"output {_output} mode",
+                "short_name": "mode",
+                "labels": ["mono", "poly"],
+                "ticks": [0, 1],
+                "value_min": 0,
+                "value_max": 1,
+                "value_default": 0
+            }],
+            [f"pitchbend{_sfx}", {
+                "name": f"output {_output} pitch bend",
+                "short_name": "pitch bend",
+                "labels": ["off", "on"],
+                "ticks": [0, 1],
+                "value_min": 0,
+                "value_max": 1,
+                "value_default": _bend
+            }],
+            [f"bend_range{_sfx}", {
+                "name": f"output {_output} bend range",
+                "short_name": "bend range",
+                "value_min": 1,
+                "value_max": 24,
+                "value_default": 2,
+                "is_integer": True
+            }]
+        ]
+    del _output, _bend, _sfx
 
-    _ctrl_screens = [
-        ["Audio ➔ MIDI", ["onset", "release", "polyphonic", "noise"]],
-        ["Pitch bend", ["pitchbend", "bend_range"]]
-    ]
+    # Pages of the control view: those of the channel set by set_channel()
+    _ctrl_screens = None
+
+    # Controller symbol => (library setter, output index or None for all outputs)
+    _ctrl_fn = {
+        "onset": ("setOnsetThreshold", None),
+        "release": ("setReleaseThreshold", None),
+        "noise": ("setNoiseFilter", None),
+        "polyphonic": ("setPolyphonic", 0),
+        "pitchbend": ("setPitchBend", 0),
+        "bend_range": ("setBendRange", 0),
+        "polyphonic_2": ("setPolyphonic", 1),
+        "pitchbend_2": ("setPitchBend", 1),
+        "bend_range_2": ("setBendRange", 1),
+    }
 
     # ----------------------------------------------------------------------------
     # ZynAPI variables
@@ -127,15 +166,19 @@ class zynthian_engine_audio2midi(zynthian_engine):
         self.options['midi_chan'] = False
         self.options['replace'] = False
 
+        self.channel = 0
+        self._ctrl_screens = self.get_channel_screens(0)
+
         self.lib = None
         try:
             self.lib = ctypes.cdll.LoadLibrary(LIB_PATH)
             self.lib.start.restype = ctypes.c_uint8
             self.lib.isRunning.restype = ctypes.c_uint8
-            for fn in ("setOnsetThreshold", "setReleaseThreshold", "setNoiseFilter", "setBendRange"):
+            for fn in ("setOnsetThreshold", "setReleaseThreshold", "setNoiseFilter"):
                 getattr(self.lib, fn).argtypes = [ctypes.c_float]
-            for fn in ("setPolyphonic", "setPitchBend"):
-                getattr(self.lib, fn).argtypes = [ctypes.c_uint8]
+            for fn in ("setPolyphonic", "setPitchBend", "setOutputActive"):
+                getattr(self.lib, fn).argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+            self.lib.setBendRange.argtypes = [ctypes.c_uint8, ctypes.c_float]
         except Exception as e:
             logging.error(f"Can't load audio to MIDI library => {e}")
             self.lib = None
@@ -156,7 +199,7 @@ class zynthian_engine_audio2midi(zynthian_engine):
         # Apply the current controller values before the first audio is processed
         for processor in self.processors:
             for zctrl in processor.controllers_dict.values():
-                self.send_controller_value(zctrl)
+                self.send_lib_value(zctrl)
         if self.lib.start():
             return True
         logging.error("Can't start audio to MIDI converter")
@@ -169,12 +212,84 @@ class zynthian_engine_audio2midi(zynthian_engine):
     def is_running(self):
         return self.lib is not None and bool(self.lib.isRunning())
 
+    def set_output_active(self, output, active):
+        """Activate an output (0..NUM_OUTPUTS-1). Only active outputs are analysed (cost CPU)."""
+        if self.lib is not None:
+            self.lib.setOutputActive(output, 1 if active else 0)
+
     # ---------------------------------------------------------------------------
     # Processor Management
     # ---------------------------------------------------------------------------
 
+    def add_processor(self, processor):
+        super().add_processor(processor)
+        processor.name = self.get_channel_name()
+
     def get_path(self, processor):
         return self.name
+
+    # ---------------------------------------------------------------------------
+    # Channels
+    # ---------------------------------------------------------------------------
+
+    def get_channel_name(self):
+        """Name of the channel shown in the control view (its title), as its MIDI output, e.g. "Audio ➔ MIDI 2"."""
+        return f"{self.name} {self.channel + 1}"
+
+    @staticmethod
+    def get_channel_screens(channel):
+        """Control view pages of a channel (0..NUM_OUTPUTS-1): the detection settings shared by the channels, then
+        the channel's audio input and MIDI output"""
+
+        sfx = "" if channel == 0 else f"_{channel + 1}"
+        return [
+            ["Audio detector (common)", ["onset", "release", "noise"]],
+            ["MIDI Output", [f"audio_in{sfx}", f"polyphonic{sfx}", f"pitchbend{sfx}", f"bend_range{sfx}"]]
+        ]
+
+    def set_channel(self, channel):
+        """Show the pages of a channel (0..NUM_OUTPUTS-1) in the control view"""
+
+        if channel not in range(NUM_OUTPUTS):
+            return
+        self.channel = channel
+        self._ctrl_screens = self.get_channel_screens(channel)
+        self.refresh_audio_in_ctrls()
+        for processor in self.processors:
+            processor.name = self.get_channel_name()
+            processor.init_ctrl_screens()
+
+    def refresh_audio_in_ctrls(self):
+        """Update the audio input controllers from the audio inputs found and the converter's audio inputs
+        (state_manager.audio2midi_in), without changing them"""
+
+        try:
+            n_inputs = len(zynautoconnect.get_audio_capture_ports())
+        except Exception:
+            n_inputs = 2
+        values = []
+        for channel in range(NUM_OUTPUTS):
+            try:
+                audio_in = self.state_manager.audio2midi_in[channel]
+                values.append(audio_in[0] if audio_in else 0)
+            except (AttributeError, IndexError, TypeError):
+                values.append(0)
+        for processor in self.processors:
+            for channel, symbol in enumerate(AUDIO_IN_SYMBOLS):
+                zctrl = processor.controllers_dict.get(symbol)
+                if zctrl is None:
+                    continue
+                value = values[channel]
+                # Without an input, a channel is fed by the other channel's input, if it has one
+                other = 1 - channel
+                no_input = f"same as {other + 1}" if values[other] else "none"
+                n = max(n_inputs, value, 1)  # Keep the selected input, and at least 2 options
+                zctrl.set_options({
+                    "labels": [no_input] + [str(i) for i in range(1, n + 1)],
+                    "ticks": list(range(n + 1))
+                })
+                zctrl.set_value(value, False)
+                zctrl.is_dirty = True  # Redraw: the label may change without the value
 
     # ----------------------------------------------------------------------------
     # Bank Managament
@@ -208,24 +323,34 @@ class zynthian_engine_audio2midi(zynthian_engine):
             return {}
         zctrls = super().get_controllers_dict(processor)
         for zctrl in zctrls.values():
-            self.send_controller_value(zctrl)
+            self.send_lib_value(zctrl)
+        self.refresh_audio_in_ctrls()
         return zctrls
 
     def send_controller_value(self, zctrl):
+        if zctrl.symbol in AUDIO_IN_SYMBOLS:
+            # The user selected a channel's audio input. Not when restoring a state: the MIDI capture state holds it.
+            if not zctrl.processor or not zctrl.processor.set_state_flag:
+                self.state_manager.set_audio2midi_input(AUDIO_IN_SYMBOLS.index(zctrl.symbol), int(zctrl.value))
+            return
+        self.send_lib_value(zctrl)
+
+    def send_lib_value(self, zctrl):
+        """Send a controller value to the library (not the audio input controllers)"""
+
         if self.lib is None:
             return
-        if zctrl.symbol == "onset":
-            self.lib.setOnsetThreshold(zctrl.value)
-        elif zctrl.symbol == "release":
-            self.lib.setReleaseThreshold(zctrl.value)
-        elif zctrl.symbol == "polyphonic":
-            self.lib.setPolyphonic(1 if zctrl.value else 0)
-        elif zctrl.symbol == "noise":
-            self.lib.setNoiseFilter(zctrl.value)
-        elif zctrl.symbol == "pitchbend":
-            self.lib.setPitchBend(1 if zctrl.value else 0)
-        elif zctrl.symbol == "bend_range":
-            self.lib.setBendRange(zctrl.value)
+        try:
+            fn, output = self._ctrl_fn[zctrl.symbol]
+        except KeyError:
+            return
+        value = zctrl.value
+        if fn in ("setPolyphonic", "setPitchBend"):
+            value = 1 if value else 0
+        if output is None:
+            getattr(self.lib, fn)(value)
+        else:
+            getattr(self.lib, fn)(output, value)
 
 
 # ******************************************************************************

@@ -410,7 +410,6 @@ def set_midi_config():
     global midi_usb_by_port, transport_clock_source, midi_filter_rules, midi_chanpress_cc
     global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
     global midi_touchosc_enabled, bluetooth_enabled, ble_controller
-    global midi_audio2midi_enabled
 
     # MIDI options
     midi_fine_tuning = float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING', "440.0"))
@@ -424,8 +423,6 @@ def set_midi_config():
     midi_touchosc_enabled = get_env_int('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0)
     bluetooth_enabled = get_env_int('ZYNTHIAN_MIDI_BLE_ENABLED', 0)
     ble_controller = os.environ.get('ZYNTHIAN_MIDI_BLE_CONTROLLER', "")
-    # Fall back to the setting of the aubionotes service it replaces, if the MIDI profile hasn't been converted
-    midi_audio2midi_enabled = get_env_int('ZYNTHIAN_MIDI_AUDIO2MIDI_ENABLED', get_env_int('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', 0))
     transport_clock_source = os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', "Internal")
 
     # Filter Rules

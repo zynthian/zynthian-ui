@@ -17,8 +17,11 @@ RATE = 48000
 NOTE_ON, NOTE_OFF, PITCH_BEND = 0x90, 0x80, 0xE0
 
 
+OUTPUTS = 2
+
+
 class Event(ctypes.Structure):
-    _fields_ = [("frame", ctypes.c_uint32), ("data", ctypes.c_uint8 * 3)]
+    _fields_ = [("frame", ctypes.c_uint32), ("output", ctypes.c_uint8), ("data", ctypes.c_uint8 * 3)]
 
 
 SIGNATURES = {
@@ -29,16 +32,18 @@ SIGNATURES = {
     "getOnsetThreshold": (ctypes.c_float, []),
     "setReleaseThreshold": (None, [ctypes.c_float]),
     "getReleaseThreshold": (ctypes.c_float, []),
-    "setPolyphonic": (None, [ctypes.c_uint8]),
-    "getPolyphonic": (ctypes.c_uint8, []),
     "setNoiseFilter": (None, [ctypes.c_float]),
     "getNoiseFilter": (ctypes.c_float, []),
-    "setPitchBend": (None, [ctypes.c_uint8]),
-    "getPitchBend": (ctypes.c_uint8, []),
-    "setBendRange": (None, [ctypes.c_float]),
-    "getBendRange": (ctypes.c_float, []),
-    "analyse": (ctypes.c_uint32, [ctypes.POINTER(ctypes.c_float), ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32,
-                                  ctypes.POINTER(Event), ctypes.c_uint32]),
+    "setOutputActive": (None, [ctypes.c_uint8, ctypes.c_uint8]),
+    "getOutputActive": (ctypes.c_uint8, [ctypes.c_uint8]),
+    "setPolyphonic": (None, [ctypes.c_uint8, ctypes.c_uint8]),
+    "getPolyphonic": (ctypes.c_uint8, [ctypes.c_uint8]),
+    "setPitchBend": (None, [ctypes.c_uint8, ctypes.c_uint8]),
+    "getPitchBend": (ctypes.c_uint8, [ctypes.c_uint8]),
+    "setBendRange": (None, [ctypes.c_uint8, ctypes.c_float]),
+    "getBendRange": (ctypes.c_float, [ctypes.c_uint8]),
+    "analyse": (ctypes.c_uint32, [ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.c_uint32,
+                                  ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint8, ctypes.POINTER(Event), ctypes.c_uint32]),
 }
 
 
@@ -58,26 +63,43 @@ def a2m_lib():
 
 @pytest.fixture
 def a2m(a2m_lib):
-    """The library with default parameters (restored after each test)."""
+    """The library with default parameters (restored after each test). No output is active."""
     def defaults():
         a2m_lib.setOnsetThreshold(-40)
         a2m_lib.setReleaseThreshold(-50)
-        a2m_lib.setPolyphonic(0)
         a2m_lib.setNoiseFilter(50)
-        a2m_lib.setPitchBend(0)
-        a2m_lib.setBendRange(2)
+        for output in range(OUTPUTS):
+            a2m_lib.setOutputActive(output, 0)
+            a2m_lib.setPolyphonic(output, 0)
+            a2m_lib.setPitchBend(output, 0)
+            a2m_lib.setBendRange(output, 2)
     defaults()
     yield a2m_lib
     a2m_lib.stop()
     defaults()
 
 
+def analyse_outputs(lib, signal, outputs=0b11, rate=RATE, block=256, signal2=None):
+    """Run the offline analysis with the given outputs (bitmask) active: {output: [(seconds, status, note, velocity)]}.
+
+    ``signal``: input 1 (None: not connected), ``signal2``: input 2 (None: not connected), padded to the same length.
+    """
+    signals = [None if x is None else np.asarray(x, dtype=np.float32) for x in (signal, signal2)]
+    frames = max(len(x) for x in signals if x is not None)
+    signals = [None if x is None else np.ascontiguousarray(np.pad(x, (0, frames - len(x)))) for x in signals]
+    ptrs = [None if x is None else x.ctypes.data_as(ctypes.POINTER(ctypes.c_float)) for x in signals]
+    events = (Event * 8192)()
+    n = lib.analyse(ptrs[0], ptrs[1], frames, rate, block, outputs, events, 8192)
+    result = {o: [] for o in range(OUTPUTS)}
+    for i in range(n):
+        e = events[i]
+        result[e.output].append((e.frame / rate, e.data[0], e.data[1], e.data[2]))
+    return result
+
+
 def analyse(lib, signal, rate=RATE, block=256):
-    """Run the offline analysis: list of (seconds, status, note, velocity)."""
-    signal = np.ascontiguousarray(signal, dtype=np.float32)
-    events = (Event * 4096)()
-    n = lib.analyse(signal.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), len(signal), rate, block, events, 4096)
-    return [(events[i].frame / rate, events[i].data[0], events[i].data[1], events[i].data[2]) for i in range(n)]
+    """Run the offline analysis on output 0 alone: list of (seconds, status, note, velocity)."""
+    return analyse_outputs(lib, signal, 0b01, rate, block)[0]
 
 
 def note_ons(events):

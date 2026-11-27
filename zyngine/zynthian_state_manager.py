@@ -74,7 +74,8 @@ ALSA_ID = -2
 AUDIO_PLAYER_ID = -3
 TEMPO_ID = -4
 AUDIO2MIDI_ID = -5
-AUDIO2MIDI_UID = zynautoconnect.AUDIO2MIDI_UID  # MIDI port UID of the audio to MIDI converter
+AUDIO2MIDI_UID = zynautoconnect.AUDIO2MIDI_UID  # MIDI port UID of the audio to MIDI converter's output 1
+AUDIO2MIDI_UIDS = zynautoconnect.AUDIO2MIDI_UIDS  # MIDI port UID of each output
 
 class zynthian_state_manager:
 
@@ -160,7 +161,8 @@ class zynthian_state_manager:
         self.audio_recorder = zynthian_audio_recorder(self)
         self.ctrldev_manager = None
         self.audio_player = None
-        self.audio2midi_in = [1]  # List of audio inputs (mixed) of the audio to MIDI converter
+        self.audio2midi_in = [[], []]  # Audio inputs (physical input indices, mixed) of each converter input
+        self.audio2midi_routes = {}  # Chains (zmops) routed from each converter output (by uid) while it has no port
 
         # List of lists [rate, cb, schedule] for registered regularly repeating callbacks
         self.slow_update_callbacks = []
@@ -2058,9 +2060,9 @@ class zynthian_state_manager:
             # Ctrldev driver state
             if uid in ctrldev_state_drivers:
                 mcstate[uid]["ctrldev_state"] = ctrldev_state_drivers[uid]
-            # Audio to MIDI converter inputs
-            if uid == AUDIO2MIDI_UID:
-                mcstate[uid]["audio_in"] = self.audio2midi_in
+            # Audio inputs of the audio to MIDI converter input feeding this output (input 1 => output 1, ...)
+            if uid in AUDIO2MIDI_UIDS:
+                mcstate[uid]["audio_in"] = list(self.audio2midi_in[AUDIO2MIDI_UIDS.index(uid)])
             # Add MIDI mapping
             for key, zctrls in self.chain_manager.midi_cc_binding.items():
                 cc, chan, zmip, chain_id = self.chain_manager.unpack_midi_bind_key(key)
@@ -2069,6 +2071,12 @@ class zynthian_state_manager:
                     mcstate[uid]["midi_learn"][ss_key] = []
                     for zctrl in zctrls:
                         mcstate[uid]["midi_learn"][ss_key].append([zctrl.processor.id, zctrl.symbol])
+
+        # Routing of the audio to MIDI converter outputs while the converter isn't running (e.g. JACK restart)
+        for uid, routes in self.audio2midi_routes.items():
+            if uid not in mcstate:
+                mcstate[uid] = {"routed_chains": list(routes), "midi_learn": {},
+                                "audio_in": list(self.audio2midi_in[AUDIO2MIDI_UIDS.index(uid)])}
 
         mcstate["zynmidi"] = {"midi_learn": {}}
         # Add global / absolute MIDI mapping
@@ -2096,6 +2104,13 @@ class zynthian_state_manager:
                 if uid != "zynmidi":
                     izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
                     if izmip is None:
+                        if uid in AUDIO2MIDI_UIDS:
+                            # Converter not running: routing is applied when it starts
+                            try:
+                                self.audio2midi_routes[uid] = list(state["routed_chains"])
+                            except:
+                                pass
+                            self.set_audio2midi_in_state(uid, state)
                         continue
                     try:
                         lib_zyncore.zmip_set_flag_active_chain(izmip, bool(state["zmip_input_mode"]))
@@ -2111,11 +2126,8 @@ class zynthian_state_manager:
                     except:
                         pass
                     """
-                    if uid == AUDIO2MIDI_UID:
-                        try:
-                            self.audio2midi_in = list(state["audio_in"])
-                        except:
-                            pass
+                    if uid in AUDIO2MIDI_UIDS:
+                        self.set_audio2midi_in_state(uid, state)
                     zynautoconnect.update_midi_in_dev_mode(izmip)
                     try:
                         # TODO: Use ctrldev_driver=None to disable driver
@@ -2171,6 +2183,7 @@ class zynthian_state_manager:
 
         else:
             zynautoconnect.reset_midi_in_dev_all()
+        self.update_audio2midi_outputs()
 
     # ------------------------------------------------------------------
     # MIDI learning
@@ -2265,7 +2278,7 @@ class zynthian_state_manager:
         self.default_qmidinet()
         self.default_touchosc()
         self.default_bluetooth()
-        self.default_audio2midi()
+        self.start_audio2midi()
 
     # -------------------------------------------------------------------
     # MIDI profile
@@ -2895,64 +2908,106 @@ class zynthian_state_manager:
         except:
             return False
 
-    def start_audio2midi(self, save_config=True, wait=0):
-        """Start the audio to MIDI converter
+    def start_audio2midi(self):
+        """Start the audio to MIDI converter (JACK client). It always runs (its ports can be routed) but only
+        analyses the outputs routed to a chain that have a connected audio input, so it costs nothing until used."""
 
-        save_config : True to save enabled state in MIDI profile
-        wait : Seconds to wait before autoconnect
-        """
-        if not self.is_audio2midi_running():
-            logging.info("STARTING audio to MIDI converter")
-            try:
-                if not self.audio2midi_processor.engine.start_converter():
-                    raise Exception("Can't start JACK client")
-            except Exception as e:
-                logging.error(e)
-                self.set_busy_error("ERROR STARTING Audio \u2794 MIDI", e)
-                return
-        zynthian_gui_config.midi_audio2midi_enabled = 1
-        if save_config:
-            self.save_audio2midi_config()
-        sleep(wait)
+        if self.is_audio2midi_running():
+            return
+        logging.info("STARTING audio to MIDI converter")
+        try:
+            if not self.audio2midi_processor.engine.start_converter():
+                raise Exception("Can't start JACK client")
+        except Exception as e:
+            logging.error(f"Can't start audio to MIDI converter => {e}")
+            return
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
-    def stop_audio2midi(self, save_config=True, wait=0):
-        """Stop the audio to MIDI converter
+    def update_audio2midi_outputs(self):
+        """Activate the audio to MIDI converter outputs routed to a chain, deactivate the others (cost no CPU)"""
 
-        save_config : True to save enabled state in MIDI profile
-        wait : Seconds to wait after stopping
-        """
-        if self.is_audio2midi_running():
-            logging.info("STOPPING audio to MIDI converter")
-            self.audio2midi_processor.engine.stop_converter()
-        zynthian_gui_config.midi_audio2midi_enabled = 0
-        if save_config:
-            self.save_audio2midi_config()
-        sleep(wait)
-        zynautoconnect.request_midi_connect(True)
-
-    def save_audio2midi_config(self):
-        """Save enabled state of the audio to MIDI converter in MIDI profile"""
         try:
-            zynconf.update_midi_profile({
-                "ZYNTHIAN_MIDI_AUDIO2MIDI_ENABLED": str(zynthian_gui_config.midi_audio2midi_enabled)
-            })
+            engine = self.audio2midi_processor.engine
+            zmops = [chain.zmop_index for chain in self.chain_manager.chains.values() if chain.zmop_index is not None]
+            for output, zmip in enumerate(zynautoconnect.get_audio2midi_zmips()):
+                active = zmip is not None and any(lib_zyncore.zmop_get_route_from(zmop, zmip) for zmop in zmops)
+                engine.set_output_active(output, active)
         except Exception as e:
-            logging.error(f"Can't save audio to MIDI config => {e}")
+            logging.error(f"Can't update audio to MIDI outputs => {e}")
 
-    def toggle_audio2midi(self, save_config=True, wait=0):
-        if self.is_audio2midi_running():
-            self.stop_audio2midi(save_config, wait)
-        else:
-            self.start_audio2midi(save_config, wait)
+    def set_audio2midi_input(self, channel, audio_in):
+        """Set the audio input of a converter channel
 
-    def default_audio2midi(self):
-        """Start/Stop the audio to MIDI converter depending on configuration (disabled by default)"""
-        if zynthian_gui_config.midi_audio2midi_enabled:
-            self.start_audio2midi(False)
-        else:
-            self.stop_audio2midi(False)
+        channel : Channel (0..1): converter input and output
+        audio_in : Physical audio input (1..), 0 for none (fed by the other channel's input, if it has one)
+        """
+
+        audio_in = [audio_in] if audio_in else []
+        if audio_in != self.audio2midi_in[channel]:
+            self.audio2midi_in[channel] = audio_in
+            zynautoconnect.request_audio_connect()
+        self.refresh_audio2midi_ctrls()
+
+    def refresh_audio2midi_ctrls(self):
+        try:
+            self.audio2midi_processor.engine.refresh_audio_in_ctrls()
+        except Exception as e:
+            logging.warning(f"Can't refresh audio to MIDI controllers => {e}")
+
+    def audio2midi_default_input(self):
+        """Connect the first audio input to the first converter input if no audio input is connected to the converter
+        (one connected input feeds both outputs). Used when the user routes a converter output to a chain, so it works
+        without more setup.
+
+        Returns : True if the input was connected
+        """
+
+        if any(self.audio2midi_in):
+            return False
+        self.set_audio2midi_input(0, 1)
+        return True
+
+    def set_audio2midi_in_state(self, uid, state):
+        """Restore the audio inputs of the converter input feeding an output from its MIDI capture state
+
+        uid : UID of the output's port
+        state : MIDI capture state of the port. No "audio_in": not connected.
+        """
+
+        audio_in = state.get("audio_in", [])
+        index = AUDIO2MIDI_UIDS.index(uid)
+        if audio_in != self.audio2midi_in[index]:
+            self.audio2midi_in[index] = list(audio_in)
+            zynautoconnect.request_audio_connect()
+            self.refresh_audio2midi_ctrls()
+
+    def forget_audio2midi_port(self, zmip, uid):
+        """A converter output's port has gone (converter stopped, e.g. JACK restart): remember its routing and route
+        its zmip to all chains, the default for the device that takes it next
+
+        zmip : MIDI input device index of the port
+        uid : Port UID
+        """
+
+        self.audio2midi_routes[uid] = [zmop for zmop in range(16) if lib_zyncore.zmop_get_route_from(zmop, zmip)]
+        for zmop in range(16):
+            lib_zyncore.zmop_set_route_from(zmop, zmip, 1)
+
+    def restore_audio2midi_port(self, zmip, uid, restored=False):
+        """A converter output's port has appeared: restore its routing, or route it to no chain (by default the
+        outputs aren't analysed: they cost CPU only once routed)
+
+        zmip : MIDI input device index of the port
+        uid : Port UID
+        restored : True if its state (and routing) has been restored from the ZS3
+        """
+
+        routes = self.audio2midi_routes.pop(uid, None)
+        if routes is None and restored:
+            return
+        for zmop in range(16):
+            lib_zyncore.zmop_set_route_from(zmop, zmip, routes is not None and zmop in routes)
 
     # ---------------------------------------------------------------------------
     # Zynthian Config Info

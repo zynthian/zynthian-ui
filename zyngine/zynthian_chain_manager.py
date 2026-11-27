@@ -348,8 +348,9 @@ class zynthian_chain_manager:
                 zmop_index = self.get_next_free_zmop_index()
             chain.set_zmop_index(zmop_index)
             # Enable all MIDI input devices by default => TODO: Should we allow user to define default routing?
+            # except the audio to MIDI converter outputs: each costs CPU once routed, so they are routed manually
             for zmip in range(MAX_NUM_MIDI_DEVS):
-                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, True)
+                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, not zynautoconnect.is_audio2midi_zmip(zmip))
             # Enable StepSeq MIDI intput
             lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_STEP_INDEX, True)
             # Enable SMF sequencer MIDI intput

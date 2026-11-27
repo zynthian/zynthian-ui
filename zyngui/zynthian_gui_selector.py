@@ -80,7 +80,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             fg=self.lb_fg,
             selectbackground=zynthian_gui_config.color_ctrl_bg_on,
             selectforeground=zynthian_gui_config.color_ctrl_tx,
-            selectmode=tkinter.SINGLE)
+            selectmode=tkinter.SINGLE,
+            exportselection=False)  # Else selecting in another listbox clears this one's selection
 
         # Configure layout
         self.tiny_ctrls = tiny_ctrls
@@ -294,10 +295,8 @@ class zynthian_gui_selector(zynthian_gui_base):
     def get_cursel(self):
         cursel = self.listbox.curselection()
         if len(cursel) > 0:
-            index = int(cursel[0])
-        else:
-            index = 0
-        return index
+            return int(cursel[0])
+        return self.index
 
     def select_listbox(self, index, see=True):
         if index <= 0:

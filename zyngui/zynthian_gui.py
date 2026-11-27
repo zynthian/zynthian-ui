@@ -2317,11 +2317,19 @@ class zynthian_gui:
         self.show_screen("alsa_mixer")
 
     def cuia_screen_audio2midi(self, params=None):
-        """Show the audio to MIDI converter controls view.
+        """Show the audio to MIDI converter controls view: the audio input and MIDI output pages of a channel.
 
         Category: screens
+
+        Params:
+            channel (int, optional): Converter channel, 1 or 2. Defaults to the channel last shown.
         """
 
+        if params:
+            try:
+                self.state_manager.audio2midi_processor.engine.set_channel(int(params[0]) - 1)
+            except (ValueError, TypeError, AttributeError) as e:
+                logging.warning(f"Can't set audio to MIDI channel => {e}")
         self.show_screen("audio2midi")
 
     def cuia_screen_launcher(self, params=None):

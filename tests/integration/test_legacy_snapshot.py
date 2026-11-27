@@ -158,16 +158,10 @@ def v5_aubio_snapshot(enabled="1"):
 
 
 @pytest.mark.parametrize("enabled", ["0", "1"])
-def test_v5_aubionotes_enable_becomes_audio2midi_enable(convert, enabled):
+def test_v5_aubionotes_enable_is_dropped(convert, enabled):
+    """The converter has no enable option: it works when its ports are routed, as the aubionotes ports were"""
     mps = convert(v5_aubio_snapshot(enabled))["midi_profile_state"]
-    assert mps == {"AUDIO2MIDI_ENABLED": enabled, "BLE_ENABLED": "0"}
-
-
-def test_v5_aubionotes_enable_does_not_override_audio2midi_enable(convert):
-    snap = v5_aubio_snapshot("1")
-    snap["midi_profile_state"]["AUDIO2MIDI_ENABLED"] = "0"
-    mps = convert(snap)["midi_profile_state"]
-    assert mps["AUDIO2MIDI_ENABLED"] == "0" and "AUBIONOTES_ENABLED" not in mps
+    assert mps == {"BLE_ENABLED": "0"}
 
 
 def test_v5_aubionotes_midi_input_becomes_audio2midi_input(convert):

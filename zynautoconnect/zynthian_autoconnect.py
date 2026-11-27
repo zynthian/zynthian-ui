@@ -141,7 +141,10 @@ deferred_midi_connect = False
 deferred_audio_connect = False
 # Audio to MIDI converter (global processor): JACK client and the UID of its MIDI port
 AUDIO2MIDI_CLIENT = "audio2midi"
-AUDIO2MIDI_UID = "AUDIO2MIDI:in"
+AUDIO2MIDI_PORTS = (f"{AUDIO2MIDI_CLIENT}:midi_out", f"{AUDIO2MIDI_CLIENT}:midi_out_2")  # MIDI port of each output
+AUDIO2MIDI_INPUTS = (f"{AUDIO2MIDI_CLIENT}:input", f"{AUDIO2MIDI_CLIENT}:input_2")  # Audio port of each input
+AUDIO2MIDI_UIDS = ("AUDIO2MIDI:in", "AUDIO2MIDI:in_2")  # UID of each output's MIDI port
+AUDIO2MIDI_UID = AUDIO2MIDI_UIDS[0]
 # List of hardware MIDI  source ports (including network, audio to MIDI, etc.)
 hw_midi_src_ports = []
 # List of hardware MIDI destination ports (including network, etc.)
@@ -410,13 +413,36 @@ def update_midi_in_dev_mode_all():
 
 
 def reset_midi_in_dev_all():
-    """Set all MIDI input devices to Active Chain mode and route to all chains"""
+    """Set all MIDI input devices to Active Chain mode and route to all chains (except the audio to MIDI converter)"""
 
     for zmip in range(len(devices_in_mode)):
         lib_zyncore.zmip_set_flag_active_chain(zmip, 1)
         devices_in_mode[zmip] = 1
+        route = 0 if is_audio2midi_zmip(zmip) else 1
         for zmop in range(16):
-            lib_zyncore.zmop_set_route_from(zmop, zmip, 1)
+            lib_zyncore.zmop_set_route_from(zmop, zmip, route)
+
+
+def is_audio2midi_zmip(zmip):
+    """Check if a MIDI input device (zmip) is an output of the audio to MIDI converter. These are not routed to
+    chains by default: an output is only analysed (costs CPU) while routed to a chain."""
+
+    try:
+        return devices_in[zmip].aliases[0] in AUDIO2MIDI_UIDS
+    except:
+        return False
+
+
+def get_audio2midi_zmips():
+    """List of the zmip of each audio to MIDI converter output (None if the port doesn't exist)"""
+
+    zmips = [None] * len(AUDIO2MIDI_UIDS)
+    for zmip, dev in enumerate(devices_in):
+        try:
+            zmips[AUDIO2MIDI_UIDS.index(dev.aliases[0])] = zmip
+        except:
+            pass
+    return zmips
 
 
 # ------------------------------------------------------------------------------
@@ -704,7 +730,7 @@ def update_hw_midi_ports(force=False):
             hw_midi_dst_ports += ports
         except:
             pass
-    for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", f"{AUDIO2MIDI_CLIENT}:midi_out"):
+    for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", f"{AUDIO2MIDI_CLIENT}:midi_out"):  # (regex: all converter outputs)
         try:
             ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
             hw_midi_src_ports += ports
@@ -796,6 +822,8 @@ def midi_autoconnect():
         # Delete disconnected input devices from list and unload driver
         if i not in busy_idevs and devices_in[i] is not None:
             logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
+            if is_audio2midi_zmip(i):
+                state_manager.forget_audio2midi_port(i, devices_in[i].aliases[0])
             devices_in[i] = None
             # Disable external MIDI clock sync when device is disconnected
             if ext_clock_zmip == i:
@@ -1076,6 +1104,13 @@ def midi_autoconnect():
             state_manager.ctrldev_manager.load_driver(i)
     if midi_capture_state:
         state_manager.set_midi_capture_state(midi_capture_state)
+    # Audio to MIDI converter outputs are routed only as configured (not to every chain by default)
+    for i in new_idev:
+        if is_audio2midi_zmip(i):
+            uid = devices_in[i].aliases[0]
+            state_manager.restore_audio2midi_port(i, uid, uid in midi_capture_state)
+    # Only the converter outputs routed to chains are analysed
+    state_manager.update_audio2midi_outputs()
 
     # Release Mutex Lock
     release_lock()
@@ -1180,15 +1215,18 @@ def audio_autoconnect():
     except Exception as e:
         logger.warning(e)
 
-    # Connect inputs to the audio to MIDI converter (mixed into its single input)
-    a2m_input = f"{AUDIO2MIDI_CLIENT}:input"
-    if a2m_input in required_routes:
-        capture_ports = get_audio_capture_ports()
-        for i in state_manager.audio2midi_in:
-            try:
-                required_routes[a2m_input].add(capture_ports[i - 1].name)
-            except:
-                pass
+    # Connect audio inputs to the audio to MIDI converter inputs (mixed into each). Not connected by default: a
+    # converter input only analyses audio while connected.
+    capture_ports = None
+    for a2m_input, audio_in in zip(AUDIO2MIDI_INPUTS, state_manager.audio2midi_in):
+        if a2m_input in required_routes:
+            if capture_ports is None:
+                capture_ports = get_audio_capture_ports()
+            for i in audio_in:
+                try:
+                    required_routes[a2m_input].add(capture_ports[i - 1].name)
+                except:
+                    pass
 
     # Remove mod-ui routes
     for dst in list(required_routes.keys()):
@@ -1489,8 +1527,9 @@ def build_midi_port_name(port):
         return f"NET:qmidi_{port.name[9:]}", "QmidiNet"
     elif port.name.endswith(" Client:TouchOSC Bridge"):
         return f"NET:touchosc_{port.name.split()[0][6:]}", "TouchOSC"
-    elif port.name == f"{AUDIO2MIDI_CLIENT}:midi_out":
-        return AUDIO2MIDI_UID, "Audio \u2794 MIDI"
+    elif port.name in AUDIO2MIDI_PORTS:
+        output = AUDIO2MIDI_PORTS.index(port.name)
+        return AUDIO2MIDI_UIDS[output], f"Audio \u2794 MIDI {output + 1}"
     elif port.name.startswith("BLE_MIDI:"):
         return port.aliases[0], port.aliases[1]
 

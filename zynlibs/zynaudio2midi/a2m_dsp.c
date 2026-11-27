@@ -20,16 +20,20 @@
  *
  * ******************************************************************
  *
- * Both modes low-pass filter and decimate the input, remove DC and analyse it once per hop. While the input is
+ * Each output has a mode (mono / poly). A detector runs for each mode used by an active output, so outputs share
+ * the analysis: an inactive output costs nothing, two monophonic outputs cost one detector plus two (cheap) note
+ * trackers. Two polyphonic outputs receive the same notes (the polyphonic note tracking is part of its detection).
+ *
+ * Both detectors low-pass filter and decimate the input, remove DC and analyse it once per hop. While the input is
  * below the thresholds (no note can start or is held) only its level is measured, so silence costs almost nothing.
  *
  * Monophonic: YIN (as zyntuner) at ~8 kHz, 32 ms window, 8 ms hop, 30..1600 Hz. The difference function is
  * computed lazily, only up to the first dip, so high notes are cheaper than low ones. Note on after the same note is
  * seen on 1..4 hops (noise filter) above the onset threshold, note off below the release threshold, legato note
  * change when the pitch moves more than 70 cents for as many hops, re-trigger on a sudden level rise (new pluck).
- * Optional pitch bend: while a note is held, gradual pitch movement within the bend range (e.g. a string bend,
- * vibrato, slide) is sent as pitch bend instead of a new note; a jump of more than half a semitone between two hops
- * (hammer-on, new fret) still starts a new note. Pitch bend is reset to centre before each note on.
+ * Optional pitch bend (per output): while a note is held, gradual pitch movement within the bend range (e.g. a
+ * string bend, vibrato, slide) is sent as pitch bend instead of a new note; a jump of more than half a semitone
+ * between two hops (hammer-on, new fret) still starts a new note. Pitch bend is reset to centre before each note on.
  *
  * Polyphonic: 2048 point FFT at ~12 kHz (170 ms Hann window, 21 ms hop), MIDI notes 36..96. Spectral peaks above an
  * adaptive noise floor (noise filter sets the margin) are matched to the harmonics of each candidate note. The note
@@ -93,38 +97,55 @@
 #define NOTE_ON_RESERVE 192  // Note on only if fewer events than this are queued: room is left for note offs
 #define SILENCE_DB -200.0f
 
-struct a2m_dsp {
-    uint32_t rate;
-    a2m_params_t params; // Requested
-    int poly;            // Active mode
+#define MODE_OFF -1
+#define MODE_MONO 0
+#define MODE_POLY 1
 
-    // Anti-alias filter (2 biquads), decimation, DC blocker
+// Anti-alias filter (2 biquads), decimation and DC blocker feeding a ring buffer of decimated samples
+typedef struct {
     int decim, phase;
     float drate;
     float fb[2], fa1[2], fa2[2], fz[2][2];
     float hp_coef, hp_x, hp_y;
-
-    // Decimated signal
     float ring[RING_SIZE];
     uint32_t wr, fill;
     int hop, since_hop;
+} front_t;
 
-    // Held notes (both modes)
+// Events and held notes of a note tracker
+typedef struct {
+    a2m_event_t ev[A2M_MAX_EVENTS];
+    uint32_t count;
+    uint32_t frame; // Frame of the events being produced
     uint8_t on[128];
     int held;
+    int bend_sent; // Last pitch bend value sent
+} stream_t;
 
-    // Monophonic
-    int m_win, m_max_lag, m_min_lag, m_done;
-    float m_frame[MONO_MAX_WIN + MONO_MAX_LAG];
-    float m_diff[MONO_MAX_LAG + 2];
-    const float* m_a;
-    int m_note, m_cand, m_cand_cnt, m_off_cnt, m_invalid, m_age;
-    float m_peak, m_hist[2]; // m_hist: levels of the newest 2 hops, 1 and 2 hops ago
-    float m_prev_pitch;      // Pitch on the previous hop (0: none)
-    int m_jump;              // Pitch jumped away from the held note: new note, not a bend
-    int bend_sent;           // Last pitch bend value sent
+// Monophonic pitch detector, shared by the monophonic outputs
+typedef struct {
+    front_t f;
+    int win, max_lag, min_lag, done;
+    float frame[MONO_MAX_WIN + MONO_MAX_LAG];
+    float diff[MONO_MAX_LAG + 2];
+    const float* a;
+    float hist[2];    // Levels of the newest 2 hops, 1 and 2 hops ago
+    float prev_pitch; // Pitch on the previous analysed hop (0: none)
+} mono_t;
 
-    // Polyphonic
+// Monophonic note tracker, one per output
+typedef struct {
+    stream_t s;
+    int note, cand, cand_cnt, off_cnt, invalid, age;
+    float peak;
+    int jump; // Pitch jumped away from the held note: new note, not a bend
+    int need; // Needs the pitch of this hop
+} mono_trk_t;
+
+// Polyphonic detector and note tracker (the detection depends on the held notes), shared by the polyphonic outputs
+typedef struct {
+    front_t f;
+    stream_t s;
     float bin_hz;
     float window[FFT_N];
     float re[FFT_M], im[FFT_M];
@@ -147,72 +168,84 @@ struct a2m_dsp {
     float p_attack_pre[POLY_NOTES]; // Note levels before the last attack
     float p_attack_min[POLY_NOTES]; // Minimum note levels since the last attack
     uint8_t p_retrig[POLY_NOTES];   // Note re-triggered since the last attack
-};
+} poly_t;
 
+// What has been sent on an output: notes released when the output changes mode or is deactivated
 typedef struct {
-    a2m_event_t* ev;
-    uint32_t count;
-    uint32_t frame;
-} out_t;
+    int mode; // MODE_OFF / MODE_MONO / MODE_POLY
+    uint8_t on[128];
+    int bend_sent;
+} output_t;
+
+struct a2m_dsp {
+    uint32_t rate;
+    a2m_params_t params;
+    output_t out[A2M_OUTPUTS];
+    int mono_on, poly_on; // Detectors running
+    mono_t mono;
+    mono_trk_t mt[A2M_OUTPUTS];
+    poly_t poly;
+};
 
 // ---------------------------------------------------------------------------
 // Notes
 // ---------------------------------------------------------------------------
 
-static void push(out_t* o, uint8_t status, uint8_t note, uint8_t vel) {
-    if (o->count >= A2M_MAX_EVENTS)
+static void push(stream_t* s, uint8_t status, uint8_t note, uint8_t vel) {
+    if (s->count >= A2M_MAX_EVENTS)
         return;
-    a2m_event_t* e = &o->ev[o->count++];
-    e->frame = o->frame;
+    a2m_event_t* e = &s->ev[s->count++];
+    e->frame = s->frame;
     e->data[0] = status;
     e->data[1] = note;
     e->data[2] = vel;
 }
 
-static void send_bend(a2m_dsp_t* d, out_t* o, int value) {
-    if (value == d->bend_sent)
+static void send_bend(stream_t* s, int value) {
+    if (value == s->bend_sent)
         return;
-    push(o, 0xE0, value & 0x7f, (value >> 7) & 0x7f);
-    d->bend_sent = value;
+    push(s, 0xE0, value & 0x7f, (value >> 7) & 0x7f);
+    s->bend_sent = value;
 }
 
-static int note_on(a2m_dsp_t* d, out_t* o, int note, uint8_t vel) {
-    if (note < 0 || note > 127 || d->on[note] || o->count >= NOTE_ON_RESERVE)
+static int note_on(stream_t* s, int note, uint8_t vel) {
+    if (note < 0 || note > 127 || s->on[note] || s->count >= NOTE_ON_RESERVE)
         return 0;
-    send_bend(d, o, BEND_CENTRE); // Each note starts unbent
-    push(o, 0x90, note, vel);
-    d->on[note] = 1;
-    ++d->held;
+    send_bend(s, BEND_CENTRE); // Each note starts unbent
+    push(s, 0x90, note, vel);
+    s->on[note] = 1;
+    ++s->held;
     return 1;
 }
 
-static void note_off(a2m_dsp_t* d, out_t* o, int note) {
-    if (note < 0 || note > 127 || !d->on[note])
+static void note_off(stream_t* s, int note) {
+    if (note < 0 || note > 127 || !s->on[note])
         return;
-    push(o, 0x80, note, 0);
-    d->on[note] = 0;
-    --d->held;
+    push(s, 0x80, note, 0);
+    s->on[note] = 0;
+    --s->held;
 }
 
-static void release_all(a2m_dsp_t* d, out_t* o) {
-    for (int note = 0; note < 128 && d->held; ++note)
-        note_off(d, o, note);
-    d->held = 0;
-    d->m_note = -1;
-    send_bend(d, o, BEND_CENTRE);
+// Forget held notes without sending note off (they are released on the outputs)
+static void stream_reset(stream_t* s) {
+    memset(s->on, 0, sizeof(s->on));
+    s->held = 0;
+    s->count = 0;
+    s->bend_sent = BEND_CENTRE;
 }
 
 // Pitch bend for a deviation (semitones) from the held note. Small changes are not sent.
-static void mono_bend(a2m_dsp_t* d, out_t* o, float dev) {
-    const float range = d->params.bend_range < 1.0f ? 1.0f : d->params.bend_range;
+static void mono_bend(stream_t* s, float dev, float range) {
+    if (range < 1.0f)
+        range = 1.0f;
     int value = BEND_CENTRE + (int)lrintf(dev / range * BEND_CENTRE);
     if (value < 0)
         value = 0;
     if (value > 16383)
         value = 16383;
     const int min_step = (int)(BEND_CENTRE * BEND_MIN_CENTS * 0.01f / range) + 1;
-    if (abs(value - d->bend_sent) >= min_step)
-        send_bend(d, o, value);
+    if (abs(value - s->bend_sent) >= min_step)
+        send_bend(s, value);
 }
 
 // Level (dBFS RMS) to velocity: onset - 12 dB => 1, max(-6 dBFS, onset + 6 dB) => 127
@@ -239,10 +272,100 @@ static float noise(const a2m_dsp_t* d) {
 }
 
 // ---------------------------------------------------------------------------
+// Outputs
+// ---------------------------------------------------------------------------
+
+static void emit(a2m_dsp_t* d, a2m_out_t* out, int i, const a2m_event_t* e) {
+    output_t* o = &d->out[i];
+    const uint8_t status = e->data[0] & 0xF0, note = e->data[1] & 0x7F;
+    if (status == 0x90) {
+        o->on[note] = 1;
+    } else if (status == 0x80) {
+        if (!o->on[note])
+            return; // Started before this output joined the detector
+        o->on[note] = 0;
+    } else if (status == 0xE0) {
+        const int value = e->data[1] | (e->data[2] << 7);
+        if (value == o->bend_sent)
+            return;
+        o->bend_sent = value;
+    }
+    if (out->count[i] < A2M_MAX_EVENTS)
+        out->ev[i][out->count[i]++] = *e;
+}
+
+static void emit_msg(a2m_dsp_t* d, a2m_out_t* out, int i, uint32_t frame, uint8_t status, uint8_t d1, uint8_t d2) {
+    const a2m_event_t e = {frame, {status, d1, d2}};
+    emit(d, out, i, &e);
+}
+
+// Note off for all notes sent on an output, then reset pitch bend
+static void release_output(a2m_dsp_t* d, a2m_out_t* out, int i, uint32_t frame) {
+    for (int note = 0; note < 128; ++note)
+        if (d->out[i].on[note])
+            emit_msg(d, out, i, frame, 0x80, note, 0);
+    emit_msg(d, out, i, frame, 0xE0, BEND_CENTRE & 0x7f, (BEND_CENTRE >> 7) & 0x7f);
+}
+
+static void emit_stream(a2m_dsp_t* d, a2m_out_t* out, int i, stream_t* s) {
+    for (uint32_t k = 0; k < s->count; ++k)
+        emit(d, out, i, &s->ev[k]);
+}
+
+// ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-static void fft_init(a2m_dsp_t* d) {
+static void front_configure(front_t* f, uint32_t rate, float target, int poly) {
+    f->decim = (int)(rate / target + 0.5f);
+    if (f->decim < 1)
+        f->decim = 1;
+    f->drate = (float)rate / f->decim;
+    float fc = poly ? 0.33f * f->drate : fminf(MONO_LPF, 0.3f * f->drate);
+
+    // 4th order Butterworth low-pass (two biquads, bilinear transform)
+    const double w = 2.0 * M_PI * fc / rate, c = cos(w);
+    const double q[2] = {0.54119610, 1.30656296};
+    for (int s = 0; s < 2; ++s) {
+        const double alpha = sin(w) / (2.0 * q[s]), a0 = 1.0 + alpha;
+        f->fb[s] = (1.0 - c) * 0.5 / a0;
+        f->fa1[s] = -2.0 * c / a0;
+        f->fa2[s] = (1.0 - alpha) / a0;
+    }
+    f->hp_coef = expf(-2.0f * (float)M_PI * 20.0f / f->drate);
+    memset(f->fz, 0, sizeof(f->fz));
+    f->hp_x = f->hp_y = 0.0f;
+    f->phase = 0;
+    memset(f->ring, 0, sizeof(f->ring));
+    f->wr = f->fill = 0;
+    f->since_hop = 0;
+}
+
+// Filter and decimate one input sample. Returns 1 when a hop is due.
+static inline int front_push(front_t* f, float x) {
+    float v = x + 1e-18f; // Keeps the filters out of denormals
+    for (int s = 0; s < 2; ++s) {
+        const float y = f->fb[s] * v + f->fz[s][0];
+        f->fz[s][0] = 2.0f * f->fb[s] * v - f->fa1[s] * y + f->fz[s][1];
+        f->fz[s][1] = f->fb[s] * v - f->fa2[s] * y;
+        v = y;
+    }
+    if (++f->phase < f->decim)
+        return 0;
+    f->phase = 0;
+    f->hp_y = v - f->hp_x + f->hp_coef * f->hp_y; // DC blocker
+    f->hp_x = v;
+    f->ring[f->wr] = f->hp_y;
+    f->wr = (f->wr + 1) & RING_MASK;
+    if (f->fill < RING_SIZE)
+        ++f->fill;
+    if (++f->since_hop < f->hop)
+        return 0;
+    f->since_hop = 0;
+    return 1;
+}
+
+static void fft_init(poly_t* p) {
     int bits = 0;
     while ((1 << bits) < FFT_M)
         ++bits;
@@ -251,112 +374,118 @@ static void fft_init(a2m_dsp_t* d) {
         for (int b = 0; b < bits; ++b)
             if (i & (1 << b))
                 r |= 1 << (bits - 1 - b);
-        d->bitrev[i] = r;
+        p->bitrev[i] = r;
     }
     for (int k = 0; k < FFT_M / 2; ++k) {
-        d->tw_re[k] = cos(-2.0 * M_PI * k / FFT_M);
-        d->tw_im[k] = sin(-2.0 * M_PI * k / FFT_M);
+        p->tw_re[k] = cos(-2.0 * M_PI * k / FFT_M);
+        p->tw_im[k] = sin(-2.0 * M_PI * k / FFT_M);
     }
     for (int k = 0; k < FFT_M; ++k) {
-        d->rtw_re[k] = cos(-2.0 * M_PI * k / FFT_N);
-        d->rtw_im[k] = sin(-2.0 * M_PI * k / FFT_N);
+        p->rtw_re[k] = cos(-2.0 * M_PI * k / FFT_N);
+        p->rtw_im[k] = sin(-2.0 * M_PI * k / FFT_N);
     }
     for (int i = 0; i < FFT_N; ++i)
-        d->window[i] = 0.5 - 0.5 * cos(2.0 * M_PI * i / FFT_N);
+        p->window[i] = 0.5 - 0.5 * cos(2.0 * M_PI * i / FFT_N);
 }
 
-static void poly_tables(a2m_dsp_t* d) {
-    float fmax = 0.33f * d->drate; // Below the anti-alias filter cutoff
-    d->bin_hz = d->drate / FFT_N;
-    d->k_min = 1;
-    d->k_max = 1;
+static void poly_tables(poly_t* p) {
+    float fmax = 0.33f * p->f.drate; // Below the anti-alias filter cutoff
+    p->bin_hz = p->f.drate / FFT_N;
+    p->k_min = 1;
+    p->k_max = 1;
     for (int c = 0; c < POLY_NOTES; ++c) {
         float f0 = 440.0f * powf(2.0f, (POLY_LO + c - 69) / 12.0f);
-        d->f0[c] = f0;
+        p->f0[c] = f0;
         int nh = 0;
         for (int h = 0; h < POLY_HARM; ++h) {
             float fh = f0 * (h + 1);
             if (fh > fmax)
                 break;
             // Unresolved low partials: allow half a bin
-            float tol = fmaxf(POLY_TOLERANCE, 0.5f * d->bin_hz / fh);
-            int lo = (int)floorf(fh * (1.0f - tol) / d->bin_hz);
-            int hi = (int)ceilf(fh * (1.0f + tol) / d->bin_hz);
+            float tol = fmaxf(POLY_TOLERANCE, 0.5f * p->bin_hz / fh);
+            int lo = (int)floorf(fh * (1.0f - tol) / p->bin_hz);
+            int hi = (int)ceilf(fh * (1.0f + tol) / p->bin_hz);
             if (lo < 2)
                 lo = 2;
             if (hi > FFT_M - 2)
                 hi = FFT_M - 2;
-            d->h_lo[c][h] = lo;
-            d->h_hi[c][h] = hi;
-            d->h_tol[c][h] = tol;
-            d->h_w[c][h] = (f0 + 52.0f) / (fh + 320.0f); // Klapuri's partial weighting
+            p->h_lo[c][h] = lo;
+            p->h_hi[c][h] = hi;
+            p->h_tol[c][h] = tol;
+            p->h_w[c][h] = (f0 + 52.0f) / (fh + 320.0f); // Klapuri's partial weighting
             if (c == 0 && h == 0)
-                d->k_min = lo;
-            if (hi > d->k_max)
-                d->k_max = hi;
+                p->k_min = lo;
+            if (hi > p->k_max)
+                p->k_max = hi;
             ++nh;
         }
-        d->nharm[c] = nh;
+        p->nharm[c] = nh;
     }
 }
 
-static void configure(a2m_dsp_t* d) {
-    d->poly = d->params.poly ? 1 : 0;
-    float target = d->poly ? POLY_RATE : MONO_RATE;
-    d->decim = (int)(d->rate / target + 0.5f);
-    if (d->decim < 1)
-        d->decim = 1;
-    d->drate = (float)d->rate / d->decim;
-    float fc = d->poly ? 0.33f * d->drate : fminf(MONO_LPF, 0.3f * d->drate);
+static void mono_configure(a2m_dsp_t* d) {
+    mono_t* m = &d->mono;
+    front_configure(&m->f, d->rate, MONO_RATE, 0);
+    m->f.hop = (int)(m->f.drate * MONO_HOP_S + 0.5f);
+    if (m->f.hop < 1)
+        m->f.hop = 1;
+    m->win = (int)(m->f.drate * MONO_WIN_S);
+    if (m->win > MONO_MAX_WIN)
+        m->win = MONO_MAX_WIN;
+    m->max_lag = (int)(m->f.drate / MONO_MIN_FREQ) + 2;
+    if (m->max_lag > MONO_MAX_LAG - 2)
+        m->max_lag = MONO_MAX_LAG - 2;
+    m->min_lag = (int)(m->f.drate / MONO_MAX_FREQ);
+    if (m->min_lag < 2)
+        m->min_lag = 2;
+    m->hist[0] = m->hist[1] = SILENCE_DB;
+    m->prev_pitch = 0.0f;
+}
 
-    // 4th order Butterworth low-pass (two biquads, bilinear transform)
-    const double w = 2.0 * M_PI * fc / d->rate, c = cos(w);
-    const double q[2] = {0.54119610, 1.30656296};
-    for (int s = 0; s < 2; ++s) {
-        const double alpha = sin(w) / (2.0 * q[s]), a0 = 1.0 + alpha;
-        d->fb[s] = (1.0 - c) * 0.5 / a0;
-        d->fa1[s] = -2.0 * c / a0;
-        d->fa2[s] = (1.0 - alpha) / a0;
+static void mono_trk_reset(mono_trk_t* t) {
+    stream_reset(&t->s);
+    t->note = -1;
+    t->cand = -1;
+    t->cand_cnt = t->off_cnt = t->invalid = t->age = 0;
+    t->jump = 0;
+    t->need = 0;
+}
+
+static void poly_configure(a2m_dsp_t* d) {
+    poly_t* p = &d->poly;
+    front_configure(&p->f, d->rate, POLY_RATE, 1);
+    p->f.hop = POLY_HOP;
+    poly_tables(p);
+    stream_reset(&p->s);
+    memset(p->p_cnt, 0, sizeof(p->p_cnt));
+    memset(p->p_off, 0, sizeof(p->p_off));
+    memset(p->p_age, 0, sizeof(p->p_age));
+    for (int i = 0; i < POLY_NOTES; ++i)
+        p->p_last[i] = SILENCE_DB;
+    p->p_total = p->p_short = SILENCE_DB;
+    p->p_attack_age = 255;
+}
+
+// Apply output modes: release outputs that change, start / stop the detectors
+static void apply_modes(a2m_dsp_t* d, a2m_out_t* out) {
+    int need_mono = 0, need_poly = 0;
+    for (int i = 0; i < A2M_OUTPUTS; ++i) {
+        const a2m_output_params_t* op = &d->params.out[i];
+        const int mode = op->active ? (op->poly ? MODE_POLY : MODE_MONO) : MODE_OFF;
+        if (mode != d->out[i].mode) {
+            release_output(d, out, i, 0);
+            d->out[i].mode = mode;
+            mono_trk_reset(&d->mt[i]);
+        }
+        need_mono |= mode == MODE_MONO;
+        need_poly |= mode == MODE_POLY;
     }
-    d->hp_coef = expf(-2.0f * (float)M_PI * 20.0f / d->drate);
-    memset(d->fz, 0, sizeof(d->fz));
-    d->hp_x = d->hp_y = 0.0f;
-    d->phase = 0;
-
-    memset(d->ring, 0, sizeof(d->ring));
-    d->wr = d->fill = 0;
-    d->since_hop = 0;
-
-    if (d->poly) {
-        d->hop = POLY_HOP;
-        poly_tables(d);
-        memset(d->p_cnt, 0, sizeof(d->p_cnt));
-        memset(d->p_off, 0, sizeof(d->p_off));
-        memset(d->p_age, 0, sizeof(d->p_age));
-        for (int i = 0; i < POLY_NOTES; ++i)
-            d->p_last[i] = SILENCE_DB;
-        d->p_total = d->p_short = SILENCE_DB;
-        d->p_attack_age = 255;
-    } else {
-        d->hop = (int)(d->drate * MONO_HOP_S + 0.5f);
-        if (d->hop < 1)
-            d->hop = 1;
-        d->m_win = (int)(d->drate * MONO_WIN_S);
-        if (d->m_win > MONO_MAX_WIN)
-            d->m_win = MONO_MAX_WIN;
-        d->m_max_lag = (int)(d->drate / MONO_MIN_FREQ) + 2;
-        if (d->m_max_lag > MONO_MAX_LAG - 2)
-            d->m_max_lag = MONO_MAX_LAG - 2;
-        d->m_min_lag = (int)(d->drate / MONO_MAX_FREQ);
-        if (d->m_min_lag < 2)
-            d->m_min_lag = 2;
-        d->m_note = -1;
-        d->m_cand = -1;
-        d->m_cand_cnt = d->m_off_cnt = d->m_invalid = d->m_age = 0;
-        d->m_hist[0] = d->m_hist[1] = SILENCE_DB;
-        d->m_prev_pitch = 0.0f;
-        d->m_jump = 0;
-    }
+    if (need_mono && !d->mono_on)
+        mono_configure(d);
+    d->mono_on = need_mono;
+    if (need_poly && !d->poly_on)
+        poly_configure(d);
+    d->poly_on = need_poly;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,57 +493,57 @@ static void configure(a2m_dsp_t* d) {
 // ---------------------------------------------------------------------------
 
 // Compute the difference function up to lag t (YIN step 2), on demand
-static void mono_ensure(a2m_dsp_t* d, int t) {
-    const int W = d->m_win;
-    while (d->m_done < t) {
-        int lag = ++d->m_done;
-        const float* a = d->m_a;
-        const float* b = d->m_a - lag;
+static void mono_ensure(mono_t* m, int t) {
+    const int W = m->win;
+    while (m->done < t) {
+        int lag = ++m->done;
+        const float* a = m->a;
+        const float* b = m->a - lag;
         float sum = 0.0f;
         for (int i = 0; i < W; ++i) {
             const float x = a[i] - b[i];
             sum += x * x;
         }
-        d->m_diff[lag] = sum;
+        m->diff[lag] = sum;
     }
 }
 
 // Vertex of the parabola through diff[t-1..t+1]
-static float mono_vertex(a2m_dsp_t* d, int t) {
-    mono_ensure(d, t + 1);
-    const float a = d->m_diff[t - 1], b = d->m_diff[t], c = d->m_diff[t + 1];
+static float mono_vertex(mono_t* m, int t) {
+    mono_ensure(m, t + 1);
+    const float a = m->diff[t - 1], b = m->diff[t], c = m->diff[t + 1];
     const float den = a - 2.0f * b + c;
     if (den <= 0.0f)
         return (float)t;
     return t + fmaxf(-1.0f, fminf(1.0f, 0.5f * (a - c) / den));
 }
 
-static int mono_local_min(a2m_dsp_t* d, int centre, int radius) {
+static int mono_local_min(mono_t* m, int centre, int radius) {
     int best = centre - radius < 1 ? 1 : centre - radius;
-    int hi = centre + radius > d->m_max_lag - 1 ? d->m_max_lag - 1 : centre + radius;
-    mono_ensure(d, hi);
+    int hi = centre + radius > m->max_lag - 1 ? m->max_lag - 1 : centre + radius;
+    mono_ensure(m, hi);
     for (int t = best + 1; t <= hi; ++t)
-        if (d->m_diff[t] < d->m_diff[best])
+        if (m->diff[t] < m->diff[best])
             best = t;
     return best;
 }
 
 // YIN on the most recent window, compared with earlier samples. Returns frequency in Hz or 0 if no pitch.
-static float mono_yin(a2m_dsp_t* d, float threshold) {
-    const int max_lag = d->m_max_lag;
-    d->m_done = 0;
-    d->m_diff[0] = 0.0f;
-    mono_ensure(d, 2);
-    float cum = d->m_diff[1];
+static float mono_yin(mono_t* m, float threshold) {
+    const int max_lag = m->max_lag;
+    m->done = 0;
+    m->diff[0] = 0.0f;
+    mono_ensure(m, 2);
+    float cum = m->diff[1];
     int tau = 0;
     for (int t = 2; t < max_lag; ++t) {
-        mono_ensure(d, t + 1);
-        const float l = d->m_diff[t - 1], m = d->m_diff[t], r = d->m_diff[t + 1];
-        cum += m;
-        if (t < d->m_min_lag || m > l || m >= r || cum <= 0.0f)
+        mono_ensure(m, t + 1);
+        const float l = m->diff[t - 1], c = m->diff[t], r = m->diff[t + 1];
+        cum += c;
+        if (t < m->min_lag || c > l || c >= r || cum <= 0.0f)
             continue;
         // Interpolated depth of the dip (high notes: the dip falls between two lags)
-        const float depth = m - (l - r) * (l - r) / (8.0f * (l - 2.0f * m + r));
+        const float depth = c - (l - r) * (l - r) / (8.0f * (l - 2.0f * c + r));
         if (depth * t < threshold * cum) {
             tau = t;
             break;
@@ -424,160 +553,187 @@ static float mono_yin(a2m_dsp_t* d, float threshold) {
         return 0.0f;
 
     // Refine short periods on their multiples: the interpolation error is divided by the multiple
-    float period = mono_vertex(d, tau);
+    float period = mono_vertex(m, tau);
     int mult = 1;
     while (period * mult * 2 < fminf(max_lag - 2, 64.0f)) {
         mult *= 2;
-        const int t = mono_local_min(d, (int)(period * mult + 0.5f), 2);
+        const int t = mono_local_min(m, (int)(period * mult + 0.5f), 2);
         if (t < 2 || t >= max_lag - 1)
             break;
-        period = mono_vertex(d, t) / mult;
+        period = mono_vertex(m, t) / mult;
     }
-    const float freq = d->drate / period;
+    const float freq = m->f.drate / period;
     return (freq >= MONO_MIN_FREQ && freq <= MONO_MAX_FREQ) ? freq : 0.0f;
 }
 
 // Count consecutive hops on the same candidate note. Returns 1 when confirmed.
-static int mono_candidate(a2m_dsp_t* d, int note, float lvl, int confirm) {
-    if (note == d->m_cand && d->m_cand_cnt > 0) {
-        ++d->m_cand_cnt;
-        d->m_peak = fmaxf(d->m_peak, lvl);
+static int mono_candidate(mono_trk_t* t, int note, float lvl, int confirm) {
+    if (note == t->cand && t->cand_cnt > 0) {
+        ++t->cand_cnt;
+        t->peak = fmaxf(t->peak, lvl);
     } else {
-        d->m_cand = note;
-        d->m_cand_cnt = 1;
-        d->m_peak = lvl;
+        t->cand = note;
+        t->cand_cnt = 1;
+        t->peak = lvl;
     }
-    if (d->m_cand_cnt < confirm)
+    if (t->cand_cnt < confirm)
         return 0;
-    d->m_cand_cnt = 0;
+    t->cand_cnt = 0;
     return 1;
 }
 
-static void mono_hop(a2m_dsp_t* d, out_t* o) {
-    const int W = d->m_win;
-    const int n = W + d->m_max_lag;
-    if (d->fill < (uint32_t)n)
-        return;
-    float release, onset = thresholds(d, &release);
-    const float nf = noise(d);
-    const int confirm = 1 + (int)lrintf(3.0f * nf);
-
-    // Level of the most recent window
-    uint32_t r = (d->wr - W) & RING_MASK;
-    float e = 0.0f;
-    for (int i = 0; i < W; ++i) {
-        const float x = d->ring[(r + i) & RING_MASK];
-        e += x * x;
-    }
-    const float lvl = 10.0f * log10f(e / W + 1e-20f);
-    // Attack: level of the newest 2 hops compared with the 2 hops before them (the window smears a fast rise)
-    const int ns = 2 * d->hop < W ? 2 * d->hop : W;
-    e = 0.0f;
-    for (int i = W - ns; i < W; ++i) {
-        const float x = d->ring[(r + i) & RING_MASK];
-        e += x * x;
-    }
-    const float short_lvl = 10.0f * log10f(e / ns + 1e-20f);
-    const int attack = short_lvl > d->m_hist[1] + RETRIG_DB;
-    d->m_hist[1] = d->m_hist[0];
-    d->m_hist[0] = short_lvl;
-
-    if (d->m_note < 0) {
+// Tracker, before pitch detection: level thresholds and re-trigger. Returns 1 if the pitch of this hop is needed.
+static int mono_pre(mono_trk_t* t, float lvl, float onset, float release, int attack) {
+    if (t->note < 0) {
         if (lvl < onset) {
-            d->m_cand_cnt = 0;
-            return; // Nothing to analyse
+            t->cand_cnt = 0;
+            return 0; // Nothing to analyse
         }
     } else if (lvl < release) {
-        if (++d->m_off_cnt >= MONO_OFF_HOPS) {
-            note_off(d, o, d->m_note);
-            d->m_note = -1;
-            d->m_cand_cnt = 0;
+        if (++t->off_cnt >= MONO_OFF_HOPS) {
+            note_off(&t->s, t->note);
+            t->note = -1;
+            t->cand_cnt = 0;
         }
-        return;
+        return 0;
     } else {
-        d->m_off_cnt = 0;
-        if (++d->m_age > MONO_RETRIG_HOPS && attack) {
+        t->off_cnt = 0;
+        if (++t->age > MONO_RETRIG_HOPS && attack) {
             // New attack (same note plucked again or another note): release, then detect as from silence
-            note_off(d, o, d->m_note);
-            d->m_note = -1;
-            d->m_cand_cnt = 0;
+            note_off(&t->s, t->note);
+            t->note = -1;
+            t->cand_cnt = 0;
         }
     }
+    return 1;
+}
 
-    r = (d->wr - n) & RING_MASK;
-    for (int i = 0; i < n; ++i)
-        d->m_frame[i] = d->ring[(r + i) & RING_MASK];
-    d->m_a = d->m_frame + n - W;
-    const float freq = mono_yin(d, 0.3f - 0.2f * nf);
-    if (freq <= 0.0f) {
-        d->m_prev_pitch = 0.0f;
-        d->m_cand_cnt = 0;
-        if (d->m_note >= 0 && ++d->m_invalid > MONO_INVALID_HOPS) {
-            note_off(d, o, d->m_note);
-            d->m_note = -1;
+// Tracker, after pitch detection (pitch 0: no pitch)
+static void mono_post(mono_trk_t* t, const a2m_output_params_t* op, float pitch, float prev_pitch, float lvl, float onset,
+                      int confirm) {
+    stream_t* s = &t->s;
+    if (pitch <= 0.0f) {
+        t->cand_cnt = 0;
+        if (t->note >= 0 && ++t->invalid > MONO_INVALID_HOPS) {
+            note_off(s, t->note);
+            t->note = -1;
         }
         return;
     }
-    d->m_invalid = 0;
-    const float pitch = 69.0f + 12.0f * log2f(freq / 440.0f);
-    const float prev_pitch = d->m_prev_pitch;
-    d->m_prev_pitch = pitch;
+    t->invalid = 0;
     int note = (int)lrintf(pitch);
     if (note < 0 || note > 127)
         return;
 
-    if (d->m_note < 0) {
-        if (mono_candidate(d, note, lvl, confirm) && note_on(d, o, note, velocity(d->m_peak, onset))) {
-            d->m_note = note;
-            d->m_age = 0;
-            d->m_jump = 0;
+    if (t->note < 0) {
+        if (mono_candidate(t, note, lvl, confirm) && note_on(s, note, velocity(t->peak, onset))) {
+            t->note = note;
+            t->age = 0;
+            t->jump = 0;
         }
         return;
     }
 
-    const float dev = pitch - d->m_note;
-    if (d->params.bend) {
+    const float dev = pitch - t->note;
+    if (op->bend) {
         // Gradual movement within the bend range is pitch bend, a sudden jump is a new note
         if (prev_pitch > 0.0f && fabsf(pitch - prev_pitch) > MONO_JUMP_ST)
-            d->m_jump = 1;
+            t->jump = 1;
         else if (fabsf(dev) <= MONO_CHANGE_ST)
-            d->m_jump = 0;
+            t->jump = 0;
         // Bends slightly beyond the range (overshoot) are clamped, further is a new note
-        if (!d->m_jump && fabsf(dev) <= d->params.bend_range + MONO_BEND_MARGIN_ST) {
-            d->m_cand_cnt = 0;
-            mono_bend(d, o, dev);
+        if (!t->jump && fabsf(dev) <= op->bend_range + MONO_BEND_MARGIN_ST) {
+            t->cand_cnt = 0;
+            mono_bend(s, dev, op->bend_range);
             return;
         }
-    } else if (d->bend_sent != BEND_CENTRE) {
-        send_bend(d, o, BEND_CENTRE); // Pitch bend disabled while bent
+    } else if (s->bend_sent != BEND_CENTRE) {
+        send_bend(s, BEND_CENTRE); // Pitch bend disabled while bent
     }
 
     if (fabsf(dev) > MONO_CHANGE_ST) {
         // Legato note change
-        if (mono_candidate(d, note, lvl, confirm)) {
-            note_off(d, o, d->m_note);
-            d->m_note = -1;
-            if (note_on(d, o, note, velocity(d->m_peak, onset))) {
-                d->m_note = note;
-                d->m_age = 0;
-                d->m_jump = 0;
+        if (mono_candidate(t, note, lvl, confirm)) {
+            note_off(s, t->note);
+            t->note = -1;
+            if (note_on(s, note, velocity(t->peak, onset))) {
+                t->note = note;
+                t->age = 0;
+                t->jump = 0;
             }
         }
     } else {
-        d->m_cand_cnt = 0;
+        t->cand_cnt = 0;
     }
+}
+
+static void mono_hop(a2m_dsp_t* d, uint32_t frame) {
+    mono_t* m = &d->mono;
+    const int W = m->win;
+    const int n = W + m->max_lag;
+    if (m->f.fill < (uint32_t)n)
+        return;
+    float release, onset = thresholds(d, &release);
+    const float nf = noise(d);
+    const int confirm = 1 + (int)lrintf(3.0f * nf);
+    const float* ring = m->f.ring;
+
+    // Level of the most recent window
+    uint32_t r = (m->f.wr - W) & RING_MASK;
+    float e = 0.0f;
+    for (int i = 0; i < W; ++i) {
+        const float x = ring[(r + i) & RING_MASK];
+        e += x * x;
+    }
+    const float lvl = 10.0f * log10f(e / W + 1e-20f);
+    // Attack: level of the newest 2 hops compared with the 2 hops before them (the window smears a fast rise)
+    const int ns = 2 * m->f.hop < W ? 2 * m->f.hop : W;
+    e = 0.0f;
+    for (int i = W - ns; i < W; ++i) {
+        const float x = ring[(r + i) & RING_MASK];
+        e += x * x;
+    }
+    const float short_lvl = 10.0f * log10f(e / ns + 1e-20f);
+    const int attack = short_lvl > m->hist[1] + RETRIG_DB;
+    m->hist[1] = m->hist[0];
+    m->hist[0] = short_lvl;
+
+    int need = 0;
+    for (int i = 0; i < A2M_OUTPUTS; ++i) {
+        mono_trk_t* t = &d->mt[i];
+        if (d->out[i].mode != MODE_MONO)
+            continue;
+        t->s.frame = frame;
+        t->need = mono_pre(t, lvl, onset, release, attack);
+        need |= t->need;
+    }
+    if (!need)
+        return;
+
+    r = (m->f.wr - n) & RING_MASK;
+    for (int i = 0; i < n; ++i)
+        m->frame[i] = ring[(r + i) & RING_MASK];
+    m->a = m->frame + n - W;
+    const float freq = mono_yin(m, 0.3f - 0.2f * nf);
+    const float pitch = freq > 0.0f ? 69.0f + 12.0f * log2f(freq / 440.0f) : 0.0f;
+    const float prev_pitch = m->prev_pitch;
+    m->prev_pitch = pitch;
+
+    for (int i = 0; i < A2M_OUTPUTS; ++i)
+        if (d->out[i].mode == MODE_MONO && d->mt[i].need)
+            mono_post(&d->mt[i], &d->params.out[i], pitch, prev_pitch, lvl, onset, confirm);
 }
 
 // ---------------------------------------------------------------------------
 // Polyphonic
 // ---------------------------------------------------------------------------
 
-// In-place radix-2 complex FFT of d->re / d->im (FFT_M points)
-static void cfft(a2m_dsp_t* d) {
-    float* re = d->re;
-    float* im = d->im;
+// In-place radix-2 complex FFT of p->re / p->im (FFT_M points)
+static void cfft(poly_t* p) {
+    float* re = p->re;
+    float* im = p->im;
     for (int i = 0; i < FFT_M; ++i) {
-        const int j = d->bitrev[i];
+        const int j = p->bitrev[i];
         if (j > i) {
             float t = re[i];
             re[i] = re[j];
@@ -592,7 +748,7 @@ static void cfft(a2m_dsp_t* d) {
         const int step = FFT_M / len;
         for (int i = 0; i < FFT_M; i += len) {
             for (int j = 0; j < half; ++j) {
-                const float wr = d->tw_re[j * step], wi = d->tw_im[j * step];
+                const float wr = p->tw_re[j * step], wi = p->tw_im[j * step];
                 const int a = i + j, b = a + half;
                 const float tr = re[b] * wr - im[b] * wi;
                 const float ti = re[b] * wi + im[b] * wr;
@@ -606,94 +762,94 @@ static void cfft(a2m_dsp_t* d) {
 }
 
 // Amplitude spectrum of the most recent FFT_N samples: a sinusoid of amplitude A gives a peak of ~A
-static void poly_spectrum(a2m_dsp_t* d) {
-    const uint32_t r = (d->wr - FFT_N) & RING_MASK;
+static void poly_spectrum(poly_t* p) {
+    const uint32_t r = (p->f.wr - FFT_N) & RING_MASK;
     for (int m = 0; m < FFT_M; ++m) {
-        d->re[m] = d->ring[(r + 2 * m) & RING_MASK] * d->window[2 * m];
-        d->im[m] = d->ring[(r + 2 * m + 1) & RING_MASK] * d->window[2 * m + 1];
+        p->re[m] = p->f.ring[(r + 2 * m) & RING_MASK] * p->window[2 * m];
+        p->im[m] = p->f.ring[(r + 2 * m + 1) & RING_MASK] * p->window[2 * m + 1];
     }
-    cfft(d);
+    cfft(p);
     // Real FFT of N points from the complex FFT of N/2 points (even samples real, odd samples imaginary)
     const float scale = 4.0f / FFT_N;
-    d->amp[0] = fabsf(d->re[0] + d->im[0]) * scale;
-    d->amp[FFT_M] = fabsf(d->re[0] - d->im[0]) * scale;
+    p->amp[0] = fabsf(p->re[0] + p->im[0]) * scale;
+    p->amp[FFT_M] = fabsf(p->re[0] - p->im[0]) * scale;
     for (int k = 1; k < FFT_M; ++k) {
-        const float zr = d->re[k], zi = d->im[k];
-        const float cr = d->re[FFT_M - k], ci = -d->im[FFT_M - k];
+        const float zr = p->re[k], zi = p->im[k];
+        const float cr = p->re[FFT_M - k], ci = -p->im[FFT_M - k];
         const float er = 0.5f * (zr + cr), ei = 0.5f * (zi + ci);
         const float or_ = 0.5f * (zi - ci), oi = -0.5f * (zr - cr);
-        const float xr = er + d->rtw_re[k] * or_ - d->rtw_im[k] * oi;
-        const float xi = ei + d->rtw_re[k] * oi + d->rtw_im[k] * or_;
-        d->amp[k] = sqrtf(xr * xr + xi * xi) * scale;
+        const float xr = er + p->rtw_re[k] * or_ - p->rtw_im[k] * oi;
+        const float xi = ei + p->rtw_re[k] * oi + p->rtw_im[k] * or_;
+        p->amp[k] = sqrtf(xr * xr + xi * xi) * scale;
     }
 }
 
 // Moving average of src over +/-POLY_FLOOR_RADIUS bins into dst
-static void moving_average(a2m_dsp_t* d, const float* src, float* dst) {
-    d->sum[0] = 0.0f;
+static void moving_average(poly_t* p, const float* src, float* dst) {
+    p->sum[0] = 0.0f;
     for (int k = 0; k <= FFT_M; ++k)
-        d->sum[k + 1] = d->sum[k] + src[k];
+        p->sum[k + 1] = p->sum[k] + src[k];
     for (int k = 0; k <= FFT_M; ++k) {
         const int lo = k - POLY_FLOOR_RADIUS < 0 ? 0 : k - POLY_FLOOR_RADIUS;
         const int hi = k + POLY_FLOOR_RADIUS > FFT_M ? FFT_M : k + POLY_FLOOR_RADIUS;
-        dst[k] = (d->sum[hi + 1] - d->sum[lo]) / (hi - lo + 1);
+        dst[k] = (p->sum[hi + 1] - p->sum[lo]) / (hi - lo + 1);
     }
 }
 
 // Find spectral peaks clearly above the noise floor
-static void poly_peaks(a2m_dsp_t* d, float margin_db, float abs_min) {
+static void poly_peaks(poly_t* p, float margin_db, float abs_min) {
     // Noise floor: moving average, then again with the peaks clipped so they don't raise it
-    moving_average(d, d->amp, d->floor);
+    moving_average(p, p->amp, p->floor);
     for (int k = 0; k <= FFT_M; ++k)
-        d->clip[k] = fminf(d->amp[k], d->floor[k]);
-    moving_average(d, d->clip, d->floor);
+        p->clip[k] = fminf(p->amp[k], p->floor[k]);
+    moving_average(p, p->clip, p->floor);
 
     const float gain = powf(10.0f, margin_db / 20.0f);
     float max_amp = 0.0f;
-    for (int k = d->k_min; k <= d->k_max; ++k)
-        max_amp = fmaxf(max_amp, d->amp[k]);
+    for (int k = p->k_min; k <= p->k_max; ++k)
+        max_amp = fmaxf(max_amp, p->amp[k]);
     const float min_amp = fmaxf(abs_min, max_amp * 0.003f); // Ignore window side lobes (-50 dB)
 
-    memset(d->bin2peak, 0xff, sizeof(d->bin2peak));
-    d->npeaks = 0;
-    for (int k = d->k_min; k <= d->k_max && d->npeaks < POLY_MAX_PEAKS; ++k) {
-        const float a = d->amp[k];
-        if (a <= d->amp[k - 1] || a < d->amp[k + 1])
+    memset(p->bin2peak, 0xff, sizeof(p->bin2peak));
+    p->npeaks = 0;
+    for (int k = p->k_min; k <= p->k_max && p->npeaks < POLY_MAX_PEAKS; ++k) {
+        const float a = p->amp[k];
+        if (a <= p->amp[k - 1] || a < p->amp[k + 1])
             continue;
         // Parabolic interpolation on log amplitude (a partial between two bins is attenuated by the window)
-        const float l = logf(d->amp[k - 1] + 1e-20f), c = logf(a), r = logf(d->amp[k + 1] + 1e-20f);
+        const float l = logf(p->amp[k - 1] + 1e-20f), c = logf(a), r = logf(p->amp[k + 1] + 1e-20f);
         const float den = l - 2.0f * c + r;
-        float p = den < 0.0f ? 0.5f * (l - r) / den : 0.0f;
-        p = fmaxf(-0.5f, fminf(0.5f, p));
-        const float pa = expf(c - 0.25f * (l - r) * p);
-        if (pa < min_amp || pa < gain * d->floor[k])
+        float x = den < 0.0f ? 0.5f * (l - r) / den : 0.0f;
+        x = fmaxf(-0.5f, fminf(0.5f, x));
+        const float pa = expf(c - 0.25f * (l - r) * x);
+        if (pa < min_amp || pa < gain * p->floor[k])
             continue;
-        d->pk_freq[d->npeaks] = (k + p) * d->bin_hz;
-        d->pk_amp[d->npeaks] = pa;
-        d->bin2peak[k] = d->npeaks++;
+        p->pk_freq[p->npeaks] = (k + x) * p->bin_hz;
+        p->pk_amp[p->npeaks] = pa;
+        p->bin2peak[k] = p->npeaks++;
     }
 }
 
 // Weighted sum of the harmonic amplitudes of a candidate note. A[h] / P[h]: amplitude / peak index of each harmonic.
-static float poly_salience(a2m_dsp_t* d, int c, float* A, int* P) {
-    const int nh = d->nharm[c];
-    const float f0 = d->f0[c];
+static float poly_salience(poly_t* p, int c, float* A, int* P) {
+    const int nh = p->nharm[c];
+    const float f0 = p->f0[c];
     float s = 0.0f;
     for (int h = 0; h < nh; ++h) {
         const float fh = f0 * (h + 1);
-        const float tol = d->h_tol[c][h] * fh;
+        const float tol = p->h_tol[c][h] * fh;
         float best = 0.0f;
         int bp = -1;
-        for (int k = d->h_lo[c][h]; k <= d->h_hi[c][h]; ++k) {
-            const int p = d->bin2peak[k];
-            if (p < 0 || d->pk_amp[p] <= best || fabsf(d->pk_freq[p] - fh) > tol)
+        for (int k = p->h_lo[c][h]; k <= p->h_hi[c][h]; ++k) {
+            const int pk = p->bin2peak[k];
+            if (pk < 0 || p->pk_amp[pk] <= best || fabsf(p->pk_freq[pk] - fh) > tol)
                 continue;
-            best = d->pk_amp[p];
-            bp = p;
+            best = p->pk_amp[pk];
+            bp = pk;
         }
         A[h] = best;
         P[h] = bp;
-        s += d->h_w[c][h] * best;
+        s += p->h_w[c][h] * best;
     }
     // Need the fundamental, or the 2nd and 3rd harmonics (missing fundamental). Rejects sub-octave ghosts.
     if (nh < 1 || !(A[0] > 0.0f || (nh > 2 && A[1] > 0.0f && A[2] > 0.0f)))
@@ -702,12 +858,12 @@ static float poly_salience(a2m_dsp_t* d, int c, float* A, int* P) {
 }
 
 // Iterative multiple pitch estimation. det[c]: level (dBFS RMS) of each detected note, SILENCE_DB if not detected.
-static void poly_detect(a2m_dsp_t* d, float* det, float release, float nf) {
+static void poly_detect(poly_t* p, float* det, float release, float nf) {
     for (int c = 0; c < POLY_NOTES; ++c)
         det[c] = SILENCE_DB;
-    poly_spectrum(d);
-    poly_peaks(d, 4.0f + 10.0f * nf, 1.41f * powf(10.0f, (release - 24.0f) / 20.0f));
-    if (!d->npeaks)
+    poly_spectrum(p);
+    poly_peaks(p, 4.0f + 10.0f * nf, 1.41f * powf(10.0f, (release - 24.0f) / 20.0f));
+    if (!p->npeaks)
         return;
 
     uint8_t excluded[POLY_NOTES] = {0};
@@ -723,8 +879,8 @@ static void poly_detect(a2m_dsp_t* d, float* det, float release, float nf) {
         for (int c = 0; c < POLY_NOTES; ++c) {
             if (excluded[c])
                 continue;
-            const float s = poly_salience(d, c, A, P);
-            const float se = d->on[POLY_LO + c] ? s * POLY_HELD_BIAS : s;
+            const float s = poly_salience(p, c, A, P);
+            const float se = p->s.on[POLY_LO + c] ? s * POLY_HELD_BIAS : s;
             if (se > bs) {
                 bs = se;
                 bs_raw = s;
@@ -738,9 +894,9 @@ static void poly_detect(a2m_dsp_t* d, float* det, float release, float nf) {
         else if (bs < ratio * first)
             break;
 
-        poly_salience(d, best, A, P);
+        poly_salience(p, best, A, P);
         // Spectrally smoothed partial amplitudes of this note: the excess over them belongs to other notes
-        const int nh = d->nharm[best];
+        const int nh = p->nharm[best];
         float e2 = 0.0f;
         for (int h = 0; h < nh; ++h) {
             if (h == 0)
@@ -762,7 +918,7 @@ static void poly_detect(a2m_dsp_t* d, float* det, float release, float nf) {
         for (int h = 0; h < nh; ++h) {
             if (P[h] < 0)
                 continue;
-            d->pk_amp[P[h]] = fmaxf(0.0f, d->pk_amp[P[h]] - env[h]);
+            p->pk_amp[P[h]] = fmaxf(0.0f, p->pk_amp[P[h]] - env[h]);
         }
     }
 
@@ -772,11 +928,11 @@ static void poly_detect(a2m_dsp_t* d, float* det, float release, float nf) {
     const float ghost_db = 12.0f - 8.0f * nf;
     for (int i = 0; i < nfound; ++i) {
         const int c = found[i];
-        if (d->on[POLY_LO + c])
+        if (p->s.on[POLY_LO + c])
             continue;
         for (int j = 0; j < nfound; ++j) {
             const int b = found[j];
-            const float base_lvl = det[b] > SILENCE_DB ? det[b] : d->p_last[b];
+            const float base_lvl = det[b] > SILENCE_DB ? det[b] : p->p_last[b];
             int related = 0;
             for (unsigned k = 0; k < sizeof(harm_st) / sizeof(harm_st[0]); ++k)
                 related |= c - b == harm_st[k];
@@ -788,49 +944,52 @@ static void poly_detect(a2m_dsp_t* d, float* det, float release, float nf) {
     }
 }
 
-static void poly_hop(a2m_dsp_t* d, out_t* o) {
-    if (d->fill < FFT_N)
+static void poly_hop(a2m_dsp_t* d, uint32_t frame) {
+    poly_t* p = &d->poly;
+    stream_t* s = &p->s;
+    if (p->f.fill < FFT_N)
         return;
+    s->frame = frame;
     float release, onset = thresholds(d, &release);
     const float nf = noise(d);
     const int confirm = 1 + (int)lrintf(2.0f * nf);
     float det[POLY_NOTES];
 
     // Total level of the most recent half window: no note can be above it
-    const uint32_t r = (d->wr - FFT_N / 2) & RING_MASK;
+    const uint32_t r = (p->f.wr - FFT_N / 2) & RING_MASK;
     float e = 0.0f;
     for (int i = 0; i < FFT_N / 2; ++i) {
-        const float x = d->ring[(r + i) & RING_MASK];
+        const float x = p->f.ring[(r + i) & RING_MASK];
         e += x * x;
     }
     const float lvl = 10.0f * log10f(e / (FFT_N / 2) + 1e-20f);
     // Attack: sudden rise of the level of the newest hop. Held notes that get louder soon after are re-triggered.
     e = 0.0f;
     for (int i = FFT_N / 2 - POLY_HOP; i < FFT_N / 2; ++i) {
-        const float x = d->ring[(r + i) & RING_MASK];
+        const float x = p->f.ring[(r + i) & RING_MASK];
         e += x * x;
     }
     const float short_lvl = 10.0f * log10f(e / POLY_HOP + 1e-20f);
-    if (short_lvl > d->p_short + POLY_ATTACK_DB) {
-        d->p_attack_age = 0;
-        memcpy(d->p_attack_pre, d->p_last, sizeof(d->p_attack_pre));
-        memcpy(d->p_attack_min, d->p_last, sizeof(d->p_attack_min));
-        memset(d->p_retrig, 0, sizeof(d->p_retrig));
-    } else if (d->p_attack_age < 255) {
-        ++d->p_attack_age;
+    if (short_lvl > p->p_short + POLY_ATTACK_DB) {
+        p->p_attack_age = 0;
+        memcpy(p->p_attack_pre, p->p_last, sizeof(p->p_attack_pre));
+        memcpy(p->p_attack_min, p->p_last, sizeof(p->p_attack_min));
+        memset(p->p_retrig, 0, sizeof(p->p_retrig));
+    } else if (p->p_attack_age < 255) {
+        ++p->p_attack_age;
     }
-    d->p_short = short_lvl;
+    p->p_short = short_lvl;
     // During an attack the window is partly filled: weak partials of a louder note may resolve before its
     // fundamental and look like notes. Weak new notes wait until the level stops rising.
-    const int rising = lvl > d->p_total + POLY_RISING_DB;
-    d->p_total = lvl;
-    if (lvl < (d->held ? release : onset)) {
-        if (!d->held)
+    const int rising = lvl > p->p_total + POLY_RISING_DB;
+    p->p_total = lvl;
+    if (lvl < (s->held ? release : onset)) {
+        if (!s->held)
             return; // Nothing to analyse
         for (int c = 0; c < POLY_NOTES; ++c)
             det[c] = SILENCE_DB;
     } else {
-        poly_detect(d, det, release, nf);
+        poly_detect(p, det, release, nf);
     }
     float strongest = SILENCE_DB;
     for (int c = 0; c < POLY_NOTES; ++c)
@@ -839,40 +998,40 @@ static void poly_hop(a2m_dsp_t* d, out_t* o) {
     for (int c = 0; c < POLY_NOTES; ++c) {
         const int note = POLY_LO + c;
         const float l = det[c];
-        if (!d->on[note]) {
-            if (l >= onset && d->held < POLY_MAX_NOTES) {
+        if (!s->on[note]) {
+            if (l >= onset && s->held < POLY_MAX_NOTES) {
                 // A weak note keeps its count during an attack and is decided when the attack is over
                 if (!rising || l >= strongest - POLY_WEAK_DB) {
-                    if (d->p_cnt[c] == 0 || l > d->p_peak[c])
-                        d->p_peak[c] = l;
-                    if (++d->p_cnt[c] >= confirm) {
-                        d->p_cnt[c] = d->p_off[c] = d->p_age[c] = 0;
-                        note_on(d, o, note, velocity(d->p_peak[c], onset));
+                    if (p->p_cnt[c] == 0 || l > p->p_peak[c])
+                        p->p_peak[c] = l;
+                    if (++p->p_cnt[c] >= confirm) {
+                        p->p_cnt[c] = p->p_off[c] = p->p_age[c] = 0;
+                        note_on(s, note, velocity(p->p_peak[c], onset));
                     }
                 }
             } else {
-                d->p_cnt[c] = 0;
+                p->p_cnt[c] = 0;
             }
         } else {
-            if (d->p_age[c] < 255)
-                ++d->p_age[c];
+            if (p->p_age[c] < 255)
+                ++p->p_age[c];
             if (l < release) {
-                if (++d->p_off[c] >= POLY_OFF_HOPS)
-                    note_off(d, o, note);
+                if (++p->p_off[c] >= POLY_OFF_HOPS)
+                    note_off(s, note);
             } else {
-                d->p_off[c] = 0;
+                p->p_off[c] = 0;
                 // After an attack the old and new vibrations may first cancel: compare with the lowest level since
-                d->p_attack_min[c] = fminf(d->p_attack_min[c], l);
-                if (d->p_age[c] > d->p_attack_age + POLY_RETRIG_HOPS && d->p_attack_age <= POLY_ATTACK_HOPS && !d->p_retrig[c] &&
-                    l > d->p_attack_min[c] + POLY_RETRIG_RISE_DB && l > d->p_attack_pre[c] + POLY_RETRIG_PRE_DB) {
-                    note_off(d, o, note);
-                    note_on(d, o, note, velocity(l, onset));
-                    d->p_age[c] = 0;
-                    d->p_retrig[c] = 1;
+                p->p_attack_min[c] = fminf(p->p_attack_min[c], l);
+                if (p->p_age[c] > p->p_attack_age + POLY_RETRIG_HOPS && p->p_attack_age <= POLY_ATTACK_HOPS && !p->p_retrig[c] &&
+                    l > p->p_attack_min[c] + POLY_RETRIG_RISE_DB && l > p->p_attack_pre[c] + POLY_RETRIG_PRE_DB) {
+                    note_off(s, note);
+                    note_on(s, note, velocity(l, onset));
+                    p->p_age[c] = 0;
+                    p->p_retrig[c] = 1;
                 }
             }
         }
-        d->p_last[c] = l;
+        p->p_last[c] = l;
     }
 }
 
@@ -890,12 +1049,14 @@ a2m_dsp_t* a2m_dsp_new(uint32_t rate) {
     d->params.onset_db = -40.0f;
     d->params.release_db = -50.0f;
     d->params.noise = 50.0f;
-    d->params.poly = 0;
-    d->params.bend = 0;
-    d->params.bend_range = 2.0f;
-    d->bend_sent = BEND_CENTRE;
-    fft_init(d);
-    configure(d);
+    for (int i = 0; i < A2M_OUTPUTS; ++i) {
+        d->params.out[i].bend_range = 2.0f;
+        d->out[i].mode = MODE_OFF;
+        d->out[i].bend_sent = BEND_CENTRE;
+        mono_trk_reset(&d->mt[i]);
+    }
+    stream_reset(&d->poly.s);
+    fft_init(&d->poly);
     return d;
 }
 
@@ -903,57 +1064,50 @@ void a2m_dsp_free(a2m_dsp_t* d) {
     free(d);
 }
 
-uint32_t a2m_dsp_set_samplerate(a2m_dsp_t* d, uint32_t rate, a2m_event_t* ev) {
-    out_t o = {ev, 0, 0};
-    release_all(d, &o);
-    if (rate) {
-        d->rate = rate;
-        configure(d);
+void a2m_dsp_release_all(a2m_dsp_t* d, a2m_out_t* out, uint32_t frame) {
+    memset(out->count, 0, sizeof(out->count));
+    for (int i = 0; i < A2M_OUTPUTS; ++i) {
+        release_output(d, out, i, frame);
+        mono_trk_reset(&d->mt[i]);
     }
-    return o.count;
+    // Restart detection from silence
+    if (d->mono_on)
+        mono_configure(d);
+    if (d->poly_on)
+        poly_configure(d);
+}
+
+void a2m_dsp_set_samplerate(a2m_dsp_t* d, uint32_t rate, a2m_out_t* out) {
+    if (rate)
+        d->rate = rate;
+    a2m_dsp_release_all(d, out, 0);
 }
 
 void a2m_dsp_set_params(a2m_dsp_t* d, const a2m_params_t* params) {
     d->params = *params;
 }
 
-uint32_t a2m_dsp_release_all(a2m_dsp_t* d, a2m_event_t* ev, uint32_t frame) {
-    out_t o = {ev, 0, frame};
-    release_all(d, &o);
-    return o.count;
-}
-
-uint32_t a2m_dsp_process(a2m_dsp_t* d, const float* in, uint32_t frames, a2m_event_t* ev) {
-    out_t o = {ev, 0, 0};
-    if ((d->params.poly ? 1 : 0) != d->poly) {
-        release_all(d, &o);
-        configure(d);
-    }
-    for (uint32_t i = 0; i < frames; ++i) {
-        float v = in[i] + 1e-18f; // Keeps the filters out of denormals
-        for (int s = 0; s < 2; ++s) {
-            const float y = d->fb[s] * v + d->fz[s][0];
-            d->fz[s][0] = 2.0f * d->fb[s] * v - d->fa1[s] * y + d->fz[s][1];
-            d->fz[s][1] = d->fb[s] * v - d->fa2[s] * y;
-            v = y;
+void a2m_dsp_process(a2m_dsp_t* d, const float* in, uint32_t frames, a2m_out_t* out) {
+    memset(out->count, 0, sizeof(out->count));
+    apply_modes(d, out);
+    if (d->mono_on) {
+        for (uint32_t i = 0; i < frames; ++i)
+            if (front_push(&d->mono.f, in[i]))
+                mono_hop(d, i);
+        for (int i = 0; i < A2M_OUTPUTS; ++i) {
+            if (d->out[i].mode != MODE_MONO)
+                continue;
+            emit_stream(d, out, i, &d->mt[i].s);
+            d->mt[i].s.count = 0;
         }
-        if (++d->phase < d->decim)
-            continue;
-        d->phase = 0;
-        d->hp_y = v - d->hp_x + d->hp_coef * d->hp_y; // DC blocker
-        d->hp_x = v;
-        d->ring[d->wr] = d->hp_y;
-        d->wr = (d->wr + 1) & RING_MASK;
-        if (d->fill < RING_SIZE)
-            ++d->fill;
-        if (++d->since_hop < d->hop)
-            continue;
-        d->since_hop = 0;
-        o.frame = i;
-        if (d->poly)
-            poly_hop(d, &o);
-        else
-            mono_hop(d, &o);
     }
-    return o.count;
+    if (d->poly_on) {
+        for (uint32_t i = 0; i < frames; ++i)
+            if (front_push(&d->poly.f, in[i]))
+                poly_hop(d, i);
+        for (int i = 0; i < A2M_OUTPUTS; ++i)
+            if (d->out[i].mode == MODE_POLY)
+                emit_stream(d, out, i, &d->poly.s);
+        d->poly.s.count = 0;
+    }
 }

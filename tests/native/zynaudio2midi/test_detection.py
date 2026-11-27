@@ -130,11 +130,11 @@ def test_parameters_are_clamped(a2m):
     a2m.setOnsetThreshold(10)
     a2m.setReleaseThreshold(-200)
     a2m.setNoiseFilter(150)
-    a2m.setPolyphonic(7)
+    a2m.setPolyphonic(0, 7)
     assert a2m.getOnsetThreshold() == 0
     assert a2m.getReleaseThreshold() == -90
     assert a2m.getNoiseFilter() == 100
-    assert a2m.getPolyphonic() == 1
+    assert a2m.getPolyphonic(0) == 1
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ def chords(chord_list, secs=1.0, gap=0.3, amp=0.2):
 
 @pytest.mark.parametrize("chord", [[48, 52, 55], [45, 52], [60, 64, 67], [48, 52, 55, 59], [36, 43], [72, 76, 79]])
 def test_poly_detects_chord(a2m, chord):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     events = analyse(a2m, chords([chord]))
     assert sorted(note for t, note in note_ons(events)) == chord
     assert_balanced(events)
@@ -158,12 +158,12 @@ def test_poly_detects_chord(a2m, chord):
 @pytest.mark.xfail(strict=True, reason="Known limitation: a doubled octave no louder than the lower note is taken as its "
                                       "harmonics (the harmonic ghost rejection drops it)")
 def test_poly_octave_doubling(a2m):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     assert sorted(note for t, note in note_ons(analyse(a2m, chords([[45, 57]])))) == [45, 57]
 
 
 def test_poly_chord_sequence(a2m):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     events = analyse(a2m, chords([[48, 52, 55], [45, 57], [53, 57, 60]]))
     assert [sorted(n for t, n in note_ons(events) if lo <= t < lo + 1.3) for lo in (0, 1.3, 2.6)] == \
         [[48, 52, 55], [45, 57], [53, 57, 60]]
@@ -171,13 +171,13 @@ def test_poly_chord_sequence(a2m):
 
 
 def test_poly_single_notes(a2m):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     signal, _ = sequence([40, 52, 64, 69, 84], secs=0.6, gap=0.25)
     assert [note for t, note in note_ons(analyse(a2m, signal))] == [40, 52, 64, 69, 84]
 
 
 def test_poly_retriggers_repeated_note(a2m):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     signal = np.concatenate([pluck(57, 0.25, decay=6) for _ in range(4)])
     events = analyse(a2m, signal)
     assert [note for t, note in note_ons(events)] == [57] * 4
@@ -186,12 +186,12 @@ def test_poly_retriggers_repeated_note(a2m):
 
 @pytest.mark.parametrize("db", [-35, -25])
 def test_poly_ignores_noise(a2m, db):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     assert analyse(a2m, noise(3, db)) == []
 
 
 def test_poly_ignores_mains_hum(a2m):
-    a2m.setPolyphonic(1)
+    a2m.setPolyphonic(0, 1)
     hum = 0.03 * np.sin(2 * np.pi * 50 * np.arange(2 * RATE) / RATE)  # below the polyphonic range
     assert analyse(a2m, hum) == []
 
@@ -219,14 +219,14 @@ STRING_BEND = ((57, 57, 0.3), (57, 59, 0.25), (59, 59, 0.4), (59, 57, 0.25), (57
 
 
 def test_pitch_bend_off_by_default(a2m):
-    assert a2m.getPitchBend() == 0
+    assert a2m.getPitchBend(0) == 0
     notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)))
     assert bends == []
     assert [n for s, n in notes if s == NOTE_ON] == [57, 58, 59, 58, 57]  # Without bend: a note per semitone
 
 
 def test_string_bend_is_one_note_with_pitch_bend(a2m):
-    a2m.setPitchBend(1)
+    a2m.setPitchBend(0, 1)
     notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)))
     assert notes == [(NOTE_ON, 57), (NOTE_OFF, 57)]
     assert max(bends) == pytest.approx(2, abs=0.1)  # Up to the bent note...
@@ -235,22 +235,22 @@ def test_string_bend_is_one_note_with_pitch_bend(a2m):
 
 
 def test_bend_range_scales_pitch_bend(a2m):
-    a2m.setPitchBend(1)
-    a2m.setBendRange(12)
-    assert a2m.getBendRange() == 12
+    a2m.setPitchBend(0, 1)
+    a2m.setBendRange(0, 12)
+    assert a2m.getBendRange(0) == 12
     notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)), bend_range=12)
     assert notes == [(NOTE_ON, 57), (NOTE_OFF, 57)]
     assert max(bends) == pytest.approx(2, abs=0.1)
 
 
 def test_hammer_on_is_a_new_note_with_pitch_bend(a2m):
-    a2m.setPitchBend(1)
+    a2m.setPitchBend(0, 1)
     notes, bends = notes_and_bends(analyse(a2m, glide((57, 57, 0.4), (59, 59, 0.4))))
     assert [n for s, n in notes if s == NOTE_ON] == [57, 59]
 
 
 def test_bend_beyond_range_continues_on_a_new_note(a2m):
-    a2m.setPitchBend(1)
+    a2m.setPitchBend(0, 1)
     events = analyse(a2m, glide((57, 57, 0.3), (57, 61, 0.4), (61, 61, 0.4)))
     notes, bends = notes_and_bends(events)
     ons = [n for s, n in notes if s == NOTE_ON]
@@ -261,7 +261,7 @@ def test_bend_beyond_range_continues_on_a_new_note(a2m):
 
 
 def test_vibrato_with_pitch_bend(a2m):
-    a2m.setPitchBend(1)
+    a2m.setPitchBend(0, 1)
     t = np.arange(int(1.5 * RATE)) / RATE
     pitch = 69 + 0.4 * np.sin(2 * np.pi * 6 * t)
     phase = 2 * np.pi * np.cumsum(440 * 2 ** ((pitch - 69) / 12)) / RATE
@@ -271,7 +271,7 @@ def test_vibrato_with_pitch_bend(a2m):
 
 
 def test_each_note_starts_unbent(a2m):
-    a2m.setPitchBend(1)
+    a2m.setPitchBend(0, 1)
     signal = np.concatenate([glide((57, 57, 0.2), (57, 58, 0.2)), glide((64, 64, 0.5))])
     events = analyse(a2m, signal)
     i = [k for k, e in enumerate(events) if e[1] == NOTE_ON and e[2] == 64][0]
@@ -280,14 +280,14 @@ def test_each_note_starts_unbent(a2m):
 
 
 def test_polyphonic_mode_sends_no_pitch_bend(a2m):
-    a2m.setPitchBend(1)
-    a2m.setPolyphonic(1)
+    a2m.setPitchBend(0, 1)
+    a2m.setPolyphonic(0, 1)
     notes, bends = notes_and_bends(analyse(a2m, glide(*STRING_BEND)))
     assert bends == []
 
 
 def test_bend_range_is_clamped(a2m):
-    a2m.setBendRange(0)
-    assert a2m.getBendRange() == 1
-    a2m.setBendRange(48)
-    assert a2m.getBendRange() == 24
+    a2m.setBendRange(0, 0)
+    assert a2m.getBendRange(0) == 1
+    a2m.setBendRange(0, 48)
+    assert a2m.getBendRange(0) == 24
