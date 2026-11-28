@@ -24,6 +24,8 @@
 import logging
 
 # Zynthian specific modules
+from zyngine.zynthian_state_manager import ALSA_ID, AUDIO_PLAYER_ID, MAIN_MIXBUS_ID, TEMPO_ID
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
@@ -120,6 +122,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
 
         options = {"Toggle All Mixer": ["",["Toggle the selection of all audio mixer parameters that will be restored.", None]]}
         mixer_list = []
+        processor_states = state.get("processors", {})
+        shown_proc_ids = set()
 
         for idx, chain_id in enumerate(self.zyngui.chain_manager.chains):
             chain = self.zyngui.chain_manager.get_chain(chain_id)
@@ -142,9 +146,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             else:
                 options[label] = None
             for proc in chain.get_processors():
-                if proc.id in state["processors"]:
+                if proc.id in processor_states:
+                    shown_proc_ids.add(proc.id)
                     try:
-                        restore = state["processors"][proc.id]["restore"]
+                        restore = processor_states[proc.id]["restore"]
                     except:
                         restore = True
                     if proc.eng_code in ("MI", "MR"):
@@ -157,6 +162,41 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                         options[f"\u2612   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
                     else:
                         options[f"\u2610   ⤷{label}"] = [f"processors_{proc.id}", [info, None]]
+
+        # Global processors aren't attached to a chain, so they don't appear in
+        # the chain loop above. Show any that have state saved in this ZS3.
+        global_names = {
+            ALSA_ID: "Audio Levels",
+            AUDIO_PLAYER_ID: "Audio Player",
+            TEMPO_ID: "Tempo",
+        }
+        global_entries = []
+        for proc_id, proc_state in processor_states.items():
+            try:
+                id = int(proc_id)
+            except (TypeError, ValueError):
+                continue
+            if id >= 0 or id == MAIN_MIXBUS_ID or id in shown_proc_ids:
+                continue
+            processor = self.zyngui.chain_manager.processors.get(id)
+            name = processor.name if processor else global_names.get(id, "Global processor")
+            default_restore = zynthian_gui_config.snapshot_mixer_settings if id == ALSA_ID else True
+            global_entries.append((id, name, proc_state.get("restore", default_restore)))
+        if global_entries:
+            options["Global"] = None
+            info = "Toggle whether global processor parameters will be restored."
+            info_by_id = {
+                ALSA_ID: ("Toggle whether audio levels will be restored from this ZS3.\n"
+                          "Overrides the global 'Restore Audio Levels' setting."),
+                AUDIO_PLAYER_ID: "Toggle whether the audio player's track and playback position will be restored from this ZS3.",
+                TEMPO_ID: "Toggle whether tempo and metronome settings will be restored from this ZS3.",
+            }
+            display_order = {ALSA_ID: 0, AUDIO_PLAYER_ID: 1, TEMPO_ID: 2}
+            for id, name, restore in sorted(global_entries, key=lambda entry: (display_order.get(entry[0], 99), entry[1])):
+                prefix = "\u2612" if restore else "\u2610"
+                proc_info = info_by_id.get(id, info)
+                options[f"{prefix} {name}"] = [f"processors_{id}", [proc_info, None]]
+
         options["Toggle All Mixer"][0] = ",".join(mixer_list)
         prefix = "\u2612" if state.get("restore_midi_learn", False) else "\u2610"
         options[f"{prefix} MIDI learn"] = ["midi_learn", ["Toggle whether MIDI learn (CC binding) is restored.", None]]
@@ -164,6 +204,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         return options
 
     def zs3_restoring_options_select_cb(self, label, param, ct):
+        if not param:
+            return
         if label == "Toggle All Mixer":
             ids = param.split(",")
             for id in ids:
@@ -176,6 +218,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
         if ct == "S":
             self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, type, id)
         elif ct == "B":
+            if type == "processors":
+                try:
+                    focused_id = int(id)
+                except (TypeError, ValueError):
+                    return
+                if focused_id < 0 and focused_id != MAIN_MIXBUS_ID:
+                    # Global entries have no bulk action, fall-back to the short action
+                    self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, type, id)
+                    return
             try:
                 state = self.zyngui.state_manager.zs3[self.zs3_id]
             except:
@@ -185,6 +236,13 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             for chain_id in list(state["chains"]):
                 self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "chains", chain_id)
             for proc_id in list(state["processors"]):
+                try:
+                    id = int(proc_id)
+                except (TypeError, ValueError):
+                    continue
+                if id < 0 and id != MAIN_MIXBUS_ID:
+                    # Global processors are toggled individually, not en masse
+                    continue
                 self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "processors", proc_id)
 
     def zs3_rename(self):
