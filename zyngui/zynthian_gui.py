@@ -179,6 +179,7 @@ class zynthian_gui:
         self.current_screen = None
         self.screen_timer_id = None
         self.screen_lock = RLock()          # Reentrant lock object to avoid concurrence problems when showing/closing screens
+        self.busy_screen_pending = False    # True while a loading screen update is queued for the main thread
         self.current_processor = None
 
         self.state_manager = zynthian_state_manager()
@@ -3671,39 +3672,11 @@ class zynthian_gui:
                 continue
             if self.state_manager.is_busy() and (monotonic() - self.state_manager.busy_ts) > 0.1 :
                 busy_timeout += 1
-                busy_message = self.state_manager.get_busy_message()
-                busy_details = self.state_manager.get_busy_details()
-                # Show loading screen if busy and busy message
-                if self.current_screen != "loading":
-                    if busy_message:
-                        with self.screen_lock:
-                            # Re-check under lock: busy may have ended and another screen shown meanwhile
-                            if self.state_manager.is_busy() and self.current_screen != "loading":
-                                self.show_loading(busy_message, busy_details)
-                else:
-                    busy_error = self.state_manager.get_busy_error()
-                    if busy_error:
-                        self.screens['loading'].set_error(busy_error)
-                    else:
-                        busy_warning = self.state_manager.get_busy_warning()
-                        if busy_warning:
-                            self.screens['loading'].set_warning(busy_warning)
-                        else:
-                            busy_success = self.state_manager.get_busy_success()
-                            if busy_success:
-                                self.screens['loading'].set_success(busy_success)
-                            elif busy_message:
-                                self.screens['loading'].set_title(busy_message)
-                    if busy_details:
-                        self.screens['loading'].set_details(busy_details)
+                self.request_busy_screen_update()
             else:
                 busy_timeout = 0
                 if self.current_screen == "loading":
-                    with self.screen_lock:
-                        # Re-check under lock: another thread may have shown a new screen after
-                        # ending busy (e.g. alsa_mixer from audio_in). Don't close that one.
-                        if self.current_screen == "loading" and not self.state_manager.is_busy():
-                            self.close_screen("loading")
+                    self.request_busy_screen_update()
 
             try:
                 if self.current_screen:
@@ -3715,6 +3688,59 @@ class zynthian_gui:
                 logging.warning(f"Clients have been busy for longer than {int(busy_warn_time / 10)}s: {self.state_manager.busy}")
 
             sleep(0.1)
+
+    def request_busy_screen_update(self):
+        """Ask the main (Tk) thread to show, update or close the loading screen (see busy_screen_update)"""
+
+        if not self.busy_screen_pending:
+            self.busy_screen_pending = True
+            self.after_idle(self.busy_screen_update)
+
+    def busy_screen_update(self):
+        """Show, update or close the loading screen to match the busy state.
+
+        Runs in the main (Tk) thread. Tk calls from another thread wait for the main thread to run them, so
+        a thread that holds screen_lock and calls Tk (e.g. show_screen from another thread) needs the main
+        thread running: if the main thread blocked on screen_lock, both would wait forever (clean all froze
+        this way when the busy thread held the lock). So screen_lock is only tried here, and the update is
+        retried later if another thread has it.
+        """
+
+        if not self.screen_lock.acquire(blocking=False):
+            zynthian_gui_config.top.after(20, self.busy_screen_update)
+            return
+        self.busy_screen_pending = False
+        try:
+            # Checked under the lock: busy may have ended and another screen shown meanwhile
+            if self.state_manager.is_busy():
+                busy_message = self.state_manager.get_busy_message()
+                busy_details = self.state_manager.get_busy_details()
+                # Show loading screen if busy and busy message
+                if self.current_screen != "loading":
+                    if busy_message:
+                        self.show_loading(busy_message, busy_details)
+                    return
+                busy_error = self.state_manager.get_busy_error()
+                if busy_error:
+                    self.screens['loading'].set_error(busy_error)
+                else:
+                    busy_warning = self.state_manager.get_busy_warning()
+                    if busy_warning:
+                        self.screens['loading'].set_warning(busy_warning)
+                    else:
+                        busy_success = self.state_manager.get_busy_success()
+                        if busy_success:
+                            self.screens['loading'].set_success(busy_success)
+                        elif busy_message:
+                            self.screens['loading'].set_title(busy_message)
+                if busy_details:
+                    self.screens['loading'].set_details(busy_details)
+            elif self.current_screen == "loading":
+                # Another thread may have shown a new screen after ending busy (e.g. alsa_mixer from audio_in):
+                # only the loading screen is closed.
+                self.close_screen("loading")
+        finally:
+            self.screen_lock.release()
 
     def wait_close_loading(self, time=0):
         while self.current_screen == "loading":
