@@ -224,7 +224,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
                 except (TypeError, ValueError):
                     return
                 if focused_id < 0 and focused_id != MAIN_MIXBUS_ID:
-                    # Global entries have no bulk action
+                    # Global entries have no bulk action, fall-back to the short action
+                    self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, type, id)
                     return
             try:
                 state = self.zyngui.state_manager.zs3[self.zs3_id]
