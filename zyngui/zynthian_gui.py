@@ -35,7 +35,7 @@ from queue import Empty, SimpleQueue
 from pathlib import Path
 from time import monotonic
 from datetime import datetime
-from threading import Thread, Lock, RLock, Event
+from threading import Thread, Lock, Event
 from websocket_server import WebsocketServer
 
 # Zynthian specific modules
@@ -50,6 +50,7 @@ from zyngine.zynthian_state_manager import zynthian_state_manager
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keybinding
+from zyngine import zynthian_mainloop_lock
 from zyngui.multitouch import MultiTouch
 
 from zyngui.zynthian_gui_none import zynthian_gui_none
@@ -178,7 +179,13 @@ class zynthian_gui:
         self.screen_history = []
         self.current_screen = None
         self.screen_timer_id = None
-        self.screen_lock = RLock()          # Reentrant lock object to avoid concurrence problems when showing/closing screens
+        # Waits for Tk calls from other threads: the main thread can't deadlock waiting for this lock
+        # while a thread showing a screen holds it (see zynthian_mainloop_lock).
+        try:
+            zynthian_mainloop_lock.set_tk(zynthian_gui_config.top.tk)
+        except Exception as e:
+            logging.error(f"Can't register the Tk main thread => {e}")
+        self.screen_lock = zynthian_mainloop_lock.MainLoopLock()  # Reentrant lock to avoid concurrence problems when showing/closing screens
         self.busy_screen_pending = False    # True while a loading screen update is queued for the main thread
         self.current_processor = None
 
@@ -3699,18 +3706,11 @@ class zynthian_gui:
     def busy_screen_update(self):
         """Show, update or close the loading screen to match the busy state.
 
-        Runs in the main (Tk) thread. Tk calls from another thread wait for the main thread to run them, so
-        a thread that holds screen_lock and calls Tk (e.g. show_screen from another thread) needs the main
-        thread running: if the main thread blocked on screen_lock, both would wait forever (clean all froze
-        this way when the busy thread held the lock). So screen_lock is only tried here, and the update is
-        retried later if another thread has it.
+        Runs in the main (Tk) thread, so the busy thread doesn't make Tk calls for it.
         """
 
-        if not self.screen_lock.acquire(blocking=False):
-            zynthian_gui_config.top.after(20, self.busy_screen_update)
-            return
         self.busy_screen_pending = False
-        try:
+        with self.screen_lock:
             # Checked under the lock: busy may have ended and another screen shown meanwhile
             if self.state_manager.is_busy():
                 busy_message = self.state_manager.get_busy_message()
@@ -3739,10 +3739,11 @@ class zynthian_gui:
                 # Another thread may have shown a new screen after ending busy (e.g. alsa_mixer from audio_in):
                 # only the loading screen is closed.
                 self.close_screen("loading")
-        finally:
-            self.screen_lock.release()
 
     def wait_close_loading(self, time=0):
+        # The main thread shows and closes the loading screen: it can't wait for that
+        if zynthian_mainloop_lock.in_main_thread():
+            return
         while self.current_screen == "loading":
             sleep(0.05)
         if time > 0:
@@ -3751,6 +3752,9 @@ class zynthian_gui:
                 sleep(dt)
 
     def wait_show_loading(self, time=0):
+        # The main thread shows and closes the loading screen: it can't wait for that
+        if zynthian_mainloop_lock.in_main_thread():
+            return
         while self.current_screen != "loading":
             sleep(0.05)
         if time > 0:

@@ -32,12 +32,13 @@ import logging
 import alsaaudio
 import traceback
 from time import sleep
-from threading import Thread, Lock
+from threading import Thread
 
 # Zynthian specific modules
 import zynconf
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
+from zyngine.zynthian_mainloop_lock import MainLoopLock
 
 # -------------------------------------------------------------------------------
 # Configure logging
@@ -1769,8 +1770,9 @@ def start(sm):
     except Exception as e:
         logger.error(f"Can't load sidechain map ({e})")
 
-    # Create Lock object (Mutex) to avoid concurrence problems
-    lock = Lock()
+    # Create Lock object (Mutex) to avoid concurrence problems. The UI main thread takes it (e.g. chain
+    # routing changes) while the autoconnect thread may reach UI code holding it: MainLoopLock avoids deadlocks.
+    lock = MainLoopLock(reentrant=False)
 
     # Start port change checking thread
     thread = Thread(target=auto_connect_thread, args=())

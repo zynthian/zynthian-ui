@@ -35,6 +35,7 @@ from urllib.parse import urlparse, unquote
 
 import zynautoconnect
 from zyngine.zynthian_engine import zynthian_engine
+from zyngine import zynthian_mainloop_lock
 
 
 # ------------------------------------------------------------------------------
@@ -627,7 +628,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
             try:
                 logging.info("Stopping Engine " + self.name)
                 self.running = False
-                self.proc_poll_thread.join()
+                zynthian_mainloop_lock.join(self.proc_poll_thread)  # Called from the UI main thread too
                 self.proc_cmd("shutdown")
                 self.proc.terminate()
                 try:
