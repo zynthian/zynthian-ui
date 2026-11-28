@@ -184,13 +184,12 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             global_entries.append((id, name, proc_state.get("restore", default_restore)))
         if global_entries:
             options["Global"] = None
-            toggle_all = "\n\nBold SELECT to toggle all."
-            info = "Toggle whether global processor parameters will be restored." + toggle_all
+            info = "Toggle whether global processor parameters will be restored."
             info_by_id = {
                 ALSA_ID: ("Toggle whether audio levels will be restored from this ZS3.\n"
-                          "Overrides the global 'Restore Audio Levels' setting." + toggle_all),
-                AUDIO_PLAYER_ID: "Toggle whether the audio player's track and playback position will be restored from this ZS3." + toggle_all,
-                TEMPO_ID: "Toggle whether tempo and metronome settings will be restored from this ZS3." + toggle_all,
+                          "Overrides the global 'Restore Audio Levels' setting."),
+                AUDIO_PLAYER_ID: "Toggle whether the audio player's track and playback position will be restored from this ZS3.",
+                TEMPO_ID: "Toggle whether tempo and metronome settings will be restored from this ZS3.",
             }
             display_order = {ALSA_ID: 0, AUDIO_PLAYER_ID: 1, TEMPO_ID: 2}
             for id, name, restore in sorted(global_entries, key=lambda entry: (display_order.get(entry[0], 99), entry[1])):
@@ -228,6 +227,13 @@ class zynthian_gui_zs3_options(zynthian_gui_selector_info):
             for chain_id in list(state["chains"]):
                 self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "chains", chain_id)
             for proc_id in list(state["processors"]):
+                try:
+                    id = int(proc_id)
+                except (TypeError, ValueError):
+                    continue
+                if id < 0 and id != MAIN_MIXBUS_ID:
+                    # Global processors are toggled individually, not en masse
+                    continue
                 self.zyngui.state_manager.toggle_zs3_restore_flag(self.zs3_id, "processors", proc_id)
 
     def zs3_rename(self):
