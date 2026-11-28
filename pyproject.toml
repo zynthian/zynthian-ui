@@ -21,7 +21,7 @@ filterwarnings = ["ignore::DeprecationWarning", "ignore::SyntaxWarning"]
 [tool.ruff]
 target-version = "py311"
 line-length = 120
-extend-exclude = ["venv", "venv.bak", "build", "zynagent", "zynlibs/*/build"]
+extend-exclude = ["venv", "venv.bak", "build", "zynagent", "zynlibs/*/build", ".claude/skills/*/templates"]
 
 # Lint only what is new, to avoid churn in the legacy code base. Widen later.
 [tool.ruff.lint]
