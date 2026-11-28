@@ -728,6 +728,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             if self.zyngui.tts:
                 if mlmode == MIDI_LEARNING_CHAIN:
                     self.zyngui.tts.announce("Chain MIDI learn enabled")
+                elif mlmode == MIDI_LEARNING_GLOBAL:
+                    self.zyngui.tts.announce("Global MIDI learn enabled")
                 else:
                     self.zyngui.tts.announce("Global MIDI learn enabled")
 
@@ -744,13 +746,16 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.mode != 'control':
             return
 
-        # Handle alsa mixer
-        default_midi_learning_mode = MIDI_LEARNING_CHAIN
+        if self.midi_learning == MIDI_LEARNING_CHAIN:
+            default_midi_learning_mode = MIDI_LEARNING_GLOBAL
+        else:
+            default_midi_learning_mode = MIDI_LEARNING_CHAIN
         try:
-            if self.zyngui.get_current_processor().eng_code in ("MX", "AM"):
+            # Handle global processors
+            if self.zyngui.get_current_processor().chain_id is None:
                 default_midi_learning_mode = MIDI_LEARNING_GLOBAL
         except:
-            pass
+            return self.midi_learning
 
         if i is not None:
             # Restart MIDI learn with a new controller
@@ -761,14 +766,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.midi_learn(i, default_midi_learning_mode)
                 return self.midi_learning
 
-        if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.midi_learning = MIDI_LEARNING_GLOBAL
-            if i is not None:
-                self.refresh_midi_bind(False)
-            else:
-                self.refresh_midi_bind(True)
-            self.set_select_path()
-        elif self.midi_learning == MIDI_LEARNING_GLOBAL:
+        if self.midi_learning == MIDI_LEARNING_GLOBAL:
             self.exit_midi_learn()
         else:
             if i is not None:
