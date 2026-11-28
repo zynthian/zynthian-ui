@@ -188,10 +188,12 @@ def test_level_changes_are_ramped_over_one_period(mix):
     mix.lib.setLevel(chan, 0.0)
     mix.settle()
     periods, mix.probe.history = mix.probe.history, None
-    ramps = [p for p in periods if p[0] > 0.4 and p[-1] < 0.01]
+    # Periods are numpy arrays: locate the ramp by index (list.index() would compare arrays with ==, which raises)
+    ramps = [i for i, p in enumerate(periods) if p[0] > 0.4 and p[-1] < 0.01]
     assert len(ramps) == 1, "exactly one period fades from the old level to the new one"
-    assert all(abs(x) < 1e-6 for p in periods[periods.index(ramps[0]) + 1:] for x in p[:1])
-    assert len(set(ramps[0].round(6))) > 200                        # a smooth ramp, not a step
+    ramp = ramps[0]
+    assert all(abs(x) < 1e-6 for p in periods[ramp + 1:] for x in p[:1])
+    assert len(set(periods[ramp].round(6))) > 200                   # a smooth ramp, not a step
 
 
 # --- solo and PFL -------------------------------------------------------------------------------------------

@@ -109,14 +109,14 @@ def pated(cls, **attrs):
 
 
 def test_pattern_notes_editor_reports_pattern_cursor_and_editor_values():
-    keymap_state = {"name": "Chromatic", "keys": None}
     view, reads = pated(zynthian_gui_pated_notes, keymap=[{"note": 60}, {"note": 62}], chord_mode=1,
-                        keymap_state=keymap_state)
+                        keymap_name="Chromatic")
+    view.zynseq.libseq = SimpleNamespace(getScale=lambda: 0)
     assert view.state_key == "zyngui_pated_notes"
     assert view.get_state() == {"pattern_index": 7, "pattern": PATTERN,
                                 "cursor": {"step": 3, "row": 1, "note": 62},
                                 "phrase": 0, "sequence": 2, "midi_chan": 2, "edit_mode": 0, "chord_mode": 1,
-                                "keymap": keymap_state}
+                                "keymap": {"name": "Chromatic", "keys": None}}
     assert view.get_state("list") == view.get_state()
     reads.clear()
     # Cursor moves don't read the pattern from zynseq
@@ -131,11 +131,11 @@ def test_pattern_notes_editor_reports_custom_keymap_names():
     view.zynseq.libseq = libseq
     view.get_custom_keymap = lambda: ["Drum kit", SimpleNamespace(get_keymap=lambda: kit)]
     assert view.load_keymap() == "Drum kit"
-    assert view.keymap_state == {"name": "Drum kit", "keys": [[36, "Kick"], [38, "Snare"]]}
+    assert view.get_keymap_state() == {"name": "Drum kit", "keys": [[36, "Kick"], [38, "Snare"]]}
     # Without a custom map it falls back to chromatic: notes are implicit, no keys reported
     view.get_custom_keymap = lambda: None
     assert view.load_keymap() == "Chromatic"
-    assert view.keymap_state == {"name": "Chromatic", "keys": None} and len(view.keymap) == 128
+    assert view.get_keymap_state() == {"name": "Chromatic", "keys": None} and len(view.keymap) == 128
 
 
 def test_pattern_cc_editor_reports_the_cc_number():
