@@ -900,6 +900,7 @@ class zynthian_gui_mixer_strip():
 
     def draw_toggle(self):
         try:
+            # Check that there is a toggle control
             self.toggle
         except:
             return
