@@ -249,7 +249,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                    ["Control Voltage configuration.", "settings.png"]))
         if self.state_manager.update_available:
             self.list_data.append((self.update_software, 0, "Update Software",
-                                   ["Updates software from Internet.\n\nThis option is only shown when updates are availale (\u21bb icon in the topbar).\nDon't poweroff while updating!", "update.png"]))
+                                   ["Updates software from Internet.\n\nUpdates are available (\u21bb icon in the topbar).\nDon't poweroff while updating!", "update.png"]))
+        else:
+            self.list_data.append((self.update_software, 0, "Force update (none advertised)",
+                                   ["Runs the software update even though no updates are advertised.\n\nUse this if you believe updates exist that have not been detected.\nDon't poweroff while updating!", "update.png"]))
         # self.list_data.append((self.update_system, 0, "Update Operating System"))
         if zynthian_gui_config.control_test_enabled:
             self.list_data.append((self.control_test, 0, "Test control HW",

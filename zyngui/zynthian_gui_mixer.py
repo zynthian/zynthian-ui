@@ -899,6 +899,10 @@ class zynthian_gui_mixer_strip():
         self.canvas.coords(self.clip_progress, self.x, self.gui_mixer.legend_y, x1, self.gui_mixer.legend_y + self.clip_progress_height)
 
     def draw_toggle(self):
+        try:
+            self.toggle
+        except:
+            return
         txcolor = self.gui_mixer.button_txcol
         font = self.gui_mixer.font
         text = self.chain.zynmixer_proc.controllers_dict[zynthian_gui_config.mixer_toggle].name
