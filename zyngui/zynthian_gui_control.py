@@ -675,7 +675,24 @@ class zynthian_gui_control(zynthian_gui_selector):
                     zgui_ctrl.zctrl.is_dirty = False
         if self.mode == 'control':
             for k, widget in self.widgets.items():
+                if widget.shown:
+                    self.refresh_widget_processor(widget)
                 widget.update()
+
+    def refresh_widget_processor(self, widget):
+        """Rebind a widget whose processor was replaced.
+
+        Reloading a processor (chain_manager.reload_processor) replaces the processor object, keeping its id.
+        A widget instance can still hold the old one (removed => no chain, engine stopped) when it's displayed
+        again without show_widget, and would keep polling a stopped engine. Cheap: one dict lookup.
+        """
+        proc = widget.processor
+        if proc is None or proc.chain is not None:
+            return
+        new_proc = self.chain_manager.processors.get(proc.id)
+        if new_proc is not None and new_proc is not proc:
+            logging.debug(f"Widget processor {proc.id} was replaced => rebinding")
+            widget.set_processor(new_proc)
 
     # --------------------------------------------------------------------------
     # CUIA => Pass CUIA to widget
