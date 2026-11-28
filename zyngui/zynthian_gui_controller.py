@@ -95,6 +95,7 @@ class zynthian_gui_controller(tkinter.Canvas):
         self.refresh_plot_value = False
         self.title = ""
         self.preselection = None
+        self.control_screen = None  # zynthian_gui_control instance owning this controller (if any)
 
         self.pixels_per_div = 1
         self.touch_accel = 300
@@ -544,8 +545,7 @@ class zynthian_gui_controller(tkinter.Canvas):
                 #self.erase_midi_bind()
                 self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
             elif preselection is not None or self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
-                # TODO THIS IS SUPER UGLY!!!!
-                if self.zyngui.screens["chain_control"].subscreens["control"].get_midi_learn() > 1:
+                if self.control_screen and self.control_screen.get_midi_learn() > 1:
                     self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
                 else:
                     self.plot_midi_bind("??#??", zynthian_gui_config.color_hl)
@@ -781,8 +781,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 
     # This is used by touch interface
     def nudge(self, dval, fine=False):
-        if self.preselection is not None:
-            self.zyngui.screens["control"].zctrl_touch(self.preselection)
+        if self.preselection is not None and self.control_screen:
+            self.control_screen.zctrl_touch(self.preselection)
         elif self.zctrl:
             return self.zctrl.nudge(dval, fine=fine)
         else:

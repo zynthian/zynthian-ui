@@ -72,6 +72,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         for i in range(4):
             pos = self.layout['ctrl_pos'][i]
             zgui_ctrl = zynthian_gui_controller(i, self.main_frame)
+            zgui_ctrl.control_screen = self
             zgui_ctrl.grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
             self.zgui_controllers.append(zgui_ctrl)
 

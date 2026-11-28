@@ -2673,7 +2673,7 @@ class zynthian_gui:
     def get_midi_learn_screen_obj(self):
         if self.current_screen == "chain_control" and self.screens["chain_control"].subscreen_name == "control":
             return self.screens["chain_control"].subscreen
-        elif self.current_screen in ("alsa_mixer", "audio2midi", "midi_key_range"):
+        elif self.current_screen in ("alsa_mixer", "tempo", "audio2midi", "midi_key_range"):
             return self.screens[self.current_screen]
 
     def cuia_enable_midi_learn_cc(self, params=None):
